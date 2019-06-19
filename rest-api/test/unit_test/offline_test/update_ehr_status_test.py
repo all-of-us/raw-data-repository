@@ -5,6 +5,7 @@ import mock
 import pytz
 
 from clock import FakeClock
+import config
 from dao.ehr_dao import EhrReceiptDao
 from dao.hpo_dao import HPODao
 from dao.organization_dao import OrganizationDao
@@ -14,12 +15,79 @@ import offline.update_ehr_status
 from model.hpo import HPO
 from model.organization import Organization
 from participant_enums import EhrStatus
-from test.unit_test.unit_test_util import SqlTestBase
+from test.unit_test.unit_test_util import SqlTestBase, NdbTestBase
 
 
-class UpdateEhrStatusTestCase(SqlTestBase):
+class UpdateEhrStatusMakeJobsTestCase(NdbTestBase):
+
+  def setUp(self, use_mysql=False, with_data=False, with_consent_codes=False):
+    super(UpdateEhrStatusMakeJobsTestCase, self).setUp(use_mysql=use_mysql,
+                                                       with_data=with_data,
+                                                       with_consent_codes=with_consent_codes)
+
+  @mock.patch('cloud_utils.bigquery.build')
+  @mock.patch('cloud_utils.bigquery.app_identity.get_application_id')
+  def test_make_update_participant_summaries_job(self, mock_build, mock_get_application_id):
+    mock_build.return_value = 'foo'
+    mock_get_application_id.return_value = 'app_id'
+
+    config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, ['some_view'])
+    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    self.assertNotEqual(job, None)
+
+    config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, ['a', 'b'])
+    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    self.assertEqual(job, None)
+
+    config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [''])
+    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    self.assertEqual(job, None)
+
+    config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [None])
+    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    self.assertEqual(job, None)
+
+    config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [])
+    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    self.assertEqual(job, None)
+
+    config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, None)
+    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    self.assertEqual(job, None)
+
+  @mock.patch('cloud_utils.bigquery.build')
+  @mock.patch('cloud_utils.bigquery.app_identity.get_application_id')
+  def test_make_update_organizations_job(self, mock_build, mock_get_application_id):
+    mock_build.return_value = 'foo'
+    mock_get_application_id.return_value = 'app_id'
+    config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, ['some_view'])
+    job = offline.update_ehr_status.make_update_organizations_job()
+    self.assertNotEqual(job, None)
+
+    config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, ['a', 'b'])
+    job = offline.update_ehr_status.make_update_organizations_job()
+    self.assertEqual(job, None)
+
+    config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, [''])
+    job = offline.update_ehr_status.make_update_organizations_job()
+    self.assertEqual(job, None)
+
+    config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, [None])
+    job = offline.update_ehr_status.make_update_organizations_job()
+    self.assertEqual(job, None)
+
+    config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [])
+    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    self.assertEqual(job, None)
+
+    config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, None)
+    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    self.assertEqual(job, None)
+
+
+class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
   def setUp(self, **kwargs):
-    super(UpdateEhrStatusTestCase, self).setUp(use_mysql=True, **kwargs)
+    super(UpdateEhrStatusUpdatesTestCase, self).setUp(use_mysql=True, **kwargs)
     self.hpo_dao = HPODao()
     self.org_dao = OrganizationDao()
     self.participant_dao = ParticipantDao()
@@ -76,6 +144,24 @@ class UpdateEhrStatusTestCase(SqlTestBase):
     'org_id',
     'person_upload_time',
   ])
+
+  @mock.patch('offline.update_ehr_status.make_update_organizations_job')
+  @mock.patch('offline.update_ehr_status.make_update_participant_summaries_job')
+  def test_skips_when_no_job(self, mock_summary_job, mock_organization_job):
+    mock_summary_job.return_value = None
+    mock_organization_job.return_value = None
+    with FakeClock(datetime.datetime(2019, 1, 1)):
+      offline.update_ehr_status.update_ehr_status()
+
+    summary = self.summary_dao.get(11)
+    self.assertNotEqual(summary.ehrStatus, EhrStatus.PRESENT)
+    summary = self.summary_dao.get(12)
+    self.assertNotEqual(summary.ehrStatus, EhrStatus.PRESENT)
+
+    foo_a_receipts = self.ehr_receipt_dao.get_by_organization_id(self.org_foo_a.organizationId)
+    self.assertEqual(len(foo_a_receipts), 0)
+    foo_b_receipts = self.ehr_receipt_dao.get_by_organization_id(self.org_foo_b.organizationId)
+    self.assertEqual(len(foo_b_receipts), 0)
 
   @mock.patch('offline.update_ehr_status.make_update_organizations_job')
   @mock.patch('offline.update_ehr_status.make_update_participant_summaries_job')

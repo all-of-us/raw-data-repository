@@ -33,11 +33,5 @@
     "10"
   ],
   "mayolink_creds": ["rdr-mayolink-creds-test.json"],
-  "mayolink_endpoint": ["https://test.orders.mayocliniclabs.com/orders/create.xml"],
-  "curation_bigquery_project": [
-    "all-of-us-rdr-sandbox"
-  ],
-  "curation_bucket_name": [
-    "aou-rdr-sandbox-mock-data"
-  ]
+  "mayolink_endpoint": ["https://test.orders.mayocliniclabs.com/orders/create.xml"]
 }

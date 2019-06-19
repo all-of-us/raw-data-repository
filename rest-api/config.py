@@ -39,8 +39,8 @@ GHOST_ID_BUCKET = 'ghost_id_bucket'
 MAYOLINK_CREDS = 'mayolink_creds'
 MAYOLINK_ENDPOINT = 'mayolink_endpoint'
 CONFIG_BUCKET = 'all-of-us-rdr-sequestered-config-test'
-CURATION_BIGQUERY_PROJECT = 'curation_bigquery_project'
-CURATION_BUCKET_NAME = 'curation_bucket_name'
+EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT = 'ehr_status_bigquery_view_participant'
+EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION = 'ehr_status_bigquery_view_organization'
 HPO_REPORT_CONFIG_MIXIN_PATH = 'hpo_report_config_mixin_path'
 
 # Allow requests which are never permitted in production. These include fake

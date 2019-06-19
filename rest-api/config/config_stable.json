@@ -169,9 +169,6 @@
   "metrics_shards": [
     "10"
   ],
-  "curation_bucket_name": [
-    "aou-rdr-sandbox-mock-data"
-  ],
   "hpo_report_config_mixin_path": [
     "/all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin--stable.json"
   ],
