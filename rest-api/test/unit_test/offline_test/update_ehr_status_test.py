@@ -60,6 +60,7 @@ class UpdateEhrStatusMakeJobsTestCase(NdbTestBase):
   def test_make_update_organizations_job(self, mock_build, mock_get_application_id):
     mock_build.return_value = 'foo'
     mock_get_application_id.return_value = 'app_id'
+
     config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, ['some_view'])
     job = offline.update_ehr_status.make_update_organizations_job()
     self.assertNotEqual(job, None)
@@ -145,23 +146,20 @@ class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
     'person_upload_time',
   ])
 
+  @mock.patch('offline.update_ehr_status.update_organizations_from_job')
+  @mock.patch('offline.update_ehr_status.update_participant_summaries_from_job')
   @mock.patch('offline.update_ehr_status.make_update_organizations_job')
   @mock.patch('offline.update_ehr_status.make_update_participant_summaries_job')
-  def test_skips_when_no_job(self, mock_summary_job, mock_organization_job):
+  def test_skips_when_no_job(self, mock_summary_job, mock_organization_job,
+                             mock_update_summaries, mock_update_organizations):
     mock_summary_job.return_value = None
     mock_organization_job.return_value = None
+
     with FakeClock(datetime.datetime(2019, 1, 1)):
       offline.update_ehr_status.update_ehr_status()
 
-    summary = self.summary_dao.get(11)
-    self.assertNotEqual(summary.ehrStatus, EhrStatus.PRESENT)
-    summary = self.summary_dao.get(12)
-    self.assertNotEqual(summary.ehrStatus, EhrStatus.PRESENT)
-
-    foo_a_receipts = self.ehr_receipt_dao.get_by_organization_id(self.org_foo_a.organizationId)
-    self.assertEqual(len(foo_a_receipts), 0)
-    foo_b_receipts = self.ehr_receipt_dao.get_by_organization_id(self.org_foo_b.organizationId)
-    self.assertEqual(len(foo_b_receipts), 0)
+    self.assertFalse(mock_update_summaries.called)
+    self.assertFalse(mock_update_organizations.called)
 
   @mock.patch('offline.update_ehr_status.make_update_organizations_job')
   @mock.patch('offline.update_ehr_status.make_update_participant_summaries_job')
