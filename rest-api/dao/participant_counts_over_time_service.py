@@ -22,11 +22,15 @@ class ParticipantCountsOverTimeService(BaseDao):
   def refresh_metrics_cache_data(self):
 
     self.refresh_data_for_metrics_cache(MetricsEnrollmentStatusCacheDao())
-    self.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
+    self.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
+    self.refresh_data_for_metrics_cache(MetricsGenderCacheDao(
+      MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
     self.refresh_data_for_metrics_cache(MetricsAgeCacheDao(MetricsCacheType.METRICS_V2_API))
     self.refresh_data_for_metrics_cache(MetricsAgeCacheDao(
       MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
-    self.refresh_data_for_metrics_cache(MetricsRaceCacheDao())
+    self.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
+    self.refresh_data_for_metrics_cache(MetricsRaceCacheDao(
+      MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
     self.refresh_data_for_metrics_cache(MetricsRegionCacheDao())
     self.refresh_data_for_metrics_cache(MetricsLanguageCacheDao())
     self.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao())

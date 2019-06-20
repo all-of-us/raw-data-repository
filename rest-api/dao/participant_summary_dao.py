@@ -18,7 +18,8 @@ from dao.patient_status_dao import PatientStatusDao
 from dao.site_dao import SiteDao
 from model.config_utils import to_client_biobank_id, from_client_biobank_id
 from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS, \
-  WITHDRAWN_PARTICIPANT_VISIBILITY_TIME, SUSPENDED_PARTICIPANT_FIELDS
+  WITHDRAWN_PARTICIPANT_VISIBILITY_TIME, SUSPENDED_PARTICIPANT_FIELDS, ParticipantGenderAnswers, \
+  ParticipantRaceAnswers
 from model.patient_status import PatientStatus
 from model.utils import to_client_participant_id, get_property_type
 from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus, \
@@ -768,3 +769,49 @@ class PatientStatusFieldFilter(FieldFilter):
       return query.filter(criterion)
     else:
       raise ValueError('Invalid operator: %r.' % self.operator)
+
+
+class ParticipantGenderAnswersDao(UpdatableDao):
+  def __init__(self):
+    super(ParticipantGenderAnswersDao, self).__init__(ParticipantGenderAnswers, order_by_ending=['id'])
+
+  def update_gender_answers_with_session(self, session, participant_id, gender_code_ids):
+    # remove old answers
+    self.delete_answers_with_session(session, participant_id)
+    # insert new answers
+    now = clock.CLOCK.now()
+    records = [ParticipantGenderAnswers(**dict(participantId=participant_id,
+                                               created=now,
+                                               modified=now,
+                                               codeId=code_id)) for code_id in gender_code_ids]
+
+    for record in records:
+      session.merge(record)
+
+  def delete_answers_with_session(self, session, participant_id):
+    session.query(ParticipantGenderAnswers)\
+      .filter(ParticipantGenderAnswers.participantId == participant_id)\
+      .delete()
+
+
+class ParticipantRaceAnswersDao(UpdatableDao):
+  def __init__(self):
+    super(ParticipantRaceAnswersDao, self).__init__(ParticipantRaceAnswers, order_by_ending=['id'])
+
+  def update_race_answers_with_session(self, session, participant_id, race_code_ids):
+    # remove old answers
+    self.delete_answers_with_session(session, participant_id)
+    # insert new answers
+    now = clock.CLOCK.now()
+    records = [ParticipantRaceAnswers(**dict(participantId=participant_id,
+                                                created=now,
+                                                modified=now,
+                                                codeId=code_id)) for code_id in race_code_ids]
+
+    for record in records:
+      session.merge(record)
+
+  def delete_answers_with_session(self, session, participant_id):
+    session.query(ParticipantRaceAnswers)\
+      .filter(ParticipantRaceAnswers.participantId == participant_id)\
+      .delete()

@@ -8,7 +8,7 @@ from api_util import STOREFRONT, convert_to_datetime, get_awardee_id_from_name
 from app_util import auth_required
 from dao.hpo_dao import HPODao
 from dao.calendar_dao import INTERVAL_DAY
-from participant_enums import EnrollmentStatus, Stratifications
+from participant_enums import EnrollmentStatus, Stratifications, MetricsAPIVersion
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
   MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao, \
   MetricsLanguageCacheDao
@@ -29,7 +29,8 @@ class PublicMetricsApi(Resource):
       'start_date': request.args.get('startDate'),
       'end_date': request.args.get('endDate'),
       'enrollment_statuses': request.args.get('enrollmentStatus'),
-      'awardees': request.args.get('awardee')
+      'awardees': request.args.get('awardee'),
+      'version': request.args.get('version')
     }
 
     filters = self.validate_params(params)
@@ -38,7 +39,7 @@ class PublicMetricsApi(Resource):
     return results
 
   def get_filtered_results(self, stratification, start_date, end_date, awardee_ids,
-                           enrollment_statuses):
+                           enrollment_statuses, version):
     """Queries DB, returns results in format consumed by front-end
 
     :param start_date: Start date object
@@ -46,6 +47,7 @@ class PublicMetricsApi(Resource):
     :param awardee_ids: indicate awardee ids
     :param enrollment_statuses: indicate the enrollment status
     :param stratification: How to stratify (layer) results, as in a stacked bar chart
+    :param version: indicate the version of the result filter
     :return: Filtered, stratified results by date
     """
 
@@ -56,7 +58,7 @@ class PublicMetricsApi(Resource):
       dao = MetricsEnrollmentStatusCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
       return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
     elif stratification == Stratifications.GENDER_IDENTITY:
-      dao = MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+      dao = MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API, version)
       return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids,
                                                enrollment_statuses)
     elif stratification == Stratifications.AGE_RANGE:
@@ -64,7 +66,7 @@ class PublicMetricsApi(Resource):
       return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids,
                                                enrollment_statuses)
     elif stratification == Stratifications.RACE:
-      dao = MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+      dao = MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API, version)
       return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids,
                                                enrollment_statuses)
     elif stratification in [Stratifications.GEO_STATE, Stratifications.GEO_CENSUS,
@@ -151,6 +153,11 @@ class PublicMetricsApi(Resource):
             raise BadRequest('Invalid awardee name: %s' % awardee)
           awardee_ids.append(awardee_id)
     filters['awardee_ids'] = awardee_ids
+
+    try:
+      filters['version'] = MetricsAPIVersion(int(params['version'])) if params['version'] else None
+    except ValueError:
+      filters['version'] = None
 
     # Validate enrollment statuses
     enrollment_status_strs = []

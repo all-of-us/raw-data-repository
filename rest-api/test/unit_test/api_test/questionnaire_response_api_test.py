@@ -8,6 +8,7 @@ from code_constants import PPI_EXTRA_SYSTEM
 from clock import FakeClock
 from dao.code_dao import CodeDao
 from dao.questionnaire_dao import QuestionnaireDao
+from dao.participant_summary_dao import ParticipantRaceAnswersDao, ParticipantGenderAnswersDao
 from dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
 from model.utils import from_client_participant_id
 from model.questionnaire_response import QuestionnaireResponseAnswer
@@ -566,6 +567,104 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'patientStatus': [],
                 }
     self.assertJsonResponseMatches(expected, summary)
+
+  def test_participant_gender_answers(self):
+    with FakeClock(TIME_1):
+      participant_id = self.create_participant()
+      self.send_consent(participant_id)
+
+    questionnaire_id = self.create_questionnaire('questionnaire_the_basics.json')
+
+    with open(data_path('questionnaire_the_basics_resp_multiple_gender.json')) as f:
+      resource = json.load(f)
+
+    resource['subject']['reference'] = \
+      resource['subject']['reference'].format(participant_id=participant_id)
+    resource['questionnaire']['reference'] = \
+      resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
+
+    with FakeClock(TIME_2):
+      resource['authored'] = TIME_2.isoformat()
+      self.send_post(_questionnaire_response_url(participant_id), resource)
+
+    participant_gender_answers_dao = ParticipantGenderAnswersDao()
+    answers = participant_gender_answers_dao.get_all()
+    self.assertEqual(len(answers), 2)
+    for answer in answers:
+      self.assertIn(answer.codeId, [90, 95])
+
+    # resubmit the answers, old value should be removed
+    with open(data_path('questionnaire_the_basics_resp_multiple_gender_2.json')) as f:
+      resource = json.load(f)
+
+    resource['subject']['reference'] = \
+      resource['subject']['reference'].format(participant_id=participant_id)
+    resource['questionnaire']['reference'] = \
+      resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
+
+    with FakeClock(TIME_2):
+      resource['authored'] = TIME_2.isoformat()
+      self.send_post(_questionnaire_response_url(participant_id), resource)
+
+    answers = participant_gender_answers_dao.get_all()
+    self.assertEqual(len(answers), 2)
+    for answer in answers:
+      self.assertIn(answer.codeId, [100, 95])
+
+  def test_participant_race_answers(self):
+    with FakeClock(TIME_1):
+      participant_id = self.create_participant()
+      self.send_consent(participant_id)
+
+    questionnaire_id = self.create_questionnaire('questionnaire_the_basics.json')
+
+    with open(data_path('questionnaire_the_basics_resp_multiple_race.json')) as f:
+      resource = json.load(f)
+
+    resource['subject']['reference'] = \
+      resource['subject']['reference'].format(participant_id=participant_id)
+    resource['questionnaire']['reference'] = \
+      resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
+
+    with FakeClock(TIME_2):
+      resource['authored'] = TIME_2.isoformat()
+      self.send_post(_questionnaire_response_url(participant_id), resource)
+
+    code_dao = CodeDao()
+    code1 = code_dao.get_code('http://terminology.pmi-ops.org/CodeSystem/ppi',
+                              'WhatRaceEthnicity_White')
+    code2 = code_dao.get_code('http://terminology.pmi-ops.org/CodeSystem/ppi',
+                              'WhatRaceEthnicity_Hispanic')
+
+    participant_race_answers_dao = ParticipantRaceAnswersDao()
+    answers = participant_race_answers_dao.get_all()
+    self.assertEqual(len(answers), 2)
+    for answer in answers:
+      self.assertIn(answer.codeId, [code1.codeId, code2.codeId])
+
+    # resubmit the answers, old value should be removed
+    with open(data_path('questionnaire_the_basics_resp_multiple_race_2.json')) as f:
+      resource = json.load(f)
+
+    resource['subject']['reference'] = \
+      resource['subject']['reference'].format(participant_id=participant_id)
+    resource['questionnaire']['reference'] = \
+      resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
+
+    with FakeClock(TIME_2):
+      resource['authored'] = TIME_2.isoformat()
+      self.send_post(_questionnaire_response_url(participant_id), resource)
+
+    code_dao = CodeDao()
+    code1 = code_dao.get_code('http://terminology.pmi-ops.org/CodeSystem/ppi',
+                              'WhatRaceEthnicity_NHPI')
+    code2 = code_dao.get_code('http://terminology.pmi-ops.org/CodeSystem/ppi',
+                              'PMI_PreferNotToAnswer')
+
+    answers = participant_race_answers_dao.get_all()
+    self.assertEqual(len(answers), 2)
+    for answer in answers:
+      self.assertIn(answer.codeId, [code1.codeId, code2.codeId])
 
   def test_gender_plus_skip_equals_gender(self):
     with FakeClock(TIME_1):

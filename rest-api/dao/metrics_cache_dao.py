@@ -260,17 +260,27 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
     return sql
 
 class MetricsGenderCacheDao(BaseDao):
-  def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API):
+  def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API, version=None):
     super(MetricsGenderCacheDao, self).__init__(MetricsGenderCache)
     try:
       self.cache_type = MetricsCacheType(str(cache_type))
+      self.version = version
     except TypeError:
       raise TypeError("Invalid metrics cache type")
 
   def get_serving_version_with_session(self, session):
-    return (session.query(MetricsGenderCache)
-            .order_by(MetricsGenderCache.dateInserted.desc())
-            .first())
+    if self.version == MetricsAPIVersion.V2:
+      return (session
+              .query(MetricsGenderCache)
+              .filter(MetricsGenderCache.type == str(self.cache_type))
+              .order_by(MetricsGenderCache.dateInserted.desc())
+              .first())
+    else:
+      return (session
+              .query(MetricsGenderCache)
+              .filter(MetricsGenderCache.type == MetricsCacheType.METRICS_V2_API)
+              .order_by(MetricsGenderCache.dateInserted.desc())
+              .first())
 
   def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None,
                          enrollment_statuses=None):
@@ -307,6 +317,7 @@ class MetricsGenderCacheDao(BaseDao):
               FROM metrics_gender_cache
               WHERE %(filters_hpo)s
               date_inserted=:date_inserted
+              and type = :cache_type
               AND date BETWEEN :start_date AND :end_date
               GROUP BY date_inserted, date, gender_name
             ) x
@@ -323,6 +334,7 @@ class MetricsGenderCacheDao(BaseDao):
               FROM metrics_gender_cache 
               WHERE %(filters_hpo)s
               date_inserted=:date_inserted
+              and type = :cache_type
               AND date BETWEEN :start_date AND :end_date
               GROUP BY date_inserted, hpo_id, hpo_name, date, gender_name
             ) x
@@ -330,7 +342,12 @@ class MetricsGenderCacheDao(BaseDao):
           GROUP BY date_inserted, hpo_id, hpo_name, date
         """ % {'filters_hpo': filters_hpo}
 
-      params = {'start_date': start_date, 'end_date': end_date, 'date_inserted': last_inserted_date}
+      if self.version == MetricsAPIVersion.V2:
+        params = {'start_date': start_date, 'end_date': end_date, 'date_inserted': last_inserted_date,
+                  'cache_type': self.cache_type}
+      else:
+        params = {'start_date': start_date, 'end_date': end_date, 'date_inserted': last_inserted_date,
+                  'cache_type': MetricsCacheType.METRICS_V2_API}
 
       cursor = session.execute(sql, params)
       try:
@@ -393,116 +410,288 @@ class MetricsGenderCacheDao(BaseDao):
     sql = """insert into metrics_gender_cache """
     gender_names = ['UNSET', 'Woman', 'Man', 'Transgender', 'PMI_Skip', 'Non-Binary',
                     'Other/Additional Options', 'Prefer not to say', 'More than one gender identity']
-    gender_conditions = [
-      ' ps.gender_identity IS NULL ',
-      ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_Woman.number) + ' ',
-      ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_Man.number) + ' ',
-      ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_Transgender.number) + ' ',
-      ' ps.gender_identity=' + str(GenderIdentity.PMI_Skip.number) + ' ',
-      ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_NonBinary.number) + ' ',
-      ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_AdditionalOptions.number) + ' ',
-      ' ps.gender_identity=' + str(GenderIdentity.PMI_PreferNotToAnswer.number) + ' ',
-      ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_MoreThanOne.number) + ' ',
-    ]
-    sub_queries = []
-    sql_template = """
-      SELECT
-        :date_inserted AS date_inserted,
-        'core' as enrollment_status,
-        :hpo_id AS hpo_id,
-        (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
-        c.day AS date,
-        '{gender_name}' AS gender_name,  
-        IFNULL((
-          SELECT SUM(results.gender_count)
-          FROM
-          (
-            SELECT DATE(p.sign_up_time) as day,
-                   DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
-                   COUNT(*) gender_count
-            FROM participant p
-                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-            WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-              AND p.is_ghost_id IS NOT TRUE
-              AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-              AND p.withdrawal_status = :not_withdraw
-              AND {gender_condition}
-            GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_core_stored_sample_time)
-          ) AS results
-          WHERE results.day <= c.day
-          AND enrollment_status_core_stored_sample_time IS NOT NULL
-          AND DATE(enrollment_status_core_stored_sample_time) <= c.day
-        ),0) AS gender_count
-      FROM calendar c
-      WHERE c.day BETWEEN :start_date AND :end_date
-      UNION
-      SELECT
-        :date_inserted AS date_inserted,
-        'registered' as enrollment_status,
-        :hpo_id AS hpo_id,
-        (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
-        c.day AS date,
-        '{gender_name}' AS gender_name,  
-        IFNULL((
-          SELECT SUM(results.gender_count)
-          FROM
-          (
-            SELECT DATE(p.sign_up_time) as day,
-                   DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
-                   COUNT(*) gender_count
-            FROM participant p
-                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-            WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-              AND p.is_ghost_id IS NOT TRUE
-              AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-              AND p.withdrawal_status = :not_withdraw
-              AND {gender_condition}
-            GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time)
-          ) AS results
-          WHERE results.day <= c.day
-          AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
-        ),0) AS gender_count
-      FROM calendar c
-      WHERE c.day BETWEEN :start_date AND :end_date
-      UNION
-      SELECT
-        :date_inserted AS date_inserted,
-        'consented' as enrollment_status,
-        :hpo_id AS hpo_id,
-        (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
-        c.day AS date,
-        '{gender_name}' AS gender_name,  
-        IFNULL((
-          SELECT SUM(results.gender_count)
-          FROM
-          (
-            SELECT DATE(p.sign_up_time) as day,
-                   DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
-                   DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
-                   COUNT(*) gender_count
-            FROM participant p
-                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-            WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-              AND p.is_ghost_id IS NOT TRUE
-              AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-              AND p.withdrawal_status = :not_withdraw
-              AND {gender_condition}
-            GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
-          ) AS results
-          WHERE results.day <= c.day
-          AND enrollment_status_member_time IS NOT NULL
-          AND DATE(enrollment_status_member_time) <= c.day
-          AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
-        ),0) AS gender_count
-      FROM calendar c
-      WHERE c.day BETWEEN :start_date AND :end_date
-    """
-    for gender_name, gender_condition in zip(gender_names, gender_conditions):
-      sub_query = sql_template.format(gender_name=gender_name, gender_condition=gender_condition)
-      sub_queries.append(sub_query)
 
-    sql += ' union '.join(sub_queries)
+    if self.cache_type == MetricsCacheType.PUBLIC_METRICS_EXPORT_API:
+      gender_code_dict = {
+        'GenderIdentity_Woman': 354,
+        'GenderIdentity_Transgender': 355,
+        'GenderIdentity_Man': 356,
+        'GenderIdentity_AdditionalOptions': 357,
+        'GenderIdentity_NonBinary': 358,
+        'PMI_PreferNotToAnswer': 924,
+        'PMI_Skip': 930
+      }
 
+      for k in gender_code_dict:
+        code = CodeDao().get_code(PPI_SYSTEM, k)
+        if code is not None:
+          gender_code_dict[k] = code.codeId
+
+      answers_table_sql = """
+        (SELECT 
+              participant_id,
+              MAX(GenderIdentity_Woman) AS GenderIdentity_Woman,
+              MAX(GenderIdentity_Transgender) AS GenderIdentity_Transgender,
+              MAX(GenderIdentity_Man) AS GenderIdentity_Man,
+              MAX(GenderIdentity_AdditionalOptions) AS GenderIdentity_AdditionalOptions,
+              MAX(GenderIdentity_NonBinary) AS GenderIdentity_NonBinary,
+              MAX(PMI_PreferNotToAnswer) AS PMI_PreferNotToAnswer,
+              MAX(PMI_Skip) AS PMI_Skip,
+              COUNT(*) as Number_of_Answer
+        FROM (
+              SELECT participant_id,
+                     CASE WHEN code_id = {GenderIdentity_Woman} THEN 1 ELSE 0 END   AS GenderIdentity_Woman,
+                     CASE WHEN code_id = {GenderIdentity_Transgender} THEN 1 ELSE 0 END   AS GenderIdentity_Transgender,
+                     CASE WHEN code_id = {GenderIdentity_Man} THEN 1 ELSE 0 END   AS GenderIdentity_Man,
+                     CASE WHEN code_id = {GenderIdentity_AdditionalOptions} THEN 1 ELSE 0 END   AS GenderIdentity_AdditionalOptions,
+                     CASE WHEN code_id = {GenderIdentity_NonBinary} THEN 1 ELSE 0 END   AS GenderIdentity_NonBinary,
+                     CASE WHEN code_id = {PMI_PreferNotToAnswer} THEN 1 ELSE 0 END   AS PMI_PreferNotToAnswer,
+                     CASE WHEN code_id = {PMI_Skip} THEN 1 ELSE 0 END   AS PMI_Skip
+              FROM participant_gender_answers 
+              ) x
+        GROUP BY participant_id)
+      """.format(GenderIdentity_Woman=gender_code_dict['GenderIdentity_Woman'],
+                 GenderIdentity_Transgender=gender_code_dict['GenderIdentity_Transgender'],
+                 GenderIdentity_Man=gender_code_dict['GenderIdentity_Man'],
+                 GenderIdentity_AdditionalOptions=
+                                           gender_code_dict['GenderIdentity_AdditionalOptions'],
+                 GenderIdentity_NonBinary=gender_code_dict['GenderIdentity_NonBinary'],
+                 PMI_PreferNotToAnswer=gender_code_dict['PMI_PreferNotToAnswer'],
+                 PMI_Skip=gender_code_dict['PMI_Skip']
+                 )
+
+      gender_conditions = [
+        ' pga.participant_id IS NULL ',
+        ' pga.GenderIdentity_Woman=1 ',
+        ' pga.GenderIdentity_Man=1 ',
+        ' pga.GenderIdentity_Transgender=1 ',
+        ' pga.PMI_Skip=1 ',
+        ' pga.GenderIdentity_NonBinary=1 ',
+        ' pga.GenderIdentity_AdditionalOptions=1 ',
+        ' pga.PMI_PreferNotToAnswer=1 ',
+        ' pga.Number_of_Answer>1 AND pga.PMI_Skip=0 AND pga.PMI_PreferNotToAnswer=0 ',
+      ]
+      sub_queries = []
+      sql_template = """
+        SELECT
+          :date_inserted AS date_inserted,
+          '{cache_type}' as type,
+          'core' as enrollment_status,
+          :hpo_id AS hpo_id,
+          (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+          c.day AS date,
+          '{gender_name}' AS gender_name,  
+          IFNULL((
+            SELECT SUM(results.gender_count)
+            FROM
+            (
+              SELECT DATE(p.sign_up_time) as day,
+                     DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                     COUNT(*) gender_count
+              FROM participant p
+                     LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                     LEFT JOIN {answers_table_sql} pga ON p.participant_id = pga.participant_id
+              WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+                AND p.is_ghost_id IS NOT TRUE
+                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                AND p.withdrawal_status = :not_withdraw
+                AND {gender_condition}
+              GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_core_stored_sample_time)
+            ) AS results
+            WHERE results.day <= c.day
+            AND enrollment_status_core_stored_sample_time IS NOT NULL
+            AND DATE(enrollment_status_core_stored_sample_time) <= c.day
+          ),0) AS gender_count
+        FROM calendar c
+        WHERE c.day BETWEEN :start_date AND :end_date
+        UNION
+        SELECT
+          :date_inserted AS date_inserted,
+          '{cache_type}' as type,
+          'registered' as enrollment_status,
+          :hpo_id AS hpo_id,
+          (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+          c.day AS date,
+          '{gender_name}' AS gender_name,  
+          IFNULL((
+            SELECT SUM(results.gender_count)
+            FROM
+            (
+              SELECT DATE(p.sign_up_time) as day,
+                     DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
+                     COUNT(*) gender_count
+              FROM participant p
+                     LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                     LEFT JOIN {answers_table_sql} pga ON p.participant_id = pga.participant_id
+              WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+                AND p.is_ghost_id IS NOT TRUE
+                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                AND p.withdrawal_status = :not_withdraw
+                AND {gender_condition}
+              GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time)
+            ) AS results
+            WHERE results.day <= c.day
+            AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
+          ),0) AS gender_count
+        FROM calendar c
+        WHERE c.day BETWEEN :start_date AND :end_date
+        UNION
+        SELECT
+          :date_inserted AS date_inserted,
+          '{cache_type}' as type,
+          'consented' as enrollment_status,
+          :hpo_id AS hpo_id,
+          (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+          c.day AS date,
+          '{gender_name}' AS gender_name,  
+          IFNULL((
+            SELECT SUM(results.gender_count)
+            FROM
+            (
+              SELECT DATE(p.sign_up_time) as day,
+                     DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
+                     DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                     COUNT(*) gender_count
+              FROM participant p
+                     LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                     LEFT JOIN {answers_table_sql} pga ON p.participant_id = pga.participant_id
+              WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+                AND p.is_ghost_id IS NOT TRUE
+                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                AND p.withdrawal_status = :not_withdraw
+                AND {gender_condition}
+              GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+            ) AS results
+            WHERE results.day <= c.day
+            AND enrollment_status_member_time IS NOT NULL
+            AND DATE(enrollment_status_member_time) <= c.day
+            AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
+          ),0) AS gender_count
+        FROM calendar c
+        WHERE c.day BETWEEN :start_date AND :end_date
+      """
+      for gender_name, gender_condition in zip(gender_names, gender_conditions):
+        sub_query = sql_template.format(cache_type=self.cache_type,
+                                        gender_name=gender_name,
+                                        gender_condition=gender_condition,
+                                        answers_table_sql=answers_table_sql)
+        sub_queries.append(sub_query)
+
+      sql += ' union '.join(sub_queries)
+    else:
+      gender_conditions = [
+        ' ps.gender_identity IS NULL ',
+        ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_Woman.number) + ' ',
+        ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_Man.number) + ' ',
+        ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_Transgender.number) + ' ',
+        ' ps.gender_identity=' + str(GenderIdentity.PMI_Skip.number) + ' ',
+        ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_NonBinary.number) + ' ',
+        ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_AdditionalOptions.number) + ' ',
+        ' ps.gender_identity=' + str(GenderIdentity.PMI_PreferNotToAnswer.number) + ' ',
+        ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_MoreThanOne.number) + ' ',
+      ]
+      sub_queries = []
+      sql_template = """
+              SELECT
+                :date_inserted AS date_inserted,
+                '{cache_type}' as type,
+                'core' as enrollment_status,
+                :hpo_id AS hpo_id,
+                (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+                c.day AS date,
+                '{gender_name}' AS gender_name,  
+                IFNULL((
+                  SELECT SUM(results.gender_count)
+                  FROM
+                  (
+                    SELECT DATE(p.sign_up_time) as day,
+                           DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                           COUNT(*) gender_count
+                    FROM participant p
+                           LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                    WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+                      AND p.is_ghost_id IS NOT TRUE
+                      AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                      AND p.withdrawal_status = :not_withdraw
+                      AND {gender_condition}
+                    GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                  ) AS results
+                  WHERE results.day <= c.day
+                  AND enrollment_status_core_stored_sample_time IS NOT NULL
+                  AND DATE(enrollment_status_core_stored_sample_time) <= c.day
+                ),0) AS gender_count
+              FROM calendar c
+              WHERE c.day BETWEEN :start_date AND :end_date
+              UNION
+              SELECT
+                :date_inserted AS date_inserted,
+                '{cache_type}' as type,
+                'registered' as enrollment_status,
+                :hpo_id AS hpo_id,
+                (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+                c.day AS date,
+                '{gender_name}' AS gender_name,  
+                IFNULL((
+                  SELECT SUM(results.gender_count)
+                  FROM
+                  (
+                    SELECT DATE(p.sign_up_time) as day,
+                           DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
+                           COUNT(*) gender_count
+                    FROM participant p
+                           LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                    WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+                      AND p.is_ghost_id IS NOT TRUE
+                      AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                      AND p.withdrawal_status = :not_withdraw
+                      AND {gender_condition}
+                    GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time)
+                  ) AS results
+                  WHERE results.day <= c.day
+                  AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
+                ),0) AS gender_count
+              FROM calendar c
+              WHERE c.day BETWEEN :start_date AND :end_date
+              UNION
+              SELECT
+                :date_inserted AS date_inserted,
+                '{cache_type}' as type,
+                'consented' as enrollment_status,
+                :hpo_id AS hpo_id,
+                (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+                c.day AS date,
+                '{gender_name}' AS gender_name,  
+                IFNULL((
+                  SELECT SUM(results.gender_count)
+                  FROM
+                  (
+                    SELECT DATE(p.sign_up_time) as day,
+                           DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
+                           DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                           COUNT(*) gender_count
+                    FROM participant p
+                           LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                    WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+                      AND p.is_ghost_id IS NOT TRUE
+                      AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                      AND p.withdrawal_status = :not_withdraw
+                      AND {gender_condition}
+                    GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                  ) AS results
+                  WHERE results.day <= c.day
+                  AND enrollment_status_member_time IS NOT NULL
+                  AND DATE(enrollment_status_member_time) <= c.day
+                  AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
+                ),0) AS gender_count
+              FROM calendar c
+              WHERE c.day BETWEEN :start_date AND :end_date
+            """
+      for gender_name, gender_condition in zip(gender_names, gender_conditions):
+        sub_query = sql_template.format(cache_type=self.cache_type, gender_name=gender_name,
+                                        gender_condition=gender_condition)
+        sub_queries.append(sub_query)
+
+      sql += ' union '.join(sub_queries)
     return sql
 
 class MetricsAgeCacheDao(BaseDao):
@@ -865,17 +1054,27 @@ class MetricsAgeCacheDao(BaseDao):
 
 class MetricsRaceCacheDao(BaseDao):
 
-  def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API):
+  def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API, version=None):
     super(MetricsRaceCacheDao, self).__init__(MetricsRaceCache)
     try:
       self.cache_type = MetricsCacheType(str(cache_type))
+      self.version = version
     except TypeError:
       raise TypeError("Invalid metrics cache type")
 
   def get_serving_version_with_session(self, session):
-    return (session.query(MetricsRaceCache)
-            .order_by(MetricsRaceCache.dateInserted.desc())
-            .first())
+    if self.version == MetricsAPIVersion.V2:
+      return (session
+              .query(MetricsRaceCache)
+              .filter(MetricsRaceCache.type == str(self.cache_type))
+              .order_by(MetricsRaceCache.dateInserted.desc())
+              .first())
+    else:
+      return (session
+              .query(MetricsRaceCache)
+              .filter(MetricsRaceCache.type == MetricsCacheType.METRICS_V2_API)
+              .order_by(MetricsRaceCache.dateInserted.desc())
+              .first())
 
   def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None,
                          enrollment_statuses=None):
@@ -909,7 +1108,12 @@ class MetricsRaceCacheDao(BaseDao):
                               func.sum(MetricsRaceCache.noAncestryChecked)
                               .label('noAncestryChecked')
                               )
-        query = query.filter(MetricsRaceCache.dateInserted == last_inserted_date)
+        if self.version == MetricsAPIVersion.V2:
+          query = query.filter(MetricsRaceCache.dateInserted == last_inserted_date,
+                               MetricsRaceCache.type == self.cache_type)
+        else:
+          query = query.filter(MetricsRaceCache.dateInserted == last_inserted_date,
+                               MetricsRaceCache.type == MetricsCacheType.METRICS_V2_API)
 
         if start_date:
           query = query.filter(MetricsRaceCache.date >= start_date)
@@ -932,7 +1136,8 @@ class MetricsRaceCacheDao(BaseDao):
         return query.group_by(MetricsRaceCache.date).all()
       else:
         query = session.query(MetricsRaceCache)\
-          .filter(MetricsRaceCache.dateInserted == last_inserted_date)
+          .filter(MetricsRaceCache.dateInserted == last_inserted_date,
+                             MetricsRaceCache.type == self.cache_type)
         if start_date:
           query = query.filter(MetricsRaceCache.date >= start_date)
         if end_date:
@@ -1041,133 +1246,260 @@ class MetricsRaceCacheDao(BaseDao):
       code = CodeDao().get_code(PPI_SYSTEM, k)
       if code is not None:
         race_code_dict[k] = code.codeId
-
-    sql = """
-          insert into metrics_race_cache
-            SELECT
-              :date_inserted as date_inserted,
-              registered as registered_flag,
-              consented as consented_flag,
-              core as core_flag,
-              hpo_id,
-              (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
-              day,
-              SUM(American_Indian_Alaska_Native) AS American_Indian_Alaska_Native,
-              SUM(Asian) AS Asian,
-              SUM(Black_African_American) AS Black_African_American,
-              SUM(Middle_Eastern_North_African) AS Middle_Eastern_North_African,
-              SUM(Native_Hawaiian_other_Pacific_Islander) AS Native_Hawaiian_other_Pacific_Islander,
-              SUM(White) AS White,
-              SUM(Hispanic_Latino_Spanish) AS Hispanic_Latino_Spanish,
-              SUM(None_Of_These_Fully_Describe_Me) AS None_Of_These_Fully_Describe_Me,
-              SUM(Prefer_Not_To_Answer) AS Prefer_Not_To_Answer,
-              SUM(Multi_Ancestry) AS Multi_Ancestry,
-              SUM(No_Ancestry_Checked) AS No_Ancestry_Checked
-              FROM
-              (
-                SELECT p.hpo_id,
-                       day,
-                       CASE WHEN enrollment_status_member_time IS NULL OR DATE(enrollment_status_member_time)>calendar.day
-                           THEN 1 ELSE 0 END AS registered,
-                       CASE WHEN (enrollment_status_member_time IS NOT NULL AND DATE(enrollment_status_member_time)<=calendar.day) AND
-                                 (enrollment_status_core_stored_sample_time IS NULL OR DATE(enrollment_status_core_stored_sample_time)>calendar.day)
-                           THEN 1 ELSE 0 END AS consented,
-                       CASE WHEN enrollment_status_core_stored_sample_time IS NOT NULL AND DATE(enrollment_status_core_stored_sample_time)<=calendar.day
-                           THEN 1 ELSE 0 END AS core,
-                       CASE WHEN WhatRaceEthnicity_AIAN=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS American_Indian_Alaska_Native,
-                       CASE WHEN WhatRaceEthnicity_Asian=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Asian,
-                       CASE WHEN WhatRaceEthnicity_Black=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Black_African_American,
-                       CASE WHEN WhatRaceEthnicity_MENA=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Middle_Eastern_North_African,
-                       CASE WHEN WhatRaceEthnicity_NHPI=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Native_Hawaiian_other_Pacific_Islander,
-                       CASE WHEN WhatRaceEthnicity_White=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS White,
-                       CASE WHEN WhatRaceEthnicity_Hispanic=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Hispanic_Latino_Spanish,
-                       CASE WHEN WhatRaceEthnicity_RaceEthnicityNoneOfThese=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS None_Of_These_Fully_Describe_Me,
-                       CASE WHEN PMI_PreferNotToAnswer=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Prefer_Not_To_Answer,
-                       CASE
-                         WHEN (WhatRaceEthnicity_Hispanic + WhatRaceEthnicity_Black + WhatRaceEthnicity_White + WhatRaceEthnicity_AIAN + WhatRaceEthnicity_Asian + WhatRaceEthnicity_MENA + WhatRaceEthnicity_NHPI) >
-                              1
-                           THEN 1
-                         ELSE 0
-                       END AS Multi_Ancestry,
-                       CASE
-                         WHEN (PMI_Skip = 1 AND Number_of_Answer=1) OR UNSET = 1
-                           THEN 1
-                         ELSE 0
-                       END AS No_Ancestry_Checked
-                FROM (
-                       SELECT participant_id,
-                              hpo_id,
-                              sign_up_time,
-                              enrollment_status_member_time,
-                              enrollment_status_core_stored_sample_time,
-                              MAX(WhatRaceEthnicity_Hispanic)                 AS WhatRaceEthnicity_Hispanic,
-                              MAX(WhatRaceEthnicity_Black)                    AS WhatRaceEthnicity_Black,
-                              MAX(WhatRaceEthnicity_White)                    AS WhatRaceEthnicity_White,
-                              MAX(WhatRaceEthnicity_AIAN)                     AS WhatRaceEthnicity_AIAN,
-                              MAX(UNSET)                                      AS UNSET,
-                              MAX(WhatRaceEthnicity_RaceEthnicityNoneOfThese) AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
-                              MAX(WhatRaceEthnicity_Asian)                    AS WhatRaceEthnicity_Asian,
-                              MAX(PMI_PreferNotToAnswer)                      AS PMI_PreferNotToAnswer,
-                              MAX(WhatRaceEthnicity_MENA)                     AS WhatRaceEthnicity_MENA,
-                              MAX(PMI_Skip)                                   AS PMI_Skip,
-                              MAX(WhatRaceEthnicity_NHPI)                     AS WhatRaceEthnicity_NHPI,
-                              COUNT(*) as Number_of_Answer
-                       FROM (
-                              SELECT p.participant_id,
-                                     p.hpo_id,
-                                     p.sign_up_time,
-                                     ps.enrollment_status_member_time,
-                                     ps.enrollment_status_core_stored_sample_time,
-                                     CASE WHEN q.code_id = {WhatRaceEthnicity_Hispanic} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
-                                     CASE WHEN q.code_id = {WhatRaceEthnicity_Black} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Black,
-                                     CASE WHEN q.code_id = {WhatRaceEthnicity_White} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_White,
-                                     CASE WHEN q.code_id = {WhatRaceEthnicity_AIAN} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_AIAN,
-                                     CASE WHEN q.code_id IS NULL THEN 1 ELSE 0 END AS UNSET,
-                                     CASE WHEN q.code_id = {WhatRaceEthnicity_RaceEthnicityNoneOfThese} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
-                                     CASE WHEN q.code_id = {WhatRaceEthnicity_Asian} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Asian,
-                                     CASE WHEN q.code_id = {PMI_PreferNotToAnswer} THEN 1 ELSE 0 END   AS PMI_PreferNotToAnswer,
-                                     CASE WHEN q.code_id = {WhatRaceEthnicity_MENA} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_MENA,
-                                     CASE WHEN q.code_id = {PMI_Skip} THEN 1 ELSE 0 END   AS PMI_Skip,
-                                     CASE WHEN q.code_id = {WhatRaceEthnicity_NHPI} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_NHPI
-                              FROM participant p
-                                     INNER JOIN participant_summary ps ON p.participant_id = ps.participant_id
-                                     LEFT JOIN
-                                   (
-                                     SELECT qr.participant_id, qra.value_code_id as code_id
-                                     FROM questionnaire_question qq,
-                                          questionnaire_response_answer qra,
-                                          questionnaire_response qr
-                                     WHERE qq.questionnaire_question_id = qra.question_id
-                                       AND qq.code_id = {Race_WhatRaceEthnicity}
-                                       AND qra.questionnaire_response_id = qr.questionnaire_response_id
-                                   ) q ON p.participant_id = q.participant_id
-                              WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
-                                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                                AND p.withdrawal_status = :not_withdraw
-                                AND p.is_ghost_id IS NOT TRUE
-                                AND ps.questionnaire_on_the_basics = 1
-                            ) x
-                       GROUP BY participant_id, hpo_id, sign_up_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time
-                     ) p,
-                     calendar
-                WHERE calendar.day >= :start_date
-                  AND calendar.day <= :end_date
-                  AND calendar.day >= Date(p.sign_up_time)
-              ) y
-              GROUP BY day, hpo_id, registered, consented, core
-              ;
-        """.format(Race_WhatRaceEthnicity=race_code_dict['Race_WhatRaceEthnicity'],
-                   WhatRaceEthnicity_Hispanic=race_code_dict['WhatRaceEthnicity_Hispanic'],
-                   WhatRaceEthnicity_Black=race_code_dict['WhatRaceEthnicity_Black'],
-                   WhatRaceEthnicity_White=race_code_dict['WhatRaceEthnicity_White'],
-                   WhatRaceEthnicity_AIAN=race_code_dict['WhatRaceEthnicity_AIAN'],
-                   WhatRaceEthnicity_RaceEthnicityNoneOfThese=
-                             race_code_dict['WhatRaceEthnicity_RaceEthnicityNoneOfThese'],
-                   WhatRaceEthnicity_Asian=race_code_dict['WhatRaceEthnicity_Asian'],
-                   PMI_PreferNotToAnswer=race_code_dict['PMI_PreferNotToAnswer'],
-                   WhatRaceEthnicity_MENA=race_code_dict['WhatRaceEthnicity_MENA'],
-                   PMI_Skip=race_code_dict['PMI_Skip'],
-                   WhatRaceEthnicity_NHPI=race_code_dict['WhatRaceEthnicity_NHPI'])
+    if self.cache_type == MetricsCacheType.METRICS_V2_API:
+      sql = """
+            insert into metrics_race_cache
+              SELECT
+                :date_inserted as date_inserted,
+                '{cache_type}' as type,
+                registered as registered_flag,
+                consented as consented_flag,
+                core as core_flag,
+                hpo_id,
+                (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+                day,
+                SUM(American_Indian_Alaska_Native) AS American_Indian_Alaska_Native,
+                SUM(Asian) AS Asian,
+                SUM(Black_African_American) AS Black_African_American,
+                SUM(Middle_Eastern_North_African) AS Middle_Eastern_North_African,
+                SUM(Native_Hawaiian_other_Pacific_Islander) AS Native_Hawaiian_other_Pacific_Islander,
+                SUM(White) AS White,
+                SUM(Hispanic_Latino_Spanish) AS Hispanic_Latino_Spanish,
+                SUM(None_Of_These_Fully_Describe_Me) AS None_Of_These_Fully_Describe_Me,
+                SUM(Prefer_Not_To_Answer) AS Prefer_Not_To_Answer,
+                SUM(Multi_Ancestry) AS Multi_Ancestry,
+                SUM(No_Ancestry_Checked) AS No_Ancestry_Checked
+                FROM
+                (
+                  SELECT p.hpo_id,
+                         day,
+                         CASE WHEN enrollment_status_member_time IS NULL OR DATE(enrollment_status_member_time)>calendar.day
+                             THEN 1 ELSE 0 END AS registered,
+                         CASE WHEN (enrollment_status_member_time IS NOT NULL AND DATE(enrollment_status_member_time)<=calendar.day) AND
+                                   (enrollment_status_core_stored_sample_time IS NULL OR DATE(enrollment_status_core_stored_sample_time)>calendar.day)
+                             THEN 1 ELSE 0 END AS consented,
+                         CASE WHEN enrollment_status_core_stored_sample_time IS NOT NULL AND DATE(enrollment_status_core_stored_sample_time)<=calendar.day
+                             THEN 1 ELSE 0 END AS core,
+                         CASE WHEN WhatRaceEthnicity_AIAN=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS American_Indian_Alaska_Native,
+                         CASE WHEN WhatRaceEthnicity_Asian=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Asian,
+                         CASE WHEN WhatRaceEthnicity_Black=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Black_African_American,
+                         CASE WHEN WhatRaceEthnicity_MENA=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Middle_Eastern_North_African,
+                         CASE WHEN WhatRaceEthnicity_NHPI=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Native_Hawaiian_other_Pacific_Islander,
+                         CASE WHEN WhatRaceEthnicity_White=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS White,
+                         CASE WHEN WhatRaceEthnicity_Hispanic=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Hispanic_Latino_Spanish,
+                         CASE WHEN WhatRaceEthnicity_RaceEthnicityNoneOfThese=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS None_Of_These_Fully_Describe_Me,
+                         CASE WHEN PMI_PreferNotToAnswer=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Prefer_Not_To_Answer,
+                         CASE
+                           WHEN (
+                                 WhatRaceEthnicity_Hispanic + 
+                                 WhatRaceEthnicity_Black + 
+                                 WhatRaceEthnicity_White + 
+                                 WhatRaceEthnicity_AIAN + 
+                                 WhatRaceEthnicity_Asian + 
+                                 WhatRaceEthnicity_MENA + 
+                                 WhatRaceEthnicity_NHPI
+                                 ) > 1
+                             THEN 1
+                           ELSE 0
+                         END AS Multi_Ancestry,
+                         CASE
+                           WHEN (PMI_Skip = 1 AND Number_of_Answer=1) OR UNSET = 1
+                             THEN 1
+                           ELSE 0
+                         END AS No_Ancestry_Checked
+                  FROM (
+                         SELECT participant_id,
+                                hpo_id,
+                                sign_up_time,
+                                enrollment_status_member_time,
+                                enrollment_status_core_stored_sample_time,
+                                MAX(WhatRaceEthnicity_Hispanic)                 AS WhatRaceEthnicity_Hispanic,
+                                MAX(WhatRaceEthnicity_Black)                    AS WhatRaceEthnicity_Black,
+                                MAX(WhatRaceEthnicity_White)                    AS WhatRaceEthnicity_White,
+                                MAX(WhatRaceEthnicity_AIAN)                     AS WhatRaceEthnicity_AIAN,
+                                MAX(UNSET)                                      AS UNSET,
+                                MAX(WhatRaceEthnicity_RaceEthnicityNoneOfThese) AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
+                                MAX(WhatRaceEthnicity_Asian)                    AS WhatRaceEthnicity_Asian,
+                                MAX(PMI_PreferNotToAnswer)                      AS PMI_PreferNotToAnswer,
+                                MAX(WhatRaceEthnicity_MENA)                     AS WhatRaceEthnicity_MENA,
+                                MAX(PMI_Skip)                                   AS PMI_Skip,
+                                MAX(WhatRaceEthnicity_NHPI)                     AS WhatRaceEthnicity_NHPI,
+                                COUNT(*) as Number_of_Answer
+                         FROM (
+                                SELECT p.participant_id,
+                                       p.hpo_id,
+                                       p.sign_up_time,
+                                       ps.enrollment_status_member_time,
+                                       ps.enrollment_status_core_stored_sample_time,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_Hispanic} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_Black} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Black,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_White} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_White,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_AIAN} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_AIAN,
+                                       CASE WHEN q.code_id IS NULL THEN 1 ELSE 0 END AS UNSET,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_RaceEthnicityNoneOfThese} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_Asian} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Asian,
+                                       CASE WHEN q.code_id = {PMI_PreferNotToAnswer} THEN 1 ELSE 0 END   AS PMI_PreferNotToAnswer,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_MENA} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_MENA,
+                                       CASE WHEN q.code_id = {PMI_Skip} THEN 1 ELSE 0 END   AS PMI_Skip,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_NHPI} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_NHPI
+                                FROM participant_summary ps
+                                LEFT JOIN participant p ON p.participant_id = ps.participant_id
+                                LEFT JOIN participant_race_answers q ON p.participant_id = q.participant_id
+                                WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
+                                  AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                                  AND p.withdrawal_status = :not_withdraw
+                                  AND p.is_ghost_id IS NOT TRUE
+                                  AND ps.questionnaire_on_the_basics = 1
+                              ) x
+                         GROUP BY participant_id, hpo_id, sign_up_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time
+                       ) p,
+                       calendar
+                  WHERE calendar.day >= :start_date
+                    AND calendar.day <= :end_date
+                    AND calendar.day >= Date(p.sign_up_time)
+                ) y
+                GROUP BY day, hpo_id, registered, consented, core
+                ;
+          """.format(cache_type=self.cache_type,
+                     Race_WhatRaceEthnicity=race_code_dict['Race_WhatRaceEthnicity'],
+                     WhatRaceEthnicity_Hispanic=race_code_dict['WhatRaceEthnicity_Hispanic'],
+                     WhatRaceEthnicity_Black=race_code_dict['WhatRaceEthnicity_Black'],
+                     WhatRaceEthnicity_White=race_code_dict['WhatRaceEthnicity_White'],
+                     WhatRaceEthnicity_AIAN=race_code_dict['WhatRaceEthnicity_AIAN'],
+                     WhatRaceEthnicity_RaceEthnicityNoneOfThese=
+                               race_code_dict['WhatRaceEthnicity_RaceEthnicityNoneOfThese'],
+                     WhatRaceEthnicity_Asian=race_code_dict['WhatRaceEthnicity_Asian'],
+                     PMI_PreferNotToAnswer=race_code_dict['PMI_PreferNotToAnswer'],
+                     WhatRaceEthnicity_MENA=race_code_dict['WhatRaceEthnicity_MENA'],
+                     PMI_Skip=race_code_dict['PMI_Skip'],
+                     WhatRaceEthnicity_NHPI=race_code_dict['WhatRaceEthnicity_NHPI'])
+    else:
+      sql = """
+                  insert into metrics_race_cache
+                    SELECT
+                      :date_inserted as date_inserted,
+                      '{cache_type}' as type,
+                      registered as registered_flag,
+                      consented as consented_flag,
+                      core as core_flag,
+                      hpo_id,
+                      (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+                      day,
+                      SUM(American_Indian_Alaska_Native) AS American_Indian_Alaska_Native,
+                      SUM(Asian) AS Asian,
+                      SUM(Black_African_American) AS Black_African_American,
+                      SUM(Middle_Eastern_North_African) AS Middle_Eastern_North_African,
+                      SUM(Native_Hawaiian_other_Pacific_Islander) AS Native_Hawaiian_other_Pacific_Islander,
+                      SUM(White) AS White,
+                      SUM(Hispanic_Latino_Spanish) AS Hispanic_Latino_Spanish,
+                      SUM(None_Of_These_Fully_Describe_Me) AS None_Of_These_Fully_Describe_Me,
+                      SUM(Prefer_Not_To_Answer) AS Prefer_Not_To_Answer,
+                      SUM(Multi_Ancestry) AS Multi_Ancestry,
+                      SUM(No_Ancestry_Checked) AS No_Ancestry_Checked
+                      FROM
+                      (
+                        SELECT p.hpo_id,
+                               day,
+                               CASE WHEN enrollment_status_member_time IS NULL OR DATE(enrollment_status_member_time)>calendar.day
+                                   THEN 1 ELSE 0 END AS registered,
+                               CASE WHEN (enrollment_status_member_time IS NOT NULL AND DATE(enrollment_status_member_time)<=calendar.day) AND
+                                         (enrollment_status_core_stored_sample_time IS NULL OR DATE(enrollment_status_core_stored_sample_time)>calendar.day)
+                                   THEN 1 ELSE 0 END AS consented,
+                               CASE WHEN enrollment_status_core_stored_sample_time IS NOT NULL AND DATE(enrollment_status_core_stored_sample_time)<=calendar.day
+                                   THEN 1 ELSE 0 END AS core,
+                               CASE WHEN WhatRaceEthnicity_AIAN=1 THEN 1 ELSE 0 END AS American_Indian_Alaska_Native,
+                               CASE WHEN WhatRaceEthnicity_Asian=1 THEN 1 ELSE 0 END AS Asian,
+                               CASE WHEN WhatRaceEthnicity_Black=1 THEN 1 ELSE 0 END AS Black_African_American,
+                               CASE WHEN WhatRaceEthnicity_MENA=1 THEN 1 ELSE 0 END AS Middle_Eastern_North_African,
+                               CASE WHEN WhatRaceEthnicity_NHPI=1 THEN 1 ELSE 0 END AS Native_Hawaiian_other_Pacific_Islander,
+                               CASE WHEN WhatRaceEthnicity_White=1 THEN 1 ELSE 0 END AS White,
+                               CASE WHEN WhatRaceEthnicity_Hispanic=1 THEN 1 ELSE 0 END AS Hispanic_Latino_Spanish,
+                               CASE WHEN WhatRaceEthnicity_RaceEthnicityNoneOfThese=1 THEN 1 ELSE 0 END AS None_Of_These_Fully_Describe_Me,
+                               CASE WHEN PMI_PreferNotToAnswer=1 THEN 1 ELSE 0 END AS Prefer_Not_To_Answer,
+                               CASE
+                                 WHEN (
+                                       WhatRaceEthnicity_Hispanic + 
+                                       WhatRaceEthnicity_Black + 
+                                       WhatRaceEthnicity_White + 
+                                       WhatRaceEthnicity_AIAN + 
+                                       WhatRaceEthnicity_Asian + 
+                                       WhatRaceEthnicity_MENA + 
+                                       WhatRaceEthnicity_NHPI
+                                       ) > 1
+                                   THEN 1
+                                 ELSE 0
+                               END AS Multi_Ancestry,
+                               CASE
+                                 WHEN (PMI_Skip = 1 AND Number_of_Answer=1) OR UNSET = 1
+                                   THEN 1
+                                 ELSE 0
+                               END AS No_Ancestry_Checked
+                        FROM (
+                               SELECT participant_id,
+                                      hpo_id,
+                                      sign_up_time,
+                                      enrollment_status_member_time,
+                                      enrollment_status_core_stored_sample_time,
+                                      MAX(WhatRaceEthnicity_Hispanic)                 AS WhatRaceEthnicity_Hispanic,
+                                      MAX(WhatRaceEthnicity_Black)                    AS WhatRaceEthnicity_Black,
+                                      MAX(WhatRaceEthnicity_White)                    AS WhatRaceEthnicity_White,
+                                      MAX(WhatRaceEthnicity_AIAN)                     AS WhatRaceEthnicity_AIAN,
+                                      MAX(UNSET)                                      AS UNSET,
+                                      MAX(WhatRaceEthnicity_RaceEthnicityNoneOfThese) AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
+                                      MAX(WhatRaceEthnicity_Asian)                    AS WhatRaceEthnicity_Asian,
+                                      MAX(PMI_PreferNotToAnswer)                      AS PMI_PreferNotToAnswer,
+                                      MAX(WhatRaceEthnicity_MENA)                     AS WhatRaceEthnicity_MENA,
+                                      MAX(PMI_Skip)                                   AS PMI_Skip,
+                                      MAX(WhatRaceEthnicity_NHPI)                     AS WhatRaceEthnicity_NHPI,
+                                      COUNT(*) as Number_of_Answer
+                               FROM (
+                                      SELECT p.participant_id,
+                                             p.hpo_id,
+                                             p.sign_up_time,
+                                             ps.enrollment_status_member_time,
+                                             ps.enrollment_status_core_stored_sample_time,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_Hispanic} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_Black} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Black,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_White} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_White,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_AIAN} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_AIAN,
+                                             CASE WHEN q.code_id IS NULL THEN 1 ELSE 0 END AS UNSET,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_RaceEthnicityNoneOfThese} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_Asian} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Asian,
+                                             CASE WHEN q.code_id = {PMI_PreferNotToAnswer} THEN 1 ELSE 0 END   AS PMI_PreferNotToAnswer,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_MENA} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_MENA,
+                                             CASE WHEN q.code_id = {PMI_Skip} THEN 1 ELSE 0 END   AS PMI_Skip,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_NHPI} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_NHPI
+                                      FROM participant_summary ps
+                                      LEFT JOIN participant p ON p.participant_id = ps.participant_id
+                                      LEFT JOIN participant_race_answers q ON p.participant_id = q.participant_id
+                                      WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
+                                        AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                                        AND p.withdrawal_status = :not_withdraw
+                                        AND p.is_ghost_id IS NOT TRUE
+                                        AND ps.questionnaire_on_the_basics = 1
+                                    ) x
+                               GROUP BY participant_id, hpo_id, sign_up_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time
+                             ) p,
+                             calendar
+                        WHERE calendar.day >= :start_date
+                          AND calendar.day <= :end_date
+                          AND calendar.day >= Date(p.sign_up_time)
+                      ) y
+                      GROUP BY day, hpo_id, registered, consented, core
+                      ;
+                """.format(cache_type=self.cache_type,
+                           Race_WhatRaceEthnicity=race_code_dict['Race_WhatRaceEthnicity'],
+                           WhatRaceEthnicity_Hispanic=race_code_dict['WhatRaceEthnicity_Hispanic'],
+                           WhatRaceEthnicity_Black=race_code_dict['WhatRaceEthnicity_Black'],
+                           WhatRaceEthnicity_White=race_code_dict['WhatRaceEthnicity_White'],
+                           WhatRaceEthnicity_AIAN=race_code_dict['WhatRaceEthnicity_AIAN'],
+                           WhatRaceEthnicity_RaceEthnicityNoneOfThese=
+                                       race_code_dict['WhatRaceEthnicity_RaceEthnicityNoneOfThese'],
+                           WhatRaceEthnicity_Asian=race_code_dict['WhatRaceEthnicity_Asian'],
+                           PMI_PreferNotToAnswer=race_code_dict['PMI_PreferNotToAnswer'],
+                           WhatRaceEthnicity_MENA=race_code_dict['WhatRaceEthnicity_MENA'],
+                           PMI_Skip=race_code_dict['PMI_Skip'],
+                           WhatRaceEthnicity_NHPI=race_code_dict['WhatRaceEthnicity_NHPI'])
     return sql
 
 class MetricsRegionCacheDao(BaseDao):

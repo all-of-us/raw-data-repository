@@ -1,12 +1,12 @@
 import datetime
 
-from model.base import Base
+from model.base import Base, model_insert_listener, model_update_listener
 from model.utils import Enum, UTCDateTime, UTCDateTime6
 from participant_enums import EnrollmentStatus, Race, SampleStatus, OrderStatus, \
   PhysicalMeasurementsStatus, QuestionnaireStatus, WithdrawalStatus, SuspensionStatus, \
   WithdrawalReason, EhrStatus, GenderIdentity
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, Index, SmallInteger, \
-  UnicodeText
+  UnicodeText, DateTime, event
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
@@ -334,3 +334,30 @@ Index('participant_summary_hpo_withdrawal_status_time', ParticipantSummary.hpoId
       ParticipantSummary.withdrawalStatus, ParticipantSummary.withdrawalTime)
 Index('participant_summary_last_modified', ParticipantSummary.hpoId,
       ParticipantSummary.lastModified)
+
+
+class ParticipantGenderAnswers(Base):
+  __tablename__ = 'participant_gender_answers'
+  id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
+  participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
+                         autoincrement=False)
+  created = Column('created', DateTime, nullable=True)
+  modified = Column('modified', DateTime, nullable=True)
+  codeId = Column('code_id', Integer, ForeignKey('code.code_id'), nullable=False)
+
+
+event.listen(ParticipantGenderAnswers, 'before_insert', model_insert_listener)
+event.listen(ParticipantGenderAnswers, 'before_update', model_update_listener)
+
+class ParticipantRaceAnswers(Base):
+  __tablename__ = 'participant_race_answers'
+  id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
+  participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
+                         autoincrement=False)
+  created = Column('created', DateTime, nullable=True)
+  modified = Column('modified', DateTime, nullable=True)
+  codeId = Column('code_id', Integer, ForeignKey('code.code_id'), nullable=False)
+
+
+event.listen(ParticipantRaceAnswers, 'before_insert', model_insert_listener)
+event.listen(ParticipantRaceAnswers, 'before_update', model_update_listener)
