@@ -167,7 +167,8 @@ class Client(object):
                    headers=None,
                    cron=False,
                    absolute_path=False,
-                   pretend_date=None):
+                   pretend_date=None,
+                   check_status=True):
     json_body = None
     if body:
       json_body = json.dumps(body)
@@ -181,7 +182,8 @@ class Client(object):
         headers=headers,
         cron=cron,
         absolute_path=absolute_path,
-        pretend_date=pretend_date)
+        pretend_date=pretend_date,
+        check_status=check_status)
     try:
       return json.loads(content)
     except ValueError:
