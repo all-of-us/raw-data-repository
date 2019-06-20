@@ -1,8 +1,8 @@
-"""create answer table for gender and race
+"""create answer table for gnder and race
 
-Revision ID: c747074058e7
-Revises: e5d456399216
-Create Date: 2019-06-13 11:21:34.087606
+Revision ID: 0041519860c1
+Revises: 2697860e93f0
+Create Date: 2019-06-20 10:40:24.812638
 
 """
 from alembic import op
@@ -21,8 +21,8 @@ from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatu
 from sqlalchemy.dialects import mysql
 
 # revision identifiers, used by Alembic.
-revision = 'c747074058e7'
-down_revision = 'e5d456399216'
+revision = '0041519860c1'
+down_revision = '2697860e93f0'
 branch_labels = None
 depends_on = None
 
