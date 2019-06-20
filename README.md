@@ -832,6 +832,64 @@ Passed as a string. Comma-separated list of valid enrollment statuses.
 
 Passed as a boolean. Defaults to `TRUE`. Determines whether the counts returned are historical or "real-time."
 
+## PublicMetrics API
+
+#### `GET /rdr/v1/PublicMetrics`
+ 
+## Parameters
+ 
+These are passed as `GET` parameters to the endpoint.
+ 
+### `startDate` (required for certain stratifications)
+ 
+Passed as a string. Date is in `YYYY-MM-DD` format, e.g. `2019-02-12`.
+ 
+### `endDate` (required)
+ 
+Passed as a string. Date is in `YYYY-MM-DD` format, e.g. `2019-02-19`.
+ 
+### `stratification` (required)
+ 
+Passed as a string. Can be one of the values from the table below.
+ 
+| Stratification    | Description                                              |
+| ----------------- | -------------------------------------------------------- |
+| TOTAL             | Awardee `TOTAL` count by date.                           |
+| ENROLLMENT_STATUS | Enrollment status count by date.                         |
+| GENDER_IDENTITY   | Gender identity count by date.                           |
+| AGE_RANGE         | Age range bucket counts by date.                         |
+| RACE              | Race classification counts by date.                      |
+| GEO_STATE         | Participant count by US state code.                      |
+| GEO_CENSUS        | Participant count by census region.                      |
+| GEO_AWARDEE       | Participant count by awardee.                            |
+| LIFECYCLE         | Participant count by lifecycle phase.                    |
+| PRIMARY_CONSENT   | Participant count by primary consent.                    |
+| EHR_METRICS       | Participant count by ehr metrics.                        |
+| LANGUAGE          | Participant count by language.                           |
+ 
+### `awardee` (optional)
+ 
+Passed as a string. Comma-separated list of valid awardee codes, e.g. `PITT,VA`.
+ 
+### `enrollmentStatus` (optional)
+This parameter only works for the following stratification: `GEO_STATE`, `GEO_CENSUS`, `GEO_AWARDEE`, `LANGUAGE`
+ 
+Passed as a string. Comma-separated list of valid enrollment statuses, e.g. `FULL_PARTICIPANT,INTERESTED`
+ 
+| Enrollment Status  | Description                                             |
+| ------------------ | ------------------------------------------------------- |
+| INTERESTED         | Correlates to the `registered` tier.                    |
+| MEMBER             | Correlates to the `consented` tier.                     |
+| FULL_PARTICIPANT   | Correlates to the `core` participant tier.              |
+
+### `version` (optional)
+
+Passed as a number, e.g. `2`.
+
+| Version Number      | Description                                             |
+| ------------------- | ------------------------------------------------------- |
+| 2                   | new version for multiple selection of `RACE` and `GENDER_IDENTITY`|
+
 
 ## Metrics API (Deprecated in favor of ParticipantCountsOverTime/
 
@@ -1289,3 +1347,4 @@ bucket named `<PROJECT>-deidentified-export`.
 
 `deidentify` is only usable on a subset of compatible tables, and will obfuscate participant IDs
 (consistently across all tables specified).
+
