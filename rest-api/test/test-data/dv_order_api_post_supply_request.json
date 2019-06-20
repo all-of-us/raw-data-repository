@@ -53,7 +53,7 @@
   },
   "extension": [
     {
-      "url": "http://joinallofus.org/fhir/fullfilment-status",
+      "url": "http://joinallofus.org/fhir/fulfillment-status",
       "valueString": "pending"
     },
     {

@@ -79,7 +79,7 @@ class BiobankDVOrder(Base):
   #
   # order-type
   orderType = Column('order_type', String(80), nullable=True)
-  # fullfillment-status
+  # fulfillment-status
   orderStatus = Column('order_status', Enum(OrderShipmentStatus),
                        default=OrderShipmentStatus.UNSET)
   # carrier

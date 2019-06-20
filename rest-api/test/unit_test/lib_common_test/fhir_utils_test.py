@@ -66,7 +66,7 @@ EXAMPLE_SUPPLY_REQUEST = {
       "valueString": "Salivary Pilot"
     },
     {
-      "url": "http://vibrenthealth.com/fhir/fullfilment-status",
+      "url": "http://vibrenthealth.com/fhir/fulfillment-status",
       "valueString": "pending"
     }
   ],
