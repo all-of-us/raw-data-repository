@@ -47,5 +47,7 @@
   ],
   "days_to_delete_keys": [
     3
-  ]
+  ],
+  "ehr_status_bigquery_view_participant": [],
+  "ehr_status_bigquery_view_organization": []
 }

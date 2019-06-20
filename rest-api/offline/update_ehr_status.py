@@ -2,6 +2,7 @@ import logging
 
 import clock
 import cloud_utils.bigquery
+import config
 from app_util import datetime_as_naive_utc
 from dao.ehr_dao import EhrReceiptDao
 from dao.organization_dao import OrganizationDao
@@ -20,13 +21,21 @@ def update_ehr_status():
 
 
 def make_update_participant_summaries_job():
-  query = 'SELECT * FROM `aou-res-curation-prod.operations_analytics.ehr_upload_pids`'
-  return cloud_utils.bigquery.BigQueryJob(
-    query,
-    project_id='all-of-us-rdr-sandbox',
-    default_dataset_id='operations_analytics',
-    page_size=1000
-  )
+  config_param = config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT
+  try:
+    bigquery_view = config.getSetting(config_param, None)
+  except config.InvalidConfigException as e:
+    LOG.warn("Config lookup exception for {}: {}".format(config_param, e))
+    bigquery_view = None
+  if bigquery_view:
+    query = 'SELECT person_id FROM `{}`'.format(bigquery_view)
+    return cloud_utils.bigquery.BigQueryJob(
+      query,
+      default_dataset_id='operations_analytics',
+      page_size=1000
+    )
+  else:
+    return None
 
 
 def update_particiant_summaries():
@@ -36,6 +45,13 @@ def update_particiant_summaries():
   Loads results in batches and commits updates to database per batch.
   """
   job = make_update_participant_summaries_job()
+  if job is not None:
+    update_participant_summaries_from_job(job)
+  else:
+    LOG.warn("Skipping update_participant_summaries because of invalid config")
+
+
+def update_participant_summaries_from_job(job):
   summary_dao = ParticipantSummaryDao()
   now = clock.CLOCK.now()
   for i, page in enumerate(job):
@@ -52,21 +68,37 @@ def update_particiant_summaries():
 
 
 def make_update_organizations_job():
-  query = (
-    'SELECT org_id, person_upload_time '
-    'FROM `aou-res-curation-prod.operations_analytics'
-    '.table_counts_with_upload_timestamp_for_hpo_sites_v2`'
-  )
-  return cloud_utils.bigquery.BigQueryJob(
-    query,
-    project_id='all-of-us-rdr-sandbox',
-    default_dataset_id='operations_analytics',
-    page_size=1000
-  )
+  config_param = config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION
+  try:
+    bigquery_view = config.getSetting(config_param, None)
+  except config.InvalidConfigException as e:
+    LOG.warn("Config lookup exception for {}: {}".format(config_param, e))
+    bigquery_view = None
+  if bigquery_view:
+    query = 'SELECT org_id, person_upload_time FROM `{}`'.format(bigquery_view)
+    return cloud_utils.bigquery.BigQueryJob(
+      query,
+      default_dataset_id='operations_analytics',
+      page_size=1000
+    )
+  else:
+    return None
 
 
 def update_organizations():
+  """
+  Creates EhrRecipts for organizations
+
+  Loads results in batches and commits updates to database per batch.
+  """
   job = make_update_organizations_job()
+  if job is not None:
+    update_organizations_from_job(job)
+  else:
+    LOG.warn("Skipping update_organizations because of invalid config")
+
+
+def update_organizations_from_job(job):
   organization_dao = OrganizationDao()
   receipt_dao = EhrReceiptDao()
   for page in job:

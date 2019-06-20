@@ -31,11 +31,11 @@
   "ghost_id_bucket": [
     "all-of-us-rdr-prod-ghost-accounts"
   ],
-  "curation_bigquery_project": [
-    "aou-res-curation-prod"
+  "ehr_status_bigquery_view_participant": [
+    "aou-res-curation-prod.operations_analytics.ehr_upload_pids"
   ],
-  "curation_bucket_name": [
-    "drc-curation-internal"
+  "ehr_status_bigquery_view_organization": [
+    "aou-res-curation-prod.operations_analytics.table_counts_with_upload_timestamp_for_hpo_sites_v2"
   ],
   "hpo_report_config_mixin_path": [
     "/all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
