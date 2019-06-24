@@ -1,4 +1,5 @@
 """
+Creates a POST or PUT request on SupplyDelivery or SupplyRequest.
 """
 import json
 import logging
@@ -30,11 +31,6 @@ def main(client):
     verb = 'PUT'
   else:
     verb = client.args.verb
-
-#  if verb == 'PUT' and path == 'SupplyRequest':
-#    path = path + '/{}'.format(pid)
-#  elif verb == 'PUT' and path == 'SupplyDelivery':
-#    path = path + '/{}'.format(order_id)
 
   if verb == 'PUT':
     path = path + '/{}'.format(order_id)
