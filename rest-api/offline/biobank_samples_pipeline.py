@@ -73,9 +73,12 @@ def upsert_from_latest_csv():
   ParticipantSummaryDao().update_from_biobank_stored_samples()
   return written, timestamp
 
-def get_last_biobank_sample_file_info():
+def get_last_biobank_sample_file_info(monthly=False):
   """Finds the latest CSV & updates/inserts BiobankStoredSamples from its rows."""
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
+  if monthly:
+    bucket_name = bucket_name + '/60_day_manifests'
+
   csv_file, csv_filename = _open_latest_samples_file(bucket_name)
   timestamp = _timestamp_from_filename(csv_filename)
 

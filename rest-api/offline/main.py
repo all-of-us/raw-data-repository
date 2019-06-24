@@ -106,6 +106,7 @@ def import_biobank_samples():
       'Import complete (%d written), generating report.', written)
 
   logging.info('Generating reconciliation report.')
+  # iterate new list and write reports
   biobank_samples_pipeline.write_reconciliation_report(timestamp)
   logging.info('Generated reconciliation report.')
   return json.dumps({'written': written})
@@ -114,9 +115,10 @@ def import_biobank_samples():
 @_alert_on_exceptions
 def biobank_monthly_reconciliation_report():
   # make sure this cron job is executed after import_biobank_samples
-  timestamp = biobank_samples_pipeline.get_last_biobank_sample_file_info()[2]
+  timestamp = biobank_samples_pipeline.get_last_biobank_sample_file_info(monthly=True)[2]
 
   logging.info('Generating monthly reconciliation report.')
+  # iterate new list and write reports
   biobank_samples_pipeline.write_reconciliation_report(timestamp, 'monthly')
   logging.info('Generated monthly reconciliation report.')
   return json.dumps({'monthly-reconciliation-report': 'generated'})
