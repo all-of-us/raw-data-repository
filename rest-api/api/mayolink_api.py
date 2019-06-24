@@ -6,7 +6,7 @@ import config
 import httplib2
 import xmltodict
 from api.base_api import UpdatableApi
-from api_util import RDR, parse_json_enum
+from api_util import RDR, format_json_enum
 from app_util import auth_required
 from werkzeug.exceptions import ServiceUnavailable
 
@@ -107,7 +107,7 @@ class MayoLinkApi(UpdatableApi):
     root[0][3][10].text = order['order']['patient']['postal_code']
     root[0][3][11].text = order['order']['patient']['phone']
     root[0][3][12].text = order['order']['patient']['account_number']
-    root[0][3][13].text = parse_json_enum(order['order']['patient']['race'])
+    root[0][3][13].text = format_json_enum(order['order']['patient'], 'race')
     root[0][3][14].text = order['order']['patient']['ethnic_group']
     root[0][4][0].text = order['order']['physician']['name']
     root[0][4][1].text = order['order']['physician']['phone']
