@@ -1,5 +1,4 @@
 import json
-import os
 import xml.etree.cElementTree as etree
 
 import cloudstorage
@@ -7,12 +6,53 @@ import config
 import httplib2
 import xmltodict
 from api.base_api import UpdatableApi
-from api_util import RDR
+from api_util import RDR, parse_json_enum
 from app_util import auth_required
 from werkzeug.exceptions import ServiceUnavailable
 
 
 class MayoLinkApi(UpdatableApi):
+
+  payload_template = '''<?xml version="1.0" encoding="UTF-8"?>
+        <orders xmlns="http://orders.mayomedicallaboratories.com">
+            <order>
+                <collected></collected>
+                <account></account>
+                <number></number>
+                <patient>
+                    <medical_record_number></medical_record_number>
+                    <first_name></first_name>
+                    <last_name></last_name>
+                    <middle_name/>
+                    <birth_date></birth_date>
+                    <gender></gender>
+                    <address1/>
+                    <address2/>
+                    <city/>
+                    <state/>
+                    <postal_code/>
+                    <phone/>
+                    <account_number/>
+                    <race/>
+                    <ethnic_group/>
+                </patient>
+                <physician>
+                    <name></name>
+                    <phone/>
+                    <npi/>
+                </physician>
+                <report_notes/>
+                <tests>
+                    <test>
+                        <code></code>
+                        <name></name>
+                        <comments/>
+                    </test>
+                </tests>
+                <comments/>
+            </order>
+        </orders>
+    '''
 
   def __init__(self):
     self.namespace = 'http://orders.mayomedicallaboratories.com'
@@ -49,10 +89,7 @@ class MayoLinkApi(UpdatableApi):
     return result
 
   def __dict_to_mayo_xml__(self, order):
-    base_dir = os.path.abspath(os.path.dirname(__file__)[:-3])
-    data_dir = os.path.join(base_dir, 'data')
-    tree = etree.parse(os.path.join(data_dir, 'mayo_order.xml'))
-    root = tree.getroot()
+    root = etree.fromstring(self.payload_template)
     # A super lame way to do this, sorry ? :-)
     root[0][0].text = order['order']['collected']
     root[0][1].text = str(self.account)
@@ -70,7 +107,7 @@ class MayoLinkApi(UpdatableApi):
     root[0][3][10].text = order['order']['patient']['postal_code']
     root[0][3][11].text = order['order']['patient']['phone']
     root[0][3][12].text = order['order']['patient']['account_number']
-    root[0][3][13].text = order['order']['patient']['race']
+    root[0][3][13].text = parse_json_enum(order['order']['patient']['race'])
     root[0][3][14].text = order['order']['patient']['ethnic_group']
     root[0][4][0].text = order['order']['physician']['name']
     root[0][4][1].text = order['order']['physician']['phone']
