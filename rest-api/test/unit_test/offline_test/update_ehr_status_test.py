@@ -136,10 +136,6 @@ class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
   # Mock BigQuery result types
   EhrUpdatePidRow = collections.namedtuple('EhrUpdatePidRow', [
     'person_id',
-    'report_run_time',
-    'org_id',
-    'hpo_id',
-    'site_name',
   ])
   TableCountsRow = collections.namedtuple('TableCountsRow', [
     'org_id',
@@ -166,10 +162,7 @@ class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
   def test_updates_participant_summaries(self, mock_summary_job, mock_organization_job):
     mock_summary_job.return_value.__iter__.return_value = [
       [
-        self.EhrUpdatePidRow(11, datetime.datetime(2019, 1, 1).replace(tzinfo=pytz.UTC),
-                             self.org_foo_a.organizationId,
-                             self.hpo_foo.hpoId,
-                             'foo_a_site_a'),
+        self.EhrUpdatePidRow(11),
       ]
     ]
     mock_organization_job.return_value.__iter__.return_value = []
@@ -179,14 +172,8 @@ class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
 
     mock_summary_job.return_value.__iter__.return_value = [
       [
-        self.EhrUpdatePidRow(11, datetime.datetime(2019, 1, 2).replace(tzinfo=pytz.UTC),
-                             self.org_foo_a.organizationId,
-                             self.hpo_foo.hpoId,
-                             'foo_a_site_a'),
-        self.EhrUpdatePidRow(12, datetime.datetime(2019, 1, 2).replace(tzinfo=pytz.UTC),
-                             self.org_foo_b.organizationId,
-                             self.hpo_foo.hpoId,
-                             'foo_b_site_a'),
+        self.EhrUpdatePidRow(11),
+        self.EhrUpdatePidRow(12),
       ]
     ]
     mock_organization_job.return_value.__iter__.return_value = []
@@ -255,3 +242,34 @@ class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
     foo_b_receipts = self.ehr_receipt_dao.get_by_organization_id(self.org_foo_b.organizationId)
     self.assertEqual(len(foo_b_receipts), 1)
     self.assertEqual(foo_b_receipts[0].receiptTime, datetime.datetime(2019, 1, 2))
+
+  @mock.patch('offline.update_ehr_status.make_update_organizations_job')
+  @mock.patch('offline.update_ehr_status.make_update_participant_summaries_job')
+  def test_ignores_bad_data(self, mock_summary_job, mock_organization_job):
+    invalid_participant_id = -1
+    mock_summary_job.return_value.__iter__.return_value = [
+      [
+        self.EhrUpdatePidRow(invalid_participant_id),
+      ]
+    ]
+    mock_organization_job.return_value.__iter__.return_value = [
+      [
+        self.TableCountsRow(
+          org_id='FOO_A',
+          person_upload_time="an invalid date string"
+        ),
+        self.TableCountsRow(
+          org_id='AN_ORG_THAT_DOESNT_EXIST',
+          person_upload_time=datetime.datetime(2019, 1, 1).replace(tzinfo=pytz.UTC)
+        ),
+        self.TableCountsRow(
+          org_id='AN_ORG_THAT_DOESNT_EXIST',
+          person_upload_time=None
+        ),
+      ],
+    ]
+    with FakeClock(datetime.datetime(2019, 1, 1)):
+      offline.update_ehr_status.update_ehr_status()
+
+    foo_a_receipts = self.ehr_receipt_dao.get_all()
+    self.assertEqual(len(foo_a_receipts), 0)

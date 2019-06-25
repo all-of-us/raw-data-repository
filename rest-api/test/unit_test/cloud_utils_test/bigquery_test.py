@@ -88,6 +88,9 @@ class BigQueryJobTransformationTest(unittest.TestCase):
       u'rows': [
         {u'f': [{u'v': u'2019-05-25 04:22:16.052 UTC'}]},
         {u'f': [{u'v': u'1.475735115E9'}]},
+        {u'f': [{u'v': 1.475735115E9}]},
+        {u'f': [{u'v': None}]},
+        {u'f': [{u'v': u''}]},
       ],
       u'schema': {
         u'fields': [
@@ -102,3 +105,24 @@ class BigQueryJobTransformationTest(unittest.TestCase):
     rows = cloud_utils.bigquery.BigQueryJob.get_rows_from_response(response)
     self.assertEqual(rows[0].timestamp, datetime.datetime(2019, 5, 25, 4, 22, 16, 52000, pytz.UTC))
     self.assertEqual(rows[1].timestamp, datetime.datetime(2016, 10, 6, 6, 25, 15, 0, pytz.UTC))
+    self.assertEqual(rows[2].timestamp, datetime.datetime(2016, 10, 6, 6, 25, 15, 0, pytz.UTC))
+    self.assertEqual(rows[3].timestamp, None)
+    self.assertEqual(rows[4].timestamp, None)
+
+    response = {
+      u'rows': [
+        {u'f': [{u'v': dict(foo='bar')}]},
+        {u'f': [{u'v': u'An invalid datestring'}]},
+      ],
+      u'schema': {
+        u'fields': [
+          {
+            u'mode': u'NULLABLE',
+            u'name': u'timestamp',
+            u'type': u'TIMESTAMP',
+          }
+        ]
+      }
+    }
+    with self.assertRaises(ValueError):
+      cloud_utils.bigquery.BigQueryJob.get_rows_from_response(response)

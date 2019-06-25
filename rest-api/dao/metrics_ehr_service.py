@@ -5,6 +5,7 @@ import sqlalchemy
 from dao.base_dao import BaseDao
 from dao.calendar_dao import INTERVAL_WEEK, CalendarDao
 from dao.ehr_dao import EhrReceiptDao
+from model.ehr import EhrReceipt
 from model.organization import Organization
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
@@ -54,7 +55,7 @@ class MetricsEhrService(BaseDao):
       where_conditions.append(
         ParticipantSummary.organizationId.in_(organization_ids)
       )
-    return (
+    query = (
       sqlalchemy
         .select([
           sqlalchemy.func.count().label('consented_count'),
@@ -77,6 +78,7 @@ class MetricsEhrService(BaseDao):
         )
         .where(reduce(sqlalchemy.and_, where_conditions))
     )
+    return query
 
   def get_current_ehr_data(self, organization_ids=None):
     with self.session() as session:
@@ -295,9 +297,18 @@ class MetricsEhrService(BaseDao):
       & had_physical_measurements
       & had_biosample
     )
-    had_ehr_data = was_primary & had_ehr_receipt
+    had_ehr_data = was_ehr_consented & had_ehr_receipt
 
     # build query
+    receipt_subquery = (
+      sqlalchemy.select([
+        EhrReceipt.organizationId.label('organization_id'),
+        sqlalchemy.func.max(EhrReceipt.receiptTime).label('ehr_receipt_time')
+      ])
+        .select_from(EhrReceipt)
+        .group_by(EhrReceipt.organizationId)
+        .alias('receipt_subquery')
+    )
     fields = [
       Organization.externalId.label('organization_id'),
       Organization.displayName.label('organization_name'),
@@ -306,12 +317,15 @@ class MetricsEhrService(BaseDao):
       make_sum_bool_field(was_ehr_consented).label('total_ehr_consented'),
       make_sum_bool_field(was_core).label('total_core_participants'),
       make_sum_bool_field(had_ehr_data).label('total_ehr_data_received'),
-      sqlalchemy.func.date(sqlalchemy.func.max(ParticipantSummary.ehrUpdateTime))
-        .label('last_ehr_submission_date'),
+      sqlalchemy.func.date(receipt_subquery.c.ehr_receipt_time).label('last_ehr_submission_date'),
     ]
-    orgs_with_participants_and_summaries = sqlalchemy.join(
+    joined_tables = sqlalchemy.join(
       sqlalchemy.join(
-        Organization,
+        sqlalchemy.outerjoin(
+          Organization,
+          receipt_subquery,
+          Organization.organizationId == receipt_subquery.c.organization_id,
+        ),
         ParticipantSummary,
         ParticipantSummary.organizationId == Organization.organizationId
       ),
@@ -321,7 +335,7 @@ class MetricsEhrService(BaseDao):
 
     query = (
       sqlalchemy.select(fields)
-        .select_from(orgs_with_participants_and_summaries)
+        .select_from(joined_tables)
         .group_by(Organization.organizationId)
     )
     if organization_ids:
