@@ -287,7 +287,7 @@ class MetricsEhrMultiEndpointTest(MetricsEhrApiTestBase):
     self.assertEqual(combined_response['organization_metrics'], organizations_response)
 
 
-class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
+class MetricsEhrApiTest(MetricsEhrApiTestBase):
 
   def test_consented_counts(self):
     # Set up data
@@ -321,12 +321,20 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     # Begin testing
     response = self.send_get('MetricsEHR')
     self.assertEqual(response['metrics']['EHR_CONSENTED'], 2)
+    self.assertEqual(
+      response['metrics']['EHR_CONSENTED'],
+      sum([o['total_ehr_consented'] for o in response['organization_metrics'].values()])
+    )
 
     # test with organization filtering
     response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'organization': 'foo_a',
     }))
     self.assertEqual(response['metrics']['EHR_CONSENTED'], 1)
+    self.assertEqual(
+      response['metrics']['EHR_CONSENTED'],
+      sum([o['total_ehr_consented'] for o in response['organization_metrics'].values()])
+    )
 
 
   def test_received_counts(self):
@@ -350,7 +358,11 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
 
     self._update_ehr(summary_1, update_time=datetime.datetime(2018, 1, 5))
     response = self.send_get('MetricsEHR')
-    self.assertEqual(response['metrics']['EHR_CONSENTED'], 1)
+    self.assertEqual(response['metrics']['EHR_RECEIVED'], 1)
+    self.assertEqual(
+      response['metrics']['EHR_RECEIVED'],
+      sum([o['total_ehr_data_received'] for o in response['organization_metrics'].values()])
+    )
 
     # noinspection PyArgumentList
     participant_2 = Participant(participantId=2, biobankId=5)
@@ -364,13 +376,37 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
 
     self._update_ehr(summary_2, update_time=datetime.datetime(2018, 1, 6))
     response = self.send_get('MetricsEHR')
-    self.assertEqual(response['metrics']['EHR_CONSENTED'], 2)
+    self.assertEqual(response['metrics']['EHR_RECEIVED'], 2)
+    self.assertEqual(
+      response['metrics']['EHR_RECEIVED'],
+      sum([o['total_ehr_data_received'] for o in response['organization_metrics'].values()])
+    )
+
+    # participant with EHR but no consent
+    participant_3 = Participant(participantId=3, biobankId=6)
+    summary_3 = self._make_participant(
+      participant_3, 'Bo', 'Badger', self.hpo_bar, self.org_bar_a,
+      time_int=datetime.datetime(2018, 1, 3),
+      time_mem=datetime.datetime(2018, 1, 4)
+    )
+    self._update_ehr(summary_3, update_time=datetime.datetime(2018, 1, 6))
+
+    response = self.send_get('MetricsEHR')
+    self.assertEqual(response['metrics']['EHR_RECEIVED'], 2)
+    self.assertEqual(
+      response['metrics']['EHR_RECEIVED'],
+      sum([o['total_ehr_data_received'] for o in response['organization_metrics'].values()])
+    )
 
     # test with organization filtering
     response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'organization': 'FOO_A',
     }))
-    self.assertEqual(response['metrics']['EHR_CONSENTED'], 1)
+    self.assertEqual(response['metrics']['EHR_RECEIVED'], 1)
+    self.assertEqual(
+      response['metrics']['EHR_RECEIVED'],
+      sum([o['total_ehr_data_received'] for o in response['organization_metrics'].values()])
+    )
 
 
 class MetricsEhrApiOrganizationTest(MetricsEhrApiTestBase):

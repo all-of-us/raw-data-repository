@@ -104,8 +104,13 @@ def update_organizations_from_job(job):
   for page in job:
     for row in page:
       org = organization_dao.get_by_external_id(row.org_id)
-      receipt_dao.get_or_create(
-        insert_if_created=True,
-        organizationId=org.organizationId,
-        receiptTime=datetime_as_naive_utc(row.person_upload_time)
-      )
+      if org:
+        try:
+          receipt_time = datetime_as_naive_utc(row.person_upload_time)
+        except TypeError:
+          continue
+        receipt_dao.get_or_create(
+          insert_if_created=True,
+          organizationId=org.organizationId,
+          receiptTime=receipt_time
+        )
