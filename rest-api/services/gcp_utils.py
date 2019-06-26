@@ -100,6 +100,8 @@ def gcp_initialize(project, account=None, service_account=None):
   if project:
     if project not in ['localhost', '127.0.0.1'] and not gcp_validate_project(project):
       return None
+    if 'APPLICATION_ID' not in os.environ:
+      os.environ['APPLICATION_ID'] = project
   else:
     project = 'localhost'
 
