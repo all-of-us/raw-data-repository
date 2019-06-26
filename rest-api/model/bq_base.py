@@ -128,6 +128,9 @@ class BQSchema(object):
   def __ne__(self, other):
     return not self._cmp_schema(self, other)
 
+  def __getitem__(self, item):
+    return getattr(self, item, None)
+
   def _add_fields(self, obj, fields):
     """
     Recursively add fields to object
@@ -222,6 +225,8 @@ class BQField(object):
     self._fld_enum = fld_enum
     self._fld_descr = fld_descr
 
+  def __getitem__(self, item):
+    return getattr(self, item, None)
 
   def to_dict(self):
     """
@@ -408,6 +413,16 @@ class BQRecord(object):
     def update(d, u, s):
       """ recursive function to add values from one dict to another and validate keys against schema """
       for k, v in u.iteritems():
+        # check for Enum32 object, if it is set the value to the enum value
+        if s[k]['description']:
+          try:
+            mod_path, mod_name = s[k]['description'].rsplit('.', 1)
+            fld_enum = getattr(importlib.import_module(mod_path, mod_name), mod_name)
+            d[k] = fld_enum(v)
+          except AttributeError:
+            pass
+          except ValueError:
+            pass
         if s and not getattr(s, k, None):
           raise KeyError('{0} key not in schema'.format(k))
         if isinstance(v, collections.Mapping):
