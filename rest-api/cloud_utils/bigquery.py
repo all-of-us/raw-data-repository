@@ -129,6 +129,8 @@ class BigQueryJob(object):
     > RECORD (where RECORD indicates that the field contains a nested schema)
     > or STRUCT (same as RECORD).
     """
+    if value is None:
+      return None
     mapping = cls.get_parsers_by_typename_map()
     parser = mapping.get(typename)
     if not parser:
