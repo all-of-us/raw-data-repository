@@ -20,12 +20,18 @@ def main(client):
   request = make_request_body(client.args.file)
 
   resource = SimpleFhirR4Reader(request)
-  order_id = resource.identifier.get(system='http://joinallofus.org/fhir/orderId').value
+
+
 
   if not client.args.endpoint:
     path = 'SupplyRequest'
   else:
     path = client.args.endpoint
+
+  if path == 'SupplyRequest':
+    order_id = resource.identifier.get(system='http://joinallofus.org/fhir/orderId').value
+  else:
+    order_id = resource.basedOn[0].identifier.value  #get(system='http://joinallofus.org/fhir/orderId').value
 
   if not client.args.verb:
     verb = 'PUT'
