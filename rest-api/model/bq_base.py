@@ -226,7 +226,7 @@ class BQField(object):
     self._fld_descr = fld_descr
 
   def __getitem__(self, item):
-    return getattr(self, item, None)
+    return self.to_dict().get(item, None)
 
   def to_dict(self):
     """
@@ -238,8 +238,10 @@ class BQField(object):
     data['type'] = getattr(self._fld_type, 'name')
     data['mode'] = getattr(self._fld_mode, 'name')
     if self._fld_enum:
+      data['enum'] = True
       data['description'] = '{0}.{1}'.format(self._fld_enum.__module__, self._fld_enum.__name__)
     elif self._fld_descr:
+      data['enum'] = False
       data['description'] = self._fld_descr
     return data
 
@@ -413,8 +415,12 @@ class BQRecord(object):
     def update(d, u, s):
       """ recursive function to add values from one dict to another and validate keys against schema """
       for k, v in u.iteritems():
+        # validate key against schema if needed
+        if s and not getattr(s, k, None):
+          raise KeyError('{0} key not in schema'.format(k))
+        # TODO: Future: Validate value against schema BQField type and constraints here.
         # check for Enum32 object, if it is set the value to the enum value
-        if s[k]['description']:
+        if s[k]['description'] and s[k]['enum'] is True:
           try:
             mod_path, mod_name = s[k]['description'].rsplit('.', 1)
             fld_enum = getattr(importlib.import_module(mod_path, mod_name), mod_name)
@@ -423,11 +429,12 @@ class BQRecord(object):
             pass
           except ValueError:
             pass
-        if s and not getattr(s, k, None):
-          raise KeyError('{0} key not in schema'.format(k))
-        if isinstance(v, collections.Mapping):
+        elif isinstance(v, collections.Mapping):
           d[k] = update(d.get(k, {}), v, s.__dict__[k] if s else None)
         elif isinstance(v, list):
+          # TODO: Future: Do we want to instantiate a new BQRecord for nested data here, instead of
+          # TODO:         just adding a list of dicts to 'd'?  We can get the nested BQSchema by
+          # TODO:         testing: if s[k]['description'] and s[k]['enum'] is False.
           d[k] = list()
           for d2 in v:
             d[k].append(update(dict(), d2, getattr(s, k).get_schema() if s else None))
@@ -436,6 +443,7 @@ class BQRecord(object):
       return d
 
     update(self.__dict__, data, self.__schema__)
+    pass
 
   def get_fields(self):
     return self.__fields__
