@@ -32,6 +32,8 @@ PROJECT_NAME_MAPPING = {
   'pmi-drc-api-test': 'test',
   'all-of-us-rdr-sandbox': 'sandbox',
   'all-of-us-rdr-ptsc-1-test': 'ptsc',
+  'all-of-us-rdr-ptsc-2-test': 'ptsc',
+  'all-of-us-rdr-ptsc-3-test': 'ptsc',
 }
 
 CRON_SEARCH_LOCATION = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
