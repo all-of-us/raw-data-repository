@@ -77,6 +77,10 @@ elif [ "${PROJECT}" == "all-of-us-rdr-ptsc-3-test" ]
 then
   CONFIG="config/config_test_ptsc_3.json"
   echo "Skipping JIRA tracker updates for PTSC Test 3."
+elif [ "${PROJECT}" == "all-of-us-rdr-careevo-test" ]
+then
+  CONFIG="config/config_test_careevo.json"
+  echo "Skipping JIRA tracker updates for Care Evolution Test."
   UPDATE_TRACKER=echo
 else
   echo "Unsupported project: ${PROJECT}; exiting."
