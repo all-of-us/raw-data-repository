@@ -426,9 +426,9 @@ class BQRecord(object):
             fld_enum = getattr(importlib.import_module(mod_path, mod_name), mod_name)
             d[k] = fld_enum(v)
           except AttributeError:
-            pass
+            d[k] = v
           except ValueError:
-            pass
+            d[k] = v
         elif isinstance(v, collections.Mapping):
           d[k] = update(d.get(k, {}), v, s.__dict__[k] if s else None)
         elif isinstance(v, list):
