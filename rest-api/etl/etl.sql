@@ -582,6 +582,7 @@ LEFT JOIN rdr.code co_b
     ON qc.code_id = co_b.code_id
 WHERE
     pa.withdrawal_status != 2
+    AND pa.is_ghost_id IS NOT TRUE
     AND hp.name != 'TEST'
     AND
     (
