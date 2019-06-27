@@ -166,8 +166,11 @@ class DvOrderApi(UpdatableApi):
       p_id = from_client_participant_id(participant_id)
       update_time = dateutil.parser.parse(fhir.occurrenceDateTime)
       carrier_name = fhir.extension.get(url=VIBRENT_FHIR_URL + 'carrier').valueString
-      eta = dateutil.parser.parse(fhir.extension.get(
-        url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime)
+
+      eta = None
+      if hasattr(fhir['extension'], VIBRENT_FHIR_URL + 'expected-delivery-date'):
+        eta = dateutil.parser.parse(fhir.extension.get(url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime)
+
       tracking_status = fhir.extension.get(
         url=VIBRENT_FHIR_URL + 'tracking-status').valueString
     except AttributeError as e:
@@ -188,7 +191,8 @@ class DvOrderApi(UpdatableApi):
     order = self.dao.get(biobank_dv_order_id)
     order.shipmentLastUpdate = update_time.date()
     order.shipmentCarrier = carrier_name
-    order.shipmentEstArrival = eta.date()
+    if eta:
+      order.shipmentEstArrival = eta.date()
     order.shipmentStatus = tracking_status_enum
 
     response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
