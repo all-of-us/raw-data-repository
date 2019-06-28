@@ -43,6 +43,10 @@ class DvOrderDao(UpdatableDao):
     code_dict = summary.asdict()
     format_json_code(code_dict, self.code_dao, 'genderIdentityId')
     format_json_code(code_dict, self.code_dao, 'stateId')
+    if 'genderIdentity' in code_dict and code_dict['genderIdentity']:
+      gender_val = code_dict['genderIdentity']
+    else:
+      gender_val = 'UNSET'
     # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
     order = {
         'order': {
@@ -54,7 +58,7 @@ class DvOrderDao(UpdatableDao):
                         'last_name': str(to_client_biobank_id(summary.biobankId)),
                         'middle_name': '',
                         'birth_date': '3/3/1933',
-                        'gender': code_dict['genderIdentity'],
+                        'gender': gender_val,
                         'address1': summary.streetAddress,
                         'address2': summary.streetAddress2,
                         'city': summary.city,
@@ -65,7 +69,7 @@ class DvOrderDao(UpdatableDao):
                         'race': summary.race,
                         'ethnic_group': None
                        },
-            'physician': {'name': None,
+            'physician': {'name': 'None',  # must be a string value, not None.
                           'phone': None,
                           'npi': None
                          },
