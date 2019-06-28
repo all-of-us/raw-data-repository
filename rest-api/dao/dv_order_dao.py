@@ -44,9 +44,14 @@ class DvOrderDao(UpdatableDao):
     format_json_code(code_dict, self.code_dao, 'genderIdentityId')
     format_json_code(code_dict, self.code_dao, 'stateId')
     if 'genderIdentity' in code_dict and code_dict['genderIdentity']:
-      gender_val = code_dict['genderIdentity']
+      if code_dict['genderIdentity'] == 'GenderIdentity_Woman':
+        gender_val = 'F'
+      elif code_dict['genderIdentity'] == 'GenderIdentity_Man':
+        gender_val = 'M'
+      else:
+        gender_val = 'U'
     else:
-      gender_val = 'UNSET'
+      gender_val = 'U'
     # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
     order = {
         'order': {
