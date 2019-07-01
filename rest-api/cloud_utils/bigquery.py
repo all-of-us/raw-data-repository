@@ -154,8 +154,10 @@ class BigQueryJob(object):
   @staticmethod
   def _parse_timestamp(value):
     try:
+      if not value:
+        return None
       date = datetime.datetime.strptime(
-        re.sub(r'\bT\b', '', value),
+        re.sub(r'\bT\b', '', str(value)),
         '%Y-%m-%d %H:%M:%S.%f %Z'
       )
       if date.tzinfo is None:
@@ -164,7 +166,7 @@ class BigQueryJob(object):
     except ValueError:
       try:
         return datetime.datetime.utcfromtimestamp(float(value)).replace(tzinfo=pytz.UTC)
-      except ValueError:
+      except (ValueError, TypeError):
         raise ValueError("Could not parse {} as TIMESTAMP".format(value))
 
   @classmethod
