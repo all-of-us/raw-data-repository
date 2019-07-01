@@ -411,19 +411,22 @@ def _get_status_flag_sql():
 
   return result
 
+
 # Used in the context of queries where "participant" is the table for the participant being
 # selected.
-_NATIVE_AMERICAN_SQL = """
-  (SELECT (CASE WHEN count(*) > 0 THEN 'Y' ELSE 'N' END)
-       FROM questionnaire_response qr
-       INNER JOIN questionnaire_response_answer qra
-         ON qra.questionnaire_response_id = qr.questionnaire_response_id
-       INNER JOIN questionnaire_question qq
-         ON qra.question_id = qq.questionnaire_question_id
-      WHERE qr.participant_id = participant.participant_id
-        AND qq.code_id = :race_question_code_id
-        AND qra.value_code_id = :native_american_race_code_id
-        AND qra.end_time IS NULL) is_native_american"""
+def get_native_american_sql(participant_table_name):
+  native_american_sql = """
+    (SELECT (CASE WHEN count(*) > 0 THEN 'Y' ELSE 'N' END)
+         FROM questionnaire_response qr
+         INNER JOIN questionnaire_response_answer qra
+           ON qra.questionnaire_response_id = qr.questionnaire_response_id
+         INNER JOIN questionnaire_question qq
+           ON qra.question_id = qq.questionnaire_question_id
+        WHERE qr.participant_id = """ + participant_table_name + """.participant_id
+          AND qq.code_id = :race_question_code_id
+          AND qra.value_code_id = :native_american_race_code_id
+          AND qra.end_time IS NULL) is_native_american"""
+  return native_american_sql
 
 # Joins orders and samples, and computes some derived values (elapsed_hours, counts).
 # MySQL does not support FULL OUTER JOIN, so instead we UNION ALL a LEFT OUTER JOIN
@@ -491,7 +494,7 @@ _RECONCILIATION_REPORT_SQL = ("""
       biobank_stored_sample.confirmed,
       biobank_stored_sample.created,
       kit_id_identifier.value biospecimen_kit_id,
-      tracking_number_identifier.value fedex_tracking_number, """ + _NATIVE_AMERICAN_SQL + """,
+      tracking_number_identifier.value fedex_tracking_number, """ + get_native_american_sql('participant') + """,
       biobank_order.collected_note notes_collected,
       biobank_order.processed_note notes_processed,
       biobank_order.finalized_note notes_finalized,
@@ -532,7 +535,7 @@ _RECONCILIATION_REPORT_SQL = ("""
       biobank_stored_sample.confirmed,
       biobank_stored_sample.created,
       NULL biospecimen_kit_id,
-      NULL fedex_tracking_number, """ + _NATIVE_AMERICAN_SQL + """,
+      NULL fedex_tracking_number, """ + get_native_american_sql('participant') + """,
       NULL notes_collected,
       NULL notes_processed,
       NULL notes_finalized,
@@ -566,12 +569,16 @@ _RECONCILIATION_REPORT_SQL = ("""
 # Generates a report on participants that have withdrawn in the past n days,
 # including their biobank ID, withdrawal time, and whether they are Native American
 # (as biobank samples for Native Americans are disposed of differently.)
+# only send Biobank IDs of participants that had samples collected.
 _WITHDRAWAL_REPORT_SQL = ("""
   SELECT
-    CONCAT(:biobank_id_prefix, participant.biobank_id) biobank_id,
-    ISODATE[participant.withdrawal_time] withdrawal_time,""" + _NATIVE_AMERICAN_SQL + """
-    FROM participant
-   WHERE participant.withdrawal_time >= :n_days_ago
+    CONCAT(:biobank_id_prefix, participant_summary.biobank_id) biobank_id,
+    ISODATE[participant_summary.withdrawal_time] withdrawal_time,""" +
+                          get_native_american_sql('participant_summary') + """
+  FROM participant_summary
+  WHERE participant_summary.withdrawal_time >= :n_days_ago
+  AND
+  (SELECT COUNT(*) FROM biobank_stored_sample WHERE biobank_id=participant_summary.biobank_id)>0
 """)
 
 def in_past_n_days(result, now, n_days, ordered_before=None):

@@ -350,7 +350,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._modify_order('RESTORED', modified_order)
 
     # Withdrawn participants don't show up in any reports except withdrawal report.
-
+    # only the participant who has sample collected will show in withdrawal report.
     p_withdrawn_old_on_time = self._insert_participant(race_codes=[RACE_AIAN_CODE])
     # This updates the version of the participant and its HPO ID.
     self._insert_order(p_withdrawn_old_on_time, 'OldWithdrawnGoodOrder', BIOBANK_TESTS[:2],
@@ -395,6 +395,7 @@ class MySqlReconciliationTest(FlaskTestBase):
                          old_order_time - datetime.timedelta(hours=1))
     self._withdraw(p_withdrawn_old_extra, within_24_hours)
 
+    # this one will not show in the withdrawal report because no sample collected
     p_withdrawn_race_change = self._insert_participant(race_codes=[RACE_AIAN_CODE])
     p_withdrawn_race_change_id = to_client_participant_id(p_withdrawn_race_change.participantId)
     self._submit_race_questionnaire_response(p_withdrawn_race_change_id, [RACE_WHITE_CODE])
@@ -560,7 +561,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     })
 
     # We don't include the old withdrawal.
-    exporter.assertRowCount(withdrawals, 5)
+    exporter.assertRowCount(withdrawals, 4)
     exporter.assertHasRow(withdrawals, {
       'biobank_id': to_client_biobank_id(p_withdrawn_old_on_time.biobankId),
       'withdrawal_time': database_utils.format_datetime(within_24_hours),
@@ -577,10 +578,6 @@ class MySqlReconciliationTest(FlaskTestBase):
       'biobank_id': to_client_biobank_id(p_withdrawn_old_extra.biobankId),
       'withdrawal_time': database_utils.format_datetime(within_24_hours),
       'is_native_american': 'Y'})
-    exporter.assertHasRow(withdrawals, {
-      'biobank_id': to_client_biobank_id(p_withdrawn_race_change.biobankId),
-      'withdrawal_time': database_utils.format_datetime(within_24_hours),
-      'is_native_american': 'N'})
 
   def test_monthly_reconciliation_report(self):
     self.setup_codes([RACE_QUESTION_CODE], CodeType.QUESTION)
@@ -775,6 +772,7 @@ class MySqlReconciliationTest(FlaskTestBase):
                          old_order_time - datetime.timedelta(hours=1))
     self._withdraw(p_withdrawn_old_extra, within_24_hours)
 
+    # this one will not show in the withdrawal report because no sample collected
     p_withdrawn_race_change = self._insert_participant(race_codes=[RACE_AIAN_CODE])
     p_withdrawn_race_change_id = to_client_participant_id(p_withdrawn_race_change.participantId)
     self._submit_race_questionnaire_response(p_withdrawn_race_change_id, [RACE_WHITE_CODE])
@@ -941,7 +939,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     })
 
     # We don't include the old withdrawal.
-    exporter.assertRowCount(withdrawals, 5)
+    exporter.assertRowCount(withdrawals, 4)
     exporter.assertHasRow(withdrawals, {
       'biobank_id': to_client_biobank_id(p_withdrawn_old_on_time.biobankId),
       'withdrawal_time': database_utils.format_datetime(within_24_hours),
@@ -958,10 +956,6 @@ class MySqlReconciliationTest(FlaskTestBase):
       'biobank_id': to_client_biobank_id(p_withdrawn_old_extra.biobankId),
       'withdrawal_time': database_utils.format_datetime(within_24_hours),
       'is_native_american': 'Y'})
-    exporter.assertHasRow(withdrawals, {
-      'biobank_id': to_client_biobank_id(p_withdrawn_race_change.biobankId),
-      'withdrawal_time': database_utils.format_datetime(within_24_hours),
-      'is_native_american': 'N'})
 
 def _add_code_answer(code_answers, link_id, code):
   if code:
