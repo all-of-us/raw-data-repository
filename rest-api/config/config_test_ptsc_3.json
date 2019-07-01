@@ -5,10 +5,10 @@
     "2"
   ],
   "user_info": {
-    "configurator@all-of-us-rdr-ptsc-1-test.iam.gserviceaccount.com": {
+    "configurator@all-of-us-rdr-ptsc-3-test.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro", "rdr"]
     },
-    "exporter@all-of-us-rdr-ptsc-1-test.iam.gserviceaccount.com": {
+    "exporter@all-of-us-rdr-ptsc-3-test.iam.gserviceaccount.com": {
       "roles": ["exporter"]
     },
     "vibrent-drc-qa@vibrent-drc-qa-165017.iam.gserviceaccount.com": {
