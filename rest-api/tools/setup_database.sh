@@ -78,11 +78,18 @@ then
     # NOTE (from tanner on 2019-05-24): This command does not seem to trigger a database restart *if* the flag value
     #                                   is already at the correct value.
     #                                   This has not been tested thoroughly and may need to be revisited.
-    echo "Applying correct database flags..."
-    gcloud sql instances patch ${INSTANCE_NAME} --database-flags log_bin_trust_function_creators=on \
-        --project $PROJECT
-    echo "Waiting for database restart..."
-    sleep 3
+    # NOTE (from tanner on 2019-07-01): This sometimes takes longer than the 3 second sleep. For the next iteration of
+    #                                   this tool: only apply this change if needed & add wait loop until ready to
+    #                                   continue. In the meantime, this may be disabled
+    if gcloud sql instances describe ${INSTANCE_NAME} --project ${PROJECT} | grep log_bin_trust_function_creators; then
+        echo "Database flags already set."
+    else
+        echo "Applying correct database flags..."
+        gcloud sql instances patch ${INSTANCE_NAME} --database-flags log_bin_trust_function_creators=on \
+            --project $PROJECT
+        echo "Waiting for database restart..."
+        sleep 3
+    fi
 fi
 
 INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe $INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
@@ -100,16 +107,6 @@ function finish {
   rm -f ${UPDATE_DB_FILE}
 }
 trap finish EXIT
-
-function handle_mysql_failed {
-    echo 'MySQL command failed to execute.'
-    echo 'Setting the root user password back to the previous value...'
-    gcloud sql users set-password root --host % --instance ${INSTANCE_NAME} --password ${OLD_ROOT_PASSWORD}
-    exit 1
-}
-
-get_db_password root
-OLD_ROOT_PASSWORD=PASSWORD
 
 run_cloud_sql_proxy
 if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ] || [ "${CONTINUE_CREATING_INSTANCE}" = "Y" ]
@@ -151,7 +148,7 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ] || [ "${CON
     cat tools/update_passwords.sql | envsubst >> $UPDATE_DB_FILE
 
 	echo "applying database changes..."
-	mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE} & echo "done" | handle_mysql_failed
+	mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE} && echo "done" || echo "failed - you will likely need to generate passwords"
 	echo "Setting database configuration..."
 	tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
 else
