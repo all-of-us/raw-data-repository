@@ -414,19 +414,29 @@ def _get_status_flag_sql():
 
 # Used in the context of queries where "participant" is the table for the participant being
 # selected.
-def get_native_american_sql(participant_table_name):
-  native_american_sql = """
-    (SELECT (CASE WHEN count(*) > 0 THEN 'Y' ELSE 'N' END)
-         FROM questionnaire_response qr
-         INNER JOIN questionnaire_response_answer qra
-           ON qra.questionnaire_response_id = qr.questionnaire_response_id
-         INNER JOIN questionnaire_question qq
-           ON qra.question_id = qq.questionnaire_question_id
-        WHERE qr.participant_id = """ + participant_table_name + """.participant_id
-          AND qq.code_id = :race_question_code_id
-          AND qra.value_code_id = :native_american_race_code_id
-          AND qra.end_time IS NULL) is_native_american"""
-  return native_american_sql
+_NATIVE_AMERICAN_SQL = """
+  (SELECT (CASE WHEN count(*) > 0 THEN 'Y' ELSE 'N' END)
+       FROM questionnaire_response qr
+       INNER JOIN questionnaire_response_answer qra
+         ON qra.questionnaire_response_id = qr.questionnaire_response_id
+       INNER JOIN questionnaire_question qq
+         ON qra.question_id = qq.questionnaire_question_id
+      WHERE qr.participant_id = participant.participant_id
+        AND qq.code_id = :race_question_code_id
+        AND qra.value_code_id = :native_american_race_code_id
+        AND qra.end_time IS NULL) is_native_american"""
+
+_WITHDRAWAL_NATIVE_AMERICAN_SQL = """
+  (SELECT (CASE WHEN count(*) > 0 THEN 'Y' ELSE 'N' END)
+       FROM questionnaire_response qr
+       INNER JOIN questionnaire_response_answer qra
+         ON qra.questionnaire_response_id = qr.questionnaire_response_id
+       INNER JOIN questionnaire_question qq
+         ON qra.question_id = qq.questionnaire_question_id
+      WHERE qr.participant_id = participant_summary.participant_id
+        AND qq.code_id = :race_question_code_id
+        AND qra.value_code_id = :native_american_race_code_id
+        AND qra.end_time IS NULL) is_native_american"""
 
 # Joins orders and samples, and computes some derived values (elapsed_hours, counts).
 # MySQL does not support FULL OUTER JOIN, so instead we UNION ALL a LEFT OUTER JOIN
@@ -494,7 +504,7 @@ _RECONCILIATION_REPORT_SQL = ("""
       biobank_stored_sample.confirmed,
       biobank_stored_sample.created,
       kit_id_identifier.value biospecimen_kit_id,
-      tracking_number_identifier.value fedex_tracking_number, """ + get_native_american_sql('participant') + """,
+      tracking_number_identifier.value fedex_tracking_number, """ + _NATIVE_AMERICAN_SQL + """,
       biobank_order.collected_note notes_collected,
       biobank_order.processed_note notes_processed,
       biobank_order.finalized_note notes_finalized,
@@ -535,7 +545,7 @@ _RECONCILIATION_REPORT_SQL = ("""
       biobank_stored_sample.confirmed,
       biobank_stored_sample.created,
       NULL biospecimen_kit_id,
-      NULL fedex_tracking_number, """ + get_native_american_sql('participant') + """,
+      NULL fedex_tracking_number, """ + _NATIVE_AMERICAN_SQL + """,
       NULL notes_collected,
       NULL notes_processed,
       NULL notes_finalized,
@@ -574,7 +584,7 @@ _WITHDRAWAL_REPORT_SQL = ("""
   SELECT
     CONCAT(:biobank_id_prefix, participant_summary.biobank_id) biobank_id,
     ISODATE[participant_summary.withdrawal_time] withdrawal_time,""" +
-                          get_native_american_sql('participant_summary') + """
+                          _WITHDRAWAL_NATIVE_AMERICAN_SQL + """
   FROM participant_summary
   WHERE participant_summary.withdrawal_time >= :n_days_ago
   AND
