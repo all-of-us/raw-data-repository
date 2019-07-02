@@ -426,18 +426,6 @@ _NATIVE_AMERICAN_SQL = """
         AND qra.value_code_id = :native_american_race_code_id
         AND qra.end_time IS NULL) is_native_american"""
 
-_WITHDRAWAL_NATIVE_AMERICAN_SQL = """
-  (SELECT (CASE WHEN count(*) > 0 THEN 'Y' ELSE 'N' END)
-       FROM questionnaire_response qr
-       INNER JOIN questionnaire_response_answer qra
-         ON qra.questionnaire_response_id = qr.questionnaire_response_id
-       INNER JOIN questionnaire_question qq
-         ON qra.question_id = qq.questionnaire_question_id
-      WHERE qr.participant_id = participant_summary.participant_id
-        AND qq.code_id = :race_question_code_id
-        AND qra.value_code_id = :native_american_race_code_id
-        AND qra.end_time IS NULL) is_native_american"""
-
 # Joins orders and samples, and computes some derived values (elapsed_hours, counts).
 # MySQL does not support FULL OUTER JOIN, so instead we UNION ALL a LEFT OUTER JOIN
 # with a SELECT... WHERE NOT EXISTS (the latter for cases where we have a sample but no matching
@@ -582,13 +570,12 @@ _RECONCILIATION_REPORT_SQL = ("""
 # only send Biobank IDs of participants that had samples collected.
 _WITHDRAWAL_REPORT_SQL = ("""
   SELECT
-    CONCAT(:biobank_id_prefix, participant_summary.biobank_id) biobank_id,
-    ISODATE[participant_summary.withdrawal_time] withdrawal_time,""" +
-                          _WITHDRAWAL_NATIVE_AMERICAN_SQL + """
-  FROM participant_summary
-  WHERE participant_summary.withdrawal_time >= :n_days_ago
+    CONCAT(:biobank_id_prefix, participant.biobank_id) biobank_id,
+    ISODATE[participant.withdrawal_time] withdrawal_time,""" + _NATIVE_AMERICAN_SQL + """
+  FROM participant
+  WHERE participant.withdrawal_time >= :n_days_ago
   AND
-  (SELECT COUNT(*) FROM biobank_stored_sample WHERE biobank_id=participant_summary.biobank_id)>0
+  (SELECT COUNT(*) FROM biobank_stored_sample WHERE biobank_id=participant.biobank_id)>0
 """)
 
 def in_past_n_days(result, now, n_days, ordered_before=None):
