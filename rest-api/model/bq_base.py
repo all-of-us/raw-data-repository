@@ -54,12 +54,6 @@ class BQDuplicateFieldException(BQException):
   """
   pass
 
-# all BQ schemas should be listed here
-BQ_SCHEMAS = [
-  # (python path, class)
-  ('model.bq_participant_summary', 'BQParticipantSummary'),
-]
-
 
 class BQFieldTypeEnum(Enum):
   """
@@ -412,35 +406,41 @@ class BQRecord(object):
     Update this object with the given dict values, validate against BQSchema if available.
     :param data: dict of data values to add/update.
     """
-    def update(d, u, s):
-      """ recursive function to add values from one dict to another and validate keys against schema """
-      for k, v in u.iteritems():
+    def update(dest, src, schema):
+      """
+      recursive function to add values from one dict to another and validate keys against schema
+      :param dest: destination dict object
+      :param src: source dict object
+      :param schema: schema object
+      :return: dict
+      """
+      for key, val in src.iteritems():
         # validate key against schema if needed
-        if s and not getattr(s, k, None):
-          raise KeyError('{0} key not in schema'.format(k))
+        if schema and not getattr(schema, key, None):
+          raise KeyError('{0} key not in schema'.format(key))
         # TODO: Future: Validate value against schema BQField type and constraints here.
         # check for Enum32 object, if it is set the value to the enum value
-        if s[k]['description'] and s[k]['enum'] is True:
+        if schema[key]['description'] and schema[key]['enum'] is True:
           try:
-            mod_path, mod_name = s[k]['description'].rsplit('.', 1)
+            mod_path, mod_name = schema[key]['description'].rsplit('.', 1)
             fld_enum = getattr(importlib.import_module(mod_path, mod_name), mod_name)
-            d[k] = fld_enum(v)
+            dest[key] = fld_enum(val)
           except AttributeError:
-            d[k] = v
+            dest[key] = val
           except ValueError:
-            d[k] = v
-        elif isinstance(v, collections.Mapping):
-          d[k] = update(d.get(k, {}), v, s.__dict__[k] if s else None)
-        elif isinstance(v, list):
+            dest[key] = val
+        elif isinstance(val, collections.Mapping):
+          dest[key] = update(dest.get(key, {}), val, schema.__dict__[key] if schema else None)
+        elif isinstance(val, list):
           # TODO: Future: Do we want to instantiate a new BQRecord for nested data here, instead of
-          # TODO:         just adding a list of dicts to 'd'?  We can get the nested BQSchema by
-          # TODO:         testing: if s[k]['description'] and s[k]['enum'] is False.
-          d[k] = list()
-          for d2 in v:
-            d[k].append(update(dict(), d2, getattr(s, k).get_schema() if s else None))
+          # TODO:         just adding a list of dicts to 'dest'?  We can get the nested BQSchema by
+          # TODO:         testing: if schema[key]['description'] and schema[key]['enum'] is False.
+          dest[key] = list()
+          for d2 in val:
+            dest[key].append(update(dict(), d2, getattr(schema, key).get_schema() if schema else None))
         else:
-          d[k] = v
-      return d
+          dest[key] = val
+      return dest
 
     update(self.__dict__, data, self.__schema__)
     pass
