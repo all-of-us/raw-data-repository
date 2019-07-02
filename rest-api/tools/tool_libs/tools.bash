@@ -12,7 +12,7 @@ _python()
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # These are the specific tools we support
-    tools="--help migrate-bq verify"
+    tools="--help migrate-bq verify oauth-token"
     # These are the standard options all tools support.
     stdopts="--help --debug --log-file --project --account --service-account"
 
