@@ -411,6 +411,7 @@ def _get_status_flag_sql():
 
   return result
 
+
 # Used in the context of queries where "participant" is the table for the participant being
 # selected.
 _NATIVE_AMERICAN_SQL = """
@@ -566,12 +567,15 @@ _RECONCILIATION_REPORT_SQL = ("""
 # Generates a report on participants that have withdrawn in the past n days,
 # including their biobank ID, withdrawal time, and whether they are Native American
 # (as biobank samples for Native Americans are disposed of differently.)
+# only send Biobank IDs of participants that had samples collected.
 _WITHDRAWAL_REPORT_SQL = ("""
   SELECT
     CONCAT(:biobank_id_prefix, participant.biobank_id) biobank_id,
     ISODATE[participant.withdrawal_time] withdrawal_time,""" + _NATIVE_AMERICAN_SQL + """
-    FROM participant
-   WHERE participant.withdrawal_time >= :n_days_ago
+  FROM participant
+  WHERE participant.withdrawal_time >= :n_days_ago
+  AND
+  (SELECT COUNT(*) FROM biobank_stored_sample WHERE biobank_id=participant.biobank_id)>0
 """)
 
 def in_past_n_days(result, now, n_days, ordered_before=None):
