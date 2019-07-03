@@ -183,7 +183,7 @@ def gcp_gsutil_command(cmd, args, flags=None):
   """
   if not cmd or not args or not isinstance(args, str):
     _logger.error('invalid parameters passed to gcp_gsutil_command.')
-    return False
+    return -1, '', 'invalid parameters passed to gcp_gsutil_command.'
 
   prog = which('gsutil')
   p_args = shlex.split('{0} {1} {2} {3}'.format(prog, flags if flags else '', cmd, args))
@@ -516,12 +516,15 @@ def gcp_format_sql_instance(project, port=3320, replica=False):
 def gcp_activate_sql_proxy(instances):
   """
   Call cloud_sql_proxy to make a connection to the given instance.
+  NOTE: If you are using a GCPProcessContext object, call self.gcp_env.activate_sql_proxy() instead
+        of calling this function directly.
   :param instances: full instance information, format "name:location:database=tcp:PORT, ...".
   :return: popen object
   """
   prog = which('cloud_sql_proxy')
-  p = subprocess.Popen(shlex.split('{0} -instances={1}'.format(prog, instances)))
-
+  p = subprocess.Popen(shlex.split('{0} -instances={1} '.format(prog, instances)))
+  if not p:
+    raise IOError('failed to execute cloud_sql_proxy')
   return p
 
 def gcp_bq_command(cmd, args, global_flags=None, command_flags=None, headless=True):
@@ -547,3 +550,59 @@ def gcp_bq_command(cmd, args, global_flags=None, command_flags=None, headless=Tr
             args))
 
   return run_external_program(p_args)
+
+
+def gcp_cp(src, dest, args=None, flags=None):
+  """
+  GCP utility to copy files.
+  :param src: source path and file name
+  :param dest: destination path and file name
+  :param args: additional args for the `cp` command
+  :param flags: additional flags to pass to gsutil
+  :return: True if completed successfully otherwise False
+  """
+  if not src or not isinstance(src, str):
+    raise ValueError('invalid src value')
+  if '//' in src[:6] and not src.startswith('gs://'):
+    raise ValueError('src does not start with g://')
+
+  if not dest or not isinstance(dest, str):
+    raise ValueError('invalid dest value')
+  if '//' in src[:6] and not src.startswith('gs://'):
+    raise ValueError('dest does not start with g://')
+
+  cmd = 'cp {0}'.format(args if args else '').strip()
+  pcode, so, se = gcp_gsutil_command(cmd, '{0} {1}'.format(src, dest), flags=flags)
+  if pcode != 0:
+    _logger.error('failed to copy file. ({0}: {1}).'.format(pcode, se))
+    return False
+
+  return True
+
+
+def gcp_mv(src, dest, args=None, flags=None):
+  """
+  GCP utility to move files.
+  :param src: source path and file name
+  :param dest: destination path and file name
+  :param args: additional flags for the `mv` command
+  :param flags: additional flags to pass to gsutil
+  :return: True if completed successfully otherwise False
+  """
+  if not src or not isinstance(src, str):
+    raise ValueError('invalid src value')
+  if '//' in src[:6] and not src.startswith('gs://'):
+    raise ValueError('src does not start with g://')
+
+  if not dest or not isinstance(dest, str):
+    raise ValueError('invalid dest value')
+  if '//' in src[:6] and not src.startswith('gs://'):
+    raise ValueError('dest does not start with g://')
+
+  cmd = 'mv {0}'.format(args if args else '').strip()
+  pcode, so, se = gcp_gsutil_command(cmd, '{0} {1}'.format(src, dest), flags=flags)
+  if pcode != 0:
+    _logger.error('failed to copy file. ({0}: {1}).'.format(pcode, se))
+    return False
+
+  return True
