@@ -334,9 +334,9 @@ class ParticipantSummaryDao(UpdatableDao):
     return super(ParticipantSummaryDao, self)._add_order_by(query, order_by, field_names, fields)
 
   def _make_query(self, session, query_def):
-    query = super(ParticipantSummaryDao, self)._make_query(session, query_def)
+    query, order_by_field_names = super(ParticipantSummaryDao, self)._make_query(session, query_def)
     query.options(selectinload(ParticipantSummary.patientStatus))
-    return query
+    return query, order_by_field_names
 
   def make_query_filter(self, field_name, value):
     """Handle HPO and code values when parsing filter values."""
