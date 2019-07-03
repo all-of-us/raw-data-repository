@@ -71,8 +71,8 @@ class DvOrderDaoTestBase(FlaskTestBase):
     self.assertEquals(status, OrderShipmentTrackingStatus.ENROUTE)
 
   @mock.patch('dao.dv_order_dao.MayoLinkApi')
+  #pylint disable=unused-argument
   def test_service_unavailable(self, mocked_api):
-    #pylint disable=unused-argument
     def raises(*args):
       raise ServiceUnavailable()
 
