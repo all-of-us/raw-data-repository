@@ -292,7 +292,6 @@ class ParticipantSummary(Base):
     foreign_keys=participantId,
     remote_side="PatientStatus.participantId",
     viewonly=True,
-    lazy='raise',
     uselist=True
   )
 
