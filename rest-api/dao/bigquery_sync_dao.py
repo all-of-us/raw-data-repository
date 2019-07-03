@@ -48,7 +48,7 @@ class BQParticipantSummaryGenerator(object):
 
   def make_participant_summary(self, p_id):
     """
-    Build a Participant Summary BQRecord object for the give participant id.
+    Build a Participant Summary BQRecord object for the given participant id.
     :param p_id: participant id
     :return: BQRecord object
     """
@@ -269,7 +269,7 @@ class BQParticipantSummaryGenerator(object):
       baseline_modules = config.getSettingList('baseline_ppi_questionnaire_fields')
     except ValueError:
       pass
-    except AssertionError:
+    except AssertionError:  # unittest errors because of GCP SDK
       pass
 
     consent_modules = {
@@ -397,7 +397,7 @@ class BQParticipantSummaryGenerator(object):
       baseline_tests = config.getSettingList('baseline_sample_test_codes')
     except ValueError:
       pass
-    except AssertionError:
+    except AssertionError:  # unittest errors because of GCP SDK
       pass
 
     dna_tests = ["1ED10", "2ED10", "1ED04", "1SAL", "1SAL2"]
@@ -405,9 +405,8 @@ class BQParticipantSummaryGenerator(object):
       dna_tests = config.getSettingList('dna_sample_test_codes')
     except ValueError:
       pass
-    except AssertionError:
+    except AssertionError:  # unittest errors because of GCP SDK
       pass
-
 
     sql = """
       select bo.biobank_order_id, bo.created, bo.collected_site_id, bo.processed_site_id, bo.finalized_site_id, 
