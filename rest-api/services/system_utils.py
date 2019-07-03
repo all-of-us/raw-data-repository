@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #
 # Small helper functions for system services
 #
@@ -322,3 +323,27 @@ def make_api_request(host, api_path, headers=None, cookies=None, timeout=60, req
       _logger.debug(resp_data)
 
   return resp_code, resp_data
+
+def print_progress_bar(iteration, total, prefix='', suffix='', decimals=1, bar_length=90, fill='█'):
+  """
+  Call in a loop to create terminal progress bar.
+  https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
+  https://gist.github.com/aubricus/f91fb55dc6ba5557fbab06119420dd6a
+  :param iteration: Required  : current iteration (Int)
+  :param total: Required  : total iterations (Int)
+  :param prefix: Optional  : prefix string (Str)
+  :param suffix: Optional  : suffix string (Str)
+  :param decimals: Optional  : positive number of decimals in percent complete (Int)
+  :param bar_length: Optional  : character length of bar (Int)
+  :param fill: Optional  : bar fill character (Str)
+  """
+  str_format = "{0:." + str(decimals) + "f}"
+  percents = str_format.format(100 * (iteration / float(total)))
+  filled_length = int(round(bar_length * iteration / float(total)))
+  bar = fill * filled_length + '-' * (bar_length - filled_length)
+
+  sys.stdout.write('\r{0} [{1}] {2}{3} {4}'.format(prefix, bar, percents, '%', suffix))
+
+  if iteration == total:
+    sys.stdout.write('\n')
+  sys.stdout.flush()
