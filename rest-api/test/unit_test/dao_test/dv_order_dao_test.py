@@ -70,8 +70,8 @@ class DvOrderDaoTestBase(FlaskTestBase):
     status = self.dao._enumerate_order_tracking_status(fhir_resource.extension.get(url=VIBRENT_FHIR_URL + 'tracking-status').valueString)
     self.assertEquals(status, OrderShipmentTrackingStatus.ENROUTE)
 
-  @mock.patch('dao.dv_order_dao.MayoLinkApi')
   #pylint disable=unused-argument
+  @mock.patch('dao.dv_order_dao.MayoLinkApi')
   def test_service_unavailable(self, mocked_api):
     def raises(*args):
       raise ServiceUnavailable()
