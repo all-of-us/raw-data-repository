@@ -135,7 +135,7 @@ class DvOrderApi(UpdatableApi):
 
     merged_resource = None
     if not p_id:
-      raise BadRequest('Request must include participant id and must be of type int')
+      raise BadRequest('Request must include participant id')
     if str(barcode_url).lower() == VIBRENT_BARCODE_URL:
       _id = self.dao.get_id(ObjDict({'participantId': p_id, 'order_id': int(bo_id)}))
       ex_obj = self.dao.get(_id)
