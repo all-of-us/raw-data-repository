@@ -32,3 +32,4 @@ xmltodict==0.12
 requests
 requests_toolbelt
 sqlparse
+enum34

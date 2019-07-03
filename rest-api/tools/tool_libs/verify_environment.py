@@ -24,8 +24,13 @@ tool_desc = 'test local environment'
 
 class Verify(object):
 
-  def __init__(self, args):
+  def __init__(self, args, gcp_env):
+    """
+    :param args: command line arguments.
+    :param gcp_env: gcp environment information, see: gcp_initialize().
+    """
     self.args = args
+    self.gcp_env = gcp_env
 
   def run(self):
     """
@@ -100,8 +105,8 @@ def run():
   parser.add_argument('--service-account', help='gcp service account', default=None)  # noqa
   args = parser.parse_args()
 
-  with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account):
-    process = Verify(args)
+  with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
+    process = Verify(args, gcp_env)
     exit_code = process.run()
     return exit_code
 
