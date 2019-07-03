@@ -27,6 +27,7 @@ from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, S
   BiobankOrderStatus, PatientStatusFlag
 from query import OrderBy, PropertyType, FieldFilter, Operator
 from sqlalchemy import or_
+from sqlalchemy.orm import selectinload
 from werkzeug.exceptions import BadRequest, NotFound
 
 
@@ -331,6 +332,11 @@ class ParticipantSummaryDao(UpdatableDao):
                                                               field_names,
                                                               fields)
     return super(ParticipantSummaryDao, self)._add_order_by(query, order_by, field_names, fields)
+
+  def _make_query(self, session, query_def):
+    query = super(ParticipantSummaryDao, self)._make_query(session, query_def)
+    query.options(selectinload(ParticipantSummary.patientStatus))
+    return query
 
   def make_query_filter(self, field_name, value):
     """Handle HPO and code values when parsing filter values."""
