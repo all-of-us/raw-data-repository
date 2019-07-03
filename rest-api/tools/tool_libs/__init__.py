@@ -38,7 +38,7 @@ class GCPEnvConfigObject(object):
       raise ValueError('invalid instance value')
 
     if self._sql_proxy_process:
-      self._sql_proxy_process.kill()
+      self._sql_proxy_process.terminate()
       self._sql_proxy_process = None
 
     self._sql_proxy_process = gcp_activate_sql_proxy(instances)
