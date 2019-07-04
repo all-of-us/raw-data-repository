@@ -75,7 +75,7 @@ class DvOrderDaoTestBase(FlaskTestBase):
   #pylint disable=unused-argument
   def test_service_unavailable(self, mocked_api):
     #pylint disable=unused-argument
-    def raises(*args):#pylint disable=unused-argument
+    def raises(*args): #pylint disable=unused-argument
       #pylint disable=unused-argument
       raise ServiceUnavailable()
 
