@@ -1,6 +1,6 @@
 from model.base import Base
 from model.utils import Enum, UTCDateTime
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Index
 from participant_enums import SampleStatus
 
 
@@ -67,3 +67,7 @@ class BiobankStoredSample(Base):
 
   # Sample family ID
   family_id = Column('family_id', String(80), nullable=True)
+
+  __table_args__ = (
+    Index('ix_boi_test', 'biobank_order_identifier', 'test'),
+  )

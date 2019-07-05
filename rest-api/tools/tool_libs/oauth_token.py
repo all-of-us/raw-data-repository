@@ -6,37 +6,53 @@
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
 import logging
+import signal
+import time
 import sys
 
 import argparse
 from tools.tool_libs import GCPProcessContext
 from services.system_utils import setup_logging, setup_unicode
+from services.gcp_utils import gcp_get_app_access_token
 
 _logger = logging.getLogger('rdr_logger')
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
-tool_cmd = 'template'
-tool_desc = 'put tool help description here'
+tool_cmd = 'oauth-token'
+tool_desc = 'get oauth token for account or service account'
 
+do_continue = True
+original_sigint = signal.getsignal(signal.SIGINT)
 
-class ProgramTemplateClass(object):
+class OAuthTokenClass(object):
 
-  def __init__(self, args, gcp_env):
-    """
-    :param args: command line arguments.
-    :param gcp_env: gcp environment information, see: gcp_initialize().
-    """
+  def __init__(self, args):
     self.args = args
-    self.gcp_env = gcp_env
 
   def run(self):
     """
     Main program process
     :return: Exit code value
     """
-    # TODO: write program main process here after setting 'tool_cmd' and 'tool_desc'...
+    global do_continue
+    token = gcp_get_app_access_token()
+    print('\ntoken: {0}\n'.format(token))
+    print('press ctrl-c to clean up key')
+
+    while do_continue:
+      time.sleep(0.25)
+    print('\ncleaning up...')
     return 0
+
+def exit_program(signum, frame):  # pylint: disable=unused-argument
+  """
+  Gracefully handle ctrl-c
+  """
+  global do_continue
+  do_continue = False
+  # restore original handler
+  signal.signal(signal.SIGINT, original_sigint)
 
 
 def run():
@@ -54,8 +70,12 @@ def run():
   parser.add_argument('--service-account', help='gcp iam service account', default=None)  # noqa
   args = parser.parse_args()
 
-  with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-    process = ProgramTemplateClass(args, gcp_env)
+  global original_sigint
+  original_sigint = signal.getsignal(signal.SIGINT)
+  signal.signal(signal.SIGINT, exit_program)
+
+  with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account):
+    process = OAuthTokenClass(args)
     exit_code = process.run()
     return exit_code
 

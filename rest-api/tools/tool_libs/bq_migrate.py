@@ -12,9 +12,11 @@ import os
 import sys
 import tempfile
 
+
 import argparse
-from model.bq_base import BQ_SCHEMAS, BQDuplicateFieldException, BQInvalidSchemaException, BQInvalidModeException, \
-  BQSchemaStructureException, BQException, BQSchema
+from model import BQ_SCHEMAS
+from model.bq_base import BQDuplicateFieldException, BQInvalidSchemaException, BQInvalidModeException, \
+                            BQSchemaStructureException, BQException, BQSchema
 from services.gcp_utils import gcp_bq_command
 from services.system_utils import setup_logging, setup_unicode
 from tools.tool_libs import GCPProcessContext
@@ -27,10 +29,15 @@ tool_cmd = 'migrate-bq'
 tool_desc = 'bigquery schema migration tool'
 
 
-class ProgramTemplateClass(object):
+class BQMigration(object):
 
-  def __init__(self, args):
+  def __init__(self, args, gcp_env):
+    """
+    :param args: command line arguments.
+    :param gcp_env: gcp environment information, see: gcp_initialize().
+    """
     self.args = args
+    self.gcp_env = gcp_env
 
   def get_table_uri(self, table):
     """
@@ -135,6 +142,8 @@ class ProgramTemplateClass(object):
     Main program process
     :return: Exit code value
     """
+    # TODO: Validate dataset name exists in BigQuery
+
     for path, obj_name in BQ_SCHEMAS:
       mod = importlib.import_module(path, obj_name)
       mod_class = getattr(mod, obj_name)
@@ -183,8 +192,8 @@ def run():
                           default=None, metavar='SCHEMAS')  # noqa
   args = parser.parse_args()
 
-  with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account):
-    process = ProgramTemplateClass(args)
+  with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
+    process = BQMigration(args, gcp_env)
     exit_code = process.run()
     return exit_code
 

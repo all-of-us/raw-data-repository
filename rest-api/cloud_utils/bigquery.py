@@ -129,6 +129,8 @@ class BigQueryJob(object):
     > RECORD (where RECORD indicates that the field contains a nested schema)
     > or STRUCT (same as RECORD).
     """
+    if value is None:
+      return None
     mapping = cls.get_parsers_by_typename_map()
     parser = mapping.get(typename)
     if not parser:
@@ -154,8 +156,10 @@ class BigQueryJob(object):
   @staticmethod
   def _parse_timestamp(value):
     try:
+      if not value:
+        return None
       date = datetime.datetime.strptime(
-        re.sub(r'\bT\b', '', value),
+        re.sub(r'\bT\b', '', str(value)),
         '%Y-%m-%d %H:%M:%S.%f %Z'
       )
       if date.tzinfo is None:
@@ -164,7 +168,7 @@ class BigQueryJob(object):
     except ValueError:
       try:
         return datetime.datetime.utcfromtimestamp(float(value)).replace(tzinfo=pytz.UTC)
-      except ValueError:
+      except (ValueError, TypeError):
         raise ValueError("Could not parse {} as TIMESTAMP".format(value))
 
   @classmethod
