@@ -420,7 +420,7 @@ class BQRecord(object):
           raise KeyError('{0} key not in schema'.format(key))
         # TODO: Future: Validate value against schema BQField type and constraints here.
         # check for Enum32 object, if it is set the value to the enum value
-        if schema[key]['description'] and schema[key]['enum'] is True:
+        if schema and schema[key]['description'] and schema[key]['enum'] is True:
           try:
             mod_path, mod_name = schema[key]['description'].rsplit('.', 1)
             fld_enum = getattr(importlib.import_module(mod_path, mod_name), mod_name)
