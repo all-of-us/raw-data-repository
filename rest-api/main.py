@@ -12,6 +12,7 @@ import config_api
 import version_api
 from api import metrics_ehr_api
 from api.awardee_api import AwardeeApi
+from api.bigquery_participant_summary_api import BQParticipantSummaryApi
 from api.biobank_order_api import BiobankOrderApi
 from api.check_ppi_data_api import check_ppi_data
 from api.data_gen_api import DataGenApi, SpecDataGenApi
@@ -86,6 +87,12 @@ api.add_resource(ParticipantSummaryApi,
                  PREFIX + 'Participant/<participant_id:p_id>/Summary',
                  PREFIX + 'ParticipantSummary',
                  endpoint='participant.summary',
+                 methods=['GET'])
+
+# BigQuery version of Participant Summary API
+api.add_resource(BQParticipantSummaryApi,
+                 PREFIX + 'Participant/<participant_id:p_id>/TestSummary',
+                 endpoint='bq_participant.summary',
                  methods=['GET'])
 
 api.add_resource(ParticipantSummaryModifiedApi,

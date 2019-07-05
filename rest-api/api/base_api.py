@@ -4,8 +4,10 @@ import app_util
 from flask import request, jsonify, url_for
 from flask_restful import Resource
 from model.utils import to_client_participant_id
+from dao.bigquery_sync_dao import deferred_bq_participant_summary_update
 from query import OrderBy, Query
 from werkzeug.exceptions import BadRequest, NotFound
+from google.appengine.ext import deferred
 
 
 DEFAULT_MAX_RESULTS = 100
@@ -84,6 +86,8 @@ class BaseApi(Resource):
     resource = request.get_json(force=True)
     m = self._get_model_to_insert(resource, participant_id)
     result = self._do_insert(m)
+    if participant_id:
+      deferred.defer(deferred_bq_participant_summary_update, participant_id)
     return self._make_response(result)
 
   def list(self, participant_id=None):
@@ -223,6 +227,8 @@ class UpdatableApi(BaseApi):
       expected_version = _parse_etag(etag)
     m = self._get_model_to_update(resource, id_, expected_version, participant_id)
     self._do_update(m)
+    if participant_id:
+      deferred.defer(deferred_bq_participant_summary_update, participant_id)
     return self._make_response(m)
 
   def patch(self, id_):
