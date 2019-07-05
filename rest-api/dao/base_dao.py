@@ -630,6 +630,8 @@ def json_serial(obj):
     return obj.isoformat()
   if isinstance(obj, messages.Enum):
     return str(obj)
+  if hasattr(obj, 'name'):
+    return obj.name
   raise TypeError("Type not serializable")
 
 

@@ -95,6 +95,37 @@ class BigQueryJob(object):
     return result
 
   @classmethod
+  def _merge_schema_data(cls, schema, row):
+    """ Recursive function to merge schema and values together """
+    data = collections.OrderedDict()
+    tmp_row = zip(schema, row['f'])
+
+    for field, value in tmp_row:
+      if field['mode'] == 'REPEATED':
+        sub_rows = value['v']
+        data[field['name']] = list()
+        for sub_row in sub_rows:
+          data[field['name']].append(cls._merge_schema_data(field['fields'], sub_row['v']))
+      else:
+        data[field['name']] = value['v']
+
+    return data
+
+  @classmethod
+  def get_rows(cls, response):
+    """ an alternate method to get rows from a response object """
+    if not response:
+      raise ValueError('invalid parameter value for response')
+
+    rows = list()
+    schema = response['schema']['fields']
+    for row in response['rows']:
+      rows.append(cls._merge_schema_data(schema, row))
+
+    return rows
+
+
+  @classmethod
   def get_rows_from_response(cls, response):
     """
     Make a `list` of `Row` (namedtuple) objects representing the bigquery response dict structure.

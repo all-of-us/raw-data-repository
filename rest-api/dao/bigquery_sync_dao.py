@@ -530,3 +530,12 @@ class BQParticipantSummaryGenerator(object):
     # Because of the complexity and need to make this right, I will create a new ticket.
     # I believe all the data needed to calculate this is in the 'summary' parameter.
     return data
+
+
+def deferred_bq_participant_summary_update(p_id):
+  """
+  Deferred task to update the Participant Summary record for the given participant.
+  :param p_id: Participant ID
+  """
+  gen = BQParticipantSummaryGenerator()
+  gen.save_participant_summary(p_id, gen.make_participant_summary(p_id))
