@@ -6,7 +6,7 @@ import config
 import httplib2
 import xmltodict
 from api.base_api import UpdatableApi
-from api_util import RDR, format_json_enum
+from api_util import RDR_AND_PTC, format_json_enum
 from app_util import auth_required
 from werkzeug.exceptions import ServiceUnavailable
 
@@ -68,7 +68,7 @@ class MayoLinkApi(UpdatableApi):
       self.pw = self.creds.get('password')
       self.account = self.creds.get('account')
 
-  @auth_required(RDR)
+  @auth_required(RDR_AND_PTC)
   def post(self, order):
     xml = self.__dict_to_mayo_xml__(order)
     return self.__post__(xml)
