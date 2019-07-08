@@ -164,8 +164,10 @@ class QuestionnaireResponseDao(BaseDao):
     # to get the exclusive lock if another thread is updating the participant. See DA-269.
     # (We need to lock both participant and participant summary because the summary row may not
     # exist yet.)
-    self._update_participant_summary(
-        session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json)
+    with self.session() as new_session:
+      self._update_participant_summary(
+        new_session, questionnaire_response, code_ids, questions, questionnaire_history,
+        resource_json)
 
     super(QuestionnaireResponseDao, self).insert_with_session(session, questionnaire_response)
     # Mark existing answers for the questions in this response given previously by this participant
@@ -360,7 +362,7 @@ class QuestionnaireResponseDao(BaseDao):
       # this is a requirement from PTSC
       if participant_summary.loginPhoneNumber is not None and \
         participant_summary.loginPhoneNumber.startswith(TEST_LOGIN_PHONE_NUMBER_PREFIX):
-        ParticipantDao().switch_to_test_account(session, participant_summary.participantId)
+        ParticipantDao().switch_to_test_account(session, participant)
 
       # update participant gender/race answers table
       if race_code_ids:

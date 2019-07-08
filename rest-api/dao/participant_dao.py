@@ -360,12 +360,11 @@ class ParticipantDao(UpdatableDao):
     # Update the version and add history row
     self._do_update(session, participant, participant)
 
-  def switch_to_test_account(self, session, participant_id):
+  def switch_to_test_account(self, session, participant):
     test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
 
-    participant = self.get_for_update(session, participant_id)
     if participant is None:
-      raise BadRequest('No participant %r for HPO ID udpate.' % participant_id)
+      raise BadRequest('No participant %r for HPO ID udpate.')
 
     if participant.hpoId == test_hpo_id:
       return
