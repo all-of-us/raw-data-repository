@@ -5,9 +5,13 @@ import mock
 from dao.dv_order_dao import DvOrderDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
+from fhir_utils import SimpleFhirR4Reader
+from api_util import VIBRENT_FHIR_URL
 from model.participant import Participant
+from participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus
 from test_data import load_test_data_json
 from unit_test_util import FlaskTestBase
+from werkzeug.exceptions import ServiceUnavailable
 
 
 class DvOrderDaoTestBase(FlaskTestBase):
@@ -55,3 +59,31 @@ class DvOrderDaoTestBase(FlaskTestBase):
     self.assertEquals(put_response['biobankOrderId'], '12345')
     self.assertEquals(post_response['meta']['versionId'].strip('W/'), '"1"')
     self.assertEquals(put_response['meta']['versionId'].strip('W/'), '"2"')
+
+  def test_enumerate_shipping_status(self):
+    fhir_resource = SimpleFhirR4Reader(self.post_request)
+    status = self.dao._enumerate_order_shipping_status(fhir_resource.status)
+    self.assertEquals(status, OrderShipmentStatus.SHIPPED)
+
+  def test_enumerate_tracking_status(self):
+    fhir_resource = SimpleFhirR4Reader(self.post_delivery)
+    status = self.dao._enumerate_order_tracking_status(fhir_resource.extension.get(url=VIBRENT_FHIR_URL + 'tracking-status').valueString)
+    self.assertEquals(status, OrderShipmentTrackingStatus.ENROUTE)
+
+  @mock.patch('dao.dv_order_dao.MayoLinkApi')
+  def test_service_unavailable(self, mocked_api):
+    #pylint: disable=unused-argument
+    def raises(*args):
+      raise ServiceUnavailable()
+
+    with self.assertRaises(ServiceUnavailable):
+      mocked_api.return_value.post.side_effect = raises
+      self.dao.send_order(self.put_request, self.participant.participantId)
+
+
+
+
+
+
+
+
