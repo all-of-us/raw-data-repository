@@ -11,10 +11,7 @@
     "exporter@all-of-us-rdr-ptsc-1-test.iam.gserviceaccount.com": {
       "roles": ["exporter"]
     },
-    "vibrent-drc-qa@vibrent-drc-qa-165017.iam.gserviceaccount.com": {
-      "roles": ["ptc"]
-    },
-    "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
+    "careevolution@all-of-us-rdr-careevo-test.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"],
       "whitelisted_ip_ranges": {
         "ip6": ["::0/0"],
