@@ -5,6 +5,7 @@ As of now, `raw-data-repository` (RDR) is a Google App Engine application that m
 These are the steps to stand up a new RDR environment:
 
 0. Create a Google Cloud Project (`PROJECT`) for the environment
+0. Enable `Cloud SQL Admin API`
 0. Create required service accounts
     * `configurator@<PROJECT>.iam.gserviceaccount.com`
         * `Storage Admin`
@@ -18,12 +19,15 @@ These are the steps to stand up a new RDR environment:
     * biobank samples
     * ghost id
     * consent pdf
+0. Create BigQuery `rdr_ops_data_view` dataset
+    * either via the web interface or with `bq mk --dataset rdr_ops_data_view`
 0. Update config and tooling files
-    0. Create `rest-api/config/config_<PROJECT>.json` for the new project
-    0. Create `rest-api/cron_<PROJECT>.yaml` to override any settings from `cron_default.yaml` (if needed)
-    0. Update `rest-api/tools/auth_setup.sh` to know how to handle the new project
-    0. Update `rest-api/tools/deploy_app.sh` to know how to handle the new project
-    0. Update `rest-api/tools/build_cron_yaml.py` to know how to handle the new project
+    * Create `rest-api/config/config_<PROJECT>.json` for the new project
+    * Create `rest-api/cron_<PROJECT>.yaml` to override any settings from `cron_default.yaml` (if needed)
+    * Update `rest-api/tools/auth_setup.sh` to know how to handle the new project
+    * Update `rest-api/tools/deploy_app.sh` to know how to handle the new project
+    * Update `rest-api/tools/build_cron_yaml.py` to know how to handle the new project
+    * update `rest-api/services/gcp_config.py` to know how to handle the new project
 0. commit changes and create local tag (`TAG`) `<PROJECT>-initial`. _Do **not** push this tag to github._
 0. From Google Cloud Console, Create new App Engine application (just enable it for the project)
 0. run `tools/deploy_app.sh --target app --version <TAG> --project <PROJECT> --account <USER>@pmi-ops.org`
@@ -33,5 +37,6 @@ These are the steps to stand up a new RDR environment:
         * then run `tools/setup_database.sh --continue_creating_instance --project <PROJECT> --account <USER>@pmi-ops.org`
 0. run `tools/setup_database.sh --project <PROJECT> --account <USER>@pmi-ops.org`
 0. run `tools/deploy_app.sh --target all --version <TAG> --project <PROJECT> --account <USER>@pmi-ops.org`
+0. run `python -m tools migrate-bq --project all-of-us-rdr-xxxx --dataset rdr_ops_data_view`
 0. run `tools/import_data.sh --project <PROJECT> --account <USER>@pmi-ops.org`
 0. set up circle-ci deployment (if needed)
