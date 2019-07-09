@@ -76,6 +76,19 @@ class BQGenderSchema(BQSchema):
   gender_id = BQField('gender_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
+class BQPhysicalMeasurements(BQSchema):
+  """
+  Participant Physical Measurements
+  """
+  status = BQField('status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  status_id = BQField('status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+  created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+  created_site = BQField('created_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  created_site_id = BQField('created_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+  finalized_site = BQField('finalized_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  finalized_site_id = BQField('finalized_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+  finalized = BQField('finalized', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+
 class BQBiobankSampleSchema(BQSchema):
   """
   Biobank sample information
@@ -101,6 +114,8 @@ class BQBiobankOrderSchema(BQSchema):
   """
   biobank_order_id = BQField('biobank_order_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
   created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+  status = BQField('status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  status_id = BQField('status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
   dv_order = BQField('dv_order', BQFieldTypeEnum.BOOLEAN, BQFieldModeEnum.NULLABLE)
   collected_site = BQField('collected_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
   collected_site_id = BQField('collected_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
@@ -176,14 +191,7 @@ class BQParticipantSummarySchema(BQSchema):
   sexual_orientation = BQField('sexual_orientation', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
   sexual_orientation_id = BQField('sexual_orientation_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
-  pm_status = BQField('pm_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  pm_status_id = BQField('pm_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-  pm_created = BQField('pm_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
-  pm_created_site = BQField('pm_created_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  pm_created_site_id = BQField('pm_created_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-  pm_finalized_site = BQField('pm_finalized_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  pm_finalized_site_id = BQField('pm_finalized_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-  pm_finalized = BQField('pm_finalized', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+  pm = BQRecordField('pm', schema=BQPhysicalMeasurements)
 
   races = BQRecordField('races', schema=BQRaceSchema)
   genders = BQRecordField('genders', schema=BQGenderSchema)

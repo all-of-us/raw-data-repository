@@ -1,4 +1,5 @@
-from dateutil import parser
+import datetime
+from dateutil import parser, tz
 from sqlalchemy import func, desc
 
 import config
@@ -15,7 +16,9 @@ from model.participant import Participant
 from model.questionnaire import QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse
 from model.site import Site
-from participant_enums import EnrollmentStatus, WithdrawalStatus, WithdrawalReason, SuspensionStatus, SampleStatus
+from participant_enums import EnrollmentStatus, WithdrawalStatus, WithdrawalReason, SuspensionStatus, SampleStatus, \
+                               BiobankOrderStatus
+
 
 
 class BigQuerySyncDao(UpsertableDao):
@@ -46,10 +49,11 @@ class BQParticipantSummaryGenerator(object):
 
     return dict1
 
-  def make_participant_summary(self, p_id):
+  def make_participant_summary(self, p_id, convert_to_enum=False):
     """
     Build a Participant Summary BQRecord object for the given participant id.
     :param p_id: participant id
+    :param convert_to_enums: If schema field description includes Enum class info, convert value to Enum.
     :return: BQRecord object
     """
     if not self.dao:
@@ -73,7 +77,7 @@ class BQParticipantSummaryGenerator(object):
       # calculate distinct visits
       summary = self._update_schema(summary, self._calculate_distinct_visits(summary))
 
-      return BQRecord(schema=BQParticipantSummarySchema, data=summary)
+      return BQRecord(schema=BQParticipantSummarySchema, data=summary, convert_to_enum=convert_to_enum)
 
   def save_participant_summary(self, p_id, bqrecord):
     """
@@ -362,24 +366,31 @@ class BQParticipantSummaryGenerator(object):
     :param session: DAO session object
     :return: dict
     """
-    pm = session.query(PhysicalMeasurements.created, PhysicalMeasurements.createdSiteId, PhysicalMeasurements.final,
+    data = {}
+    pm_list = list()
+
+    query = session.query(PhysicalMeasurements.created, PhysicalMeasurements.createdSiteId, PhysicalMeasurements.final,
                        PhysicalMeasurements.finalized, PhysicalMeasurements.finalizedSiteId,
                        PhysicalMeasurements.status).\
             filter(PhysicalMeasurements.participantId == p_id).\
-            order_by(desc(PhysicalMeasurements.created)).first()
-    if not pm:
-      return {}
+            order_by(desc(PhysicalMeasurements.created))
+    # sql = self.dao.query_to_text(query)
+    results = query.all()
 
-    data = {
-      'pm_status': str(pm.status) if pm.status else str(PhysicalMeasurementsStatus.COMPLETED),
-      'pm_status_id': int(pm.status) if pm.status else int(PhysicalMeasurementsStatus.COMPLETED),
-      'pm_created': pm.created,
-      'pm_created_site': self._lookup_site_name(pm.createdSiteId, session),
-      'pm_created_site_id': pm.createdSiteId,
-      'pm_finalized': pm.finalized,
-      'pm_finalized_site': self._lookup_site_name(pm.finalizedSiteId, session),
-      'pm_finalized_site_id': pm.finalizedSiteId,
-    }
+    for row in results:
+      pm_list.append({
+        'status': str(PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.UNSET),
+        'status_id': int(PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.UNSET),
+        'created': row.created,
+        'created_site': self._lookup_site_name(row.createdSiteId, session),
+        'created_site_id': row.createdSiteId,
+        'finalized': row.finalized,
+        'finalized_site': self._lookup_site_name(row.finalizedSiteId, session),
+        'finalized_site_id': row.finalizedSiteId,
+      })
+
+    if len(pm_list) > 0:
+      data['pm'] = pm_list
     return data
 
   def _prep_biobank_info(self, p_id, session):
@@ -410,7 +421,7 @@ class BQParticipantSummaryGenerator(object):
 
     sql = """
       select bo.biobank_order_id, bo.created, bo.collected_site_id, bo.processed_site_id, bo.finalized_site_id, 
-              bos.test, bos.collected, bos.processed, bos.finalized, 
+              bos.test, bos.collected, bos.processed, bos.finalized, bo.order_status,
               bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed, 
               bss.status as bb_status, (
                 select count(1) from biobank_dv_order bdo where bdo.biobank_order_id = bo.biobank_order_id
@@ -431,6 +442,8 @@ class BQParticipantSummaryGenerator(object):
         orders.append({
           'biobank_order_id': row.biobank_order_id,
           'created': row.created,
+          'status': str(BiobankOrderStatus(row.order_status) if row.order_status else BiobankOrderStatus.UNSET),
+          'status_id': int(BiobankOrderStatus(row.order_status) if row.order_status else BiobankOrderStatus.UNSET),
           'dv_order': 'false' if row.dv_order == 0 else 'true',
           'collected_site': self._lookup_site_name(row.collected_site_id, session),
           'collected_site_id': row.collected_site_id,
@@ -525,10 +538,31 @@ class BQParticipantSummaryGenerator(object):
     :param summary: summary data
     :return: dict
     """
+    def datetime_to_date(val):
+      """
+      Change from UTC to middle of the US before extracting date. That way if we have an early and late visit
+      they will end up as the same day.
+      """
+      tmp = val.replace(tzinfo=tz.tzutc()).astimezone(tz.gettz('America/Denver'))
+      return datetime.date(tmp.year, tmp.month, tmp.day)
+
     data = {}
-    # TODO: Calculate distinct visits here.
-    # Because of the complexity and need to make this right, I will create a new ticket.
-    # I believe all the data needed to calculate this is in the 'summary' parameter.
+    dates = list()
+
+    if 'pm' in summary:
+      for pm in summary['pm']:
+        if pm['status_id'] != int(PhysicalMeasurementsStatus.CANCELLED) and pm['finalized']:
+          dates.append(datetime_to_date(pm['finalized']))
+
+    if 'biobank_orders' in summary:
+      for order in summary['biobank_orders']:
+        if order['status_id'] != int(BiobankOrderStatus.CANCELLED) and 'samples' in order:
+          for sample in order['samples']:
+            if 'finalized' in sample and sample['finalized'] and isinstance(sample['finalized'], datetime.datetime):
+              dates.append(datetime_to_date(sample['finalized']))
+
+    dates = list(set(dates))  # de-dup list
+    data['distinct_visits'] = len(dates)
     return data
 
 

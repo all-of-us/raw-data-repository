@@ -131,7 +131,7 @@ class BigQueryRecordTest(unittest.TestCase):
 
   def test_schema_nested_data(self):
     """ test a BQRecord object with schema and nested data """
-    record = BQRecord(schema=BQTestSchema, data=self.full_data)
+    record = BQRecord(schema=BQTestSchema, data=self.full_data, convert_to_enum=False)
     new_data = record.to_dict()
 
     self.assertEqual(self.full_data, new_data)

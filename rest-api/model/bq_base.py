@@ -371,12 +371,16 @@ class BQRecord(object):
   """
   __schema__ = None
   __fields__ = None
+  _convert_to_enum = True
 
-  def __init__(self, schema=None, data=None):
+  def __init__(self, schema=None, data=None, convert_to_enum=True):
     """
     :param schema: BQSchema type, BQSchema instance or schema json string.
     :param data: initial dict of data for object
+    :param convert_to_enums: If schema field description includes Enum class info, convert value to Enum.
     """
+    self._convert_to_enum = convert_to_enum
+
     if schema:
       # if schema is a json string, convert it to a BQSchema object.
       if isinstance(schema, str):
@@ -420,11 +424,14 @@ class BQRecord(object):
           raise KeyError('{0} key not in schema'.format(key))
         # TODO: Future: Validate value against schema BQField type and constraints here.
         # check for Enum32 object, if it is set the value to the enum value
-        if schema and schema[key]['description'] and schema[key]['enum'] is True:
+        if self._convert_to_enum and schema and schema[key]['description'] and schema[key]['enum'] is True:
           try:
             mod_path, mod_name = schema[key]['description'].rsplit('.', 1)
             fld_enum = getattr(importlib.import_module(mod_path, mod_name), mod_name)
-            dest[key] = fld_enum(val)
+            if isinstance(val, int):
+              dest[key] = fld_enum(val)
+            else:
+              dest[key] = fld_enum[val]
           except AttributeError:
             dest[key] = val
           except ValueError:
