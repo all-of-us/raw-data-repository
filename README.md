@@ -727,7 +727,8 @@ one minute.
 ### `PATCH /Participant/:pid/PhysicalMeasurements/:id`
 
 Payload for cancelling/restoring/amending a physical measurement looks like this:
-`{
+```
+{
   "cancelledInfo": {
     "author": {
       "system": "https://www.pmi-ops.org/healthpro-username",
@@ -740,7 +741,8 @@ Payload for cancelling/restoring/amending a physical measurement looks like this
   },
   "reason": "text field for justification",
   "status": "cancelled"
-}`
+}
+```
 
 This will change the status to `CANCELLED/RESTORED/AMENDED` as appropriate.
 When syncing against the `PhysicalMeasurements/_history` api check for this field specifically.
