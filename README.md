@@ -723,6 +723,38 @@ The Bundle's `link` array will include a link with relation=`next` if more resul
 Otherwise the array will contain a `link` with relation=`sync` that can be used to check for new results in
 one minute.
 
+### Cancellation/Amending/Restoring Physical Measurements
+### `PATCH /Participant/:pid/PhysicalMeasurements/:id`
+
+Payload for cancelling/restoring/amending a physical measurement looks like this:
+`{
+  "cancelledInfo": {
+    "author": {
+      "system": "https://www.pmi-ops.org/healthpro-username",
+      "value": "name@pmi-ops.org"
+    },
+    "site": {
+      "system": "https://www.pmi-ops.org/site-id",
+      "value": "hpo-site-somesitename"
+    }
+  },
+  "reason": "text field for justification",
+  "status": "cancelled"
+}`
+
+This will change the status to `CANCELLED/RESTORED/AMENDED` as appropriate.
+When syncing against the `PhysicalMeasurements/_history` api check for this field specifically.
+Other fields of interest on edited measurements are:
+
+```
+cancelled_username
+cancelled_site_id
+cancelled_time
+reason
+```
+An amended PhysicalMeasurement will have an amended_measurement_id that points to the original measurement.
+These are defined by the enum `PhysicalMeasurementsStatus`
+
 ## BiobankOrder API
 
 Maintains records of orders placed from HealthPro to the Biobank. Each order is
@@ -751,6 +783,27 @@ Read a BiobankOrder by id.
 #### `PATCH /Participant/:pid/BiobankOrder/:oid`
 
 Cancel or restore a BiobankOrder by id.
+
+An edited biobank order (cancel/restore/amend) has a payload as follows.
+```
+{
+  "amendedReason": "Text justification",
+  "cancelledInfo": {
+    "author": {
+      "system": "https://www.pmi-ops.org/healthpro-username",
+      "value": "name@pmi-ops.org"
+    },
+    "site": {
+      "system": "https://www.pmi-ops.org/site-id",
+      "value": "hpo-site-somesite"
+    }
+  },
+  "status": "cancelled"
+}
+```
+
+When syncing biobank orders check that order_status has not changed to amended/cancelled/restored.
+These are defined by the enum `BiobankOrderStatus`
 
 #### `PUT /Participant/:pid/BiobankOrder/:oid`
 
