@@ -433,6 +433,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
       consentForStudyEnrollmentAuthored=TIME_2,
       firstName=self.first_name, lastName=self.last_name, email=self.email,
       lastModified=TIME_2,
+      patientStatus=[],
     )
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -520,7 +521,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         consentForStudyEnrollmentTime=TIME_2,
         consentForStudyEnrollmentAuthored=TIME_2,
         lastModified=TIME_2,
-        firstName=self.first_name, lastName=self.last_name, email=self.email)
+        firstName=self.first_name, lastName=self.last_name, email=self.email,
+        patientStatus=[])
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
   def test_insert_qr_three_times(self):
@@ -572,7 +574,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         consentForStudyEnrollmentTime=TIME_2,
         consentForStudyEnrollmentAuthored=TIME_2,
         lastModified=TIME_2,
-        firstName=self.first_name, lastName=self.last_name, email=self.email)
+        firstName=self.first_name, lastName=self.last_name, email=self.email,
+        patientStatus=[])
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
     qr2 = QuestionnaireResponse(questionnaireResponseId=2, questionnaireId=2,
@@ -620,7 +623,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
         consentForStudyEnrollmentTime=TIME_2,
         consentForStudyEnrollmentAuthored=TIME_2,
-        firstName=self.first_name, lastName=self.last_name, email=self.email)
+        firstName=self.first_name, lastName=self.last_name, email=self.email,
+        patientStatus=[])
     # The participant summary should be updated with the new gender identity, but nothing else
     # changes.
     self.assertEquals(expected_ps2.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -664,7 +668,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         consentForStudyEnrollmentTime=TIME_2,
         consentForStudyEnrollmentAuthored=TIME_2,
         lastModified=TIME_4,
-        firstName=self.first_name, lastName=self.last_name, email=self.email)
+        firstName=self.first_name, lastName=self.last_name, email=self.email,
+        patientStatus=[])
     # The participant summary should be updated with the new gender identity, but nothing else
     # changes.
     self.assertEquals(expected_ps3.asdict(), self.participant_summary_dao.get(1).asdict())

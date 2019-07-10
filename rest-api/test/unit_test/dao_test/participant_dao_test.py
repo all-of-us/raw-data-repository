@@ -171,7 +171,7 @@ class ParticipantDaoTest(SqlTestBase):
     expected_ps = self._participant_summary_with_defaults(
         participantId=1, biobankId=2, signUpTime=time, hpoId=PITT_HPO_ID,
         lastModified=time2, firstName=summary.firstName, lastName=summary.lastName,
-      email=summary.email)
+      email=summary.email, patientStatus=[])
     self.assertEquals(expected_ps.asdict(), ps.asdict())
 
     p2_last_modified = p2.lastModified
