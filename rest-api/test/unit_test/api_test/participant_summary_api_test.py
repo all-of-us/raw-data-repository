@@ -1,6 +1,7 @@
 import datetime
 import httplib
 import threading
+import unittest
 try:                                # Python 2.x
   from urllib import urlencode
 except ImportError:                 # Python 3
@@ -2588,6 +2589,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&lastModified=lt2016-01-04',
                            [[ps_3]])
 
+  @unittest.skip("Only used for manual testing, should not be included in automated test suite")
   def testQuery_patient_status(self):
     """
     Test that patient status queries filter as expected
