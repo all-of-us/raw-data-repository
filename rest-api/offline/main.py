@@ -204,6 +204,17 @@ def bigquery_sync():
   offline.bigquery_sync.sync_bigquery()
   return '{"success": "true"}'
 
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def patient_status_backfill():
+  # this should always be a manually run job, but we have to schedule it.
+  now = datetime.utcnow()
+  if now.day == 01 and now.month == 01:
+    logging.info('skipping the scheduled run.')
+    return '{"success": "true"}'
+  offline.patient_status_backfill.backfill_patient_status()
+  return '{"success": "true"}'
+
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
   offline_app = Flask(__name__)
@@ -290,6 +301,12 @@ def _build_pipeline_app():
     PREFIX + 'BigQuerySync',
     endpoint='bigquery_sync',
     view_func=bigquery_sync,
+    methods=['GET'])
+
+  offline_app.add_url_rule(
+    PREFIX + 'PatientStatusBackfill',
+    endpoint='patient_status_backfill',
+    view_func=bigquery_rebuild,
     methods=['GET'])
 
   offline_app.after_request(app_util.add_headers)
