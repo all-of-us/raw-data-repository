@@ -152,7 +152,7 @@ class BQParticipantSummaryGenerator(object):
       raise LookupError('participant lookup for P{0} failed.'.format(p_id))
 
     hpo = session.query(HPO.name).filter(HPO.hpoId == p.hpoId).first()
-    organization = session.query(Organization.displayName). \
+    organization = session.query(Organization.externalId). \
                           filter(Organization.organizationId == p.organizationId).first()
 
 
@@ -167,7 +167,7 @@ class BQParticipantSummaryGenerator(object):
       'sign_up_time': p.signUpTime,
       'hpo': hpo.name if hpo else None,
       'hpo_id': p.hpoId,
-      'organization': organization.displayName if organization else None,
+      'organization': organization.externalId if organization else None,
       'organization_id': p.organizationId,
 
       'withdrawal_status': str(withdrawal_status),
