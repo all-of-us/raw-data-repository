@@ -20,6 +20,7 @@ from offline.participant_counts_over_time import calculate_participant_metrics
 from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
 from offline.sa_key_remove import delete_service_account_keys
 from offline.table_exporter import TableExporter
+from offline.patient_status_backfill import backfill_patient_status
 import offline.sync_consent_files
 import offline.update_ehr_status
 import offline.genomic_pipeline
@@ -212,7 +213,7 @@ def patient_status_backfill():
   if now.day == 01 and now.month == 01:
     logging.info('skipping the scheduled run.')
     return '{"success": "true"}'
-  offline.patient_status_backfill.backfill_patient_status()
+  backfill_patient_status()
   return '{"success": "true"}'
 
 def _build_pipeline_app():
@@ -306,7 +307,7 @@ def _build_pipeline_app():
   offline_app.add_url_rule(
     PREFIX + 'PatientStatusBackfill',
     endpoint='patient_status_backfill',
-    view_func=bigquery_rebuild,
+    view_func=patient_status_backfill,
     methods=['GET'])
 
   offline_app.after_request(app_util.add_headers)
