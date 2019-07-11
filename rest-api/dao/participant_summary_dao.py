@@ -591,7 +591,7 @@ class ParticipantSummaryDao(UpdatableDao):
         if order_finalized_date == finalized_time.date() and order.biobankOrderId != id_ and \
           order.orderStatus != BiobankOrderStatus.CANCELLED:
           day_has_order = True
-        elif order.biobankOrderId == id_ and order.orderStatus == BiobankOrderStatus.AMENDED:
+        elif order.biobankOrderId == id_ and amendment:
           day_has_order = True
     elif not finalized_time and amendment:
       day_has_order = True

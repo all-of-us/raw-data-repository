@@ -604,8 +604,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
         self.order_dao._do_update(session, order, existing_order)
 
       summary = self.dao.get(self.participant.participantId)
-      # distinct count should be 2
-      self.assertEquals(summary.numberDistinctVisits, 2)
+      self.assertEquals(summary.numberDistinctVisits, 1)
 
      # change test, should not change count.
       with self.order_dao.session() as session:
@@ -614,8 +613,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
         self.order_dao._do_update(session, order, existing_order)
 
       summary = self.dao.get(self.participant.participantId)
-      # distinct count should be 2
-      self.assertEquals(summary.numberDistinctVisits, 2)
+      self.assertEquals(summary.numberDistinctVisits, 1)
 
     # test scenario 5
     with clock.FakeClock(TIME_12):
@@ -737,6 +735,56 @@ class ParticipantSummaryDaoTest(NdbTestBase):
       summary = self.dao.get(self.participant.participantId)
       self.assertEquals(summary.numberDistinctVisits, 2)
 
+  def test_amending_biobank_order_distinct_visit_count(self):
+    self.participant = self._insert(Participant(participantId=9, biobankId=13))
+    with clock.FakeClock(TIME_5):
+      order = self.order_dao.insert(self._make_biobank_order(biobankOrderId='2', identifiers=[
+        BiobankOrderIdentifier(system='b', value='d')], samples=[BiobankOrderedSample(
+                                                        biobankOrderId='2',
+                                                        finalized=TIME_5,
+                                                        test=BIOBANK_TESTS[0],
+                                                        description='description',
+                                                        processingRequired=True)]))
+
+      summary = self.dao.get(self.participant.participantId)
+      self.assertEquals(summary.numberDistinctVisits, 1)
+
+    with clock.FakeClock(TIME_7):
+      amend_order = self._get_amended_info(order)
+      with self.order_dao.session() as session:
+        self.order_dao._do_update(session, amend_order, order)
+
+      # Shouldn't change on a simple amendment (unless finalized time on samples change)
+      summary = self.dao.get(self.participant.participantId)
+      self.assertEquals(summary.numberDistinctVisits, 1)
+
+    with clock.FakeClock(TIME_7_5):
+      cancel_request = cancel_biobank_order()
+      order = self.order_dao.update_with_patch(order.biobankOrderId, cancel_request, order.version)
+
+    # A cancelled order (even after amending) should reduce count (unless some other valid order on same day)
+    summary = self.dao.get(self.participant.participantId)
+    self.assertEquals(summary.numberDistinctVisits, 0)
+
+  @staticmethod
+  def _get_amended_info(order):
+    amendment = dict(amendedReason='I had to change something', amendedInfo={
+      "author": {
+        "system": "https://www.pmi-ops.org/healthpro-username",
+        "value": "mike@pmi-ops.org"
+      },
+      "site": {
+        "system": "https://www.pmi-ops.org/site-id",
+        "value": "hpo-site-monroeville"
+      }
+    })
+
+    order.amendedReason = amendment['amendedReason']
+    order.amendedInfo = amendment['amendedInfo']
+    return order
+
+
+
   def _make_biobank_order(self, **kwargs):
     """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
 
@@ -792,3 +840,4 @@ def _decode_token(token):
   if token is None:
     return None
   return json.loads(urlsafe_b64decode(token))
+

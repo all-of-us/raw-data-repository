@@ -270,10 +270,10 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.biospecimenProcessedSiteId = None
     participant_summary.biospecimenFinalizedSiteId = None
 
-    finalized_time = self.get_random_sample_finalized_time(obj)
     amendment = False
-    if not finalized_time:
+    if obj.orderStatus == BiobankOrderStatus.AMENDED:
       amendment = True
+    finalized_time = self.get_random_sample_finalized_time(obj)
     is_distinct_visit = ParticipantSummaryDao().calculate_distinct_visits(
         participant_summary.participantId, finalized_time, obj.biobankOrderId, amendment)
 
