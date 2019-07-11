@@ -178,7 +178,7 @@ def _upsert_samples_from_csv(csv_reader):
 
     return written
   except ValueError, e:
-    raise DataError(e)
+    raise DataError('Error upserting samples from CSV: %s' % e.message)
 
 def _parse_timestamp(row, key, sample):
   str_val = row[key]
