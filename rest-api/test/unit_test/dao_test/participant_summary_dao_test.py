@@ -36,6 +36,8 @@ TIME_4 = datetime.datetime(2019, 1, 28)
 TIME_5 = datetime.datetime(2019, 2, 11)
 TIME_6 = datetime.datetime(2018, 12, 4)
 TIME_7 = datetime.datetime(2019, 2, 18)
+TIME_7_5 = datetime.datetime(2019, 2, 19)
+
 TIME_8 = datetime.datetime(2018, 4, 4)
 TIME_9 = datetime.datetime(2018, 4, 3)
 TIME_10 = datetime.datetime(2019, 1, 1)
@@ -602,8 +604,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
         self.order_dao._do_update(session, order, existing_order)
 
       summary = self.dao.get(self.participant.participantId)
-      # distinct count should be 2
-      self.assertEquals(summary.numberDistinctVisits, 2)
+      self.assertEquals(summary.numberDistinctVisits, 1)
 
      # change test, should not change count.
       with self.order_dao.session() as session:
@@ -612,8 +613,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
         self.order_dao._do_update(session, order, existing_order)
 
       summary = self.dao.get(self.participant.participantId)
-      # distinct count should be 2
-      self.assertEquals(summary.numberDistinctVisits, 2)
+      self.assertEquals(summary.numberDistinctVisits, 1)
 
     # test scenario 5
     with clock.FakeClock(TIME_12):
@@ -630,7 +630,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
       # distinct count should be 1
       self.assertEquals(summary.numberDistinctVisits, 1)
 
-      self.order_dao.insert(self._make_biobank_order(biobankOrderId='701', identifiers=[
+      other_order = self.order_dao.insert(self._make_biobank_order(biobankOrderId='701', identifiers=[
           BiobankOrderIdentifier(system='n', value='t')], samples=[BiobankOrderedSample(
               biobankOrderId='701',
               finalized=TIME_11,
@@ -652,12 +652,138 @@ class ParticipantSummaryDaoTest(NdbTestBase):
       # distinct count should be 3
       self.assertEquals(summary.numberDistinctVisits, 3)
 
+      self.measurement_json = json.dumps(load_measurement_json(self.participant.participantId,
+                                                               TIME_12.isoformat()))
+      self.measurement_dao.insert(self._make_physical_measurements(physicalMeasurementsId=120,
+                                                                   finalized=TIME_12))
+
+      summary = self.dao.get(self.participant.participantId)
+      # distinct count should be 3
+      self.assertEquals(summary.numberDistinctVisits, 3)
       cancel_request = cancel_biobank_order()
-      # cancel biobank order
+      # cancel biobank order with PM on same day
       self.order_dao.update_with_patch(order.biobankOrderId, cancel_request, order.version)
+      summary = self.dao.get(self.participant.participantId)
+      # distinct count should be 3 (the PM on same day still counts)
+      self.assertEquals(summary.numberDistinctVisits, 3)
+
+      self.measurement_json = json.dumps(load_measurement_json(self.participant.participantId,
+                                                               TIME_1.isoformat()))
+      self.measurement_dao.insert(self._make_physical_measurements(physicalMeasurementsId=150,
+                                                                   finalized=TIME_1))
+      summary = self.dao.get(self.participant.participantId)
+      # distinct count should be 4
+      self.assertEquals(summary.numberDistinctVisits, 4)
+      # cancel order with pm on different day
+      self.order_dao.update_with_patch(other_order.biobankOrderId, cancel_request, order.version)
+      summary = self.dao.get(self.participant.participantId)
+      # distinct count should be 3
+      self.assertEquals(summary.numberDistinctVisits, 3)
+
+  def test_pm_restore_cancel_biobank_restore_cancel(self):
+    self.participant = self._insert(Participant(participantId=9, biobankId=13))
+    self.measurement_json = json.dumps(load_measurement_json(self.participant.participantId,
+                                                             TIME_4.isoformat()))
+    measurement = self.measurement_dao.insert(self._make_physical_measurements(physicalMeasurementsId=669,
+                                                                 finalized=TIME_4))
+    summary = self.dao.get(self.participant.participantId)
+    self.assertEquals(summary.numberDistinctVisits, 1)
+
+    with clock.FakeClock(TIME_5):
+      order = self.order_dao.insert(self._make_biobank_order(biobankOrderId='2', identifiers=[
+        BiobankOrderIdentifier(system='b', value='d')], samples=[BiobankOrderedSample(
+                                                        biobankOrderId='2',
+                                                        finalized=TIME_5,
+                                                        test=BIOBANK_TESTS[0],
+                                                        description='description',
+                                                        processingRequired=True)]))
+
+
+    with clock.FakeClock(TIME_7):
       summary = self.dao.get(self.participant.participantId)
       # distinct count should be 2
       self.assertEquals(summary.numberDistinctVisits, 2)
+
+      # cancel the measurement
+      cancel_measurement = get_restore_or_cancel_info()
+      with self.measurement_dao.session() as session:
+        self.measurement_dao.update_with_patch(measurement.physicalMeasurementsId, session,
+                                               cancel_measurement)
+
+      summary = self.dao.get(self.participant.participantId)
+      self.assertEquals(summary.numberDistinctVisits, 1)
+
+    with clock.FakeClock(TIME_7):
+      restore_measurement = get_restore_or_cancel_info(status='restored')
+      with self.measurement_dao.session() as session:
+        self.measurement_dao.update_with_patch(measurement.physicalMeasurementsId, session,
+                                               restore_measurement)
+
+      summary = self.dao.get(self.participant.participantId)
+      self.assertEquals(summary.numberDistinctVisits, 2)
+
+
+      cancel_request = cancel_biobank_order()
+      order = self.order_dao.update_with_patch(order.biobankOrderId, cancel_request, order.version)
+
+      summary = self.dao.get(self.participant.participantId)
+      self.assertEquals(summary.numberDistinctVisits, 1)
+
+      restore_order = get_restore_or_cancel_info(status='restored')
+      restore_order['amendedReason'] = 'some reason'
+      self.order_dao.update_with_patch(order.biobankOrderId, restore_order, order.version)
+      summary = self.dao.get(self.participant.participantId)
+      self.assertEquals(summary.numberDistinctVisits, 2)
+
+  def test_amending_biobank_order_distinct_visit_count(self):
+    self.participant = self._insert(Participant(participantId=9, biobankId=13))
+    with clock.FakeClock(TIME_5):
+      order = self.order_dao.insert(self._make_biobank_order(biobankOrderId='2', identifiers=[
+        BiobankOrderIdentifier(system='b', value='d')], samples=[BiobankOrderedSample(
+                                                        biobankOrderId='2',
+                                                        finalized=TIME_5,
+                                                        test=BIOBANK_TESTS[0],
+                                                        description='description',
+                                                        processingRequired=True)]))
+
+      summary = self.dao.get(self.participant.participantId)
+      self.assertEquals(summary.numberDistinctVisits, 1)
+
+    with clock.FakeClock(TIME_7):
+      amend_order = self._get_amended_info(order)
+      with self.order_dao.session() as session:
+        self.order_dao._do_update(session, amend_order, order)
+
+      # Shouldn't change on a simple amendment (unless finalized time on samples change)
+      summary = self.dao.get(self.participant.participantId)
+      self.assertEquals(summary.numberDistinctVisits, 1)
+
+    with clock.FakeClock(TIME_7_5):
+      cancel_request = cancel_biobank_order()
+      order = self.order_dao.update_with_patch(order.biobankOrderId, cancel_request, order.version)
+
+    # A cancelled order (even after amending) should reduce count (unless some other valid order on same day)
+    summary = self.dao.get(self.participant.participantId)
+    self.assertEquals(summary.numberDistinctVisits, 0)
+
+  @staticmethod
+  def _get_amended_info(order):
+    amendment = dict(amendedReason='I had to change something', amendedInfo={
+      "author": {
+        "system": "https://www.pmi-ops.org/healthpro-username",
+        "value": "mike@pmi-ops.org"
+      },
+      "site": {
+        "system": "https://www.pmi-ops.org/site-id",
+        "value": "hpo-site-monroeville"
+      }
+    })
+
+    order.amendedReason = amendment['amendedReason']
+    order.amendedInfo = amendment['amendedInfo']
+    return order
+
+
 
   def _make_biobank_order(self, **kwargs):
     """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
@@ -714,3 +840,4 @@ def _decode_token(token):
   if token is None:
     return None
   return json.loads(urlsafe_b64decode(token))
+
