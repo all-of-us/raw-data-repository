@@ -727,6 +727,8 @@ one minute.
 ### `PATCH /Participant/:pid/PhysicalMeasurements/:id`
 
 Payload for cancelling/restoring/amending a physical measurement looks like this:
+
+#### Cancelled
 ```
 {
   "cancelledInfo": {
@@ -741,6 +743,36 @@ Payload for cancelling/restoring/amending a physical measurement looks like this
   },
   "reason": "text field for justification",
   "status": "cancelled"
+}
+```
+
+#### Restored
+```
+{
+  "reason": "Fixed something...",
+  "restoredInfo": {
+    "author": {
+      "system": "https://www.pmi-ops.org/healthpro-username",
+      "value": "name@pmi-ops.org"
+    },
+    "site": {
+      "system": "https://www.pmi-ops.org/site-id",
+      "value": "hpo-site-monroeville"
+    }
+  },
+  "status": "restored"
+}
+```
+
+#### Amendment uses the FHIR amends extension to identify amended measurements
+```
+{
+  "extension": [{
+    "url": "http://terminology.pmi-ops.org/StructureDefinition/amends",
+    "valueReference": {
+      "reference": "PhysicalMeasurements/%(physical_measurement_id)s"
+    }
+  }]
 }
 ```
 
