@@ -54,8 +54,3 @@ cron:
   timezone: America/New_York
   schedule: every 2 minutes
   target: offline
-- description: Backfill Patient Status (Manual)
-  url: /offline/PatientStatusBackfill
-  timezone: America/New_York
-  schedule: 1 of jan 12:00
-  target: offline

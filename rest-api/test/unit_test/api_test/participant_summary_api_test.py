@@ -1,7 +1,7 @@
 import datetime
 import httplib
 import threading
-import unittest
+
 try:                                # Python 2.x
   from urllib import urlencode
 except ImportError:                 # Python 3
@@ -23,9 +23,8 @@ from model.hpo import HPO
 from dao.hpo_dao import HPODao
 from participant_enums import ANSWER_CODE_TO_RACE, TEST_HPO_ID, TEST_HPO_NAME, OrganizationType, ANSWER_CODE_TO_GENDER
 from test_data import load_measurement_json, load_biobank_order_json, to_client_participant_id
-from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase,\
-  get_restore_or_cancel_info
-
+from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase, \
+  get_restore_or_cancel_info, SqlAlchemyQueryLogger
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
@@ -2589,7 +2588,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&lastModified=lt2016-01-04',
                            [[ps_3]])
 
-  @unittest.skip("Only used for manual testing, should not be included in automated test suite")
   def testQuery_patient_status(self):
     """
     Test that patient status queries filter as expected
@@ -2652,56 +2650,68 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       '_sort': 'lastModified',
     }
 
-    self.assertBundle(
-      map(_make_entry, [summary_1, summary_2]),
-      self.send_get('ParticipantSummary?{}'.format(urlencode(default_query_params)))
-    )
+    with SqlAlchemyQueryLogger(self.hpo_dao._database.get_engine()) as spy:
+      self.assertBundle(
+        map(_make_entry, [summary_1, summary_2]),
+        self.send_get('ParticipantSummary?{}'.format(urlencode(default_query_params)))
+      )
+      spy.assertCount(self, 1)
 
-    query_params = dict(default_query_params, **{
-      'patientStatus': '{}:YES'.format(status_org_name)
-    })
-    url = 'ParticipantSummary?{}'.format(urlencode(query_params))
-    self.assertBundle(
-      map(_make_entry, [summary_1]),
-      self.send_get(url)
-    )
+    with SqlAlchemyQueryLogger(self.hpo_dao._database.get_engine()) as spy:
+      query_params = dict(default_query_params, **{
+        'patientStatus': '{}:YES'.format(status_org_name)
+      })
+      url = 'ParticipantSummary?{}'.format(urlencode(query_params))
+      self.assertBundle(
+        map(_make_entry, [summary_1]),
+        self.send_get(url)
+      )
+      spy.assertCount(self, 2) # this first request populates the organization cache
 
-    query_params = dict(default_query_params, **{
-      'patientStatus': '{}:NO_ACCESS'.format(status_org_name)
-    })
-    url = 'ParticipantSummary?{}'.format(urlencode(query_params))
-    self.assertBundle(
-      map(_make_entry, [summary_2]),
-      self.send_get(url)
-    )
+    with SqlAlchemyQueryLogger(self.hpo_dao._database.get_engine()) as spy:
+      query_params = dict(default_query_params, **{
+        'patientStatus': '{}:NO_ACCESS'.format(status_org_name)
+      })
+      url = 'ParticipantSummary?{}'.format(urlencode(query_params))
+      self.assertBundle(
+        map(_make_entry, [summary_2]),
+        self.send_get(url)
+      )
+      spy.assertCount(self, 1)
 
-    query_params = default_query_params.items() + [
-      ('patientStatus', '{}:YES'.format(status_org_name)),
-      ('patientStatus', '{}:NO_ACCESS'.format(status_org_name)),
-    ]
-    url = 'ParticipantSummary?{}'.format(urlencode(query_params))
-    self.assertBundle(
-      [],
-      self.send_get(url)
-    )
+    with SqlAlchemyQueryLogger(self.hpo_dao._database.get_engine()) as spy:
+      query_params = default_query_params.items() + [
+        ('patientStatus', '{}:YES'.format(status_org_name)),
+        ('patientStatus', '{}:NO_ACCESS'.format(status_org_name)),
+      ]
+      url = 'ParticipantSummary?{}'.format(urlencode(query_params))
+      self.assertBundle(
+        [],
+        self.send_get(url)
+      )
+      spy.assertCount(self, 1)
 
-    query_params = dict(default_query_params, **{
-      'patientStatus': '{}:UNSET'.format(status_org_name)
-    })
-    url = 'ParticipantSummary?{}'.format(urlencode(query_params))
-    self.assertBundle(
-      [],
-      self.send_get(url)
-    )
+    with SqlAlchemyQueryLogger(self.hpo_dao._database.get_engine()) as spy:
+      query_params = dict(default_query_params, **{
+        'patientStatus': '{}:UNSET'.format(status_org_name)
+      })
+      url = 'ParticipantSummary?{}'.format(urlencode(query_params))
+      self.assertBundle(
+        [],
+        self.send_get(url)
+      )
+      spy.assertCount(self, 1)
 
-    query_params = dict(default_query_params, **{
-      'patientStatus': 'AZ_TUCSON_BANNER_HEALTH:UNSET'
-    })
-    url = 'ParticipantSummary?{}'.format(urlencode(query_params))
-    self.assertBundle(
-      map(_make_entry, [summary_1, summary_2]),
-      self.send_get(url)
-    )
+    with SqlAlchemyQueryLogger(self.hpo_dao._database.get_engine()) as spy:
+      query_params = dict(default_query_params, **{
+        'patientStatus': 'AZ_TUCSON_BANNER_HEALTH:UNSET'
+      })
+      url = 'ParticipantSummary?{}'.format(urlencode(query_params))
+      self.assertBundle(
+        map(_make_entry, [summary_1, summary_2]),
+        self.send_get(url)
+      )
+      spy.assertCount(self, 1)
 
   def test_gender_identity_pmi_skip(self):
     SqlTestBase.setup_codes(["PIIState_VA", "male_sex", PMI_SKIP_CODE, "straight", "email_code", "en",

@@ -3,6 +3,7 @@ import StringIO
 import collections
 import contextlib
 import copy
+
 import faker
 from glob import glob
 # Python 3: change 'imp' to 'importlib'
@@ -12,6 +13,7 @@ import json
 import mock
 import os
 import re
+import sqlalchemy.event
 import unittest
 import uuid
 import warnings
@@ -405,12 +407,13 @@ class _TestDb(object):
         organizationId=PITT_ORG_ID,
         hpoId=PITT_HPO_ID))
 
-    site_dao.insert(Site(
+    created_site = site_dao.insert(Site(
       siteName='Phoenix clinic',
       googleGroup='hpo-site-clinic-phoenix',
       mayolinkClientNumber=7035770,
       organizationId=AZ_ORG_ID,
       hpoId=AZ_HPO_ID))
+    self.site_id_az = created_site.siteId
 
   def _setup_sqlite_views(self):
     """
@@ -860,3 +863,44 @@ def cancel_biobank_order():
     "status": "cancelled"
   }
 
+
+class SqlAlchemyQueryLogger(object):
+  _event_name = 'after_execute'
+
+  def __init__(self, target):
+    self._target = target
+    self._captured = []
+
+  @property
+  def count(self):
+    return len(self._captured)
+
+  def __enter__(self):
+    sqlalchemy.event.listen(self._target, self._event_name, self._handle_event)
+    return self
+
+  def __exit__(self, exc_type, exc_value, traceback):
+    sqlalchemy.event.remove(self._target, self._event_name, self._handle_event)
+    return False
+
+  def _handle_event(self, **kwargs):
+    self._captured.append(kwargs.get('clauseelement'))
+
+  def assertCount(self, testCase, expectedCount):
+    import sqlparse
+    def format_clause(i, clauseelement):
+      return "--- QUERY {} ---\n{}".format(i, sqlparse.format(str(clauseelement), reindent=True))
+
+    testCase.assertEqual(
+      expectedCount,
+      self.count,
+      "expected {} queries but saw {}:\n{}".format(
+        expectedCount,
+        self.count,
+        '\n'.join([
+          format_clause(i, clauseelement)
+          for i, clauseelement
+          in enumerate(self._captured)
+        ])
+      )
+    )

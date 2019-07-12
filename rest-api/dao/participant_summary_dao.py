@@ -25,10 +25,8 @@ from model.utils import to_client_participant_id, get_property_type
 from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus, \
   EnrollmentStatus, SuspensionStatus, WithdrawalStatus, get_bucketed_age, EhrStatus, \
   BiobankOrderStatus, PatientStatusFlag
-from query import OrderBy, PropertyType, FieldFilter, FieldJsonContainsFilter, Operator
+from query import OrderBy, PropertyType, FieldFilter, Operator
 from sqlalchemy import or_
-# Note: leaving for future use if we go back to using a relationship to PatientStatus table.
-# from sqlalchemy.orm import selectinload
 from werkzeug.exceptions import BadRequest, NotFound
 
 
@@ -265,18 +263,16 @@ class ParticipantSummaryDao(UpdatableDao):
   def get_id(self, obj):
     return obj.participantId
 
-  # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
-  # def get_eager_child_loading_query_options(self):
-  #   return [
-  #     sqlalchemy.orm.subqueryload(self.model_type.patientStatus)
-  #   ]
+  def get_eager_child_loading_query_options(self):
+    return [
+      sqlalchemy.orm.joinedload(self.model_type.patientStatus)
+        .joinedload(PatientStatus.organization)
+    ]
 
   def get_with_children(self, obj_id):
     with self.session() as session:
-      # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
-      # return self.get_with_session(session, obj_id,
-      #                              options=self.get_eager_child_loading_query_options())
-      return self.get_with_session(session, obj_id)
+      return self.get_with_session(session, obj_id,
+                                   options=self.get_eager_child_loading_query_options())
 
   def _validate_update(self, session, obj, existing_obj):  # pylint: disable=unused-argument
     """Participant summaries don't have a version value; drop it from validation logic."""
@@ -339,9 +335,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
   def _make_query(self, session, query_def):
     query, order_by_field_names = super(ParticipantSummaryDao, self)._make_query(session, query_def)
-    # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
-    # query.options(selectinload(ParticipantSummary.patientStatus))
-    # sql = self.query_to_text(query)
+    query.options(self.get_eager_child_loading_query_options())
     return query, order_by_field_names
 
   def make_query_filter(self, field_name, value):
@@ -402,20 +396,9 @@ class ParticipantSummaryDao(UpdatableDao):
     organization = self.organization_dao.get_by_external_id(organization_external_id)
     if not organization:
       raise BadRequest('No organization found with name %s' % organization_external_id)
-    # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
-    # return PatientStatusFieldFilter(field_name, Operator.EQUALS, value,
-    #                                 organization=organization,
-    #                                 status=status)
-
-    if status == PatientStatusFlag.UNSET:
-      filter_value = '{{"organization": "{0}"}}'.format(organization.externalId)
-      filter_obj = FieldJsonContainsFilter(field_name, Operator.NOT_EQUALS, filter_value)
-    else:
-      filter_value = '{{"organization": "{0}", "status": "{1}"}}'.format(organization.externalId, str(status))
-      filter_obj = FieldJsonContainsFilter(field_name, Operator.EQUALS, filter_value)
-
-    return filter_obj
-
+    return PatientStatusFieldFilter(field_name, Operator.EQUALS, value,
+                                    organizationId=organization.organizationId,
+                                    status=status)
 
   def update_from_biobank_stored_samples(self, participant_id=None):
     """Rewrites sample-related summary data. Call this after updating BiobankStoredSamples.
@@ -660,15 +643,13 @@ class ParticipantSummaryDao(UpdatableDao):
     if result.get('genderIdentityId'):
       del result['genderIdentityId']  # deprecated in favor of genderIdentity
 
-    # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
-    # def format_patient_status_record(status_obj):
-    #   status_dict = self.patient_status_dao.to_client_json(status_obj)
-    #   return {
-    #     'organization': status_dict['organization'],
-    #     'status': status_dict['patient_status'],
-    #   }
-    # result['patientStatus'] = map(format_patient_status_record, model.patientStatus)
-    result['patientStatus'] = model.patientStatus
+    def format_patient_status_record(status_obj):
+      return {
+        'organization': status_obj.organization.externalId,
+        'status': str(status_obj.patientStatus),
+      }
+
+    result['patientStatus'] = map(format_patient_status_record, model.patientStatus)
 
     format_json_hpo(result, self.hpo_dao, 'hpoId')
     result['awardee'] = result['hpoId']
@@ -774,20 +755,20 @@ class PatientStatusFieldFilter(FieldFilter):
   FieldFilter class for patientStatus relationship field
   """
 
-  def __init__(self, field_name, operator, value, organization, status):
+  def __init__(self, field_name, operator, value, organizationId, status):
     super(PatientStatusFieldFilter, self).__init__(field_name, operator, value)
-    self.organization = organization
+    self.organizationId = organizationId
     self.status = status
 
   def add_to_sqlalchemy_query(self, query, field):
     if self.operator == Operator.EQUALS:
       if self.status == PatientStatusFlag.UNSET:
         criterion = sqlalchemy.not_(field.any(
-          PatientStatus.organizationId == self.organization.organizationId
+          PatientStatus.organizationId == self.organizationId
         ))
       else:
         criterion = field.any(sqlalchemy.and_(
-          PatientStatus.organizationId == self.organization.organizationId,
+          PatientStatus.organizationId == self.organizationId,
           PatientStatus.patientStatus == self.status
         ))
       return query.filter(criterion)

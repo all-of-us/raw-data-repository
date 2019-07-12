@@ -20,7 +20,6 @@ from offline.participant_counts_over_time import calculate_participant_metrics
 from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
 from offline.sa_key_remove import delete_service_account_keys
 from offline.table_exporter import TableExporter
-from offline.patient_status_backfill import backfill_patient_status
 import offline.sync_consent_files
 import offline.update_ehr_status
 import offline.genomic_pipeline
@@ -205,16 +204,6 @@ def bigquery_sync():
   offline.bigquery_sync.sync_bigquery()
   return '{"success": "true"}'
 
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def patient_status_backfill():
-  # this should always be a manually run job, but we have to schedule it.
-  now = datetime.utcnow()
-  if now.day == 01 and now.month == 01:
-    logging.info('skipping the scheduled run.')
-    return '{"success": "true"}'
-  backfill_patient_status()
-  return '{"success": "true"}'
 
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
@@ -302,12 +291,6 @@ def _build_pipeline_app():
     PREFIX + 'BigQuerySync',
     endpoint='bigquery_sync',
     view_func=bigquery_sync,
-    methods=['GET'])
-
-  offline_app.add_url_rule(
-    PREFIX + 'PatientStatusBackfill',
-    endpoint='patient_status_backfill',
-    view_func=patient_status_backfill,
     methods=['GET'])
 
   offline_app.after_request(app_util.add_headers)

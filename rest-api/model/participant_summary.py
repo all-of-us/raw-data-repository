@@ -9,7 +9,6 @@ from sqlalchemy import Column, Integer, String, Date, ForeignKey, Index, SmallIn
   UnicodeText, DateTime, event
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.mysql import JSON
 
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
@@ -285,17 +284,15 @@ class ParticipantSummary(Base):
   suspensionTime = Column('suspension_time', UTCDateTime)
 
   participant = relationship("Participant", back_populates="participantSummary")
-  # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
-  # # patientStatuses = relationship("PatientStatus", back_populates="participantSummary")
-  # patientStatus = relationship(
-  #   "PatientStatus",
-  #   primaryjoin="PatientStatus.participantId == ParticipantSummary.participantId",
-  #   foreign_keys=participantId,
-  #   remote_side="PatientStatus.participantId",
-  #   viewonly=True,
-  #   uselist=True
-  # )
-  patientStatus = Column('patient_status', JSON, nullable=True, default=list())
+  patientStatus = relationship(
+    "PatientStatus",
+    primaryjoin="PatientStatus.participantId == ParticipantSummary.participantId",
+    foreign_keys=participantId,
+    remote_side="PatientStatus.participantId",
+    viewonly=True,
+    lazy='raise',
+    uselist=True
+  )
 
   @declared_attr
   def hpoId(cls):

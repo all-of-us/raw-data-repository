@@ -4,6 +4,8 @@ import json
 import time
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 
+import sqlalchemy.exc
+
 import clock
 import config
 from code_constants import BIOBANK_TESTS
@@ -11,20 +13,20 @@ from dao.base_dao import json_serial
 from dao.biobank_order_dao import BiobankOrderDao
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
+from dao.participant_summary_dao import ParticipantSummaryDao, PatientStatusFieldFilter
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from model.biobank_stored_sample import BiobankStoredSample
 from model.measurements import PhysicalMeasurements
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
+from model.patient_status import PatientStatus
 from participant_enums import EnrollmentStatus, PhysicalMeasurementsStatus, SampleStatus, \
-  QuestionnaireStatus
+  QuestionnaireStatus, PatientStatusFlag
 from query import Query, Operator, FieldFilter, OrderBy
 from test_data import load_measurement_json
 from unit_test_util import NdbTestBase, PITT_HPO_ID, cancel_biobank_order, \
-  get_restore_or_cancel_info
-
+  get_restore_or_cancel_info, AZ_ORG_ID, PITT_ORG_ID, AZ_HPO_ID, SqlAlchemyQueryLogger
 
 NUM_BASELINE_PPI_MODULES = 3
 
@@ -137,6 +139,55 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     self.assert_no_results(self.two_filter_query)
     self.assert_results(self.ascending_biobank_id_query, [ps_2, ps_1])
     self.assert_results(self.descending_biobank_id_query, [ps_1, ps_2])
+
+  def testQuery_no_lazy_loading_patient_status(self):
+    participant_1 = Participant(participantId=1, biobankId=2)
+    self._insert(participant_1, 'Alice', 'Smith')
+    participant_2 = Participant(participantId=2, biobankId=1)
+    self._insert(participant_2, 'Zed', 'Zebra')
+    ps_1 = self.dao.get(1)
+
+    self.dao.patient_status_dao.insert(PatientStatus(
+      participantId=ps_1.participantId,
+      hpoId=AZ_HPO_ID,
+      organizationId=AZ_ORG_ID,
+      siteId=self._test_db.site_id_az,
+      patientStatus=PatientStatusFlag.YES,
+      user="foo"
+    ))
+    self.dao.patient_status_dao.insert(PatientStatus(
+      participantId=ps_1.participantId,
+      hpoId=PITT_HPO_ID,
+      organizationId=PITT_ORG_ID,
+      siteId=self._test_db.site_id,
+      patientStatus=PatientStatusFlag.YES,
+      user="foo"
+    ))
+
+    with self.assertRaises(sqlalchemy.exc.InvalidRequestError):
+      ps_1.patientStatus
+
+    def get_results_from_query(query):
+      query.options = self.dao.get_eager_child_loading_query_options()
+      return [
+        self.dao.to_client_json(item)
+        for item
+        in self.dao.query(query).items
+      ]
+
+    with SqlAlchemyQueryLogger(self.dao._database.get_engine()) as spy:
+      get_results_from_query(self.no_filter_query)
+
+      spy.assertCount(self, 1)
+
+    with SqlAlchemyQueryLogger(self.dao._database.get_engine()) as spy:
+      get_results_from_query(Query([
+        PatientStatusFieldFilter('patientStatus', Operator.EQUALS, 'value_is_ignored',
+                                 organizationId=AZ_ORG_ID,
+                                 status=PatientStatusFlag.YES)
+      ], None, 2, None))
+      spy.assertCount(self, 1)
+
 
   def testQuery_threeSummaries_paginate(self):
     participant_1 = Participant(participantId=1, biobankId=4)
@@ -828,6 +879,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
       if k not in kwargs:
         kwargs[k] = default_value
     return PhysicalMeasurements(**kwargs)
+
 
 def _with_token(query, token):
   return Query(query.field_filters, query.order_by, query.max_results, token)

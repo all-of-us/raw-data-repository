@@ -2,6 +2,7 @@ from model.base import Base, model_insert_listener, model_update_listener, Model
 from model.utils import Enum, UTCDateTime
 from participant_enums import PatientStatusFlag
 from sqlalchemy import Column, DateTime, Integer, ForeignKey, UniqueConstraint, Text, event, String
+from sqlalchemy.orm import relationship
 
 
 class PatientStatus(Base, ModelMixin):
@@ -25,6 +26,16 @@ class PatientStatus(Base, ModelMixin):
   comment = Column('comment', Text, nullable=True)
   authored = Column('authored', UTCDateTime)
   user = Column('user', String(80), nullable=False)
+
+  organization = relationship(
+    "Organization",
+    primaryjoin="PatientStatus.organizationId == Organization.organizationId",
+    foreign_keys=organizationId,
+    remote_side="Organization.organizationId",
+    viewonly=True,
+    lazy='raise',
+    uselist=False
+  )
 
   __table_args__ = (
     UniqueConstraint('participant_id', 'organization_id', name='uidx_patient_status'),

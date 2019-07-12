@@ -1,4 +1,3 @@
-import json
 import pytz
 from dao.base_dao import UpsertableDao
 from dao.code_dao import CodeDao
@@ -51,25 +50,6 @@ class PatientStatusDao(UpsertableDao):
 
     return model
 
-  def update_participant_summary(self, p_id):
-    """
-    Update the participant summary with the patient status data for the given participant
-    :param p_id: participant id
-    """
-    with self.session() as session:
-      data = list()
-      recs = session.query(PatientStatus.patientStatus, Organization.externalId). \
-        join(Organization). \
-        filter(PatientStatus.participantId == p_id).all()
-      for rec in recs:
-        # for filtering purposes, this must be in order of organization and then status.
-        data.append({'organization': rec.externalId, 'status': str(rec.patientStatus)})
-
-      if len(data) > 0:
-        sql = 'update participant_summary set patient_status = :data where participant_id = :pid'
-        # Note: don't bother to output pretty json or sort keys.
-        session.execute(sql, {'data': json.dumps(data, sort_keys=False), 'pid': p_id})
-
   def insert(self, obj):
     """Inserts an object into the database. The calling object may be mutated
     in the process."""
@@ -80,7 +60,6 @@ class PatientStatusDao(UpsertableDao):
         raise Conflict('Duplicate record found. Patient status must be updated, not inserted.')
 
     obj = super(PatientStatusDao, self).insert(obj)
-    self.update_participant_summary(obj.participantId)
     return obj
 
   def get_etag(self, org_id, pid):  # pylint: disable=unused-argument
@@ -110,7 +89,6 @@ class PatientStatusDao(UpsertableDao):
     with self.session() as session:
       obj = session.query(PatientStatus).filter_by(participantId=obj.participantId,
                                                   organizationId=obj.organizationId).first()
-    self.update_participant_summary(obj.participantId)
     return obj
 
   def _build_response_query(self, session, p_id, org_id):

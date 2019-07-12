@@ -46,8 +46,7 @@ class ParticipantSummaryApi(BaseApi):
     query = super(ParticipantSummaryApi, self)._make_query()
     query.always_return_token = self._get_request_arg_bool('_sync')
     query.backfill_sync = self._get_request_arg_bool('_backfill', True)
-    # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
-    # query.options = self.dao.get_eager_child_loading_query_options()
+    query.options = self.dao.get_eager_child_loading_query_options()
     return query
 
   def _make_bundle(self, results, id_field, participant_id):
