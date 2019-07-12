@@ -27,7 +27,7 @@ These are the steps to stand up a new RDR environment:
     * Update `rest-api/tools/auth_setup.sh` to know how to handle the new project
     * Update `rest-api/tools/deploy_app.sh` to know how to handle the new project
     * Update `rest-api/tools/build_cron_yaml.py` to know how to handle the new project
-    * update `rest-api/services/gcp_config.py` to know how to handle the new project
+    * Update `rest-api/services/gcp_config.py` to know how to handle the new project
 0. commit changes and create local tag (`TAG`) `<PROJECT>-initial`. _Do **not** push this tag to github._
 0. From Google Cloud Console, Create new App Engine application (just enable it for the project)
 0. run `tools/deploy_app.sh --target app --version <TAG> --project <PROJECT> --account <USER>@pmi-ops.org`
