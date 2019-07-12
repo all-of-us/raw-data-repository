@@ -34,6 +34,15 @@ def auth_required_cron(func):
     return func(*args, **kwargs)
   return wrapped
 
+def auth_required_task(func):
+  """A decorator that ensures that the user is a task job."""
+  def wrapped(*args, **kwargs):
+    if request.headers.get('X-Appengine-Taskname') and 'AppEngine-Google' in request.headers.get('User-Agent', ''):
+      logging.info('Appengine-Taskname ALLOWED for task endpoint.')
+      return func(*args, **kwargs)
+    logging.info('User {} NOT ALLOWED for task endpoint'.format(get_oauth_id()))
+    raise Forbidden()
+  return wrapped
 
 def nonprod(func):
   """The decorated function may never run in environments without config.ALLOW_NONPROD_REQUESTS."""
