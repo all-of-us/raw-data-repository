@@ -216,15 +216,15 @@ class BQParticipantSummaryGenerator(object):
       'contact_method_id': qnan.PIIContactInformation_RecontactMethod,
       'addresses': [
         {
-          'address_type': BQStreetAddressTypeEnum.RESIDENCE.name,
-          'address_type_id': BQStreetAddressTypeEnum.RESIDENCE.value,
-          'street_address_1': qnan.PIIAddress_StreetAddress,
-          'street_address_2': qnan.PIIAddress_StreetAddress2,
-          'city': qnan.StreetAddress_PIICity,
-          'state': qnan.StreetAddress_PIIState.replace('PIIState_', '').upper()
+          'addr_type': BQStreetAddressTypeEnum.RESIDENCE.name,
+          'addr_type_id': BQStreetAddressTypeEnum.RESIDENCE.value,
+          'addr_street_address_1': qnan.PIIAddress_StreetAddress,
+          'addr_street_address_2': qnan.PIIAddress_StreetAddress2,
+          'addr_city': qnan.StreetAddress_PIICity,
+          'addr_state': qnan.StreetAddress_PIIState.replace('PIIState_', '').upper()
                           if qnan.StreetAddress_PIIState else None,
-          'zip': qnan.StreetAddress_PIIZIP,
-          'country': 'us'
+          'addr_zip': qnan.StreetAddress_PIIZIP,
+          'addr_country': 'us'
         }
       ],
       'consents': [
@@ -286,13 +286,13 @@ class BQParticipantSummaryGenerator(object):
       for row in results:
         module_name = self._lookup_code_value(row.codeId, session)
         modules.append({
-          'module': module_name,
-          'baseline_module': 'true' if module_name in baseline_modules else 'false',
-          'authored': row.authored,
-          'created': row.created,
-          'language': row.language,
-          'status': BQModuleStatusEnum.SUBMITTED.name,
-          'status_id': BQModuleStatusEnum.SUBMITTED.value,
+          'mod_module': module_name,
+          'mod_baseline_module': 'true' if module_name in baseline_modules else 'false',
+          'mod_authored': row.authored,
+          'mod_created': row.created,
+          'mod_language': row.language,
+          'mod_status': BQModuleStatusEnum.SUBMITTED.name,
+          'mod_status_id': BQModuleStatusEnum.SUBMITTED.value,
         })
 
         # check if this is a module with consents.
@@ -354,6 +354,8 @@ class BQParticipantSummaryGenerator(object):
     data['education_id'] = self._lookup_code_id(qnan.EducationLevel_HighestGrade, session)
     data['income'] = qnan.Income_AnnualIncome
     data['income_id'] = self._lookup_code_id(qnan.Income_AnnualIncome, session)
+    data['sex'] = qnan.BiologicalSexAtBirth_SexAtBirth
+    data['sex_id'] = self._lookup_code_id(qnan.BiologicalSexAtBirth_SexAtBirth, session)
     data['sexual_orientation'] = qnan.TheBasics_SexualOrientation
     data['sexual_orientation_id'] = self._lookup_code_id(qnan.TheBasics_SexualOrientation, session)
 
@@ -379,14 +381,15 @@ class BQParticipantSummaryGenerator(object):
 
     for row in results:
       pm_list.append({
-        'status': str(PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.UNSET),
-        'status_id': int(PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.UNSET),
-        'created': row.created,
-        'created_site': self._lookup_site_name(row.createdSiteId, session),
-        'created_site_id': row.createdSiteId,
-        'finalized': row.finalized,
-        'finalized_site': self._lookup_site_name(row.finalizedSiteId, session),
-        'finalized_site_id': row.finalizedSiteId,
+        'pm_status': str(PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.UNSET),
+        'pm_status_id': int(PhysicalMeasurementsStatus(row.status) if row.status else
+                                PhysicalMeasurementsStatus.UNSET),
+        'pm_created': row.created,
+        'pm_created_site': self._lookup_site_name(row.createdSiteId, session),
+        'pm_created_site_id': row.createdSiteId,
+        'pm_finalized': row.finalized,
+        'pm_finalized_site': self._lookup_site_name(row.finalizedSiteId, session),
+        'pm_finalized_site_id': row.finalizedSiteId,
       })
 
     if len(pm_list) > 0:
@@ -438,42 +441,42 @@ class BQParticipantSummaryGenerator(object):
     results = [r for r in cursor]
     # loop through results and create one order record for each biobank_order_id value.
     for row in results:
-      if not filter(lambda order: order['biobank_order_id'] == row.biobank_order_id, orders):
+      if not filter(lambda order: order['bbo_biobank_order_id'] == row.biobank_order_id, orders):
         orders.append({
-          'biobank_order_id': row.biobank_order_id,
-          'created': row.created,
-          'status': str(BiobankOrderStatus(row.order_status) if row.order_status else BiobankOrderStatus.UNSET),
-          'status_id': int(BiobankOrderStatus(row.order_status) if row.order_status else BiobankOrderStatus.UNSET),
-          'dv_order': 'false' if row.dv_order == 0 else 'true',
-          'collected_site': self._lookup_site_name(row.collected_site_id, session),
-          'collected_site_id': row.collected_site_id,
-          'processed_site': self._lookup_site_name(row.processed_site_id, session),
-          'processed_site_id': row.processed_site_id,
-          'finalized_site': self._lookup_site_name(row.finalized_site_id, session),
-          'finalized_site_id': row.finalized_site_id,
+          'bbo_biobank_order_id': row.biobank_order_id,
+          'bbo_created': row.created,
+          'bbo_status': str(BiobankOrderStatus(row.order_status) if row.order_status else BiobankOrderStatus.UNSET),
+          'bbo_status_id': int(BiobankOrderStatus(row.order_status) if row.order_status else BiobankOrderStatus.UNSET),
+          'bbo_dv_order': 'false' if row.dv_order == 0 else 'true',
+          'bbo_collected_site': self._lookup_site_name(row.collected_site_id, session),
+          'bbo_collected_site_id': row.collected_site_id,
+          'bbo_processed_site': self._lookup_site_name(row.processed_site_id, session),
+          'bbo_processed_site_id': row.processed_site_id,
+          'bbo_finalized_site': self._lookup_site_name(row.finalized_site_id, session),
+          'bbo_finalized_site_id': row.finalized_site_id,
         })
     # loop through results again and add each sample to it's order.
     for row in results:
       # get the order list index for this sample record
-      idx = orders.index(filter(lambda order: order['biobank_order_id'] == row.biobank_order_id, orders)[0])
+      idx = orders.index(filter(lambda order: order['bbo_biobank_order_id'] == row.biobank_order_id, orders)[0])
       # if we haven't added any samples to this order, create an empty list.
       if 'samples' not in orders[idx]:
-        orders[idx]['samples'] = list()
+        orders[idx]['bbo_samples'] = list()
       # append the sample to the order
-      orders[idx]['samples'].append({
-        'test': row.test,
-        'baseline_test': 'true' if row.test in baseline_tests else 'false',
-        'dna_test': 'true' if row.test in dna_tests else 'false',
-        'collected': row.collected,
-        'processed': row.processed,
-        'finalized': row.finalized,
-        'bb_confirmed': row.bb_confirmed,
-        'bb_status': str(SampleStatus.RECEIVED) if row.bb_confirmed else None,
-        'bb_status_id': int(SampleStatus.RECEIVED) if row.bb_confirmed else None,
-        'bb_created': row.bb_created,
-        'bb_disposed': row.bb_disposed,
-        'bb_disposed_reason': str(SampleStatus(row.bb_status)) if row.bb_status else None,
-        'bb_disposed_reason_id': int(SampleStatus(row.bb_status)) if row.bb_status else None,
+      orders[idx]['bbo_samples'].append({
+        'bbs_test': row.test,
+        'bbs_baseline_test': 'true' if row.test in baseline_tests else 'false',
+        'bbs_dna_test': 'true' if row.test in dna_tests else 'false',
+        'bbs_collected': row.collected,
+        'bbs_processed': row.processed,
+        'bbs_finalized': row.finalized,
+        'bbs_confirmed': row.bb_confirmed,
+        'bbs_status': str(SampleStatus.RECEIVED) if row.bb_confirmed else None,
+        'bbs_status_id': int(SampleStatus.RECEIVED) if row.bb_confirmed else None,
+        'bbs_created': row.bb_created,
+        'bbs_disposed': row.bb_disposed,
+        'bbs_disposed_reason': str(SampleStatus(row.bb_status)) if row.bb_status else None,
+        'bbs_disposed_reason_id': int(SampleStatus(row.bb_status)) if row.bb_status else None,
       })
 
     if len(orders) > 0:
@@ -512,11 +515,11 @@ class BQParticipantSummaryGenerator(object):
 
     baseline_module_count = dna_sample_count = 0
     if 'modules' in summary:
-      baseline_module_count = len(filter(lambda module: module['baseline_module'] == 'true', summary['modules']))
+      baseline_module_count = len(filter(lambda module: module['mod_baseline_module'] == 'true', summary['modules']))
     if 'biobank_orders' in summary:
       for order in summary['biobank_orders']:
         if 'samples' in order:
-          dna_sample_count += len(filter(lambda sample: sample['dna_test'] == 'true', order['samples']))
+          dna_sample_count += len(filter(lambda sample: sample['bbs_dna_test'] == 'true', order['samples']))
 
     if study_consent:
       status = EnrollmentStatus.INTERESTED
@@ -551,15 +554,16 @@ class BQParticipantSummaryGenerator(object):
 
     if 'pm' in summary:
       for pm in summary['pm']:
-        if pm['status_id'] != int(PhysicalMeasurementsStatus.CANCELLED) and pm['finalized']:
-          dates.append(datetime_to_date(pm['finalized']))
+        if pm['pm_status_id'] != int(PhysicalMeasurementsStatus.CANCELLED) and pm['pm_finalized']:
+          dates.append(datetime_to_date(pm['pm_finalized']))
 
     if 'biobank_orders' in summary:
       for order in summary['biobank_orders']:
-        if order['status_id'] != int(BiobankOrderStatus.CANCELLED) and 'samples' in order:
-          for sample in order['samples']:
-            if 'finalized' in sample and sample['finalized'] and isinstance(sample['finalized'], datetime.datetime):
-              dates.append(datetime_to_date(sample['finalized']))
+        if order['bbo_status_id'] != int(BiobankOrderStatus.CANCELLED) and 'bbo_samples' in order:
+          for sample in order['bbo_samples']:
+            if 'bbs_finalized' in sample and sample['bbs_finalized'] and \
+                              isinstance(sample['bbs_finalized'], datetime.datetime):
+              dates.append(datetime_to_date(sample['bbs_finalized']))
 
     dates = list(set(dates))  # de-dup list
     data['distinct_visits'] = len(dates)

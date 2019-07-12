@@ -14,7 +14,7 @@ import tempfile
 
 
 import argparse
-from model import BQ_SCHEMAS
+from model import BQ_SCHEMAS, BQ_VIEWS
 from model.bq_base import BQDuplicateFieldException, BQInvalidSchemaException, BQInvalidModeException, \
                             BQSchemaStructureException, BQException, BQSchema
 from services.gcp_utils import gcp_bq_command
@@ -39,17 +39,17 @@ class BQMigration(object):
     self.args = args
     self.gcp_env = gcp_env
 
-  def get_table_uri(self, table):
+  def get_bq_obj_uri(self, obj):
     """
     Build the table URI value.
-    :param table: table name
+    :param obj: table name
     :return: string
     """
-    return '{0}:{1}.{2}'.format(self.args.project, self.args.dataset, table)
+    return '{0}:{1}.{2}'.format(self.args.project, self.args.dataset, obj)
 
   def create_table(self, table, schema):
     """
-    Crate a table with the given schema in BigQuery.
+    Create a table with the given schema in BigQuery.
     :param table: table name
     :param schema: json string
     :return: True if successful otherwise False
@@ -60,7 +60,7 @@ class BQMigration(object):
     tf.write(schema)
     tf.close()
 
-    args = '{0} {1}'.format(self.get_table_uri(table), tf.name)
+    args = '{0} {1}'.format(self.get_bq_obj_uri(table), tf.name)
     cflags = '--table --label organization:rdr'
     pcode, so, se = gcp_bq_command('mk', args=args, command_flags=cflags)  # pylint: disable=unused-variable
 
@@ -70,7 +70,29 @@ class BQMigration(object):
       if 'parsing error in row starting at position' in so:
         raise BQInvalidSchemaException(so)
       else:
-        raise BQException(so)
+        raise BQException(se if se else so)
+
+    return True
+
+  def create_view(self, view_name, view_sql, view_desc):
+    """
+    Create a view
+    :param view_name: view name
+    :param view_sql: view sql string
+    :return: True if successful otherwise False
+    """
+    self.delete_table(view_name)
+
+    if '{project}' in view_sql:
+      view_sql = view_sql.format(project=self.args.project)
+
+    args = "'{0}'".format(self.get_bq_obj_uri(view_name))
+    cflags = "--use_legacy_sql=false --label organization:rdr --description '{0}' --view '{1}'".\
+                  format(view_desc, view_sql)
+    pcode, so, se = gcp_bq_command('mk', args=args, command_flags=cflags)  # pylint: disable=unused-variable
+
+    if pcode != 0:
+      raise BQException(se if se else so)
 
     return True
 
@@ -86,7 +108,7 @@ class BQMigration(object):
     tf.close()
 
     # bq update [PROJECT_ID]:[DATASET].[TABLE] [SCHEMA]
-    args = '{0} {1}'.format(self.get_table_uri(table), tf.name)
+    args = '{0} {1}'.format(self.get_bq_obj_uri(table), tf.name)
     pcode, so, se = gcp_bq_command('update', args=args)  # pylint: disable=unused-variable
 
     os.unlink(tf.name)
@@ -112,11 +134,11 @@ class BQMigration(object):
     :return: string
     """
     # bq rm --force --table [PROJECT_ID]:[DATASET].[TABLE]
-    table_uri = self.get_table_uri(table)
+    table_uri = self.get_bq_obj_uri(table)
     pcode, so, se = gcp_bq_command('rm', args=table_uri, command_flags='--force --table')  # pylint: disable=unused-variable
 
     if pcode != 0:
-      raise BQException(so)
+      raise BQException(se if se else so)
 
     return so
 
@@ -127,13 +149,13 @@ class BQMigration(object):
     :return: string
     """
     # bq show --schema --format=prettyjson [PROJECT_ID]:[DATASET].[TABLE]
-    table_uri = self.get_table_uri(table)
+    table_uri = self.get_bq_obj_uri(table)
     pcode, so, se = gcp_bq_command('show', args=table_uri, command_flags='--schema --format=prettyjson')  # pylint: disable=unused-variable
 
     if pcode != 0:
       if 'Not found' in so:
         return None
-      raise BQException(so)
+      raise BQException(se if se else so)
 
     return so
 
@@ -144,6 +166,7 @@ class BQMigration(object):
     """
     # TODO: Validate dataset name exists in BigQuery
 
+    # Loop through table schemas
     for path, obj_name in BQ_SCHEMAS:
       mod = importlib.import_module(path, obj_name)
       mod_class = getattr(mod, obj_name)
@@ -170,6 +193,13 @@ class BQMigration(object):
         else:
           self.modify_table(schema_name, ls_obj.to_json())
           _logger.info('  {0:21}: {1}'.format(schema_name, 'updated'))
+
+    # Loop through table schemas
+    for path, obj_name, view_name, view_desc in BQ_VIEWS:
+      mod = importlib.import_module(path, obj_name)
+      view_sql = getattr(mod, obj_name)
+      if self.create_view(view_name, view_sql, view_desc):
+        _logger.info('  {0:21}: {1}'.format(view_name, 'replaced'))
 
     return 0
 
