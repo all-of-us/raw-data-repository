@@ -1,4 +1,5 @@
 cron:
+- description: BigQuery Sync
 - description: Sync site bucket consent files
   url: /offline/SyncConsentFiles
   schedule: 1 of month 00:00
