@@ -196,6 +196,13 @@ class BQMigration(object):
 
     # Loop through table schemas
     for path, obj_name, view_name, view_desc in BQ_VIEWS:
+
+      if self.args.delete and (self.args.delete.lower() == 'all' or view_name in self.args.delete):
+        self.delete_table(view_name)
+        _logger.info('  {0:21}: {1}'.format(view_name, 'deleted'))
+        continue
+
+
       mod = importlib.import_module(path, obj_name)
       view_sql = getattr(mod, obj_name)
       if self.create_view(view_name, view_sql, view_desc):
