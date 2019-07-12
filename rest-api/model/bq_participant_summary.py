@@ -24,29 +24,30 @@ class BQAddressSchema(BQSchema):
   Note: Do not use camelCase for property names. Property names must exactly match BQ
         field names.
   """
-  address_type = BQField('address_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.REQUIRED,
+  addr_type = BQField('addr_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.REQUIRED,
                         fld_enum=BQStreetAddressTypeEnum)
-  address_type_id = BQField('address_type_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED,
+  addr_type_id = BQField('addr_type_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED,
                             fld_enum=BQStreetAddressTypeEnum)
-  street_address_1 = BQField('street_address_1', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  street_address_2 = BQField('street_address_2', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  city = BQField('city', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  state = BQField('state', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  country = BQField('country', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  zip = BQField('zip', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  addr_street_address_1 = BQField('addr_street_address_1', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  addr_street_address_2 = BQField('addr_street_address_2', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  addr_city = BQField('addr_city', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  addr_state = BQField('addr_state', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  addr_country = BQField('addr_country', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  addr_zip = BQField('addr_zip', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
 class BQModuleStatusSchema(BQSchema):
   """
   Store information about modules submitted
   """
-  module = BQField('module', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  baseline_module = BQField('baseline_module', BQFieldTypeEnum.BOOLEAN, BQFieldModeEnum.NULLABLE)
-  authored = BQField('authored', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  created = BQField('created', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  language = BQField('language', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  status = BQField('status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE, fld_enum=BQModuleStatusEnum)
-  status_id = BQField('status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE, fld_enum=BQModuleStatusEnum)
+  mod_module = BQField('mod_module', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  mod_baseline_module = BQField('mod_baseline_module', BQFieldTypeEnum.BOOLEAN, BQFieldModeEnum.NULLABLE)
+  mod_authored = BQField('mod_authored', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  mod_created = BQField('mod_created', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  mod_language = BQField('mod_language', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  mod_status = BQField('mod_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE, fld_enum=BQModuleStatusEnum)
+  mod_status_id = BQField('mod_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+                              fld_enum=BQModuleStatusEnum)
 
 
 class BQConsentSchema(BQSchema):
@@ -80,50 +81,50 @@ class BQPhysicalMeasurements(BQSchema):
   """
   Participant Physical Measurements
   """
-  status = BQField('status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  status_id = BQField('status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-  created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
-  created_site = BQField('created_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  created_site_id = BQField('created_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-  finalized_site = BQField('finalized_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  finalized_site_id = BQField('finalized_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-  finalized = BQField('finalized', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+  pm_status = BQField('pm_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  pm_status_id = BQField('pm_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+  pm_created = BQField('pm_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+  pm_created_site = BQField('pm_created_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  pm_created_site_id = BQField('pm_created_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+  pm_finalized_site = BQField('pm_finalized_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  pm_finalized_site_id = BQField('pm_finalized_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+  pm_finalized = BQField('pm_finalized', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
 
 class BQBiobankSampleSchema(BQSchema):
   """
   Biobank sample information
   """
-  test = BQField('test', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  baseline_test = BQField('baseline_test', BQFieldTypeEnum.BOOLEAN, BQFieldModeEnum.NULLABLE)
-  dna_test = BQField('dna_test', BQFieldTypeEnum.BOOLEAN, BQFieldModeEnum.NULLABLE)
-  collected = BQField('collected', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
-  processed = BQField('processed', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
-  finalized = BQField('finalized', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
-  bb_created = BQField('bb_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
-  bb_confirmed = BQField('bb_confirmed', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
-  bb_status = BQField('bb_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  bb_status_id = BQField('bb_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-  bb_disposed = BQField('bb_disposed', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
-  bb_disposed_reason = BQField('bb_disposed_reason', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  bb_disposed_reason_id = BQField('bb_disposed_reason_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+  bbs_test = BQField('bbs_test', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  bbs_baseline_test = BQField('bbs_baseline_test', BQFieldTypeEnum.BOOLEAN, BQFieldModeEnum.NULLABLE)
+  bbs_dna_test = BQField('bbs_dna_test', BQFieldTypeEnum.BOOLEAN, BQFieldModeEnum.NULLABLE)
+  bbs_collected = BQField('bbs_collected', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+  bbs_processed = BQField('bbs_processed', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+  bbs_finalized = BQField('bbs_finalized', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+  bbs_created = BQField('bbs_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+  bbs_confirmed = BQField('bbs_confirmed', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+  bbs_status = BQField('bbs_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  bbs_status_id = BQField('bbs_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+  bbs_disposed = BQField('bbs_disposed', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+  bbs_disposed_reason = BQField('bbs_disposed_reason', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  bbs_disposed_reason_id = BQField('bbs_disposed_reason_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQBiobankOrderSchema(BQSchema):
   """
   Biobank order information
   """
-  biobank_order_id = BQField('biobank_order_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
-  status = BQField('status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  status_id = BQField('status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-  dv_order = BQField('dv_order', BQFieldTypeEnum.BOOLEAN, BQFieldModeEnum.NULLABLE)
-  collected_site = BQField('collected_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  collected_site_id = BQField('collected_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-  processed_site = BQField('processed_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  processed_site_id = BQField('processed_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-  finalized_site = BQField('finalized_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  finalized_site_id = BQField('finalized_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-  samples = BQRecordField('samples', schema=BQBiobankSampleSchema)
+  bbo_biobank_order_id = BQField('bbo_biobank_order_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  bbo_created = BQField('bbo_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+  bbo_status = BQField('bbo_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  bbo_status_id = BQField('bbo_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+  bbo_dv_order = BQField('bbo_dv_order', BQFieldTypeEnum.BOOLEAN, BQFieldModeEnum.NULLABLE)
+  bbo_collected_site = BQField('bbo_collected_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  bbo_collected_site_id = BQField('bbo_collected_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+  bbo_processed_site = BQField('bbo_processed_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  bbo_processed_site_id = BQField('bbo_processed_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+  bbo_finalized_site = BQField('bbo_finalized_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  bbo_finalized_site_id = BQField('bbo_finalized_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+  bbo_samples = BQRecordField('bbo_samples', schema=BQBiobankSampleSchema)
 
 
 class BQParticipantSummarySchema(BQSchema):
@@ -188,6 +189,8 @@ class BQParticipantSummarySchema(BQSchema):
   income = BQField('income', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
   income_id = BQField('income_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
+  sex = BQField('sex', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  sex_id = BQField('sex_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
   sexual_orientation = BQField('sexual_orientation', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
   sexual_orientation_id = BQField('sexual_orientation_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
@@ -205,3 +208,34 @@ class BQParticipantSummary(BQTable):
   """ Participant Summary BigQuery Table """
   __tablename__ = 'participant_summary'
   __schema__ = BQParticipantSummarySchema
+
+""" Analytics Team view of the Participant Summary """
+BQAnalyticsTeamParticipantSummary = """
+SELECT 
+    genders,
+    sex,
+    sex_id,
+    sexual_orientation,
+    sexual_orientation_id,
+    education,
+    education_id,    
+    (select count(1) 
+      from `{project}`.rdr_ops_data_view.participant_summary as ps_1 
+        cross join UNNEST(biobank_orders) as orders 
+        cross join UNNEST(orders.bbo_samples) as samples
+      where ps.participant_id = ps_1.participant_id and
+        samples.bbs_baseline_test is true) as baseline_test_count,
+    (select count(1) 
+      from `{project}`.rdr_ops_data_view.participant_summary as ps_1 
+        cross join UNNEST(biobank_orders) as orders 
+        cross join UNNEST(orders.bbo_samples) as samples
+      where ps.participant_id = ps_1.participant_id and
+        samples.bbs_dna_test is true) as dna_test_count,
+    races,
+    pm,    
+    modules,
+    biobank_orders
+  FROM `{project}`.rdr_ops_data_view.participant_summary ps
+"""
+
+
