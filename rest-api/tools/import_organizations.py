@@ -398,7 +398,7 @@ class SiteImporter(CsvImporter):
         participant.update({'site': site.googleGroup})
 
         import_participant(participant, client, consent_questionnaire_id_and_version,
-                           questionnaire_to_questions, consent_questions, num_participants)
+                           questionnaire_to_questions, consent_questions)
 
     logging.info('%d participants imported.' % num_participants)
 
