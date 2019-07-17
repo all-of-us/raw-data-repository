@@ -8,7 +8,6 @@ from code_constants import PPI_SYSTEM
 from census_regions import census_regions
 import datetime
 import json
-import sqlalchemy
 from sqlalchemy import func, or_
 from participant_enums import Stratifications, AGE_BUCKETS_METRICS_V2_API, \
   AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API, MetricsCacheType, MetricsAPIVersion, EnrollmentStatus, \
@@ -27,7 +26,6 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsEnrollmentStatusCache)
-            .filter(MetricsEnrollmentStatusCache.isCompleted.is_(True))
             .order_by(MetricsEnrollmentStatusCache.dateInserted.desc())
             .first())
 
@@ -93,16 +91,6 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
         """
         params = {'seven_days_ago': seven_days_ago}
         session.execute(delete_sql, params)
-
-  def update_cache_record_status(self, updated_time):
-    with self.session() as session:
-      query = (
-        sqlalchemy
-          .update(MetricsEnrollmentStatusCache)
-          .values({MetricsEnrollmentStatusCache.isCompleted: True})
-          .where(MetricsEnrollmentStatusCache.dateInserted >= updated_time.replace(microsecond=0))
-      )
-      session.execute(query)
 
   def to_metrics_client_json(self, result_set):
     client_json = []
@@ -263,8 +251,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                     GROUP BY DATE(ps.enrollment_status_core_stored_sample_time)
                   ) AS results
                   WHERE enrollment_status_core_stored_sample_time IS NOT NULL AND day>=DATE(enrollment_status_core_stored_sample_time)
-                ),0) AS core_count,
-                FALSE
+                ),0) AS core_count
               FROM calendar c
               WHERE c.day BETWEEN :start_date AND :end_date
               ;
@@ -286,14 +273,12 @@ class MetricsGenderCacheDao(BaseDao):
       return (session
               .query(MetricsGenderCache)
               .filter(MetricsGenderCache.type == str(self.cache_type))
-              .filter(MetricsGenderCache.isCompleted.is_(True))
               .order_by(MetricsGenderCache.dateInserted.desc())
               .first())
     else:
       return (session
               .query(MetricsGenderCache)
               .filter(MetricsGenderCache.type == MetricsCacheType.METRICS_V2_API)
-              .filter(MetricsGenderCache.isCompleted.is_(True))
               .order_by(MetricsGenderCache.dateInserted.desc())
               .first())
 
@@ -394,17 +379,6 @@ class MetricsGenderCacheDao(BaseDao):
         """
         params = {'seven_days_ago': seven_days_ago}
         session.execute(delete_sql, params)
-
-  def update_cache_record_status(self, updated_time):
-    with self.session() as session:
-      query = (
-        sqlalchemy
-          .update(MetricsGenderCache)
-          .where(MetricsGenderCache.dateInserted >= updated_time.replace(microsecond=0))
-          .values({MetricsGenderCache.isCompleted: True})
-      )
-
-      session.execute(query)
 
   def to_metrics_client_json(self, result_set):
     client_json = []
@@ -527,8 +501,7 @@ class MetricsGenderCacheDao(BaseDao):
             WHERE results.day <= c.day
             AND enrollment_status_core_stored_sample_time IS NOT NULL
             AND DATE(enrollment_status_core_stored_sample_time) <= c.day
-          ),0) AS gender_count,
-          FALSE        
+          ),0) AS gender_count
         FROM calendar c
         WHERE c.day BETWEEN :start_date AND :end_date
         UNION
@@ -559,8 +532,7 @@ class MetricsGenderCacheDao(BaseDao):
             ) AS results
             WHERE results.day <= c.day
             AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
-          ),0) AS gender_count,
-          FALSE
+          ),0) AS gender_count
         FROM calendar c
         WHERE c.day BETWEEN :start_date AND :end_date
         UNION
@@ -594,8 +566,7 @@ class MetricsGenderCacheDao(BaseDao):
             AND enrollment_status_member_time IS NOT NULL
             AND DATE(enrollment_status_member_time) <= c.day
             AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
-          ),0) AS gender_count,
-          FALSE
+          ),0) AS gender_count
         FROM calendar c
         WHERE c.day BETWEEN :start_date AND :end_date
       """
@@ -648,8 +619,7 @@ class MetricsGenderCacheDao(BaseDao):
                   WHERE results.day <= c.day
                   AND enrollment_status_core_stored_sample_time IS NOT NULL
                   AND DATE(enrollment_status_core_stored_sample_time) <= c.day
-                ),0) AS gender_count,
-                FALSE
+                ),0) AS gender_count
               FROM calendar c
               WHERE c.day BETWEEN :start_date AND :end_date
               UNION
@@ -679,8 +649,7 @@ class MetricsGenderCacheDao(BaseDao):
                   ) AS results
                   WHERE results.day <= c.day
                   AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
-                ),0) AS gender_count,
-                FALSE
+                ),0) AS gender_count
               FROM calendar c
               WHERE c.day BETWEEN :start_date AND :end_date
               UNION
@@ -713,8 +682,7 @@ class MetricsGenderCacheDao(BaseDao):
                   AND enrollment_status_member_time IS NOT NULL
                   AND DATE(enrollment_status_member_time) <= c.day
                   AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
-                ),0) AS gender_count,
-                FALSE
+                ),0) AS gender_count
               FROM calendar c
               WHERE c.day BETWEEN :start_date AND :end_date
             """
@@ -743,7 +711,6 @@ class MetricsAgeCacheDao(BaseDao):
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsAgeCache)
             .filter(MetricsAgeCache.type == str(self.cache_type))
-            .filter(MetricsAgeCache.isCompleted.is_(True))
             .order_by(MetricsAgeCache.dateInserted.desc())
             .first())
 
@@ -841,17 +808,6 @@ class MetricsAgeCacheDao(BaseDao):
         params = {'seven_days_ago': seven_days_ago}
         session.execute(delete_sql, params)
 
-  def update_cache_record_status(self, updated_time):
-    with self.session() as session:
-      query = (
-        sqlalchemy
-          .update(MetricsAgeCache)
-          .where(MetricsAgeCache.dateInserted >= updated_time.replace(microsecond=0))
-          .values({MetricsAgeCache.isCompleted: True})
-      )
-
-      session.execute(query)
-
   def to_metrics_client_json(self, result_set):
     client_json = []
     for record in result_set:
@@ -903,8 +859,7 @@ class MetricsAgeCacheDao(BaseDao):
             WHERE results.day <= c.day
             AND enrollment_status_core_stored_sample_time IS NOT NULL
             AND DATE(enrollment_status_core_stored_sample_time) <= c.day
-          ),0) AS age_count,
-          FALSE
+          ),0) AS age_count
         FROM calendar c
         WHERE c.day BETWEEN :start_date AND :end_date
         UNION
@@ -934,8 +889,7 @@ class MetricsAgeCacheDao(BaseDao):
             ) AS results
             WHERE results.day <= c.day
             AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
-          ),0) AS age_count,
-          FALSE
+          ),0) AS age_count
         FROM calendar c
         WHERE c.day BETWEEN :start_date AND :end_date
         UNION
@@ -968,8 +922,7 @@ class MetricsAgeCacheDao(BaseDao):
             AND enrollment_status_member_time IS NOT NULL
             AND DATE(enrollment_status_member_time) <= c.day
             AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
-          ),0) AS age_count,
-          FALSE
+          ),0) AS age_count
         FROM calendar c
         WHERE c.day BETWEEN :start_date AND :end_date
         UNION
@@ -1017,8 +970,7 @@ class MetricsAgeCacheDao(BaseDao):
           AND enrollment_status_core_stored_sample_time IS NOT NULL
           AND DATE(enrollment_status_core_stored_sample_time) <= c.day
           {age_range_condition}
-        ),0) AS age_count,
-        FALSE
+        ),0) AS age_count
       FROM calendar c
       WHERE c.day BETWEEN :start_date AND :end_date
       UNION
@@ -1050,8 +1002,7 @@ class MetricsAgeCacheDao(BaseDao):
           WHERE results.day <= c.day 
           AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
           {age_range_condition}
-        ),0) AS age_count,
-        FALSE
+        ),0) AS age_count
       FROM calendar c
       WHERE c.day BETWEEN :start_date AND :end_date
       UNION
@@ -1086,8 +1037,7 @@ class MetricsAgeCacheDao(BaseDao):
           AND DATE(enrollment_status_member_time) <= c.day
           AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
           {age_range_condition}
-        ),0) AS age_count,
-        FALSE
+        ),0) AS age_count
       FROM calendar c
       WHERE c.day BETWEEN :start_date AND :end_date
     """
@@ -1117,14 +1067,12 @@ class MetricsRaceCacheDao(BaseDao):
       return (session
               .query(MetricsRaceCache)
               .filter(MetricsRaceCache.type == str(self.cache_type))
-              .filter(MetricsRaceCache.isCompleted.is_(True))
               .order_by(MetricsRaceCache.dateInserted.desc())
               .first())
     else:
       return (session
               .query(MetricsRaceCache)
               .filter(MetricsRaceCache.type == MetricsCacheType.METRICS_V2_API)
-              .filter(MetricsRaceCache.isCompleted.is_(True))
               .order_by(MetricsRaceCache.dateInserted.desc())
               .first())
 
@@ -1233,17 +1181,6 @@ class MetricsRaceCacheDao(BaseDao):
         params = {'seven_days_ago': seven_days_ago}
         session.execute(delete_sql, params)
 
-  def update_cache_record_status(self, updated_time):
-    with self.session() as session:
-      query = (
-        sqlalchemy
-          .update(MetricsRaceCache)
-          .where(MetricsRaceCache.dateInserted >= updated_time.replace(microsecond=0))
-          .values({MetricsRaceCache.isCompleted: True})
-      )
-
-      session.execute(query)
-
   def to_metrics_client_json(self, result_set):
     client_json = []
     for record in result_set:
@@ -1331,8 +1268,7 @@ class MetricsRaceCacheDao(BaseDao):
                 SUM(None_Of_These_Fully_Describe_Me) AS None_Of_These_Fully_Describe_Me,
                 SUM(Prefer_Not_To_Answer) AS Prefer_Not_To_Answer,
                 SUM(Multi_Ancestry) AS Multi_Ancestry,
-                SUM(No_Ancestry_Checked) AS No_Ancestry_Checked,
-                FALSE
+                SUM(No_Ancestry_Checked) AS No_Ancestry_Checked
                 FROM
                 (
                   SELECT p.hpo_id,
@@ -1459,8 +1395,7 @@ class MetricsRaceCacheDao(BaseDao):
                       SUM(None_Of_These_Fully_Describe_Me) AS None_Of_These_Fully_Describe_Me,
                       SUM(Prefer_Not_To_Answer) AS Prefer_Not_To_Answer,
                       SUM(Multi_Ancestry) AS Multi_Ancestry,
-                      SUM(No_Ancestry_Checked) AS No_Ancestry_Checked,
-                      FALSE
+                      SUM(No_Ancestry_Checked) AS No_Ancestry_Checked
                       FROM
                       (
                         SELECT p.hpo_id,
@@ -1579,7 +1514,6 @@ class MetricsRegionCacheDao(BaseDao):
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsRegionCache)
-            .filter(MetricsRegionCache.isCompleted.is_(True))
             .order_by(MetricsRegionCache.dateInserted.desc())
             .first())
 
@@ -1694,17 +1628,6 @@ class MetricsRegionCacheDao(BaseDao):
         """
         params = {'seven_days_ago': seven_days_ago}
         session.execute(delete_sql, params)
-
-  def update_cache_record_status(self, updated_time):
-    with self.session() as session:
-      query = (
-        sqlalchemy
-          .update(MetricsRegionCache)
-          .where(MetricsRegionCache.dateInserted >= updated_time.replace(microsecond=0))
-          .values({MetricsRegionCache.isCompleted: True})
-      )
-
-      session.execute(query)
 
   def remove_prefix(self, text, prefix):
     if text.startswith(prefix):
@@ -1844,8 +1767,7 @@ class MetricsRegionCacheDao(BaseDao):
           (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
           c.day,
           IFNULL(ps.value,'UNSET') AS state_name,
-          count(p.participant_id) AS state_count,
-          FALSE
+          count(p.participant_id) AS state_count
         FROM participant p INNER JOIN
           (SELECT participant_id, email, value, enrollment_status_core_stored_sample_time FROM participant_summary, code WHERE state_id=code_id) ps ON p.participant_id=ps.participant_id,
           calendar c
@@ -1865,8 +1787,7 @@ class MetricsRegionCacheDao(BaseDao):
           (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
           c.day,
           IFNULL(ps.value,'UNSET') AS state_name,
-          count(p.participant_id) AS state_count,
-          FALSE
+          count(p.participant_id) AS state_count
         FROM participant p INNER JOIN
           (SELECT participant_id, email, value, sign_up_time, consent_for_study_enrollment_time FROM participant_summary, code WHERE state_id=code_id) ps ON p.participant_id=ps.participant_id,
           calendar c
@@ -1887,8 +1808,7 @@ class MetricsRegionCacheDao(BaseDao):
           (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
           c.day,
           IFNULL(ps.value,'UNSET') AS state_name,
-          count(p.participant_id) AS state_count,
-          FALSE
+          count(p.participant_id) AS state_count
         FROM participant p INNER JOIN
           (SELECT participant_id, email, value, consent_for_study_enrollment_time, enrollment_status_member_time FROM participant_summary, code WHERE state_id=code_id) ps ON p.participant_id=ps.participant_id,
           calendar c
@@ -1909,8 +1829,7 @@ class MetricsRegionCacheDao(BaseDao):
           (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
           c.day,
           IFNULL(ps.value,'UNSET') AS state_name,
-          count(p.participant_id) AS state_count,
-          FALSE
+          count(p.participant_id) AS state_count
         FROM participant p INNER JOIN
           (SELECT participant_id, email, value, enrollment_status_member_time, enrollment_status_core_stored_sample_time FROM participant_summary, code WHERE state_id=code_id) ps ON p.participant_id=ps.participant_id,
           calendar c
@@ -1939,7 +1858,6 @@ class MetricsLifecycleCacheDao(BaseDao):
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsLifecycleCache)
-            .filter(MetricsLifecycleCache.isCompleted.is_(True))
             .order_by(MetricsLifecycleCache.dateInserted.desc())
             .first())
 
@@ -2046,17 +1964,6 @@ class MetricsLifecycleCacheDao(BaseDao):
         """
         params = {'seven_days_ago': seven_days_ago}
         session.execute(delete_sql, params)
-
-  def update_cache_record_status(self, updated_time):
-    with self.session() as session:
-      query = (
-        sqlalchemy
-          .update(MetricsLifecycleCache)
-          .where(MetricsLifecycleCache.dateInserted >= updated_time.replace(microsecond=0))
-          .values({MetricsLifecycleCache.isCompleted: True})
-      )
-
-      session.execute(query)
 
   def to_metrics_client_json(self, result_set):
     client_json = []
@@ -2215,8 +2122,7 @@ class MetricsLifecycleCacheDao(BaseDao):
               DATE(ps.sample_status_1sal2_time) <= calendar.day
             THEN 1 ELSE 0
           END) AS sample_received,
-          SUM(CASE WHEN DATE(ps.enrollment_status_core_stored_sample_time) <= calendar.day THEN 1 ELSE 0 END) AS core_participant,
-          FALSE
+          SUM(CASE WHEN DATE(ps.enrollment_status_core_stored_sample_time) <= calendar.day THEN 1 ELSE 0 END) AS core_participant
         from participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
              calendar
         WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
@@ -2239,7 +2145,6 @@ class MetricsLanguageCacheDao(BaseDao):
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsLanguageCache)
-            .filter(MetricsLanguageCache.isCompleted.is_(True))
             .order_by(MetricsLanguageCache.dateInserted.desc())
             .first())
 
@@ -2306,17 +2211,6 @@ class MetricsLanguageCacheDao(BaseDao):
         """
         params = {'seven_days_ago': seven_days_ago}
         session.execute(delete_sql, params)
-
-  def update_cache_record_status(self, updated_time):
-    with self.session() as session:
-      query = (
-        sqlalchemy
-          .update(MetricsLanguageCache)
-          .where(MetricsLanguageCache.dateInserted >= updated_time.replace(microsecond=0))
-          .values({MetricsLanguageCache.isCompleted: True})
-      )
-
-      session.execute(query)
 
   def to_metrics_client_json(self, result_set):
     client_json = []
@@ -2414,8 +2308,7 @@ class MetricsLanguageCacheDao(BaseDao):
             GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
           ) AS results
           WHERE {3}
-        ),0) AS language_count,
-        FALSE
+        ),0) AS language_count
       FROM calendar c
       WHERE c.day BETWEEN :start_date AND :end_date
     """

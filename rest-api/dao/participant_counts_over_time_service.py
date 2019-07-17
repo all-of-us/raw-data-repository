@@ -1,6 +1,5 @@
 from werkzeug.exceptions import BadRequest
 import datetime
-import logging
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, EnrollmentStatusV2, TEST_HPO_NAME, \
   TEST_EMAIL_PATTERN
@@ -23,28 +22,18 @@ class ParticipantCountsOverTimeService(BaseDao):
   def refresh_metrics_cache_data(self):
 
     self.refresh_data_for_metrics_cache(MetricsEnrollmentStatusCacheDao())
-    logging.info('Refresh MetricsEnrollmentStatusCache done.')
     self.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
-    logging.info('Refresh MetricsGenderCache for Metrics2API done.')
     self.refresh_data_for_metrics_cache(MetricsGenderCacheDao(
       MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
-    logging.info('Refresh MetricsGenderCache for Public Metrics API done.')
     self.refresh_data_for_metrics_cache(MetricsAgeCacheDao(MetricsCacheType.METRICS_V2_API))
-    logging.info('Refresh MetricsAgeCache for Metrics2API done.')
     self.refresh_data_for_metrics_cache(MetricsAgeCacheDao(
       MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
-    logging.info('Refresh MetricsAgeCache for Public Metrics API done.')
     self.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
-    logging.info('Refresh MetricsRaceCache for Metrics2API done.')
     self.refresh_data_for_metrics_cache(MetricsRaceCacheDao(
       MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
-    logging.info('Refresh MetricsRaceCache for Public Metrics API done.')
     self.refresh_data_for_metrics_cache(MetricsRegionCacheDao())
-    logging.info('Refresh MetricsRegionCache done.')
     self.refresh_data_for_metrics_cache(MetricsLanguageCacheDao())
-    logging.info('Refresh MetricsLanguageCache done.')
     self.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao())
-    logging.info('Refresh MetricsLifecycleCache done.')
 
   def refresh_data_for_metrics_cache(self, dao):
     updated_time = datetime.datetime.now()
@@ -52,7 +41,7 @@ class ParticipantCountsOverTimeService(BaseDao):
     hpo_list = hpo_dao.get_all()
     for hpo in hpo_list:
       self.insert_cache_by_hpo(dao, hpo.hpoId, updated_time)
-    dao.update_cache_record_status(updated_time)
+
     dao.delete_old_records()
 
   def insert_cache_by_hpo(self, dao, hpo_id, updated_time):
