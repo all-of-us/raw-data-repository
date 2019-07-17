@@ -9,8 +9,10 @@ from glob import glob
 import imp
 import httplib
 import json
+import logging
 import mock
 import os
+import pprint
 import re
 import unittest
 import uuid
@@ -56,6 +58,10 @@ PITT_HPO_ID = 2
 PITT_ORG_ID = 3
 AZ_HPO_ID = 4
 AZ_ORG_ID = 4
+
+POST_HEADERS = {
+    'Content-Type': 'application/json; charset=utf-8',
+}
 
 class TestBase(unittest.TestCase):
   """Base class for unit tests."""
@@ -598,6 +604,75 @@ class FlaskTestBase(NdbTestBase):
     for patcher in self._patchers:
       patcher.stop()
 
+  def request_json(self,
+                   path,
+                   method='GET',
+                   body=None,
+                   query_args=None,
+                   headers=None,
+                   cron=False,
+                   absolute_path=False,
+                   pretend_date=None,
+                   check_status=True):
+
+    json_body = None
+    if body:
+      json_body = json.dumps(body)
+    elif method == 'POST':
+      json_body = '{}'
+    _, content = self.request(
+        path,
+        method,
+        body=json_body,
+        query_args=query_args,
+        headers=headers,
+        cron=cron,
+        absolute_path=absolute_path,
+        pretend_date=pretend_date,
+        check_status=check_status)
+    try:
+      return json.loads(content)
+    except ValueError:
+      logging.error('Error decoding response content:\n%r', content)
+      raise
+
+  def request(self,
+              path,
+              method='GET',
+              body=None,
+              query_args=None,
+              headers=None,
+              cron=False,
+              absolute_path=False,
+              check_status=True,
+              authenticated=True,
+              pretend_date=None):
+    if method == 'POST':
+      headers.update(POST_HEADERS)
+
+    details_level = (
+        logging.WARNING if (check_status and resp.status != httplib.OK)
+        else logging.DEBUG)
+    if client_log.isEnabledFor(details_level):
+      try:
+        formatted_content = pprint.pformat(json.loads(content))
+      except ValueError:
+        formatted_content = content
+      client_log.log(
+          details_level,
+          'Response headers: %s\nResponse content: %s', pprint.pformat(resp), formatted_content)
+
+    if resp.status == httplib.UNAUTHORIZED:
+      client_log.warn(
+          'Unauthorized. If you expect this request to be allowed, try'
+          'tools/install_config.sh --config config/config_dev.json --update')
+    if check_status and resp.status != httplib.OK:
+      raise HttpException(url, method, resp, content)
+    if resp.get('etag'):
+      self.last_etag = resp['etag']
+
+    return resp, content
+
   def set_auth_user(self, auth_user):
     self._mock_get_oauth_id.return_value = auth_user
 
@@ -860,3 +935,7 @@ def cancel_biobank_order():
     "status": "cancelled"
   }
 
+class generic_test_object(object):
+  def __init__(self, **kwargs):
+    for k,v in kwargs.items():
+      setattr(self, k, v)

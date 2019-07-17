@@ -129,6 +129,9 @@ def _submit_questionnaire_response(client, participant_id, questionnaire_id_and_
 def main(args):
   client = Client('rdr/v1', False, args.creds_file, args.instance)
   client_log.setLevel(logging.WARN)
+  setup_participants(args, client)
+
+def setup_participants(args, client):
   num_participants = 0
   questionnaire_to_questions, consent_questionnaire_id_and_version = _setup_questionnaires(client)
   consent_questions = questionnaire_to_questions[consent_questionnaire_id_and_version]
@@ -169,6 +172,7 @@ def import_participant(row, client, consent_questionnaire_id_and_version,
   participant_response = client.request_json('Participant', 'POST', participant_resource)
   participant_id = participant_response['participantId']
   if not reader:
+    print 'HEY YALL ! ------------------------------------------------'
     client.request_json('Participant/%s' % participant_id, 'PUT', row,
                         headers={'If-Match': 'W/"1"'})
 

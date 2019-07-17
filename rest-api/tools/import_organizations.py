@@ -240,8 +240,7 @@ class OrganizationImporter(CsvImporter):
 
 class SiteImporter(CsvImporter):
 
-  def __init__(self):
-    args = parser.parse_args()
+  def __init__(self, args):
     self.organization_dao = OrganizationDao()
     self.stub_geocoding = args.stub_geocoding
     self.ACTIVE = SiteStatus.ACTIVE
@@ -376,7 +375,7 @@ class SiteImporter(CsvImporter):
     self.delete_sql_statement(session, str_list)
 
 
-  def _insert_new_participants(self, entity):
+  def _insert_new_participants(self, entity, client=None):
     num_participants = 0
     participants = {'zip_code': '20001',
                     'date_of_birth': '1933-3-3',
@@ -385,8 +384,9 @@ class SiteImporter(CsvImporter):
                     'suspensionStatus': 'NOT_SUSPENDED'
                     }
 
-    client = Client('rdr/v1', False, self.creds_file, self.instance)
-    client_log.setLevel(logging.WARN)
+    if not client:
+      client = Client('rdr/v1', False, self.creds_file, self.instance)
+      client_log.setLevel(logging.WARN)
     questionnaire_to_questions, consent_questionnaire_id_and_version = _setup_questionnaires(client)
     consent_questions = questionnaire_to_questions[consent_questionnaire_id_and_version]
     for site in entity:
@@ -587,7 +587,7 @@ def main(args):
   HPODao()._invalidate_cache()
   OrganizationImporter().run(args.organization_file, args.dry_run)
   OrganizationDao()._invalidate_cache()
-  SiteImporter().run(args.site_file, args.dry_run)
+  SiteImporter(args).run(args.site_file, args.dry_run)
 
 
 if __name__ == '__main__':
