@@ -17,6 +17,7 @@ class MetricsEnrollmentStatusCache(Base):
   participantCount = Column('participant_count', Integer, nullable=False)
   consentedCount = Column('consented_count', Integer, nullable=False)
   coreCount = Column('core_count', Integer, nullable=False)
+  isCompleted = Column('is_completed', Boolean)
 
 class MetricsRaceCache(Base):
   """Contains race metrics data grouped by HPO ID and date.
@@ -43,6 +44,7 @@ class MetricsRaceCache(Base):
   preferNotToAnswer = Column('prefer_not_to_answer', Integer, nullable=False)
   multiAncestry = Column('multi_ancestry', Integer, nullable=False)
   noAncestryChecked = Column('no_ancestry_checked', Integer, nullable=False)
+  isCompleted = Column('is_completed', Boolean)
 
 class MetricsGenderCache(Base):
   """Contains gender metrics data grouped by HPO ID and date.
@@ -57,6 +59,7 @@ class MetricsGenderCache(Base):
   date = Column('date', Date, nullable=False, primary_key=True)
   genderName = Column('gender_name', String(255), primary_key=True)
   genderCount = Column('gender_count', Integer, nullable=False)
+  isCompleted = Column('is_completed', Boolean)
 
 class MetricsAgeCache(Base):
   """Contains age range metrics data grouped by HPO ID and date.
@@ -71,6 +74,7 @@ class MetricsAgeCache(Base):
   date = Column('date', Date, nullable=False, primary_key=True)
   ageRange = Column('age_range', String(255), primary_key=True)
   ageCount = Column('age_count', Integer, nullable=False)
+  isCompleted = Column('is_completed', Boolean)
 
 class MetricsRegionCache(Base):
   """Contains region metrics data grouped by HPO and date.
@@ -84,6 +88,7 @@ class MetricsRegionCache(Base):
   date = Column('date', Date, nullable=False, primary_key=True)
   stateName = Column('state_name', String(255), primary_key=True)
   stateCount = Column('state_count', Integer, nullable=False)
+  isCompleted = Column('is_completed', Boolean)
 
 class MetricsLanguageCache(Base):
   """Contains language metrics data grouped by HPO and date.
@@ -97,6 +102,7 @@ class MetricsLanguageCache(Base):
   date = Column('date', Date, nullable=False, primary_key=True)
   languageName = Column('language_name', String(50), primary_key=True)
   languageCount = Column('language_count', Integer, nullable=False)
+  isCompleted = Column('is_completed', Boolean)
 
 
 class MetricsLifecycleCache(Base):
@@ -122,3 +128,4 @@ class MetricsLifecycleCache(Base):
   physicalMeasurement = Column('physical_measurement', Integer, nullable=False)
   sampleReceived = Column('sample_received', Integer, nullable=False)
   fullParticipant = Column('full_participant', Integer, nullable=False)
+  isCompleted = Column('is_completed', Boolean)
