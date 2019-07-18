@@ -36,7 +36,7 @@ def downgrade(engine_name):
 
 
 def upgrade_rdr():
-    op.execute('ALTER TABLE metrics_lifecycle_cache ADD COLUMN type varchar(50) AFTER `date_inserted`;')
+    op.execute('ALTER TABLE metrics_lifecycle_cache ADD COLUMN type varchar(50) NOT NULL AFTER `date_inserted`;')
     op.execute('ALTER TABLE metrics_lifecycle_cache ADD COLUMN retention_modules_eligible int(11) NOT NULL AFTER `ppi_baseline_complete`;')
     op.execute('ALTER TABLE metrics_lifecycle_cache ADD COLUMN retention_modules_complete int(11) NOT NULL AFTER `retention_modules_eligible`;')
     op.execute('ALTER TABLE metrics_lifecycle_cache DROP PRIMARY KEY')
