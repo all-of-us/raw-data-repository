@@ -891,7 +891,7 @@ Passed as a number, e.g. `2`.
 | Version Number      | Description                                             |
 | ------------------- | ------------------------------------------------------- |
 | 1                   | return 3 tiers participant status                       |
-| 2                   | return 4 tiers participant status for `ENROLLMENT_STATUS`, `GEO_STATE`, `GEO_CENSUS` and `GEO_AWARDEE`|
+| 2                   | return 4 tiers participant status for `ENROLLMENT_STATUS`, `GEO_STATE`, `GEO_CENSUS` and `GEO_AWARDEE`; return retention modules for `LIFECYCLE` stratification|
 
 ### `enrollmentStatus` (optional)
 

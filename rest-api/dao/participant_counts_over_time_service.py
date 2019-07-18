@@ -44,8 +44,11 @@ class ParticipantCountsOverTimeService(BaseDao):
     logging.info('Refresh MetricsRegionCache done.')
     self.refresh_data_for_metrics_cache(MetricsLanguageCacheDao())
     logging.info('Refresh MetricsLanguageCache done.')
-    self.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao())
-    logging.info('Refresh MetricsLifecycleCache done.')
+    self.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType.METRICS_V2_API))
+    logging.info('Refresh MetricsLifecycleCache for Metrics2API done.')
+    self.refresh_data_for_metrics_cache(
+      MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
+    logging.info('Refresh MetricsLifecycleCache for Public Metrics API done.')
 
   def refresh_data_for_metrics_cache(self, dao):
     status_dao = MetricsCacheJobStatusDao()
@@ -139,7 +142,7 @@ class ParticipantCountsOverTimeService(BaseDao):
       return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids,
                                                enrollment_statuses)
     elif str(history) == 'TRUE' and stratification == Stratifications.LIFECYCLE:
-      dao = MetricsLifecycleCacheDao()
+      dao = MetricsLifecycleCacheDao(version=version)
       return dao.get_latest_version_from_cache(end_date, awardee_ids)
     elif stratification == Stratifications.TOTAL:
       strata = ['TOTAL']

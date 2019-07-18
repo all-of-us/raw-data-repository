@@ -70,6 +70,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.hpo_dao.insert(HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName='Test',
                        organizationType=OrganizationType.UNSET))
 
+    self.time0 = datetime.datetime(2017, 10, 3)
     self.time1 = datetime.datetime(2017, 12, 31)
     self.time2 = datetime.datetime(2018, 1, 1)
     self.time3 = datetime.datetime(2018, 1, 2)
@@ -86,7 +87,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
   def _insert(self, participant, first_name=None, last_name=None, hpo_name=None,
               unconsented=False, time_int=None, time_study=None, time_mem=None, time_fp=None,
               time_fp_stored=None, gender_id=None, dob=None, state_id=None, primary_language=None,
-              gender_identity=None):
+              gender_identity=None, **ppi_modules):
     """
     Create a participant in a transient test database.
 
@@ -175,6 +176,15 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
         summary.sampleOrderStatus1SALTime = time_fp
         summary.sampleStatus1ED04Time = time_fp
         summary.sampleStatus1SALTime = time_fp
+
+    if ppi_modules:
+      summary.questionnaireOnTheBasicsTime = ppi_modules['questionnaireOnTheBasicsTime']
+      summary.questionnaireOnLifestyleTime = ppi_modules['questionnaireOnLifestyleTime']
+      summary.questionnaireOnOverallHealthTime = ppi_modules['questionnaireOnOverallHealthTime']
+      summary.questionnaireOnHealthcareAccessTime = ppi_modules['questionnaireOnHealthcareAccessTime']
+      summary.questionnaireOnMedicalHistoryTime = ppi_modules['questionnaireOnMedicalHistoryTime']
+      summary.questionnaireOnMedicationsTime = ppi_modules['questionnaireOnMedicationsTime']
+      summary.questionnaireOnFamilyHealthTime = ppi_modules['questionnaireOnFamilyHealthTime']
 
     self.ps_dao.insert(summary)
 
@@ -4792,6 +4802,247 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                             'Registered': 2L, 'Samples_Received': 2L}
                                               }, 'hpo': u'AZ_TUCSON'}])
 
+  def test_refresh_metrics_lifecycle_cache_data_v2(self):
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                 time_mem=self.time2, time_fp=self.time3, time_fp_stored=self.time3)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time4,
+                 time_mem=self.time4, time_fp=self.time5, time_fp_stored=self.time5)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time4,
+                 time_mem=self.time5, time_fp=self.time5, time_fp_stored=self.time5)
+
+    p4 = Participant(participantId=6, biobankId=9)
+    self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time3, time_study=self.time4,
+                 time_mem=self.time4, time_fp=self.time4, time_fp_stored=self.time5)
+
+    p5 = Participant(participantId=7, biobankId=10)
+    self._insert(p5, 'Chad4', 'Caterpillar4', 'PITT', time_int=self.time0, time_study=self.time0,
+                 time_mem=self.time0, time_fp=self.time0, time_fp_stored=self.time0)
+
+    p6 = Participant(participantId=8, biobankId=11)
+    ppi_modules = dict(
+      questionnaireOnTheBasicsTime=self.time0,
+      questionnaireOnLifestyleTime=self.time0,
+      questionnaireOnOverallHealthTime=self.time0,
+      questionnaireOnHealthcareAccessTime=self.time0,
+      questionnaireOnMedicalHistoryTime=self.time0,
+      questionnaireOnMedicationsTime=self.time0,
+      questionnaireOnFamilyHealthTime=self.time5
+    )
+    self._insert(p6, 'Chad5', 'Caterpillar5', 'PITT', time_int=self.time0, time_study=self.time0,
+                 time_mem=self.time0, time_fp=self.time0, time_fp_stored=self.time0, **ppi_modules)
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsLifecycleCacheDao(MetricsCacheType.METRICS_V2_API, MetricsAPIVersion.V2)
+    service.refresh_data_for_metrics_cache(dao)
+
+    results = dao.get_latest_version_from_cache('2018-01-01')
+    self.assertEquals(results, [{'date': '2018-01-01',
+                                 'metrics': {'not_completed':
+                                               {'Full_Participant': 0L,
+                                                'PPI_Module_The_Basics': 0L,
+                                                'Consent_Complete': 0L,
+                                                'Consent_Enrollment': 0L,
+                                                'PPI_Module_Lifestyle': 0L,
+                                                'Baseline_PPI_Modules_Complete': 0L,
+                                                'PPI_Module_Family_Health': 0L,
+                                                'PPI_Module_Overall_Health': 0L,
+                                                'PPI_Retention_Modules_Complete': 0L,
+                                                'Physical_Measurements': 0L,
+                                                'Registered': 0,
+                                                'PPI_Module_Medical_History': 0L,
+                                                'PPI_Module_Healthcare_Access': 0L,
+                                                'Samples_Received': 0L},
+                                             'completed':
+                                               {'Full_Participant': 1L,
+                                                'PPI_Module_The_Basics': 1L,
+                                                'Consent_Complete': 1L,
+                                                'Consent_Enrollment': 1L,
+                                                'PPI_Module_Lifestyle': 1L,
+                                                'Baseline_PPI_Modules_Complete': 1L,
+                                                'PPI_Module_Family_Health': 0L,
+                                                'PPI_Module_Overall_Health': 1L,
+                                                'PPI_Retention_Modules_Complete': 0L,
+                                                'Physical_Measurements': 1L,
+                                                'Registered': 1L,
+                                                'PPI_Module_Medical_History': 0L,
+                                                'PPI_Module_Healthcare_Access': 0L,
+                                                'Samples_Received': 1L}}, 'hpo': u'UNSET'},
+                                {'date': '2018-01-01',
+                                 'metrics': {'not_completed':
+                                               {'Full_Participant': 0L,
+                                                'PPI_Module_The_Basics': 0L,
+                                                'Consent_Complete': 0L,
+                                                'Consent_Enrollment': 0L,
+                                                'PPI_Module_Lifestyle': 0L,
+                                                'Baseline_PPI_Modules_Complete': 0L,
+                                                'PPI_Module_Family_Health': 0L,
+                                                'PPI_Module_Overall_Health': 0L,
+                                                'PPI_Retention_Modules_Complete': 0L,
+                                                'Physical_Measurements': 0L,
+                                                'Registered': 0,
+                                                'PPI_Module_Medical_History': 0L,
+                                                'PPI_Module_Healthcare_Access': 0L,
+                                                'Samples_Received': 0L},
+                                             'completed':
+                                               {'Full_Participant': 2L,
+                                                'PPI_Module_The_Basics': 2L,
+                                                'Consent_Complete': 2L,
+                                                'Consent_Enrollment': 2L,
+                                                'PPI_Module_Lifestyle': 2L,
+                                                'Baseline_PPI_Modules_Complete': 2L,
+                                                'PPI_Module_Family_Health': 0L,
+                                                'PPI_Module_Overall_Health': 2L,
+                                                'PPI_Retention_Modules_Complete': 0L,
+                                                'Physical_Measurements': 2L,
+                                                'Registered': 2L,
+                                                'PPI_Module_Medical_History': 0L,
+                                                'PPI_Module_Healthcare_Access': 0L,
+                                                'Samples_Received': 2L}}, 'hpo': u'PITT'},
+                                {'date': '2018-01-01',
+                                 'metrics': {'not_completed':
+                                               {'Full_Participant': 1L,
+                                                'PPI_Module_The_Basics': 1L,
+                                                'Consent_Complete': 0L,
+                                                'Consent_Enrollment': 0L,
+                                                'PPI_Module_Lifestyle': 1L,
+                                                'Baseline_PPI_Modules_Complete': 1L,
+                                                'PPI_Module_Family_Health': 0L,
+                                                'PPI_Module_Overall_Health': 1L,
+                                                'PPI_Retention_Modules_Complete': 0L,
+                                                'Physical_Measurements': 1L,
+                                                'Registered': 0,
+                                                'PPI_Module_Medical_History': 0L,
+                                                'PPI_Module_Healthcare_Access': 0L,
+                                                'Samples_Received': 1L},
+                                             'completed':
+                                               {'Full_Participant': 0L,
+                                                'PPI_Module_The_Basics': 0L,
+                                                'Consent_Complete': 1L,
+                                                'Consent_Enrollment': 1L,
+                                                'PPI_Module_Lifestyle': 0L,
+                                                'Baseline_PPI_Modules_Complete': 0L,
+                                                'PPI_Module_Family_Health': 0L,
+                                                'PPI_Module_Overall_Health': 0L,
+                                                'PPI_Retention_Modules_Complete': 0L,
+                                                'Physical_Measurements': 0L,
+                                                'Registered': 1L,
+                                                'PPI_Module_Medical_History': 0L,
+                                                'PPI_Module_Healthcare_Access': 0L,
+                                                'Samples_Received': 0L}}, 'hpo': u'AZ_TUCSON'}])
+
+    results2 = dao.get_latest_version_from_cache('2018-01-03')
+    self.assertEquals(results2, [{'date': '2018-01-03',
+                                  'metrics': {
+                                    'not_completed':
+                                      {'Full_Participant': 0L,
+                                       'PPI_Module_The_Basics': 0L,
+                                       'Consent_Complete': 0L,
+                                       'Consent_Enrollment': 0L,
+                                       'PPI_Module_Lifestyle': 0L,
+                                       'Baseline_PPI_Modules_Complete': 0L,
+                                       'PPI_Module_Family_Health': 0L,
+                                       'PPI_Module_Overall_Health': 0L,
+                                       'PPI_Retention_Modules_Complete': 0L,
+                                       'Physical_Measurements': 0L,
+                                       'Registered': 0,
+                                       'PPI_Module_Medical_History': 0L,
+                                       'PPI_Module_Healthcare_Access': 0L,
+                                       'Samples_Received': 0L},
+                                    'completed':
+                                      {'Full_Participant': 1L,
+                                       'PPI_Module_The_Basics': 1L,
+                                       'Consent_Complete': 1L,
+                                       'Consent_Enrollment': 1L,
+                                       'PPI_Module_Lifestyle': 1L,
+                                       'Baseline_PPI_Modules_Complete': 1L,
+                                       'PPI_Module_Family_Health': 0L,
+                                       'PPI_Module_Overall_Health': 1L,
+                                       'PPI_Retention_Modules_Complete': 0L,
+                                       'Physical_Measurements': 1L,
+                                       'Registered': 1L,
+                                       'PPI_Module_Medical_History': 0L,
+                                       'PPI_Module_Healthcare_Access': 0L,
+                                       'Samples_Received': 1L}}, 'hpo': u'UNSET'},
+                                 {'date': '2018-01-03',
+                                  'metrics': {
+                                    'not_completed':
+                                      {'Full_Participant': 2L,
+                                       'PPI_Module_The_Basics': 1L,
+                                       'Consent_Complete': 1L,
+                                       'Consent_Enrollment': 0L,
+                                       'PPI_Module_Lifestyle': 1L,
+                                       'Baseline_PPI_Modules_Complete': 1L,
+                                       'PPI_Module_Family_Health': 1L,
+                                       'PPI_Module_Overall_Health': 1L,
+                                       'PPI_Retention_Modules_Complete': 1L,
+                                       'Physical_Measurements': 1L,
+                                       'Registered': 0,
+                                       'PPI_Module_Medical_History': 0L,
+                                       'PPI_Module_Healthcare_Access': 0L,
+                                       'Samples_Received': 1L},
+                                    'completed':
+                                      {'Full_Participant': 2L,
+                                       'PPI_Module_The_Basics': 3L,
+                                       'Consent_Complete': 3L,
+                                       'Consent_Enrollment': 4L,
+                                       'PPI_Module_Lifestyle': 3L,
+                                       'Baseline_PPI_Modules_Complete': 3L,
+                                       'PPI_Module_Family_Health': 1L,
+                                       'PPI_Module_Overall_Health': 3L,
+                                       'PPI_Retention_Modules_Complete': 1L,
+                                       'Physical_Measurements': 3L,
+                                       'Registered': 4L,
+                                       'PPI_Module_Medical_History': 2L,
+                                       'PPI_Module_Healthcare_Access': 2L,
+                                       'Samples_Received': 3L}}, 'hpo': u'PITT'},
+                                 {'date': '2018-01-03',
+                                  'metrics':
+                                    {'not_completed':
+                                       {'Full_Participant': 1L,
+                                        'PPI_Module_The_Basics': 1L,
+                                        'Consent_Complete': 0L,
+                                        'Consent_Enrollment': 0L,
+                                        'PPI_Module_Lifestyle': 1L,
+                                        'Baseline_PPI_Modules_Complete': 1L,
+                                        'PPI_Module_Family_Health': 0L,
+                                        'PPI_Module_Overall_Health': 1L,
+                                        'PPI_Retention_Modules_Complete': 0L,
+                                        'Physical_Measurements': 1L,
+                                        'Registered': 0,
+                                        'PPI_Module_Medical_History': 0L,
+                                        'PPI_Module_Healthcare_Access': 0L,
+                                        'Samples_Received': 1L},
+                                     'completed':
+                                       {'Full_Participant': 1L,
+                                        'PPI_Module_The_Basics': 1L,
+                                        'Consent_Complete': 2L,
+                                        'Consent_Enrollment': 2L,
+                                        'PPI_Module_Lifestyle': 1L,
+                                        'Baseline_PPI_Modules_Complete': 1L,
+                                        'PPI_Module_Family_Health': 0L,
+                                        'PPI_Module_Overall_Health': 1L,
+                                        'PPI_Retention_Modules_Complete': 0L,
+                                        'Physical_Measurements': 1L,
+                                        'Registered': 2L,
+                                        'PPI_Module_Medical_History': 0L,
+                                        'PPI_Module_Healthcare_Access': 0L,
+                                        'Samples_Received': 1L}}, 'hpo': u'AZ_TUCSON'}])
+
   def test_get_metrics_lifecycle_data_api(self):
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -4820,7 +5071,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                  time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
     service = ParticipantCountsOverTimeService()
-    dao = MetricsLifecycleCacheDao()
+    dao = MetricsLifecycleCacheDao(MetricsCacheType.METRICS_V2_API)
     service.refresh_data_for_metrics_cache(dao)
 
     qs1 = """
@@ -4953,6 +5204,159 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                     u'Physical_Measurements': 2,
                                                     u'Samples_Received': 2}}, u'hpo': u'AZ_TUCSON'}
                        ])
+
+  def test_get_metrics_lifecycle_data_api_v2(self):
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                 time_mem=self.time2, time_fp=self.time3, time_fp_stored=self.time3)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time4,
+                 time_mem=self.time4, time_fp=self.time5, time_fp_stored=self.time5)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time4,
+                 time_mem=self.time5, time_fp=self.time5, time_fp_stored=self.time5)
+
+    p4 = Participant(participantId=6, biobankId=9)
+    self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time3, time_study=self.time4,
+                 time_mem=self.time4, time_fp=self.time4, time_fp_stored=self.time5)
+    p5 = Participant(participantId=7, biobankId=10)
+    self._insert(p5, 'Chad4', 'Caterpillar4', 'PITT', time_int=self.time0, time_study=self.time0,
+                 time_mem=self.time0, time_fp=self.time0, time_fp_stored=self.time0)
+
+    p6 = Participant(participantId=8, biobankId=11)
+    ppi_modules = dict(
+      questionnaireOnTheBasicsTime=self.time0,
+      questionnaireOnLifestyleTime=self.time0,
+      questionnaireOnOverallHealthTime=self.time0,
+      questionnaireOnHealthcareAccessTime=self.time0,
+      questionnaireOnMedicalHistoryTime=self.time0,
+      questionnaireOnMedicationsTime=self.time0,
+      questionnaireOnFamilyHealthTime=self.time5
+    )
+    self._insert(p6, 'Chad5', 'Caterpillar5', 'PITT', time_int=self.time0, time_study=self.time0,
+                 time_mem=self.time0, time_fp=self.time0, time_fp_stored=self.time0, **ppi_modules)
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsLifecycleCacheDao(MetricsCacheType.METRICS_V2_API)
+    service.refresh_data_for_metrics_cache(dao)
+
+    qs1 = """
+                          &stratification=LIFECYCLE
+                          &endDate=2018-01-03
+                          &history=TRUE
+                          &version=2
+                          """
+
+    qs1 = ''.join(qs1.split())
+    results = self.send_get('ParticipantCountsOverTime', query_string=qs1)
+    self.assertEquals(results, [{u'date': u'2018-01-03',
+                                 u'metrics':
+                                   {u'not_completed':
+                                      {u'Full_Participant': 0,
+                                       u'PPI_Module_The_Basics': 0,
+                                       u'Consent_Complete': 0,
+                                       u'Consent_Enrollment': 0,
+                                       u'PPI_Module_Lifestyle': 0,
+                                       u'Registered': 0,
+                                       u'Baseline_PPI_Modules_Complete': 0,
+                                       u'Physical_Measurements': 0,
+                                       u'PPI_Module_Family_Health': 0,
+                                       u'PPI_Module_Overall_Health': 0,
+                                       u'PPI_Module_Medical_History': 0,
+                                       u'PPI_Retention_Modules_Complete': 0,
+                                       u'PPI_Module_Healthcare_Access': 0,
+                                       u'Samples_Received': 0},
+                                    u'completed':
+                                      {u'Full_Participant': 1,
+                                       u'PPI_Module_The_Basics': 1,
+                                       u'Consent_Complete': 1,
+                                       u'Consent_Enrollment': 1,
+                                       u'PPI_Module_Lifestyle': 1,
+                                       u'Registered': 1,
+                                       u'Baseline_PPI_Modules_Complete': 1,
+                                       u'Physical_Measurements': 1,
+                                       u'PPI_Module_Family_Health': 0,
+                                       u'PPI_Module_Overall_Health': 1,
+                                       u'PPI_Module_Medical_History': 0,
+                                       u'PPI_Retention_Modules_Complete': 0,
+                                       u'PPI_Module_Healthcare_Access': 0,
+                                       u'Samples_Received': 1}}, u'hpo': u'UNSET'},
+                                {u'date': u'2018-01-03',
+                                 u'metrics':
+                                   {u'not_completed':
+                                      {u'Full_Participant': 2,
+                                       u'PPI_Module_The_Basics': 1,
+                                       u'Consent_Complete': 1,
+                                       u'Consent_Enrollment': 0,
+                                       u'PPI_Module_Lifestyle': 1,
+                                       u'Registered': 0,
+                                       u'Baseline_PPI_Modules_Complete': 1,
+                                       u'Physical_Measurements': 1,
+                                       u'PPI_Module_Family_Health': 1,
+                                       u'PPI_Module_Overall_Health': 1,
+                                       u'PPI_Module_Medical_History': 0,
+                                       u'PPI_Retention_Modules_Complete': 1,
+                                       u'PPI_Module_Healthcare_Access': 0,
+                                       u'Samples_Received': 1},
+                                    u'completed':
+                                      {u'Full_Participant': 2,
+                                       u'PPI_Module_The_Basics': 3,
+                                       u'Consent_Complete': 3,
+                                       u'Consent_Enrollment': 4,
+                                       u'PPI_Module_Lifestyle': 3,
+                                       u'Registered': 4,
+                                       u'Baseline_PPI_Modules_Complete': 3,
+                                       u'Physical_Measurements': 3,
+                                       u'PPI_Module_Family_Health': 1,
+                                       u'PPI_Module_Overall_Health': 3,
+                                       u'PPI_Module_Medical_History': 2,
+                                       u'PPI_Retention_Modules_Complete': 1,
+                                       u'PPI_Module_Healthcare_Access': 2,
+                                       u'Samples_Received': 3}}, u'hpo': u'PITT'},
+                                {u'date': u'2018-01-03',
+                                 u'metrics':
+                                   {u'not_completed':
+                                      {u'Full_Participant': 1,
+                                       u'PPI_Module_The_Basics': 1,
+                                       u'Consent_Complete': 0,
+                                       u'Consent_Enrollment': 0,
+                                       u'PPI_Module_Lifestyle': 1,
+                                       u'Registered': 0,
+                                       u'Baseline_PPI_Modules_Complete': 1,
+                                       u'Physical_Measurements': 1,
+                                       u'PPI_Module_Family_Health': 0,
+                                       u'PPI_Module_Overall_Health': 1,
+                                       u'PPI_Module_Medical_History': 0,
+                                       u'PPI_Retention_Modules_Complete': 0,
+                                       u'PPI_Module_Healthcare_Access': 0,
+                                       u'Samples_Received': 1},
+                                    u'completed':
+                                      {u'Full_Participant': 1,
+                                       u'PPI_Module_The_Basics': 1,
+                                       u'Consent_Complete': 2,
+                                       u'Consent_Enrollment': 2,
+                                       u'PPI_Module_Lifestyle': 1,
+                                       u'Registered': 2,
+                                       u'Baseline_PPI_Modules_Complete': 1,
+                                       u'Physical_Measurements': 1,
+                                       u'PPI_Module_Family_Health': 0,
+                                       u'PPI_Module_Overall_Health': 1,
+                                       u'PPI_Module_Medical_History': 0,
+                                       u'PPI_Retention_Modules_Complete': 0,
+                                       u'PPI_Module_Healthcare_Access': 0,
+                                       u'Samples_Received': 1}}, u'hpo': u'AZ_TUCSON'}])
 
   def test_refresh_metrics_lifecycle_cache_data_for_public_metrics_api(self):
 

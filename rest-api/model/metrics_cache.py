@@ -105,6 +105,7 @@ class MetricsLifecycleCache(Base):
   __tablename__ = 'metrics_lifecycle_cache'
   dateInserted = Column('date_inserted', UTCDateTime, default=clock.CLOCK.now,
                         nullable=False, primary_key=True)
+  type = Column('type', String(50), primary_key=True)
   hpoId = Column('hpo_id', String(20), primary_key=True)
   hpoName = Column('hpo_name', String(255), primary_key=True)
   date = Column('date', Date, nullable=False, primary_key=True)
@@ -119,6 +120,8 @@ class MetricsLifecycleCache(Base):
   ppiMedications = Column('ppi_medications', Integer, nullable=False)
   ppiFamilyHealth = Column('ppi_family_health', Integer, nullable=False)
   ppiBaselineComplete = Column('ppi_baseline_complete', Integer, nullable=False)
+  retentionModulesEligible = Column('retention_modules_eligible', Integer, nullable=False)
+  retentionModulesComplete = Column('retention_modules_complete', Integer, nullable=False)
   physicalMeasurement = Column('physical_measurement', Integer, nullable=False)
   sampleReceived = Column('sample_received', Integer, nullable=False)
   fullParticipant = Column('full_participant', Integer, nullable=False)
