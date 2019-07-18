@@ -564,7 +564,7 @@ def gcp_cp(src, dest, args=None, flags=None):
   if not src or not isinstance(src, str):
     raise ValueError('invalid src value')
   if '//' in src[:6] and not src.startswith('gs://'):
-    raise ValueError('src does not start with g://')
+    raise ValueError('src does not start with gs://')
 
   if not dest or not isinstance(dest, str):
     raise ValueError('invalid dest value')
