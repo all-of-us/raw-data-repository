@@ -122,3 +122,13 @@ class MetricsLifecycleCache(Base):
   physicalMeasurement = Column('physical_measurement', Integer, nullable=False)
   sampleReceived = Column('sample_received', Integer, nullable=False)
   fullParticipant = Column('full_participant', Integer, nullable=False)
+
+class MetricsCacheJobStatus(Base):
+  __tablename__ = 'metrics_cache_job_status'
+  id = Column('id', Integer, primary_key=True, autoincrement=True,
+                            nullable=False)
+  cacheTableName = Column('cache_table_name', String(100), nullable=False)
+  type = Column('type', String(50))
+  inProgress = Column('in_progress', Boolean, default=False, nullable=False)
+  complete = Column('complete', Boolean, default=False, nullable=False)
+  dateInserted = Column('date_inserted', UTCDateTime, nullable=False)

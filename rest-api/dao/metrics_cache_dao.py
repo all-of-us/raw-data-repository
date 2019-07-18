@@ -1,6 +1,7 @@
 from model.metrics_cache import MetricsEnrollmentStatusCache, MetricsGenderCache, MetricsAgeCache, \
-  MetricsRaceCache, MetricsRegionCache, MetricsLifecycleCache, MetricsLanguageCache
-from dao.base_dao import BaseDao
+  MetricsRaceCache, MetricsRegionCache, MetricsLifecycleCache, MetricsLanguageCache, \
+  MetricsCacheJobStatus
+from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
 from dao.code_dao import CodeDao
 from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN, GenderIdentity
@@ -8,10 +9,42 @@ from code_constants import PPI_SYSTEM
 from census_regions import census_regions
 import datetime
 import json
-from sqlalchemy import func, or_
+import sqlalchemy
+from sqlalchemy import func, or_, and_, desc
 from participant_enums import Stratifications, AGE_BUCKETS_METRICS_V2_API, \
   AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API, MetricsCacheType, MetricsAPIVersion, EnrollmentStatus, \
   EnrollmentStatusV2
+
+
+class MetricsCacheJobStatusDao(UpdatableDao):
+  def __init__(self):
+    super(MetricsCacheJobStatusDao, self).__init__(MetricsCacheJobStatus)
+
+  def set_to_complete(self, obj):
+    with self.session() as session:
+      query = (
+        sqlalchemy
+          .update(MetricsCacheJobStatus)
+          .where(and_(MetricsCacheJobStatus.dateInserted >= obj.dateInserted.replace(microsecond=0),
+                      MetricsCacheJobStatus.cacheTableName == obj.cacheTableName,
+                      MetricsCacheJobStatus.type == obj.type,
+                      MetricsCacheJobStatus.inProgress == obj.inProgress,
+                      MetricsCacheJobStatus.complete.is_(False)))
+          .values({MetricsCacheJobStatus.complete: True})
+      )
+      session.execute(query)
+
+  def get_last_complete_data_inserted_time(self, table_name, cache_type=None):
+    with self.session() as session:
+      query = session.query(MetricsCacheJobStatus.dateInserted)
+      query = query.filter(MetricsCacheJobStatus.cacheTableName == table_name,
+                           MetricsCacheJobStatus.complete.is_(True))
+      if cache_type:
+        query = query.filter(MetricsCacheJobStatus.type == str(cache_type))
+      query = query.order_by(desc(MetricsCacheJobStatus.id))
+      record = query.first()
+      return record
+
 
 class MetricsEnrollmentStatusCacheDao(BaseDao):
   def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API, version=None):
@@ -19,15 +52,21 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
     self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
     self.test_email_pattern = TEST_EMAIL_PATTERN
     self.version = version
+    self.table_name = MetricsEnrollmentStatusCache.__tablename__
     try:
       self.cache_type = MetricsCacheType(str(cache_type))
     except TypeError:
       raise TypeError("Invalid metrics cache type")
 
   def get_serving_version_with_session(self, session):
-    return (session.query(MetricsEnrollmentStatusCache)
-            .order_by(MetricsEnrollmentStatusCache.dateInserted.desc())
-            .first())
+    status_dao = MetricsCacheJobStatusDao()
+    record = status_dao.get_last_complete_data_inserted_time(self.table_name)
+    if record is not None:
+      return record
+    else:
+      return (session.query(MetricsEnrollmentStatusCache)
+              .order_by(MetricsEnrollmentStatusCache.dateInserted.desc())
+              .first())
 
   def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None):
     with self.session() as session:
@@ -265,22 +304,34 @@ class MetricsGenderCacheDao(BaseDao):
     try:
       self.cache_type = MetricsCacheType(str(cache_type))
       self.version = version
+      self.table_name = MetricsGenderCache.__tablename__
     except TypeError:
       raise TypeError("Invalid metrics cache type")
 
   def get_serving_version_with_session(self, session):
     if self.version == MetricsAPIVersion.V2:
-      return (session
-              .query(MetricsGenderCache)
-              .filter(MetricsGenderCache.type == str(self.cache_type))
-              .order_by(MetricsGenderCache.dateInserted.desc())
-              .first())
+      status_dao = MetricsCacheJobStatusDao()
+      record = status_dao.get_last_complete_data_inserted_time(self.table_name, self.cache_type)
+      if record is not None:
+        return record
+      else:
+        return (session
+                .query(MetricsGenderCache)
+                .filter(MetricsGenderCache.type == str(self.cache_type))
+                .order_by(MetricsGenderCache.dateInserted.desc())
+                .first())
     else:
-      return (session
-              .query(MetricsGenderCache)
-              .filter(MetricsGenderCache.type == MetricsCacheType.METRICS_V2_API)
-              .order_by(MetricsGenderCache.dateInserted.desc())
-              .first())
+      status_dao = MetricsCacheJobStatusDao()
+      record = status_dao.get_last_complete_data_inserted_time(self.table_name,
+                                                               MetricsCacheType.METRICS_V2_API)
+      if record is not None:
+        return record
+      else:
+        return (session
+                .query(MetricsGenderCache)
+                .filter(MetricsGenderCache.type == MetricsCacheType.METRICS_V2_API)
+                .order_by(MetricsGenderCache.dateInserted.desc())
+                .first())
 
   def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None,
                          enrollment_statuses=None):
@@ -700,6 +751,7 @@ class MetricsAgeCacheDao(BaseDao):
     super(MetricsAgeCacheDao, self).__init__(MetricsAgeCache)
     try:
       self.cache_type = MetricsCacheType(str(cache_type))
+      self.table_name = MetricsAgeCache.__tablename__
     except TypeError:
       raise TypeError("Invalid metrics cache type")
 
@@ -709,10 +761,15 @@ class MetricsAgeCacheDao(BaseDao):
       self.age_ranges = AGE_BUCKETS_METRICS_V2_API
 
   def get_serving_version_with_session(self, session):
-    return (session.query(MetricsAgeCache)
-            .filter(MetricsAgeCache.type == str(self.cache_type))
-            .order_by(MetricsAgeCache.dateInserted.desc())
-            .first())
+    status_dao = MetricsCacheJobStatusDao()
+    record = status_dao.get_last_complete_data_inserted_time(self.table_name, self.cache_type)
+    if record is not None:
+      return record
+    else:
+      return (session.query(MetricsAgeCache)
+              .filter(MetricsAgeCache.type == str(self.cache_type))
+              .order_by(MetricsAgeCache.dateInserted.desc())
+              .first())
 
   def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None,
                          enrollment_statuses=None):
@@ -1059,22 +1116,34 @@ class MetricsRaceCacheDao(BaseDao):
     try:
       self.cache_type = MetricsCacheType(str(cache_type))
       self.version = version
+      self.table_name = MetricsRaceCache.__tablename__
     except TypeError:
       raise TypeError("Invalid metrics cache type")
 
   def get_serving_version_with_session(self, session):
     if self.version == MetricsAPIVersion.V2:
-      return (session
-              .query(MetricsRaceCache)
-              .filter(MetricsRaceCache.type == str(self.cache_type))
-              .order_by(MetricsRaceCache.dateInserted.desc())
-              .first())
+      status_dao = MetricsCacheJobStatusDao()
+      record = status_dao.get_last_complete_data_inserted_time(self.table_name, self.cache_type)
+      if record is not None:
+        return record
+      else:
+        return (session
+                .query(MetricsRaceCache)
+                .filter(MetricsRaceCache.type == str(self.cache_type))
+                .order_by(MetricsRaceCache.dateInserted.desc())
+                .first())
     else:
-      return (session
-              .query(MetricsRaceCache)
-              .filter(MetricsRaceCache.type == MetricsCacheType.METRICS_V2_API)
-              .order_by(MetricsRaceCache.dateInserted.desc())
-              .first())
+      status_dao = MetricsCacheJobStatusDao()
+      record = status_dao.get_last_complete_data_inserted_time(self.table_name,
+                                                               MetricsCacheType.METRICS_V2_API)
+      if record is not None:
+        return record
+      else:
+        return (session
+                .query(MetricsRaceCache)
+                .filter(MetricsRaceCache.type == MetricsCacheType.METRICS_V2_API)
+                .order_by(MetricsRaceCache.dateInserted.desc())
+                .first())
 
   def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None,
                          enrollment_statuses=None):
@@ -1507,15 +1576,21 @@ class MetricsRegionCacheDao(BaseDao):
   def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API, version=None):
     super(MetricsRegionCacheDao, self).__init__(MetricsRegionCache)
     self.version = version
+    self.table_name = MetricsRegionCache.__tablename__
     try:
       self.cache_type = MetricsCacheType(str(cache_type))
     except TypeError:
       raise TypeError("Invalid metrics cache type")
 
   def get_serving_version_with_session(self, session):
-    return (session.query(MetricsRegionCache)
-            .order_by(MetricsRegionCache.dateInserted.desc())
-            .first())
+    status_dao = MetricsCacheJobStatusDao()
+    record = status_dao.get_last_complete_data_inserted_time(self.table_name)
+    if record is not None:
+      return record
+    else:
+      return (session.query(MetricsRegionCache)
+              .order_by(MetricsRegionCache.dateInserted.desc())
+              .first())
 
   def get_active_buckets(self, cutoff, stratification, hpo_ids=None, enrollment_statuses=None):
     with self.session() as session:
@@ -1853,13 +1928,19 @@ class MetricsLifecycleCacheDao(BaseDao):
     super(MetricsLifecycleCacheDao, self).__init__(MetricsLifecycleCache)
     try:
       self.cache_type = MetricsCacheType(str(cache_type))
+      self.table_name = MetricsLifecycleCache.__tablename__
     except TypeError:
       raise TypeError("Invalid metrics cache type")
 
   def get_serving_version_with_session(self, session):
-    return (session.query(MetricsLifecycleCache)
-            .order_by(MetricsLifecycleCache.dateInserted.desc())
-            .first())
+    status_dao = MetricsCacheJobStatusDao()
+    record = status_dao.get_last_complete_data_inserted_time(self.table_name)
+    if record is not None:
+      return record
+    else:
+      return (session.query(MetricsLifecycleCache)
+              .order_by(MetricsLifecycleCache.dateInserted.desc())
+              .first())
 
   def get_active_buckets(self, cutoff, hpo_ids=None):
     with self.session() as session:
@@ -2140,13 +2221,19 @@ class MetricsLanguageCacheDao(BaseDao):
     super(MetricsLanguageCacheDao, self).__init__(MetricsLanguageCache)
     try:
       self.cache_type = MetricsCacheType(str(cache_type))
+      self.table_name = MetricsLanguageCache.__tablename__
     except TypeError:
       raise TypeError("Invalid metrics cache type")
 
   def get_serving_version_with_session(self, session):
-    return (session.query(MetricsLanguageCache)
-            .order_by(MetricsLanguageCache.dateInserted.desc())
-            .first())
+    status_dao = MetricsCacheJobStatusDao()
+    record = status_dao.get_last_complete_data_inserted_time(self.table_name)
+    if record is not None:
+      return record
+    else:
+      return (session.query(MetricsLanguageCache)
+              .order_by(MetricsLanguageCache.dateInserted.desc())
+              .first())
 
   def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None,
                          enrollment_statuses=None):
