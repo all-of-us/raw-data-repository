@@ -24,4 +24,6 @@ htmlcov/
 .python-version
 
 # Local working cache files
-/rest-api/data/*
+/rest-api/data/awardees.csv
+/rest-api/data/organizations.csv
+/rest-api/data/sites.csv
