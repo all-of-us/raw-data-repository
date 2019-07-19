@@ -1,13 +1,50 @@
 # pylint: disable=superfluous-parens
 
 import logging
+import time
 import traceback
 
-from services.gcp_utils import gcp_initialize, gcp_cleanup
+from services.gcp_utils import gcp_initialize, gcp_cleanup, gcp_activate_sql_proxy
 from services.system_utils import write_pidfile_or_die, remove_pidfile
 
 _logger = logging.getLogger('rdr_logger')
 
+class GCPEnvConfigObject(object):
+  """ GCP environment configuration object """
+
+  _sql_proxy_process = None
+
+  def __init__(self, items):
+    """
+    :param items: dict of config key value pairs
+    """
+    for key, val in items.iteritems():
+      self.__dict__[key] = val
+
+
+  def cleanup(self):
+    """ Clean up or close everything we need to """
+    if self._sql_proxy_process:
+      self._sql_proxy_process.terminate()
+
+
+  def activate_sql_proxy(self, instances):
+    """
+    Activate a google sql proxy instance service
+    :param instances: string of instances to connect to
+    :return: pid or None
+    """
+    if not instances:
+      raise ValueError('invalid instance value')
+
+    if self._sql_proxy_process:
+      self._sql_proxy_process.terminate()
+      self._sql_proxy_process = None
+
+    self._sql_proxy_process = gcp_activate_sql_proxy(instances)
+    if self._sql_proxy_process:
+      time.sleep(6)  # allow time for sql connection to be made.
+    return self._sql_proxy_process.pid
 
 class GCPProcessContext(object):
   """
@@ -18,6 +55,8 @@ class GCPProcessContext(object):
   _account = None
   _service_account = None
   _env = None
+
+  _env_config_obj = None
 
   def __init__(self, command, project, account=None, service_account=None):
     """
@@ -43,9 +82,13 @@ class GCPProcessContext(object):
       exit(1)
 
   def __enter__(self):
-    return self._env
+    """ Return object with properties set to config values """
+    self._env_config_obj = GCPEnvConfigObject(self._env)
+    return self._env_config_obj
 
   def __exit__(self, exc_type, exc_val, exc_tb):
+    """ Clean up or close everything we need to """
+    self._env_config_obj.cleanup()
     gcp_cleanup(self._account)
     remove_pidfile(self._command)
 
