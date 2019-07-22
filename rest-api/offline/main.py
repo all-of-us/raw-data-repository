@@ -24,7 +24,7 @@ from offline.patient_status_backfill import backfill_patient_status
 import offline.sync_consent_files
 import offline.update_ehr_status
 import offline.genomic_pipeline
-import offline.bigquery_sync
+from offline.bigquery_sync import rebuild_bigquery_handler, sync_bigquery_handler
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import BadRequest
 
@@ -190,19 +190,20 @@ def genomic_pipeline():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
-def bigquery_rebuild():
-  # this should always be a manually run job, but we have to schedule it.
+def bigquery_rebuild_cron():
+  """ this should always be a manually run job, but we have to schedule it at least once a year. """
   now = datetime.utcnow()
   if now.day == 01 and now.month == 01:
     logging.info('skipping the scheduled run.')
     return '{"success": "true"}'
-  offline.bigquery_sync.rebuild_bigquery_data()
+  rebuild_bigquery_handler()
   return '{"success": "true"}'
+
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def bigquery_sync():
-  offline.bigquery_sync.sync_bigquery()
+  sync_bigquery_handler()
   return '{"success": "true"}'
 
 @app_util.auth_required_cron
@@ -295,7 +296,7 @@ def _build_pipeline_app():
   offline_app.add_url_rule(
     PREFIX + 'BigQueryRebuild',
     endpoint='bigquery_rebuild',
-    view_func=bigquery_rebuild,
+    view_func=bigquery_rebuild_cron,
     methods=['GET'])
 
   offline_app.add_url_rule(

@@ -13,6 +13,7 @@ import version_api
 from api import metrics_ehr_api
 from api.awardee_api import AwardeeApi
 from api.bigquery_participant_summary_api import BQParticipantSummaryApi
+from api.bigquery_task_queue_api import BQRebuildTaskApi
 from api.biobank_order_api import BiobankOrderApi
 from api.check_ppi_data_api import check_ppi_data
 from api.data_gen_api import DataGenApi, SpecDataGenApi
@@ -215,15 +216,21 @@ api.add_resource(DataGenApi,
                  endpoint='datagen',
                  methods=['POST', 'PUT'])
 
-# Data generator API used to load specific fake data into the database.
-api.add_resource(SpecDataGenApi,
-                 PREFIX + 'SpecDataGen',
-                 endpoint='specdatagen',
-                 methods=['POST'])
+
+# Task Queue API endpoing to rebuild BQ participant summary records.
+api.add_resource(BQRebuildTaskApi,
+                 PREFIX + 'BQRebuildTaskApi',
+                 endpoint='bq_rebuilt_task',
+                 methods=['GET'])
 
 #
 # Non-resource endpoints
 #
+
+api.add_resource(SpecDataGenApi,
+                 PREFIX + 'SpecDataGen',
+                 endpoint='specdatagen',
+                 methods=['POST'])
 
 app.add_url_rule(PREFIX + 'PhysicalMeasurements/_history',
                  endpoint='physicalMeasurementsSync',

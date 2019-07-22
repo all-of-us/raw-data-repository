@@ -145,6 +145,21 @@ then
   $UPDATE_TRACKER --version $VERSION --comment "Upgrading database for ${PROJECT}."
   tools/upgrade_database.sh --project $PROJECT --account $ACCOUNT
   $UPDATE_TRACKER --version $VERSION --comment "Database for ${PROJECT} upgraded."
+
+  echo "Updating BigQuery rdr_ops_data_view dataset..."
+  if [ -z "${SERVICE_ACCOUNT}" ]
+  then
+    case "${PROJECT}" in
+        "pmi-drc-api-test" | "all-of-us-rdr-staging")
+            SERVICE_ACCOUNT="circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
+            ;;
+        *)
+            SERVICE_ACCOUNT="configurator@${PROJECT}.iam.gserviceaccount.com"
+            ;;
+    esac
+  fi
+  python -m tools migrate-bq --project ${PROJECT} --service-account ${SERVICE_ACCOUNT} --dataset rdr_ops_data_view
+  $UPDATE_TRACKER --version $VERSION --comment "BigQuery dataset rdr_ops_data_view for ${PROJECT} upgraded."
 fi
 
 if [ "$TARGET" == "all" ] || [ "$TARGET" == "config" ]
