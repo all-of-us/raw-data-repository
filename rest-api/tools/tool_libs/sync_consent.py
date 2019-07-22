@@ -31,7 +31,7 @@ tool_desc = 'manually sync consent files to sites'
 
 HPO_REPORT_CONFIG_GCS_PATH = 'gs://all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json'
 SOURCE_BUCKET = 'gs://ptc-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*'
-DEST_BUCKET = 'gs://{bucket_name}/Participant/{site_name}/P{p_id}/'
+DEST_BUCKET = 'gs://{bucket_name}/Participant/{org_external_id}/{site_name}/P{p_id}/'
 
 PARTICIPANT_SQL = """
 select participant.participant_id,
@@ -83,6 +83,7 @@ class SyncConsentClass(object):
     sheet_url = 'spreadsheets/d/{0}/export?format=csv'.format(sheet_id)
     resp_code, resp_data = make_api_request('docs.google.com', sheet_url, ret_type='text')
     if resp_code != 200:
+      _logger.error(resp_data)
       _logger.error('failed to retrieve site information, aborting.')
       return 1
     # TODO end
@@ -95,9 +96,14 @@ class SyncConsentClass(object):
       if row['Org ID']:
         sites[row['Org ID']] = {'aggregating_org_id': row['Aggregating Org ID'], 'bucket_name': row['Bucket Name']}
 
+    _logger.info('retrieving db configuration...')
     headers = gcp_make_auth_header()
     resp_code, resp_data = make_api_request(
       '{0}.appspot.com'.format(self.gcp_env.project), '/rdr/v1/Config/db_config', headers=headers)
+    if resp_code != 200:
+      _logger.error(resp_data)
+      _logger.error('failed to retrieve config, aborting.')
+      return 1
 
     passwd = resp_data['rdr_db_password']
     if not passwd:
@@ -143,23 +149,31 @@ class SyncConsentClass(object):
 
         p_id = rec[0]
         site = rec[1]
-        site_info = sites.get(rec[2])
-        if not site_info:
-          _logger.warn('\nsite info not found for [{0}].'.format(rec[2]))
-          continue
-        bucket = site_info.get('bucket_name')
+        if self.args.destination_bucket is not None:
+          # override destination bucket lookup (the lookup table is incomplete)
+          bucket = self.args.destination_bucket
+        else:
+          site_info = sites.get(rec[2])
+          if not site_info:
+            _logger.warn('\nsite info not found for [{0}].'.format(rec[2]))
+            continue
+          bucket = site_info.get('bucket_name')
         if not bucket:
           _logger.warn('\nno bucket name found for [{0}].'.format(rec[2]))
           continue
 
         src_bucket = SOURCE_BUCKET.format(p_id=p_id)
-        dest_bucket = DEST_BUCKET.format(bucket_name=bucket, site_name=site if site else 'no-site-assigned', p_id=p_id)
+        dest_bucket = DEST_BUCKET.format(bucket_name=bucket,
+                                         org_external_id=self.args.org_id,
+                                         site_name=site if site else 'no-site-assigned',
+                                         p_id=p_id)
         _logger.debug(' Participant: {0}'.format(p_id))
         _logger.debug('    src: {0}'.format(src_bucket))
         _logger.debug('   dest: {0}'.format(dest_bucket))
 
-        # gsutil -m cp -r -n gs://src/ gs://dest
-        gcp_cp(src_bucket, dest_bucket, args='-r', flags='-m')
+        if not self.args.dry_run:
+          # gsutil -m cp -r -n gs://src/ gs://dest
+          gcp_cp(src_bucket, dest_bucket, args='-r', flags='-m')
 
         count += 1
         rec = cursor.fetchone()
@@ -190,6 +204,10 @@ def run():
   parser.add_argument('--account', help='pmi-ops account', default=None)  # noqa
   parser.add_argument('--service-account', help='gcp iam service account', default=None)  # noqa
   parser.add_argument('--org-id', help='organization id', default=None)  # noqa
+  parser.add_argument('--destination_bucket', default=None,
+                      help='Override the destination bucket lookup for the given organization.')
+  parser.add_argument('--dry_run', action="store_true",
+                      help='Do not copy files, only print the list of files that would be copied')
   args = parser.parse_args()
 
   with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
