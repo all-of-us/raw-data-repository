@@ -9,6 +9,7 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_dv_order import BiobankDVOrder
 from model.code import Code, CodeType
 from model.participant import Participant
+from model.biobank_order import BiobankOrderIdentifier, BiobankOrderedSample
 from test_data import load_test_data_json
 from unit_test_util import FlaskTestBase
 
@@ -98,6 +99,14 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
       self.assertEqual(i.order_id, long(999999))
       self.assertEqual(i.biobankOrderId, 'WEB1ABCD1234')
       self.assertEqual(i.biobankStatus, 'Delivered')
+
+    with self.dv_order_dao.session() as session:
+      # there should be two identifier records in the BiobankOrderIdentifier table
+      identifiers = session.query(BiobankOrderIdentifier).all()
+      self.assertEqual(2, len(identifiers))
+      # there should be one ordered sample in the BiobankOrderedSample table
+      samples = session.query(BiobankOrderedSample).all()
+      self.assertEqual(1, len(samples))
 
   def test_missing_authoredOn_works(self):
     """authoredOn may not be sent in payload."""
