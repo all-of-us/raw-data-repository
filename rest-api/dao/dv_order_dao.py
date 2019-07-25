@@ -237,7 +237,7 @@ class DvOrderDao(UpdatableDao):
     order.identifiers = []
     for i in resource.identifier:
       try:
-        if i['system'].lower() == 'orderid':
+        if i['system'].lower() == VIBRENT_FHIR_URL + 'orderid':
           order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._VIBRENT_ID_SYSTEM,
                                                           value=i['value']))
         if i['system'].lower() == 'fulfillmentid':
