@@ -73,7 +73,7 @@ def run():
         return exit_code
 
   if show_usage:
-    print('\nusage: rtool.py command [-h|--help] [args]\n\navailable commands:')
+    print('\nusage: python -m tools command [-h|--help] [args]\n\navailable commands:')
 
     command_names.sort()
     for gn in command_names:

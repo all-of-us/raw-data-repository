@@ -1,5 +1,11 @@
 # System Services for RDR 
 
+## Google Cloud Platform Helper Functions
+
+The file `gcp_utils.py` has many python helper functions to manage and call GCP command line tools.
+
+For example use of these GCP helper functions, please look at `rest-api/tools/__main__.py` and tool files in `rest-api/tools/tool_libs`.
+
 ## Service scripts to run directly or as a system service
 
 ### gcp_db_daemon.py
