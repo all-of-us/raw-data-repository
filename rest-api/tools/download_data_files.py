@@ -2,8 +2,7 @@ import os
 """ Downloads csv files from Google buckets and places in data/ dir (gitignored).
 """
 
-# @todo: change this to the new proper bucket once it's made
-SOURCE_BUCKET = 'all-of-us-rdr-sequestered-config-test/'
+SOURCE_BUCKET = 'all-of-us-organization-sheets-prod/'
 
 AWARDEES = SOURCE_BUCKET + 'awardees.csv'
 ORGS = SOURCE_BUCKET + 'organizations.csv'
