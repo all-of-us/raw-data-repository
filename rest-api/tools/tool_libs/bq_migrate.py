@@ -155,6 +155,12 @@ class BQMigration(object):
     if pcode != 0:
       if 'Not found' in so:
         return None
+      if 'Authorization error' in so:
+        _logger.error('** BigQuery returned an authorization error, please check the following: **')
+        _logger.error('   * Service account has correct permissions.')
+        _logger.error('   * Timezone and time on computer match PMI account settings.')
+        # for more suggestions look at:
+        #    https://blog.timekit.io/google-oauth-invalid-grant-nightmare-and-how-to-fix-it-9f4efaf1da35
       raise BQException(se if se else so)
 
     return so
@@ -165,7 +171,6 @@ class BQMigration(object):
     :return: Exit code value
     """
     # TODO: Validate dataset name exists in BigQuery
-
     # Loop through table schemas
     for path, obj_name in BQ_SCHEMAS:
       mod = importlib.import_module(path, obj_name)
@@ -186,7 +191,13 @@ class BQMigration(object):
         self.create_table(schema_name, ls_obj.to_json())
         _logger.info('  {0:21}: {1}'.format(schema_name, 'created'))
       else:
-        rs_obj = BQSchema(json.loads(rs_json))
+        try:
+          rs_obj = BQSchema(json.loads(rs_json))
+        except ValueError:
+          # Something is there in BigQuery for this schema, but it is bad.
+          # If this happens, the table can be reset by deleting it and then creating again it using this tool.
+          _logger.info('  {0:21}: {1}'.format(schema_name, '!!! corrupt, needs reset !!!'))
+          continue
 
         if rs_obj == ls_obj:
           _logger.info('  {0:21}: {1}'.format(schema_name, 'unchanged'))
@@ -194,14 +205,12 @@ class BQMigration(object):
           self.modify_table(schema_name, ls_obj.to_json())
           _logger.info('  {0:21}: {1}'.format(schema_name, 'updated'))
 
-    # Loop through table schemas
+    # Loop through view schemas
     for path, obj_name, view_name, view_desc in BQ_VIEWS:
-
       if self.args.delete and (self.args.delete.lower() == 'all' or view_name in self.args.delete):
         self.delete_table(view_name)
         _logger.info('  {0:21}: {1}'.format(view_name, 'deleted'))
         continue
-
 
       mod = importlib.import_module(path, obj_name)
       view_sql = getattr(mod, obj_name)
