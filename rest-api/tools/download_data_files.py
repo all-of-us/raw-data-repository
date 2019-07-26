@@ -2,6 +2,7 @@ import os
 """ Downloads csv files from Google buckets and places in data/ dir (gitignored).
 """
 
+#all-of-us-organization-sheets-stable is also available if needed for testing.
 SOURCE_BUCKET = 'all-of-us-organization-sheets-prod/'
 
 AWARDEES = SOURCE_BUCKET + 'awardees.csv'
