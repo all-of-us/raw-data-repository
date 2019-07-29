@@ -295,14 +295,14 @@ def _query_and_write_reports(exporter, now, report_type, path_received, path_mis
                                        'kit_id_system': _KIT_ID_SYSTEM,
                                        'tracking_number_system': _TRACKING_NUMBER_SYSTEM,
                                        'n_days_ago': now - datetime.timedelta(
-                                         days=(report_cover_range + 1))})
+                                         days=(report_cover_range + 1))}, backup=True)
 
   # Now generate the withdrawal report, within the past n days.
   exporter.run_export(path_withdrawals, replace_isodate(_WITHDRAWAL_REPORT_SQL),
                       {'race_question_code_id': race_question_code.codeId,
                        'native_american_race_code_id': native_american_race_code.codeId,
                        'n_days_ago': now - datetime.timedelta(days=report_cover_range),
-                       'biobank_id_prefix': get_biobank_id_prefix()})
+                       'biobank_id_prefix': get_biobank_id_prefix()}, backup=True)
 
 # Indexes from the SQL query below; used in predicates.
 _SENT_COUNT_INDEX = 2
