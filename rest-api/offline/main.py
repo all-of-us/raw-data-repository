@@ -3,7 +3,7 @@ from datetime import datetime
 import json
 import logging
 import traceback
-
+import time
 import app_util
 import config
 from api_util import EXPORTER
@@ -106,7 +106,8 @@ def import_biobank_samples():
   written, timestamp = biobank_samples_pipeline.upsert_from_latest_csv()
   logging.info(
       'Import complete (%d written), generating report.', written)
-
+  # waiting 30 secs for the replica DB synchronization
+  time.sleep(30)
   logging.info('Generating reconciliation report.')
   # iterate new list and write reports
   biobank_samples_pipeline.write_reconciliation_report(timestamp)
