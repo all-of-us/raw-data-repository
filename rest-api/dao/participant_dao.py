@@ -1,7 +1,8 @@
 import json
 import logging
-
+import datetime
 import clock
+
 from api_util import format_json_enum, parse_json_enum, format_json_date, format_json_hpo, \
   format_json_org, format_json_site, get_site_id_from_google_group, get_awardee_id_from_name, \
   get_organization_id_from_external_id
@@ -135,6 +136,8 @@ class ParticipantDao(UpdatableDao):
     if obj.withdrawalStatus != existing_obj.withdrawalStatus:
       obj.withdrawalTime = (obj.lastModified if obj.withdrawalStatus == WithdrawalStatus.NO_USE
                             else None)
+      obj.withdrawalAuthored = obj.withdrawalAuthored \
+        if obj.withdrawalStatus == WithdrawalStatus.NO_USE else None
 
       need_new_summary = True
 
@@ -203,6 +206,7 @@ class ParticipantDao(UpdatableDao):
       summary.withdrawalReason = obj.withdrawalReason
       summary.withdrawalReasonJustification = obj.withdrawalReasonJustification
       summary.withdrawalTime = obj.withdrawalTime
+      summary.withdrawalAuthored = obj.withdrawalAuthored
       summary.suspensionStatus = obj.suspensionStatus
       summary.suspensionTime = obj.suspensionTime
       summary.lastModified = clock.CLOCK.now()
@@ -301,6 +305,7 @@ class ParticipantDao(UpdatableDao):
       'withdrawalReason': model.withdrawalReason,
       'withdrawalReasonJustification': model.withdrawalReasonJustification,
       'withdrawalTime': model.withdrawalTime,
+      'withdrawalAuthored': model.withdrawalAuthored,
       'suspensionStatus': model.suspensionStatus,
       'suspensionTime': model.suspensionTime
     }
@@ -321,6 +326,13 @@ class ParticipantDao(UpdatableDao):
     parse_json_enum(resource_json, 'withdrawalStatus', WithdrawalStatus)
     parse_json_enum(resource_json, 'withdrawalReason', WithdrawalReason)
     parse_json_enum(resource_json, 'suspensionStatus', SuspensionStatus)
+    if 'withdrawalTimeStamp' in resource_json and resource_json['withdrawalTimeStamp'] is not None:
+      try:
+        resource_json['withdrawalTimeStamp'] = datetime.datetime\
+          .utcfromtimestamp(float(resource_json['withdrawalTimeStamp'])/1000)
+      except (ValueError, TypeError):
+        raise ValueError("Could not parse {} as TIMESTAMP"
+                         .format(resource_json['withdrawalTimeStamp']))
     # biobankId, lastModified, signUpTime are set by DAO.
     return Participant(
       participantId=id_,
@@ -330,6 +342,7 @@ class ParticipantDao(UpdatableDao):
       clientId=client_id,
       withdrawalStatus=resource_json.get('withdrawalStatus'),
       withdrawalReason=resource_json.get('withdrawalReason'),
+      withdrawalAuthored=resource_json.get('withdrawalTimeStamp'),
       withdrawalReasonJustification=resource_json.get('withdrawalReasonJustification'),
       suspensionStatus=resource_json.get('suspensionStatus'),
       organizationId=get_organization_id_from_external_id(resource_json, self.organization_dao),

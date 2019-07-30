@@ -175,6 +175,7 @@ class BQParticipantSummaryGenerator(object):
       'withdrawal_reason': str(withdrawal_reason),
       'withdrawal_reason_id': int(withdrawal_reason),
       'withdrawal_time': p.withdrawalTime,
+      'withdrawal_authored': p.withdrawalAuthored,
       'withdrawal_reason_justification': p.withdrawalReasonJustification,
 
       'suspension_status': str(suspension_status),

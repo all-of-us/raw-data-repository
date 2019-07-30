@@ -276,6 +276,7 @@ class ParticipantSummary(Base):
     'withdrawal_reason',
     Enum(WithdrawalReason))
   withdrawalTime = Column('withdrawal_time', UTCDateTime)
+  withdrawalAuthored = Column('withdrawal_authored', UTCDateTime)
   withdrawalReasonJustification = Column('withdrawal_reason_justification', UnicodeText)
 
   suspensionStatus = Column(

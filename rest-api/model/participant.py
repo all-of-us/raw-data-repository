@@ -40,7 +40,7 @@ class ParticipantBase(object):
 
   # The time at which the participants set their withdrawal status to NO_USE.
   withdrawalTime = Column('withdrawal_time', UTCDateTime)
-
+  withdrawalAuthored = Column('withdrawal_authored', UTCDateTime)
   withdrawalReason = Column('withdrawal_reason', Enum(WithdrawalReason))
   withdrawalReasonJustification = Column('withdrawal_reason_justification', UnicodeText)
   # Suspension may be temporary, and indicates we should not contact the participant but may
