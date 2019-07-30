@@ -88,7 +88,7 @@ class BaseApi(Resource):
 
       except NoInspectionAvailable:
         pass
-      except Exception:
+      except Exception:  #  pylint: disable=broad-except
         pass
 
       deferred.defer(_deferred_save_raw_request, log)
