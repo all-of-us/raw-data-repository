@@ -5071,10 +5071,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                  time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
     service = ParticipantCountsOverTimeService()
-    service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
-                                                                    .METRICS_V2_API))
-    service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
-                                                                    .PUBLIC_METRICS_EXPORT_API))
+    dao = MetricsLifecycleCacheDao(MetricsCacheType.METRICS_V2_API)
+    service.refresh_data_for_metrics_cache(dao)
 
     qs1 = """
                           &stratification=LIFECYCLE
@@ -5251,10 +5249,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                  time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
     service = ParticipantCountsOverTimeService()
-    service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
-                                                                    .METRICS_V2_API))
-    service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
-                                                                    .PUBLIC_METRICS_EXPORT_API))
+    dao = MetricsLifecycleCacheDao(MetricsCacheType.METRICS_V2_API)
+    service.refresh_data_for_metrics_cache(dao)
 
     qs1 = """
                           &stratification=LIFECYCLE
@@ -5390,8 +5386,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                  time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
     service = ParticipantCountsOverTimeService()
-    service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
-                                                                    .METRICS_V2_API))
     dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
     service.refresh_data_for_metrics_cache(dao)
 
