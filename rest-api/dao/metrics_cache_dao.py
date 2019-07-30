@@ -1935,7 +1935,7 @@ class MetricsLifecycleCacheDao(BaseDao):
 
   def get_serving_version_with_session(self, session):
     status_dao = MetricsCacheJobStatusDao()
-    record = status_dao.get_last_complete_data_inserted_time(self.table_name)
+    record = status_dao.get_last_complete_data_inserted_time(self.table_name, self.cache_type)
     if record is not None:
       return record
     else:
