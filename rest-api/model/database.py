@@ -31,6 +31,7 @@ from model.site import Site
 from model.genomics import GenomicSet, GenomicSetMember
 from model.patient_status import PatientStatus
 from model.bigquery_sync import BigQuerySync
+from model.requests_log import RequestsLog
 
 RETRY_CONNECTION_LIMIT = 10
 
