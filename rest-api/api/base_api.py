@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 import logging
 
 import app_util
@@ -6,8 +5,8 @@ from flask import request, jsonify, url_for
 from flask_restful import Resource
 from model.utils import to_client_participant_id
 from model.requests_log import RequestsLog
+from dao.base_dao import deferred_save_raw_request
 from dao.bigquery_sync_dao import deferred_bq_participant_summary_update
-from dao.base_dao import BaseDao
 from query import OrderBy, Query
 from werkzeug.exceptions import BadRequest, NotFound
 from google.appengine.ext import deferred
@@ -17,21 +16,6 @@ from sqlalchemy.exc import NoInspectionAvailable
 DEFAULT_MAX_RESULTS = 100
 MAX_MAX_RESULTS = 10000
 
-
-def _deferred_save_raw_request(log):
-  """ Deferred task to save the request payload and possibly link it to a table record """
-  dao = BaseDao(RequestsLog)
-  with dao.session() as session:
-    session.add(log)
-    session.commit()
-    # for a small window each sunday, check for old records and delete them.
-    now = datetime.utcnow()
-    if now.weekday() == 6 and now.hour == 0:
-      old_date = datetime.utcnow() - timedelta(days=180)
-      count = session.query(RequestsLog).filter(RequestsLog.created < old_date).count()
-      if count > 0:
-        session.query(RequestsLog).filter(RequestsLog.created < old_date).delete(synchronize_session=False)
-        session.commit()
 
 class BaseApi(Resource):
   """Base class for API handlers.
@@ -97,7 +81,7 @@ class BaseApi(Resource):
         pass
       except Exception:  #  pylint: disable=broad-except
         pass
-      deferred.defer(_deferred_save_raw_request, log)
+      deferred.defer(deferred_save_raw_request, log)
 
   def get(self, id_=None, participant_id=None):
     """Handle a GET request.
