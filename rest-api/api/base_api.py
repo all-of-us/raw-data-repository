@@ -75,22 +75,28 @@ class BaseApi(Resource):
 
     if obj:
       try:
-        log.fpk_table = obj.__table__.name
+        if hasattr(obj, '__table__'):
+          log.fpk_table = obj.__table__.name
         if hasattr(obj, 'participantId'):
-          log.participantId = obj.participantId
+          log.participantId = int(obj.participantId)
+
         insp = inspect(obj)
-        if len(insp.mapper._primary_key_propkeys) == 1:
-          log.fpk_column = str(max(insp.mapper._primary_key_propkeys))
-          if str(insp.identity[0]).isdigit():
-            log.fpk_id = insp.identity[0]
+        if hasattr(insp, 'mapper'):
+          if insp.mapper._primary_key_propkeys and len(insp.mapper._primary_key_propkeys) == 1:
+            log.fpk_column = str(max(insp.mapper._primary_key_propkeys))
+        if insp.identity is None:
+          if log.fpk_column and log.fpk_column == 'participant_id' and log.participantId:
+            log.fpk_id = int(log.participantId)
+        else:
+          if isinstance(insp.identity[0], int) or str(insp.identity[0]).strip().isdigit():
+            log.fpk_id = int(insp.identity[0])
           else:
-            log.fpk_alt_id = insp.idenity[0]
+            log.fpk_alt_id = str(insp.identity[0])
 
       except NoInspectionAvailable:
         pass
       except Exception:  #  pylint: disable=broad-except
         pass
-
       deferred.defer(_deferred_save_raw_request, log)
 
   def get(self, id_=None, participant_id=None):
@@ -112,9 +118,6 @@ class BaseApi(Resource):
                        (self.dao.model_type.__name__, id_, participant_id))
     self._save_raw_request(obj)
     return self._make_response(obj)
-
-
-
 
   def _make_response(self, obj):
     return self.dao.to_client_json(obj)
