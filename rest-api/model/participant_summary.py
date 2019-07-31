@@ -14,7 +14,7 @@ from sqlalchemy.dialects.mysql import JSON
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
 # participants.
-WITHDRAWN_PARTICIPANT_FIELDS = ['withdrawalStatus', 'withdrawalTime',
+WITHDRAWN_PARTICIPANT_FIELDS = ['withdrawalStatus', 'withdrawalTime', 'withdrawalAuthored',
                                 'withdrawalReason', 'withdrawalReasonJustification',
                                 'participantId', 'hpoId',
                                 'organizationId', 'siteId', 'biobankId', 'firstName', 'middleName',

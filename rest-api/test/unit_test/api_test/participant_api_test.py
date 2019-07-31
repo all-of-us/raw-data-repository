@@ -164,6 +164,26 @@ class ParticipantApiTest(FlaskTestBase):
     with FakeClock(TIME_1):
       response = self.send_post('Participant', self.participant)
       participant_id = response['participantId']
+      response['providerLink'] = [self.provider_link_2]
+      response['withdrawalStatus'] = 'NO_USE'
+      response['suspensionStatus'] = 'NO_CONTACT'
+      response['withdrawalReason'] = 'TEST'
+      response['withdrawalReasonJustification'] = 'This was a test account.'
+      path = 'Participant/%s' % participant_id
+      update_response = self.send_put(path, response, headers={'If-Match': 'W/"1"'})
+
+    with FakeClock(TIME_2):
+      response['meta']['versionId'] = 'W/"2"'
+      response['withdrawalTime'] = update_response['lastModified']
+      response['suspensionTime'] = update_response['lastModified']
+      response['awardee'] = 'PITT'
+      response['hpoId'] = 'PITT'
+      self.assertJsonResponseMatches(response, update_response)
+
+  def test_administrative_withdrawal_with_authored_time(self):
+    with FakeClock(TIME_1):
+      response = self.send_post('Participant', self.participant)
+      participant_id = response['participantId']
       self.send_consent(participant_id)
       response['providerLink'] = [self.provider_link_2]
       response['withdrawalStatus'] = 'NO_USE'
