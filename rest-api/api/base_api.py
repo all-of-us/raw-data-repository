@@ -4,11 +4,14 @@ import app_util
 from flask import request, jsonify, url_for
 from flask_restful import Resource
 from model.utils import to_client_participant_id
+from model.requests_log import RequestsLog
+from dao.base_dao import deferred_save_raw_request
 from dao.bigquery_sync_dao import deferred_bq_participant_summary_update
 from query import OrderBy, Query
 from werkzeug.exceptions import BadRequest, NotFound
 from google.appengine.ext import deferred
-
+from sqlalchemy import inspect
+from sqlalchemy.exc import NoInspectionAvailable
 
 DEFAULT_MAX_RESULTS = 100
 MAX_MAX_RESULTS = 10000
@@ -44,6 +47,42 @@ class BaseApi(Resource):
       return default
     return request.args.get(key).lower() == 'true'
 
+  def _save_raw_request(self, obj):
+    """ Create deferred task to save the request payload and possibly link it to a table record """
+    log = RequestsLog()
+
+    log.endpoint = request.endpoint
+    log.method = request.method
+    log.url = request.url
+    log.resource = request.data
+    log.version = int(request.url.split('/')[4][1:])
+
+    if obj:
+      try:
+        if hasattr(obj, '__table__'):
+          log.fpk_table = obj.__table__.name
+        if hasattr(obj, 'participantId'):
+          log.participantId = int(obj.participantId)
+
+        insp = inspect(obj)
+        if hasattr(insp, 'mapper'):
+          if insp.mapper._primary_key_propkeys and len(insp.mapper._primary_key_propkeys) == 1:
+            log.fpk_column = str(max(insp.mapper._primary_key_propkeys))
+        if insp.identity is None:
+          if log.fpk_column and log.fpk_column == 'participant_id' and log.participantId:
+            log.fpk_id = int(log.participantId)
+        else:
+          if isinstance(insp.identity[0], int) or str(insp.identity[0]).strip().isdigit():
+            log.fpk_id = int(insp.identity[0])
+          else:
+            log.fpk_alt_id = str(insp.identity[0])
+
+      except NoInspectionAvailable:
+        pass
+      except Exception:  #  pylint: disable=broad-except
+        pass
+      deferred.defer(deferred_save_raw_request, log)
+
   def get(self, id_=None, participant_id=None):
     """Handle a GET request.
 
@@ -61,6 +100,7 @@ class BaseApi(Resource):
       if participant_id != obj.participantId:
         raise NotFound("%s with ID %s is not for participant with ID %s" %
                        (self.dao.model_type.__name__, id_, participant_id))
+    self._save_raw_request(obj)
     return self._make_response(obj)
 
   def _make_response(self, obj):
@@ -88,6 +128,7 @@ class BaseApi(Resource):
     result = self._do_insert(m)
     if participant_id:
       deferred.defer(deferred_bq_participant_summary_update, participant_id)
+    self._save_raw_request(result)
     return self._make_response(result)
 
   def list(self, participant_id=None):
@@ -229,6 +270,7 @@ class UpdatableApi(BaseApi):
     self._do_update(m)
     if participant_id:
       deferred.defer(deferred_bq_participant_summary_update, participant_id)
+    self._save_raw_request(m)
     return self._make_response(m)
 
   def patch(self, id_):
@@ -243,7 +285,7 @@ class UpdatableApi(BaseApi):
       raise BadRequest("If-Match is missing for PATCH request")
     expected_version = _parse_etag(etag)
     order = self.dao.update_with_patch(id_, resource, expected_version)
-
+    self._save_raw_request(order)
     return self._make_response(order)
 
   def update_with_patch(self, id_, resource, expected_version):

@@ -21,6 +21,7 @@ from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, Servic
 import api_util
 import dao.database_factory
 from model.utils import get_property_type
+from model.requests_log import RequestsLog
 
 # Maximum number of times we will attempt to insert an entity with a random ID before
 # giving up.
@@ -686,3 +687,19 @@ class FhirMixin(object):
     js = super(FhirMixin, self).elementProperties()
     js.extend(self._PROPERTIES)
     return js
+
+
+def deferred_save_raw_request(log):
+  """ Deferred task to save the request payload and possibly link it to a table record """
+  _dao = BaseDao(RequestsLog)
+  with _dao.session() as session:
+    session.add(log)
+    session.commit()
+    # for a small window each sunday, check for old records and delete them.
+    now = datetime.datetime.utcnow()
+    if now.weekday() == 6 and now.hour == 0:
+      old_date = datetime.datetime.utcnow() - datetime.timedelta(days=180)
+      count = session.query(RequestsLog).filter(RequestsLog.created < old_date).count()
+      if count > 0:
+        session.query(RequestsLog).filter(RequestsLog.created < old_date).delete(synchronize_session=False)
+        session.commit()
