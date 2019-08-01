@@ -324,7 +324,7 @@ class DataGeneratorClass(object):
     count = 0
 
     # see if we need to rotate the csv data
-    if self.args.vert is True:
+    if self.args.horiz is True:
       csv_data = zip(*csv_data)
 
     # Loop through each column and generate data.
@@ -437,7 +437,7 @@ def run():
   parser.add_argument('--account', help='pmi-ops account', default=None)  # noqa
   parser.add_argument('--service-account', help='gcp iam service account', default=None)  # noqa
   parser.add_argument('--port', help='alternate ip port to connect to', default=None)  # noqa
-  parser.add_argument('--vert', help='participant data is vertical in the spreadsheet',
+  parser.add_argument('--horiz', help='participant data is horizontal in the spreadsheet',
                           default=False, action='store_true')  # noqa
   parser.add_argument('--src-csv', help='participant list csv (file/google doc id)', required=True)  # noqa
   args = parser.parse_args()
