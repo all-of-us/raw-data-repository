@@ -1,8 +1,8 @@
-"""add withdrawal_authored to participant and participant_summary tables
+"""add withdrawal_authored column
 
-Revision ID: 61c60a0f2c7a
-Revises: 8fa4d8f2277c
-Create Date: 2019-07-29 15:58:10.912548
+Revision ID: d06e4e1d124d
+Revises: 20e98a16ad20
+Create Date: 2019-08-01 11:13:02.111028
 
 """
 from alembic import op
@@ -20,8 +20,8 @@ from model.code import CodeType
 from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 
 # revision identifiers, used by Alembic.
-revision = '61c60a0f2c7a'
-down_revision = '8fa4d8f2277c'
+revision = 'd06e4e1d124d'
+down_revision = '20e98a16ad20'
 branch_labels = None
 depends_on = None
 
