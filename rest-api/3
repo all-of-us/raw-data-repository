@@ -105,7 +105,7 @@ class DvOrderDao(UpdatableDao):
       result['barcode'] = reduced_model['reference_number']
       result['received'] = reduced_model['received']
       result['biobankOrderId'] = reduced_model['number']
-      result['biobankTrackingId'] = reduced_model['patient']['medical_record_number']
+      result['biobankId'] = reduced_model['patient']['medical_record_number'] # biobank order id
     else:
       result = model.asdict()
       result['orderStatus'] = format_json_enum(result, 'orderStatus')
@@ -175,9 +175,10 @@ class DvOrderDao(UpdatableDao):
         existing_obj.biobankStreetAddress1 = order_address.line[0]
         existing_obj.biobankZipCode = order_address.postalCode
 
-      if hasattr(fhir_resource, 'biobankTrackingId'):
-        existing_obj.biobankTrackingId = fhir_resource.biobankTrackingId
-        existing_obj.biobankReceived = parse_date(fhir_resource.received)
+      # todo: add these ?
+#      existing_obj.biobankTrackingId = fhir_resource.biobankId
+#      existing_obj.biobankOrderId = fhir_resource.biobankOrderId
+#      existing_obj.biobankReceived = parse_date(fhir_resource.received)
 
       return existing_obj
 
@@ -245,18 +246,12 @@ class DvOrderDao(UpdatableDao):
     order.identifiers = []
     for i in resource.identifier:
       try:
-        if i['system'].lower() == VIBRENT_FHIR_URL + 'trackingid':
-          order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._VIBRENT_ID_SYSTEM
-                                                          + '/trackingId', value=i['value']))
-      except AttributeError:
-        raise BadRequest(
-            'No identifier for system %r, required for primary key.' %
-             BiobankDVOrder._VIBRENT_ID_SYSTEM)
-    for i in resource.basedOn:
-      try:
-        if i['identifier']['system'].lower() == VIBRENT_FHIR_URL + 'orderid':
+        if i['system'].lower() == VIBRENT_FHIR_URL + 'orderid':
           order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._VIBRENT_ID_SYSTEM,
-                                                          value=i['identifier']['value']))
+                                                          value=i['value']))
+        if i['system'].lower() == 'fulfillmentid':
+          order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._VIBRENT_ID_SYSTEM
+                                                          + '/fulfillmentId', value=i['value']))
       except AttributeError:
         raise BadRequest(
             'No identifier for system %r, required for primary key.' %
