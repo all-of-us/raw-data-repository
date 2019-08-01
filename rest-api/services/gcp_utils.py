@@ -67,14 +67,28 @@ def gcp_validate_project(project):
 
   return project
 
-def gcp_get_project_short_name(project):
+def gcp_get_project_name():
+  """
+  Return the currently set project name
+  :return: project name
+  """
+  # gcloud config list --format 'value(core.project)'
+  pcode, so, se = gcp_gcloud_command('config', 'list --format "value(core.project)"')
+  if pcode != 0:
+    _logger.error('failed to get current project name. ({0}: {1}).'.format(pcode, se))
+    return None
+  return so.strip()
+
+def gcp_get_project_short_name(project=None):
   """
   Return the short name for the given project
-  :param project: project name
+  :param project: project name (optional)
   :return: project short name
   """
   if not project:
-    return None
+    project = gcp_get_project_name()
+    if not project:
+      return None
 
   if project in ['localhost', '127.0.0.1']:
     return project

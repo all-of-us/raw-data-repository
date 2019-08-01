@@ -6,8 +6,10 @@ import logging
 import os
 import random
 from copy import copy
+from dateutil.parser import parse
 
 from data_gen.generators.base_gen import BaseGen
+from services.gcp_utils import gcp_get_project_short_name
 
 _logger = logging.getLogger('rdr_logger')
 
@@ -40,18 +42,61 @@ class HPOGen(BaseGen):
     if len(self._hpo_awardees) > 0:
       return
 
+    project = gcp_get_project_short_name().upper()
+
     paths = ['data', '../data']
     for path in paths:
       if os.path.exists(os.path.join(os.curdir, path)):
         awardee_file = os.path.join(os.curdir, path, 'awardees.csv')
+        _logger.debug('loading awardees from file...')
         with open(awardee_file) as handle:
-          data = list(csv.DictReader(handle))
-        self._hpo_awardees = data
+          awardees = list(csv.DictReader(handle))
+          self._hpo_awardees = awardees
 
         sites_file = os.path.join(os.curdir, path, 'sites.csv')
+        _logger.debug('loading sites from file...')
         with open(sites_file) as handle:
-          data = list(csv.DictReader(handle))
-        self._hpo_sites = data
+          sites = list(csv.DictReader(handle))
+          self._hpo_sites = list()
+          for site in sites:
+
+            if not site['Organization ID']:
+              _logger.debug('skipping {0}, invalid org id'.format(site['Site ID / Google Group']))
+              continue
+
+            if site['Anticipated Launch Date']:
+              try:
+                # _logger.debug('--- {0} {1}'.format(site['Site ID / Google Group'], site['Anticipated Launch Date']))
+                val = parse(site['Anticipated Launch Date']).date()  # pylint: disable=unused-variable
+              except ValueError:
+                _logger.debug('skipping {0}, invalid launch date'.format(site['Site ID / Google Group']))
+                continue
+
+            if site['MayoLINK Client #']:
+              try:
+                val = int(site['MayoLINK Client #'])  # pylint: disable=unused-variable
+              except ValueError:
+                _logger.debug('skipping {0}, invalid mayolink client id'.format(site['Site ID / Google Group']))
+                continue
+
+            try:
+              val = site['{0} {1}'.format('PTSC Scheduling Status', project)].upper()  # pylint: disable=unused-variable
+            except TypeError:
+              _logger.debug('skipping {0}, invalid scheduling status'.format(site['Site ID / Google Group']))
+              continue
+
+            try:
+              val = site['{0} {1}'.format('Enrolling Status', project)].upper()  # pylint: disable=unused-variable
+            except TypeError:
+              _logger.debug('skipping {0}, invalid enrollment status'.format(site['Site ID / Google Group']))
+              continue
+
+            if not site['Address 1'] and not site['City'] and not site['State']:
+              _logger.debug('skipping {0}, invalid address'.format(site['Site ID / Google Group']))
+              continue
+
+            self._hpo_sites.append(site)
+
         break
 
   def get_hpo(self, hpo_id):
@@ -181,7 +226,7 @@ class HPOSiteGen(BaseGen):
     """
     self.hpo = hpo
 
-    self.id = site_dict['Site ID / Google Group']
+    self.id = site_dict['Site ID / Google Group'].lower()
     self.org_id = site_dict['Organization ID']
     self.city = site_dict['City']
     self.state = site_dict['State']

@@ -135,7 +135,7 @@ column specifies the data to use to create an individual test participant.
 
 Note: Special identifiers are prefixed with an underscore. Identifiers without
 an underscore prefix are assumed to be questionnaire question IDs found in the code
-book.   
+book.  Participant definition data may be in either a horizontal format or vertical format.  
 
 
 *_HPO*: HPO name
@@ -149,13 +149,13 @@ book.
 *_PPIModule*: Create answers to questionnaire, one module name per line. 
 
 
-##### Example Of Spec Participants Data
+##### Example of vertical Spec Participant data
 
 ```
 +-------------------------------------------------------------+
 |         A         |          B         |          C         |
 |-------------------|--------------------|--------------------|
-| _HPO              | Test               |                    |
+| _HPO              | TEST               |                    |
 | _HPOSite          |                    | hpo-site-tester    |
 | _BIOOrder         | 1SAL2              | 1SAL2              |
 | _BIOOrder         | 1ED04              | 1ED04              |
@@ -169,3 +169,14 @@ book.
 +-------------------------------------------------------------+
 ```
 
+##### Example of horizontal Spec Participant data
+
+```
++---------------------------------------------------------------------------+
+|         A        |          B        |          C       |        D        |
+|------------------|-------------------|------------------|-----------------|
+| PIIName_First    | PIIName_Last      | _HPO             | _BIOOrder       |
+| John             | Doe               | PITT             | 1SAL2           |
+| Jane             | Doe               | TEST             | 1SAL2           |
++---------------------------------------------------------------------------+
+```
