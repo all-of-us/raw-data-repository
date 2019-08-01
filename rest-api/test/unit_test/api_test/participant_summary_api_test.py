@@ -354,6 +354,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       path = 'Participant/%s' % participant_id
       participant['withdrawalStatus'] = "NO_USE"
       participant['withdrawalReason'] = "DUPLICATE"
+      participant['withdrawalTimeStamp'] = 1563907344169
       participant['withdrawalReasonJustification'] = "IT WAS A DUPLICATE"
       self.send_put(path, participant, headers={'If-Match': 'W/"1"'})
     with FakeClock(TIME_3):
@@ -369,6 +370,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertNotIn('streetAddress', response)
       self.assertEqual(response['withdrawalStatus'], 'NO_USE')
       self.assertEqual(response['withdrawalReason'], 'DUPLICATE')
+      self.assertEqual(response['withdrawalAuthored'], '2019-07-23T18:42:24')
       self.assertEqual(response['withdrawalReasonJustification'],  "IT WAS A DUPLICATE")
 
   def test_suspension_status_returns_right_info(self):
