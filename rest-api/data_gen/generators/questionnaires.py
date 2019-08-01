@@ -13,6 +13,7 @@ import time
 import clock
 from data_gen.generators.base_gen import BaseGen
 from dateutil.parser import parse
+from lib_fhir.fhirclient_1_0_6.models.coding import Coding
 from lib_fhir.fhirclient_1_0_6.models.fhirdate import FHIRDate
 from lib_fhir.fhirclient_1_0_6.models.fhirreference import FHIRReference
 from lib_fhir.fhirclient_1_0_6.models.questionnaire import Questionnaire
@@ -694,7 +695,9 @@ class QuestionnaireGen(BaseGen):
 
     elif question.type == 'choice':
       if answer in self._get_question_choices(question):
-        an.valueString = answer
+        an.valueCoding = Coding(jsondict={
+          'code': answer, 'system': 'http://terminology.pmi-ops.org/CodeSystem/ppi', 'display': answer
+        })
 
     elif question.type == 'quantity':
       an.valueQuantity = quantity

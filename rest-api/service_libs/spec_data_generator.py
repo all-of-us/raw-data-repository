@@ -54,7 +54,7 @@ class DataGeneratorClass(object):
         if self._host in ['127.0.0.1', 'localhost']:
           self._host = '{0}:{1}'.format(self._host, 8080)
 
-      if self._host not in ['127.0.0.1', 'localhost']:
+      if '127.0.0.1' not in self._host and 'localhost' not in self._host:
         self._oauth_token = gcp_get_app_access_token()
 
   def _gdoc_csv_data(self, doc_id):
@@ -115,21 +115,6 @@ class DataGeneratorClass(object):
           results[key] += '|{0}'.format(data.strip())
 
     return results
-
-  def _get_dict_data_by_key(self, data, key):
-    """
-    Get the data from the dict from the given key
-    :param data: dict object
-    :param key: string
-    :return: data or None
-    """
-    if not isinstance(data, dict) or not isinstance(key, str):
-      raise ValueError('invalid data, unable to return data from dict.')
-
-    if key not in data:
-      return None
-
-    return data[key]
 
   def _random_date(self, start=None, max_delta=None):
     """
@@ -224,7 +209,8 @@ class DataGeneratorClass(object):
       p_obj.update(resp)
       return p_obj, hpo_site
 
-    raise ValueError('invalid response, failed to create participant [Http {0}: {1}].'.format(code, resp))
+    _logger.error('create participant response failure: [Http {0}: {1}].'.format(code, resp))
+    return None
 
   def submit_physical_measurements(self, participant_id, site):
     """
@@ -251,7 +237,8 @@ class DataGeneratorClass(object):
       pm_obj.update(resp)
       return pm_obj
 
-    raise ValueError('invalid response, failed to create module response [Http {0}: {1}].'.format(code, resp))
+    _logger.error('physical measurements response failure: [Http {0}: {1}].'.format(code, resp))
+    return None
 
   def submit_biobank_order(self, participant_id, sample_test, site, to_mayo=False):
     """
@@ -283,7 +270,8 @@ class DataGeneratorClass(object):
       bio_obj.update(resp)
       return bio_obj
 
-    raise ValueError('invalid response, failed to create module response [Http {0}: {1}].'.format(code, resp))
+    _logger.error('biobank order response failure: [Http {0}: {1}].'.format(code, resp))
+    return None
 
   def submit_module_response(self, module_id, participant_id, overrides=None):
     """
@@ -317,7 +305,8 @@ class DataGeneratorClass(object):
       qn_obj.update(resp)
       return qn_obj
 
-    raise ValueError('invalid response, failed to create module response [Http {0}: {1}].'.format(code, resp))
+    _logger.error('module response failure: [Http {0}: {1}].'.format(code, resp))
+    return None
 
   def run(self):
     """
@@ -334,17 +323,21 @@ class DataGeneratorClass(object):
     _logger.info('processing source data.')
     count = 0
 
+    # see if we need to rotate the csv data
+    if self.args.vert is True:
+      csv_data = zip(*csv_data)
+
     # Loop through each column and generate data.
     for column in range(0, len(csv_data[0]) - 1):
 
       p_data = self._convert_csv_column_to_dict(csv_data, column)
 
-      hpo = self._get_dict_data_by_key(p_data, '_HPO')
-      pm = self._get_dict_data_by_key(p_data, '_PM')
-      site_id = self._get_dict_data_by_key(p_data, '_HPOSite')
-      bio_orders = self._get_dict_data_by_key(p_data, '_BIOOrder')
-      bio_orders_mayo = self._get_dict_data_by_key(p_data, '_BIOOrderMayo')
-      ppi_modules = self._get_dict_data_by_key(p_data, '_PPIModule')
+      hpo = p_data.get('_HPO', None)
+      pm = p_data.get('_PM', None)
+      site_id = p_data.get('_HPOSite', None)
+      bio_orders = p_data.get('_BIOOrder', '1SAL2|1ED04')
+      bio_orders_mayo = p_data.get('_BIOOrderMayo', None)
+      ppi_modules = p_data.get('_PPIModule', 'ConsentPII|TheBasics')
 
       # choose a random starting date, timestamps of all other activities feed off this value.
       start_dt = self._random_date()
@@ -444,6 +437,8 @@ def run():
   parser.add_argument('--account', help='pmi-ops account', default=None)  # noqa
   parser.add_argument('--service-account', help='gcp iam service account', default=None)  # noqa
   parser.add_argument('--port', help='alternate ip port to connect to', default=None)  # noqa
+  parser.add_argument('--vert', help='participant data is vertical in the spreadsheet',
+                          default=False, action='store_true')  # noqa
   parser.add_argument('--src-csv', help='participant list csv (file/google doc id)', required=True)  # noqa
   args = parser.parse_args()
 
