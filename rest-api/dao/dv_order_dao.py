@@ -55,9 +55,6 @@ class DvOrderDao(UpdatableDao):
 
     order_id = int(fhir_resource.basedOn[0].identifier.value)
     with self.session() as session:
-      query = session.query(BiobankDVOrder).filter(BiobankDVOrder.participantId == pid).filter(
-          BiobankDVOrder.order_id == order_id).first()
-
       barcode = session.query(BiobankDVOrder.barcode).filter(BiobankDVOrder.order_id == order_id).first()
 
     # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
