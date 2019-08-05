@@ -1,8 +1,7 @@
 import logging
 import dateutil
 from api.base_api import UpdatableApi
-from api_util import PTC, PTC_AND_HEALTHPRO, VIBRENT_FHIR_URL, VIBRENT_BARCODE_URL,\
-  VIBRENT_FULFILLMENT_URL
+from api_util import PTC, PTC_AND_HEALTHPRO, VIBRENT_FHIR_URL
 from app_util import auth_required, ObjDict
 from dao.dv_order_dao import DvOrderDao
 from fhir_utils import SimpleFhirR4Reader

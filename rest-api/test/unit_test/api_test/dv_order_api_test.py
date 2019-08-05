@@ -12,7 +12,6 @@ from model.participant import Participant
 from model.biobank_order import BiobankOrderIdentifier, BiobankOrderedSample
 from test_data import load_test_data_json
 from unit_test_util import FlaskTestBase
-from werkzeug.exceptions import Conflict
 
 
 class DvOrderApiTestBase(FlaskTestBase):
