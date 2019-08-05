@@ -4,7 +4,7 @@ import logging
 import sys
 
 from client import Client
-from main_util import configure_logging, get_parser
+from rdr_service.main_util import configure_logging, get_parser
 
 
 def import_codebook(client):

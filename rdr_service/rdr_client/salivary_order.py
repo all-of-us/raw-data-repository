@@ -5,7 +5,7 @@ import json
 import logging
 import pprint
 from rdr_service.fhir_utils import SimpleFhirR4Reader
-from main_util import get_parser, configure_logging
+from rdr_service.main_util import get_parser, configure_logging
 from client import Client, client_log
 
 

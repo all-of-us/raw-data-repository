@@ -19,7 +19,7 @@ from rdr_service import clock
 from rdr_service.data_gen.generators import ParticipantGen, BioBankOrderGen, QuestionnaireGen, \
   PhysicalMeasurementsGen, CodeBook
 from rdr_service.data_gen.generators.hpo import HPOGen
-from service_libs import GCPProcessContext
+from rdr_service.service_libs import GCPProcessContext
 from rdr_service.services.gcp_utils import gcp_get_app_access_token, gcp_make_auth_header
 from rdr_service.services.gcp_utils import gcp_get_app_host_name
 from rdr_service.services.system_utils import make_api_request

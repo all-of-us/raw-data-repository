@@ -24,7 +24,7 @@ Example sites:
 import csv
 import logging
 import sys
-from main_util import get_parser, configure_logging
+from rdr_service.main_util import get_parser, configure_logging
 
 from client import Client, HttpException, client_log
 

@@ -11,7 +11,7 @@ admin_withdrawal.py --withdrawal_reason <FRAUDULENT [DUPLICATE | TEST] >
 import logging
 import pprint
 
-from main_util import get_parser, configure_logging
+from rdr_service.main_util import get_parser, configure_logging
 
 from client import Client, client_log
 

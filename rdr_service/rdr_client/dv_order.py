@@ -5,7 +5,7 @@ import logging
 import pprint
 
 from client import Client
-from main_util import configure_logging
+from rdr_service.main_util import configure_logging
 
 
 def main():

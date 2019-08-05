@@ -18,7 +18,7 @@
 import logging
 import pprint
 import time
-from main_util import configure_logging
+from rdr_service.main_util import configure_logging
 from client import Client
 
 

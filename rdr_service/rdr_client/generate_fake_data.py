@@ -11,7 +11,7 @@ import logging
 from time import sleep
 
 from client import Client, HttpException
-from main_util import get_parser, configure_logging
+from rdr_service.main_util import get_parser, configure_logging
 
 
 MAX_PARTICIPANTS_PER_REQUEST = 25

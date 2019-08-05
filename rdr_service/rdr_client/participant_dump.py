@@ -10,7 +10,7 @@ import pprint
 import subprocess
 
 from client import Client
-from main_util import configure_logging, get_parser
+from rdr_service.main_util import configure_logging, get_parser
 
 
 # Server logs are searchable for at most 30 days (see DA-247).

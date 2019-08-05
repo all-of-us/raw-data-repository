@@ -20,7 +20,7 @@
 import logging
 
 from client import Client
-from main_util import get_parser, configure_logging
+from rdr_service.main_util import get_parser, configure_logging
 
 def export_tables(client):
   table_names = client.args.tables.split(',')
