@@ -118,9 +118,6 @@ class DvOrderApi(UpdatableApi):
     # handle invalid FHIR documents
     try:
       fhir_resource = SimpleFhirR4Reader(resource)
-      barcode_url = None
-      if fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString.lower() == 'shipped':
-        barcode_url = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).url
       pid = fhir_resource.contained.get(
            resourceType='Patient').identifier.get(system=VIBRENT_FHIR_URL + 'participantId')
       p_id = from_client_participant_id(pid.value)
