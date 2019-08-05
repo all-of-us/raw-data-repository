@@ -4,8 +4,8 @@ import logging
 import time
 import traceback
 
-from services.gcp_utils import gcp_initialize, gcp_cleanup, gcp_activate_sql_proxy
-from services.system_utils import write_pidfile_or_die, remove_pidfile
+from rdr_service.services.gcp_utils import gcp_initialize, gcp_cleanup, gcp_activate_sql_proxy
+from rdr_service.services.system_utils import write_pidfile_or_die, remove_pidfile
 
 _logger = logging.getLogger('rdr_logger')
 

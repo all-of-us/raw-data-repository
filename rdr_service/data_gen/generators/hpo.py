@@ -9,7 +9,7 @@ from copy import copy
 from dateutil.parser import parse
 
 from rdr_service.data_gen.generators.base_gen import BaseGen
-from services.gcp_utils import gcp_get_project_short_name
+from rdr_service.services.gcp_utils import gcp_get_project_short_name
 
 _logger = logging.getLogger('rdr_logger')
 

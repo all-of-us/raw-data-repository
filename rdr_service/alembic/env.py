@@ -1,7 +1,7 @@
 import os
 import logging
 # Importing this is what gets our model available for Alembic.
-import model.database # pylint: disable=unused-import
+from rdr_service.model import database, utils  # pylint: disable=unused-import
 import sqlalchemy as sa
 import re
 
@@ -63,7 +63,7 @@ def my_compare_type(ctx, inspected_column, metadata_column, inspected_type, meta
   # to compare these types
   if isinstance(metadata_type, sa.Boolean) and isinstance(inspected_type, TINYINT):
     return False
-  if isinstance(metadata_type, model.utils.Enum) and isinstance(inspected_type, SMALLINT):
+  if isinstance(metadata_type, utils.Enum) and isinstance(inspected_type, SMALLINT):
     return False
   return None
 

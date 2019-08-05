@@ -12,8 +12,8 @@ import sys
 
 import argparse
 from tools.tool_libs import GCPProcessContext
-from services.system_utils import setup_logging, setup_unicode
-from services.gcp_utils import gcp_get_app_access_token
+from rdr_service.services.system_utils import setup_logging, setup_unicode
+from rdr_service.services.gcp_utils import gcp_get_app_access_token
 
 _logger = logging.getLogger('rdr_logger')
 

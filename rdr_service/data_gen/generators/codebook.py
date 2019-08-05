@@ -5,8 +5,8 @@
 import json
 import logging
 
-from lib_fhir.fhirclient_3_0_0.models.codesystem import CodeSystem
-from services.system_utils import make_api_request
+from rdr_service.lib_fhir.fhirclient_3_0_0.models.codesystem import CodeSystem
+from rdr_service.services.system_utils import make_api_request
 
 _logger = logging.getLogger('rdr_logger')
 

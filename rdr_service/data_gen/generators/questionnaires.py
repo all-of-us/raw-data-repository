@@ -13,15 +13,15 @@ import time
 from rdr_service import clock
 from rdr_service.data_gen.generators.base_gen import BaseGen
 from dateutil.parser import parse
-from lib_fhir.fhirclient_1_0_6.models.coding import Coding
-from lib_fhir.fhirclient_1_0_6.models.fhirdate import FHIRDate
-from lib_fhir.fhirclient_1_0_6.models.fhirreference import FHIRReference
-from lib_fhir.fhirclient_1_0_6.models.questionnaire import Questionnaire
-from lib_fhir.fhirclient_1_0_6.models.questionnaireresponse import QuestionnaireResponse, \
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.coding import Coding
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirdate import FHIRDate
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirreference import FHIRReference
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.questionnaire import Questionnaire
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.questionnaireresponse import QuestionnaireResponse, \
   QuestionnaireResponseGroup, QuestionnaireResponseGroupQuestion, \
   QuestionnaireResponseGroupQuestionAnswer
-from services.system_utils import make_api_request
-from services.gcp_utils import gcp_make_auth_header
+from rdr_service.services.system_utils import make_api_request
+from rdr_service.services.gcp_utils import gcp_make_auth_header
 
 _logger = logging.getLogger('rdr_logger')
 

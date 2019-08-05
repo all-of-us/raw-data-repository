@@ -10,7 +10,7 @@ import sys
 
 import argparse
 from service_libs import GCPProcessContext
-from services.system_utils import setup_logging, setup_unicode
+from rdr_service.services.system_utils import setup_logging, setup_unicode
 
 _logger = logging.getLogger('rdr_logger')
 

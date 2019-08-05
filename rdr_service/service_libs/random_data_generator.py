@@ -12,10 +12,10 @@ from time import sleep
 
 import argparse
 from service_libs import GCPProcessContext
-from services.gcp_utils import gcp_get_app_host_name, gcp_get_app_access_token, \
+from rdr_service.services.gcp_utils import gcp_get_app_host_name, gcp_get_app_access_token, \
   gcp_make_auth_header
-from services.system_utils import make_api_request
-from services.system_utils import setup_logging, setup_unicode
+from rdr_service.services.system_utils import make_api_request
+from rdr_service.services.system_utils import setup_logging, setup_unicode
 
 _logger = logging.getLogger('rdr_logger')
 

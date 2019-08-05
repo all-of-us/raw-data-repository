@@ -17,8 +17,8 @@ import argparse
 from model import BQ_SCHEMAS, BQ_VIEWS
 from rdr_service.model.bq_base import BQDuplicateFieldException, BQInvalidSchemaException, BQInvalidModeException, \
                             BQSchemaStructureException, BQException, BQSchema
-from services.gcp_utils import gcp_bq_command
-from services.system_utils import setup_logging, setup_unicode
+from rdr_service.services.gcp_utils import gcp_bq_command
+from rdr_service.services.system_utils import setup_logging, setup_unicode
 from tools.tool_libs import GCPProcessContext
 
 _logger = logging.getLogger('rdr_logger')
