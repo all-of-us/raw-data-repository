@@ -133,29 +133,12 @@ class DvOrderApi(UpdatableApi):
     except Exception as e:
       raise BadRequest(e.message)
 
-#    merged_resource = None
     if not p_id:
       raise BadRequest('Request must include participant id')
     if str(barcode_url).lower() == VIBRENT_BARCODE_URL:
       _id = self.dao.get_id(ObjDict({'participantId': p_id, 'order_id': int(bo_id)}))
       ex_obj = self.dao.get(_id)
 
-#      if not ex_obj.barcode and not cancel_order:
-#        # Send to mayolink and create internal biobank order
-#        response = self.dao.send_order(resource, p_id)
-#        merged_resource = merge_dicts(response, resource)
-#        merged_resource['id'] = _id
-#        logging.info('Sending salivary order to biobank for participant: %s', pid)
-#        self.dao.insert_biobank_order(p_id, merged_resource)
-
-#    if merged_resource:
-#      response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True,
-#                                             resource=merged_resource)
-#    else:
-#      response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
-#    if not barcode_url:
-#      logging.info('No barcode given for supply request, no biobank order sent. participant_id: %s',
-#                   pid)
     response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
     return response
 
