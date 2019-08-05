@@ -11,7 +11,7 @@ import pytz
 from cloudstorage import cloudstorage_api
 
 from rdr_service import clock
-import config
+from rdr_service import config
 from rdr_service.code_constants import RACE_QUESTION_CODE, RACE_AIAN_CODE, PPI_SYSTEM
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.code_dao import CodeDao
@@ -21,7 +21,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import from_client_biobank_id, get_biobank_id_prefix
 from rdr_service.model.participant import Participant
 from rdr_service.dao.participant_dao import ParticipantDao
-from offline.sql_exporter import SqlExporter
+from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import OrganizationType, BiobankOrderStatus, get_sample_status_enum_value
 
 # Format for dates in output filenames for the reconciliation report.

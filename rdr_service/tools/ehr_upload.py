@@ -11,7 +11,7 @@ import shlex
 import subprocess
 import urllib2
 
-from dao import database_factory
+from rdr_service.dao import database_factory
 from main_util import configure_logging, get_parser
 from sqlalchemy import text, bindparam
 

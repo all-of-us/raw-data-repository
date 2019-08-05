@@ -1,6 +1,6 @@
 import datetime
 from rdr_service import clock
-import config
+from rdr_service import config
 import pytz
 import csv
 from cloudstorage import cloudstorage_api  # stubbed by testbed
@@ -16,7 +16,7 @@ from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicSetMemberStatus
-from offline import genomic_pipeline
+from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import SampleStatus
 from genomic.genomic_set_file_handler import DataError
 

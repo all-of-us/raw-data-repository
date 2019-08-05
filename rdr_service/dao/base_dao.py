@@ -1,27 +1,25 @@
-from base64 import urlsafe_b64decode, urlsafe_b64encode
 import collections
+import datetime
 import json
 import logging
-import datetime
 import random
-import sqlparse
+from base64 import urlsafe_b64decode, urlsafe_b64encode
+from collections import OrderedDict
 from contextlib import closing
 
-from collections import OrderedDict
+import sqlparse
 from fhirclient.models.domainresource import DomainResource
 from fhirclient.models.fhirabstractbase import FHIRValidationError
 from protorpc import messages
-from query import Operator, PropertyType, FieldFilter, Results
-from sqlalchemy import or_, and_
-from sqlalchemy import inspect
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import and_, inspect, or_
 from sqlalchemy.engine.result import ResultProxy
+from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 
-import api_util
-import dao.database_factory
-from rdr_service.model.utils import get_property_type
+from rdr_service import api_util
 from rdr_service.model.requests_log import RequestsLog
+from rdr_service.model.utils import get_property_type
+from rdr_service.query import FieldFilter, Operator, PropertyType, Results
 
 # Maximum number of times we will attempt to insert an entity with a random ID before
 # giving up.

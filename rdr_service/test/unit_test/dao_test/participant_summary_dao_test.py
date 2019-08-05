@@ -5,7 +5,7 @@ import time
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 
 from rdr_service import clock
-import config
+from rdr_service import config
 from rdr_service.code_constants import BIOBANK_TESTS
 from rdr_service.dao.base_dao import json_serial
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
@@ -20,7 +20,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import EnrollmentStatus, PhysicalMeasurementsStatus, SampleStatus, \
   QuestionnaireStatus
-from query import Query, Operator, FieldFilter, OrderBy
+from rdr_service.query import Query, Operator, FieldFilter, OrderBy
 from test_data import load_measurement_json
 from unit_test_util import NdbTestBase, PITT_HPO_ID, cancel_biobank_order, \
   get_restore_or_cancel_info

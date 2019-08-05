@@ -14,7 +14,7 @@ from rdr_service.code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PER
                             DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,
                             CONSENT_PERMISSION_NO_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE, GENDER_NONBINARY_CODE,
                             GENDER_PREFER_NOT_TO_ANSWER_CODE)
-from concepts import Concept
+from rdr_service.concepts import Concept
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample

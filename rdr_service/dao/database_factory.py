@@ -3,9 +3,8 @@ import os
 from MySQLdb.cursors import SSCursor
 from sqlalchemy.engine.url import make_url
 
+from rdr_service import singletons
 from rdr_service.model.database import Database
-import singletons
-
 
 DB_CONNECTION_STRING = os.getenv('DB_CONNECTION_STRING')
 # Exposed for testing.

@@ -1,10 +1,10 @@
 import logging
 from csv import DictReader
 
-import config
+from rdr_service import config
 from cloudstorage import cloudstorage_api
 from rdr_service.dao.participant_dao import ParticipantDao
-from offline.biobank_samples_pipeline import DataError
+from rdr_service.offline.biobank_samples_pipeline import DataError
 
 
 def mark_ghost_participants():

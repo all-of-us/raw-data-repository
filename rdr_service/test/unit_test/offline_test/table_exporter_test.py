@@ -4,7 +4,7 @@ import os
 from cloudstorage import cloudstorage_api
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.participant_enums import make_primary_provider_link_for_name
-from offline.table_exporter import TableExporter
+from rdr_service.offline.table_exporter import TableExporter
 from offline_test.gcs_utils import assertCsvContents
 from unit_test_util import CloudStorageSqlTestBase, FlaskTestBase
 from google.appengine.ext import deferred

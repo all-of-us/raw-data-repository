@@ -4,7 +4,7 @@ import logging
 import time
 
 from rdr_service import clock
-import config
+from rdr_service import config
 import netaddr
 import pytz
 from flask import request

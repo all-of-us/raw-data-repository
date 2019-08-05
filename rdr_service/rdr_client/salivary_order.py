@@ -4,7 +4,7 @@ Creates a POST or PUT request on SupplyDelivery or SupplyRequest.
 import json
 import logging
 import pprint
-from fhir_utils import SimpleFhirR4Reader
+from rdr_service.fhir_utils import SimpleFhirR4Reader
 from main_util import get_parser, configure_logging
 from client import Client, client_log
 

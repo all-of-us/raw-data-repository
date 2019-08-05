@@ -7,7 +7,7 @@ from google.appengine.api import mail
 from google.appengine.ext import db
 import pipeline
 
-import config
+from rdr_service import config
 
 
 # TODO(DA-448) For more reliable delivery, switch to creating tickets via the JIRA API.

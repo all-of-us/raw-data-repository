@@ -1,12 +1,13 @@
-from rdr_service import clock
 import json
 import logging
-
-from rdr_service.model.metrics import MetricsVersion, MetricsBucket
-from rdr_service.dao.base_dao import BaseDao, UpsertableDao
-from werkzeug.exceptions import PreconditionFailed
-from sqlalchemy.orm import subqueryload
 from datetime import timedelta
+
+from sqlalchemy.orm import subqueryload
+from werkzeug.exceptions import PreconditionFailed
+
+from rdr_service import clock
+from rdr_service.dao.base_dao import BaseDao, UpsertableDao
+from rdr_service.model.metrics import MetricsBucket, MetricsVersion
 
 # Only metrics that match this version will be served.  See the corresponding
 # comment in metrics_pipeline.py.

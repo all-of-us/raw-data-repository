@@ -1,7 +1,7 @@
 import datetime
 
 from rdr_service import clock
-import config
+from rdr_service import config
 import pytz
 import csv
 from cloudstorage import cloudstorage_api  # stubbed by testbed

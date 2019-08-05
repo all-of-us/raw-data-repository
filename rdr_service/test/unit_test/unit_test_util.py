@@ -16,7 +16,7 @@ import unittest
 import uuid
 import warnings
 
-import dao.database_factory
+from rdr_service.dao import database_factory
 from rdr_service.dao.organization_dao import OrganizationDao
 
 from google.appengine.api import app_identity
@@ -28,15 +28,15 @@ from rdr_service.model.code import CodeType
 from rdr_service.model.organization import Organization
 from testlib import testutil
 
-import api_util
-import config
+from rdr_service import api_util
+from rdr_service import config
 import config_api
 import main
-import dao.base_dao
-import singletons
+from rdr_service.dao import base_dao
+from rdr_service import singletons
 
 from rdr_service.code_constants import PPI_SYSTEM
-from concepts import Concept
+from rdr_service.concepts import Concept
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -46,7 +46,7 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.site import Site
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
-from offline import sql_exporter
+from rdr_service.offline import sql_exporter
 from rdr_service.participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
 from rdr_service.participant_enums import OrganizationType
 from test.test_data import data_path

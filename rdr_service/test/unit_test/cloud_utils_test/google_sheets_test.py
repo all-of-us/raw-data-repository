@@ -2,7 +2,7 @@ import json
 import unittest
 
 from test.unit_test.unit_test_util import TestbedTestBase
-from cloud_utils.google_sheets import GoogleSheetCSVReader
+from rdr_service.cloud_utils.google_sheets import GoogleSheetCSVReader
 
 @unittest.skip("Only for local testing. do not include in automated test suite")
 class GoogleSheetCSVReaderTest(TestbedTestBase):

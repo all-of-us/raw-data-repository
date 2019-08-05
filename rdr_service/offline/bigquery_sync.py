@@ -8,7 +8,7 @@ from google.appengine.api import app_identity, taskqueue
 from googleapiclient.discovery import build
 from sqlalchemy import or_, func
 
-from cloud_utils.bigquery import BigQueryJob
+from rdr_service.cloud_utils.bigquery import BigQueryJob
 from rdr_service.dao.bigquery_sync_dao import BQParticipantSummaryGenerator, BigQuerySyncDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.bigquery_sync import BigQuerySync

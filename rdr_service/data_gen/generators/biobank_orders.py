@@ -6,8 +6,8 @@ import datetime
 import logging
 import random
 
-from data_gen.generators.base_gen import BaseGen
-from data_gen.generators.hpo import HPOGen
+from rdr_service.data_gen.generators.base_gen import BaseGen
+from rdr_service.data_gen.generators.hpo import HPOGen
 
 _logger = logging.getLogger('rdr_logger')
 

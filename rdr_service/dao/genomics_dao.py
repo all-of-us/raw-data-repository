@@ -4,10 +4,12 @@ import sqlalchemy
 
 from rdr_service import clock
 from rdr_service.dao.base_dao import UpdatableDao
-from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicSetMemberStatus
+from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetMemberStatus, \
+  GenomicSetStatus
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
-from query import Query, Operator, FieldFilter, OrderBy
+from rdr_service.query import FieldFilter, Operator, OrderBy, Query
+
 
 class GenomicSetDao(UpdatableDao):
   """ Stub for GenomicSet model """

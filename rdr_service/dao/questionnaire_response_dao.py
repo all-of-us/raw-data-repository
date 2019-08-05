@@ -1,35 +1,38 @@
-from rdr_service import clock
-import config
 import json
 import logging
-import pytz
 import os
-
 from datetime import datetime
-from cloudstorage import cloudstorage_api
+
 import fhirclient.models.questionnaireresponse
+import pytz
+from cloudstorage import cloudstorage_api
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
-from rdr_service.code_constants import PPI_SYSTEM, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, \
-  DVEHR_SHARING_QUESTION_CODE, CONSENT_FOR_DVEHR_MODULE, DVEHRSHARING_CONSENT_CODE_NOT_SURE, \
-  LANGUAGE_OF_CONSENT, GENDER_IDENTITY_QUESTION_CODE
-from rdr_service.code_constants import EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE
-from rdr_service.code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, PPI_EXTRA_SYSTEM
-from rdr_service.code_constants import CABOR_SIGNATURE_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES
-from config_api import is_config_admin
+from rdr_service import clock, config
+from rdr_service.code_constants import CABOR_SIGNATURE_QUESTION_CODE, CONSENT_FOR_DVEHR_MODULE, \
+  CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, \
+  CONSENT_PERMISSION_YES_CODE, \
+  DVEHRSHARING_CONSENT_CODE_NOT_SURE, DVEHRSHARING_CONSENT_CODE_YES, DVEHR_SHARING_QUESTION_CODE, \
+  EHR_CONSENT_QUESTION_CODE, GENDER_IDENTITY_QUESTION_CODE, LANGUAGE_OF_CONSENT, PPI_EXTRA_SYSTEM, \
+  PPI_SYSTEM, \
+  RACE_QUESTION_CODE
+from rdr_service.config_api import is_config_admin
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao, raise_if_withdrawn
-from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantGenderAnswersDao, \
-  ParticipantRaceAnswersDao
+from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, \
+  ParticipantRaceAnswersDao, \
+  ParticipantSummaryDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
-from field_mappings import FieldType, QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD
+from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, \
+  QUESTION_CODE_TO_FIELD
 from rdr_service.model.code import CodeType
 from rdr_service.model.questionnaire import QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from rdr_service.participant_enums import QuestionnaireStatus, get_race, QuestionnaireDefinitionStatus, \
-  TEST_LOGIN_PHONE_NUMBER_PREFIX, get_gender_identity
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, \
+  QuestionnaireResponseAnswer
+from rdr_service.participant_enums import QuestionnaireDefinitionStatus, QuestionnaireStatus, \
+  TEST_LOGIN_PHONE_NUMBER_PREFIX, get_gender_identity, get_race
 
 _QUESTIONNAIRE_PREFIX = 'Questionnaire/'
 _QUESTIONNAIRE_HISTORY_SEGMENT = '/_history/'

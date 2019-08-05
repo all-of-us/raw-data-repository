@@ -3,7 +3,7 @@ import httplib
 
 from mock import patch
 
-import config
+from rdr_service import config
 from clock import FakeClock
 from test.unit_test.unit_test_util import FlaskTestBase
 

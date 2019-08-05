@@ -4,27 +4,27 @@ import json
 import logging
 import traceback
 import time
-import app_util
-import config
+from rdr_service import app_util
+from rdr_service import config
 from rdr_service.api_util import EXPORTER
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
 from rdr_service.dao.metrics_dao import MetricsVersionDao
 from flask import Flask, request
 from google.appengine.api import app_identity
-from offline import biobank_samples_pipeline
-from offline.participant_maint import skew_duplicate_last_modified
-from offline.base_pipeline import send_failure_alert
-from offline.exclude_ghost_participants import mark_ghost_participants
-from offline.metrics_export import MetricsExport
-from offline.participant_counts_over_time import calculate_participant_metrics
-from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
-from offline.sa_key_remove import delete_service_account_keys
-from offline.table_exporter import TableExporter
-from offline.patient_status_backfill import backfill_patient_status
-import offline.sync_consent_files
-import offline.update_ehr_status
-import offline.genomic_pipeline
-from offline.bigquery_sync import rebuild_bigquery_handler, sync_bigquery_handler
+from rdr_service.offline import biobank_samples_pipeline
+from rdr_service.offline.participant_maint import skew_duplicate_last_modified
+from rdr_service.offline.base_pipeline import send_failure_alert
+from rdr_service.offline.exclude_ghost_participants import mark_ghost_participants
+from rdr_service.offline.metrics_export import MetricsExport
+from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
+from rdr_service.offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
+from rdr_service.offline.sa_key_remove import delete_service_account_keys
+from rdr_service.offline.table_exporter import TableExporter
+from rdr_service.offline.patient_status_backfill import backfill_patient_status
+from rdr_service.offline import sync_consent_files
+from rdr_service.offline import update_ehr_status
+from rdr_service.offline import genomic_pipeline
+from rdr_service.offline.bigquery_sync import rebuild_bigquery_handler, sync_bigquery_handler
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import BadRequest
 
@@ -174,19 +174,19 @@ def exclude_ghosts():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def sync_consent_files():
-  offline.sync_consent_files.do_sync_consent_files()
+  sync_consent_files.do_sync_consent_files()
   return '{"success": "true"}'
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def update_ehr_status():
-  offline.update_ehr_status.update_ehr_status()
+  update_ehr_status.update_ehr_status()
   return '{"success": "true"}'
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_pipeline():
-  offline.genomic_pipeline.process_genomic_water_line()
+  genomic_pipeline.process_genomic_water_line()
   return '{"success": "true"}'
 
 @app_util.auth_required_cron

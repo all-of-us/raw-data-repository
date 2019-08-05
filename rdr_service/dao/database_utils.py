@@ -1,9 +1,10 @@
 """Helpers for querying the SQL database."""
-import pytz
 import re
+from datetime import datetime
+
+import pytz
 
 from rdr_service.dao.database_factory import get_database
-from datetime import datetime
 
 _DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 # MySQL uses %i for minutes

@@ -1,8 +1,7 @@
-from sqlalchemy import text, func, select
+from sqlalchemy import func, select, text
 
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.calendar import Calendar
-
 
 INTERVAL_DAY = 'day'
 INTERVAL_WEEK = 'week'

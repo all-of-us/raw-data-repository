@@ -1,4 +1,4 @@
-import config
+from rdr_service import config
 import logging
 from werkzeug.exceptions import BadRequest
 

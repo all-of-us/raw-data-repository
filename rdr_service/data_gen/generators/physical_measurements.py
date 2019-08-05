@@ -6,9 +6,9 @@ import logging
 import random
 import string
 
-from concepts import Concept
-from data_gen.generators.hpo import HPOGen
-from data_gen.generators.base_gen import BaseGen
+from rdr_service.concepts import Concept
+from rdr_service.data_gen.generators.hpo import HPOGen
+from rdr_service.data_gen.generators.base_gen import BaseGen
 from werkzeug.exceptions import BadRequest
 
 _logger = logging.getLogger('rdr_logger')

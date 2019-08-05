@@ -3,7 +3,7 @@ import collections
 
 from rdr_service.model.metric_set import AggregateMetrics, MetricSet
 from sqlalchemy import text
-from dao import database_factory
+from rdr_service.dao import database_factory
 from rdr_service.dao.database_utils import replace_years_old
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao, MetricSetDao

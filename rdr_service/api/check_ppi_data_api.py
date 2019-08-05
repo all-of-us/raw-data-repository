@@ -3,13 +3,13 @@ import json
 from flask import request
 
 from rdr_service.api_util import PTC_AND_HEALTHPRO
-from app_util import auth_required
-from rdr_service.code_constants import PPI_SYSTEM, EMAIL_QUESTION_CODE
+from rdr_service.app_util import auth_required
+from rdr_service.code_constants import EMAIL_QUESTION_CODE, PPI_SYSTEM
 from rdr_service.dao.code_dao import CodeDao
-from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
 from rdr_service.model.code import CodeType
+from rdr_service.model.participant_summary import ParticipantSummary
 
 
 @auth_required(PTC_AND_HEALTHPRO)

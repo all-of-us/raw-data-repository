@@ -1,8 +1,9 @@
-import app_util
+from rdr_service import app_util
 
-from api.base_api import UpdatableApi
+from rdr_service.api.base_api import UpdatableApi
 from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO
 from rdr_service.dao.participant_dao import ParticipantDao
+
 
 class ParticipantApi(UpdatableApi):
   def __init__(self):

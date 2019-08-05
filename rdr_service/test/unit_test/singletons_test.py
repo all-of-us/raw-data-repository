@@ -1,7 +1,7 @@
 from clock import FakeClock
 import datetime
 import unittest
-import singletons
+from rdr_service import singletons
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)

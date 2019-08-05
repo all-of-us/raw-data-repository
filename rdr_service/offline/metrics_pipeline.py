@@ -58,10 +58,10 @@ import json
 import logging
 import pipeline
 
-import config
+from rdr_service import config
 import csv
-import offline.metrics_config
-import offline.sql_exporter
+from rdr_service.offline import metrics_config
+from rdr_service.offline import sql_exporter
 
 from cloudstorage import cloudstorage_api
 from datetime import datetime, timedelta
@@ -71,16 +71,16 @@ from mapreduce import context
 
 from rdr_service.dao.database_utils import parse_datetime
 from dateutil.relativedelta import relativedelta
-from census_regions import census_regions
+from rdr_service.census_regions import census_regions
 from rdr_service.code_constants import UNSET, RACE_QUESTION_CODE, PPI_SYSTEM, EHR_CONSENT_QUESTION_CODE
 from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, PMI_SKIP_CODE
 from rdr_service.dao.metrics_dao import MetricsBucketDao, MetricsVersionDao
-from field_mappings import QUESTION_CODE_TO_FIELD, FieldType
-from field_mappings import NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES
-from field_mappings import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD
+from rdr_service.field_mappings import QUESTION_CODE_TO_FIELD, FieldType
+from rdr_service.field_mappings import NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES
+from rdr_service.field_mappings import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD
 from rdr_service.model.metrics import MetricsBucket
 from mapreduce.lib.input_reader._gcs import GCSInputReader
-from offline.base_pipeline import BasePipeline
+from rdr_service.offline.base_pipeline import BasePipeline
 from metrics_config import BIOSPECIMEN_METRIC, BIOSPECIMEN_SAMPLES_METRIC, HPO_ID_METRIC
 from metrics_config import PHYSICAL_MEASUREMENTS_METRIC, AGE_RANGE_METRIC, CENSUS_REGION_METRIC
 from metrics_config import SPECIMEN_COLLECTED_VALUE, RACE_METRIC, ENROLLMENT_STATUS_METRIC
@@ -113,7 +113,7 @@ def default_params():
     }
 
 def get_config():
-  return offline.metrics_config.get_config()
+  return metrics_config.get_config()
 
 # This is a indicator of the format of the produced metrics.  If the metrics
 # pipeline changes such that the produced metrics are not compatible with the
@@ -178,11 +178,11 @@ class SummaryPipeline(pipeline.Pipeline):
     # Chain together three map reduces; see module comments
     blob_key_1 = (yield mapreduce_pipeline.MapreducePipeline(
         'Process Input CSV',
-        mapper_spec='offline.metrics_pipeline.map_csv_to_participant_and_date_metric',
+        mapper_spec='metrics_pipeline.map_csv_to_participant_and_date_metric',
         input_reader_spec='mapreduce.input_readers.GoogleCloudStorageInputReader',
         output_writer_spec='mapreduce.output_writers.GoogleCloudStorageConsistentOutputWriter',
         mapper_params=mapper_params,
-        reducer_spec='offline.metrics_pipeline.reduce_participant_data_to_hpo_metric_date_deltas',
+        reducer_spec='metrics_pipeline.reduce_participant_data_to_hpo_metric_date_deltas',
         reducer_params={
             'now': now,
             'output_writer': {
@@ -194,12 +194,12 @@ class SummaryPipeline(pipeline.Pipeline):
 
     blob_key_2 = (yield mapreduce_pipeline.MapreducePipeline(
         'Calculate Counts',
-        mapper_spec='offline.metrics_pipeline.map_hpo_metric_date_deltas_to_hpo_metric_key',
+        mapper_spec='metrics_pipeline.map_hpo_metric_date_deltas_to_hpo_metric_key',
         input_reader_spec='mapreduce.input_readers.GoogleCloudStorageInputReader',
         output_writer_spec='mapreduce.output_writers.GoogleCloudStorageConsistentOutputWriter',
         mapper_params=(yield BlobKeys(bucket_name, blob_key_1, now, version_id)),
-        combiner_spec='offline.metrics_pipeline.combine_hpo_metric_date_deltas',
-        reducer_spec='offline.metrics_pipeline.reduce_hpo_metric_date_deltas_to_all_date_counts',
+        combiner_spec='metrics_pipeline.combine_hpo_metric_date_deltas',
+        reducer_spec='metrics_pipeline.reduce_hpo_metric_date_deltas_to_all_date_counts',
         reducer_params={
             'now': now,
             'output_writer': {
@@ -212,10 +212,10 @@ class SummaryPipeline(pipeline.Pipeline):
     # We need to find a way to delete data written above (DA-167)
     yield mapreduce_pipeline.MapreducePipeline(
         'Write Metrics',
-        mapper_spec='offline.metrics_pipeline.map_hpo_metric_date_counts_to_hpo_date_key',
+        mapper_spec='metrics_pipeline.map_hpo_metric_date_counts_to_hpo_date_key',
         input_reader_spec='mapreduce.input_readers.GoogleCloudStorageInputReader',
         mapper_params=(yield BlobKeys(bucket_name, blob_key_2, now, version_id)),
-        reducer_spec='offline.metrics_pipeline.reduce_hpo_date_metric_counts_to_database_buckets',
+        reducer_spec='metrics_pipeline.reduce_hpo_date_metric_counts_to_database_buckets',
         reducer_params={
             'version_id': version_id
         },
@@ -224,7 +224,7 @@ class SummaryPipeline(pipeline.Pipeline):
 def map_csv_to_participant_and_date_metric(csv_buffer):
   """Takes a CSV file as input. Emits (participantId, date|metric) tuples.
   """
-  reader = csv.reader(csv_buffer, delimiter=offline.sql_exporter.DELIMITER)
+  reader = csv.reader(csv_buffer, delimiter=sql_exporter.DELIMITER)
   headers = reader.next()
 
   # It's not clear if we have access to the filename which would indicate what type of data

@@ -5,7 +5,7 @@ import json
 import logging
 import os
 
-import dao.database_factory
+from rdr_service.dao import database_factory
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from main_util import get_parser, configure_logging
 

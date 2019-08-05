@@ -8,7 +8,7 @@ from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.site import Site
-from offline import sync_consent_files
+from rdr_service.offline import sync_consent_files
 from rdr_service.participant_enums import UNSET_HPO_ID
 from test.unit_test.unit_test_util import CloudStorageSqlTestBase, TestBase, NdbTestBase
 
@@ -16,7 +16,7 @@ from test.unit_test.unit_test_util import CloudStorageSqlTestBase, TestBase, Ndb
 class TransformationTests(TestBase):
 
   @staticmethod
-  @mock.patch('offline.sync_consent_files.GoogleSheetCSVReader')
+  @mock.patch('sync_consent_files.GoogleSheetCSVReader')
   def _create_fake_org_map(reader):
     reader.return_value = [
       {  # active, parent

@@ -1,6 +1,6 @@
 import unittest
 
-from fhir_utils import SimpleFhirR4Reader
+from rdr_service.fhir_utils import SimpleFhirR4Reader
 
 
 EXAMPLE_SUPPLY_REQUEST = {

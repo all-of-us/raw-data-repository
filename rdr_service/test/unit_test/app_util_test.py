@@ -1,9 +1,9 @@
 import datetime
 import unittest
 
-import app_util
+from rdr_service import app_util
 from rdr_service import clock
-import config
+from rdr_service import config
 
 from mock import patch
 from test.unit_test.unit_test_util import NdbTestBase

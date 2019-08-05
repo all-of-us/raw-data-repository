@@ -2,7 +2,7 @@ import contextlib
 import csv
 import logging
 
-from dao import database_factory
+from rdr_service.dao import database_factory
 from cloudstorage import cloudstorage_api
 from sqlalchemy import text
 from unicode_csv import UnicodeWriter

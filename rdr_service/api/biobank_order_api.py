@@ -1,6 +1,6 @@
-from api.base_api import UpdatableApi
-from app_util import auth_required
+from rdr_service.api.base_api import UpdatableApi
 from rdr_service.api_util import HEALTHPRO, PTC_AND_HEALTHPRO
+from rdr_service.app_util import auth_required
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 
 

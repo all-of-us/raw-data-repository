@@ -1,11 +1,11 @@
 import datetime
 
-from offline.public_metrics_export import PublicMetricsExport
+from rdr_service.offline.public_metrics_export import PublicMetricsExport
 from clock import FakeClock
 from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE
 from rdr_service.code_constants import EHR_CONSENT_QUESTION_CODE, RACE_WHITE_CODE
 from rdr_service.code_constants import RACE_NONE_OF_THESE_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE
-from field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
+from rdr_service.field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
 from rdr_service.model.hpo import HPO
@@ -15,7 +15,7 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao, MetricSetDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.participant_enums import make_primary_provider_link_for_name
-from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
+from rdr_service.offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from rdr_service.participant_enums import WithdrawalStatus
 from test_data import load_biobank_order_json, load_measurement_json
 from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, TestBase

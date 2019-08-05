@@ -19,7 +19,7 @@ from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_
   SEXUAL_ORIENTATION_QUESTION_CODE, EDUCATION_QUESTION_CODE, INCOME_QUESTION_CODE, \
   CABOR_SIGNATURE_QUESTION_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE, BIOBANK_TESTS, \
   HEALTHPRO_USERNAME_SYSTEM, SITE_ID_SYSTEM, STREET_ADDRESS2_QUESTION_CODE
-from concepts import Concept
+from rdr_service.concepts import Concept
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.physical_measurements_dao import _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION, \
@@ -27,7 +27,7 @@ from rdr_service.dao.physical_measurements_dao import _CREATED_LOC_EXTENSION, _F
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.site_dao import SiteDao
 from dateutil.parser import parse
-from field_mappings import QUESTION_CODE_TO_FIELD
+from rdr_service.field_mappings import QUESTION_CODE_TO_FIELD
 from google.appengine.api import app_identity
 from rdr_service.model.code import CodeType
 from rdr_service.participant_enums import make_primary_provider_link_for_hpo, UNSET_HPO_ID

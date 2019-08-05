@@ -5,13 +5,13 @@ import mock
 import pytz
 
 from clock import FakeClock
-import config
+from rdr_service import config
 from rdr_service.dao.ehr_dao import EhrReceiptDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-import offline.update_ehr_status
+from rdr_service.offline import update_ehr_status
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.participant_enums import EhrStatus
@@ -32,27 +32,27 @@ class UpdateEhrStatusMakeJobsTestCase(NdbTestBase):
     mock_get_application_id.return_value = 'app_id'
 
     config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, ['some_view'])
-    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    job = update_ehr_status.make_update_participant_summaries_job()
     self.assertNotEqual(job, None)
 
     config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, ['a', 'b'])
-    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    job = update_ehr_status.make_update_participant_summaries_job()
     self.assertEqual(job, None)
 
     config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [''])
-    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    job = update_ehr_status.make_update_participant_summaries_job()
     self.assertEqual(job, None)
 
     config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [None])
-    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    job = update_ehr_status.make_update_participant_summaries_job()
     self.assertEqual(job, None)
 
     config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [])
-    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    job = update_ehr_status.make_update_participant_summaries_job()
     self.assertEqual(job, None)
 
     config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, None)
-    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    job = update_ehr_status.make_update_participant_summaries_job()
     self.assertEqual(job, None)
 
   @mock.patch('cloud_utils.bigquery.build')
@@ -62,27 +62,27 @@ class UpdateEhrStatusMakeJobsTestCase(NdbTestBase):
     mock_get_application_id.return_value = 'app_id'
 
     config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, ['some_view'])
-    job = offline.update_ehr_status.make_update_organizations_job()
+    job = update_ehr_status.make_update_organizations_job()
     self.assertNotEqual(job, None)
 
     config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, ['a', 'b'])
-    job = offline.update_ehr_status.make_update_organizations_job()
+    job = update_ehr_status.make_update_organizations_job()
     self.assertEqual(job, None)
 
     config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, [''])
-    job = offline.update_ehr_status.make_update_organizations_job()
+    job = update_ehr_status.make_update_organizations_job()
     self.assertEqual(job, None)
 
     config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION, [None])
-    job = offline.update_ehr_status.make_update_organizations_job()
+    job = update_ehr_status.make_update_organizations_job()
     self.assertEqual(job, None)
 
     config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, [])
-    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    job = update_ehr_status.make_update_participant_summaries_job()
     self.assertEqual(job, None)
 
     config.override_setting(config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT, None)
-    job = offline.update_ehr_status.make_update_participant_summaries_job()
+    job = update_ehr_status.make_update_participant_summaries_job()
     self.assertEqual(job, None)
 
 
@@ -142,23 +142,23 @@ class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
     'person_upload_time',
   ])
 
-  @mock.patch('offline.update_ehr_status.update_organizations_from_job')
-  @mock.patch('offline.update_ehr_status.update_participant_summaries_from_job')
-  @mock.patch('offline.update_ehr_status.make_update_organizations_job')
-  @mock.patch('offline.update_ehr_status.make_update_participant_summaries_job')
+  @mock.patch('update_ehr_status.update_organizations_from_job')
+  @mock.patch('update_ehr_status.update_participant_summaries_from_job')
+  @mock.patch('update_ehr_status.make_update_organizations_job')
+  @mock.patch('update_ehr_status.make_update_participant_summaries_job')
   def test_skips_when_no_job(self, mock_summary_job, mock_organization_job,
                              mock_update_summaries, mock_update_organizations):
     mock_summary_job.return_value = None
     mock_organization_job.return_value = None
 
     with FakeClock(datetime.datetime(2019, 1, 1)):
-      offline.update_ehr_status.update_ehr_status()
+      update_ehr_status.update_ehr_status()
 
     self.assertFalse(mock_update_summaries.called)
     self.assertFalse(mock_update_organizations.called)
 
-  @mock.patch('offline.update_ehr_status.make_update_organizations_job')
-  @mock.patch('offline.update_ehr_status.make_update_participant_summaries_job')
+  @mock.patch('update_ehr_status.make_update_organizations_job')
+  @mock.patch('update_ehr_status.make_update_participant_summaries_job')
   def test_updates_participant_summaries(self, mock_summary_job, mock_organization_job):
     mock_summary_job.return_value.__iter__.return_value = [
       [
@@ -167,7 +167,7 @@ class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
     ]
     mock_organization_job.return_value.__iter__.return_value = []
     with FakeClock(datetime.datetime(2019, 1, 1)):
-      offline.update_ehr_status.update_ehr_status()
+      update_ehr_status.update_ehr_status()
 
 
     mock_summary_job.return_value.__iter__.return_value = [
@@ -178,7 +178,7 @@ class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
     ]
     mock_organization_job.return_value.__iter__.return_value = []
     with FakeClock(datetime.datetime(2019, 1, 2)):
-      offline.update_ehr_status.update_ehr_status()
+      update_ehr_status.update_ehr_status()
 
 
     summary = self.summary_dao.get(11)
@@ -191,8 +191,8 @@ class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
     self.assertEqual(summary.ehrReceiptTime, datetime.datetime(2019,1,2))
     self.assertEqual(summary.ehrUpdateTime, datetime.datetime(2019,1,2))
 
-  @mock.patch('offline.update_ehr_status.make_update_organizations_job')
-  @mock.patch('offline.update_ehr_status.make_update_participant_summaries_job')
+  @mock.patch('update_ehr_status.make_update_organizations_job')
+  @mock.patch('update_ehr_status.make_update_participant_summaries_job')
   def test_creates_receipts(self, mock_summary_job, mock_organization_job):
     mock_summary_job.return_value.__iter__.return_value = []
     mock_organization_job.return_value.__iter__.return_value = [
@@ -204,7 +204,7 @@ class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
       ],
     ]
     with FakeClock(datetime.datetime(2019, 1, 1)):
-      offline.update_ehr_status.update_ehr_status()
+      update_ehr_status.update_ehr_status()
 
     foo_a_receipts = self.ehr_receipt_dao.get_by_organization_id(self.org_foo_a.organizationId)
     self.assertEqual(len(foo_a_receipts), 1)
@@ -232,7 +232,7 @@ class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
       ],
     ]
     with FakeClock(datetime.datetime(2019, 1, 2)):
-      offline.update_ehr_status.update_ehr_status()
+      update_ehr_status.update_ehr_status()
 
     foo_a_receipts = self.ehr_receipt_dao.get_by_organization_id(self.org_foo_a.organizationId)
     self.assertEqual(len(foo_a_receipts), 2)
@@ -243,8 +243,8 @@ class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
     self.assertEqual(len(foo_b_receipts), 1)
     self.assertEqual(foo_b_receipts[0].receiptTime, datetime.datetime(2019, 1, 2))
 
-  @mock.patch('offline.update_ehr_status.make_update_organizations_job')
-  @mock.patch('offline.update_ehr_status.make_update_participant_summaries_job')
+  @mock.patch('update_ehr_status.make_update_organizations_job')
+  @mock.patch('update_ehr_status.make_update_participant_summaries_job')
   def test_ignores_bad_data(self, mock_summary_job, mock_organization_job):
     invalid_participant_id = -1
     mock_summary_job.return_value.__iter__.return_value = [
@@ -269,7 +269,7 @@ class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
       ],
     ]
     with FakeClock(datetime.datetime(2019, 1, 1)):
-      offline.update_ehr_status.update_ehr_status()
+      update_ehr_status.update_ehr_status()
 
     foo_a_receipts = self.ehr_receipt_dao.get_all()
     self.assertEqual(len(foo_a_receipts), 0)

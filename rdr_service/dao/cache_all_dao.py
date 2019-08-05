@@ -1,7 +1,8 @@
-from base_dao import UpdatableDao
 from sqlalchemy.orm.session import make_transient
 
-import singletons
+from base_dao import UpdatableDao
+from rdr_service import singletons
+
 
 class EntityCache(object):
   """A cache of entities of a particular type, indexed by ID (in id_to_entity) and optionally other

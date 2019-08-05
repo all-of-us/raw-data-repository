@@ -8,7 +8,7 @@ from rdr_service.model.hpo import HPO
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.participant_enums import TEST_HPO_ID, TEST_HPO_NAME, OrganizationType
 from rdr_service.code_constants import RACE_WHITE_CODE, PPI_SYSTEM
-from concepts import Concept
+from rdr_service.concepts import Concept
 
 TIME_1 = datetime.datetime(2018, 1, 1)
 TIME_2 = datetime.datetime(2018, 1, 3)

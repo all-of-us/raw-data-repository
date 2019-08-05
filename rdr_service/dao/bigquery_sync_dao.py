@@ -1,13 +1,14 @@
 import datetime
-from dateutil import parser, tz
-from sqlalchemy import func, desc
 
-import config
+from dateutil import parser, tz
+from sqlalchemy import desc, func
+
+from rdr_service import config
 from rdr_service.dao.base_dao import UpsertableDao
 from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.bq_base import BQRecord
-from rdr_service.model.bq_participant_summary import BQParticipantSummarySchema, BQStreetAddressTypeEnum, \
-  BQModuleStatusEnum
+from rdr_service.model.bq_participant_summary import BQModuleStatusEnum, BQParticipantSummarySchema, \
+  BQStreetAddressTypeEnum
 from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
 from rdr_service.model.measurements import PhysicalMeasurements, PhysicalMeasurementsStatus
@@ -16,9 +17,9 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.model.site import Site
-from rdr_service.participant_enums import EnrollmentStatus, WithdrawalStatus, WithdrawalReason, SuspensionStatus, SampleStatus, \
-                               BiobankOrderStatus
-
+from rdr_service.participant_enums import BiobankOrderStatus, EnrollmentStatus, SampleStatus, \
+  SuspensionStatus, \
+  WithdrawalReason, WithdrawalStatus
 
 
 class BigQuerySyncDao(UpsertableDao):

@@ -1,4 +1,4 @@
-import config
+from rdr_service import config
 from google.appengine.api import app_identity
 from googleapiclient import discovery
 import logging

@@ -1,6 +1,6 @@
-from api.base_api import BaseApi, UpdatableApi
-from app_util import auth_required
+from rdr_service.api.base_api import BaseApi, UpdatableApi
 from rdr_service.api_util import HEALTHPRO
+from rdr_service.app_util import auth_required
 from rdr_service.dao.patient_status_dao import PatientStatusDao
 
 

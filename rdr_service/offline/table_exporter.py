@@ -6,7 +6,7 @@ import struct
 from rdr_service.dao.database_factory import get_database
 from google.appengine.api import app_identity
 from google.appengine.ext import deferred
-from offline.sql_exporter import SqlExporter
+from rdr_service.offline.sql_exporter import SqlExporter
 from werkzeug.exceptions import BadRequest
 
 _TABLE_PATTERN = re.compile("^[A-Za-z0-9_]+$")

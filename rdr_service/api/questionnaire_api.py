@@ -1,12 +1,13 @@
-import app_util
+from flask import request
+from werkzeug.exceptions import BadRequest, NotFound
 
-from api.base_api import UpdatableApi
+from rdr_service import app_util
+from rdr_service.api.base_api import UpdatableApi
 from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
-from flask import request
-from werkzeug.exceptions import BadRequest, NotFound
+
 
 class QuestionnaireApi(UpdatableApi):
   def __init__(self):

@@ -5,7 +5,7 @@ from clock import FakeClock
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.model.participant import Participant
 from rdr_service.model.measurements import PhysicalMeasurements
-from query import Query, FieldFilter, Operator
+from rdr_service.query import Query, FieldFilter, Operator
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao

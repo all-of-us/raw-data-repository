@@ -4,14 +4,14 @@ from rdr_service import clock
 from clock import FakeClock
 from rdr_service.code_constants import BIOBANK_TESTS, RACE_QUESTION_CODE, RACE_WHITE_CODE, RACE_AIAN_CODE
 from rdr_service.code_constants import PPI_SYSTEM
-from concepts import Concept
+from rdr_service.concepts import Concept
 from rdr_service.model.code import CodeType
-from dao import database_utils
+from rdr_service.dao import database_utils
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from offline import biobank_samples_pipeline
+from rdr_service.offline import biobank_samples_pipeline
 from unit_test_util import FlaskTestBase, InMemorySqlExporter, make_questionnaire_response_json
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
@@ -19,7 +19,7 @@ from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import WithdrawalStatus
-from offline.biobank_samples_pipeline import _KIT_ID_SYSTEM, _TRACKING_NUMBER_SYSTEM
+from rdr_service.offline.biobank_samples_pipeline import _KIT_ID_SYSTEM, _TRACKING_NUMBER_SYSTEM
 
 # Expected names for the reconciliation_data columns in output CSVs.
 _CSV_COLUMN_NAMES = (

@@ -1,5 +1,5 @@
 from dateutil.tz import tzutc
-from query import PropertyType
+from rdr_service.query import PropertyType
 from sqlalchemy import String
 from sqlalchemy.types import SmallInteger, TypeDecorator, DateTime
 from sqlalchemy.dialects.mysql import DATETIME

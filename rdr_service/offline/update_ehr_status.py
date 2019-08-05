@@ -2,8 +2,8 @@ import logging
 
 from rdr_service import clock
 import cloud_utils.bigquery
-import config
-from app_util import datetime_as_naive_utc
+from rdr_service import config
+from rdr_service.app_util import datetime_as_naive_utc
 from rdr_service.dao.ehr_dao import EhrReceiptDao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao

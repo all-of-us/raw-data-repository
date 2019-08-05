@@ -3,10 +3,10 @@ import json
 from google.appengine.api import app_identity
 from werkzeug.exceptions import NotFound
 
-from api.base_api import BaseApi
+from rdr_service.api.base_api import BaseApi
 from rdr_service.api_util import PTC_AND_HEALTHPRO
-from app_util import auth_required, nonprod
-from cloud_utils.bigquery import BigQueryJob
+from rdr_service.app_util import auth_required, nonprod
+from rdr_service.cloud_utils.bigquery import BigQueryJob
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.model.bigquery_sync import BigQuerySync
 

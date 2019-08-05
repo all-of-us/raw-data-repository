@@ -1,19 +1,23 @@
-from rdr_service.model.metrics_cache import MetricsEnrollmentStatusCache, MetricsGenderCache, MetricsAgeCache, \
-  MetricsRaceCache, MetricsRegionCache, MetricsLifecycleCache, MetricsLanguageCache, \
-  MetricsCacheJobStatus
-from rdr_service.dao.base_dao import BaseDao, UpdatableDao
-from rdr_service.dao.hpo_dao import HPODao
-from rdr_service.dao.code_dao import CodeDao
-from rdr_service.participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN, GenderIdentity
-from rdr_service.code_constants import PPI_SYSTEM
-from census_regions import census_regions
 import datetime
 import json
+
 import sqlalchemy
-from sqlalchemy import func, or_, and_, desc
-from rdr_service.participant_enums import Stratifications, AGE_BUCKETS_METRICS_V2_API, \
-  AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API, MetricsCacheType, MetricsAPIVersion, EnrollmentStatus, \
-  EnrollmentStatusV2
+from sqlalchemy import and_, desc, func, or_
+
+from rdr_service.census_regions import census_regions
+from rdr_service.code_constants import PPI_SYSTEM
+from rdr_service.dao.base_dao import BaseDao, UpdatableDao
+from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.model.metrics_cache import MetricsAgeCache, MetricsCacheJobStatus, \
+  MetricsEnrollmentStatusCache, \
+  MetricsGenderCache, MetricsLanguageCache, MetricsLifecycleCache, MetricsRaceCache, \
+  MetricsRegionCache
+from rdr_service.participant_enums import AGE_BUCKETS_METRICS_V2_API, \
+  AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API, \
+  EnrollmentStatus, EnrollmentStatusV2, GenderIdentity, MetricsAPIVersion, MetricsCacheType, \
+  Stratifications, \
+  TEST_EMAIL_PATTERN, TEST_HPO_NAME
 
 
 class MetricsCacheJobStatusDao(UpdatableDao):

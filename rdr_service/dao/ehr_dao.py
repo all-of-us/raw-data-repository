@@ -1,7 +1,8 @@
+from sqlalchemy import func, select
+
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.calendar_dao import CalendarDao
 from rdr_service.model.ehr import EhrReceipt
-from sqlalchemy import select, func
 
 
 class EhrReceiptDao(BaseDao):

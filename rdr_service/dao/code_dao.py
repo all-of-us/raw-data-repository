@@ -1,12 +1,13 @@
-from rdr_service import clock
 import logging
 import traceback
 
+from werkzeug.exceptions import BadRequest
+
+from rdr_service import clock
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.cache_all_dao import CacheAllDao
-from rdr_service.model.code import CodeBook, Code, CodeHistory, CodeType
-from werkzeug.exceptions import BadRequest
-from singletons import CODE_CACHE_INDEX
+from rdr_service.model.code import Code, CodeBook, CodeHistory, CodeType
+from rdr_service.singletons import CODE_CACHE_INDEX
 
 _CODE_TYPE_MAP = {
   "Module Name": CodeType.MODULE,

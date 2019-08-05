@@ -9,8 +9,8 @@ import logging
 import pytz
 from cloudstorage import cloudstorage_api
 from rdr_service import clock
-import config
-from offline.sql_exporter import SqlExporter
+from rdr_service import config
+from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
 from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicSetMemberStatus
 

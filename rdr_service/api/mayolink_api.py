@@ -2,13 +2,14 @@ import json
 import xml.etree.cElementTree as etree
 
 import cloudstorage
-import config
 import httplib2
 import xmltodict
-from api.base_api import UpdatableApi
-from rdr_service.api_util import RDR_AND_PTC, format_json_enum
-from app_util import auth_required
 from werkzeug.exceptions import ServiceUnavailable
+
+from rdr_service import config
+from rdr_service.api.base_api import UpdatableApi
+from rdr_service.api_util import RDR_AND_PTC, format_json_enum
+from rdr_service.app_util import auth_required
 
 
 class MayoLinkApi(UpdatableApi):

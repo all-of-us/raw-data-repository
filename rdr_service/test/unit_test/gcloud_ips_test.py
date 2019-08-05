@@ -1,8 +1,8 @@
 import unittest
 from mock import MagicMock
 
-import offline.gcloud_ips
-from offline.gcloud_ips import START, get_ip_ranges
+from rdr_service.offline import gcloud_ips
+from rdr_service.offline.gcloud_ips import START, get_ip_ranges
 
 class GcloudIpsTest(unittest.TestCase):
   DNS_RESPONSES = [
@@ -16,9 +16,9 @@ class GcloudIpsTest(unittest.TestCase):
 
 
   def test_gcloud_ips(self):
-    offline.gcloud_ips.lookup_txt = MagicMock(side_effect=self.DNS_RESPONSES)
+    gcloud_ips.lookup_txt = MagicMock(side_effect=self.DNS_RESPONSES)
     response = get_ip_ranges(START)
-    self.assertEqual(6, offline.gcloud_ips.lookup_txt.call_count)
+    self.assertEqual(6, gcloud_ips.lookup_txt.call_count)
     self.assertEqual(response.next_entries, [])
     self.assertEqual(response.ip4, [
         '107.167.160.0/19',

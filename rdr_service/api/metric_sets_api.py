@@ -1,11 +1,11 @@
-import app_util
-
-from rdr_service.api_util import STOREFRONT
 from flask import request
 from flask_restful import Resource
-from rdr_service.participant_enums import MetricsKey, METRIC_SET_KEYS
-from rdr_service.dao.metric_set_dao import MetricSetDao, AggregateMetricsDao
 from werkzeug import exceptions
+
+from rdr_service import app_util
+from rdr_service.api_util import STOREFRONT
+from rdr_service.dao.metric_set_dao import AggregateMetricsDao, MetricSetDao
+from rdr_service.participant_enums import METRIC_SET_KEYS, MetricsKey
 
 
 class MetricSetsApi(Resource):

@@ -3,7 +3,7 @@ from __future__ import print_function
 import datetime
 import json
 
-import offline.metrics_export
+from rdr_service.offline import metrics_export
 from clock import FakeClock
 from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, \
   GENDER_IDENTITY_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, RACE_QUESTION_CODE, \
@@ -13,16 +13,16 @@ from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.metrics_dao import MetricsVersionDao, SERVING_METRICS_DATA_VERSION
 from rdr_service.dao.participant_dao import ParticipantDao
-from field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
+from rdr_service.field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
 from mapreduce import test_support
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
 from rdr_service.model.hpo import HPO
 from rdr_service.model.metrics import MetricsVersion
 from rdr_service.model.participant import Participant
-from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE, get_participant_fields, \
+from rdr_service.offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE, get_participant_fields, \
   HPO_ID_FIELDS, ANSWER_FIELDS
-from offline.metrics_export import MetricsExport, _HPO_IDS_CSV, _PARTICIPANTS_CSV, _ANSWERS_CSV
+from rdr_service.offline.metrics_export import MetricsExport, _HPO_IDS_CSV, _PARTICIPANTS_CSV, _ANSWERS_CSV
 from offline_test.gcs_utils import assertCsvContents
 from rdr_service.participant_enums import WithdrawalStatus, make_primary_provider_link_for_name, \
   WithdrawalReason

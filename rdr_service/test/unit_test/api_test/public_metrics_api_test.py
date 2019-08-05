@@ -11,7 +11,7 @@ from rdr_service.dao.calendar_dao import CalendarDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json
 from rdr_service.model.participant import Participant
-from concepts import Concept
+from rdr_service.concepts import Concept
 from rdr_service.model.participant_summary import ParticipantSummary, ParticipantGenderAnswers
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao
 from rdr_service.participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID,\

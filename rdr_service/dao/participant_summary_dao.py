@@ -1,14 +1,19 @@
 import datetime
 import re
-import sqlalchemy
-import sqlalchemy.orm
 import threading
 
-from rdr_service import clock
-import config
-from rdr_service.api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo, \
-  format_json_org, format_json_site
-from rdr_service.code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
+import sqlalchemy
+import sqlalchemy.orm
+from sqlalchemy import or_
+# Note: leaving for future use if we go back to using a relationship to PatientStatus table.
+# from sqlalchemy.orm import selectinload
+from werkzeug.exceptions import BadRequest, NotFound
+
+from rdr_service import clock, config
+from rdr_service.api_util import format_json_code, format_json_date, format_json_enum, \
+  format_json_hpo, format_json_org, \
+  format_json_site
+from rdr_service.code_constants import BIOBANK_TESTS, PPI_SYSTEM, UNSET
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
@@ -16,21 +21,17 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.patient_status_dao import PatientStatusDao
 from rdr_service.dao.site_dao import SiteDao
-from rdr_service.model.config_utils import to_client_biobank_id, from_client_biobank_id
-from rdr_service.model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS, \
-  WITHDRAWN_PARTICIPANT_VISIBILITY_TIME, SUSPENDED_PARTICIPANT_FIELDS, ParticipantGenderAnswers, \
-  ParticipantRaceAnswers
+from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
+from rdr_service.model.participant_summary import ParticipantGenderAnswers, ParticipantRaceAnswers, \
+  ParticipantSummary, \
+  SUSPENDED_PARTICIPANT_FIELDS, WITHDRAWN_PARTICIPANT_FIELDS, WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
 from rdr_service.model.patient_status import PatientStatus
-from rdr_service.model.utils import to_client_participant_id, get_property_type
-from rdr_service.participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus, \
-  EnrollmentStatus, SuspensionStatus, WithdrawalStatus, get_bucketed_age, EhrStatus, \
-  BiobankOrderStatus, PatientStatusFlag
-from query import OrderBy, PropertyType, FieldFilter, FieldJsonContainsFilter, Operator
-from sqlalchemy import or_
-# Note: leaving for future use if we go back to using a relationship to PatientStatus table.
-# from sqlalchemy.orm import selectinload
-from werkzeug.exceptions import BadRequest, NotFound
-
+from rdr_service.model.utils import get_property_type, to_client_participant_id
+from rdr_service.participant_enums import BiobankOrderStatus, EhrStatus, EnrollmentStatus, \
+  PatientStatusFlag, \
+  PhysicalMeasurementsStatus, QuestionnaireStatus, SampleStatus, SuspensionStatus, WithdrawalStatus, \
+  get_bucketed_age
+from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
 
 # By default / secondarily order by last name, first name, DOB, and participant ID
 _ORDER_BY_ENDING = ('lastName', 'firstName', 'dateOfBirth', 'participantId')

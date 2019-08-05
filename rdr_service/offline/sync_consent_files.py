@@ -10,8 +10,8 @@ import cloudstorage
 from google.appengine.ext import deferred
 import sqlalchemy
 
-from cloud_utils.google_sheets import GoogleSheetCSVReader
-from dao import database_factory
+from rdr_service.cloud_utils.google_sheets import GoogleSheetCSVReader
+from rdr_service.dao import database_factory
 
 
 HPO_REPORT_CONFIG_GCS_PATH = '/all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json'

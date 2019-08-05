@@ -1,11 +1,10 @@
-import app_util
-import config
-
-from api.base_api import BaseApi, DEFAULT_MAX_RESULTS, get_sync_results_for_request
-from rdr_service.api_util import HEALTHPRO, PTC_AND_HEALTHPRO, PTC
 from flask import request
+
+from rdr_service import app_util, config
+from rdr_service.api.base_api import BaseApi, DEFAULT_MAX_RESULTS, get_sync_results_for_request
+from rdr_service.api_util import HEALTHPRO, PTC, PTC_AND_HEALTHPRO
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
-from query import Query, Operator, FieldFilter
+from rdr_service.query import FieldFilter, Operator, Query
 
 
 class PhysicalMeasurementsApi(BaseApi):

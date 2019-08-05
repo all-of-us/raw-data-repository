@@ -1,12 +1,13 @@
-import app_util
 import datetime
 import json
 
-from rdr_service.api_util import HEALTHPRO
-from rdr_service.dao.metrics_dao import MetricsBucketDao
 from flask import request
 from flask_restful import Resource
 from werkzeug.exceptions import BadRequest
+
+from rdr_service import app_util
+from rdr_service.api_util import HEALTHPRO
+from rdr_service.dao.metrics_dao import MetricsBucketDao
 
 DATE_FORMAT = '%Y-%m-%d'
 DAYS_LIMIT = 7

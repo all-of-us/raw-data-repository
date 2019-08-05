@@ -1,15 +1,16 @@
-from rdr_service import clock
 import json
 
 import fhirclient.models.questionnaire
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
-from rdr_service.dao.base_dao import BaseDao, UpdatableDao
+from rdr_service import clock
 from rdr_service.code_constants import PPI_EXTRA_SYSTEM
+from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.model.code import CodeType
-from rdr_service.model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireConcept
-from rdr_service.model.questionnaire import QuestionnaireQuestion
+from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, \
+  QuestionnaireHistory, \
+  QuestionnaireQuestion
 
 
 class QuestionnaireDao(UpdatableDao):

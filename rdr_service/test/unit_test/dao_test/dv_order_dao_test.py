@@ -5,7 +5,7 @@ import mock
 from rdr_service.dao.dv_order_dao import DvOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from fhir_utils import SimpleFhirR4Reader
+from rdr_service.fhir_utils import SimpleFhirR4Reader
 from rdr_service.api_util import VIBRENT_FHIR_URL
 from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus

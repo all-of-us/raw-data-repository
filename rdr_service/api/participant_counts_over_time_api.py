@@ -1,16 +1,15 @@
 import datetime
 
-from flask_restful import Resource
 from flask import request
+from flask_restful import Resource
 from werkzeug.exceptions import BadRequest
 
-from rdr_service.api_util import HEALTHPRO
-from rdr_service.api_util import get_awardee_id_from_name
-from app_util import auth_required
+from rdr_service.api_util import HEALTHPRO, get_awardee_id_from_name
+from rdr_service.app_util import auth_required
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
-from rdr_service.participant_enums import EnrollmentStatus, EnrollmentStatusV2, Stratifications, \
-  MetricsAPIVersion
+from rdr_service.participant_enums import EnrollmentStatus, EnrollmentStatusV2, MetricsAPIVersion, \
+  Stratifications
 
 DATE_FORMAT = '%Y-%m-%d'
 DAYS_LIMIT_FOR_REALTIME_DATA = 100  # provisional, per design doc

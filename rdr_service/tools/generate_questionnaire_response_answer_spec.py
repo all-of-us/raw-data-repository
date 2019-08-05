@@ -1,7 +1,7 @@
 """Generates a JSON questionnaire response answer spec based off data in the database."""
 import csv
 
-from dao import database_factory
+from rdr_service.dao import database_factory
 from sqlalchemy import text
 from main_util import get_parser
 

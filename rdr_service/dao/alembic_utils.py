@@ -4,7 +4,7 @@
 #
 # See: https://alembic.sqlalchemy.org/en/latest/cookbook.html#replaceable-objects
 #
-from alembic.operations import Operations, MigrateOperation
+from alembic.operations import MigrateOperation, Operations
 
 
 class ReplaceableObject(object):

@@ -1,16 +1,18 @@
 import json
+
 import pytz
+from dateutil.parser import parse
+from sqlalchemy.sql.functions import concat
+from werkzeug.exceptions import BadRequest, Conflict, NotFound
+
 from rdr_service.dao.base_dao import UpsertableDao
 from rdr_service.dao.code_dao import CodeDao
-from dateutil.parser import parse
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.site import Site
 from rdr_service.participant_enums import PatientStatusFlag
-from sqlalchemy.sql.functions import concat
-from werkzeug.exceptions import BadRequest, Conflict, NotFound
 
 
 class PatientStatusDao(UpsertableDao):

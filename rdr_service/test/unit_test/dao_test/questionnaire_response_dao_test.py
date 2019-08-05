@@ -9,7 +9,7 @@ from rdr_service.code_constants import (
   PPI_SYSTEM, GENDER_IDENTITY_QUESTION_CODE, THE_BASICS_PPI_MODULE, PMI_SKIP_CODE,
 )
 
-import config
+from rdr_service import config
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
