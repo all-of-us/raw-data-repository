@@ -17,15 +17,15 @@ import uuid
 import warnings
 
 import dao.database_factory
-from dao.organization_dao import OrganizationDao
+from rdr_service.dao.organization_dao import OrganizationDao
 
 from google.appengine.api import app_identity
 from google.appengine.ext import deferred
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
 from mock import patch
-from model.code import CodeType
-from model.organization import Organization
+from rdr_service.model.code import CodeType
+from rdr_service.model.organization import Organization
 from testlib import testutil
 
 import api_util
@@ -35,20 +35,20 @@ import main
 import dao.base_dao
 import singletons
 
-from code_constants import PPI_SYSTEM
+from rdr_service.code_constants import PPI_SYSTEM
 from concepts import Concept
-from dao.code_dao import CodeDao
-from dao.hpo_dao import HPODao
-from dao.participant_dao import ParticipantDao
-from dao.site_dao import SiteDao
-from model.code import Code
-from model.hpo import HPO
-from model.site import Site
-from model.participant import Participant, ParticipantHistory
-from model.participant_summary import ParticipantSummary
+from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.site_dao import SiteDao
+from rdr_service.model.code import Code
+from rdr_service.model.hpo import HPO
+from rdr_service.model.site import Site
+from rdr_service.model.participant import Participant, ParticipantHistory
+from rdr_service.model.participant_summary import ParticipantSummary
 from offline import sql_exporter
-from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
-from participant_enums import OrganizationType
+from rdr_service.participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
+from rdr_service.participant_enums import OrganizationType
 from test.test_data import data_path
 from unicode_csv import UnicodeDictReader
 

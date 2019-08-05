@@ -2,20 +2,20 @@ import datetime
 import urllib
 
 from clock import FakeClock
-from dao.calendar_dao import CalendarDao
-from dao.ehr_dao import EhrReceiptDao
-from dao.hpo_dao import HPODao
-from dao.organization_dao import OrganizationDao
-from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
-from dao.site_dao import SiteDao
-from model.calendar import Calendar
-from model.ehr import EhrReceipt
-from model.hpo import HPO
-from model.organization import Organization
-from model.participant import Participant
-from model.participant_summary import ParticipantSummary
-from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID, \
+from rdr_service.dao.calendar_dao import CalendarDao
+from rdr_service.dao.ehr_dao import EhrReceiptDao
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.organization_dao import OrganizationDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.site_dao import SiteDao
+from rdr_service.model.calendar import Calendar
+from rdr_service.model.ehr import EhrReceipt
+from rdr_service.model.hpo import HPO
+from rdr_service.model.organization import Organization
+from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID, \
   make_primary_provider_link_for_name, QuestionnaireStatus, WithdrawalStatus
 from test.unit_test.unit_test_util import FlaskTestBase
 

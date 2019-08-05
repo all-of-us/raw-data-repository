@@ -6,7 +6,7 @@ import config
 import httplib2
 import xmltodict
 from api.base_api import UpdatableApi
-from api_util import RDR_AND_PTC, format_json_enum
+from rdr_service.api_util import RDR_AND_PTC, format_json_enum
 from app_util import auth_required
 from werkzeug.exceptions import ServiceUnavailable
 

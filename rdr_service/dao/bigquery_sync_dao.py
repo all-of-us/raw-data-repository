@@ -3,20 +3,20 @@ from dateutil import parser, tz
 from sqlalchemy import func, desc
 
 import config
-from dao.base_dao import UpsertableDao
-from model.bigquery_sync import BigQuerySync
-from model.bq_base import BQRecord
-from model.bq_participant_summary import BQParticipantSummarySchema, BQStreetAddressTypeEnum, \
+from rdr_service.dao.base_dao import UpsertableDao
+from rdr_service.model.bigquery_sync import BigQuerySync
+from rdr_service.model.bq_base import BQRecord
+from rdr_service.model.bq_participant_summary import BQParticipantSummarySchema, BQStreetAddressTypeEnum, \
   BQModuleStatusEnum
-from model.code import Code
-from model.hpo import HPO
-from model.measurements import PhysicalMeasurements, PhysicalMeasurementsStatus
-from model.organization import Organization
-from model.participant import Participant
-from model.questionnaire import QuestionnaireConcept
-from model.questionnaire_response import QuestionnaireResponse
-from model.site import Site
-from participant_enums import EnrollmentStatus, WithdrawalStatus, WithdrawalReason, SuspensionStatus, SampleStatus, \
+from rdr_service.model.code import Code
+from rdr_service.model.hpo import HPO
+from rdr_service.model.measurements import PhysicalMeasurements, PhysicalMeasurementsStatus
+from rdr_service.model.organization import Organization
+from rdr_service.model.participant import Participant
+from rdr_service.model.questionnaire import QuestionnaireConcept
+from rdr_service.model.questionnaire_response import QuestionnaireResponse
+from rdr_service.model.site import Site
+from rdr_service.participant_enums import EnrollmentStatus, WithdrawalStatus, WithdrawalReason, SuspensionStatus, SampleStatus, \
                                BiobankOrderStatus
 
 

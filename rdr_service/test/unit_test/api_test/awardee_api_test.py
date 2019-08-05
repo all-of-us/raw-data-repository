@@ -1,13 +1,13 @@
 import datetime
 
-from dao.hpo_dao import HPODao
-from dao.organization_dao import OrganizationDao
-from dao.site_dao import SiteDao
-from model.hpo import HPO
-from model.organization import Organization
-from model.site import Site
-from model.site_enums import SiteStatus, EnrollingStatus
-from participant_enums import UNSET_HPO_ID, OrganizationType
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.organization_dao import OrganizationDao
+from rdr_service.dao.site_dao import SiteDao
+from rdr_service.model.hpo import HPO
+from rdr_service.model.organization import Organization
+from rdr_service.model.site import Site
+from rdr_service.model.site_enums import SiteStatus, EnrollingStatus
+from rdr_service.participant_enums import UNSET_HPO_ID, OrganizationType
 
 from test.unit_test.unit_test_util import FlaskTestBase, PITT_HPO_ID, AZ_HPO_ID
 

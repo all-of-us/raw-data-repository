@@ -4,7 +4,7 @@ Contains things such as the accounts allowed access to the system.
 """
 import logging
 
-import clock
+from rdr_service import clock
 import singletons
 from google.appengine.ext import ndb
 from werkzeug.exceptions import NotFound

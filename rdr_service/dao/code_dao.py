@@ -1,10 +1,10 @@
-import clock
+from rdr_service import clock
 import logging
 import traceback
 
-from dao.base_dao import BaseDao
-from dao.cache_all_dao import CacheAllDao
-from model.code import CodeBook, Code, CodeHistory, CodeType
+from rdr_service.dao.base_dao import BaseDao
+from rdr_service.dao.cache_all_dao import CacheAllDao
+from rdr_service.model.code import CodeBook, Code, CodeHistory, CodeType
 from werkzeug.exceptions import BadRequest
 from singletons import CODE_CACHE_INDEX
 

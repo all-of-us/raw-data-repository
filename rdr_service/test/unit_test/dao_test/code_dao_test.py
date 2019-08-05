@@ -2,8 +2,8 @@ import datetime
 
 from clock import FakeClock
 from unit_test_util import SqlTestBase
-from dao.code_dao import CodeDao, CodeBookDao, CodeHistoryDao
-from model.code import Code, CodeBook, CodeHistory, CodeType
+from rdr_service.dao.code_dao import CodeDao, CodeBookDao, CodeHistoryDao
+from rdr_service.model.code import Code, CodeBook, CodeHistory, CodeType
 from werkzeug.exceptions import BadRequest
 
 TIME = datetime.datetime(2016, 1, 1, 10, 0)

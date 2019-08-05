@@ -3,7 +3,7 @@ import logging
 from dateutil.parser import parse
 
 import app_util
-from api_util import HEALTHPRO
+from rdr_service.api_util import HEALTHPRO
 from app_util import nonprod, get_validated_user_info
 from config_api import is_config_admin
 from data_gen.fake_biobank_samples_generator import generate_samples

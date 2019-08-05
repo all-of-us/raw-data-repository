@@ -4,20 +4,20 @@ import json
 from test_data import load_measurement_json
 from unit_test_util import SqlTestBase
 
-import clock
-from code_constants import BIOBANK_TESTS
-from dao.bigquery_sync_dao import BQParticipantSummaryGenerator
-from dao.biobank_order_dao import BiobankOrderDao
-from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
-from dao.physical_measurements_dao import PhysicalMeasurementsDao
-from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
-from model.hpo import HPO
-from model.measurements import PhysicalMeasurements
-from model.participant import Participant
-from model.participant_summary import ParticipantSummary
-from model.site import Site
-from participant_enums import WithdrawalStatus, SuspensionStatus
+from rdr_service import clock
+from rdr_service.code_constants import BIOBANK_TESTS
+from rdr_service.dao.bigquery_sync_dao import BQParticipantSummaryGenerator
+from rdr_service.dao.biobank_order_dao import BiobankOrderDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
+from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
+from rdr_service.model.hpo import HPO
+from rdr_service.model.measurements import PhysicalMeasurements
+from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.site import Site
+from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus
 
 
 class BigQuerySyncDaoTest(SqlTestBase):

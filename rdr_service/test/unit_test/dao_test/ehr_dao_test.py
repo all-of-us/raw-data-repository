@@ -1,16 +1,16 @@
 import datetime
 import unittest
 
-from dao.calendar_dao import CalendarDao, INTERVAL_DAY, INTERVAL_WEEK, INTERVAL_MONTH, INTERVAL_QUARTER
-from dao.ehr_dao import EhrReceiptDao
-from dao.hpo_dao import HPODao
-from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
-from dao.organization_dao import OrganizationDao
-from model.calendar import Calendar
-from model.ehr import EhrReceipt
-from model.hpo import HPO
-from model.organization import Organization
+from rdr_service.dao.calendar_dao import CalendarDao, INTERVAL_DAY, INTERVAL_WEEK, INTERVAL_MONTH, INTERVAL_QUARTER
+from rdr_service.dao.ehr_dao import EhrReceiptDao
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.organization_dao import OrganizationDao
+from rdr_service.model.calendar import Calendar
+from rdr_service.model.ehr import EhrReceipt
+from rdr_service.model.hpo import HPO
+from rdr_service.model.organization import Organization
 from test.unit_test.unit_test_util import SqlTestBase
 
 

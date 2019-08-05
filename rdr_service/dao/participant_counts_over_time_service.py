@@ -1,14 +1,14 @@
 from werkzeug.exceptions import BadRequest
 import datetime
 import logging
-from model.participant_summary import ParticipantSummary
-from model.metrics_cache import MetricsCacheJobStatus
-from participant_enums import EnrollmentStatus, EnrollmentStatusV2, TEST_HPO_NAME, \
+from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.metrics_cache import MetricsCacheJobStatus
+from rdr_service.participant_enums import EnrollmentStatus, EnrollmentStatusV2, TEST_HPO_NAME, \
   TEST_EMAIL_PATTERN
-from participant_enums import WithdrawalStatus, MetricsCacheType, Stratifications, MetricsAPIVersion
-from dao.hpo_dao import HPODao
-from dao.base_dao import BaseDao
-from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
+from rdr_service.participant_enums import WithdrawalStatus, MetricsCacheType, Stratifications, MetricsAPIVersion
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.base_dao import BaseDao
+from rdr_service.dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
   MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao, \
   MetricsLanguageCacheDao, MetricsCacheJobStatusDao
 

@@ -1,6 +1,6 @@
 import httplib
 
-from code_constants import PPI_SYSTEM
+from rdr_service.code_constants import PPI_SYSTEM
 from concepts import Concept
 from test.unit_test.unit_test_util import FlaskTestBase
 

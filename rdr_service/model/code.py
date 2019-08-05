@@ -1,6 +1,6 @@
 from protorpc import messages
-from model.base import Base
-from model.utils import Enum, UTCDateTime
+from rdr_service.model.base import Base
+from rdr_service.model.utils import Enum, UTCDateTime
 from sqlalchemy import Column, Integer, String, UnicodeText, Boolean, UniqueConstraint
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import backref, relationship

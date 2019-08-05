@@ -12,7 +12,7 @@ from sqlalchemy.dialects.mysql.types import TINYINT, SMALLINT
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 from logging.config import fileConfig
-from model.base import Base, MetricsBase
+from rdr_service.model.base import Base, MetricsBase
 
 
 USE_TWOPHASE = False

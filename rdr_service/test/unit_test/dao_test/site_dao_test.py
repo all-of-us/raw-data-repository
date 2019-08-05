@@ -2,11 +2,11 @@ import datetime
 from clock import FakeClock
 from unit_test.unit_test_util import PITT_ORG_ID, AZ_ORG_ID
 from unit_test_util import SqlTestBase, PITT_HPO_ID, UNSET_HPO_ID, AZ_HPO_ID
-from dao.site_dao import SiteDao
-from model.site import Site
-from model.participant import Participant
-from dao.participant_dao import ParticipantDao, ParticipantHistoryDao
-from dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.site_dao import SiteDao
+from rdr_service.model.site import Site
+from rdr_service.model.participant import Participant
+from rdr_service.dao.participant_dao import ParticipantDao, ParticipantHistoryDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 
 class SiteDaoTest(SqlTestBase):
 

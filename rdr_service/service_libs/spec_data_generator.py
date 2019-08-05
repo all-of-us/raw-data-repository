@@ -15,7 +15,7 @@ import time
 import urllib2
 
 import argparse
-import clock
+from rdr_service import clock
 from data_gen.generators import ParticipantGen, BioBankOrderGen, QuestionnaireGen, \
   PhysicalMeasurementsGen, CodeBook
 from data_gen.generators.hpo import HPOGen

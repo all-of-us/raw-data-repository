@@ -3,7 +3,7 @@ import os
 from MySQLdb.cursors import SSCursor
 from sqlalchemy.engine.url import make_url
 
-from model.database import Database
+from rdr_service.model.database import Database
 import singletons
 
 

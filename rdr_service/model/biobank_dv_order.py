@@ -1,6 +1,6 @@
-from model.base import Base, model_insert_listener, model_update_listener
-from model.utils import UTCDateTime6, Enum
-from participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus
+from rdr_service.model.base import Base, model_insert_listener, model_update_listener
+from rdr_service.model.utils import UTCDateTime6, Enum
+from rdr_service.participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus
 from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, UniqueConstraint, Text,\
   BigInteger, event
 

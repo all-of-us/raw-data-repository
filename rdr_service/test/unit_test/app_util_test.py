@@ -2,7 +2,7 @@ import datetime
 import unittest
 
 import app_util
-import clock
+from rdr_service import clock
 import config
 
 from mock import patch

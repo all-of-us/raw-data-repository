@@ -10,11 +10,11 @@ import sqlalchemy as sa
 import model.utils
 from sqlalchemy.dialects import mysql
 
-from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
-from participant_enums import WithdrawalStatus, SuspensionStatus
-from participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType
-from model.site_enums import SiteStatus
-from model.code import CodeType
+from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
+from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus
+from rdr_service.participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType
+from rdr_service.model.site_enums import SiteStatus
+from rdr_service.model.code import CodeType
 
 # revision identifiers, used by Alembic.
 revision = '51415576d3e9'

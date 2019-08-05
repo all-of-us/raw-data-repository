@@ -21,14 +21,14 @@ import logging
 import googlemaps
 from dateutil.parser import parse
 from tools.csv_importer import CsvImporter
-from dao.hpo_dao import HPODao
-from dao.organization_dao import OrganizationDao
-from dao.site_dao import SiteDao
-from model.hpo import HPO
-from model.organization import Organization
-from model.site import Site
-from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
-from participant_enums import OrganizationType
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.organization_dao import OrganizationDao
+from rdr_service.dao.site_dao import SiteDao
+from rdr_service.model.hpo import HPO
+from rdr_service.model.organization import Organization
+from rdr_service.model.site import Site
+from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
+from rdr_service.participant_enums import OrganizationType
 from main_util import get_parser, configure_logging
 from tools.import_participants import _setup_questionnaires, import_participant
 

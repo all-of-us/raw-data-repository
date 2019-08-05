@@ -1,5 +1,5 @@
 import threading
-from clock import CLOCK
+from rdr_service.clock import CLOCK
 from datetime import timedelta
 
 singletons_lock = threading.RLock()

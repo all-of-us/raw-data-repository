@@ -2,10 +2,10 @@ import datetime
 from dateutil import parser
 
 from concepts import Concept
-from code_constants import PPI_SYSTEM, PMI_SKIP_CODE, RACE_WHITE_CODE
-from model.code import CodeType
+from rdr_service.code_constants import PPI_SYSTEM, PMI_SKIP_CODE, RACE_WHITE_CODE
+from rdr_service.model.code import CodeType
 from clock import FakeClock
-from dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 
 from test.unit_test.unit_test_util import make_questionnaire_response_json, FlaskTestBase, \
                     SqlTestBase

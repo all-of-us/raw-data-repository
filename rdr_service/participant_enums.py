@@ -1,6 +1,6 @@
 import json
 
-from code_constants import (
+from rdr_service.code_constants import (
   # Internal Use Codes
   UNSET,
   # PMI Codes
@@ -398,7 +398,7 @@ def get_gender_identity(gender_codes):
 
 
 def make_primary_provider_link_for_id(hpo_id):
-  from dao.hpo_dao import HPODao
+  from rdr_service.dao.hpo_dao import HPODao
   return make_primary_provider_link_for_hpo(HPODao().get(hpo_id))
 
 

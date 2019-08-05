@@ -4,15 +4,15 @@ import json
 import pytz
 from dateutil.parser import parse
 
-from code_constants import PPI_EXTRA_SYSTEM
+from rdr_service.code_constants import PPI_EXTRA_SYSTEM
 from clock import FakeClock
-from dao.code_dao import CodeDao
-from dao.questionnaire_dao import QuestionnaireDao
-from dao.participant_summary_dao import ParticipantRaceAnswersDao, ParticipantGenderAnswersDao
-from dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
-from model.utils import from_client_participant_id
-from model.questionnaire_response import QuestionnaireResponseAnswer
-from participant_enums import QuestionnaireDefinitionStatus
+from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.questionnaire_dao import QuestionnaireDao
+from rdr_service.dao.participant_summary_dao import ParticipantRaceAnswersDao, ParticipantGenderAnswersDao
+from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
+from rdr_service.model.utils import from_client_participant_id
+from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
+from rdr_service.participant_enums import QuestionnaireDefinitionStatus
 from sqlalchemy.orm.session import make_transient
 from test.unit_test.unit_test_util import (
     FlaskTestBase,

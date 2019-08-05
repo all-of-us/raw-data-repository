@@ -2,8 +2,8 @@ import app_util
 import datetime
 import json
 
-from api_util import HEALTHPRO
-from dao.metrics_dao import MetricsBucketDao
+from rdr_service.api_util import HEALTHPRO
+from rdr_service.dao.metrics_dao import MetricsBucketDao
 from flask import request
 from flask_restful import Resource
 from werkzeug.exceptions import BadRequest

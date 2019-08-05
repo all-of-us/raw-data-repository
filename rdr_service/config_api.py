@@ -11,7 +11,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import app_util
 import config
-from api_util import parse_date
+from rdr_service.api_util import parse_date
 
 # Read bootstrap config admin service account configuration
 CONFIG_ADMIN_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),

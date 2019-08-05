@@ -1,4 +1,4 @@
-import clock
+from rdr_service import clock
 import mock
 
 import config

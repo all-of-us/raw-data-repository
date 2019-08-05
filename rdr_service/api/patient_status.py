@@ -1,7 +1,7 @@
 from api.base_api import BaseApi, UpdatableApi
 from app_util import auth_required
-from api_util import HEALTHPRO
-from dao.patient_status_dao import PatientStatusDao
+from rdr_service.api_util import HEALTHPRO
+from rdr_service.dao.patient_status_dao import PatientStatusDao
 
 
 class PatientStatusApi(UpdatableApi):

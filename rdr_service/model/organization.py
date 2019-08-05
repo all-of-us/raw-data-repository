@@ -1,6 +1,6 @@
-from model.base import Base
-from model.site_enums import ObsoleteStatus
-from model.utils import Enum
+from rdr_service.model.base import Base
+from rdr_service.model.site_enums import ObsoleteStatus
+from rdr_service.model.utils import Enum
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 

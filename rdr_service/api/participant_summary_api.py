@@ -1,10 +1,10 @@
 from api.base_api import BaseApi, make_sync_results_for_request
-from api_util import PTC_HEALTHPRO_AWARDEE, AWARDEE, DEV_MAIL
+from rdr_service.api_util import PTC_HEALTHPRO_AWARDEE, AWARDEE, DEV_MAIL
 from app_util import auth_required, get_validated_user_info
-from dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from flask import request
-from model.participant_summary import ParticipantSummary
-from model.hpo import HPO
+from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.hpo import HPO
 from werkzeug.exceptions import Forbidden, InternalServerError, BadRequest
 
 

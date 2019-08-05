@@ -1,9 +1,9 @@
 import datetime
 
 from unit_test_util import SqlTestBase
-from dao.metric_set_dao import MetricSetDao, AggregateMetricsDao
-from model.metric_set import MetricSet, AggregateMetrics
-from participant_enums import MetricSetType, MetricsKey
+from rdr_service.dao.metric_set_dao import MetricSetDao, AggregateMetricsDao
+from rdr_service.model.metric_set import MetricSet, AggregateMetrics
+from rdr_service.participant_enums import MetricSetType, MetricsKey
 
 
 class MetricSetDaoTest(SqlTestBase):

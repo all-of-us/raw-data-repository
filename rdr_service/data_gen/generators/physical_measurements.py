@@ -1,7 +1,7 @@
 #
 # Physical Measurements Generator
 #
-import clock
+from rdr_service import clock
 import logging
 import random
 import string

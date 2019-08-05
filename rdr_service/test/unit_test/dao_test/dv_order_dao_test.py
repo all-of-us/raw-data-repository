@@ -2,13 +2,13 @@ import httplib
 import json
 import mock
 
-from dao.dv_order_dao import DvOrderDao
-from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.dv_order_dao import DvOrderDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from fhir_utils import SimpleFhirR4Reader
-from api_util import VIBRENT_FHIR_URL
-from model.participant import Participant
-from participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus
+from rdr_service.api_util import VIBRENT_FHIR_URL
+from rdr_service.model.participant import Participant
+from rdr_service.participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus
 from test_data import load_test_data_json
 from unit_test_util import FlaskTestBase
 from werkzeug.exceptions import ServiceUnavailable

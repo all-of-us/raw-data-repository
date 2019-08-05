@@ -1,15 +1,15 @@
-import clock
+from rdr_service import clock
 import json
 
 import fhirclient.models.questionnaire
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
-from dao.base_dao import BaseDao, UpdatableDao
-from code_constants import PPI_EXTRA_SYSTEM
-from model.code import CodeType
-from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireConcept
-from model.questionnaire import QuestionnaireQuestion
+from rdr_service.dao.base_dao import BaseDao, UpdatableDao
+from rdr_service.code_constants import PPI_EXTRA_SYSTEM
+from rdr_service.model.code import CodeType
+from rdr_service.model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireConcept
+from rdr_service.model.questionnaire import QuestionnaireQuestion
 
 
 class QuestionnaireDao(UpdatableDao):
@@ -122,7 +122,7 @@ class QuestionnaireDao(UpdatableDao):
     # which we'll use later when assembling the child objects.
     code_map, concepts, questions = cls._extract_codes(fhir_q.group)
 
-    from dao.code_dao import CodeDao
+    from rdr_service.dao.code_dao import CodeDao
     # Get or insert codes, and retrieve their database IDs.
     add_codes_if_missing = _add_codes_if_missing()
     code_id_map = CodeDao().get_or_add_codes(code_map, add_codes_if_missing=add_codes_if_missing)

@@ -6,9 +6,9 @@ import traceback
 import time
 import app_util
 import config
-from api_util import EXPORTER
-from dao.metric_set_dao import AggregateMetricsDao
-from dao.metrics_dao import MetricsVersionDao
+from rdr_service.api_util import EXPORTER
+from rdr_service.dao.metric_set_dao import AggregateMetricsDao
+from rdr_service.dao.metrics_dao import MetricsVersionDao
 from flask import Flask, request
 from google.appengine.api import app_identity
 from offline import biobank_samples_pipeline

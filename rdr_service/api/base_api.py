@@ -3,10 +3,10 @@ import logging
 import app_util
 from flask import request, jsonify, url_for
 from flask_restful import Resource
-from model.utils import to_client_participant_id
-from model.requests_log import RequestsLog
-from dao.base_dao import deferred_save_raw_request
-from dao.bigquery_sync_dao import deferred_bq_participant_summary_update
+from rdr_service.model.utils import to_client_participant_id
+from rdr_service.model.requests_log import RequestsLog
+from rdr_service.dao.base_dao import deferred_save_raw_request
+from rdr_service.dao.bigquery_sync_dao import deferred_bq_participant_summary_update
 from query import OrderBy, Query
 from werkzeug.exceptions import BadRequest, NotFound
 from google.appengine.ext import deferred

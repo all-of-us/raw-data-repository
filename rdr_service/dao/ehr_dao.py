@@ -1,6 +1,6 @@
-from dao.base_dao import BaseDao
-from dao.calendar_dao import CalendarDao
-from model.ehr import EhrReceipt
+from rdr_service.dao.base_dao import BaseDao
+from rdr_service.dao.calendar_dao import CalendarDao
+from rdr_service.model.ehr import EhrReceipt
 from sqlalchemy import select, func
 
 

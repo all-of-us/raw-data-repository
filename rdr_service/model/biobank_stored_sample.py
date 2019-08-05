@@ -1,7 +1,7 @@
-from model.base import Base
-from model.utils import Enum, UTCDateTime
+from rdr_service.model.base import Base
+from rdr_service.model.utils import Enum, UTCDateTime
 from sqlalchemy import Column, Integer, String, ForeignKey, Index
-from participant_enums import SampleStatus
+from rdr_service.participant_enums import SampleStatus
 
 
 class BiobankStoredSample(Base):

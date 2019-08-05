@@ -1,4 +1,4 @@
-from model.base import Base, model_insert_listener, model_update_listener
+from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from sqlalchemy import Column, DateTime, Integer, String, Index, event, ForeignKey
 from sqlalchemy.dialects.mysql import JSON
 

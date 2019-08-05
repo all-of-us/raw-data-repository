@@ -1,15 +1,15 @@
 import csv
-import clock
+from rdr_service import clock
 import config
 import datetime
 import logging
 import random
 
 from cloudstorage import cloudstorage_api
-from code_constants import BIOBANK_TESTS
-from dao.biobank_order_dao import BiobankOrderDao
-from dao.participant_dao import ParticipantDao
-from model.config_utils import to_client_biobank_id
+from rdr_service.code_constants import BIOBANK_TESTS
+from rdr_service.dao.biobank_order_dao import BiobankOrderDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.model.config_utils import to_client_biobank_id
 from offline.biobank_samples_pipeline import INPUT_CSV_TIME_FORMAT, CsvColumns
 
 # 1% of participants have samples with no associated order

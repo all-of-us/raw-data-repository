@@ -3,7 +3,7 @@ from csv import DictReader
 
 import config
 from cloudstorage import cloudstorage_api
-from dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_dao import ParticipantDao
 from offline.biobank_samples_pipeline import DataError
 
 

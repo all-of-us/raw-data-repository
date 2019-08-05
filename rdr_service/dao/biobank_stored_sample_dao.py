@@ -1,8 +1,8 @@
 import logging
 
-from code_constants import BIOBANK_TESTS_SET
-from dao.base_dao import BaseDao
-from model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.code_constants import BIOBANK_TESTS_SET
+from rdr_service.dao.base_dao import BaseDao
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 
 
 class BiobankStoredSampleDao(BaseDao):

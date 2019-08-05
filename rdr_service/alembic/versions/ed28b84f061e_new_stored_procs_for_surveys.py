@@ -8,15 +8,15 @@ Create Date: 2019-02-28 15:07:07.650442
 from alembic import op
 import sqlalchemy as sa
 import model.utils
-from dao.alembic_utils import ReplaceableObject
+from rdr_service.dao.alembic_utils import ReplaceableObject
 
 
-from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
-from participant_enums import WithdrawalStatus, WithdrawalReason, SuspensionStatus, QuestionnaireDefinitionStatus
-from participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType, BiobankOrderStatus
-from participant_enums import MetricSetType, MetricsKey
-from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
-from model.code import CodeType
+from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
+from rdr_service.participant_enums import WithdrawalStatus, WithdrawalReason, SuspensionStatus, QuestionnaireDefinitionStatus
+from rdr_service.participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType, BiobankOrderStatus
+from rdr_service.participant_enums import MetricSetType, MetricsKey
+from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
+from rdr_service.model.code import CodeType
 
 # revision identifiers, used by Alembic.
 revision = 'ed28b84f061e'

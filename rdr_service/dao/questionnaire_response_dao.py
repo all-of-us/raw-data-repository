@@ -1,4 +1,4 @@
-import clock
+from rdr_service import clock
 import config
 import json
 import logging
@@ -11,24 +11,24 @@ import fhirclient.models.questionnaireresponse
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
-from code_constants import PPI_SYSTEM, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, \
+from rdr_service.code_constants import PPI_SYSTEM, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, \
   DVEHR_SHARING_QUESTION_CODE, CONSENT_FOR_DVEHR_MODULE, DVEHRSHARING_CONSENT_CODE_NOT_SURE, \
   LANGUAGE_OF_CONSENT, GENDER_IDENTITY_QUESTION_CODE
-from code_constants import EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE
-from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, PPI_EXTRA_SYSTEM
-from code_constants import CABOR_SIGNATURE_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES
+from rdr_service.code_constants import EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE
+from rdr_service.code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, PPI_EXTRA_SYSTEM
+from rdr_service.code_constants import CABOR_SIGNATURE_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES
 from config_api import is_config_admin
-from dao.base_dao import BaseDao
-from dao.code_dao import CodeDao
-from dao.participant_dao import ParticipantDao, raise_if_withdrawn
-from dao.participant_summary_dao import ParticipantSummaryDao, ParticipantGenderAnswersDao, \
+from rdr_service.dao.base_dao import BaseDao
+from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.participant_dao import ParticipantDao, raise_if_withdrawn
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantGenderAnswersDao, \
   ParticipantRaceAnswersDao
-from dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
+from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from field_mappings import FieldType, QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD
-from model.code import CodeType
-from model.questionnaire import QuestionnaireQuestion
-from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from participant_enums import QuestionnaireStatus, get_race, QuestionnaireDefinitionStatus, \
+from rdr_service.model.code import CodeType
+from rdr_service.model.questionnaire import QuestionnaireQuestion
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.participant_enums import QuestionnaireStatus, get_race, QuestionnaireDefinitionStatus, \
   TEST_LOGIN_PHONE_NUMBER_PREFIX, get_gender_identity
 
 _QUESTIONNAIRE_PREFIX = 'Questionnaire/'
@@ -452,7 +452,7 @@ class QuestionnaireResponseDao(BaseDao):
       # if no questionnaire/history...
       try:
         questionnaire_id = int(questionnaire_reference)
-        from dao.questionnaire_dao import QuestionnaireDao
+        from rdr_service.dao.questionnaire_dao import QuestionnaireDao
         q = QuestionnaireDao().get_with_children(questionnaire_id)
         if not q:
           raise BadRequest('Questionnaire with id %d is not found' % questionnaire_id)

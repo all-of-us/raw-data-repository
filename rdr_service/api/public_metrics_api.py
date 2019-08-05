@@ -3,16 +3,16 @@ import datetime
 from flask_restful import Resource
 from flask import request
 from werkzeug.exceptions import BadRequest
-from participant_enums import MetricsCacheType
-from api_util import STOREFRONT, convert_to_datetime, get_awardee_id_from_name
+from rdr_service.participant_enums import MetricsCacheType
+from rdr_service.api_util import STOREFRONT, convert_to_datetime, get_awardee_id_from_name
 from app_util import auth_required
-from dao.hpo_dao import HPODao
-from dao.calendar_dao import INTERVAL_DAY
-from participant_enums import EnrollmentStatus, Stratifications, MetricsAPIVersion
-from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.calendar_dao import INTERVAL_DAY
+from rdr_service.participant_enums import EnrollmentStatus, Stratifications, MetricsAPIVersion
+from rdr_service.dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
   MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao, \
   MetricsLanguageCacheDao
-from dao.metrics_ehr_service import MetricsEhrService
+from rdr_service.dao.metrics_ehr_service import MetricsEhrService
 
 DATE_FORMAT = '%Y-%m-%d'
 DAYS_LIMIT_FOR_HISTORY_DATA = 600

@@ -4,22 +4,22 @@ import datetime
 import random
 import time
 
-import clock
+from rdr_service import clock
 import config
 import pytz
 from cloudstorage import cloudstorage_api  # stubbed by testbed
-from code_constants import BIOBANK_TESTS
-from dao.biobank_order_dao import BiobankOrderDao
-from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
-from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
-from model.biobank_dv_order import BiobankDVOrder
-from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
-from model.biobank_stored_sample import BiobankStoredSample
-from model.config_utils import to_client_biobank_id, get_biobank_id_prefix
-from model.participant import Participant
+from rdr_service.code_constants import BIOBANK_TESTS
+from rdr_service.dao.biobank_order_dao import BiobankOrderDao
+from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.model.biobank_dv_order import BiobankDVOrder
+from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.config_utils import to_client_biobank_id, get_biobank_id_prefix
+from rdr_service.model.participant import Participant
 from offline import biobank_samples_pipeline
-from participant_enums import SampleStatus, get_sample_status_enum_value
+from rdr_service.participant_enums import SampleStatus, get_sample_status_enum_value
 from test import test_data
 from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
 

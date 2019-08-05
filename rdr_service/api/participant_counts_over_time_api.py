@@ -4,12 +4,12 @@ from flask_restful import Resource
 from flask import request
 from werkzeug.exceptions import BadRequest
 
-from api_util import HEALTHPRO
-from api_util import get_awardee_id_from_name
+from rdr_service.api_util import HEALTHPRO
+from rdr_service.api_util import get_awardee_id_from_name
 from app_util import auth_required
-from dao.hpo_dao import HPODao
-from dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
-from participant_enums import EnrollmentStatus, EnrollmentStatusV2, Stratifications, \
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
+from rdr_service.participant_enums import EnrollmentStatus, EnrollmentStatusV2, Stratifications, \
   MetricsAPIVersion
 
 DATE_FORMAT = '%Y-%m-%d'

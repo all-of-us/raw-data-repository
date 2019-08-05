@@ -1,10 +1,10 @@
 import copy
 
-from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
-from dao.patient_status_dao import PatientStatusDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.patient_status_dao import PatientStatusDao
 from dateutil.parser import parse
-from model.participant import Participant
+from rdr_service.model.participant import Participant
 from test.unit_test.unit_test_util import FlaskTestBase
 
 

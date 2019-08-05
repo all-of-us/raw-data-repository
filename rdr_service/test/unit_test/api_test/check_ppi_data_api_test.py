@@ -1,10 +1,10 @@
 from api import check_ppi_data_api
-from code_constants import FIRST_NAME_QUESTION_CODE
-from dao.code_dao import CodeDao
-from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
-from model.utils import to_client_participant_id
-from model.participant import Participant
+from rdr_service.code_constants import FIRST_NAME_QUESTION_CODE
+from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.model.utils import to_client_participant_id
+from rdr_service.model.participant import Participant
 from test.test_data import email_code, first_name_code
 from test.unit_test.unit_test_util import FlaskTestBase
 

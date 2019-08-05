@@ -1,26 +1,26 @@
 import datetime
 from clock import FakeClock
-from dao.organization_dao import OrganizationDao
-from dao.participant_dao import ParticipantDao
-from model.hpo import HPO
-from dao.hpo_dao import HPODao
-from model.code import Code, CodeType
-from dao.code_dao import CodeDao
-from model.calendar import Calendar
-from dao.calendar_dao import CalendarDao
-from dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.organization_dao import OrganizationDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.model.hpo import HPO
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.model.code import Code, CodeType
+from rdr_service.dao.code_dao import CodeDao
+from rdr_service.model.calendar import Calendar
+from rdr_service.dao.calendar_dao import CalendarDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json
-from model.participant import Participant
+from rdr_service.model.participant import Participant
 from concepts import Concept
-from model.participant_summary import ParticipantSummary, ParticipantGenderAnswers
-from dao.participant_summary_dao import ParticipantGenderAnswersDao
-from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID,\
+from rdr_service.model.participant_summary import ParticipantSummary, ParticipantGenderAnswers
+from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao
+from rdr_service.participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID,\
   make_primary_provider_link_for_name, MetricsCacheType
-from dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
-from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
+from rdr_service.dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
+from rdr_service.dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
   MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao, \
   MetricsLanguageCacheDao
-from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_AIAN_CODE,
+from rdr_service.code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_AIAN_CODE,
                             RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, RACE_MENA_CODE)
 
 TIME_1 = datetime.datetime(2017, 12, 31)

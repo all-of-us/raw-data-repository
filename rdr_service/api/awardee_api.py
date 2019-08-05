@@ -1,7 +1,7 @@
 from api.base_api import BaseApi
 from app_util import auth_required
-from api_util import PTC_AND_HEALTHPRO
-from dao.hpo_dao import HPODao
+from rdr_service.api_util import PTC_AND_HEALTHPRO
+from rdr_service.dao.hpo_dao import HPODao
 from werkzeug.exceptions import NotFound
 from flask import request
 

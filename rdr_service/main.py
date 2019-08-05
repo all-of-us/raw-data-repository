@@ -34,7 +34,7 @@ from config import get_config, get_db_config
 from flask import Flask, got_request_exception
 from flask_restful import Api
 from json_encoder import RdrJsonEncoder
-from model.utils import ParticipantIdConverter
+from rdr_service.model.utils import ParticipantIdConverter
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import HTTPException
 

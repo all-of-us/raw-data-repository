@@ -1,7 +1,7 @@
 #
 # biobank order data generator.
 #
-import clock
+from rdr_service import clock
 import datetime
 import logging
 import random

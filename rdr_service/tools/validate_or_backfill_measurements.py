@@ -5,7 +5,7 @@ all information that can be parsed from the original resources."""
 import logging
 
 from pprint import pprint
-from dao.physical_measurements_dao import PhysicalMeasurementsDao
+from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from main_util import get_parser, configure_logging
 
 

@@ -1,22 +1,22 @@
 import datetime
 
-import clock
+from rdr_service import clock
 import config
 import pytz
 import csv
 from cloudstorage import cloudstorage_api  # stubbed by testbed
-from code_constants import BIOBANK_TESTS
-from model.participant import Participant
+from rdr_service.code_constants import BIOBANK_TESTS
+from rdr_service.model.participant import Participant
 from genomic import genomic_set_file_handler, genomic_biobank_menifest_handler
 from test import test_data
 from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
-from dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
-from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
-from model.biobank_dv_order import BiobankDVOrder
-from dao.biobank_order_dao import BiobankOrderDao
-from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
-from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag
+from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
+from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
+from rdr_service.model.biobank_dv_order import BiobankDVOrder
+from rdr_service.dao.biobank_order_dao import BiobankOrderDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = 'rdr_fake_bucket'

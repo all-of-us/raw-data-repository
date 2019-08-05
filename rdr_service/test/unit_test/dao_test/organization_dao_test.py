@@ -1,11 +1,11 @@
 import datetime
-from model.organization import Organization
+from rdr_service.model.organization import Organization
 from unit_test_util import SqlTestBase, PITT_HPO_ID, AZ_HPO_ID
-from participant_enums import UNSET_HPO_ID
-from dao.organization_dao import OrganizationDao
-from model.participant import Participant
-from dao.participant_dao import ParticipantDao, ParticipantHistoryDao
-from dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.participant_enums import UNSET_HPO_ID
+from rdr_service.dao.organization_dao import OrganizationDao
+from rdr_service.model.participant import Participant
+from rdr_service.dao.participant_dao import ParticipantDao, ParticipantHistoryDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from clock import FakeClock
 
 class OrganizationDaoTest(SqlTestBase):

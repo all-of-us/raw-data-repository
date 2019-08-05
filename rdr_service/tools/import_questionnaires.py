@@ -6,7 +6,7 @@ import logging
 import os
 
 import dao.database_factory
-from dao.questionnaire_dao import QuestionnaireDao
+from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from main_util import get_parser, configure_logging
 
 

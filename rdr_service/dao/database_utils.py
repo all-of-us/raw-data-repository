@@ -2,7 +2,7 @@
 import pytz
 import re
 
-from dao.database_factory import get_database
+from rdr_service.dao.database_factory import get_database
 from datetime import datetime
 
 _DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'

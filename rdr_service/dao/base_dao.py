@@ -20,8 +20,8 @@ from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, Servic
 
 import api_util
 import dao.database_factory
-from model.utils import get_property_type
-from model.requests_log import RequestsLog
+from rdr_service.model.utils import get_property_type
+from rdr_service.model.requests_log import RequestsLog
 
 # Maximum number of times we will attempt to insert an entity with a random ID before
 # giving up.

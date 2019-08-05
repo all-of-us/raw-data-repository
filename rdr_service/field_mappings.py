@@ -1,22 +1,22 @@
 """Mappings from fields to question or module codes."""
 
 from protorpc import messages
-from code_constants import GENDER_IDENTITY_QUESTION_CODE, FIRST_NAME_QUESTION_CODE, \
+from rdr_service.code_constants import GENDER_IDENTITY_QUESTION_CODE, FIRST_NAME_QUESTION_CODE, \
   CONSENT_FOR_DVEHR_MODULE
-from code_constants import LAST_NAME_QUESTION_CODE, MIDDLE_NAME_QUESTION_CODE
-from code_constants import STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, \
+from rdr_service.code_constants import LAST_NAME_QUESTION_CODE, MIDDLE_NAME_QUESTION_CODE
+from rdr_service.code_constants import STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, \
   CITY_QUESTION_CODE
-from code_constants import CITY_QUESTION_CODE, ZIPCODE_QUESTION_CODE, STATE_QUESTION_CODE
-from code_constants import PHONE_NUMBER_QUESTION_CODE, EMAIL_QUESTION_CODE, \
+from rdr_service.code_constants import CITY_QUESTION_CODE, ZIPCODE_QUESTION_CODE, STATE_QUESTION_CODE
+from rdr_service.code_constants import PHONE_NUMBER_QUESTION_CODE, EMAIL_QUESTION_CODE, \
   LOGIN_PHONE_NUMBER_QUESTION_CODE
-from code_constants import RECONTACT_METHOD_QUESTION_CODE, LANGUAGE_QUESTION_CODE
-from code_constants import SEX_QUESTION_CODE, SEXUAL_ORIENTATION_QUESTION_CODE
-from code_constants import EDUCATION_QUESTION_CODE, INCOME_QUESTION_CODE
-from code_constants import DATE_OF_BIRTH_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
-from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE
-from code_constants import OVERALL_HEALTH_PPI_MODULE, LIFESTYLE_PPI_MODULE, THE_BASICS_PPI_MODULE
-from code_constants import HEALTHCARE_ACCESS_MODULE, PERSONAL_MEDICAL_HISTORY_MODULE
-from code_constants import MEDICATIONS_MODULE, FAMILY_HISTORY_MODULE
+from rdr_service.code_constants import RECONTACT_METHOD_QUESTION_CODE, LANGUAGE_QUESTION_CODE
+from rdr_service.code_constants import SEX_QUESTION_CODE, SEXUAL_ORIENTATION_QUESTION_CODE
+from rdr_service.code_constants import EDUCATION_QUESTION_CODE, INCOME_QUESTION_CODE
+from rdr_service.code_constants import DATE_OF_BIRTH_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
+from rdr_service.code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE
+from rdr_service.code_constants import OVERALL_HEALTH_PPI_MODULE, LIFESTYLE_PPI_MODULE, THE_BASICS_PPI_MODULE
+from rdr_service.code_constants import HEALTHCARE_ACCESS_MODULE, PERSONAL_MEDICAL_HISTORY_MODULE
+from rdr_service.code_constants import MEDICATIONS_MODULE, FAMILY_HISTORY_MODULE
 
 # Field names for questionnaires / consent forms
 CONSENT_FOR_STUDY_ENROLLMENT_FIELD = "consentForStudyEnrollment"

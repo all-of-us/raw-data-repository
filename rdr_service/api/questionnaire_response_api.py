@@ -1,14 +1,14 @@
 import app_util
 
 from api.base_api import BaseApi
-from api_util import PTC, PTC_AND_HEALTHPRO
-from dao.code_dao import CodeDao
-from dao.questionnaire_response_dao import QuestionnaireResponseDao
+from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO
+from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from flask_restful import Resource, request
-from model.code import Code, CodeType
-from model.participant import Participant
-from model.questionnaire import QuestionnaireConcept
-from model.questionnaire_response import QuestionnaireResponse
+from rdr_service.model.code import Code, CodeType
+from rdr_service.model.participant import Participant
+from rdr_service.model.questionnaire import QuestionnaireConcept
+from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from werkzeug.exceptions import BadRequest, NotFound
 
 

@@ -1,7 +1,7 @@
 import logging
 from genomic import genomic_set_file_handler, validation, genomic_biobank_menifest_handler
-from dao.genomics_dao import GenomicSetDao
-from model.genomics import GenomicSetStatus
+from rdr_service.dao.genomics_dao import GenomicSetDao
+from rdr_service.model.genomics import GenomicSetStatus
 
 def process_genomic_water_line():
   """

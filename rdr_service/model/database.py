@@ -5,33 +5,33 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import sessionmaker
 
-from model.base import Base, MetricsBase
+from rdr_service.model.base import Base, MetricsBase
 # All tables in the schema should be imported below here.
 # pylint: disable=unused-import
-from model.participant import Participant, ParticipantHistory
-from model.participant_summary import ParticipantSummary
-from model.biobank_stored_sample import BiobankStoredSample
-from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
-from model.biobank_dv_order import BiobankDVOrder
-from model.code import CodeBook, Code, CodeHistory
-from model.calendar import Calendar
-from model.ehr import EhrReceipt
-from model.hpo import HPO
-from model.log_position import LogPosition
-from model.measurements import PhysicalMeasurements, Measurement
-from model.metric_set import AggregateMetrics, MetricSet
-from model.metrics import MetricsVersion, MetricsBucket
-from model.metrics_cache import MetricsEnrollmentStatusCache, MetricsAgeCache, MetricsRaceCache, \
+from rdr_service.model.participant import Participant, ParticipantHistory
+from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
+from rdr_service.model.biobank_dv_order import BiobankDVOrder
+from rdr_service.model.code import CodeBook, Code, CodeHistory
+from rdr_service.model.calendar import Calendar
+from rdr_service.model.ehr import EhrReceipt
+from rdr_service.model.hpo import HPO
+from rdr_service.model.log_position import LogPosition
+from rdr_service.model.measurements import PhysicalMeasurements, Measurement
+from rdr_service.model.metric_set import AggregateMetrics, MetricSet
+from rdr_service.model.metrics import MetricsVersion, MetricsBucket
+from rdr_service.model.metrics_cache import MetricsEnrollmentStatusCache, MetricsAgeCache, MetricsRaceCache, \
   MetricsRegionCache, MetricsGenderCache, MetricsLanguageCache, MetricsLifecycleCache
-from model.organization import Organization
-from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
-from model.questionnaire import QuestionnaireConcept
-from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from model.site import Site
-from model.genomics import GenomicSet, GenomicSetMember
-from model.patient_status import PatientStatus
-from model.bigquery_sync import BigQuerySync
-from model.requests_log import RequestsLog
+from rdr_service.model.organization import Organization
+from rdr_service.model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
+from rdr_service.model.questionnaire import QuestionnaireConcept
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.site import Site
+from rdr_service.model.genomics import GenomicSet, GenomicSetMember
+from rdr_service.model.patient_status import PatientStatus
+from rdr_service.model.bigquery_sync import BigQuerySync
+from rdr_service.model.requests_log import RequestsLog
 
 RETRY_CONNECTION_LIMIT = 10
 

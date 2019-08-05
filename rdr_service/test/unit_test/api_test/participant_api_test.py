@@ -3,11 +3,11 @@ import httplib
 
 from clock import FakeClock
 from test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json
-from participant_enums import WithdrawalStatus, SuspensionStatus
-from model.hpo import HPO
-from dao.hpo_dao import HPODao
-from participant_enums import TEST_HPO_ID, TEST_HPO_NAME, OrganizationType
-from code_constants import RACE_WHITE_CODE, PPI_SYSTEM
+from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus
+from rdr_service.model.hpo import HPO
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.participant_enums import TEST_HPO_ID, TEST_HPO_NAME, OrganizationType
+from rdr_service.code_constants import RACE_WHITE_CODE, PPI_SYSTEM
 from concepts import Concept
 
 TIME_1 = datetime.datetime(2018, 1, 1)

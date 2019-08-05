@@ -9,10 +9,10 @@ from googleapiclient.discovery import build
 from sqlalchemy import or_, func
 
 from cloud_utils.bigquery import BigQueryJob
-from dao.bigquery_sync_dao import BQParticipantSummaryGenerator, BigQuerySyncDao
-from dao.participant_dao import ParticipantDao
-from model.bigquery_sync import BigQuerySync
-from model.participant import Participant
+from rdr_service.dao.bigquery_sync_dao import BQParticipantSummaryGenerator, BigQuerySyncDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.model.bigquery_sync import BigQuerySync
+from rdr_service.model.participant import Participant
 
 
 def rebuild_bigquery_handler():

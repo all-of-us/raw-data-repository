@@ -1,9 +1,9 @@
 
-from code_constants import RACE_QUESTION_CODE, RACE_WHITE_CODE, RACE_AIAN_CODE
-from model.code import CodeType
+from rdr_service.code_constants import RACE_QUESTION_CODE, RACE_WHITE_CODE, RACE_AIAN_CODE
+from rdr_service.model.code import CodeType
 from unit_test_util import SqlTestBase
 
-from dao.code_dao import CodeDao
+from rdr_service.dao.code_dao import CodeDao
 from test_data import consent_code
 
 

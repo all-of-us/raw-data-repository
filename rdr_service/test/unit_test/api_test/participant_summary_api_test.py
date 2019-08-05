@@ -9,19 +9,19 @@ except ImportError:                 # Python 3
 
 import main
 from clock import FakeClock
-from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
+from rdr_service.code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
                             RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, DVEHRSHARING_CONSENT_CODE_YES,
                             DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,
                             CONSENT_PERMISSION_NO_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE, GENDER_NONBINARY_CODE,
                             GENDER_PREFER_NOT_TO_ANSWER_CODE)
 from concepts import Concept
-from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
-from dao.participant_summary_dao import ParticipantSummaryDao
-from model.biobank_stored_sample import BiobankStoredSample
-from model.code import CodeType
-from model.hpo import HPO
-from dao.hpo_dao import HPODao
-from participant_enums import ANSWER_CODE_TO_RACE, TEST_HPO_ID, TEST_HPO_NAME, OrganizationType, ANSWER_CODE_TO_GENDER
+from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.code import CodeType
+from rdr_service.model.hpo import HPO
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.participant_enums import ANSWER_CODE_TO_RACE, TEST_HPO_ID, TEST_HPO_NAME, OrganizationType, ANSWER_CODE_TO_GENDER
 from test_data import load_measurement_json, load_biobank_order_json, to_client_participant_id
 from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase,\
   get_restore_or_cancel_info

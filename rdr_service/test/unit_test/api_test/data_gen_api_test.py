@@ -3,12 +3,12 @@ import unittest
 
 from testlib import testutil
 
-from dao.biobank_order_dao import BiobankOrderDao
-from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
-from dao.participant_summary_dao import ParticipantSummaryDao
-from model.utils import from_client_participant_id
+from rdr_service.dao.biobank_order_dao import BiobankOrderDao
+from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.model.utils import from_client_participant_id
 from offline.biobank_samples_pipeline import upsert_from_latest_csv
-from participant_enums import SampleStatus
+from rdr_service.participant_enums import SampleStatus
 from test.unit_test.unit_test_util import FlaskTestBase
 from test.test_data import load_biobank_order_json
 

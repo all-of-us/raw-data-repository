@@ -1,7 +1,7 @@
 from sqlalchemy import text, func, select
 
-from dao.base_dao import BaseDao
-from model.calendar import Calendar
+from rdr_service.dao.base_dao import BaseDao
+from rdr_service.model.calendar import Calendar
 
 
 INTERVAL_DAY = 'day'

@@ -3,10 +3,10 @@ import httplib
 import os
 import json
 
-from dao.hpo_dao import HPODao
-from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
-from model.participant import Participant
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.model.participant import Participant
 from unit_test_util import FlaskTestBase
 
 

@@ -1,5 +1,5 @@
-from dao.patient_status_dao import PatientStatusDao
-from model.patient_status import PatientStatus
+from rdr_service.dao.patient_status_dao import PatientStatusDao
+from rdr_service.model.patient_status import PatientStatus
 
 
 def backfill_patient_status():

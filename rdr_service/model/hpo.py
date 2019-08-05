@@ -1,7 +1,7 @@
-from model.site_enums import ObsoleteStatus
-from participant_enums import OrganizationType
-from model.base import Base
-from model.utils import Enum, UTCDateTime
+from rdr_service.model.site_enums import ObsoleteStatus
+from rdr_service.participant_enums import OrganizationType
+from rdr_service.model.base import Base
+from rdr_service.model.utils import Enum, UTCDateTime
 from sqlalchemy import Column, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 

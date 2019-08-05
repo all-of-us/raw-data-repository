@@ -4,7 +4,7 @@ import unittest
 
 from enum import Enum
 
-from model.bq_base import BQField, BQRecordField, BQSchema, BQTable, BQFieldModeEnum, BQFieldTypeEnum, BQRecord
+from rdr_service.model.bq_base import BQField, BQRecordField, BQSchema, BQTable, BQFieldModeEnum, BQFieldTypeEnum, BQRecord
 
 
 class BQTestEnum(Enum):

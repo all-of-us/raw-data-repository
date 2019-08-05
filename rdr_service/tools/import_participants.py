@@ -19,12 +19,12 @@ import csv
 import logging
 import fhirclient.models.questionnaire
 
-from code_constants import LAST_NAME_QUESTION_CODE, FIRST_NAME_QUESTION_CODE, EMAIL_QUESTION_CODE
-from code_constants import ZIPCODE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE
-from code_constants import GENDER_IDENTITY_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
-from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE
-from code_constants import OVERALL_HEALTH_PPI_MODULE, LIFESTYLE_PPI_MODULE, THE_BASICS_PPI_MODULE
-from code_constants import PPI_SYSTEM
+from rdr_service.code_constants import LAST_NAME_QUESTION_CODE, FIRST_NAME_QUESTION_CODE, EMAIL_QUESTION_CODE
+from rdr_service.code_constants import ZIPCODE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE
+from rdr_service.code_constants import GENDER_IDENTITY_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
+from rdr_service.code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE
+from rdr_service.code_constants import OVERALL_HEALTH_PPI_MODULE, LIFESTYLE_PPI_MODULE, THE_BASICS_PPI_MODULE
+from rdr_service.code_constants import PPI_SYSTEM
 from main_util import get_parser, configure_logging
 
 ALL_MODULE_CODES = [CONSENT_FOR_STUDY_ENROLLMENT_MODULE,

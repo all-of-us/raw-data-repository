@@ -1,7 +1,7 @@
 """Utilities used by the API definition, and authentication/authorization/roles."""
 import datetime
 
-from code_constants import UNSET, UNMAPPED
+from rdr_service.code_constants import UNSET, UNMAPPED
 from dateutil.parser import parse
 from werkzeug.exceptions import BadRequest
 
@@ -114,7 +114,7 @@ def get_site_id_from_google_group(obj, site_dao):
 
 def get_site_id_by_site_value(obj):
   if 'site' in obj:
-    from dao.site_dao import SiteDao
+    from rdr_service.dao.site_dao import SiteDao
     site_dao = SiteDao()
     site = site_dao.get_by_google_group(obj['site']['value'])
     if site is not None:

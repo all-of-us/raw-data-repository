@@ -10,7 +10,7 @@ import random
 import string
 import time
 
-import clock
+from rdr_service import clock
 from data_gen.generators.base_gen import BaseGen
 from dateutil.parser import parse
 from lib_fhir.fhirclient_1_0_6.models.coding import Coding

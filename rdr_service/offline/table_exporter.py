@@ -3,7 +3,7 @@ import random
 import re
 import struct
 
-from dao.database_factory import get_database
+from rdr_service.dao.database_factory import get_database
 from google.appengine.api import app_identity
 from google.appengine.ext import deferred
 from offline.sql_exporter import SqlExporter

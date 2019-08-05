@@ -69,16 +69,16 @@ from mapreduce import base_handler
 from mapreduce import mapreduce_pipeline
 from mapreduce import context
 
-from dao.database_utils import parse_datetime
+from rdr_service.dao.database_utils import parse_datetime
 from dateutil.relativedelta import relativedelta
 from census_regions import census_regions
-from code_constants import UNSET, RACE_QUESTION_CODE, PPI_SYSTEM, EHR_CONSENT_QUESTION_CODE
-from code_constants import CONSENT_PERMISSION_YES_CODE, PMI_SKIP_CODE
-from dao.metrics_dao import MetricsBucketDao, MetricsVersionDao
+from rdr_service.code_constants import UNSET, RACE_QUESTION_CODE, PPI_SYSTEM, EHR_CONSENT_QUESTION_CODE
+from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, PMI_SKIP_CODE
+from rdr_service.dao.metrics_dao import MetricsBucketDao, MetricsVersionDao
 from field_mappings import QUESTION_CODE_TO_FIELD, FieldType
 from field_mappings import NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES
 from field_mappings import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD
-from model.metrics import MetricsBucket
+from rdr_service.model.metrics import MetricsBucket
 from mapreduce.lib.input_reader._gcs import GCSInputReader
 from offline.base_pipeline import BasePipeline
 from metrics_config import BIOSPECIMEN_METRIC, BIOSPECIMEN_SAMPLES_METRIC, HPO_ID_METRIC
@@ -88,9 +88,9 @@ from metrics_config import SAMPLES_ARRIVED_VALUE, SUBMITTED_VALUE, PARTICIPANT_K
 from metrics_config import HPO_ID_FIELDS, ANSWER_FIELDS, get_participant_fields, get_fieldnames
 from metrics_config import transform_participant_summary_field, SAMPLES_TO_ISOLATE_DNA_METRIC
 from metrics_config import FULL_PARTICIPANT_KIND, EHR_CONSENT_ANSWER_METRIC
-from participant_enums import get_bucketed_age, get_race, PhysicalMeasurementsStatus, SampleStatus
-from participant_enums import EnrollmentStatus, QuestionnaireStatus
-from dao.code_dao import CodeDao
+from rdr_service.participant_enums import get_bucketed_age, get_race, PhysicalMeasurementsStatus, SampleStatus
+from rdr_service.participant_enums import EnrollmentStatus, QuestionnaireStatus
+from rdr_service.dao.code_dao import CodeDao
 
 class PipelineNotRunningException(BaseException):
   """Exception thrown when a pipeline is expected to be running but is not."""

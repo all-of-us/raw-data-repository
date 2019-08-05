@@ -2,15 +2,15 @@ import datetime
 
 import mock
 
-import clock
-from dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
-from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service import clock
+from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from genomic.validation import validate_and_update_genomic_set_by_id
-from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, \
+from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, \
   GenomicSetMemberStatus, GenomicValidationFlag
-from model.participant import Participant
-from participant_enums import WithdrawalStatus, SampleStatus
+from rdr_service.model.participant import Participant
+from rdr_service.participant_enums import WithdrawalStatus, SampleStatus
 from unit_test_util import SqlTestBase
 
 

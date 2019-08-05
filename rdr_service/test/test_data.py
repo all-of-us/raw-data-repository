@@ -5,12 +5,12 @@ import json
 import os
 import random
 
-from code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, BIOBANK_TESTS
-from code_constants import FIRST_NAME_QUESTION_CODE, LAST_NAME_QUESTION_CODE, EMAIL_QUESTION_CODE, \
+from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, BIOBANK_TESTS
+from rdr_service.code_constants import FIRST_NAME_QUESTION_CODE, LAST_NAME_QUESTION_CODE, EMAIL_QUESTION_CODE, \
   LOGIN_PHONE_NUMBER_QUESTION_CODE
-from model.code import Code, CodeType
-from model.config_utils import to_client_biobank_id
-from model.utils import to_client_participant_id
+from rdr_service.model.code import Code, CodeType
+from rdr_service.model.config_utils import to_client_biobank_id
+from rdr_service.model.utils import to_client_participant_id
 
 def consent_code():
   return Code(system=PPI_SYSTEM, value=CONSENT_FOR_STUDY_ENROLLMENT_MODULE,

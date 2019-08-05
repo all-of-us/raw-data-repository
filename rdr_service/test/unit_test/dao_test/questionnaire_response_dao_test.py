@@ -5,22 +5,22 @@ import mock
 from testlib import testutil
 from cloudstorage import cloudstorage_api  # stubbed by testbed
 
-from code_constants import (
+from rdr_service.code_constants import (
   PPI_SYSTEM, GENDER_IDENTITY_QUESTION_CODE, THE_BASICS_PPI_MODULE, PMI_SKIP_CODE,
 )
 
 import config
-from dao.code_dao import CodeDao
-from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
-from dao.questionnaire_dao import QuestionnaireDao
-from dao.questionnaire_response_dao import QuestionnaireResponseDao, QuestionnaireResponseAnswerDao
-from dao.questionnaire_response_dao import _raise_if_gcloud_file_missing
-from model.code import Code, CodeType
-from model.participant import Participant
-from model.questionnaire import Questionnaire, QuestionnaireQuestion, QuestionnaireConcept
-from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from participant_enums import QuestionnaireStatus, WithdrawalStatus, GenderIdentity
+from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.questionnaire_dao import QuestionnaireDao
+from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao, QuestionnaireResponseAnswerDao
+from rdr_service.dao.questionnaire_response_dao import _raise_if_gcloud_file_missing
+from rdr_service.model.code import Code, CodeType
+from rdr_service.model.participant import Participant
+from rdr_service.model.questionnaire import Questionnaire, QuestionnaireQuestion, QuestionnaireConcept
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.participant_enums import QuestionnaireStatus, WithdrawalStatus, GenderIdentity
 import test_data
 from test_data import consent_code, first_name_code, last_name_code, email_code, \
   login_phone_number_code

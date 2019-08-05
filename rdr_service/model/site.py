@@ -1,7 +1,7 @@
-from model.base import Base
+from rdr_service.model.base import Base
 from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey, UnicodeText
 from site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
-from model.utils import Enum
+from rdr_service.model.utils import Enum
 
 class Site(Base):
   __tablename__ = 'site'

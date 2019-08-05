@@ -1,7 +1,7 @@
 from sqlalchemy import Column, DateTime, Integer, String, event
 from sqlalchemy.dialects.mysql import JSON
 
-from model.base import Base, model_insert_listener, model_update_listener
+from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 
 
 class RequestsLog(Base):

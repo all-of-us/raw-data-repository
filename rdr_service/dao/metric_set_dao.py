@@ -1,5 +1,5 @@
-from dao.base_dao import UpsertableDao
-from model.metric_set import AggregateMetrics, MetricSet
+from rdr_service.dao.base_dao import UpsertableDao
+from rdr_service.model.metric_set import AggregateMetrics, MetricSet
 from dao import database_factory
 
 

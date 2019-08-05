@@ -1,11 +1,11 @@
 import datetime
 
-from dao.code_dao import CodeDao
-from dao.questionnaire_dao import QuestionnaireDao, QuestionnaireHistoryDao
-from dao.questionnaire_dao import QuestionnaireConceptDao, QuestionnaireQuestionDao
-from model.code import Code, CodeType
-from model.questionnaire import Questionnaire, QuestionnaireHistory
-from model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
+from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.questionnaire_dao import QuestionnaireDao, QuestionnaireHistoryDao
+from rdr_service.dao.questionnaire_dao import QuestionnaireConceptDao, QuestionnaireQuestionDao
+from rdr_service.model.code import Code, CodeType
+from rdr_service.model.questionnaire import Questionnaire, QuestionnaireHistory
+from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from unit_test_util import SqlTestBase, sort_lists
 from clock import FakeClock
 from werkzeug.exceptions import NotFound, PreconditionFailed

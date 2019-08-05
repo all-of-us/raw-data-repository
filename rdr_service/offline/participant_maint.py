@@ -1,5 +1,5 @@
 
-from dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 
 def skew_duplicate_last_modified():
   """

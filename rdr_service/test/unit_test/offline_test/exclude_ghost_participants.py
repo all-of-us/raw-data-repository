@@ -4,8 +4,8 @@ import time
 import config
 from clock import FakeClock
 from cloudstorage import cloudstorage_api  # stubbed by testbed
-from dao.participant_dao import ParticipantDao, ParticipantHistoryDao
-from model.participant import Participant
+from rdr_service.dao.participant_dao import ParticipantDao, ParticipantHistoryDao
+from rdr_service.model.participant import Participant
 from offline import exclude_ghost_participants
 from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
 

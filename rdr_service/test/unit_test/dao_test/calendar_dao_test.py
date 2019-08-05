@@ -1,7 +1,7 @@
 import datetime
 
-from dao.calendar_dao import CalendarDao, INTERVAL_DAY, INTERVAL_WEEK, INTERVAL_MONTH, INTERVAL_QUARTER
-from model.calendar import Calendar
+from rdr_service.dao.calendar_dao import CalendarDao, INTERVAL_DAY, INTERVAL_WEEK, INTERVAL_MONTH, INTERVAL_QUARTER
+from rdr_service.model.calendar import Calendar
 from test.unit_test.unit_test_util import SqlTestBase
 
 

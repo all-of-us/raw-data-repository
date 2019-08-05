@@ -1,8 +1,8 @@
 import httplib
 import json
 
-from code_constants import PPI_EXTRA_SYSTEM
-from dao.code_dao import CodeDao
+from rdr_service.code_constants import PPI_EXTRA_SYSTEM
+from rdr_service.dao.code_dao import CodeDao
 from test.unit_test.unit_test_util import FlaskTestBase
 from test.test_data import data_path
 

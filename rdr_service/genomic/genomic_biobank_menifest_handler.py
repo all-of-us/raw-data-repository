@@ -2,7 +2,7 @@
 Create a genomic biobank manifest CSV file and uploads to biobank samples bucket subfolders.
 """
 
-import clock
+from rdr_service import clock
 import config
 import pytz
 import csv
@@ -12,7 +12,7 @@ import collections
 from cloudstorage import cloudstorage_api
 from offline.sql_exporter import SqlExporter
 from config import GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME, GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME
-from dao.genomics_dao import GenomicSetMemberDao
+from rdr_service.dao.genomics_dao import GenomicSetMemberDao
 from genomic_set_file_handler import DataError, timestamp_from_filename
 
 _US_CENTRAL = pytz.timezone('US/Central')

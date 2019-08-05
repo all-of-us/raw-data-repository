@@ -1,5 +1,5 @@
-from model.base import Base
-from model.utils import UTCDateTime
+from rdr_service.model.base import Base
+from rdr_service.model.utils import UTCDateTime
 from sqlalchemy import Column, Integer, ForeignKey
 
 

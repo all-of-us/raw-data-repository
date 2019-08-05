@@ -1,12 +1,12 @@
-import clock
-from dao.metrics_ehr_service import MetricsEhrService
-from dao.organization_dao import OrganizationDao
+from rdr_service import clock
+from rdr_service.dao.metrics_ehr_service import MetricsEhrService
+from rdr_service.dao.organization_dao import OrganizationDao
 
 from flask import request
 from flask_restful import Resource
 from werkzeug.exceptions import BadRequest
 
-from api_util import HEALTHPRO, parse_date
+from rdr_service.api_util import HEALTHPRO, parse_date
 import app_util
 
 

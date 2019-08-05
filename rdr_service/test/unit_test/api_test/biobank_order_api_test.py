@@ -3,15 +3,15 @@ import httplib
 
 from api_test.participant_summary_api_test import _add_code_answer
 from clock import FakeClock
-from code_constants import (CONSENT_PERMISSION_YES_CODE, RACE_NONE_OF_THESE_CODE)
-from dao.biobank_order_dao import BiobankOrderDao
-from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
-from model.biobank_order import BiobankOrderHistory, BiobankOrderIdentifierHistory, \
+from rdr_service.code_constants import (CONSENT_PERMISSION_YES_CODE, RACE_NONE_OF_THESE_CODE)
+from rdr_service.dao.biobank_order_dao import BiobankOrderDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.model.biobank_order import BiobankOrderHistory, BiobankOrderIdentifierHistory, \
   BiobankOrderedSampleHistory
-from model.participant import Participant
-from model.utils import to_client_participant_id, from_client_participant_id
-from participant_enums import UNSET_HPO_ID, OrderStatus
+from rdr_service.model.participant import Participant
+from rdr_service.model.utils import to_client_participant_id, from_client_participant_id
+from rdr_service.participant_enums import UNSET_HPO_ID, OrderStatus
 from test.test_data import load_biobank_order_json, load_measurement_json
 from test.unit_test.unit_test_util import FlaskTestBase, get_restore_or_cancel_info, \
   make_questionnaire_response_json

@@ -1,6 +1,6 @@
 """Defines the declarative base. Import this and extend from Base for all rdr
 tables. Extend MetricsBase for all metrics tables."""
-import clock
+from rdr_service import clock
 from collections import OrderedDict
 from datetime import datetime, date
 import json

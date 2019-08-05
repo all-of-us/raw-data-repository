@@ -1,9 +1,9 @@
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, ForeignKey, Integer, String
 
-from model.base import MetricsBase
-from model.utils import Enum, UTCDateTime
-from participant_enums import MetricSetType, MetricsKey
+from rdr_service.model.base import MetricsBase
+from rdr_service.model.utils import Enum, UTCDateTime
+from rdr_service.participant_enums import MetricSetType, MetricsKey
 
 
 class MetricSet(MetricsBase):

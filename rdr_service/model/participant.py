@@ -1,6 +1,6 @@
-from model.base import Base
-from model.utils import Enum, UTCDateTime, UTCDateTime6
-from participant_enums import WithdrawalStatus, SuspensionStatus, WithdrawalReason
+from rdr_service.model.base import Base
+from rdr_service.model.utils import Enum, UTCDateTime, UTCDateTime6
+from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus, WithdrawalReason
 from sqlalchemy import Column, Integer, BLOB, ForeignKey, Index, String, UnicodeText, BigInteger,\
   UniqueConstraint, Boolean
 from sqlalchemy.ext.declarative import declared_attr

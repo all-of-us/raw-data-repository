@@ -2,11 +2,11 @@ import collections
 
 import sqlalchemy
 
-import clock
-from dao.base_dao import UpdatableDao
-from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicSetMemberStatus
-from model.participant import Participant
-from model.participant_summary import ParticipantSummary
+from rdr_service import clock
+from rdr_service.dao.base_dao import UpdatableDao
+from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicSetMemberStatus
+from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from query import Query, Operator, FieldFilter, OrderBy
 
 class GenomicSetDao(UpdatableDao):

@@ -4,10 +4,10 @@ import functools
 import itertools
 import operator
 
-import clock
-from dao.genomics_dao import GenomicSetDao
-from model.genomics import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag
-from participant_enums import WithdrawalStatus, SampleStatus
+from rdr_service import clock
+from rdr_service.dao.genomics_dao import GenomicSetDao
+from rdr_service.model.genomics import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag
+from rdr_service.participant_enums import WithdrawalStatus, SampleStatus
 
 
 GENOMIC_VALID_SEX_AT_BIRTH_VALUES = ['F', 'M']

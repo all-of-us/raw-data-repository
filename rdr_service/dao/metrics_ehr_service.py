@@ -1,15 +1,15 @@
-import clock
+from rdr_service import clock
 import config
 import sqlalchemy
 
-from dao.base_dao import BaseDao
-from dao.calendar_dao import INTERVAL_WEEK, CalendarDao
-from dao.ehr_dao import EhrReceiptDao
-from model.ehr import EhrReceipt
-from model.organization import Organization
-from model.participant import Participant
-from model.participant_summary import ParticipantSummary
-from participant_enums import WithdrawalStatus, QuestionnaireStatus, EhrStatus
+from rdr_service.dao.base_dao import BaseDao
+from rdr_service.dao.calendar_dao import INTERVAL_WEEK, CalendarDao
+from rdr_service.dao.ehr_dao import EhrReceiptDao
+from rdr_service.model.ehr import EhrReceipt
+from rdr_service.model.organization import Organization
+from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.participant_enums import WithdrawalStatus, QuestionnaireStatus, EhrStatus
 
 
 class MetricsEhrService(BaseDao):

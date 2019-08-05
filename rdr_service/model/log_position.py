@@ -1,4 +1,4 @@
-from model.base import Base
+from rdr_service.model.base import Base
 from sqlalchemy import Column, Integer
 
 class LogPosition(Base):

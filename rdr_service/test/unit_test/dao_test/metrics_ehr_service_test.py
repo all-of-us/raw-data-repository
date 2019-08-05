@@ -1,8 +1,8 @@
-from dao.hpo_dao import HPODao
-from dao.metrics_ehr_service import MetricsEhrService
-from dao.organization_dao import OrganizationDao
-from model.hpo import HPO
-from model.organization import Organization
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.metrics_ehr_service import MetricsEhrService
+from rdr_service.dao.organization_dao import OrganizationDao
+from rdr_service.model.hpo import HPO
+from rdr_service.model.organization import Organization
 from test.unit_test.unit_test_util import SqlTestBase
 
 

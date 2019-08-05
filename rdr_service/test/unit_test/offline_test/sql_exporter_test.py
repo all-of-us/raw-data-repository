@@ -1,5 +1,5 @@
 from offline.sql_exporter import SqlExporter
-from participant_enums import UNSET_HPO_ID
+from rdr_service.participant_enums import UNSET_HPO_ID
 from offline_test.gcs_utils import assertCsvContents
 from unit_test_util import CloudStorageSqlTestBase, PITT_HPO_ID, AZ_HPO_ID
 

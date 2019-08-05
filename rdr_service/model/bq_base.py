@@ -10,7 +10,7 @@ import json
 import operator
 from enum import Enum, EnumMeta
 
-from dao.base_dao import json_serial
+from rdr_service.dao.base_dao import json_serial
 
 
 # BigQuery exceptions

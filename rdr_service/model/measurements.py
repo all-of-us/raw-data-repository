@@ -1,6 +1,6 @@
-from model.base import Base
-from model.utils import UTCDateTime, Enum
-from participant_enums import PhysicalMeasurementsStatus
+from rdr_service.model.base import Base
+from rdr_service.model.utils import UTCDateTime, Enum
+from rdr_service.participant_enums import PhysicalMeasurementsStatus
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Boolean, Integer, BLOB, BIGINT, ForeignKey, String, Float, Table, \
   Text, UnicodeText

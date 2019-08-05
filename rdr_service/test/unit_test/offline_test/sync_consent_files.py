@@ -1,15 +1,15 @@
 import mock
 import cloudstorage.common
 
-from dao.organization_dao import OrganizationDao
-from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
-from dao.site_dao import SiteDao
-from model.organization import Organization
-from model.participant import Participant
-from model.site import Site
+from rdr_service.dao.organization_dao import OrganizationDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.site_dao import SiteDao
+from rdr_service.model.organization import Organization
+from rdr_service.model.participant import Participant
+from rdr_service.model.site import Site
 from offline import sync_consent_files
-from participant_enums import UNSET_HPO_ID
+from rdr_service.participant_enums import UNSET_HPO_ID
 from test.unit_test.unit_test_util import CloudStorageSqlTestBase, TestBase, NdbTestBase
 
 

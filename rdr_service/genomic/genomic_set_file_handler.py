@@ -8,11 +8,11 @@ import datetime
 import logging
 import pytz
 from cloudstorage import cloudstorage_api
-import clock
+from rdr_service import clock
 import config
 from offline.sql_exporter import SqlExporter
-from dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
-from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicSetMemberStatus
+from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
+from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicSetMemberStatus
 
 _US_CENTRAL = pytz.timezone('US/Central')
 _BATCH_SIZE = 1000

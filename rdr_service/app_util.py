@@ -3,7 +3,7 @@ import email.utils
 import logging
 import time
 
-import clock
+from rdr_service import clock
 import config
 import netaddr
 import pytz

@@ -15,7 +15,7 @@ import tempfile
 
 import argparse
 from model import BQ_SCHEMAS, BQ_VIEWS
-from model.bq_base import BQDuplicateFieldException, BQInvalidSchemaException, BQInvalidModeException, \
+from rdr_service.model.bq_base import BQDuplicateFieldException, BQInvalidSchemaException, BQInvalidModeException, \
                             BQSchemaStructureException, BQException, BQSchema
 from services.gcp_utils import gcp_bq_command
 from services.system_utils import setup_logging, setup_unicode

@@ -1,9 +1,9 @@
-import clock
+from rdr_service import clock
 import json
 import logging
 
-from model.metrics import MetricsVersion, MetricsBucket
-from dao.base_dao import BaseDao, UpsertableDao
+from rdr_service.model.metrics import MetricsVersion, MetricsBucket
+from rdr_service.dao.base_dao import BaseDao, UpsertableDao
 from werkzeug.exceptions import PreconditionFailed
 from sqlalchemy.orm import subqueryload
 from datetime import timedelta

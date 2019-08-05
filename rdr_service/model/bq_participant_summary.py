@@ -1,6 +1,6 @@
 from enum import Enum
 
-from model.bq_base import BQTable, BQSchema, BQField, BQFieldTypeEnum, BQFieldModeEnum, BQRecordField
+from rdr_service.model.bq_base import BQTable, BQSchema, BQField, BQFieldTypeEnum, BQFieldModeEnum, BQRecordField
 
 
 class BQStreetAddressTypeEnum(Enum):

@@ -2,9 +2,9 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, UnicodeText
 from sqlalchemy.ext.declarative import declared_attr
 
-from model.base import Base
-from model.utils import UTCDateTime, Enum
-from participant_enums import BiobankOrderStatus
+from rdr_service.model.base import Base
+from rdr_service.model.utils import UTCDateTime, Enum
+from rdr_service.participant_enums import BiobankOrderStatus
 
 
 class BiobankOrderBase(object):

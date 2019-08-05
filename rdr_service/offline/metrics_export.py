@@ -1,19 +1,19 @@
 from google.appengine.ext import deferred
 
-import clock
+from rdr_service import clock
 import config
 
 from offline.sql_exporter import SqlExporter
-from dao.code_dao import CodeDao
-from dao.hpo_dao import HPODao
-from dao.database_utils import replace_isodate, get_sql_and_params_for_array
-from model.base import get_column_name
-from model.participant_summary import ParticipantSummary
-from code_constants import PPI_SYSTEM, UNMAPPED, RACE_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE
+from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.database_utils import replace_isodate, get_sql_and_params_for_array
+from rdr_service.model.base import get_column_name
+from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.code_constants import PPI_SYSTEM, UNMAPPED, RACE_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE
 from field_mappings import NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES
 from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from offline.metrics_pipeline import MetricsPipeline
-from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN, QuestionnaireStatus
+from rdr_service.participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN, QuestionnaireStatus
 
 # TODO: filter out participants that have withdrawn in here
 

@@ -3,7 +3,7 @@
 import json
 import logging
 
-from dao.code_dao import CodeBookDao
+from rdr_service.dao.code_dao import CodeBookDao
 from main_util import get_parser, configure_logging
 
 
