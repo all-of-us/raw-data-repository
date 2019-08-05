@@ -1,10 +1,11 @@
 from dateutil.tz import tzutc
-from rdr_service.query import PropertyType
 from sqlalchemy import String
-from sqlalchemy.types import SmallInteger, TypeDecorator, DateTime
 from sqlalchemy.dialects.mysql import DATETIME
+from sqlalchemy.types import DateTime, SmallInteger, TypeDecorator
 from werkzeug.exceptions import BadRequest
 from werkzeug.routing import BaseConverter, ValidationError
+
+from rdr_service.query import PropertyType
 
 _PROPERTY_TYPE_MAP = {
   'String': PropertyType.STRING,

@@ -8,6 +8,7 @@ import inspect
 import itertools
 import json
 import operator
+
 from enum import Enum, EnumMeta
 
 from rdr_service.dao.base_dao import json_serial

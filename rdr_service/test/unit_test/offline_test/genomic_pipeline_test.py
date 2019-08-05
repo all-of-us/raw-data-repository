@@ -6,7 +6,7 @@ import csv
 from cloudstorage import cloudstorage_api  # stubbed by testbed
 from rdr_service.code_constants import BIOBANK_TESTS
 from rdr_service.model.participant import Participant
-from genomic import genomic_set_file_handler
+from rdr_service.genomic import genomic_set_file_handler
 from test import test_data
 from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
 from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
@@ -18,7 +18,7 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicSetMemberStatus
 from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import SampleStatus
-from genomic.genomic_set_file_handler import DataError
+from rdr_service.genomic.genomic_set_file_handler import DataError
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = 'rdr_fake_bucket'

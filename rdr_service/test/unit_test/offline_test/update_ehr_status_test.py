@@ -4,7 +4,7 @@ import datetime
 import mock
 import pytz
 
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 from rdr_service import config
 from rdr_service.dao.ehr_dao import EhrReceiptDao
 from rdr_service.dao.hpo_dao import HPODao

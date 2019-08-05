@@ -4,7 +4,7 @@ from dateutil import parser
 from rdr_service.concepts import Concept
 from rdr_service.code_constants import PPI_SYSTEM, PMI_SKIP_CODE, RACE_WHITE_CODE
 from rdr_service.model.code import CodeType
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 
 from test.unit_test.unit_test_util import make_questionnaire_response_json, FlaskTestBase, \

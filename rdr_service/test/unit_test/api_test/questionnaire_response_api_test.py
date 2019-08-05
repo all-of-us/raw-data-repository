@@ -5,7 +5,7 @@ import pytz
 from dateutil.parser import parse
 
 from rdr_service.code_constants import PPI_EXTRA_SYSTEM
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.participant_summary_dao import ParticipantRaceAnswersDao, ParticipantGenderAnswersDao

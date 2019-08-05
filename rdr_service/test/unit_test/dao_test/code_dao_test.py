@@ -1,6 +1,6 @@
 import datetime
 
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 from unit_test_util import SqlTestBase
 from rdr_service.dao.code_dao import CodeDao, CodeBookDao, CodeHistoryDao
 from rdr_service.model.code import Code, CodeBook, CodeHistory, CodeType

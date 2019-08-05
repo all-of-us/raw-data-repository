@@ -1,7 +1,7 @@
 import datetime
 import urllib
 
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 from rdr_service.dao.calendar_dao import CalendarDao
 from rdr_service.dao.ehr_dao import EhrReceiptDao
 from rdr_service.dao.hpo_dao import HPODao

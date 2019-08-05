@@ -1,12 +1,14 @@
 """Defines the declarative base. Import this and extend from Base for all rdr
 tables. Extend MetricsBase for all metrics tables."""
-from rdr_service import clock
-from collections import OrderedDict
-from datetime import datetime, date
 import json
+from collections import OrderedDict
+from datetime import date, datetime
+
+from dictalchemy import DictableModel
 from sqlalchemy import MetaData, inspect
 from sqlalchemy.ext.declarative import declarative_base
-from dictalchemy import DictableModel
+
+from rdr_service import clock
 
 # Due to the use of DictableModel, all model objects that extend from Base
 # define asdict() and fromdict() methods, which can be used in tests and when

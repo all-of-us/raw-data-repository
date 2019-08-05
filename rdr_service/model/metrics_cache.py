@@ -1,8 +1,9 @@
-from rdr_service import clock
+from sqlalchemy import Boolean, Column, Date, Integer, String
 
+from rdr_service import clock
 from rdr_service.model.base import Base
 from rdr_service.model.utils import UTCDateTime
-from sqlalchemy import Column, Integer, Date, String, Boolean
+
 
 class MetricsEnrollmentStatusCache(Base):
   """Contains enrollment status metrics data grouped by HPO ID and date.

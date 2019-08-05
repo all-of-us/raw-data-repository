@@ -5,7 +5,7 @@ returning their possible valid values. Summary fields are used to derive values
 from other field values.
 '''
 from rdr_service import config
-import participant_enums
+from rdr_service import participant_enums
 
 from rdr_service.census_regions import census_regions
 from rdr_service.code_constants import BASE_VALUES, UNSET

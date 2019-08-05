@@ -5,7 +5,7 @@ import logging
 from rdr_service.dao import database_factory
 from cloudstorage import cloudstorage_api
 from sqlalchemy import text
-from unicode_csv import UnicodeWriter
+from rdr_service.unicode_csv import UnicodeWriter
 
 # Delimiter used in CSVs written (use this when reading them back out).
 DELIMITER = ','

@@ -12,7 +12,7 @@ from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.code_constants import PPI_SYSTEM, UNMAPPED, RACE_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE
 from rdr_service.field_mappings import NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES
 from rdr_service.offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
-from rdr_service.offline.metrics_pipeline import MetricsPipeline
+#from rdr_service.offline.metrics_pipeline import MetricsPipeline
 from rdr_service.participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN, QuestionnaireStatus
 
 # TODO: filter out participants that have withdrawn in here
@@ -196,11 +196,11 @@ class MetricsExport(object):
                                 '_export_answers', '_start_answers_export', None,
                                 '_start_metrics_pipeline')
 
-  @classmethod
-  def _start_metrics_pipeline(cls, bucket_name, filename_prefix, num_shards):
-    input_files = []
-    for csv_filename in _ALL_CSVS:
-      input_files.extend([filename_prefix + csv_filename % shard for shard
-                          in range(0, num_shards)])
-    pipeline = MetricsPipeline(bucket_name, clock.CLOCK.now(), input_files)
-    pipeline.start(queue_name=_QUEUE_NAME)
+  # @classmethod
+  # def _start_metrics_pipeline(cls, bucket_name, filename_prefix, num_shards):
+  #   input_files = []
+  #   for csv_filename in _ALL_CSVS:
+  #     input_files.extend([filename_prefix + csv_filename % shard for shard
+  #                         in range(0, num_shards)])
+  #   pipeline = MetricsPipeline(bucket_name, clock.CLOCK.now(), input_files)
+  #   pipeline.start(queue_name=_QUEUE_NAME)

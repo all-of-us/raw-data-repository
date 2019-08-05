@@ -1,7 +1,7 @@
 import datetime
 import json
 
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.model.participant import Participant
 from rdr_service.model.measurements import PhysicalMeasurements

@@ -2,8 +2,8 @@ import datetime
 import httplib
 import json
 
-import main
-from clock import FakeClock
+from rdr_service import main
+from rdr_service.clock import FakeClock
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.measurements import Measurement

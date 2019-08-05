@@ -1,9 +1,10 @@
-from rdr_service.model.base import Base
-from rdr_service.model.utils import UTCDateTime, Enum
-from rdr_service.participant_enums import QuestionnaireDefinitionStatus
+from sqlalchemy import BLOB, Boolean, Column, ForeignKey, ForeignKeyConstraint, Integer, String, \
+  UniqueConstraint
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, BLOB, String, ForeignKeyConstraint, Boolean
-from sqlalchemy import UniqueConstraint, ForeignKey
+
+from rdr_service.model.base import Base
+from rdr_service.model.utils import Enum, UTCDateTime
+from rdr_service.participant_enums import QuestionnaireDefinitionStatus
 
 
 class QuestionnaireBase(object):

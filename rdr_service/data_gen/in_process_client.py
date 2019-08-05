@@ -1,8 +1,8 @@
 import httplib
 import json
-import main
+from rdr_service import main
 
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 
 
 class InProcessClient(object):

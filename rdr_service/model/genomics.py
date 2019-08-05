@@ -1,8 +1,9 @@
+from protorpc import messages
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, UniqueConstraint, event
+from sqlalchemy.orm import relationship
+
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, MultiEnum
-from protorpc import messages
-from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, UniqueConstraint, event
-from sqlalchemy.orm import relationship
 
 
 class GenomicSetStatus(messages.Enum):

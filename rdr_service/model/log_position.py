@@ -1,5 +1,7 @@
-from rdr_service.model.base import Base
 from sqlalchemy import Column, Integer
+
+from rdr_service.model.base import Base
+
 
 class LogPosition(Base):
   """A position in a log, incremented whenever writes to particular tables occur.

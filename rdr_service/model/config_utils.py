@@ -1,6 +1,8 @@
-from rdr_service import config
 import logging
+
 from werkzeug.exceptions import BadRequest
+
+from rdr_service import config
 
 
 def get_biobank_id_prefix():

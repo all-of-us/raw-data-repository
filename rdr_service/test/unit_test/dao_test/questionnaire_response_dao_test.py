@@ -25,7 +25,7 @@ import test_data
 from test_data import consent_code, first_name_code, last_name_code, email_code, \
   login_phone_number_code
 from unit_test_util import FlaskTestBase, make_questionnaire_response_json
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 from werkzeug.exceptions import BadRequest, Forbidden
 from sqlalchemy.exc import IntegrityError
 

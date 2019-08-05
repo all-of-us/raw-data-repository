@@ -7,8 +7,8 @@ try:                                # Python 2.x
 except ImportError:                 # Python 3
   from urllib.parse import urlencode
 
-import main
-from clock import FakeClock
+from rdr_service import main
+from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
                             RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, DVEHRSHARING_CONSENT_CODE_YES,
                             DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,

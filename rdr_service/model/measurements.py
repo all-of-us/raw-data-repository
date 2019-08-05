@@ -1,9 +1,10 @@
-from rdr_service.model.base import Base
-from rdr_service.model.utils import UTCDateTime, Enum
-from rdr_service.participant_enums import PhysicalMeasurementsStatus
-from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Boolean, Integer, BLOB, BIGINT, ForeignKey, String, Float, Table, \
+from sqlalchemy import BIGINT, BLOB, Boolean, Column, Float, ForeignKey, Integer, String, Table, \
   Text, UnicodeText
+from sqlalchemy.orm import relationship
+
+from rdr_service.model.base import Base
+from rdr_service.model.utils import Enum, UTCDateTime
+from rdr_service.participant_enums import PhysicalMeasurementsStatus
 
 measurement_to_qualifier = Table('measurement_to_qualifier', Base.metadata,
     Column('measurement_id', BIGINT, ForeignKey('measurement.measurement_id'), primary_key=True),

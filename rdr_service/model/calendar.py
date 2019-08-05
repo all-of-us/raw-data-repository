@@ -1,5 +1,7 @@
+from sqlalchemy import Column, Date, Index
+
 from rdr_service.model.base import Base
-from sqlalchemy import Date, Column, Index
+
 
 class Calendar(Base):
 

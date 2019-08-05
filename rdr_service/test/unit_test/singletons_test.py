@@ -1,4 +1,4 @@
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 import datetime
 import unittest
 from rdr_service import singletons

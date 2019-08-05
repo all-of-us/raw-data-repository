@@ -1,8 +1,10 @@
+from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
+
 from rdr_service.model.base import Base
 from rdr_service.model.site_enums import ObsoleteStatus
 from rdr_service.model.utils import Enum
-from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.orm import relationship
+
 
 class Organization(Base):
   """An organization, under an awardee/HPO, and containing sites."""

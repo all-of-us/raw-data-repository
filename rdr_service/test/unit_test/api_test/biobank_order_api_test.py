@@ -2,7 +2,7 @@ import datetime
 import httplib
 
 from api_test.participant_summary_api_test import _add_code_answer
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (CONSENT_PERMISSION_YES_CODE, RACE_NONE_OF_THESE_CODE)
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao

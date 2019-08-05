@@ -6,7 +6,7 @@ from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.model.participant import Participant
 from rdr_service.dao.participant_dao import ParticipantDao, ParticipantHistoryDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 
 class OrganizationDaoTest(SqlTestBase):
 

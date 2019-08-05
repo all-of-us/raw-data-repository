@@ -1,5 +1,5 @@
 from main_util import get_parser, configure_logging
-from unicode_csv import UnicodeDictReader
+from rdr_service.unicode_csv import UnicodeDictReader
 import csv
 
 def strip(val):

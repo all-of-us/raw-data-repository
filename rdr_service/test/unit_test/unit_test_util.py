@@ -31,7 +31,7 @@ from testlib import testutil
 from rdr_service import api_util
 from rdr_service import config
 import config_api
-import main
+from rdr_service import main
 from rdr_service.dao import base_dao
 from rdr_service import singletons
 
@@ -50,7 +50,7 @@ from rdr_service.offline import sql_exporter
 from rdr_service.participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
 from rdr_service.participant_enums import OrganizationType
 from test.test_data import data_path
-from unicode_csv import UnicodeDictReader
+from rdr_service.unicode_csv import UnicodeDictReader
 
 PITT_HPO_ID = 2
 PITT_ORG_ID = 3

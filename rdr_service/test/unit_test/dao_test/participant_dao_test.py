@@ -12,7 +12,7 @@ from rdr_service.model.site import Site
 from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus, UNSET_HPO_ID
 from test.unit_test.unit_test_util import PITT_ORG_ID
 from unit_test_util import SqlTestBase, PITT_HPO_ID, random_ids
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 from werkzeug.exceptions import Forbidden
 

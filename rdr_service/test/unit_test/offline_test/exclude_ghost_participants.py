@@ -2,7 +2,7 @@ import datetime
 import time
 
 from rdr_service import config
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 from cloudstorage import cloudstorage_api  # stubbed by testbed
 from rdr_service.dao.participant_dao import ParticipantDao, ParticipantHistoryDao
 from rdr_service.model.participant import Participant

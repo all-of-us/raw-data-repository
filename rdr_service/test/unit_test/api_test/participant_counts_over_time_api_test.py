@@ -1,7 +1,7 @@
 import datetime
 import urllib
 
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 import httplib
 
 from rdr_service.dao.participant_dao import ParticipantDao

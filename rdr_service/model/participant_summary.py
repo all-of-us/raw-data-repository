@@ -1,16 +1,17 @@
 import datetime
 
-from rdr_service.model.base import Base, model_insert_listener, model_update_listener
-from rdr_service.model.utils import Enum, UTCDateTime, UTCDateTime6
-from rdr_service.participant_enums import EnrollmentStatus, Race, SampleStatus, OrderStatus, \
-  PhysicalMeasurementsStatus, QuestionnaireStatus, WithdrawalStatus, SuspensionStatus, \
-  WithdrawalReason, EhrStatus, GenderIdentity
-from sqlalchemy import Column, Integer, String, Date, ForeignKey, Index, SmallInteger, \
-  UnicodeText, DateTime, event
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Index, Integer, SmallInteger, String, \
+  UnicodeText, event
+from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.mysql import JSON
 
+from rdr_service.model.base import Base, model_insert_listener, model_update_listener
+from rdr_service.model.utils import Enum, UTCDateTime, UTCDateTime6
+from rdr_service.participant_enums import EhrStatus, EnrollmentStatus, GenderIdentity, OrderStatus, \
+  PhysicalMeasurementsStatus, QuestionnaireStatus, Race, SampleStatus, SuspensionStatus, \
+  WithdrawalReason, \
+  WithdrawalStatus
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
 # participants.

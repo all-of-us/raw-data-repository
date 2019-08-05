@@ -30,7 +30,7 @@ from rdr_service.api.public_metrics_api import PublicMetricsApi
 from rdr_service.api.questionnaire_api import QuestionnaireApi
 from rdr_service.api.questionnaire_response_api import QuestionnaireResponseApi, ParticipantQuestionnaireAnswers
 from rdr_service.api.patient_status import PatientStatusApi, PatientStatusHistoryApi
-from config import get_config, get_db_config
+from rdr_service.config import get_config, get_db_config
 from flask import Flask, got_request_exception
 from flask_restful import Api
 from json_encoder import RdrJsonEncoder

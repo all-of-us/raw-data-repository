@@ -7,7 +7,7 @@ import csv
 from cloudstorage import cloudstorage_api  # stubbed by testbed
 from rdr_service.code_constants import BIOBANK_TESTS
 from rdr_service.model.participant import Participant
-from genomic import genomic_set_file_handler, genomic_biobank_menifest_handler
+from rdr_service.genomic import genomic_set_file_handler, genomic_biobank_menifest_handler
 from test import test_data
 from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
 from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao

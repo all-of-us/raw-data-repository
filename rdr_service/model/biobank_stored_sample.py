@@ -1,6 +1,7 @@
+from sqlalchemy import Column, ForeignKey, Index, Integer, String
+
 from rdr_service.model.base import Base
 from rdr_service.model.utils import Enum, UTCDateTime
-from sqlalchemy import Column, Integer, String, ForeignKey, Index
 from rdr_service.participant_enums import SampleStatus
 
 

@@ -65,9 +65,9 @@ from rdr_service.offline import sql_exporter
 
 from cloudstorage import cloudstorage_api
 from datetime import datetime, timedelta
-from mapreduce import base_handler
-from mapreduce import mapreduce_pipeline
-from mapreduce import context
+#from mapreduce import base_handler
+#from mapreduce import mapreduce_pipeline
+#from mapreduce import context
 
 from rdr_service.dao.database_utils import parse_datetime
 from dateutil.relativedelta import relativedelta
@@ -79,7 +79,7 @@ from rdr_service.field_mappings import QUESTION_CODE_TO_FIELD, FieldType
 from rdr_service.field_mappings import NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES
 from rdr_service.field_mappings import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD
 from rdr_service.model.metrics import MetricsBucket
-from mapreduce.lib.input_reader._gcs import GCSInputReader
+#from mapreduce.lib.input_reader._gcs import GCSInputReader
 from rdr_service.offline.base_pipeline import BasePipeline
 from metrics_config import BIOSPECIMEN_METRIC, BIOSPECIMEN_SAMPLES_METRIC, HPO_ID_METRIC
 from metrics_config import PHYSICAL_MEASUREMENTS_METRIC, AGE_RANGE_METRIC, CENSUS_REGION_METRIC

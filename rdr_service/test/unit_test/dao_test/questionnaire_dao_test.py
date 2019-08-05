@@ -7,7 +7,7 @@ from rdr_service.model.code import Code, CodeType
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireHistory
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from unit_test_util import SqlTestBase, sort_lists
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 from werkzeug.exceptions import NotFound, PreconditionFailed
 from sqlalchemy.exc import IntegrityError
 

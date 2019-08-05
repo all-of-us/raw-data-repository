@@ -3,7 +3,7 @@ import unittest
 
 import pytz
 
-import cloud_utils.bigquery
+from rdr_service.cloud_utils import bigquery
 
 
 class BigQueryJobTest(unittest.TestCase):
@@ -19,7 +19,7 @@ class BigQueryJobTest(unittest.TestCase):
     query = (
       'SELECT gameId, gameNumber, created FROM `bigquery-public-data.baseball.schedules` LIMIT 3'
     )
-    job = cloud_utils.bigquery.BigQueryJob(
+    job = bigquery.BigQueryJob(
       query,
       project_id='all-of-us-rdr-sandbox',
       default_dataset_id='baseball',
@@ -71,7 +71,7 @@ class BigQueryJobTransformationTest(unittest.TestCase):
                                          u'type': u'INTEGER'}]},
                 u'totalBytesProcessed': u'0',
                 u'totalRows': u'3'}
-    rows = cloud_utils.bigquery.BigQueryJob.get_rows_from_response(response)
+    rows = bigquery.BigQueryJob.get_rows_from_response(response)
     self.assertEqual(len(rows), 3)
     first_row = rows[0]
     self.assertEqual(first_row._asdict().keys(), [
@@ -102,7 +102,7 @@ class BigQueryJobTransformationTest(unittest.TestCase):
         ]
       }
     }
-    rows = cloud_utils.bigquery.BigQueryJob.get_rows_from_response(response)
+    rows = bigquery.BigQueryJob.get_rows_from_response(response)
     self.assertEqual(rows[0].timestamp, datetime.datetime(2019, 5, 25, 4, 22, 16, 52000, pytz.UTC))
     self.assertEqual(rows[1].timestamp, datetime.datetime(2016, 10, 6, 6, 25, 15, 0, pytz.UTC))
     self.assertEqual(rows[2].timestamp, datetime.datetime(2016, 10, 6, 6, 25, 15, 0, pytz.UTC))
@@ -125,4 +125,4 @@ class BigQueryJobTransformationTest(unittest.TestCase):
       }
     }
     with self.assertRaises(ValueError):
-      cloud_utils.bigquery.BigQueryJob.get_rows_from_response(response)
+      bigquery.BigQueryJob.get_rows_from_response(response)

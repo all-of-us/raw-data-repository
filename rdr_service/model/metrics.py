@@ -1,9 +1,9 @@
-from rdr_service import clock
+from sqlalchemy import BLOB, Boolean, Column, Date, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
 
+from rdr_service import clock
 from rdr_service.model.base import Base
 from rdr_service.model.utils import UTCDateTime
-from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, BLOB, Boolean, Date, String, ForeignKey
 
 BUCKETS = {'buckets': {}}
 

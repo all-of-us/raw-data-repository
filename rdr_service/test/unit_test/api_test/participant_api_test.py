@@ -1,7 +1,7 @@
 import datetime
 import httplib
 
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 from test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json
 from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus
 from rdr_service.model.hpo import HPO

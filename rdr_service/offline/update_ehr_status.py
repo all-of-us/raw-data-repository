@@ -1,7 +1,7 @@
 import logging
 
 from rdr_service import clock
-import cloud_utils.bigquery
+from rdr_service.cloud_utils import bigquery
 from rdr_service import config
 from rdr_service.app_util import datetime_as_naive_utc
 from rdr_service.dao.ehr_dao import EhrReceiptDao
@@ -29,7 +29,7 @@ def make_update_participant_summaries_job():
     bigquery_view = None
   if bigquery_view:
     query = 'SELECT person_id FROM `{}`'.format(bigquery_view)
-    return cloud_utils.bigquery.BigQueryJob(
+    return bigquery.BigQueryJob(
       query,
       default_dataset_id='operations_analytics',
       page_size=1000

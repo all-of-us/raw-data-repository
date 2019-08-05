@@ -1,7 +1,7 @@
 import datetime
 
 from rdr_service import clock
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 from rdr_service.code_constants import BIOBANK_TESTS, RACE_QUESTION_CODE, RACE_WHITE_CODE, RACE_AIAN_CODE
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept

@@ -1,10 +1,11 @@
 from protorpc import messages
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UnicodeText, UniqueConstraint
+from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import backref, relationship
+
 from rdr_service.model.base import Base
 from rdr_service.model.utils import Enum, UTCDateTime
-from sqlalchemy import Column, Integer, String, UnicodeText, Boolean, UniqueConstraint
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import backref, relationship
-from sqlalchemy.ext.declarative import declared_attr
+
 
 class CodeType(messages.Enum):
   """A type of code"""

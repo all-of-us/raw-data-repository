@@ -4,7 +4,7 @@ import datetime
 import json
 
 from rdr_service.offline import metrics_export
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, \
   GENDER_IDENTITY_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, RACE_QUESTION_CODE, \
   STATE_QUESTION_CODE, RACE_WHITE_CODE, RACE_NONE_OF_THESE_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, \

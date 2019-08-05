@@ -6,7 +6,7 @@ from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from genomic.validation import validate_and_update_genomic_set_by_id
+from rdr_service.genomic.validation import validate_and_update_genomic_set_by_id
 from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, \
   GenomicSetMemberStatus, GenomicValidationFlag
 from rdr_service.model.participant import Participant

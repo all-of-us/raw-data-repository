@@ -1,5 +1,5 @@
-from sqlalchemy.orm import relationship
 from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import MetricsBase
 from rdr_service.model.utils import Enum, UTCDateTime

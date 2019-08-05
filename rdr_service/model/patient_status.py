@@ -1,7 +1,8 @@
-from rdr_service.model.base import Base, model_insert_listener, model_update_listener, ModelMixin
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, event
+
+from rdr_service.model.base import Base, ModelMixin, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, UTCDateTime
 from rdr_service.participant_enums import PatientStatusFlag
-from sqlalchemy import Column, DateTime, Integer, ForeignKey, UniqueConstraint, Text, event, String
 
 
 class PatientStatus(Base, ModelMixin):

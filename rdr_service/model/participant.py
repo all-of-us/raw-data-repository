@@ -1,10 +1,12 @@
-from rdr_service.model.base import Base
-from rdr_service.model.utils import Enum, UTCDateTime, UTCDateTime6
-from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus, WithdrawalReason
-from sqlalchemy import Column, Integer, BLOB, ForeignKey, Index, String, UnicodeText, BigInteger,\
-  UniqueConstraint, Boolean
+from sqlalchemy import BLOB, BigInteger, Boolean, Column, ForeignKey, Index, Integer, String, \
+  UnicodeText, \
+  UniqueConstraint
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
+
+from rdr_service.model.base import Base
+from rdr_service.model.utils import Enum, UTCDateTime, UTCDateTime6
+from rdr_service.participant_enums import SuspensionStatus, WithdrawalReason, WithdrawalStatus
 
 
 class ParticipantBase(object):

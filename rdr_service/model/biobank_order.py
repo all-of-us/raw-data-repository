@@ -1,9 +1,9 @@
-from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, UnicodeText
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UnicodeText
 from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import Base
-from rdr_service.model.utils import UTCDateTime, Enum
+from rdr_service.model.utils import Enum, UTCDateTime
 from rdr_service.participant_enums import BiobankOrderStatus
 
 

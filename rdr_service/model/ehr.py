@@ -1,6 +1,7 @@
+from sqlalchemy import Column, ForeignKey, Integer
+
 from rdr_service.model.base import Base
 from rdr_service.model.utils import UTCDateTime
-from sqlalchemy import Column, Integer, ForeignKey
 
 
 class EhrReceipt(Base):

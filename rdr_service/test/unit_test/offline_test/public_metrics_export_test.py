@@ -1,7 +1,7 @@
 import datetime
 
 from rdr_service.offline.public_metrics_export import PublicMetricsExport
-from clock import FakeClock
+from rdr_service.clock import FakeClock
 from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE
 from rdr_service.code_constants import EHR_CONSENT_QUESTION_CODE, RACE_WHITE_CODE
 from rdr_service.code_constants import RACE_NONE_OF_THESE_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE
