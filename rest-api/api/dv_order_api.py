@@ -1,8 +1,7 @@
 import logging
 import dateutil
 from api.base_api import UpdatableApi
-from api_util import PTC, PTC_AND_HEALTHPRO, VIBRENT_FHIR_URL, VIBRENT_BARCODE_URL,\
-  VIBRENT_FULFILLMENT_URL
+from api_util import PTC, PTC_AND_HEALTHPRO, VIBRENT_FHIR_URL
 from app_util import auth_required, ObjDict
 from dao.dv_order_dao import DvOrderDao
 from fhir_utils import SimpleFhirR4Reader
@@ -118,13 +117,6 @@ class DvOrderApi(UpdatableApi):
     # handle invalid FHIR documents
     try:
       fhir_resource = SimpleFhirR4Reader(resource)
-      barcode_url = None
-      cancel_order = False
-      if fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString.lower() == 'shipped':
-        barcode_url = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).url
-      if fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString.lower() == 'tracking_cancelled':
-        cancel_order = True
-        logging.info('Tracking status changed to cancelled for order: %s', bo_id)
       pid = fhir_resource.contained.get(
            resourceType='Patient').identifier.get(system=VIBRENT_FHIR_URL + 'participantId')
       p_id = from_client_participant_id(pid.value)
@@ -133,32 +125,15 @@ class DvOrderApi(UpdatableApi):
     except Exception as e:
       raise BadRequest(e.message)
 
-    merged_resource = None
     if not p_id:
       raise BadRequest('Request must include participant id')
-    if str(barcode_url).lower() == VIBRENT_BARCODE_URL:
-      _id = self.dao.get_id(ObjDict({'participantId': p_id, 'order_id': int(bo_id)}))
-      ex_obj = self.dao.get(_id)
-      if not ex_obj.barcode and not cancel_order:
-        # Send to mayolink and create internal biobank order
-        response = self.dao.send_order(resource, p_id)
-        merged_resource = merge_dicts(response, resource)
-        merged_resource['id'] = _id
-        logging.info('Sending salivary order to biobank for participant: %s', pid)
-        self.dao.insert_biobank_order(p_id, merged_resource)
+    response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
 
-    if merged_resource:
-      response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True,
-                                             resource=merged_resource)
-    else:
-      response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
-    if not barcode_url:
-      logging.info('No barcode given for supply request, no biobank order sent. participant_id: %s',
-                   pid)
     return response
 
   def _put_supply_delivery(self, resource, bo_id):
 
+    merged_resource = None
     # handle invalid FHIR documents
     try:
       fhir = SimpleFhirR4Reader(resource)
@@ -173,6 +148,8 @@ class DvOrderApi(UpdatableApi):
 
       tracking_status = fhir.extension.get(
         url=VIBRENT_FHIR_URL + 'tracking-status').valueString
+      tracking_id = fhir.identifier.get(
+        system=VIBRENT_FHIR_URL + 'trackingId').value
     except AttributeError as e:
       raise BadRequest(e.message)
     except Exception as e:
@@ -194,8 +171,26 @@ class DvOrderApi(UpdatableApi):
     if eta:
       order.shipmentEstArrival = eta.date()
     order.shipmentStatus = tracking_status_enum
+    if not p_id:
+      raise BadRequest('Request must include participant id')
 
-    response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
+    _id = self.dao.get_id(ObjDict({'participantId': p_id, 'order_id': int(bo_id)}))
+    ex_obj = self.dao.get(_id)
+    if (tracking_status == 'enroute' and ex_obj.trackingId != tracking_id) or \
+        (tracking_status == 'delivered' and ex_obj.shipmentStatus != 'enroute' and ex_obj.tracking_id != tracking_id):
+      # Send to mayolink and create internal biobank order
+      response = self.dao.send_order(resource, p_id)
+      merged_resource = merge_dicts(response, resource)
+      merged_resource['id'] = _id
+      logging.info('Sending salivary order to biobank for participant: %s', p_id)
+      self.dao.insert_biobank_order(p_id, merged_resource)
+
+    if merged_resource:
+      response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True,
+                                             resource=merged_resource)
+    else:
+      response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
+
     return response
 
 

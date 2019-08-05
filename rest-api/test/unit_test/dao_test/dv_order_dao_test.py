@@ -18,7 +18,9 @@ class DvOrderDaoTestBase(FlaskTestBase):
 
   def setUp(self):
     super(DvOrderDaoTestBase, self).setUp(use_mysql=True)
+
     self.post_delivery = load_test_data_json('dv_order_api_post_supply_delivery.json')
+    self.put_delivery = load_test_data_json('dv_order_api_put_supply_delivery.json')
     self.post_request = load_test_data_json('dv_order_api_post_supply_request.json')
     self.put_request = load_test_data_json('dv_order_api_put_supply_request.json')
     self.dao = DvOrderDao()
@@ -50,15 +52,22 @@ class DvOrderDaoTestBase(FlaskTestBase):
 
   def test_insert_biobank_order(self):
     payload = self.send_post('SupplyRequest', request_data=self.post_request, expected_status=httplib.CREATED)
-    post_response = json.loads(payload.response[0])
+    request_response = json.loads(payload.response[0])
     location = payload.location.rsplit('/', 1)[-1]
     put_response = self.send_put('SupplyRequest/{}'.format(location), request_data=self.put_request)
-    self.assertEquals(post_response['version'], 1)
-    self.assertEquals(put_response['version'], 2)
-    self.assertEquals(put_response['barcode'], 'barcode')
+    payload = self.send_post('SupplyDelivery', request_data=self.post_delivery, expected_status=httplib.CREATED)
+    post_response = json.loads(payload.response[0])
+    location = payload.location.rsplit('/', 1)[-1]
+    put_response = self.send_put('SupplyDelivery/{}'.format(location), request_data=self.put_delivery)
+    self.assertEquals(request_response['version'], 1)
+    self.assertEquals(post_response['version'], 3)
+    self.assertEquals(post_response['meta']['versionId'].strip('W/'), '"3"')
+    self.assertEquals(put_response['version'], 4)
+    self.assertEquals(put_response['meta']['versionId'].strip('W/'), '"4"')
+    self.assertEquals(put_response['barcode'], 'SABR90160121INA')
     self.assertEquals(put_response['biobankOrderId'], '12345')
-    self.assertEquals(post_response['meta']['versionId'].strip('W/'), '"1"')
-    self.assertEquals(put_response['meta']['versionId'].strip('W/'), '"2"')
+    self.assertEquals(put_response['biobankStatus'], 'Delivered')
+    self.assertEquals(put_response['order_id'], 999999)
 
   def test_enumerate_shipping_status(self):
     fhir_resource = SimpleFhirR4Reader(self.post_request)
@@ -78,7 +87,7 @@ class DvOrderDaoTestBase(FlaskTestBase):
 
     with self.assertRaises(ServiceUnavailable):
       mocked_api.return_value.post.side_effect = raises
-      self.dao.send_order(self.put_request, self.participant.participantId)
+      self.dao.send_order(self.post_delivery, self.participant.participantId)
 
 
 

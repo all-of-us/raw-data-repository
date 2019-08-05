@@ -52,12 +52,17 @@ class DvOrderDao(UpdatableDao):
         gender_val = 'U'
     else:
       gender_val = 'U'
+
+    order_id = int(fhir_resource.basedOn[0].identifier.value)
+    with self.session() as session:
+      barcode = session.query(BiobankDVOrder.barcode).filter(BiobankDVOrder.order_id == order_id).first()
+
     # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
     order = {
         'order': {
-            'collected': fhir_resource.authoredOn,
+            'collected': fhir_resource.occurrenceDateTime,
             'account': '',
-            'number': fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).valueString,
+            'number': barcode,
             'patient': {'medical_record_number': str(to_client_biobank_id(summary.biobankId)),
                         'first_name': '*',
                         'last_name': str(to_client_biobank_id(summary.biobankId)),
@@ -97,7 +102,7 @@ class DvOrderDao(UpdatableDao):
       result['barcode'] = reduced_model['reference_number']
       result['received'] = reduced_model['received']
       result['biobankOrderId'] = reduced_model['number']
-      result['biobankId'] = reduced_model['patient']['medical_record_number'] # biobank order id
+      result['biobankTrackingId'] = reduced_model['patient']['medical_record_number']
     else:
       result = model.asdict()
       result['orderStatus'] = format_json_enum(result, 'orderStatus')
@@ -167,6 +172,10 @@ class DvOrderDao(UpdatableDao):
         existing_obj.biobankStreetAddress1 = order_address.line[0]
         existing_obj.biobankZipCode = order_address.postalCode
 
+      if hasattr(fhir_resource, 'biobankTrackingId'):
+        existing_obj.biobankTrackingId = fhir_resource.biobankTrackingId
+        existing_obj.biobankReceived = parse_date(fhir_resource.received)
+
       return existing_obj
 
     if resource_json['resourceType'].lower() == 'supplyrequest':
@@ -209,11 +218,7 @@ class DvOrderDao(UpdatableDao):
         order.id = existing_obj.id
         order.version = expected_version
         order.biobankStatus = fhir_resource.status
-        if hasattr(fhir_resource, 'barcode'):
-          order.barcode = fhir_resource.barcode
-          order.biobankTrackingId = fhir_resource.biobankId
-          order.biobankOrderId = fhir_resource.biobankOrderId
-          order.biobankReceived = parse_date(fhir_resource.received)
+        order.barcode = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).valueString
 
     return order
 
@@ -237,12 +242,18 @@ class DvOrderDao(UpdatableDao):
     order.identifiers = []
     for i in resource.identifier:
       try:
-        if i['system'].lower() == VIBRENT_FHIR_URL + 'orderid':
-          order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._VIBRENT_ID_SYSTEM,
-                                                          value=i['value']))
-        if i['system'].lower() == 'fulfillmentid':
+        if i['system'].lower() == VIBRENT_FHIR_URL + 'trackingid':
           order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._VIBRENT_ID_SYSTEM
-                                                          + '/fulfillmentId', value=i['value']))
+                                                          + '/trackingId', value=i['value']))
+      except AttributeError:
+        raise BadRequest(
+            'No identifier for system %r, required for primary key.' %
+             BiobankDVOrder._VIBRENT_ID_SYSTEM)
+    for i in resource.basedOn:
+      try:
+        if i['identifier']['system'].lower() == VIBRENT_FHIR_URL + 'orderid':
+          order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._VIBRENT_ID_SYSTEM,
+                                                          value=i['identifier']['value']))
       except AttributeError:
         raise BadRequest(
             'No identifier for system %r, required for primary key.' %
