@@ -4,7 +4,7 @@ from rdr_service.model.base import Base
 
 
 class LogPosition(Base):
-  """A position in a log, incremented whenever writes to particular tables occur.
+    """A position in a log, incremented whenever writes to particular tables occur.
 
   This is for syncing changes to other clients. (We don't use timestamps, since timestamps in SQL
   are not guaranteed to be unique, and not guaranteed to be written in the order that transactions
@@ -16,5 +16,6 @@ class LogPosition(Base):
   must overwrite the model's logPosition with a new LogPosition() which, when the object is
   committed, will increment the global log.
   """
-  __tablename__ = 'log_position'
-  logPositionId = Column('log_position_id', Integer, primary_key=True)
+
+    __tablename__ = "log_position"
+    logPositionId = Column("log_position_id", Integer, primary_key=True)

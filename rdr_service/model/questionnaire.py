@@ -1,5 +1,4 @@
-from sqlalchemy import BLOB, Boolean, Column, ForeignKey, ForeignKeyConstraint, Integer, String, \
-  UniqueConstraint
+from sqlalchemy import BLOB, Boolean, Column, ForeignKey, ForeignKeyConstraint, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import Base
@@ -8,64 +7,70 @@ from rdr_service.participant_enums import QuestionnaireDefinitionStatus
 
 
 class QuestionnaireBase(object):
-  """Mixin containing columns for Questionnaire and QuestionnaireHistory"""
-  questionnaireId = Column('questionnaire_id', Integer, primary_key=True)
-  # Incrementing version, starts at 1 and is incremented on each update.
-  version = Column('version', Integer, nullable=False)
-  created = Column('created', UTCDateTime, nullable=False)
-  lastModified = Column('last_modified', UTCDateTime, nullable=False)
-  # The JSON representation of the questionnaire provided by the client.
-  # Concepts and questions can be be parsed out of this for use in querying.
-  resource = Column('resource', BLOB, nullable=False)
-  status = Column('status', Enum(QuestionnaireDefinitionStatus),
-                   default=QuestionnaireDefinitionStatus.VALID)
+    """Mixin containing columns for Questionnaire and QuestionnaireHistory"""
 
-  def asdict_with_children(self):
-    return self.asdict(follow={'concepts': {}, 'questions': {}})
+    questionnaireId = Column("questionnaire_id", Integer, primary_key=True)
+    # Incrementing version, starts at 1 and is incremented on each update.
+    version = Column("version", Integer, nullable=False)
+    created = Column("created", UTCDateTime, nullable=False)
+    lastModified = Column("last_modified", UTCDateTime, nullable=False)
+    # The JSON representation of the questionnaire provided by the client.
+    # Concepts and questions can be be parsed out of this for use in querying.
+    resource = Column("resource", BLOB, nullable=False)
+    status = Column("status", Enum(QuestionnaireDefinitionStatus), default=QuestionnaireDefinitionStatus.VALID)
+
+    def asdict_with_children(self):
+        return self.asdict(follow={"concepts": {}, "questions": {}})
 
 
 class Questionnaire(QuestionnaireBase, Base):
-  """A questionnaire containing questions to pose to participants."""
-  __tablename__ = 'questionnaire'
-  concepts = relationship('QuestionnaireConcept', cascade='expunge', cascade_backrefs=False,
-                          primaryjoin='Questionnaire.questionnaireId==' + \
-                            'foreign(QuestionnaireConcept.questionnaireId)')
-  questions = relationship('QuestionnaireQuestion', cascade='expunge', cascade_backrefs=False,
-                           primaryjoin='Questionnaire.questionnaireId==' + \
-                            'foreign(QuestionnaireQuestion.questionnaireId)')
+    """A questionnaire containing questions to pose to participants."""
+
+    __tablename__ = "questionnaire"
+    concepts = relationship(
+        "QuestionnaireConcept",
+        cascade="expunge",
+        cascade_backrefs=False,
+        primaryjoin="Questionnaire.questionnaireId==" + "foreign(QuestionnaireConcept.questionnaireId)",
+    )
+    questions = relationship(
+        "QuestionnaireQuestion",
+        cascade="expunge",
+        cascade_backrefs=False,
+        primaryjoin="Questionnaire.questionnaireId==" + "foreign(QuestionnaireQuestion.questionnaireId)",
+    )
 
 
 class QuestionnaireHistory(QuestionnaireBase, Base):
-  __tablename__ = 'questionnaire_history'
-  version = Column('version', Integer, primary_key=True)
-  concepts = relationship('QuestionnaireConcept', cascade='all, delete-orphan')
-  questions = relationship(
-      'QuestionnaireQuestion', cascade='all, delete-orphan')
+    __tablename__ = "questionnaire_history"
+    version = Column("version", Integer, primary_key=True)
+    concepts = relationship("QuestionnaireConcept", cascade="all, delete-orphan")
+    questions = relationship("QuestionnaireQuestion", cascade="all, delete-orphan")
 
 
 class QuestionnaireConcept(Base):
-  """Concepts for the questionnaire as a whole.
+    """Concepts for the questionnaire as a whole.
 
   These should be copied whenever a new version of
   a questionnaire is created.
   """
-  __tablename__ = 'questionnaire_concept'
-  questionnaireConceptId = Column(
-      'questionnaire_concept_id', Integer, primary_key=True)
-  questionnaireId = Column('questionnaire_id', Integer, nullable=False)
-  questionnaireVersion = Column(
-      'questionnaire_version', Integer, nullable=False)
-  codeId = Column(
-      'code_id', Integer, ForeignKey('code.code_id'), nullable=False)
-  __table_args__ = (ForeignKeyConstraint([
-      'questionnaire_id', 'questionnaire_version'
-  ], [
-      'questionnaire_history.questionnaire_id', 'questionnaire_history.version'
-  ]), UniqueConstraint('questionnaire_id', 'questionnaire_version', 'code_id'))
+
+    __tablename__ = "questionnaire_concept"
+    questionnaireConceptId = Column("questionnaire_concept_id", Integer, primary_key=True)
+    questionnaireId = Column("questionnaire_id", Integer, nullable=False)
+    questionnaireVersion = Column("questionnaire_version", Integer, nullable=False)
+    codeId = Column("code_id", Integer, ForeignKey("code.code_id"), nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["questionnaire_id", "questionnaire_version"],
+            ["questionnaire_history.questionnaire_id", "questionnaire_history.version"],
+        ),
+        UniqueConstraint("questionnaire_id", "questionnaire_version", "code_id"),
+    )
 
 
 class QuestionnaireQuestion(Base):
-  """A question in a questionnaire.
+    """A question in a questionnaire.
 
   These should be copied whenever a new version of a
   questionnaire is created.
@@ -76,17 +81,18 @@ class QuestionnaireQuestion(Base):
   unique within a
   given questionnaire.
   """
-  __tablename__ = 'questionnaire_question'
-  questionnaireQuestionId = Column(
-      'questionnaire_question_id', Integer, primary_key=True)
-  questionnaireId = Column('questionnaire_id', Integer)
-  questionnaireVersion = Column('questionnaire_version', Integer)
-  linkId = Column('link_id', String(40))
-  codeId = Column(
-      'code_id', Integer, ForeignKey('code.code_id'), nullable=False)
-  repeats = Column('repeats', Boolean, nullable=False)
-  __table_args__ = (ForeignKeyConstraint([
-      'questionnaire_id', 'questionnaire_version'
-  ], [
-      'questionnaire_history.questionnaire_id', 'questionnaire_history.version'
-  ]), UniqueConstraint('questionnaire_id', 'questionnaire_version', 'link_id'))
+
+    __tablename__ = "questionnaire_question"
+    questionnaireQuestionId = Column("questionnaire_question_id", Integer, primary_key=True)
+    questionnaireId = Column("questionnaire_id", Integer)
+    questionnaireVersion = Column("questionnaire_version", Integer)
+    linkId = Column("link_id", String(40))
+    codeId = Column("code_id", Integer, ForeignKey("code.code_id"), nullable=False)
+    repeats = Column("repeats", Boolean, nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["questionnaire_id", "questionnaire_version"],
+            ["questionnaire_history.questionnaire_id", "questionnaire_history.version"],
+        ),
+        UniqueConstraint("questionnaire_id", "questionnaire_version", "link_id"),
+    )

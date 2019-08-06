@@ -8,8 +8,8 @@ Create Date: 2018-01-25 10:27:24.597642
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = '574efa4de1ba'
-down_revision = 'd111f9087581'
+revision = "574efa4de1ba"
+down_revision = "d111f9087581"
 branch_labels = None
 depends_on = None
 
@@ -127,6 +127,7 @@ CREATE OR REPLACE VIEW physical_measurements_view AS
       (hpo.name IS NULL OR hpo.name != 'TEST') AND
       pm.final = 1
 """
+
 
 def upgrade(engine_name):
     globals()["upgrade_%s" % engine_name]()

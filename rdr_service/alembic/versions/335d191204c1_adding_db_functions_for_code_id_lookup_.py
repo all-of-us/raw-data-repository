@@ -10,13 +10,14 @@ from alembic import op
 from rdr_service.dao.alembic_utils import ReplaceableObject
 
 # revision identifiers, used by Alembic.
-revision = '335d191204c1'
-down_revision = '1e944af3ad04'
+revision = "335d191204c1"
+down_revision = "1e944af3ad04"
 branch_labels = None
 depends_on = None
 
-fn_get_code_id_from_key = ReplaceableObject('fn_get_code_id_from_key',
-  """
+fn_get_code_id_from_key = ReplaceableObject(
+    "fn_get_code_id_from_key",
+    """
   (code_value VARCHAR(80))
   RETURNS INT
   READS SQL DATA
@@ -27,9 +28,11 @@ fn_get_code_id_from_key = ReplaceableObject('fn_get_code_id_from_key',
                     WHERE `value` = code_value ORDER BY code_id DESC LIMIT 1);
     RETURN result;
   END
-  """)
+  """,
+)
 
-fn_get_participant_ethnicity = ReplaceableObject('fn_get_participant_ethnicity',
+fn_get_participant_ethnicity = ReplaceableObject(
+    "fn_get_participant_ethnicity",
     """
     (participant INT, code_id INT)
     RETURNS CHAR(1)
@@ -57,45 +60,45 @@ fn_get_participant_ethnicity = ReplaceableObject('fn_get_participant_ethnicity',
         );
       RETURN result;
     END
-    """)
+    """,
+)
 
 
 def upgrade(engine_name):
-  globals()["upgrade_%s" % engine_name]()
+    globals()["upgrade_%s" % engine_name]()
 
 
 def downgrade(engine_name):
-  globals()["downgrade_%s" % engine_name]()
+    globals()["downgrade_%s" % engine_name]()
 
 
 def upgrade_rdr():
-  op.create_fn(fn_get_code_id_from_key)
-  op.create_fn(fn_get_participant_ethnicity)
+    op.create_fn(fn_get_code_id_from_key)
+    op.create_fn(fn_get_participant_ethnicity)
 
 
 def downgrade_rdr():
-  op.drop_fn(fn_get_code_id_from_key)
-  op.drop_fn(fn_get_participant_ethnicity)
+    op.drop_fn(fn_get_code_id_from_key)
+    op.drop_fn(fn_get_participant_ethnicity)
 
 
 def upgrade_metrics():
-  pass
+    pass
 
 
 def downgrade_metrics():
-  pass
+    pass
 
 
 def unittest_schemas():
-  schemas = list()
+    schemas = list()
 
-  schemas.append('DROP FUNCTION IF EXISTS `{0}`'.format(fn_get_code_id_from_key.name))
-  schemas.append('CREATE FUNCTION `{0}` {1}'.format(
-                  fn_get_code_id_from_key.name, fn_get_code_id_from_key.sqltext))
+    schemas.append("DROP FUNCTION IF EXISTS `{0}`".format(fn_get_code_id_from_key.name))
+    schemas.append("CREATE FUNCTION `{0}` {1}".format(fn_get_code_id_from_key.name, fn_get_code_id_from_key.sqltext))
 
-  schemas.append('DROP FUNCTION IF EXISTS `{0}`'.format(fn_get_participant_ethnicity.name))
-  schemas.append('CREATE FUNCTION `{0}` {1}'.format(
-                  fn_get_participant_ethnicity.name, fn_get_participant_ethnicity.sqltext))
+    schemas.append("DROP FUNCTION IF EXISTS `{0}`".format(fn_get_participant_ethnicity.name))
+    schemas.append(
+        "CREATE FUNCTION `{0}` {1}".format(fn_get_participant_ethnicity.name, fn_get_participant_ethnicity.sqltext)
+    )
 
-  return schemas
-
+    return schemas

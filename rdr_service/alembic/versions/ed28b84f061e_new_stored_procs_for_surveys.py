@@ -10,13 +10,14 @@ from alembic import op
 from rdr_service.dao.alembic_utils import ReplaceableObject
 
 # revision identifiers, used by Alembic.
-revision = 'ed28b84f061e'
-down_revision = 'd5cbabd682e5'
+revision = "ed28b84f061e"
+down_revision = "d5cbabd682e5"
 branch_labels = None
 depends_on = None
 
-sp_get_code_module_items = ReplaceableObject('sp_get_code_module_items',
-"""  
+sp_get_code_module_items = ReplaceableObject(
+    "sp_get_code_module_items",
+    """  
   (IN module VARCHAR(80))
   BEGIN
     # Resurn all of the codebook items (topics, questions, answers) releated to the passed 
@@ -43,10 +44,12 @@ sp_get_code_module_items = ReplaceableObject('sp_get_code_module_items',
       a.code_id;
   
   END
-""")
+""",
+)
 
-sp_get_questionnaire_answers = ReplaceableObject('sp_get_questionnaire_answers',
-"""  
+sp_get_questionnaire_answers = ReplaceableObject(
+    "sp_get_questionnaire_answers",
+    """  
   (IN participant_id INT, IN id INT)  
   BEGIN  
     # Dynamically pivot the questionnaire answers for the given participant and module.
@@ -125,7 +128,8 @@ sp_get_questionnaire_answers = ReplaceableObject('sp_get_questionnaire_answers',
   DEALLOCATE PREPARE stmt;
   
   END
-""")
+""",
+)
 
 
 def upgrade(engine_name):
@@ -134,7 +138,6 @@ def upgrade(engine_name):
 
 def downgrade(engine_name):
     globals()["downgrade_%s" % engine_name]()
-
 
 
 def upgrade_rdr():
@@ -162,15 +165,18 @@ def downgrade_metrics():
     pass
     # ### end Alembic commands ###
 
+
 def unittest_schemas():
-  schemas = list()
+    schemas = list()
 
-  schemas.append('DROP PROCEDURE IF EXISTS `{0}`'.format(sp_get_code_module_items.name))
-  schemas.append('CREATE PROCEDURE `{0}` {1}'.format(
-                  sp_get_code_module_items.name, sp_get_code_module_items.sqltext))
+    schemas.append("DROP PROCEDURE IF EXISTS `{0}`".format(sp_get_code_module_items.name))
+    schemas.append(
+        "CREATE PROCEDURE `{0}` {1}".format(sp_get_code_module_items.name, sp_get_code_module_items.sqltext)
+    )
 
-  schemas.append('DROP PROCEDURE IF EXISTS `{0}`'.format(sp_get_questionnaire_answers.name))
-  schemas.append('CREATE PROCEDURE `{0}` {1}'.format(
-                  sp_get_questionnaire_answers.name, sp_get_questionnaire_answers.sqltext))
+    schemas.append("DROP PROCEDURE IF EXISTS `{0}`".format(sp_get_questionnaire_answers.name))
+    schemas.append(
+        "CREATE PROCEDURE `{0}` {1}".format(sp_get_questionnaire_answers.name, sp_get_questionnaire_answers.sqltext)
+    )
 
-  return schemas
+    return schemas

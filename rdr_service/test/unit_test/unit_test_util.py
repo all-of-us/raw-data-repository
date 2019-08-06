@@ -4,6 +4,7 @@ import contextlib
 import copy
 import datetime
 import http.client
+
 # Python 3: change 'imp' to 'importlib'
 import imp
 import json
@@ -37,9 +38,13 @@ from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.site import Site
 from rdr_service.offline import sql_exporter
-from rdr_service.participant_enums import EnrollmentStatus, OrganizationType, SuspensionStatus, \
-  UNSET_HPO_ID, \
-  WithdrawalStatus
+from rdr_service.participant_enums import (
+    EnrollmentStatus,
+    OrganizationType,
+    SuspensionStatus,
+    UNSET_HPO_ID,
+    WithdrawalStatus,
+)
 from rdr_service.test.test_data import data_path
 from rdr_service.unicode_csv import UnicodeDictReader
 
@@ -48,370 +53,401 @@ PITT_ORG_ID = 3
 AZ_HPO_ID = 4
 AZ_ORG_ID = 4
 
+
 class TestBase(unittest.TestCase):
-  """Base class for unit tests."""
+    """Base class for unit tests."""
 
-  def setUp(self):
-    # Allow printing the full diff report on errors.
-    self.maxDiff = None
-    self.setup_fake()
+    def setUp(self):
+        # Allow printing the full diff report on errors.
+        self.maxDiff = None
+        self.setup_fake()
 
-  def setup_fake(self):
-    # Make a faker which produces unicode text available.
-    self.fake = faker.Faker('ru_RU')
-    self.fake.seed(1)
+    def setup_fake(self):
+        # Make a faker which produces unicode text available.
+        self.fake = faker.Faker("ru_RU")
+        self.fake.seed(1)
 
-    # Always add codes if missing when handling questionnaire responses.
-    dao.questionnaire_dao._add_codes_if_missing = lambda: True
-    dao.questionnaire_response_dao._add_codes_if_missing = lambda email:True
+        # Always add codes if missing when handling questionnaire responses.
+        dao.questionnaire_dao._add_codes_if_missing = lambda: True
+        dao.questionnaire_response_dao._add_codes_if_missing = lambda email: True
 
-  @staticmethod
-  def _participant_with_defaults(**kwargs):
-    """Creates a new Participant model, filling in some default constructor args.
+    @staticmethod
+    def _participant_with_defaults(**kwargs):
+        """Creates a new Participant model, filling in some default constructor args.
 
     This is intended especially for updates, where more fields are required than for inserts.
     """
-    common_args = {
-      'hpoId': UNSET_HPO_ID,
-      'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
-      'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
-    }
-    common_args.update(kwargs)
-    return Participant(**common_args)
+        common_args = {
+            "hpoId": UNSET_HPO_ID,
+            "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
+            "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
+        }
+        common_args.update(kwargs)
+        return Participant(**common_args)
 
-  @staticmethod
-  def _participant_summary_with_defaults(**kwargs):
-    common_args = {
-      'hpoId': UNSET_HPO_ID,
-      'numCompletedPPIModules': 0,
-      'numCompletedBaselinePPIModules': 0,
-      'numBaselineSamplesArrived': 0,
-      'numberDistinctVisits': 0,
-      'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
-      'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
-      'enrollmentStatus': EnrollmentStatus.INTERESTED
-    }
-    common_args.update(kwargs)
-    return ParticipantSummary(**common_args)
+    @staticmethod
+    def _participant_summary_with_defaults(**kwargs):
+        common_args = {
+            "hpoId": UNSET_HPO_ID,
+            "numCompletedPPIModules": 0,
+            "numCompletedBaselinePPIModules": 0,
+            "numBaselineSamplesArrived": 0,
+            "numberDistinctVisits": 0,
+            "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
+            "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
+            "enrollmentStatus": EnrollmentStatus.INTERESTED,
+        }
+        common_args.update(kwargs)
+        return ParticipantSummary(**common_args)
 
-  @staticmethod
-  def _participant_history_with_defaults(**kwargs):
-    common_args = {
-      'hpoId': UNSET_HPO_ID,
-      'version': 1,
-      'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
-      'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
-    }
-    common_args.update(kwargs)
-    return ParticipantHistory(**common_args)
+    @staticmethod
+    def _participant_history_with_defaults(**kwargs):
+        common_args = {
+            "hpoId": UNSET_HPO_ID,
+            "version": 1,
+            "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
+            "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
+        }
+        common_args.update(kwargs)
+        return ParticipantHistory(**common_args)
 
-  def submit_questionnaire_response(self, participant_id, questionnaire_id,
-                                    race_code, gender_code, state,
-                                    date_of_birth):
-    code_answers = []
-    date_answers = []
-    if race_code:
-      code_answers.append(('race', Concept(PPI_SYSTEM, race_code)))
-    if gender_code:
-      code_answers.append(('genderIdentity', Concept(PPI_SYSTEM, gender_code)))
-    if date_of_birth:
-      date_answers.append(('dateOfBirth', date_of_birth))
-    if state:
-      code_answers.append(('state', Concept(PPI_SYSTEM, state)))
-    qr = make_questionnaire_response_json(
-        participant_id,
-        questionnaire_id,
-        code_answers=code_answers,
-        date_answers=date_answers)
-    self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
+    def submit_questionnaire_response(
+        self, participant_id, questionnaire_id, race_code, gender_code, state, date_of_birth
+    ):
+        code_answers = []
+        date_answers = []
+        if race_code:
+            code_answers.append(("race", Concept(PPI_SYSTEM, race_code)))
+        if gender_code:
+            code_answers.append(("genderIdentity", Concept(PPI_SYSTEM, gender_code)))
+        if date_of_birth:
+            date_answers.append(("dateOfBirth", date_of_birth))
+        if state:
+            code_answers.append(("state", Concept(PPI_SYSTEM, state)))
+        qr = make_questionnaire_response_json(
+            participant_id, questionnaire_id, code_answers=code_answers, date_answers=date_answers
+        )
+        self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
 
-  def submit_consent_questionnaire_response(
-      self, participant_id, questionnaire_id, ehr_consent_answer):
-    code_answers = [('ehrConsent', Concept(PPI_SYSTEM, ehr_consent_answer))]
-    qr = make_questionnaire_response_json(
-        participant_id, questionnaire_id, code_answers=code_answers)
-    self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
+    def submit_consent_questionnaire_response(self, participant_id, questionnaire_id, ehr_consent_answer):
+        code_answers = [("ehrConsent", Concept(PPI_SYSTEM, ehr_consent_answer))]
+        qr = make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=code_answers)
+        self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
 
-  def participant_summary(self, participant):
-    summary = ParticipantDao.create_summary_for_participant(participant)
-    summary.firstName = self.fake.first_name()
-    summary.lastName = self.fake.last_name()
-    summary.email = self.fake.email()
-    return summary
+    def participant_summary(self, participant):
+        summary = ParticipantDao.create_summary_for_participant(participant)
+        summary.firstName = self.fake.first_name()
+        summary.lastName = self.fake.last_name()
+        summary.email = self.fake.email()
+        return summary
 
 
 class TestbedTestBase(TestBase):
-  """Base class for unit tests that need the testbed."""
-  def setUp(self):
-    super(TestbedTestBase, self).setUp()
-    # Reset singletons, including the database, between tests.
-    singletons.reset_for_tests()
-    self.testbed = testbed.Testbed()
-    self.testbed.activate()
-    self.testbed.init_taskqueue_stub()
-    self.taskqueue_stub = self.testbed.get_stub(testbed.TASKQUEUE_SERVICE_NAME)
+    """Base class for unit tests that need the testbed."""
 
-  def tearDown(self):
-    self.testbed.deactivate()
-    super(TestbedTestBase, self).tearDown()
+    def setUp(self):
+        super(TestbedTestBase, self).setUp()
+        # Reset singletons, including the database, between tests.
+        singletons.reset_for_tests()
+        self.testbed = testbed.Testbed()
+        self.testbed.activate()
+        self.testbed.init_taskqueue_stub()
+        self.taskqueue_stub = self.testbed.get_stub(testbed.TASKQUEUE_SERVICE_NAME)
+
+    def tearDown(self):
+        self.testbed.deactivate()
+        super(TestbedTestBase, self).tearDown()
 
 
 class _TestDb(object):
-  """Container for common testing database setup/teardown, using SQLite or MySQL.
+    """Container for common testing database setup/teardown, using SQLite or MySQL.
 
   SQLite uses a fast/lightweight in-memory database. MySQL requires a local mysqldb configured with
   tools/setup_local_database.sh, and is slower but matches deployed environments; it uses a
   temporary database.
   """
-  def __init__(self, use_mysql=False):
-    self.__use_mysql = use_mysql
-    if self.__use_mysql:
-      uid = uuid.uuid4().hex
-      self.__temp_db_name = 'unittestdb' + uid
-      self.__temp_metrics_db_name = 'unittestdb_metrics' + uid
 
-  def setup(self, with_data=True, with_views=False, with_consent_codes=False):
-    singletons.reset_for_tests()  # Clear the db connection cache.
-    if self.__use_mysql:
-      if 'CIRCLECI' in os.environ:
-        # Default no-pw login, according to https://circleci.com/docs/1.0/manually/#databases .
-        mysql_login = 'ubuntu'
-        mysql_host = 'localhost'
-      else:
-        password = os.getenv('MYSQL_ROOT_PASSWORD', 'root')
-        mysql_host = os.getenv('MYSQL_HOST', 'localhost')
-        # Match setup_local_database.sh which is run locally.
-        mysql_login = 'root:' + password
+    def __init__(self, use_mysql=False):
+        self.__use_mysql = use_mysql
+        if self.__use_mysql:
+            uid = uuid.uuid4().hex
+            self.__temp_db_name = "unittestdb" + uid
+            self.__temp_metrics_db_name = "unittestdb_metrics" + uid
 
-      dao.database_factory.DB_CONNECTION_STRING = (
-          'mysql+mysqldb://%s@%s/?charset=utf8' % (mysql_login, mysql_host))
-      db = dao.database_factory.get_database(db_name=None)
-      dao.database_factory.SCHEMA_TRANSLATE_MAP = {
-        'rdr': self.__temp_db_name,
-        'metrics': self.__temp_metrics_db_name
-      }
+    def setup(self, with_data=True, with_views=False, with_consent_codes=False):
+        singletons.reset_for_tests()  # Clear the db connection cache.
+        if self.__use_mysql:
+            if "CIRCLECI" in os.environ:
+                # Default no-pw login, according to https://circleci.com/docs/1.0/manually/#databases .
+                mysql_login = "ubuntu"
+                mysql_host = "localhost"
+            else:
+                password = os.getenv("MYSQL_ROOT_PASSWORD", "root")
+                mysql_host = os.getenv("MYSQL_HOST", "localhost")
+                # Match setup_local_database.sh which is run locally.
+                mysql_login = "root:" + password
 
-      # Keep in sync with tools/setup_local_database.sh.
-      db.get_engine().execute(
-          'CREATE DATABASE {0} CHARACTER SET utf8 COLLATE utf8_general_ci'.format(self.__temp_db_name))
-      db.get_engine().execute(
-          'CREATE DATABASE {0} CHARACTER SET utf8 COLLATE utf8_general_ci'.format(self.__temp_metrics_db_name))
+            dao.database_factory.DB_CONNECTION_STRING = "mysql+mysqldb://%s@%s/?charset=utf8" % (
+                mysql_login,
+                mysql_host,
+            )
+            db = dao.database_factory.get_database(db_name=None)
+            dao.database_factory.SCHEMA_TRANSLATE_MAP = {
+                "rdr": self.__temp_db_name,
+                "metrics": self.__temp_metrics_db_name,
+            }
 
-      dao.database_factory.DB_CONNECTION_STRING = (
-          'mysql+mysqldb://%s@%s/%s?charset=utf8' % (mysql_login, mysql_host, self.__temp_db_name))
+            # Keep in sync with tools/setup_local_database.sh.
+            db.get_engine().execute(
+                "CREATE DATABASE {0} CHARACTER SET utf8 COLLATE utf8_general_ci".format(self.__temp_db_name)
+            )
+            db.get_engine().execute(
+                "CREATE DATABASE {0} CHARACTER SET utf8 COLLATE utf8_general_ci".format(self.__temp_metrics_db_name)
+            )
 
-      singletons.reset_for_tests()
+            dao.database_factory.DB_CONNECTION_STRING = "mysql+mysqldb://%s@%s/%s?charset=utf8" % (
+                mysql_login,
+                mysql_host,
+                self.__temp_db_name,
+            )
 
-      dbf = dao.database_factory.get_database(db_name=self.__temp_db_name)
-      dbf.create_schema()
-      self._load_views_and_functions(dbf.get_engine())
+            singletons.reset_for_tests()
 
-      dao.database_factory.get_generic_database().create_metrics_schema()
+            dbf = dao.database_factory.get_database(db_name=self.__temp_db_name)
+            dbf.create_schema()
+            self._load_views_and_functions(dbf.get_engine())
 
-    else:
-      dao.database_factory.DB_CONNECTION_STRING = 'sqlite:///:memory:'
-      dao.database_factory.SCHEMA_TRANSLATE_MAP = {
-        'rdr': None,
-        'metrics': None
-      }
-      # Use sqlalchemy to create database schema for sqlite.
-      dao.database_factory.get_database().create_schema()
-      dao.database_factory.get_generic_database().create_metrics_schema()
+            dao.database_factory.get_generic_database().create_metrics_schema()
 
-      if with_views:
-        self._setup_sqlite_views()
+        else:
+            dao.database_factory.DB_CONNECTION_STRING = "sqlite:///:memory:"
+            dao.database_factory.SCHEMA_TRANSLATE_MAP = {"rdr": None, "metrics": None}
+            # Use sqlalchemy to create database schema for sqlite.
+            dao.database_factory.get_database().create_schema()
+            dao.database_factory.get_generic_database().create_metrics_schema()
 
-    if with_data:
-      self._setup_hpos()
+            if with_views:
+                self._setup_sqlite_views()
 
-    if with_consent_codes:
-      self._setup_consent_codes()
+        if with_data:
+            self._setup_hpos()
 
-  def teardown(self):
-    db = dao.database_factory.get_database()
-    if self.__use_mysql:
-      db.get_engine().execute('DROP DATABASE IF EXISTS %s' % self.__temp_db_name)
-      db.get_engine().execute('DROP DATABASE IF EXISTS %s' % self.__temp_metrics_db_name)
-    db.get_engine().dispose()
-    dao.database_factory.SCHEMA_TRANSLATE_MAP = None
-    # Reconnecting to in-memory SQLite (because singletons are cleared above)
-    # effectively clears the database.
+        if with_consent_codes:
+            self._setup_consent_codes()
 
-  def _setup_consent_codes(self):
-    """
+    def teardown(self):
+        db = dao.database_factory.get_database()
+        if self.__use_mysql:
+            db.get_engine().execute("DROP DATABASE IF EXISTS %s" % self.__temp_db_name)
+            db.get_engine().execute("DROP DATABASE IF EXISTS %s" % self.__temp_metrics_db_name)
+        db.get_engine().dispose()
+        dao.database_factory.SCHEMA_TRANSLATE_MAP = None
+        # Reconnecting to in-memory SQLite (because singletons are cleared above)
+        # effectively clears the database.
+
+    def _setup_consent_codes(self):
+        """
     Proactively setup Codebook entries in the Code table so parent/child relationship is
     created. Matches 'test_data/study_consent.json`.
     """
-    def create_code(topic, name, code_type, parent):
-      code = Code(system=PPI_SYSTEM, topic=topic, value=name, display=name, codeType=code_type,
-                  mapped=True, shortValue=name, created=datetime.datetime.utcnow())
-      if parent:
-        parent.children.append(code)
 
-      return code
+        def create_code(topic, name, code_type, parent):
+            code = Code(
+                system=PPI_SYSTEM,
+                topic=topic,
+                value=name,
+                display=name,
+                codeType=code_type,
+                mapped=True,
+                shortValue=name,
+                created=datetime.datetime.utcnow(),
+            )
+            if parent:
+                parent.children.append(code)
 
-    with CodeDao().session() as session:
-      module = create_code('Module Name', 'ConsentPII', CodeType.MODULE, None)
-      session.add(module)
+            return code
 
-      topic = create_code('Language', 'ConsentPII_Language', CodeType.TOPIC, module)
-      session.add(topic)
+        with CodeDao().session() as session:
+            module = create_code("Module Name", "ConsentPII", CodeType.MODULE, None)
+            session.add(module)
 
-      qn = create_code('Language', 'Language_SpokenWrittenLanguage', CodeType.QUESTION, topic)
-      session.add(qn)
-      session.add(create_code('Language', 'SpokenWrittenLanguage_English', CodeType.ANSWER, qn))
-      session.add(create_code('Language', 'SpokenWrittenLanguage_ChineseChina', CodeType.ANSWER, qn))
-      session.add(create_code('Language', 'SpokenWrittenLanguage_French', CodeType.ANSWER, qn))
+            topic = create_code("Language", "ConsentPII_Language", CodeType.TOPIC, module)
+            session.add(topic)
 
-      topic = create_code('Address', 'ConsentPII_PIIAddress', CodeType.TOPIC, module)
-      session.add(topic)
+            qn = create_code("Language", "Language_SpokenWrittenLanguage", CodeType.QUESTION, topic)
+            session.add(qn)
+            session.add(create_code("Language", "SpokenWrittenLanguage_English", CodeType.ANSWER, qn))
+            session.add(create_code("Language", "SpokenWrittenLanguage_ChineseChina", CodeType.ANSWER, qn))
+            session.add(create_code("Language", "SpokenWrittenLanguage_French", CodeType.ANSWER, qn))
 
-      session.add(create_code('Address', 'PIIAddress_StreetAddress', CodeType.QUESTION, topic))
-      session.add(create_code('Address', 'PIIAddress_StreetAddress2', CodeType.QUESTION, topic))
+            topic = create_code("Address", "ConsentPII_PIIAddress", CodeType.TOPIC, module)
+            session.add(topic)
 
-      topic = create_code('Name', 'ConsentPII_PIIName', CodeType.TOPIC, module)
-      session.add(topic)
+            session.add(create_code("Address", "PIIAddress_StreetAddress", CodeType.QUESTION, topic))
+            session.add(create_code("Address", "PIIAddress_StreetAddress2", CodeType.QUESTION, topic))
 
-      session.add(create_code('Name', 'PIIName_First', CodeType.QUESTION, topic))
-      session.add(create_code('Name', 'PIIName_Middle', CodeType.QUESTION, topic))
-      session.add(create_code('Name', 'PIIName_Last', CodeType.QUESTION, topic))
+            topic = create_code("Name", "ConsentPII_PIIName", CodeType.TOPIC, module)
+            session.add(topic)
 
-      session.add(create_code('Email Address', 'ConsentPII_EmailAddress', CodeType.QUESTION, module))
+            session.add(create_code("Name", "PIIName_First", CodeType.QUESTION, topic))
+            session.add(create_code("Name", "PIIName_Middle", CodeType.QUESTION, topic))
+            session.add(create_code("Name", "PIIName_Last", CodeType.QUESTION, topic))
 
-      topic = create_code('Extra Consent Items', 'ConsentPII_ExtraConsent', CodeType.TOPIC, module)
-      session.add(create_code('Extra Consent Items', 'ExtraConsent_CABoRSignature', CodeType.QUESTION, topic))
+            session.add(create_code("Email Address", "ConsentPII_EmailAddress", CodeType.QUESTION, module))
 
-      module = create_code('Module Name', 'OverallHealth', CodeType.MODULE, None)
-      session.add(module)
+            topic = create_code("Extra Consent Items", "ConsentPII_ExtraConsent", CodeType.TOPIC, module)
+            session.add(create_code("Extra Consent Items", "ExtraConsent_CABoRSignature", CodeType.QUESTION, topic))
 
-      session.commit()
+            module = create_code("Module Name", "OverallHealth", CodeType.MODULE, None)
+            session.add(module)
 
-  def _load_views_and_functions(self, engine):
-    """
+            session.commit()
+
+    def _load_views_and_functions(self, engine):
+        """
     Load all Views and Functions from Alembic migration files into schema.
     Note: I was able to switch to Alembic to create the full schema, but it was
     4 times as slow as using sqlalchemy. Loading DB Functions and Views this
     way into the schema works much faster.
     :param engine: Database engine object
     """
-    alembic_path = os.path.join(os.getcwd(), 'alembic', 'versions')
+        alembic_path = os.path.join(os.getcwd(), "alembic", "versions")
 
-    if not os.path.exists(alembic_path):
-      raise OSError('alembic migrations path not found.')
+        if not os.path.exists(alembic_path):
+            raise OSError("alembic migrations path not found.")
 
-    migrations = glob(os.path.join(alembic_path, '*.py'))
+        migrations = glob(os.path.join(alembic_path, "*.py"))
 
-    steps = list()
-    initial = None
+        steps = list()
+        initial = None
 
-    # Load all the migration step files into a unsorted list of tuples.
-    # ( current_step, prev_step, has unittest func )
-    for migration in migrations:
-      module = os.path.basename(migration)
-      rev = module.split('_')[0]
-      prev_rev = None
+        # Load all the migration step files into a unsorted list of tuples.
+        # ( current_step, prev_step, has unittest func )
+        for migration in migrations:
+            module = os.path.basename(migration)
+            rev = module.split("_")[0]
+            prev_rev = None
 
-      contents = open(migration).read()
-      result = re.search("^down_revision = '(.*?)'", contents, re.MULTILINE)
-      if result:
-        prev_rev = result.group(1)
-      else:
-        initial = (module, rev, None, False, 0)
-      # Look for unittest functions in migration file
-      result = re.search("^def unittest_schemas", contents, re.MULTILINE)
+            contents = open(migration).read()
+            result = re.search("^down_revision = '(.*?)'", contents, re.MULTILINE)
+            if result:
+                prev_rev = result.group(1)
+            else:
+                initial = (module, rev, None, False, 0)
+            # Look for unittest functions in migration file
+            result = re.search("^def unittest_schemas", contents, re.MULTILINE)
 
-      steps.append((module, rev, prev_rev, (not result is None)))
+            steps.append((module, rev, prev_rev, (not result is None)))
 
-    # Put the migration steps in order
-    ord_steps = list()
-    ord_steps.append(initial)
+        # Put the migration steps in order
+        ord_steps = list()
+        ord_steps.append(initial)
 
-    def _find_next_step(c):
-      for s in steps:
-        if c[1] == s[2]:
-          return s
-      return None
+        def _find_next_step(c):
+            for s in steps:
+                if c[1] == s[2]:
+                    return s
+            return None
 
-    c_step = initial
-    while c_step:
-      n_step = _find_next_step(c_step)
-      c_step = n_step
-      if n_step:
-        ord_steps.append(n_step)
+        c_step = initial
+        while c_step:
+            n_step = _find_next_step(c_step)
+            c_step = n_step
+            if n_step:
+                ord_steps.append(n_step)
 
-    # Ignore warnings from 'DROP IF EXISTS' sql statements
-    with warnings.catch_warnings():
-      warnings.simplefilter("ignore")
+        # Ignore warnings from 'DROP IF EXISTS' sql statements
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
 
-      # Load any schemas marked with unittests in order.
-      for step in ord_steps:
-        # Skip non-unittest enabled migrations
-        if step[3] is False:
-          continue
+            # Load any schemas marked with unittests in order.
+            for step in ord_steps:
+                # Skip non-unittest enabled migrations
+                if step[3] is False:
+                    continue
 
-        # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
-        filename = os.path.join(os.getcwd(), 'alembic', 'versions', step[0])
-        mod = imp.load_source(step[0].replace('.py', ''), filename)
-        items = mod.unittest_schemas()
+                # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
+                filename = os.path.join(os.getcwd(), "alembic", "versions", step[0])
+                mod = imp.load_source(step[0].replace(".py", ""), filename)
+                items = mod.unittest_schemas()
 
-        for item in items:
-          engine.execute(item)
+                for item in items:
+                    engine.execute(item)
 
-  def _setup_hpos(self, org_dao=None):
-    hpo_dao = HPODao()
-    hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET', displayName='Unset',
-                       organizationType=OrganizationType.UNSET))
-    hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT', displayName='Pittsburgh',
-                       organizationType=OrganizationType.HPO))
-    hpo_dao.insert(HPO(hpoId=AZ_HPO_ID, name='AZ_TUCSON', displayName='Arizona',
-                       organizationType=OrganizationType.HPO))
-    self.hpo_id = PITT_HPO_ID
+    def _setup_hpos(self, org_dao=None):
+        hpo_dao = HPODao()
+        hpo_dao.insert(
+            HPO(hpoId=UNSET_HPO_ID, name="UNSET", displayName="Unset", organizationType=OrganizationType.UNSET)
+        )
+        hpo_dao.insert(
+            HPO(hpoId=PITT_HPO_ID, name="PITT", displayName="Pittsburgh", organizationType=OrganizationType.HPO)
+        )
+        hpo_dao.insert(
+            HPO(hpoId=AZ_HPO_ID, name="AZ_TUCSON", displayName="Arizona", organizationType=OrganizationType.HPO)
+        )
+        self.hpo_id = PITT_HPO_ID
 
-    org_dao = OrganizationDao()
-    org_dao.insert(Organization(
-      organizationId=AZ_ORG_ID,
-      externalId='AZ_TUCSON_BANNER_HEALTH',
-      displayName='Banner Health',
-      hpoId=AZ_HPO_ID))
+        org_dao = OrganizationDao()
+        org_dao.insert(
+            Organization(
+                organizationId=AZ_ORG_ID,
+                externalId="AZ_TUCSON_BANNER_HEALTH",
+                displayName="Banner Health",
+                hpoId=AZ_HPO_ID,
+            )
+        )
 
-    created_org = org_dao.insert(Organization(
-      organizationId=PITT_ORG_ID,
-      externalId='PITT_BANNER_HEALTH',
-      displayName='PITT display Banner Health',
-      hpoId=PITT_HPO_ID))
-    self.organization_id = created_org.organizationId
+        created_org = org_dao.insert(
+            Organization(
+                organizationId=PITT_ORG_ID,
+                externalId="PITT_BANNER_HEALTH",
+                displayName="PITT display Banner Health",
+                hpoId=PITT_HPO_ID,
+            )
+        )
+        self.organization_id = created_org.organizationId
 
-    site_dao = SiteDao()
-    created_site = site_dao.insert(Site(
-        siteName='Monroeville Urgent Care Center',
-        googleGroup='hpo-site-monroeville',
-        mayolinkClientNumber=7035769,
-        organizationId=PITT_ORG_ID,
-        hpoId=PITT_HPO_ID))
-    self.site_id = created_site.siteId
-    site_dao.insert(Site(
-        siteName='Phoenix Urgent Care Center',
-        googleGroup='hpo-site-bannerphoenix',
-        mayolinkClientNumber=7035770,
-        organizationId=PITT_ORG_ID,
-        hpoId=PITT_HPO_ID))
+        site_dao = SiteDao()
+        created_site = site_dao.insert(
+            Site(
+                siteName="Monroeville Urgent Care Center",
+                googleGroup="hpo-site-monroeville",
+                mayolinkClientNumber=7035769,
+                organizationId=PITT_ORG_ID,
+                hpoId=PITT_HPO_ID,
+            )
+        )
+        self.site_id = created_site.siteId
+        site_dao.insert(
+            Site(
+                siteName="Phoenix Urgent Care Center",
+                googleGroup="hpo-site-bannerphoenix",
+                mayolinkClientNumber=7035770,
+                organizationId=PITT_ORG_ID,
+                hpoId=PITT_HPO_ID,
+            )
+        )
 
-    site_dao.insert(Site(
-      siteName='Phoenix clinic',
-      googleGroup='hpo-site-clinic-phoenix',
-      mayolinkClientNumber=7035770,
-      organizationId=AZ_ORG_ID,
-      hpoId=AZ_HPO_ID))
+        site_dao.insert(
+            Site(
+                siteName="Phoenix clinic",
+                googleGroup="hpo-site-clinic-phoenix",
+                mayolinkClientNumber=7035770,
+                organizationId=AZ_ORG_ID,
+                hpoId=AZ_HPO_ID,
+            )
+        )
 
-  def _setup_sqlite_views(self):
-    """
+    def _setup_sqlite_views(self):
+        """
     Sets up operational DB views.
 
     This is a minimal recreation of the true views, which are encoded in Alembic DB migrations only
     (not via SQLAlchemy) and aren't currently compatible with SQLite.
     """
-    db = dao.database_factory.get_database()
-    db.get_engine().execute("""
+        db = dao.database_factory.get_database()
+        db.get_engine().execute(
+            """
 CREATE VIEW ppi_participant_view AS
  SELECT
    p.participant_id,
@@ -421,76 +457,80 @@ CREATE VIEW ppi_participant_view AS
    participant p
      LEFT OUTER JOIN hpo ON p.hpo_id = hpo.hpo_id
      LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
-""")
+"""
+        )
 
 
 class SqlTestBase(TestbedTestBase):
-  """Base class for unit tests that use the SQL database."""
-  def setUp(self, with_data=True, use_mysql=False, with_consent_codes=False):
-    super(SqlTestBase, self).setUp()
-    self._test_db = _TestDb(use_mysql=use_mysql)
-    self._test_db.setup(with_data=with_data, with_consent_codes=with_consent_codes)
-    self.database = dao.database_factory.get_database()
+    """Base class for unit tests that use the SQL database."""
 
-  def tearDown(self):
-    self._test_db.teardown()
-    super(SqlTestBase, self).tearDown()
+    def setUp(self, with_data=True, use_mysql=False, with_consent_codes=False):
+        super(SqlTestBase, self).setUp()
+        self._test_db = _TestDb(use_mysql=use_mysql)
+        self._test_db.setup(with_data=with_data, with_consent_codes=with_consent_codes)
+        self.database = dao.database_factory.get_database()
 
-  @staticmethod
-  def setup_codes(values, code_type):
-    code_dao = CodeDao()
-    for value in values:
-      code_dao.insert(Code(system=PPI_SYSTEM, value=value, codeType=code_type, mapped=True))
+    def tearDown(self):
+        self._test_db.teardown()
+        super(SqlTestBase, self).tearDown()
 
-  def assertObjEqualsExceptLastModified(self, obj1, obj2):
-    dict1 = obj1.asdict()
-    dict2 = obj2.asdict()
-    del dict1['lastModified']
-    del dict2['lastModified']
-    self.assertEqual(dict1, dict2)
+    @staticmethod
+    def setup_codes(values, code_type):
+        code_dao = CodeDao()
+        for value in values:
+            code_dao.insert(Code(system=PPI_SYSTEM, value=value, codeType=code_type, mapped=True))
 
-  def assertListAsDictEquals(self, list_a, list_b):
-    if len(list_a) != len(list_b):
-      self.fail("List lengths don't match: %d != %d; %s, %s" % (len(list_a), len(list_b),
-                                                                list_as_dict(list_a),
-                                                                list_as_dict(list_b)))
-    for i in range(0, len(list_a)):
-      self.assertEqual(list_a[i].asdict(), list_b[i].asdict())
+    def assertObjEqualsExceptLastModified(self, obj1, obj2):
+        dict1 = obj1.asdict()
+        dict2 = obj2.asdict()
+        del dict1["lastModified"]
+        del dict2["lastModified"]
+        self.assertEqual(dict1, dict2)
+
+    def assertListAsDictEquals(self, list_a, list_b):
+        if len(list_a) != len(list_b):
+            self.fail(
+                "List lengths don't match: %d != %d; %s, %s"
+                % (len(list_a), len(list_b), list_as_dict(list_a), list_as_dict(list_b))
+            )
+        for i in range(0, len(list_a)):
+            self.assertEqual(list_a[i].asdict(), list_b[i].asdict())
 
 
 class InMemorySqlExporter(sql_exporter.SqlExporter):
-  """Store rows that would be written to GCS CSV in a StringIO instead.
+    """Store rows that would be written to GCS CSV in a StringIO instead.
 
   Provide some assertion helpers related to CSV contents.
   """
-  def __init__(self, test):
-    super(InMemorySqlExporter, self).__init__('inmemory')  # fake bucket name
-    self._test = test
-    self._path_to_buffer = collections.defaultdict(io.StringIO)
 
-  @contextlib.contextmanager
-  def open_writer(self, file_name, predicate=None):
-    yield sql_exporter.SqlExportFileWriter(self._path_to_buffer[file_name], predicate,
-                                           use_unicode=True)
+    def __init__(self, test):
+        super(InMemorySqlExporter, self).__init__("inmemory")  # fake bucket name
+        self._test = test
+        self._path_to_buffer = collections.defaultdict(io.StringIO)
 
-  def assertFilesEqual(self, paths):
-    self._test.assertItemsEqual(paths, list(self._path_to_buffer.keys()))
+    @contextlib.contextmanager
+    def open_writer(self, file_name, predicate=None):
+        yield sql_exporter.SqlExportFileWriter(self._path_to_buffer[file_name], predicate, use_unicode=True)
 
-  def _get_dict_reader(self, file_name):
-    return UnicodeDictReader(
-        io.StringIO(self._path_to_buffer[file_name].getvalue()),
-        delimiter=sql_exporter.DELIMITER)
+    def assertFilesEqual(self, paths):
+        self._test.assertItemsEqual(paths, list(self._path_to_buffer.keys()))
 
-  def assertColumnNamesEqual(self, file_name, col_names):
-    self._test.assertItemsEqual(col_names, self._get_dict_reader(file_name).fieldnames)
+    def _get_dict_reader(self, file_name):
+        return UnicodeDictReader(
+            io.StringIO(self._path_to_buffer[file_name].getvalue()), delimiter=sql_exporter.DELIMITER
+        )
 
-  def assertRowCount(self, file_name, n):
-    rows = list(self._get_dict_reader(file_name))
-    self._test.assertEqual(
-        n, len(rows), 'Expected %d rows in %r but found %d: %s.' % (n, file_name, len(rows), rows))
+    def assertColumnNamesEqual(self, file_name, col_names):
+        self._test.assertItemsEqual(col_names, self._get_dict_reader(file_name).fieldnames)
 
-  def assertHasRow(self, file_name, expected_row):
-    """Asserts that the writer got a row that has all the values specified in the given row.
+    def assertRowCount(self, file_name, n):
+        rows = list(self._get_dict_reader(file_name))
+        self._test.assertEqual(
+            n, len(rows), "Expected %d rows in %r but found %d: %s." % (n, file_name, len(rows), rows)
+        )
+
+    def assertHasRow(self, file_name, expected_row):
+        """Asserts that the writer got a row that has all the values specified in the given row.
 
     Args:
       file_name: The bucket-relative path of the file that should have the row.
@@ -499,114 +539,119 @@ class InMemorySqlExporter(sql_exporter.SqlExporter):
     Returns:
       The matched row.
     """
-    rows = list(self._get_dict_reader(file_name))
-    for row in rows:
-      found_all = True
-      for required_k, required_v in expected_row.items():
-        if required_k not in row or row[required_k] != required_v:
-          found_all = False
-          break
-      if found_all:
-        return row
-    self._test.fail(
-        'No match found for expected row %s among %d rows: %s'
-        % (expected_row, len(rows), rows))
+        rows = list(self._get_dict_reader(file_name))
+        for row in rows:
+            found_all = True
+            for required_k, required_v in expected_row.items():
+                if required_k not in row or row[required_k] != required_v:
+                    found_all = False
+                    break
+            if found_all:
+                return row
+        self._test.fail("No match found for expected row %s among %d rows: %s" % (expected_row, len(rows), rows))
 
 
 class NdbTestBase(SqlTestBase):
-  """Base class for unit tests that need the NDB testbed."""
-  _AUTH_USER = 'authorized@gservices.act'  # authorized for typical API usage roles
-  _CONFIG_USER_INFO = {
-    _AUTH_USER: {
-      'roles': api_util.ALL_ROLES,
-    },
-  }
+    """Base class for unit tests that need the NDB testbed."""
 
-  def setUp(self, use_mysql=False, with_data=True, with_consent_codes=False):
-    super(NdbTestBase, self).setUp(use_mysql=use_mysql, with_data=with_data, with_consent_codes=with_consent_codes)
-    self.testbed.init_datastore_v3_stub()
-    self.testbed.init_memcache_stub()
-    ndb.get_context().clear_cache()
-    self.doSetUp()
+    _AUTH_USER = "authorized@gservices.act"  # authorized for typical API usage roles
+    _CONFIG_USER_INFO = {_AUTH_USER: {"roles": api_util.ALL_ROLES}}
 
-  def doSetUp(self):
-    dev_config = read_dev_config()
-    dev_config[config.USER_INFO] = self._CONFIG_USER_INFO
-    config.store_current_config(dev_config)
-    config.CONFIG_OVERRIDES = {}
+    def setUp(self, use_mysql=False, with_data=True, with_consent_codes=False):
+        super(NdbTestBase, self).setUp(use_mysql=use_mysql, with_data=with_data, with_consent_codes=with_consent_codes)
+        self.testbed.init_datastore_v3_stub()
+        self.testbed.init_memcache_stub()
+        ndb.get_context().clear_cache()
+        self.doSetUp()
+
+    def doSetUp(self):
+        dev_config = read_dev_config()
+        dev_config[config.USER_INFO] = self._CONFIG_USER_INFO
+        config.store_current_config(dev_config)
+        config.CONFIG_OVERRIDES = {}
 
 
 class CloudStorageSqlTestBase(testutil.CloudStorageTestBase):
-  """Merge AppEngine's provided CloudStorageTestBase and our SqlTestBase.
+    """Merge AppEngine's provided CloudStorageTestBase and our SqlTestBase.
 
   Both try to set up a testbed (which stubs out various AppEngine APIs, including cloudstorage_api).
   """
-  def setUp(self, use_mysql=False, with_data=True, with_views=False):
-    super(CloudStorageSqlTestBase, self).setUp()
-    self._test_db = _TestDb(use_mysql=use_mysql)
-    self._test_db.setup(with_data=with_data, with_views=with_views)
-    self.database = dao.database_factory.get_database()
-    self.taskqueue_stub = self.testbed.get_stub(testbed.TASKQUEUE_SERVICE_NAME)
 
-  def tearDown(self):
-    super(CloudStorageSqlTestBase, self).tearDown()
-    self._test_db.teardown()
+    def setUp(self, use_mysql=False, with_data=True, with_views=False):
+        super(CloudStorageSqlTestBase, self).setUp()
+        self._test_db = _TestDb(use_mysql=use_mysql)
+        self._test_db.setup(with_data=with_data, with_views=with_views)
+        self.database = dao.database_factory.get_database()
+        self.taskqueue_stub = self.testbed.get_stub(testbed.TASKQUEUE_SERVICE_NAME)
+
+    def tearDown(self):
+        super(CloudStorageSqlTestBase, self).tearDown()
+        self._test_db.teardown()
 
 
 def read_dev_config():
-  with open(os.path.join(os.path.dirname(__file__), '../../config/config_dev.json')) as config_file:
-    with open(os.path.join(os.path.dirname(__file__), '../../config/base_config.json')) as b_cfg:
-      config_json = json.load(b_cfg)
-      config_json.update(json.load(config_file))
-      return config_json
+    with open(os.path.join(os.path.dirname(__file__), "../../config/config_dev.json")) as config_file:
+        with open(os.path.join(os.path.dirname(__file__), "../../config/base_config.json")) as b_cfg:
+            config_json = json.load(b_cfg)
+            config_json.update(json.load(config_file))
+            return config_json
 
 
 class FlaskTestBase(NdbTestBase):
-  """Provide a local flask server to exercise handlers and storage."""
-  _ADMIN_USER = 'config_admin@fake.google.com'  # allowed to update config
+    """Provide a local flask server to exercise handlers and storage."""
 
-  def doSetUp(self):
-    super(FlaskTestBase, self).doSetUp()
-    # http://flask.pocoo.org/docs/0.12/testing/
-    main.app.config['TESTING'] = True
-    self._app = main.app.test_client()
+    _ADMIN_USER = "config_admin@fake.google.com"  # allowed to update config
 
-    self._patchers = []
-    mock_oauth = mock.patch('app_util.get_oauth_id')
-    self._mock_get_oauth_id = mock_oauth.start()
-    self._patchers.append(mock_oauth)
+    def doSetUp(self):
+        super(FlaskTestBase, self).doSetUp()
+        # http://flask.pocoo.org/docs/0.12/testing/
+        main.app.config["TESTING"] = True
+        self._app = main.app.test_client()
 
-    config_api.CONFIG_ADMIN_MAP[app_identity.get_application_id()] = self._AUTH_USER
+        self._patchers = []
+        mock_oauth = mock.patch("app_util.get_oauth_id")
+        self._mock_get_oauth_id = mock_oauth.start()
+        self._patchers.append(mock_oauth)
 
-    self.set_auth_user(self._AUTH_USER)
-    self._consent_questionnaire_id = None
+        config_api.CONFIG_ADMIN_MAP[app_identity.get_application_id()] = self._AUTH_USER
 
-  def tearDown(self):
-    super(FlaskTestBase, self).tearDown()
-    self.doTearDown()
+        self.set_auth_user(self._AUTH_USER)
+        self._consent_questionnaire_id = None
 
-  def doTearDown(self):
-    for patcher in self._patchers:
-      patcher.stop()
+    def tearDown(self):
+        super(FlaskTestBase, self).tearDown()
+        self.doTearDown()
 
-  def set_auth_user(self, auth_user):
-    self._mock_get_oauth_id.return_value = auth_user
+    def doTearDown(self):
+        for patcher in self._patchers:
+            patcher.stop()
 
-  def send_post(self, *args, **kwargs):
-    return self.send_request('POST', *args, **kwargs)
+    def set_auth_user(self, auth_user):
+        self._mock_get_oauth_id.return_value = auth_user
 
-  def send_put(self, *args, **kwargs):
-    return self.send_request('PUT', *args, **kwargs)
+    def send_post(self, *args, **kwargs):
+        return self.send_request("POST", *args, **kwargs)
 
-  def send_patch(self, *args, **kwargs):
-    return self.send_request('PATCH', *args, **kwargs)
+    def send_put(self, *args, **kwargs):
+        return self.send_request("PUT", *args, **kwargs)
 
-  def send_get(self, *args, **kwargs):
-    return self.send_request('GET', *args, **kwargs)
+    def send_patch(self, *args, **kwargs):
+        return self.send_request("PATCH", *args, **kwargs)
 
-  def send_request(self, method, local_path, request_data=None, query_string=None,
-                   expected_status=http.client.OK, headers=None, expected_response_headers=None):
-    """Makes a JSON API call against the test client and returns its response data.
+    def send_get(self, *args, **kwargs):
+        return self.send_request("GET", *args, **kwargs)
+
+    def send_request(
+        self,
+        method,
+        local_path,
+        request_data=None,
+        query_string=None,
+        expected_status=http.client.OK,
+        headers=None,
+        expected_response_headers=None,
+    ):
+        """Makes a JSON API call against the test client and returns its response data.
 
     Args:
       method: HTTP method, as a string.
@@ -614,240 +659,236 @@ class FlaskTestBase(NdbTestBase):
       request_data: Parsed JSON payload for the request.
       expected_status: What HTTP status to assert, if not 200 (OK).
     """
-    response = self._app.open(
-        main.PREFIX + local_path,
-        method=method,
-        data=json.dumps(request_data) if request_data is not None else None,
-        query_string=query_string,
-        content_type='application/json',
-        headers=headers)
-    self.assertEqual(response.status_code, expected_status, response.data)
-    if expected_response_headers:
-      self.assertTrue(set(expected_response_headers.items())
-                          .issubset(set(response.headers.items())),
-                      "Expected response headers: %s; actual: %s" %
-                      (expected_response_headers, response.headers))
-    if expected_status == http.client.OK:
-      return json.loads(response.data)
-    if expected_status == http.client.CREATED:
-      return response
-    return None
+        response = self._app.open(
+            main.PREFIX + local_path,
+            method=method,
+            data=json.dumps(request_data) if request_data is not None else None,
+            query_string=query_string,
+            content_type="application/json",
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, expected_status, response.data)
+        if expected_response_headers:
+            self.assertTrue(
+                set(expected_response_headers.items()).issubset(set(response.headers.items())),
+                "Expected response headers: %s; actual: %s" % (expected_response_headers, response.headers),
+            )
+        if expected_status == http.client.OK:
+            return json.loads(response.data)
+        if expected_status == http.client.CREATED:
+            return response
+        return None
 
-  def create_participant(self):
-    response = self.send_post('Participant', {})
-    return response['participantId']
+    def create_participant(self):
+        response = self.send_post("Participant", {})
+        return response["participantId"]
 
-  def send_consent(self, participant_id, email=None, language=None, code_values=None, authored=None):
-    if not self._consent_questionnaire_id:
-      self._consent_questionnaire_id = self.create_questionnaire('study_consent.json')
-    self.first_name = self.fake.first_name()
-    self.last_name = self.fake.last_name()
-    if not email:
-      self.email = self.fake.email()
-      email = self.email
-    self.streetAddress = '1234 Main Street'
-    self.streetAddress2 = 'APT C'
-    qr_json = make_questionnaire_response_json(participant_id, self._consent_questionnaire_id,
-                                         string_answers=[("firstName", self.first_name),
-                                                         ("lastName", self.last_name),
-                                                         ("email", email),
-                                                         ("streetAddress", self.streetAddress),
-                                                         ("streetAddress2", self.streetAddress2)],
-                                         language=language, code_answers=code_values,
-                                         authored=authored)
-    self.send_post(questionnaire_response_url(participant_id), qr_json)
+    def send_consent(self, participant_id, email=None, language=None, code_values=None, authored=None):
+        if not self._consent_questionnaire_id:
+            self._consent_questionnaire_id = self.create_questionnaire("study_consent.json")
+        self.first_name = self.fake.first_name()
+        self.last_name = self.fake.last_name()
+        if not email:
+            self.email = self.fake.email()
+            email = self.email
+        self.streetAddress = "1234 Main Street"
+        self.streetAddress2 = "APT C"
+        qr_json = make_questionnaire_response_json(
+            participant_id,
+            self._consent_questionnaire_id,
+            string_answers=[
+                ("firstName", self.first_name),
+                ("lastName", self.last_name),
+                ("email", email),
+                ("streetAddress", self.streetAddress),
+                ("streetAddress2", self.streetAddress2),
+            ],
+            language=language,
+            code_answers=code_values,
+            authored=authored,
+        )
+        self.send_post(questionnaire_response_url(participant_id), qr_json)
 
-  def create_questionnaire(self, filename):
-    with open(data_path(filename)) as f:
-      questionnaire = json.load(f)
-      response = self.send_post('Questionnaire', questionnaire)
-      return response['id']
+    def create_questionnaire(self, filename):
+        with open(data_path(filename)) as f:
+            questionnaire = json.load(f)
+            response = self.send_post("Questionnaire", questionnaire)
+            return response["id"]
 
-  def create_and_verify_created_obj(self, path, resource):
-    response = self.send_post(path, resource)
-    resource_id = response['id']
-    del response['id']
-    self.assertJsonResponseMatches(resource, response)
+    def create_and_verify_created_obj(self, path, resource):
+        response = self.send_post(path, resource)
+        resource_id = response["id"]
+        del response["id"]
+        self.assertJsonResponseMatches(resource, response)
 
-    response = self.send_get('{}/{}'.format(path, resource_id))
-    del response['id']
-    self.assertJsonResponseMatches(resource, response)
+        response = self.send_get("{}/{}".format(path, resource_id))
+        del response["id"]
+        self.assertJsonResponseMatches(resource, response)
 
-  def assertJsonResponseMatches(self, obj_a, obj_b):
-    self.assertMultiLineEqual(
-        _clean_and_format_response_json(obj_a), _clean_and_format_response_json(obj_b))
+    def assertJsonResponseMatches(self, obj_a, obj_b):
+        self.assertMultiLineEqual(_clean_and_format_response_json(obj_a), _clean_and_format_response_json(obj_b))
 
-  def assertBundle(self, expected_entries, response, has_next=False):
-    self.assertEqual('Bundle', response['resourceType'])
-    self.assertEqual('searchset', response['type'])
-    if len(expected_entries) != len(response['entry']):
-      self.fail("Expected %d entries, got %d: %s" % (len(expected_entries), len(response['entry']),
-                                                     response['entry']))
-    for i in range(0, len(expected_entries)):
-      self.assertJsonResponseMatches(expected_entries[i], response['entry'][i])
-    if has_next:
-      self.assertEqual('next', response['link'][0]['relation'])
-      return response['link'][0]['url']
-    else:
-      self.assertIsNone(response.get('link'))
-      return None
+    def assertBundle(self, expected_entries, response, has_next=False):
+        self.assertEqual("Bundle", response["resourceType"])
+        self.assertEqual("searchset", response["type"])
+        if len(expected_entries) != len(response["entry"]):
+            self.fail(
+                "Expected %d entries, got %d: %s" % (len(expected_entries), len(response["entry"]), response["entry"])
+            )
+        for i in range(0, len(expected_entries)):
+            self.assertJsonResponseMatches(expected_entries[i], response["entry"][i])
+        if has_next:
+            self.assertEqual("next", response["link"][0]["relation"])
+            return response["link"][0]["url"]
+        else:
+            self.assertIsNone(response.get("link"))
+            return None
 
 
 def _clean_and_format_response_json(input_obj):
-  obj = sort_lists(copy.deepcopy(input_obj))
-  for ephemeral_key in ('meta', 'lastModified'):
-    if ephemeral_key in obj:
-      del obj[ephemeral_key]
-  s = pretty(obj)
-  # TODO(DA-226) Make sure times are not skewed on round trip to CloudSQL. For now, strip tzinfo.
-  s = s.replace('+00:00', '')
-  s = s.replace('Z",', '",')
-  return s
+    obj = sort_lists(copy.deepcopy(input_obj))
+    for ephemeral_key in ("meta", "lastModified"):
+        if ephemeral_key in obj:
+            del obj[ephemeral_key]
+    s = pretty(obj)
+    # TODO(DA-226) Make sure times are not skewed on round trip to CloudSQL. For now, strip tzinfo.
+    s = s.replace("+00:00", "")
+    s = s.replace('Z",', '",')
+    return s
+
 
 def list_as_dict(items):
-  return [item.asdict() for item in items]
+    return [item.asdict() for item in items]
+
 
 def to_dict_strip_last_modified(obj):
-  assert obj.last_modified, 'Missing last_modified: {}'.format(obj)
-  obj_json = obj.to_dict()
-  del obj_json['last_modified']
-  if obj_json.get('signUpTime'):
-    del obj_json['signUpTime']
-  return obj_json
+    assert obj.last_modified, "Missing last_modified: {}".format(obj)
+    obj_json = obj.to_dict()
+    del obj_json["last_modified"]
+    if obj_json.get("signUpTime"):
+        del obj_json["signUpTime"]
+    return obj_json
 
 
 def sort_lists(obj):
-  for key, val in obj.items():
-    if isinstance(val, list):
-      obj[key] = sorted(val)
-  return obj
+    for key, val in obj.items():
+        if isinstance(val, list):
+            obj[key] = sorted(val)
+    return obj
 
 
-def make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=None,
-                                string_answers=None, date_answers=None, uri_answers=None,
-                                     language=None, authored=None):
-  results = []
-  if code_answers:
-    for answer in code_answers:
-      results.append({"linkId": answer[0],
-                      "answer": [
-                         { "valueCoding": {
-                           "code": answer[1].code,
-                           "system": answer[1].system
-                         }
-                       }]
-                    })
-  if string_answers:
-    for answer in string_answers:
-      results.append({"linkId": answer[0],
-                      "answer": [
-                         { "valueString": answer[1] }
-                       ]
-                    })
-  if date_answers:
-    for answer in date_answers:
-      results.append({"linkId": answer[0],
-                      "answer": [
-                         { "valueDate": "%s" % answer[1].isoformat() }
-                        ]
-                    })
-  if uri_answers:
-    for answer in uri_answers:
-      results.append({"linkId": answer[0],
-                      "answer": [
-                         { "valueUri": answer[1] }
-                        ]
-                    })
+def make_questionnaire_response_json(
+    participant_id,
+    questionnaire_id,
+    code_answers=None,
+    string_answers=None,
+    date_answers=None,
+    uri_answers=None,
+    language=None,
+    authored=None,
+):
+    results = []
+    if code_answers:
+        for answer in code_answers:
+            results.append(
+                {
+                    "linkId": answer[0],
+                    "answer": [{"valueCoding": {"code": answer[1].code, "system": answer[1].system}}],
+                }
+            )
+    if string_answers:
+        for answer in string_answers:
+            results.append({"linkId": answer[0], "answer": [{"valueString": answer[1]}]})
+    if date_answers:
+        for answer in date_answers:
+            results.append({"linkId": answer[0], "answer": [{"valueDate": "%s" % answer[1].isoformat()}]})
+    if uri_answers:
+        for answer in uri_answers:
+            results.append({"linkId": answer[0], "answer": [{"valueUri": answer[1]}]})
 
-  response_json = {"resourceType": "QuestionnaireResponse",
-          "status": "completed",
-          "subject": {"reference": "Patient/{}".format(participant_id)},
-          "questionnaire": {"reference": "Questionnaire/{}".format(questionnaire_id)},
-          "group": {
-            "question": results
-          }
-      }
-  if language is not None:
-    response_json.update(
-      {"extension": [
-                      {"url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
-                       "valueCode": "{}".format(language)}
-                    ]
-      })
-  if authored is not None:
-    response_json.update({"authored": authored.isoformat()})
-  return response_json
+    response_json = {
+        "resourceType": "QuestionnaireResponse",
+        "status": "completed",
+        "subject": {"reference": "Patient/{}".format(participant_id)},
+        "questionnaire": {"reference": "Questionnaire/{}".format(questionnaire_id)},
+        "group": {"question": results},
+    }
+    if language is not None:
+        response_json.update(
+            {
+                "extension": [
+                    {
+                        "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
+                        "valueCode": "{}".format(language),
+                    }
+                ]
+            }
+        )
+    if authored is not None:
+        response_json.update({"authored": authored.isoformat()})
+    return response_json
+
 
 def questionnaire_response_url(participant_id):
-  return 'Participant/%s/QuestionnaireResponse' % participant_id
+    return "Participant/%s/QuestionnaireResponse" % participant_id
+
 
 def pretty(obj):
-  return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))
+    return json.dumps(obj, sort_keys=True, indent=4, separators=(",", ": "))
+
 
 @contextlib.contextmanager
 def random_ids(ids):
-  with patch('random.randint', side_effect=ids):
-    yield
+    with patch("random.randint", side_effect=ids):
+        yield
+
 
 def run_deferred_tasks(test):
-  tasks = test.taskqueue.get_filtered_tasks()
-  test.taskqueue.FlushQueue("default")
-  while tasks:
-    for task in tasks:
-      if task.url == '/_ah/queue/deferred':
-        deferred.run(task.payload)
     tasks = test.taskqueue.get_filtered_tasks()
-    for task in tasks:
-      # As soon as we hit a non-deferred task, bail out of here.
-      if task.url != '/_ah/queue/deferred':
-        return
     test.taskqueue.FlushQueue("default")
+    while tasks:
+        for task in tasks:
+            if task.url == "/_ah/queue/deferred":
+                deferred.run(task.payload)
+        tasks = test.taskqueue.get_filtered_tasks()
+        for task in tasks:
+            # As soon as we hit a non-deferred task, bail out of here.
+            if task.url != "/_ah/queue/deferred":
+                return
+        test.taskqueue.FlushQueue("default")
 
 
 def get_restore_or_cancel_info(reason=None, author=None, site=None, status=None):
-  """get a patch request to cancel or restore a PM order,
+    """get a patch request to cancel or restore a PM order,
   if called with no params it defaults to a cancel order."""
-  if reason is None:
-    reason = "a mistake was made."
-  if author is None:
-    author = "mike@pmi-ops.org"
-  if site is None:
-    site = "hpo-site-monroeville"
-  if status is None:
-    status = 'cancelled'
-    info = 'cancelledInfo'
-  elif status == 'restored':
-    info = 'restoredInfo'
+    if reason is None:
+        reason = "a mistake was made."
+    if author is None:
+        author = "mike@pmi-ops.org"
+    if site is None:
+        site = "hpo-site-monroeville"
+    if status is None:
+        status = "cancelled"
+        info = "cancelledInfo"
+    elif status == "restored":
+        info = "restoredInfo"
 
-  return {
-    "reason": reason,
-    info: {
-      "author": {
-        "system": "https://www.pmi-ops.org/healthpro-username",
-        "value": author
-      },
-      "site": {
-        "system": "https://www.pmi-ops.org/site-id",
-        "value": site
-      }
-    },
-    "status": status
-  }
+    return {
+        "reason": reason,
+        info: {
+            "author": {"system": "https://www.pmi-ops.org/healthpro-username", "value": author},
+            "site": {"system": "https://www.pmi-ops.org/site-id", "value": site},
+        },
+        "status": status,
+    }
 
 
 def cancel_biobank_order():
-  return {
-    "amendedReason": "messed up",
-    "cancelledInfo": {
-      "author": {
-        "system": "https://www.pmi-ops.org/healthpro-username",
-        "value": "mike@pmi-ops.org"
-      },
-      "site": {
-        "system": "https://www.pmi-ops.org/site-id",
-        "value": "hpo-site-monroeville"
-      }
-    },
-    "status": "cancelled"
-  }
-
+    return {
+        "amendedReason": "messed up",
+        "cancelledInfo": {
+            "author": {"system": "https://www.pmi-ops.org/healthpro-username", "value": "mike@pmi-ops.org"},
+            "site": {"system": "https://www.pmi-ops.org/site-id", "value": "hpo-site-monroeville"},
+        },
+        "status": "cancelled",
+    }

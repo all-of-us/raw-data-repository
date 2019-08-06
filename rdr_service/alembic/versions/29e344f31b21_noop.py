@@ -7,8 +7,8 @@ Create Date: 2018-01-12 17:11:22.258786
 """
 
 # revision identifiers, used by Alembic.
-revision = '29e344f31b21'
-down_revision = 'd2e17663c615'
+revision = "29e344f31b21"
+down_revision = "d2e17663c615"
 branch_labels = None
 depends_on = None
 
@@ -19,7 +19,6 @@ def upgrade(engine_name):
 
 def downgrade(engine_name):
     globals()["downgrade_%s" % engine_name]()
-
 
 
 def upgrade_rdr():

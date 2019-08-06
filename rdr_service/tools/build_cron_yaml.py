@@ -24,7 +24,8 @@ else:
   
 
 
-BASE_CRON_NAME = 'default'
+BASE_CRON_NAME = "default"
+
 PROJECT_NAME_MAPPING = {
   'all-of-us-rdr-prod': 'prod',
   'all-of-us-rdr-stable': 'stable',

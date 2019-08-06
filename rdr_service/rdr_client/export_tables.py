@@ -24,30 +24,26 @@ from rdr_service.rdr_client.client import Client
 
 
 def export_tables(client):
-  table_names = client.args.tables.split(',')
-  logging.info('Exporting %s from %s to %s' % (table_names, client.args.database,
-                                               client.args.directory))
-  request_body = {'database': client.args.database,
-                  'tables': table_names,
-                  'directory': client.args.directory,
-                  'deidentify': client.args.deidentify
-  }
-  if client.args.instance_name:
-    request_body['instance_name'] = client.args.instance_name
-  response = client.request_json('ExportTables', 'POST', request_body)
-  logging.info('Data is being exported to: %s' % response['destination'])
+    table_names = client.args.tables.split(",")
+    logging.info("Exporting %s from %s to %s" % (table_names, client.args.database, client.args.directory))
+    request_body = {
+        "database": client.args.database,
+        "tables": table_names,
+        "directory": client.args.directory,
+        "deidentify": client.args.deidentify,
+    }
+    if client.args.instance_name:
+        request_body["instance_name"] = client.args.instance_name
+    response = client.request_json("ExportTables", "POST", request_body)
+    logging.info("Data is being exported to: %s" % response["destination"])
 
-if __name__ == '__main__':
-  configure_logging()
-  parser = get_parser()
-  parser.add_argument('--database', help='The database to export data from', required=True)
-  parser.add_argument('--tables', help='A comma-separated list of tables to export',
-                      required=True)
-  parser.add_argument('--directory',
-                      help='A directory to write CSV output to inside the GCS bucket',
-                      required=True)
-  parser.add_argument('--deidentify', help='Whether to deidentify the exports',
-                      action='store_true')
-  parser.add_argument('--instance_name',
-                      help='Name of the instance to read data from; defaults to rdrmaindb')
-  export_tables(Client(parser=parser, base_path='offline'))
+
+if __name__ == "__main__":
+    configure_logging()
+    parser = get_parser()
+    parser.add_argument("--database", help="The database to export data from", required=True)
+    parser.add_argument("--tables", help="A comma-separated list of tables to export", required=True)
+    parser.add_argument("--directory", help="A directory to write CSV output to inside the GCS bucket", required=True)
+    parser.add_argument("--deidentify", help="Whether to deidentify the exports", action="store_true")
+    parser.add_argument("--instance_name", help="Name of the instance to read data from; defaults to rdrmaindb")
+    export_tables(Client(parser=parser, base_path="offline"))

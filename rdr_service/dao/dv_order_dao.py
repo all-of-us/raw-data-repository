@@ -5,9 +5,16 @@ from werkzeug.exceptions import BadRequest, Conflict, NotFound
 
 from rdr_service import clock
 from rdr_service.api.mayolink_api import MayoLinkApi
-from rdr_service.api_util import VIBRENT_BARCODE_URL, VIBRENT_FHIR_URL, VIBRENT_FULFILLMENT_URL, \
-  VIBRENT_ORDER_URL, \
-  format_json_code, format_json_enum, get_code_id, parse_date
+from rdr_service.api_util import (
+    VIBRENT_BARCODE_URL,
+    VIBRENT_FHIR_URL,
+    VIBRENT_FULFILLMENT_URL,
+    VIBRENT_ORDER_URL,
+    format_json_code,
+    format_json_enum,
+    get_code_id,
+    parse_date,
+)
 from rdr_service.app_util import ObjectView
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
@@ -15,296 +22,299 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
 from rdr_service.model.biobank_dv_order import BiobankDVOrder
-from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, \
-  BiobankOrderedSample
+from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.model.utils import to_client_participant_id
-from rdr_service.participant_enums import BiobankOrderStatus, OrderShipmentStatus, \
-  OrderShipmentTrackingStatus
+from rdr_service.participant_enums import BiobankOrderStatus, OrderShipmentStatus, OrderShipmentTrackingStatus
 
 
 class DvOrderDao(UpdatableDao):
+    def __init__(self):
+        self.code_dao = CodeDao()
+        super(DvOrderDao, self).__init__(BiobankDVOrder)
+        # used for testing
+        self.biobank_address = {
+            "city": "Rochester",
+            "state": "MN",
+            "postalCode": "55901",
+            "line": ["3050 Superior Drive NW"],
+            "type": "postal",
+            "use": "work",
+        }
 
-  def __init__(self):
-    self.code_dao = CodeDao()
-    super(DvOrderDao, self).__init__(BiobankDVOrder)
-    # used for testing
-    self.biobank_address = {'city': "Rochester", 'state': "MN",
-                            'postalCode': "55901", 'line': ["3050 Superior Drive NW"], 'type': 'postal', 'use': 'work'}
+    def send_order(self, resource, pid):
+        mayo = MayoLinkApi()
+        order = self._filter_order_fields(resource, pid)
+        response = mayo.post(order)
+        return self.to_client_json(response, for_update=True)
 
+    def _filter_order_fields(self, resource, pid):
+        fhir_resource = SimpleFhirR4Reader(resource)
+        summary = ParticipantSummaryDao().get(pid)
+        if not summary:
+            raise BadRequest("No summary for particpant id: {}".format(pid))
+        code_dict = summary.asdict()
+        format_json_code(code_dict, self.code_dao, "genderIdentityId")
+        format_json_code(code_dict, self.code_dao, "stateId")
+        if "genderIdentity" in code_dict and code_dict["genderIdentity"]:
+            if code_dict["genderIdentity"] == "GenderIdentity_Woman":
+                gender_val = "F"
+            elif code_dict["genderIdentity"] == "GenderIdentity_Man":
+                gender_val = "M"
+            else:
+                gender_val = "U"
+        else:
+            gender_val = "U"
 
-  def send_order(self, resource, pid):
-    mayo = MayoLinkApi()
-    order = self._filter_order_fields(resource, pid)
-    response = mayo.post(order)
-    return self.to_client_json(response, for_update=True)
+        order_id = int(fhir_resource.basedOn[0].identifier.value)
+        with self.session() as session:
+            barcode = session.query(BiobankDVOrder.barcode).filter(BiobankDVOrder.order_id == order_id).first()
 
-  def _filter_order_fields(self, resource, pid):
-    fhir_resource = SimpleFhirR4Reader(resource)
-    summary = ParticipantSummaryDao().get(pid)
-    if not summary:
-      raise BadRequest('No summary for particpant id: {}'.format(pid))
-    code_dict = summary.asdict()
-    format_json_code(code_dict, self.code_dao, 'genderIdentityId')
-    format_json_code(code_dict, self.code_dao, 'stateId')
-    if 'genderIdentity' in code_dict and code_dict['genderIdentity']:
-      if code_dict['genderIdentity'] == 'GenderIdentity_Woman':
-        gender_val = 'F'
-      elif code_dict['genderIdentity'] == 'GenderIdentity_Man':
-        gender_val = 'M'
-      else:
-        gender_val = 'U'
-    else:
-      gender_val = 'U'
+        # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
+        order = {
+            "order": {
+                "collected": fhir_resource.occurrenceDateTime,
+                "account": "",
+                "number": barcode,
+                "patient": {
+                    "medical_record_number": str(to_client_biobank_id(summary.biobankId)),
+                    "first_name": "*",
+                    "last_name": str(to_client_biobank_id(summary.biobankId)),
+                    "middle_name": "",
+                    "birth_date": "3/3/1933",
+                    "gender": gender_val,
+                    "address1": summary.streetAddress,
+                    "address2": summary.streetAddress2,
+                    "city": summary.city,
+                    "state": code_dict["state"],
+                    "postal_code": str(summary.zipCode),
+                    "phone": str(summary.phoneNumber),
+                    "account_number": None,
+                    "race": summary.race,
+                    "ethnic_group": None,
+                },
+                "physician": {"name": "None", "phone": None, "npi": None},  # must be a string value, not None.
+                "report_notes": fhir_resource.extension.get(url=VIBRENT_ORDER_URL).valueString,
+                "tests": {"test": {"code": "1SAL2", "name": "PMI Saliva, FDA Kit", "comments": None}},
+                "comments": "Salivary Kit Order, direct from participant",
+            }
+        }
+        return order
 
-    order_id = int(fhir_resource.basedOn[0].identifier.value)
-    with self.session() as session:
-      barcode = session.query(BiobankDVOrder.barcode).filter(BiobankDVOrder.order_id == order_id).first()
+    def to_client_json(self, model, for_update=False):
+        if for_update:
+            result = dict()
+            reduced_model = model["orders"]["order"]
+            result["status"] = reduced_model["status"]
+            result["barcode"] = reduced_model["reference_number"]
+            result["received"] = reduced_model["received"]
+            result["biobankOrderId"] = reduced_model["number"]
+            result["biobankTrackingId"] = reduced_model["patient"]["medical_record_number"]
+        else:
+            result = model.asdict()
+            result["orderStatus"] = format_json_enum(result, "orderStatus")
+            result["shipmentStatus"] = format_json_enum(result, "shipmentStatus")
+            format_json_code(result, self.code_dao, "stateId")
+            result["state"] = result["state"][-2:]  # Get the abbreviation
+            del result["id"]  # PK for model
 
-    # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
-    order = {
-        'order': {
-            'collected': fhir_resource.occurrenceDateTime,
-            'account': '',
-            'number': barcode,
-            'patient': {'medical_record_number': str(to_client_biobank_id(summary.biobankId)),
-                        'first_name': '*',
-                        'last_name': str(to_client_biobank_id(summary.biobankId)),
-                        'middle_name': '',
-                        'birth_date': '3/3/1933',
-                        'gender': gender_val,
-                        'address1': summary.streetAddress,
-                        'address2': summary.streetAddress2,
-                        'city': summary.city,
-                        'state': code_dict['state'],
-                        'postal_code': str(summary.zipCode),
-                        'phone': str(summary.phoneNumber),
-                        'account_number': None,
-                        'race': summary.race,
-                        'ethnic_group': None
-                       },
-            'physician': {'name': 'None',  # must be a string value, not None.
-                          'phone': None,
-                          'npi': None
-                         },
-            'report_notes': fhir_resource.extension.get(
-                url=VIBRENT_ORDER_URL).valueString,
-            'tests': {'test': {'code': '1SAL2',
-                               'name': 'PMI Saliva, FDA Kit',
-                               'comments': None
-                              }
-                     },
-            'comments': 'Salivary Kit Order, direct from participant'
-        }}
-    return order
+        result = {k: v for k, v in list(result.items()) if v is not None}
+        if "participantId" in result:
+            result["participantId"] = to_client_participant_id(result["participantId"])
+        return result
 
-  def to_client_json(self, model, for_update=False):
-    if for_update:
-      result = dict()
-      reduced_model = model['orders']['order']
-      result['status'] = reduced_model['status']
-      result['barcode'] = reduced_model['reference_number']
-      result['received'] = reduced_model['received']
-      result['biobankOrderId'] = reduced_model['number']
-      result['biobankTrackingId'] = reduced_model['patient']['medical_record_number']
-    else:
-      result = model.asdict()
-      result['orderStatus'] = format_json_enum(result, 'orderStatus')
-      result['shipmentStatus'] = format_json_enum(result, 'shipmentStatus')
-      format_json_code(result, self.code_dao, 'stateId')
-      result['state'] = result['state'][-2:]  # Get the abbreviation
-      del result['id']  # PK for model
+    def from_client_json(
+        self, resource_json, id_=None, expected_version=None, participant_id=None, client_id=None
+    ):  # pylint: disable=unused-argument
+        """Initial loading of the DV order table does not include all attributes."""
+        fhir_resource = SimpleFhirR4Reader(resource_json)
+        order = BiobankDVOrder(participantId=participant_id)
+        order.participantId = participant_id
 
-    result = {k: v for k, v in list(result.items()) if v is not None}
-    if 'participantId' in result:
-      result['participantId'] = to_client_participant_id(result['participantId'])
-    return result
+        if resource_json["resourceType"].lower() == "supplydelivery":
+            order.order_id = int(fhir_resource.basedOn[0].identifier.value)
+            existing_obj = self.get(self.get_id(order))
+            if not existing_obj:
+                raise NotFound("existing order record not found")
 
-  def from_client_json(self, resource_json, id_=None, expected_version=None,
-                       participant_id=None, client_id=None): #pylint: disable=unused-argument
-    """Initial loading of the DV order table does not include all attributes."""
-    fhir_resource = SimpleFhirR4Reader(resource_json)
-    order = BiobankDVOrder(participantId=participant_id)
-    order.participantId = participant_id
+            existing_obj.shipmentStatus = self._enumerate_order_tracking_status(
+                fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "tracking-status").valueString
+            )
+            existing_obj.shipmentCarrier = fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "carrier").valueString
+            if hasattr(fhir_resource["extension"], VIBRENT_FHIR_URL + "expected-delivery-date"):
+                existing_obj.shipmentEstArrival = parse_date(
+                    fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime
+                )
 
-    if resource_json['resourceType'].lower() == 'supplydelivery':
-      order.order_id = int(fhir_resource.basedOn[0].identifier.value)
-      existing_obj = self.get(self.get_id(order))
-      if not existing_obj:
-        raise NotFound('existing order record not found')
+            existing_obj.trackingId = fhir_resource.identifier.get(system=VIBRENT_FHIR_URL + "trackingId").value
+            # USPS status
+            existing_obj.orderStatus = self._enumerate_order_shipping_status(fhir_resource.status)
+            # USPS status time
+            existing_obj.shipmentLastUpdate = parse_date(fhir_resource.occurrenceDateTime)
+            order_address = fhir_resource.contained.get(resourceType="Location").get("address")
+            address_use = fhir_resource.contained.get(resourceType="Location").get("address").get("use")
+            order_address.stateId = get_code_id(order_address, self.code_dao, "state", "State_")
+            existing_obj.address = {
+                "city": existing_obj.city,
+                "state": existing_obj.stateId,
+                "postalCode": existing_obj.zipCode,
+                "line": [existing_obj.streetAddress1],
+            }
 
-      existing_obj.shipmentStatus = self._enumerate_order_tracking_status(fhir_resource.extension.get(
-          url=VIBRENT_FHIR_URL + 'tracking-status').valueString)
-      existing_obj.shipmentCarrier = fhir_resource.extension.get(
-          url=VIBRENT_FHIR_URL + 'carrier').valueString
-      if hasattr(fhir_resource['extension'], VIBRENT_FHIR_URL + 'expected-delivery-date'):
-        existing_obj.shipmentEstArrival = parse_date(fhir_resource.extension.get(
-            url=VIBRENT_FHIR_URL + 'expected-delivery-date').valueDateTime)
+            if existing_obj.streetAddress2 is not None and existing_obj.streetAddress2 != "":
+                existing_obj.address["line"].append(existing_obj.streetAddress2)
 
-      existing_obj.trackingId = fhir_resource.identifier.get(
-          system=VIBRENT_FHIR_URL + 'trackingId').value
-      # USPS status
-      existing_obj.orderStatus = self._enumerate_order_shipping_status(
-          fhir_resource.status)
-      # USPS status time
-      existing_obj.shipmentLastUpdate = parse_date(fhir_resource.occurrenceDateTime)
-      order_address = fhir_resource.contained.get(resourceType='Location').get('address')
-      address_use = fhir_resource.contained.get(resourceType='Location').get('address').get('use')
-      order_address.stateId = get_code_id(order_address, self.code_dao, 'state', 'State_')
-      existing_obj.address = {'city': existing_obj.city,
-                              'state': existing_obj.stateId, 'postalCode': existing_obj.zipCode,
-                              'line': [existing_obj.streetAddress1]}
+            if address_use.lower() == "home":
+                existing_obj.city = order_address.city
+                existing_obj.stateId = order_address.stateId
+                existing_obj.streetAddress1 = order_address.line[0]
+                existing_obj.zipCode = order_address.postalCode
 
-      if existing_obj.streetAddress2 is not None and existing_obj.streetAddress2 != '':
-        existing_obj.address['line'].append(existing_obj.streetAddress2)
+                if len(order_address._obj["line"][0]) > 1:
+                    try:
+                        existing_obj.streetAddress2 = order_address._obj["line"][1]
+                    except IndexError:
+                        pass
 
-      if address_use.lower() == 'home':
-        existing_obj.city = order_address.city
-        existing_obj.stateId = order_address.stateId
-        existing_obj.streetAddress1 = order_address.line[0]
-        existing_obj.zipCode = order_address.postalCode
+            elif address_use.lower() == "work":
+                existing_obj.biobankCity = order_address.city
+                existing_obj.biobankStateId = order_address.stateId
+                existing_obj.biobankStreetAddress1 = order_address.line[0]
+                existing_obj.biobankZipCode = order_address.postalCode
 
-        if len(order_address._obj['line'][0]) > 1:
-          try:
-            existing_obj.streetAddress2 = order_address._obj['line'][1]
-          except IndexError:
-            pass
+            if hasattr(fhir_resource, "biobankTrackingId"):
+                existing_obj.biobankTrackingId = fhir_resource.biobankTrackingId
+                existing_obj.biobankReceived = parse_date(fhir_resource.received)
 
-      elif address_use.lower() == 'work':
-        existing_obj.biobankCity = order_address.city
-        existing_obj.biobankStateId = order_address.stateId
-        existing_obj.biobankStreetAddress1 = order_address.line[0]
-        existing_obj.biobankZipCode = order_address.postalCode
+            return existing_obj
 
-      if hasattr(fhir_resource, 'biobankTrackingId'):
-        existing_obj.biobankTrackingId = fhir_resource.biobankTrackingId
-        existing_obj.biobankReceived = parse_date(fhir_resource.received)
+        if resource_json["resourceType"].lower() == "supplyrequest":
+            order.order_id = int(fhir_resource.identifier.get(system=VIBRENT_FHIR_URL + "orderId").value)
+            if id_ and int(id_) != order.order_id:
+                raise Conflict("url order id param does not match document order id")
 
-      return existing_obj
+            if hasattr(fhir_resource, "authoredOn"):
+                order.order_date = parse_date(fhir_resource.authoredOn)
 
-    if resource_json['resourceType'].lower() == 'supplyrequest':
-      order.order_id = int(fhir_resource.identifier.get(
-          system=VIBRENT_FHIR_URL + 'orderId').value)
-      if id_ and int(id_) != order.order_id:
-        raise Conflict('url order id param does not match document order id')
+            order.supplier = fhir_resource.contained.get(resourceType="Organization").id
+            order.created = clock.CLOCK.now()
+            order.supplierStatus = fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString
 
-      if hasattr(fhir_resource, 'authoredOn'):
-        order.order_date = parse_date(fhir_resource.authoredOn)
+            fhir_device = fhir_resource.contained.get(resourceType="Device")
+            order.itemName = fhir_device.deviceName.get(type="manufacturer-name").name
+            order.itemSKUCode = fhir_device.identifier.get(system=VIBRENT_FHIR_URL + "SKU").value
+            order.itemQuantity = fhir_resource.quantity.value
 
-      order.supplier = fhir_resource.contained.get(resourceType='Organization').id
-      order.created = clock.CLOCK.now()
-      order.supplierStatus = fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString
+            fhir_patient = fhir_resource.contained.get(resourceType="Patient")
+            fhir_address = fhir_patient.address[0]
+            order.streetAddress1 = fhir_address.line[0]
+            order.streetAddress2 = "\n".join(fhir_address.line[1:])
+            order.city = fhir_address.city
+            order.stateId = get_code_id(fhir_address, self.code_dao, "state", "State_")
+            order.zipCode = fhir_address.postalCode
 
-      fhir_device = fhir_resource.contained.get(resourceType='Device')
-      order.itemName = fhir_device.deviceName.get(type='manufacturer-name').name
-      order.itemSKUCode = fhir_device.identifier.get(
-          system=VIBRENT_FHIR_URL + 'SKU').value
-      order.itemQuantity = fhir_resource.quantity.value
+            order.orderType = fhir_resource.extension.get(url=VIBRENT_ORDER_URL).valueString
+            if id_ is None:
+                order.version = 1
+            else:
+                # A put request may add new attributes
+                existing_obj = self.get(self.get_id(order))
+                if not existing_obj:
+                    raise NotFound("existing order record not found")
 
-      fhir_patient = fhir_resource.contained.get(resourceType='Patient')
-      fhir_address = fhir_patient.address[0]
-      order.streetAddress1 = fhir_address.line[0]
-      order.streetAddress2 = '\n'.join(fhir_address.line[1:])
-      order.city = fhir_address.city
-      order.stateId = get_code_id(fhir_address, self.code_dao, 'state', 'State_')
-      order.zipCode = fhir_address.postalCode
+                order.id = existing_obj.id
+                order.version = expected_version
+                order.biobankStatus = fhir_resource.status
+                order.barcode = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).valueString
 
-      order.orderType = fhir_resource.extension.get(
-          url=VIBRENT_ORDER_URL).valueString
-      if id_ is None:
-        order.version = 1
-      else:
-        # A put request may add new attributes
-        existing_obj = self.get(self.get_id(order))
-        if not existing_obj:
-          raise NotFound('existing order record not found')
+        return order
 
-        order.id = existing_obj.id
-        order.version = expected_version
-        order.biobankStatus = fhir_resource.status
-        order.barcode = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).valueString
+    def insert_biobank_order(self, pid, resource):
+        obj = BiobankOrder()
+        obj.participantId = int(pid)
+        obj.created = clock.CLOCK.now()
+        obj.created = datetime.datetime.now()
+        obj.orderStatus = BiobankOrderStatus.UNSET
+        obj.biobankOrderId = resource["biobankOrderId"]
+        test = self.get(resource["id"])
+        obj.dvOrders = [test]
 
-    return order
+        bod = BiobankOrderDao()
+        obj.samples = [BiobankOrderedSample(test="1SAL2", processingRequired=False, description="salivary pilot kit")]
+        self._add_identifiers_and_main_id(obj, ObjectView(resource))
+        bod.insert(obj)
 
-  def insert_biobank_order(self, pid, resource):
-    obj = BiobankOrder()
-    obj.participantId = int(pid)
-    obj.created = clock.CLOCK.now()
-    obj.created = datetime.datetime.now()
-    obj.orderStatus = BiobankOrderStatus.UNSET
-    obj.biobankOrderId = resource['biobankOrderId']
-    test = self.get(resource['id'])
-    obj.dvOrders = [test]
+    def _add_identifiers_and_main_id(self, order, resource):
+        order.identifiers = []
+        for i in resource.identifier:
+            try:
+                if i["system"].lower() == VIBRENT_FHIR_URL + "trackingid":
+                    order.identifiers.append(
+                        BiobankOrderIdentifier(
+                            system=BiobankDVOrder._VIBRENT_ID_SYSTEM + "/trackingId", value=i["value"]
+                        )
+                    )
+            except AttributeError:
+                raise BadRequest(
+                    "No identifier for system %r, required for primary key." % BiobankDVOrder._VIBRENT_ID_SYSTEM
+                )
+        for i in resource.basedOn:
+            try:
+                if i["identifier"]["system"].lower() == VIBRENT_FHIR_URL + "orderid":
+                    order.identifiers.append(
+                        BiobankOrderIdentifier(
+                            system=BiobankDVOrder._VIBRENT_ID_SYSTEM, value=i["identifier"]["value"]
+                        )
+                    )
+            except AttributeError:
+                raise BadRequest(
+                    "No identifier for system %r, required for primary key." % BiobankDVOrder._VIBRENT_ID_SYSTEM
+                )
 
-    bod = BiobankOrderDao()
-    obj.samples = [BiobankOrderedSample(
-        test='1SAL2', processingRequired=False, description='salivary pilot kit')]
-    self._add_identifiers_and_main_id(obj, ObjectView(resource))
-    bod.insert(obj)
+    def get_etag(self, id_, pid):
+        with self.session() as session:
+            query = session.query(BiobankDVOrder.version).filter_by(participantId=pid).filter_by(order_id=id_)
+            result = query.first()
+            if result:
+                return result[0]
 
-  def _add_identifiers_and_main_id(self, order, resource):
-    order.identifiers = []
-    for i in resource.identifier:
-      try:
-        if i['system'].lower() == VIBRENT_FHIR_URL + 'trackingid':
-          order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._VIBRENT_ID_SYSTEM
-                                                          + '/trackingId', value=i['value']))
-      except AttributeError:
-        raise BadRequest(
-            'No identifier for system %r, required for primary key.' %
-             BiobankDVOrder._VIBRENT_ID_SYSTEM)
-    for i in resource.basedOn:
-      try:
-        if i['identifier']['system'].lower() == VIBRENT_FHIR_URL + 'orderid':
-          order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._VIBRENT_ID_SYSTEM,
-                                                          value=i['identifier']['value']))
-      except AttributeError:
-        raise BadRequest(
-            'No identifier for system %r, required for primary key.' %
-             BiobankDVOrder._VIBRENT_ID_SYSTEM)
+        return None
 
-  def get_etag(self, id_, pid):
-    with self.session() as session:
-      query = session.query(BiobankDVOrder.version).filter_by(
-          participantId=pid).filter_by(
-              order_id=id_)
-      result = query.first()
-      if result:
-        return result[0]
+    def _do_update(self, session, obj, existing_obj):  # pylint: disable=unused-argument
+        obj.version += 1
+        session.merge(obj)
 
-    return None
+    def get_id(self, obj):
+        with self.session() as session:
+            query = (
+                session.query(BiobankDVOrder.id)
+                .filter_by(participantId=obj.participantId)
+                .filter_by(order_id=obj.order_id)
+            )
+            return query.first()
 
-  def _do_update(self, session, obj, existing_obj): #pylint: disable=unused-argument
-    obj.version += 1
-    session.merge(obj)
+    def get_biobank_info(self, order):
+        with self.session() as session:
+            query = (
+                session.query(BiobankDVOrder)
+                .options(load_only("barcode", "biobankOrderId", "biobankStatus", "biobankReceived"))
+                .filter_by(participantId=order.participantId)
+                .filter_by(order_id=order.order_id)
+            )
+            return query.first()
 
-  def get_id(self, obj):
-    with self.session() as session:
-      query = session.query(BiobankDVOrder.id).filter_by(
-          participantId=obj.participantId).filter_by(
-              order_id=obj.order_id)
-      return query.first()
+    def _enumerate_order_shipping_status(self, status):
+        if status.lower() == "in-progress" or status.lower() == "active":
+            return OrderShipmentStatus.SHIPPED
+        elif status.lower() == "completed":
+            return OrderShipmentStatus.FULFILLMENT
+        else:
+            return OrderShipmentStatus.UNSET
 
-  def get_biobank_info(self, order):
-    with self.session() as session:
-      query = session.query(BiobankDVOrder).options(
-          load_only("barcode", "biobankOrderId", "biobankStatus", "biobankReceived"))\
-                                       .filter_by(participantId=order.participantId)\
-                                                 .filter_by(order_id=order.order_id)
-      return query.first()
-
-  def _enumerate_order_shipping_status(self, status):
-    if status.lower() == 'in-progress' or status.lower() == 'active':
-      return OrderShipmentStatus.SHIPPED
-    elif status.lower() == 'completed':
-      return OrderShipmentStatus.FULFILLMENT
-    else:
-      return OrderShipmentStatus.UNSET
-
-  def _enumerate_order_tracking_status(self, value):
-    if value.lower() == 'enroute':
-      return OrderShipmentTrackingStatus.ENROUTE
-    elif value.lower() == 'delivered':
-      return OrderShipmentTrackingStatus.DELIVERED
-    else:
-      return OrderShipmentTrackingStatus.UNSET
+    def _enumerate_order_tracking_status(self, value):
+        if value.lower() == "enroute":
+            return OrderShipmentTrackingStatus.ENROUTE
+        elif value.lower() == "delivered":
+            return OrderShipmentTrackingStatus.DELIVERED
+        else:
+            return OrderShipmentTrackingStatus.UNSET

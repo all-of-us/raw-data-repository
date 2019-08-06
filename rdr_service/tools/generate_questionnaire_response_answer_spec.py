@@ -40,19 +40,20 @@ _QUESTION_SPEC_SQL = """
 
 
 def main(args):
-  with open(args.output_file, 'wb') as csvfile:
-    writer = csv.writer(csvfile)
-    with database_factory.get_database().session() as session:
-      cursor = session.execute(text(_QUESTION_SPEC_SQL))
-      try:
-        writer.writerow(list(cursor.keys()))
-        results = cursor.fetchall()
-        for result in results:
-          writer.writerow(result)
-      finally:
-        cursor.close()
+    with open(args.output_file, "wb") as csvfile:
+        writer = csv.writer(csvfile)
+        with database_factory.get_database().session() as session:
+            cursor = session.execute(text(_QUESTION_SPEC_SQL))
+            try:
+                writer.writerow(list(cursor.keys()))
+                results = cursor.fetchall()
+                for result in results:
+                    writer.writerow(result)
+            finally:
+                cursor.close()
 
-if __name__ == '__main__':
-  parser = get_parser()
-  parser.add_argument('--output_file', help='File to write the spec to', required=True)
-  main(parser.parse_args())
+
+if __name__ == "__main__":
+    parser = get_parser()
+    parser.add_argument("--output_file", help="File to write the spec to", required=True)
+    main(parser.parse_args())

@@ -7,118 +7,122 @@ from rdr_service.model.utils import Enum, MultiEnum
 
 
 class GenomicSetStatus(messages.Enum):
-  """Status of Genomic Set"""
-  UNSET = 0
-  VALID = 1
-  INVALID = 2
+    """Status of Genomic Set"""
+
+    UNSET = 0
+    VALID = 1
+    INVALID = 2
 
 
 class GenomicValidationStatus(messages.Enum):
-  """Original Specification needed by older database migrations"""
-  UNSET = 0
-  VALID = 1
-  INVALID_BIOBANK_ORDER = 2
-  INVALID_NY_ZIPCODE = 3
-  INVALID_SEX_AT_BIRTH = 4
-  INVALID_GENOME_TYPE = 5
-  INVALID_CONSENT = 6
-  INVALID_WITHDRAW_STATUS = 7
-  INVALID_AGE = 8
-  INVALID_DUP_PARTICIPANT = 9
+    """Original Specification needed by older database migrations"""
+
+    UNSET = 0
+    VALID = 1
+    INVALID_BIOBANK_ORDER = 2
+    INVALID_NY_ZIPCODE = 3
+    INVALID_SEX_AT_BIRTH = 4
+    INVALID_GENOME_TYPE = 5
+    INVALID_CONSENT = 6
+    INVALID_WITHDRAW_STATUS = 7
+    INVALID_AGE = 8
+    INVALID_DUP_PARTICIPANT = 9
 
 
 class GenomicSetMemberStatus(messages.Enum):
-  """Status of Genomic Set Member"""
-  UNSET = 0
-  VALID = 1
-  INVALID = 2
+    """Status of Genomic Set Member"""
+
+    UNSET = 0
+    VALID = 1
+    INVALID = 2
 
 
 class GenomicValidationFlag(messages.Enum):
-  """Validation Status Flags"""
-  UNSET = 0
-  #VALID = 1
-  INVALID_BIOBANK_ORDER = 2
-  INVALID_NY_ZIPCODE = 3
-  INVALID_SEX_AT_BIRTH = 4
-  INVALID_GENOME_TYPE = 5
-  INVALID_CONSENT = 6
-  INVALID_WITHDRAW_STATUS = 7
-  INVALID_AGE = 8
-  INVALID_DUP_PARTICIPANT = 9
+    """Validation Status Flags"""
+
+    UNSET = 0
+    # VALID = 1
+    INVALID_BIOBANK_ORDER = 2
+    INVALID_NY_ZIPCODE = 3
+    INVALID_SEX_AT_BIRTH = 4
+    INVALID_GENOME_TYPE = 5
+    INVALID_CONSENT = 6
+    INVALID_WITHDRAW_STATUS = 7
+    INVALID_AGE = 8
+    INVALID_DUP_PARTICIPANT = 9
 
 
 class GenomicSet(Base):
-  """
+    """
   Genomic Set model
   """
-  __tablename__ = 'genomic_set'
 
-  genomicSetMember = relationship('GenomicSetMember', cascade='all, delete-orphan')
+    __tablename__ = "genomic_set"
 
-  # Primary Key
-  id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
-  # have mysql set the creation data for each new order
-  created = Column('created', DateTime, nullable=True)
-  # have mysql always update the modified data when the record is changed
-  modified = Column('modified', DateTime, nullable=True)
+    genomicSetMember = relationship("GenomicSetMember", cascade="all, delete-orphan")
 
-  genomicSetName = Column('genomic_set_name', String(80), nullable=False)
-  genomicSetCriteria = Column('genomic_set_criteria', String(80), nullable=False)
-  genomicSetVersion = Column('genomic_set_version', Integer, nullable=False)
-  # genomic set file
-  genomicSetFile = Column('genomic_set_file', String(250), nullable=True)
-  # genomic set file timestamp
-  genomicSetFileTime = Column('genomic_set_file_time', DateTime, nullable=True)
+    # Primary Key
+    id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
+    # have mysql set the creation data for each new order
+    created = Column("created", DateTime, nullable=True)
+    # have mysql always update the modified data when the record is changed
+    modified = Column("modified", DateTime, nullable=True)
 
-  genomicSetStatus = Column('genomic_set_status',
-                            Enum(GenomicSetStatus), default=GenomicSetStatus.UNSET)
-  validatedTime = Column('validated_time', DateTime, nullable=True)
+    genomicSetName = Column("genomic_set_name", String(80), nullable=False)
+    genomicSetCriteria = Column("genomic_set_criteria", String(80), nullable=False)
+    genomicSetVersion = Column("genomic_set_version", Integer, nullable=False)
+    # genomic set file
+    genomicSetFile = Column("genomic_set_file", String(250), nullable=True)
+    # genomic set file timestamp
+    genomicSetFileTime = Column("genomic_set_file_time", DateTime, nullable=True)
 
-  __table_args__ = (
-    UniqueConstraint('genomic_set_name', 'genomic_set_version', name='uidx_genomic_name_version'),
-  )
+    genomicSetStatus = Column("genomic_set_status", Enum(GenomicSetStatus), default=GenomicSetStatus.UNSET)
+    validatedTime = Column("validated_time", DateTime, nullable=True)
 
-event.listen(GenomicSet, 'before_insert', model_insert_listener)
-event.listen(GenomicSet, 'before_update', model_update_listener)
+    __table_args__ = (UniqueConstraint("genomic_set_name", "genomic_set_version", name="uidx_genomic_name_version"),)
+
+
+event.listen(GenomicSet, "before_insert", model_insert_listener)
+event.listen(GenomicSet, "before_update", model_update_listener)
+
 
 class GenomicSetMember(Base):
-  """
+    """
   Genomic Set Member model
   """
-  __tablename__ = 'genomic_set_member'
 
-  # Primary Key
-  id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
-  # have mysql set the creation data for each new order
-  created = Column('created', DateTime, nullable=True)
-  # have mysql always update the modified data when the record is changed
-  modified = Column('modified', DateTime, nullable=True)
+    __tablename__ = "genomic_set_member"
 
-  genomicSetId = Column('genomic_set_id', Integer, ForeignKey('genomic_set.id'), nullable=False)
+    # Primary Key
+    id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
+    # have mysql set the creation data for each new order
+    created = Column("created", DateTime, nullable=True)
+    # have mysql always update the modified data when the record is changed
+    modified = Column("modified", DateTime, nullable=True)
 
-  participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
-                         nullable=False)
-  nyFlag = Column('ny_flag', Integer, nullable=True)
+    genomicSetId = Column("genomic_set_id", Integer, ForeignKey("genomic_set.id"), nullable=False)
 
-  sexAtBirth = Column('sex_at_birth', String(20), nullable=True)
-  genomeType = Column('genome_type', String(80), nullable=True)
+    participantId = Column("participant_id", Integer, ForeignKey("participant.participant_id"), nullable=False)
+    nyFlag = Column("ny_flag", Integer, nullable=True)
 
-  biobankOrderId = Column('biobank_order_id', String(80),
-                          ForeignKey('biobank_order.biobank_order_id'), unique=False, nullable=True)
+    sexAtBirth = Column("sex_at_birth", String(20), nullable=True)
+    genomeType = Column("genome_type", String(80), nullable=True)
 
-  biobankId = Column('biobank_id', String(80), nullable=True)
+    biobankOrderId = Column(
+        "biobank_order_id", String(80), ForeignKey("biobank_order.biobank_order_id"), unique=False, nullable=True
+    )
 
-  biobankOrderClientId = Column('biobank_order_client_Id', String(80), nullable=True)
+    biobankId = Column("biobank_id", String(80), nullable=True)
 
-  packageId = Column('package_id', String(250), nullable=True)
+    biobankOrderClientId = Column("biobank_order_client_Id", String(80), nullable=True)
 
-  validationStatus = Column('validation_status', Enum(GenomicSetMemberStatus),
-                            default=GenomicSetStatus.UNSET)
-  validationFlags = Column('validation_flags', MultiEnum(GenomicValidationFlag),
-                           nullable=True)
+    packageId = Column("package_id", String(250), nullable=True)
 
-  validatedTime = Column('validated_time', DateTime, nullable=True)
+    validationStatus = Column("validation_status", Enum(GenomicSetMemberStatus), default=GenomicSetStatus.UNSET)
+    validationFlags = Column("validation_flags", MultiEnum(GenomicValidationFlag), nullable=True)
 
-event.listen(GenomicSetMember, 'before_insert', model_insert_listener)
-event.listen(GenomicSetMember, 'before_update', model_update_listener)
+    validatedTime = Column("validated_time", DateTime, nullable=True)
+
+
+event.listen(GenomicSetMember, "before_insert", model_insert_listener)
+event.listen(GenomicSetMember, "before_update", model_update_listener)

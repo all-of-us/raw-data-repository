@@ -9,18 +9,14 @@ from rdr_service.rdr_client.client import Client
 
 
 def main():
-  client = Client()
+    client = Client()
 
-  request = {
-      'facets':['HPO_ID'],
-      'start_date': '2017-03-26',
-      'end_date': '2017-03-26'
-  }
+    request = {"facets": ["HPO_ID"], "start_date": "2017-03-26", "end_date": "2017-03-26"}
 
-  response = client.request_json('Metrics', 'POST', request)
-  logging.info(json.dumps(response, indent=2, sort_keys=True))
+    response = client.request_json("Metrics", "POST", request)
+    logging.info(json.dumps(response, indent=2, sort_keys=True))
 
 
-if __name__ == '__main__':
-  configure_logging()
-  main()
+if __name__ == "__main__":
+    configure_logging()
+    main()

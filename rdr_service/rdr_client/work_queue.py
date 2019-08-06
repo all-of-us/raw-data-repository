@@ -24,30 +24,30 @@ from rdr_service.rdr_client.client import Client
 
 
 def main():
-  client = Client()
-  awardee = 'PITT'  # Change to the awardee ID you're requesting data for.
-  sync_time = 300  # Number of seconds before next sync.
-  response = client.request_json('ParticipantSummary?_count=1000&_sync=true&_sort=lastModified'
-                                 '&awardee={}'.format(awardee), 'GET')
+    client = Client()
+    awardee = "PITT"  # Change to the awardee ID you're requesting data for.
+    sync_time = 300  # Number of seconds before next sync.
+    response = client.request_json(
+        "ParticipantSummary?_count=1000&_sync=true&_sort=lastModified" "&awardee={}".format(awardee), "GET"
+    )
 
-  logging.info(pprint.pformat(response))
-  sync_url = response['link'][0]['url']
-  index = sync_url.find('ParticipantSummary')
+    logging.info(pprint.pformat(response))
+    sync_url = response["link"][0]["url"]
+    index = sync_url.find("ParticipantSummary")
 
-  while True:
-    time.sleep(sync_time)
-    sync_results = sync(client, sync_url, index)
-    sync_url = sync_results['link'][0]['url']
+    while True:
+        time.sleep(sync_time)
+        sync_results = sync(client, sync_url, index)
+        sync_url = sync_results["link"][0]["url"]
 
 
 def sync(client, sync_url, index):
-  print('--------------      Getting next batch from sync...        -----------------', '\n')
-  sync_results = client.request_json(sync_url[index:], 'GET')
-  logging.info(pprint.pformat(sync_results))
-  return sync_results
+    print("--------------      Getting next batch from sync...        -----------------", "\n")
+    sync_results = client.request_json(sync_url[index:], "GET")
+    logging.info(pprint.pformat(sync_results))
+    return sync_results
 
 
-if __name__ == '__main__':
-  configure_logging()
-  main()
-
+if __name__ == "__main__":
+    configure_logging()
+    main()

@@ -4,6 +4,7 @@
 #
 
 import argparse
+
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
 import csv
@@ -16,232 +17,237 @@ import time
 import urllib.request, urllib.error, urllib.parse
 
 from rdr_service import clock
-from rdr_service.data_gen.generators import BioBankOrderGen, CodeBook, ParticipantGen, \
-  PhysicalMeasurementsGen, \
-  QuestionnaireGen
+from rdr_service.data_gen.generators import (
+    BioBankOrderGen,
+    CodeBook,
+    ParticipantGen,
+    PhysicalMeasurementsGen,
+    QuestionnaireGen,
+)
 from rdr_service.data_gen.generators.hpo import HPOGen
 from rdr_service.service_libs import GCPProcessContext
-from rdr_service.services.gcp_utils import gcp_get_app_access_token, gcp_get_app_host_name, \
-  gcp_make_auth_header
+from rdr_service.services.gcp_utils import gcp_get_app_access_token, gcp_get_app_host_name, gcp_make_auth_header
 from rdr_service.services.system_utils import make_api_request, setup_logging, setup_unicode
 
-_logger = logging.getLogger('rdr_logger')
+_logger = logging.getLogger("rdr_logger")
 
-mod_cmd = 'spec-gen'
-mod_desc = 'specific participant data generator'
+mod_cmd = "spec-gen"
+mod_desc = "specific participant data generator"
 
 
 class DataGeneratorClass(object):
 
-  _gen_url = 'rdr/v1/SpecDataGen'
-  _host = None
-  _oauth_token = None
+    _gen_url = "rdr/v1/SpecDataGen"
+    _host = None
+    _oauth_token = None
 
-  _cb = None
-  _p_gen = None
-  _pm_gen = None
-  _qn_gen = None
-  _bio_gen = None
+    _cb = None
+    _p_gen = None
+    _pm_gen = None
+    _qn_gen = None
+    _bio_gen = None
 
-  def __init__(self, args):
-    self.args = args
+    def __init__(self, args):
+        self.args = args
 
-    if args:
-      self._host = gcp_get_app_host_name(self.args.project)
-      if self.args.port:
-        self._host = '{0}:{1}'.format(self._host, self.args.port)
-      else:
-        if self._host in ['127.0.0.1', 'localhost']:
-          self._host = '{0}:{1}'.format(self._host, 8080)
+        if args:
+            self._host = gcp_get_app_host_name(self.args.project)
+            if self.args.port:
+                self._host = "{0}:{1}".format(self._host, self.args.port)
+            else:
+                if self._host in ["127.0.0.1", "localhost"]:
+                    self._host = "{0}:{1}".format(self._host, 8080)
 
-      if '127.0.0.1' not in self._host and 'localhost' not in self._host:
-        self._oauth_token = gcp_get_app_access_token()
+            if "127.0.0.1" not in self._host and "localhost" not in self._host:
+                self._oauth_token = gcp_get_app_access_token()
 
-  def _gdoc_csv_data(self, doc_id):
-    """
+    def _gdoc_csv_data(self, doc_id):
+        """
     Fetch a google doc spreadsheet in CSV format
     :param doc_id: document id
     :return: A list object with rows from spreadsheet
     """
-    url = 'https://docs.google.com/spreadsheets/d/{0}/export?format=csv'.format(doc_id)
-    response = urllib.request.urlopen(url)
-    if response.code != 200:  # urllib2 already raises urllib2.HTTPError for some of these.
-      return None
+        url = "https://docs.google.com/spreadsheets/d/{0}/export?format=csv".format(doc_id)
+        response = urllib.request.urlopen(url)
+        if response.code != 200:  # urllib2 already raises urllib2.HTTPError for some of these.
+            return None
 
-    # Convert csv file to a list of row data
-    csv_data = list()
-    for row in csv.reader(response):
-      csv_data.append(row)
+        # Convert csv file to a list of row data
+        csv_data = list()
+        for row in csv.reader(response):
+            csv_data.append(row)
 
-    return csv_data
+        return csv_data
 
-  def _local_csv_data(self, filename):
-    """
+    def _local_csv_data(self, filename):
+        """
     Read local spreadsheet csv
     :param filename:
     :return:
     """
-    if not os.path.exists(filename):
-      return None
+        if not os.path.exists(filename):
+            return None
 
-    csv_data = list()
+        csv_data = list()
 
-    # read source spreadsheet into p_data
-    with open(filename) as handle:
-      reader = csv.reader(handle, delimiter=',')
-      for row in reader:
-        csv_data.append(row)
+        # read source spreadsheet into p_data
+        with open(filename) as handle:
+            reader = csv.reader(handle, delimiter=",")
+            for row in reader:
+                csv_data.append(row)
 
-    return csv_data
+        return csv_data
 
-  def _convert_csv_column_to_dict(self, csv_data, column):
-    """
+    def _convert_csv_column_to_dict(self, csv_data, column):
+        """
     Return a dictionary object with keys from the first column and values from the specified
     column.
     :param csv_data: File-like CSV text downloaded from Google spreadsheets. (See main doc.)
     :return: dict of fields and values for given column
     """
-    results = dict()
+        results = dict()
 
-    for row in csv_data:
-      key = row[0]
-      data = row[1:][column]
+        for row in csv_data:
+            key = row[0]
+            data = row[1:][column]
 
-      if data:
-        if key not in results:
-          results[key] = data.strip() if data else ''
-        else:
-          # append multiple choice questions
-          results[key] += '|{0}'.format(data.strip())
+            if data:
+                if key not in results:
+                    results[key] = data.strip() if data else ""
+                else:
+                    # append multiple choice questions
+                    results[key] += "|{0}".format(data.strip())
 
-    return results
+        return results
 
-  def _random_date(self, start=None, max_delta=None):
-    """
+    def _random_date(self, start=None, max_delta=None):
+        """
     Choose a random date for participant start
     :param start: specific start date.
     :param max_delta: maximum delta from start to use for range.
     :return: datetime
     """
-    if not start:
-      # set a start date in the past and an end date 40 days in the past
-      start = datetime.datetime.now() - datetime.timedelta(weeks=102)
-    if max_delta:
-      end = start + max_delta
-      # don't allow future dates.
-      if end > datetime.datetime.now():
-        end = self._random_date(start, (datetime.datetime.now() - start))
-    else:
-      end = datetime.datetime.now() - datetime.timedelta(days=40)
-      # if our start is close to now(), just use now().
-      if end < start:
-        end = datetime.datetime.now()
+        if not start:
+            # set a start date in the past and an end date 40 days in the past
+            start = datetime.datetime.now() - datetime.timedelta(weeks=102)
+        if max_delta:
+            end = start + max_delta
+            # don't allow future dates.
+            if end > datetime.datetime.now():
+                end = self._random_date(start, (datetime.datetime.now() - start))
+        else:
+            end = datetime.datetime.now() - datetime.timedelta(days=40)
+            # if our start is close to now(), just use now().
+            if end < start:
+                end = datetime.datetime.now()
 
-    # convert to floats and add a random amount of time.
-    stime = time.mktime(start.timetuple())
-    etime = time.mktime(end.timetuple())
-    ptime = stime + (random.random() * (etime - stime))
+        # convert to floats and add a random amount of time.
+        stime = time.mktime(start.timetuple())
+        etime = time.mktime(end.timetuple())
+        ptime = stime + (random.random() * (etime - stime))
 
-    # convert to datetime
-    ts = time.localtime(ptime)
-    dt = datetime.datetime.fromtimestamp(time.mktime(ts))
-    # Choose a time somewhere in regular business hours, +0:00 timezone.
-    dt = dt.replace(hour=int((4 + random.random() * 12)))
-    dt = dt.replace(microsecond=int(random.random() * 999999))
+        # convert to datetime
+        ts = time.localtime(ptime)
+        dt = datetime.datetime.fromtimestamp(time.mktime(ts))
+        # Choose a time somewhere in regular business hours, +0:00 timezone.
+        dt = dt.replace(hour=int((4 + random.random() * 12)))
+        dt = dt.replace(microsecond=int(random.random() * 999999))
 
-    return dt
+        return dt
 
-  def _increment_date(self, dt, minute_range=None, day_range=None):
-    """
+    def _increment_date(self, dt, minute_range=None, day_range=None):
+        """
     Increment the timestamp a bit.
     :param dt: datetime value to use for incrementing.
     :param minute_range: range to choose random minute value from.
     :param day_range: range to choose random day value from.
     :return: datetime
     """
-    if minute_range:
-      dt += datetime.timedelta(minutes=int(random.random() * minute_range))
-    else:
-      dt += datetime.timedelta(minutes=int(random.random() * 20))
+        if minute_range:
+            dt += datetime.timedelta(minutes=int(random.random() * minute_range))
+        else:
+            dt += datetime.timedelta(minutes=int(random.random() * 20))
 
-    if day_range:
-      dt += datetime.timedelta(days=int(random.random() * day_range))
-      # Choose a time somewhere in regular business hours, +0:00 timezone.
-      dt = dt.replace(hour=int((4 + random.random() * 12)))
-      dt = dt.replace(microsecond=int(random.random() * 999999))
+        if day_range:
+            dt += datetime.timedelta(days=int(random.random() * day_range))
+            # Choose a time somewhere in regular business hours, +0:00 timezone.
+            dt = dt.replace(hour=int((4 + random.random() * 12)))
+            dt = dt.replace(microsecond=int(random.random() * 999999))
 
-    return dt
+        return dt
 
-  def create_participant(self, site_id=None, hpo_id=None):
-    """
+    def create_participant(self, site_id=None, hpo_id=None):
+        """
     Create a new participant with a random or specific hpo or site id
     :param site_id: name of specific hpo site
     :param hpo_id: name of hpo
     :return: participant object
     """
-    hpo_site = None
-    hpo_gen = HPOGen()
+        hpo_site = None
+        hpo_gen = HPOGen()
 
-    if site_id:
-      # if site_id is given, it also returns the HPO the site is matched with.
-      hpo_site = hpo_gen.get_site(site_id)
-    if hpo_id and not hpo_site:
-      # if hpo is given, select a random site within the hpo.
-      hpo_site = hpo_gen.get_hpo(hpo_id).get_random_site()
-    if not hpo_site:
-      # choose a random hpo and site.
-      hpo_site = hpo_gen.get_random_site()
-    # initialize participant generator.
-    if not self._p_gen:
-      self._p_gen = ParticipantGen()
+        if site_id:
+            # if site_id is given, it also returns the HPO the site is matched with.
+            hpo_site = hpo_gen.get_site(site_id)
+        if hpo_id and not hpo_site:
+            # if hpo is given, select a random site within the hpo.
+            hpo_site = hpo_gen.get_hpo(hpo_id).get_random_site()
+        if not hpo_site:
+            # choose a random hpo and site.
+            hpo_site = hpo_gen.get_random_site()
+        # initialize participant generator.
+        if not self._p_gen:
+            self._p_gen = ParticipantGen()
 
-    # make a new participant.
-    p_obj = self._p_gen.new(hpo_site)
+        # make a new participant.
+        p_obj = self._p_gen.new(hpo_site)
 
-    data = dict()
-    data['api'] = 'Participant'
-    data['data'] = p_obj.to_dict()
-    data['timestamp'] = clock.CLOCK.now().isoformat()
+        data = dict()
+        data["api"] = "Participant"
+        data["data"] = p_obj.to_dict()
+        data["timestamp"] = clock.CLOCK.now().isoformat()
 
-    code, resp = make_api_request(self._host, self._gen_url, req_type='POST', json_data=data,
-                                  headers=gcp_make_auth_header())
-    if code == 200 and resp:
-      p_obj.update(resp)
-      return p_obj, hpo_site
+        code, resp = make_api_request(
+            self._host, self._gen_url, req_type="POST", json_data=data, headers=gcp_make_auth_header()
+        )
+        if code == 200 and resp:
+            p_obj.update(resp)
+            return p_obj, hpo_site
 
-    _logger.error('create participant response failure: [Http {0}: {1}].'.format(code, resp))
-    return None
+        _logger.error("create participant response failure: [Http {0}: {1}].".format(code, resp))
+        return None
 
-  def submit_physical_measurements(self, participant_id, site):
-    """
+    def submit_physical_measurements(self, participant_id, site):
+        """
     Create a physical measurements response for the participant
     :param participant_id: participant id
     :param site: HPOSiteGen object
     :return: True if POST request is successful otherwise False.
     """
-    if not self._pm_gen:
-      self._pm_gen = PhysicalMeasurementsGen()
+        if not self._pm_gen:
+            self._pm_gen = PhysicalMeasurementsGen()
 
-    pm_obj = self._pm_gen.new(participant_id, site)
+        pm_obj = self._pm_gen.new(participant_id, site)
 
-    data = dict()
-    data['api'] = 'Participant/{0}/PhysicalMeasurements'.format(participant_id)
-    data['data'] = pm_obj.make_fhir_document()
-    # make the submit time a little later than the authored timestamp.
-    data['timestamp'] = clock.CLOCK.now().isoformat()
+        data = dict()
+        data["api"] = "Participant/{0}/PhysicalMeasurements".format(participant_id)
+        data["data"] = pm_obj.make_fhir_document()
+        # make the submit time a little later than the authored timestamp.
+        data["timestamp"] = clock.CLOCK.now().isoformat()
 
-    code, resp = make_api_request(self._host, self._gen_url, req_type='POST', json_data=data,
-                                  headers=gcp_make_auth_header())
+        code, resp = make_api_request(
+            self._host, self._gen_url, req_type="POST", json_data=data, headers=gcp_make_auth_header()
+        )
 
-    if code == 200:
-      pm_obj.update(resp)
-      return pm_obj
+        if code == 200:
+            pm_obj.update(resp)
+            return pm_obj
 
-    _logger.error('physical measurements response failure: [Http {0}: {1}].'.format(code, resp))
-    return None
+        _logger.error("physical measurements response failure: [Http {0}: {1}].".format(code, resp))
+        return None
 
-  def submit_biobank_order(self, participant_id, sample_test, site, to_mayo=False):
-    """
+    def submit_biobank_order(self, participant_id, sample_test, site, to_mayo=False):
+        """
     Create a biobank order response for the participant
     :param participant_id: participant id
     :param sample_test: sample test code
@@ -249,209 +255,214 @@ class DataGeneratorClass(object):
     :param to_mayo: if True, also send order to Mayolink.
     :return: True if POST request is successful otherwise False.
     """
-    if not sample_test:
-      return None
+        if not sample_test:
+            return None
 
-    if not self._bio_gen:
-      self._bio_gen = BioBankOrderGen()
+        if not self._bio_gen:
+            self._bio_gen = BioBankOrderGen()
 
-    bio_obj = self._bio_gen.new(participant_id, sample_test, site)
+        bio_obj = self._bio_gen.new(participant_id, sample_test, site)
 
-    data = dict()
-    data['api'] = 'Participant/{0}/BiobankOrder'.format(participant_id)
-    data['data'], finalized = bio_obj.make_fhir_document()
-    # make the submit time a little later than the finalized timestamp.
-    data['timestamp'] = self._increment_date(finalized, minute_range=15).isoformat()
-    data['mayolink'] = to_mayo
+        data = dict()
+        data["api"] = "Participant/{0}/BiobankOrder".format(participant_id)
+        data["data"], finalized = bio_obj.make_fhir_document()
+        # make the submit time a little later than the finalized timestamp.
+        data["timestamp"] = self._increment_date(finalized, minute_range=15).isoformat()
+        data["mayolink"] = to_mayo
 
-    code, resp = make_api_request(self._host, self._gen_url, req_type='POST', json_data=data,
-                                  headers=gcp_make_auth_header())
-    if code == 200:
-      bio_obj.update(resp)
-      return bio_obj
+        code, resp = make_api_request(
+            self._host, self._gen_url, req_type="POST", json_data=data, headers=gcp_make_auth_header()
+        )
+        if code == 200:
+            bio_obj.update(resp)
+            return bio_obj
 
-    _logger.error('biobank order response failure: [Http {0}: {1}].'.format(code, resp))
-    return None
+        _logger.error("biobank order response failure: [Http {0}: {1}].".format(code, resp))
+        return None
 
-  def submit_module_response(self, module_id, participant_id, overrides=None):
-    """
+    def submit_module_response(self, module_id, participant_id, overrides=None):
+        """
     Create a questionnaire response for the given module.
     :param module_id: questionnaire module name
     :param participant_id: participant id
     :param overrides: list of tuples giving answers to specific questions.
     :return: True if POST request is successful otherwise False.
     """
-    if not module_id or not isinstance(module_id, str):
-      raise ValueError('invalid module id.')
-    if not participant_id or not isinstance(str(participant_id), str):
-      raise ValueError('invalid participant id.')
+        if not module_id or not isinstance(module_id, str):
+            raise ValueError("invalid module id.")
+        if not participant_id or not isinstance(str(participant_id), str):
+            raise ValueError("invalid participant id.")
 
-    if not self._cb:
-      # We only want to create these once, because they download data from github.
-      self._cb = CodeBook()
-      self._qn_gen = QuestionnaireGen(self._cb, self._host)
+        if not self._cb:
+            # We only want to create these once, because they download data from github.
+            self._cb = CodeBook()
+            self._qn_gen = QuestionnaireGen(self._cb, self._host)
 
-    qn_obj = self._qn_gen.new(module_id, participant_id, overrides)
+        qn_obj = self._qn_gen.new(module_id, participant_id, overrides)
 
-    data = dict()
-    data['api'] = 'Participant/{0}/QuestionnaireResponse'.format(participant_id)
-    data['data'] = qn_obj.make_fhir_document()
-    # make the submit time a little later than the authored timestamp.
-    data['timestamp'] = clock.CLOCK.now().isoformat()
+        data = dict()
+        data["api"] = "Participant/{0}/QuestionnaireResponse".format(participant_id)
+        data["data"] = qn_obj.make_fhir_document()
+        # make the submit time a little later than the authored timestamp.
+        data["timestamp"] = clock.CLOCK.now().isoformat()
 
-    code, resp = make_api_request(self._host, self._gen_url, req_type='POST', json_data=data,
-                                  headers=gcp_make_auth_header())
-    if code == 200:
-      qn_obj.update(resp)
-      return qn_obj
+        code, resp = make_api_request(
+            self._host, self._gen_url, req_type="POST", json_data=data, headers=gcp_make_auth_header()
+        )
+        if code == 200:
+            qn_obj.update(resp)
+            return qn_obj
 
-    _logger.error('module response failure: [Http {0}: {1}].'.format(code, resp))
-    return None
+        _logger.error("module response failure: [Http {0}: {1}].".format(code, resp))
+        return None
 
-  def run(self):
-    """
+    def run(self):
+        """
     Main program process
     :param args: program arguments
     :return: Exit code value
     """
-    # load participant spreadsheet from bucket or local file.
-    csv_data = self._local_csv_data(self.args.src_csv) or self._gdoc_csv_data(self.args.src_csv)
-    if not csv_data:
-      _logger.error('unable to fetch participant source spreadsheet [{0}].'.format(self.args.src_csv))
-      return 1
+        # load participant spreadsheet from bucket or local file.
+        csv_data = self._local_csv_data(self.args.src_csv) or self._gdoc_csv_data(self.args.src_csv)
+        if not csv_data:
+            _logger.error("unable to fetch participant source spreadsheet [{0}].".format(self.args.src_csv))
+            return 1
 
-    _logger.info('processing source data.')
-    count = 0
+        _logger.info("processing source data.")
+        count = 0
 
-    # see if we need to rotate the csv data
-    if self.args.horiz is True:
-      csv_data = list(zip(*csv_data))
+        # see if we need to rotate the csv data
+        if self.args.horiz is True:
+            csv_data = list(zip(*csv_data))
 
-    # Loop through each column and generate data.
-    for column in range(0, len(csv_data[0]) - 1):
+        # Loop through each column and generate data.
+        for column in range(0, len(csv_data[0]) - 1):
 
-      p_data = self._convert_csv_column_to_dict(csv_data, column)
+            p_data = self._convert_csv_column_to_dict(csv_data, column)
 
-      hpo = p_data.get('_HPO', None)
-      pm = p_data.get('_PM', None)
-      site_id = p_data.get('_HPOSite', None)
-      bio_orders = p_data.get('_BIOOrder', '1SAL2|1ED04')
-      bio_orders_mayo = p_data.get('_BIOOrderMayo', None)
-      ppi_modules = p_data.get('_PPIModule', 'ConsentPII|TheBasics')
+            hpo = p_data.get("_HPO", None)
+            pm = p_data.get("_PM", None)
+            site_id = p_data.get("_HPOSite", None)
+            bio_orders = p_data.get("_BIOOrder", "1SAL2|1ED04")
+            bio_orders_mayo = p_data.get("_BIOOrderMayo", None)
+            ppi_modules = p_data.get("_PPIModule", "ConsentPII|TheBasics")
 
-      # choose a random starting date, timestamps of all other activities feed off this value.
-      start_dt = self._random_date()
-      #
-      # Create a new participant
-      #
-      count += 1
-      _logger.info('participant [{0}].'.format(count))
-      with clock.FakeClock(start_dt):
-        p_obj, hpo_site = self.create_participant(site_id=site_id, hpo_id=hpo)
+            # choose a random starting date, timestamps of all other activities feed off this value.
+            start_dt = self._random_date()
+            #
+            # Create a new participant
+            #
+            count += 1
+            _logger.info("participant [{0}].".format(count))
+            with clock.FakeClock(start_dt):
+                p_obj, hpo_site = self.create_participant(site_id=site_id, hpo_id=hpo)
 
-        if not p_obj or 'participantId' not in p_obj.__dict__:
-          _logger.error('failed to create participant.')
-          continue
+                if not p_obj or "participantId" not in p_obj.__dict__:
+                    _logger.error("failed to create participant.")
+                    continue
 
-        _logger.info('  created [{0}].'.format(p_obj.participantId))
-      #
-      # process any questionnaire modules
-      #
-      if ppi_modules:
+                _logger.info("  created [{0}].".format(p_obj.participantId))
+            #
+            # process any questionnaire modules
+            #
+            if ppi_modules:
 
-        # submit the first module pretty close to the start date. Assumes the first
-        # module is ConsentPII.
-        mod_dt = self._increment_date(start_dt, minute_range=60)
+                # submit the first module pretty close to the start date. Assumes the first
+                # module is ConsentPII.
+                mod_dt = self._increment_date(start_dt, minute_range=60)
 
-        modules = ppi_modules.split('|')
-        for module in modules:
-          with clock.FakeClock(mod_dt):
-            mod_obj = self.submit_module_response(module, p_obj.participantId, list(p_data.items()))
-            if mod_obj:
-              _logger.info('  module: [{0}]: submitted.'.format(module))
-            else:
-              _logger.info('  module: [{0}]: failed.'.format(module))
-          #
-          # see if we need to submit physical measurements.
-          #
-          if module == 'ConsentPII' and pm and pm.lower() == 'yes':
+                modules = ppi_modules.split("|")
+                for module in modules:
+                    with clock.FakeClock(mod_dt):
+                        mod_obj = self.submit_module_response(module, p_obj.participantId, list(p_data.items()))
+                        if mod_obj:
+                            _logger.info("  module: [{0}]: submitted.".format(module))
+                        else:
+                            _logger.info("  module: [{0}]: failed.".format(module))
+                    #
+                    # see if we need to submit physical measurements.
+                    #
+                    if module == "ConsentPII" and pm and pm.lower() == "yes":
 
-            mod_dt = self._random_date(mod_dt, datetime.timedelta(minutes=90))
-            with clock.FakeClock(mod_dt):
-              pm_obj = self.submit_physical_measurements(p_obj.participantId, hpo_site)
-              if pm_obj:
-                _logger.info('  pm: submitted.')
-              else:
-                _logger.info('  pm: failed.')
-          # choose a new random date between mod_dt and mod_dt + 15 days.
-          mod_dt = self._random_date(mod_dt, datetime.timedelta(days=15))
-      #
-      # process biobank samples
-      #
-      if bio_orders:
-        sample_dt = self._increment_date(start_dt, day_range=10)
+                        mod_dt = self._random_date(mod_dt, datetime.timedelta(minutes=90))
+                        with clock.FakeClock(mod_dt):
+                            pm_obj = self.submit_physical_measurements(p_obj.participantId, hpo_site)
+                            if pm_obj:
+                                _logger.info("  pm: submitted.")
+                            else:
+                                _logger.info("  pm: failed.")
+                    # choose a new random date between mod_dt and mod_dt + 15 days.
+                    mod_dt = self._random_date(mod_dt, datetime.timedelta(days=15))
+            #
+            # process biobank samples
+            #
+            if bio_orders:
+                sample_dt = self._increment_date(start_dt, day_range=10)
 
-        samples = bio_orders.split('|')
-        for sample in samples:
-          with clock.FakeClock(sample_dt):
-            bio_obj = self.submit_biobank_order(p_obj.participantId, sample, hpo_site)
-            if bio_obj:
-              _logger.info('  biobank order: [{0}] submitted.'.format(sample))
-            else:
-              _logger.info('  biobank order: [{0}] failed.'.format(sample))
+                samples = bio_orders.split("|")
+                for sample in samples:
+                    with clock.FakeClock(sample_dt):
+                        bio_obj = self.submit_biobank_order(p_obj.participantId, sample, hpo_site)
+                        if bio_obj:
+                            _logger.info("  biobank order: [{0}] submitted.".format(sample))
+                        else:
+                            _logger.info("  biobank order: [{0}] failed.".format(sample))
 
-          sample_dt = self._random_date(sample_dt, datetime.timedelta(days=30))
-      #
-      # process biobank samples that also need to be sent to Mayolink.
-      #
-      if bio_orders_mayo:
-        sample_dt = self._increment_date(start_dt, day_range=10)
+                    sample_dt = self._random_date(sample_dt, datetime.timedelta(days=30))
+            #
+            # process biobank samples that also need to be sent to Mayolink.
+            #
+            if bio_orders_mayo:
+                sample_dt = self._increment_date(start_dt, day_range=10)
 
-        samples = bio_orders_mayo.split('|')
-        for sample in samples:
-          with clock.FakeClock(sample_dt):
-            bio_obj = self.submit_biobank_order(p_obj.participantId, sample, hpo_site, to_mayo=True)
-            if bio_obj:
-              _logger.info('  biobank order w/mayo: {0} submitted.'.format(sample))
-            else:
-              _logger.info('  biobank order w/mayo: {0} failed.'.format(sample))
+                samples = bio_orders_mayo.split("|")
+                for sample in samples:
+                    with clock.FakeClock(sample_dt):
+                        bio_obj = self.submit_biobank_order(p_obj.participantId, sample, hpo_site, to_mayo=True)
+                        if bio_obj:
+                            _logger.info("  biobank order w/mayo: {0} submitted.".format(sample))
+                        else:
+                            _logger.info("  biobank order w/mayo: {0} failed.".format(sample))
 
-          sample_dt = self._random_date(sample_dt, datetime.timedelta(days=30))
+                    sample_dt = self._random_date(sample_dt, datetime.timedelta(days=30))
 
-        # TODO: Add code for sending orders to mayo here, in a new ticket.
+                # TODO: Add code for sending orders to mayo here, in a new ticket.
 
-    return 0
+        return 0
 
 
 def run():
-  # Set global debug value and setup application logging.
-  setup_logging(_logger, mod_cmd,
-                '--debug' in sys.argv, '{0}.log'.format(mod_cmd) if '--log-file' in sys.argv else None)
-  setup_unicode()
+    # Set global debug value and setup application logging.
+    setup_logging(
+        _logger, mod_cmd, "--debug" in sys.argv, "{0}.log".format(mod_cmd) if "--log-file" in sys.argv else None
+    )
+    setup_unicode()
 
-  # Setup program arguments.
-  parser = argparse.ArgumentParser(prog=mod_cmd, description=mod_desc)
-  parser.add_argument('--debug', help='Enable debug output', default=False, action='store_true')  # noqa
-  parser.add_argument('--log-file', help='write output to a log file', default=False, action='store_true')  # noqa
-  parser.add_argument('--project', help='gcp project name', default='localhost')  # noqa
-  parser.add_argument('--account', help='pmi-ops account', default=None)  # noqa
-  parser.add_argument('--service-account', help='gcp iam service account', default=None)  # noqa
-  parser.add_argument('--port', help='alternate ip port to connect to', default=None)  # noqa
-  parser.add_argument('--horiz', help='participant data is horizontal in the spreadsheet',
-                          default=False, action='store_true')  # noqa
-  parser.add_argument('--src-csv', help='participant list csv (file/google doc id)', required=True)  # noqa
-  args = parser.parse_args()
+    # Setup program arguments.
+    parser = argparse.ArgumentParser(prog=mod_cmd, description=mod_desc)
+    parser.add_argument("--debug", help="Enable debug output", default=False, action="store_true")  # noqa
+    parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
+    parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
+    parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
+    parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
+    parser.add_argument("--port", help="alternate ip port to connect to", default=None)  # noqa
+    parser.add_argument(
+        "--horiz", help="participant data is horizontal in the spreadsheet", default=False, action="store_true"
+    )  # noqa
+    parser.add_argument("--src-csv", help="participant list csv (file/google doc id)", required=True)  # noqa
+    args = parser.parse_args()
 
-  with GCPProcessContext(mod_cmd, args.project, args.account, args.service_account) as env:
-    # verify we're not getting pointed to production.
-    if env['project'] == 'all-of-us-rdr-prod':
-      _logger.error('using spec generator in production is not allowed.')
-      return 1
+    with GCPProcessContext(mod_cmd, args.project, args.account, args.service_account) as env:
+        # verify we're not getting pointed to production.
+        if env["project"] == "all-of-us-rdr-prod":
+            _logger.error("using spec generator in production is not allowed.")
+            return 1
 
-    process = DataGeneratorClass(args)
-    exit_code = process.run()
-    return exit_code
+        process = DataGeneratorClass(args)
+        exit_code = process.run()
+        return exit_code
+
 
 # --- Main Program Call ---
-if __name__ == '__main__':
-  sys.exit(run())
+if __name__ == "__main__":
+    sys.exit(run())

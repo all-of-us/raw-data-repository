@@ -1,5 +1,5 @@
-'''Constants for code values for questions and modules and their mappings to fields on
-participant summaries and metrics.'''
+"""Constants for code values for questions and modules and their mappings to fields on
+participant summaries and metrics."""
 
 PPI_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi"
 # System for codes that are used in questionnaires but we don't need for analysis purposes;
@@ -35,35 +35,35 @@ GENDER_IDENTITY_QUESTION_CODE = "Gender_GenderIdentity"
 RACE_QUESTION_CODE = "Race_WhatRaceEthnicity"
 
 # General PMI answer codes
-PMI_SKIP_CODE = 'PMI_Skip'
-PMI_PREFER_NOT_TO_ANSWER_CODE = 'PMI_PreferNotToAnswer'
-PMI_OTHER_CODE = 'PMI_Other'
-PMI_FREE_TEXT_CODE = 'PMI_FreeText'
-PMI_UNANSWERED_CODE = 'PMI_Unanswered'
+PMI_SKIP_CODE = "PMI_Skip"
+PMI_PREFER_NOT_TO_ANSWER_CODE = "PMI_PreferNotToAnswer"
+PMI_OTHER_CODE = "PMI_Other"
+PMI_FREE_TEXT_CODE = "PMI_FreeText"
+PMI_UNANSWERED_CODE = "PMI_Unanswered"
 
-#Gender answer codes. 'GenderIdentity_MoreThanOne' is also an option, set in participant enums.
-GENDER_MAN_CODE = 'GenderIdentity_Man'
-GENDER_WOMAN_CODE = 'GenderIdentity_Woman'
-GENDER_NONBINARY_CODE = 'GenderIdentity_NonBinary'
-GENDER_TRANSGENDER_CODE = 'GenderIdentity_Transgender'
-GENDER_OTHER_CODE = 'GenderIdentity_AdditionalOptions'
-GENDER_PREFER_NOT_TO_ANSWER_CODE = 'PMI_PreferNotToAnswer'
-GENDER_NO_GENDER_IDENTITY_CODE = 'PMI_Skip'
+# Gender answer codes. 'GenderIdentity_MoreThanOne' is also an option, set in participant enums.
+GENDER_MAN_CODE = "GenderIdentity_Man"
+GENDER_WOMAN_CODE = "GenderIdentity_Woman"
+GENDER_NONBINARY_CODE = "GenderIdentity_NonBinary"
+GENDER_TRANSGENDER_CODE = "GenderIdentity_Transgender"
+GENDER_OTHER_CODE = "GenderIdentity_AdditionalOptions"
+GENDER_PREFER_NOT_TO_ANSWER_CODE = "PMI_PreferNotToAnswer"
+GENDER_NO_GENDER_IDENTITY_CODE = "PMI_Skip"
 
 # Race answer codes
-RACE_AIAN_CODE = 'WhatRaceEthnicity_AIAN'
-RACE_ASIAN_CODE = 'WhatRaceEthnicity_Asian'
-RACE_BLACK_CODE = 'WhatRaceEthnicity_Black'
-RACE_MENA_CODE = 'WhatRaceEthnicity_MENA'
-RACE_NHDPI_CODE = 'WhatRaceEthnicity_NHPI'
-RACE_WHITE_CODE = 'WhatRaceEthnicity_White'
-RACE_HISPANIC_CODE = 'WhatRaceEthnicity_Hispanic'
-RACE_FREETEXT_CODE = 'WhatRaceEthnicity_FreeText'
-RACE_NONE_OF_THESE_CODE = 'WhatRaceEthnicity_RaceEthnicityNoneOfThese'
+RACE_AIAN_CODE = "WhatRaceEthnicity_AIAN"
+RACE_ASIAN_CODE = "WhatRaceEthnicity_Asian"
+RACE_BLACK_CODE = "WhatRaceEthnicity_Black"
+RACE_MENA_CODE = "WhatRaceEthnicity_MENA"
+RACE_NHDPI_CODE = "WhatRaceEthnicity_NHPI"
+RACE_WHITE_CODE = "WhatRaceEthnicity_White"
+RACE_HISPANIC_CODE = "WhatRaceEthnicity_Hispanic"
+RACE_FREETEXT_CODE = "WhatRaceEthnicity_FreeText"
+RACE_NONE_OF_THESE_CODE = "WhatRaceEthnicity_RaceEthnicityNoneOfThese"
 
 # Consent answer codes
-CONSENT_PERMISSION_YES_CODE = 'ConsentPermission_Yes'
-CONSENT_PERMISSION_NO_CODE = 'ConsentPermission_No'
+CONSENT_PERMISSION_YES_CODE = "ConsentPermission_Yes"
+CONSENT_PERMISSION_NO_CODE = "ConsentPermission_No"
 
 # Module names for questionnaires / consent forms
 CONSENT_FOR_STUDY_ENROLLMENT_MODULE = "ConsentPII"
@@ -79,22 +79,38 @@ MEDICATIONS_MODULE = "MedicationsPPI"
 HEALTHCARE_ACCESS_MODULE = "HealthcareAccess"
 
 # DVEHR ANSWERS
-DVEHRSHARING_CONSENT_CODE_YES = 'DVEHRSharing_Yes'
-DVEHRSHARING_CONSENT_CODE_NO = 'DVEHRSharing_No'
-DVEHRSHARING_CONSENT_CODE_NOT_SURE = 'DVEHRSharing_NotSure'
+DVEHRSHARING_CONSENT_CODE_YES = "DVEHRSharing_Yes"
+DVEHRSHARING_CONSENT_CODE_NO = "DVEHRSharing_No"
+DVEHRSHARING_CONSENT_CODE_NOT_SURE = "DVEHRSharing_NotSure"
 
 
-BIOBANK_TESTS = ['1ED10', '2ED10', '1ED04', '1SST8', '1SS08', '1PST8', '1PS08',\
-                 '2SST8', '2PST8', '1HEP4', '1UR10', '1UR90', '1SAL2', '1SAL', '1ED02', '1CFD9',
-                 '1PXR2']
+BIOBANK_TESTS = [
+    "1ED10",
+    "2ED10",
+    "1ED04",
+    "1SST8",
+    "1SS08",
+    "1PST8",
+    "1PS08",
+    "2SST8",
+    "2PST8",
+    "1HEP4",
+    "1UR10",
+    "1UR90",
+    "1SAL2",
+    "1SAL",
+    "1ED02",
+    "1CFD9",
+    "1PXR2",
+]
 BIOBANK_TESTS_SET = frozenset(BIOBANK_TESTS)
 
-UNSET = 'UNSET'
-UNMAPPED = 'UNMAPPED'
+UNSET = "UNSET"
+UNMAPPED = "UNMAPPED"
 BASE_VALUES = [UNSET, UNMAPPED, PMI_SKIP_CODE]
 
 # English and Spanish are the only accepted languages for now
-LANGUAGE_OF_CONSENT = ['en', 'es']
+LANGUAGE_OF_CONSENT = ["en", "es"]
 
 # genome type values
-GENOME_TYPE = ['aou_array', 'aou_wgs']
+GENOME_TYPE = ["aou_array", "aou_wgs"]

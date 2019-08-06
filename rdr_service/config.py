@@ -10,50 +10,50 @@ from werkzeug.exceptions import NotFound
 from rdr_service import clock, singletons
 
 # Key that the main server configuration is stored under
-CONFIG_SINGLETON_KEY = 'current_config'
+CONFIG_SINGLETON_KEY = "current_config"
 
 # Key that the database configuration is stored under
-DB_CONFIG_KEY = 'db_config'
+DB_CONFIG_KEY = "db_config"
 
 LAST_MODIFIED_BUFFER_SECONDS = 60
 CONFIG_CACHE_TTL_SECONDS = 60
-BIOBANK_ID_PREFIX = 'biobank_id_prefix'
-METRICS_SHARDS = 'metrics_shards'
-PARTICIPANT_SUMMARY_SHARDS = 'participant_summary_shards'
-AGE_RANGE_SHARDS = 'age_range_shards'
-BIOBANK_SAMPLES_SHARDS = 'biobank_samples_shards'
-BIOBANK_SAMPLES_BUCKET_NAME = 'biobank_samples_bucket_name'
-GENOMIC_SET_BUCKET_NAME = 'genomic_set_bucket_name'
-GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME = 'genomic_biobank_manifest_folder_name'
-GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME = 'genomic_biobank_manifest_result_folder_name'
-CONSENT_PDF_BUCKET = 'consent_pdf_bucket'
-USER_INFO = 'user_info'
-SYNC_SHARDS_PER_CHANNEL = 'sync_shards_per_channel'
-MEASUREMENTS_ENTITIES_PER_SYNC = 'measurements_entities_per_sync'
-BASELINE_PPI_QUESTIONNAIRE_FIELDS = 'baseline_ppi_questionnaire_fields'
-PPI_QUESTIONNAIRE_FIELDS = 'ppi_questionnaire_fields'
-BASELINE_SAMPLE_TEST_CODES = 'baseline_sample_test_codes'
-DNA_SAMPLE_TEST_CODES = 'dna_sample_test_codes'
-GHOST_ID_BUCKET = 'ghost_id_bucket'
-MAYOLINK_CREDS = 'mayolink_creds'
-MAYOLINK_ENDPOINT = 'mayolink_endpoint'
-CONFIG_BUCKET = 'all-of-us-rdr-sequestered-config-test'
-EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT = 'ehr_status_bigquery_view_participant'
-EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION = 'ehr_status_bigquery_view_organization'
-HPO_REPORT_CONFIG_MIXIN_PATH = 'hpo_report_config_mixin_path'
+BIOBANK_ID_PREFIX = "biobank_id_prefix"
+METRICS_SHARDS = "metrics_shards"
+PARTICIPANT_SUMMARY_SHARDS = "participant_summary_shards"
+AGE_RANGE_SHARDS = "age_range_shards"
+BIOBANK_SAMPLES_SHARDS = "biobank_samples_shards"
+BIOBANK_SAMPLES_BUCKET_NAME = "biobank_samples_bucket_name"
+GENOMIC_SET_BUCKET_NAME = "genomic_set_bucket_name"
+GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME = "genomic_biobank_manifest_folder_name"
+GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME = "genomic_biobank_manifest_result_folder_name"
+CONSENT_PDF_BUCKET = "consent_pdf_bucket"
+USER_INFO = "user_info"
+SYNC_SHARDS_PER_CHANNEL = "sync_shards_per_channel"
+MEASUREMENTS_ENTITIES_PER_SYNC = "measurements_entities_per_sync"
+BASELINE_PPI_QUESTIONNAIRE_FIELDS = "baseline_ppi_questionnaire_fields"
+PPI_QUESTIONNAIRE_FIELDS = "ppi_questionnaire_fields"
+BASELINE_SAMPLE_TEST_CODES = "baseline_sample_test_codes"
+DNA_SAMPLE_TEST_CODES = "dna_sample_test_codes"
+GHOST_ID_BUCKET = "ghost_id_bucket"
+MAYOLINK_CREDS = "mayolink_creds"
+MAYOLINK_ENDPOINT = "mayolink_endpoint"
+CONFIG_BUCKET = "all-of-us-rdr-sequestered-config-test"
+EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT = "ehr_status_bigquery_view_participant"
+EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION = "ehr_status_bigquery_view_organization"
+HPO_REPORT_CONFIG_MIXIN_PATH = "hpo_report_config_mixin_path"
 
 # Allow requests which are never permitted in production. These include fake
 # timestamps for reuqests, unauthenticated requests to create fake data, etc.
-ALLOW_NONPROD_REQUESTS = 'allow_nonprod_requests'
+ALLOW_NONPROD_REQUESTS = "allow_nonprod_requests"
 
 # Settings for e-mail alerts for failed jobs.
-INTERNAL_STATUS_MAIL_SENDER = 'internal_status_email_sender'
-INTERNAL_STATUS_MAIL_RECIPIENTS = 'internal_status_email_recipients'
-BIOBANK_STATUS_MAIL_RECIPIENTS = 'biobank_status_mail_recipients'
+INTERNAL_STATUS_MAIL_SENDER = "internal_status_email_sender"
+INTERNAL_STATUS_MAIL_RECIPIENTS = "internal_status_email_recipients"
+BIOBANK_STATUS_MAIL_RECIPIENTS = "biobank_status_mail_recipients"
 
 # True if we should add codes referenced in questionnaires that
 # aren't in the code book; false if we should reject the questionnaires.
-ADD_QUESTIONNAIRE_CODES_IF_MISSING = 'add_questionnaire_codes_if_missing'
+ADD_QUESTIONNAIRE_CODES_IF_MISSING = "add_questionnaire_codes_if_missing"
 
 REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
 
@@ -65,81 +65,85 @@ SERVICE_ACCOUNTS_WITH_LONG_LIVED_KEYS = "service_accounts_with_long_lived_keys"
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}
 
+
 def override_setting(key, value):
-  """Overrides a config setting. Used in tests."""
-  CONFIG_OVERRIDES[key] = value
+    """Overrides a config setting. Used in tests."""
+    CONFIG_OVERRIDES[key] = value
+
 
 def store_current_config(config_json):
-  conf_ndb_key = ndb.Key(Configuration, CONFIG_SINGLETON_KEY)
-  conf = Configuration(key=conf_ndb_key, configuration=config_json)
-  store(conf)
+    conf_ndb_key = ndb.Key(Configuration, CONFIG_SINGLETON_KEY)
+    conf = Configuration(key=conf_ndb_key, configuration=config_json)
+    store(conf)
+
 
 def insert_config(key, value_list):
-  """Updates a config key.  Used for tests"""
-  model = load(CONFIG_SINGLETON_KEY)
-  model.configuration[key] = value_list
-  store(model)
+    """Updates a config key.  Used for tests"""
+    model = load(CONFIG_SINGLETON_KEY)
+    model.configuration[key] = value_list
+    store(model)
 
 
 class MissingConfigException(Exception):
-  """Exception raised if the setting does not exist"""
+    """Exception raised if the setting does not exist"""
 
 
 class InvalidConfigException(Exception):
-  """Exception raised when the config setting is not in the expected form."""
+    """Exception raised when the config setting is not in the expected form."""
 
 
 class Configuration(ndb.Model):
-  configuration = ndb.JsonProperty()
+    configuration = ndb.JsonProperty()
 
 
 class ConfigurationHistory(ndb.Model):
-  date = ndb.DateTimeProperty(auto_now_add=True)
-  obj = ndb.StructuredProperty(Configuration, repeated=False)
-  client_id = ndb.StringProperty()
+    date = ndb.DateTimeProperty(auto_now_add=True)
+    obj = ndb.StructuredProperty(Configuration, repeated=False)
+    client_id = ndb.StringProperty()
 
 
 def load(_id=CONFIG_SINGLETON_KEY, date=None):
-  key = ndb.Key(Configuration, _id)
-  if date is not None:
-    history = (ConfigurationHistory
-                .query(ancestor=ndb.Key('Configuration', _id))
-                .filter(ConfigurationHistory.date <= date)
-                .order(-ConfigurationHistory.date)
-                .fetch(limit=1)
-               )
-    if not history:
-      raise NotFound('No history object active at {}.'.format(date))
-    return history[0].obj
+    key = ndb.Key(Configuration, _id)
+    if date is not None:
+        history = (
+            ConfigurationHistory.query(ancestor=ndb.Key("Configuration", _id))
+            .filter(ConfigurationHistory.date <= date)
+            .order(-ConfigurationHistory.date)
+            .fetch(limit=1)
+        )
+        if not history:
+            raise NotFound("No history object active at {}.".format(date))
+        return history[0].obj
 
-  model = key.get()
-  if model is None:
-    if _id == CONFIG_SINGLETON_KEY:
-      model = Configuration(key=key, configuration={})
-      model.put()
-      logging.info('Setting an empty configuration.')
-    else:
-      raise NotFound('No config for %r.' % _id)
-  return model
+    model = key.get()
+    if model is None:
+        if _id == CONFIG_SINGLETON_KEY:
+            model = Configuration(key=key, configuration={})
+            model.put()
+            logging.info("Setting an empty configuration.")
+        else:
+            raise NotFound("No config for %r." % _id)
+    return model
 
 
 @ndb.transactional
 def store(model, date=None, client_id=None):
-  date = date or clock.CLOCK.now()
-  history = ConfigurationHistory(parent=model.key, obj=model, date=date)
-  if client_id:
-    history.populate(client_id=client_id)
-  history.put()
-  model.put()
-  singletons.invalidate(singletons.DB_CONFIG_INDEX)
-  singletons.invalidate(singletons.MAIN_CONFIG_INDEX)
-  return model
+    date = date or clock.CLOCK.now()
+    history = ConfigurationHistory(parent=model.key, obj=model, date=date)
+    if client_id:
+        history.populate(client_id=client_id)
+    history.put()
+    model.put()
+    singletons.invalidate(singletons.DB_CONFIG_INDEX)
+    singletons.invalidate(singletons.MAIN_CONFIG_INDEX)
+    return model
 
 
-_NO_DEFAULT = '_NO_DEFAULT'
+_NO_DEFAULT = "_NO_DEFAULT"
+
 
 def getSettingJson(key, default=_NO_DEFAULT):
-  """Gets a config setting as an arbitrary JSON structure
+    """Gets a config setting as an arbitrary JSON structure
 
   Args:
     key: The config key to retrieve entries for.
@@ -152,21 +156,21 @@ def getSettingJson(key, default=_NO_DEFAULT):
     MissingConfigException: If the config key does not exist in the datastore,
       and a default is not provided.
   """
-  config_values = CONFIG_OVERRIDES.get(key)
-  if config_values is not None:
+    config_values = CONFIG_OVERRIDES.get(key)
+    if config_values is not None:
+        return config_values
+
+    current_config = get_config()
+
+    config_values = current_config.get(key, default)
+    if config_values == _NO_DEFAULT:
+        raise MissingConfigException('Config key "{}" has no values.'.format(key))
+
     return config_values
-
-  current_config = get_config()
-
-  config_values = current_config.get(key, default)
-  if config_values == _NO_DEFAULT:
-    raise MissingConfigException('Config key "{}" has no values.'.format(key))
-
-  return config_values
 
 
 def getSettingList(key, default=_NO_DEFAULT):
-  """Gets all config settings for a given key.
+    """Gets all config settings for a given key.
 
   Args:
     key: The config key to retrieve entries for.
@@ -179,16 +183,15 @@ def getSettingList(key, default=_NO_DEFAULT):
     MissingConfigException: If the config key does not exist in the datastore,
       and a default is not provided.
   """
-  config_json = getSettingJson(key, default)
-  if isinstance(config_json, list):
-    return config_json
+    config_json = getSettingJson(key, default)
+    if isinstance(config_json, list):
+        return config_json
 
-  raise InvalidConfigException(
-      'Config key {} is a {} instead of a list'.format(key, type(config_json)))
+    raise InvalidConfigException("Config key {} is a {} instead of a list".format(key, type(config_json)))
 
 
 def getSetting(key, default=_NO_DEFAULT):
-  """Gets a config where there is only a single setting for a given key.
+    """Gets a config where there is only a single setting for a given key.
 
   Args:
     key: The config key to look up.
@@ -200,24 +203,24 @@ def getSetting(key, default=_NO_DEFAULT):
     MissingConfigException: If the config key does not exist in the datastore,
      and a default is not provided.
   """
-  if default != _NO_DEFAULT:
-    default = [default]
-  settings_list = getSettingList(key, default)
+    if default != _NO_DEFAULT:
+        default = [default]
+    settings_list = getSettingList(key, default)
 
-  if len(settings_list) != 1:
-    raise InvalidConfigException(
-        'Config key {} has multiple entries in datastore.'.format(key))
-  return settings_list[0]
+    if len(settings_list) != 1:
+        raise InvalidConfigException("Config key {} has multiple entries in datastore.".format(key))
+    return settings_list[0]
 
 
 def get_db_config():
-  model = singletons.get(singletons.DB_CONFIG_INDEX,
-                         lambda: load(DB_CONFIG_KEY),
-                         cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS)
-  return model.configuration
+    model = singletons.get(
+        singletons.DB_CONFIG_INDEX, lambda: load(DB_CONFIG_KEY), cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS
+    )
+    return model.configuration
+
 
 def get_config():
-  model = singletons.get(singletons.MAIN_CONFIG_INDEX,
-                         lambda: load(CONFIG_SINGLETON_KEY),
-                         cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS)
-  return model.configuration
+    model = singletons.get(
+        singletons.MAIN_CONFIG_INDEX, lambda: load(CONFIG_SINGLETON_KEY), cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS
+    )
+    return model.configuration

@@ -9,7 +9,7 @@ from flask_restful import Resource
 
 
 class VersionApi(Resource):
-  """Api handler for retrieving version info."""
+    """Api handler for retrieving version info."""
 
-  def get(self):
-    return {'version_id': os.environ['CURRENT_VERSION_ID']}
+    def get(self):
+        return {"version_id": os.environ["CURRENT_VERSION_ID"]}

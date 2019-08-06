@@ -10,13 +10,14 @@ from alembic import op
 from rdr_service.dao.alembic_utils import ReplaceableObject
 
 # revision identifiers, used by Alembic.
-revision = 'a43f72b7c848'
-down_revision = '3adfe155c68b'
+revision = "a43f72b7c848"
+down_revision = "3adfe155c68b"
 branch_labels = None
 depends_on = None
 
-sp_get_code_module_items = ReplaceableObject('sp_get_code_module_items',
-"""  
+sp_get_code_module_items = ReplaceableObject(
+    "sp_get_code_module_items",
+    """  
  (IN module VARCHAR(80))
  BEGIN
    # Return all of the codebook items (topics, questions, answers) related to the passed 
@@ -50,10 +51,12 @@ sp_get_code_module_items = ReplaceableObject('sp_get_code_module_items',
    ORDER BY a.sort_id, a.code_id;
 
  END
-""")
+""",
+)
 
-sp_get_questionnaire_answers = ReplaceableObject('sp_get_questionnaire_answers',
-"""
+sp_get_questionnaire_answers = ReplaceableObject(
+    "sp_get_questionnaire_answers",
+    """
 (IN module VARCHAR(80), IN participant_id INT)
   BEGIN
     # Dynamically pivot the questionnaire answers for the given participant and module.
@@ -152,10 +155,12 @@ sp_get_questionnaire_answers = ReplaceableObject('sp_get_questionnaire_answers',
     DEALLOCATE PREPARE stmt;
 
 END
-""")
+""",
+)
 
-participant_answers_view = ReplaceableObject('participant_answers_view',
-"""  
+participant_answers_view = ReplaceableObject(
+    "participant_answers_view",
+    """  
   SELECT      
       qr.participant_id,
       code.value AS module,
@@ -172,7 +177,8 @@ participant_answers_view = ReplaceableObject('participant_answers_view',
       INNER JOIN questionnaire_concept qc ON qc.questionnaire_id = qr.questionnaire_id
       INNER JOIN code ON qc.code_id = code.code_id
   ORDER BY qr.participant_id, qr.created DESC, question_code
-""")
+""",
+)
 
 
 def upgrade(engine_name):
@@ -208,14 +214,16 @@ def downgrade_metrics():
 
 
 def unittest_schemas():
-  schemas = list()
+    schemas = list()
 
-  schemas.append('DROP PROCEDURE IF EXISTS `{0}`'.format(sp_get_code_module_items.name))
-  schemas.append('CREATE PROCEDURE `{0}` {1}'.format(
-                  sp_get_code_module_items.name, sp_get_code_module_items.sqltext))
+    schemas.append("DROP PROCEDURE IF EXISTS `{0}`".format(sp_get_code_module_items.name))
+    schemas.append(
+        "CREATE PROCEDURE `{0}` {1}".format(sp_get_code_module_items.name, sp_get_code_module_items.sqltext)
+    )
 
-  schemas.append('DROP PROCEDURE IF EXISTS `{0}`'.format(sp_get_questionnaire_answers.name))
-  schemas.append('CREATE PROCEDURE `{0}` {1}'.format(
-    sp_get_questionnaire_answers.name, sp_get_questionnaire_answers.sqltext))
+    schemas.append("DROP PROCEDURE IF EXISTS `{0}`".format(sp_get_questionnaire_answers.name))
+    schemas.append(
+        "CREATE PROCEDURE `{0}` {1}".format(sp_get_questionnaire_answers.name, sp_get_questionnaire_answers.sqltext)
+    )
 
-  return schemas
+    return schemas

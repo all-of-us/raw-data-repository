@@ -1,8 +1,7 @@
 from google.appengine.ext import deferred
 
 from rdr_service import clock, config
-from rdr_service.code_constants import EHR_CONSENT_QUESTION_CODE, PPI_SYSTEM, RACE_QUESTION_CODE, \
-  UNMAPPED
+from rdr_service.code_constants import EHR_CONSENT_QUESTION_CODE, PPI_SYSTEM, RACE_QUESTION_CODE, UNMAPPED
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_isodate
 from rdr_service.dao.hpo_dao import HPODao
@@ -11,17 +10,18 @@ from rdr_service.model.base import get_column_name
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from rdr_service.offline.sql_exporter import SqlExporter
+
 # from rdr_service.offline.metrics_pipeline import MetricsPipeline
 from rdr_service.participant_enums import QuestionnaireStatus, TEST_EMAIL_PATTERN, TEST_HPO_NAME
 
 # TODO: filter out participants that have withdrawn in here
 
-_PARTICIPANTS_CSV = 'participants_%d.csv'
-_HPO_IDS_CSV = 'hpo_ids_%d.csv'
-_ANSWERS_CSV = 'answers_%d.csv'
+_PARTICIPANTS_CSV = "participants_%d.csv"
+_HPO_IDS_CSV = "hpo_ids_%d.csv"
+_ANSWERS_CSV = "answers_%d.csv"
 _ALL_CSVS = [_PARTICIPANTS_CSV, _HPO_IDS_CSV, _ANSWERS_CSV]
 
-_QUEUE_NAME = 'metrics-pipeline'
+_QUEUE_NAME = "metrics-pipeline"
 
 _PARTICIPANT_SQL_TEMPLATE = """
 SELECT p.participant_id, ps.date_of_birth date_of_birth,
@@ -90,43 +90,51 @@ SELECT qr.participant_id participant_id, ISODATE[qr.created] start_time,
  ORDER BY qr.participant_id, qr.created, qc.value
 """
 
+
 def _get_params(num_shards, shard_number):
-  test_hpo = HPODao().get_by_name(TEST_HPO_NAME)
-  return {'num_shards': num_shards,
-          'shard_number': shard_number,
-          'test_hpo_id': test_hpo.hpoId,
-          'test_email_pattern': TEST_EMAIL_PATTERN}
+    test_hpo = HPODao().get_by_name(TEST_HPO_NAME)
+    return {
+        "num_shards": num_shards,
+        "shard_number": shard_number,
+        "test_hpo_id": test_hpo.hpoId,
+        "test_email_pattern": TEST_EMAIL_PATTERN,
+    }
+
 
 def _get_participant_sql(num_shards, shard_number):
-  module_time_fields = ['(CASE WHEN ps.{0} = :submitted THEN ISODATE[ps.{1}] ELSE NULL END) {1}'
-                          .format(get_column_name(ParticipantSummary, field_name),
-                                  get_column_name(ParticipantSummary, field_name + 'Time'))
-                        for field_name in NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES]
-  modules_sql = ', '.join(module_time_fields)
-  dna_tests_sql, params = get_sql_and_params_for_array(
-        config.getSettingList(config.DNA_SAMPLE_TEST_CODES), 'dna')
-  params.update(_get_params(num_shards, shard_number))
-  params['submitted'] = int(QuestionnaireStatus.SUBMITTED)
-  return replace_isodate(_PARTICIPANT_SQL_TEMPLATE.format(dna_tests_sql, modules_sql)), params
+    module_time_fields = [
+        "(CASE WHEN ps.{0} = :submitted THEN ISODATE[ps.{1}] ELSE NULL END) {1}".format(
+            get_column_name(ParticipantSummary, field_name), get_column_name(ParticipantSummary, field_name + "Time")
+        )
+        for field_name in NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES
+    ]
+    modules_sql = ", ".join(module_time_fields)
+    dna_tests_sql, params = get_sql_and_params_for_array(config.getSettingList(config.DNA_SAMPLE_TEST_CODES), "dna")
+    params.update(_get_params(num_shards, shard_number))
+    params["submitted"] = int(QuestionnaireStatus.SUBMITTED)
+    return replace_isodate(_PARTICIPANT_SQL_TEMPLATE.format(dna_tests_sql, modules_sql)), params
+
 
 def _get_hpo_id_sql(num_shards, shard_number):
-  return replace_isodate(_HPO_ID_QUERY), _get_params(num_shards, shard_number)
+    return replace_isodate(_HPO_ID_QUERY), _get_params(num_shards, shard_number)
+
 
 def _get_answer_sql(num_shards, shard_number):
-  code_dao = CodeDao()
-  code_ids = []
-  question_codes = list(ANSWER_FIELD_TO_QUESTION_CODE.values())
-  question_codes.append(RACE_QUESTION_CODE)
-  question_codes.append(EHR_CONSENT_QUESTION_CODE)
-  for code_value in question_codes:
-    code = code_dao.get_code(PPI_SYSTEM, code_value)
-    code_ids.append(str(code.codeId))
-  params = _get_params(num_shards, shard_number)
-  params['unmapped'] = UNMAPPED
-  return replace_isodate(_ANSWER_QUERY.format((','.join(code_ids)))), params
+    code_dao = CodeDao()
+    code_ids = []
+    question_codes = list(ANSWER_FIELD_TO_QUESTION_CODE.values())
+    question_codes.append(RACE_QUESTION_CODE)
+    question_codes.append(EHR_CONSENT_QUESTION_CODE)
+    for code_value in question_codes:
+        code = code_dao.get_code(PPI_SYSTEM, code_value)
+        code_ids.append(str(code.codeId))
+    params = _get_params(num_shards, shard_number)
+    params["unmapped"] = UNMAPPED
+    return replace_isodate(_ANSWER_QUERY.format((",".join(code_ids)))), params
+
 
 class MetricsExport(object):
-  """Exports data from the database needed to generate metrics.
+    """Exports data from the database needed to generate metrics.
 
   Exports are performed in a chain of tasks, each of which can run for up to 10 minutes.
   A configurable number of shards allows each data set being exported to be broken up into pieces
@@ -135,71 +143,97 @@ class MetricsExport(object):
   When the last task is done, the MapReduce pipeline for metrics is kicked off.
   """
 
-  @classmethod
-  def _export_participants(self, bucket_name, filename_prefix, num_shards, shard_number):
-    sql, params = _get_participant_sql(num_shards, shard_number)
-    SqlExporter(bucket_name).run_export(filename_prefix + _PARTICIPANTS_CSV % shard_number,
-                                        sql, params, backup=True)
+    @classmethod
+    def _export_participants(self, bucket_name, filename_prefix, num_shards, shard_number):
+        sql, params = _get_participant_sql(num_shards, shard_number)
+        SqlExporter(bucket_name).run_export(
+            filename_prefix + _PARTICIPANTS_CSV % shard_number, sql, params, backup=True
+        )
 
-  @classmethod
-  def _export_hpo_ids(self, bucket_name, filename_prefix, num_shards, shard_number):
-    sql, params = _get_hpo_id_sql(num_shards, shard_number)
-    SqlExporter(bucket_name).run_export(filename_prefix + _HPO_IDS_CSV % shard_number,
-                                        sql, params, backup=True)
+    @classmethod
+    def _export_hpo_ids(self, bucket_name, filename_prefix, num_shards, shard_number):
+        sql, params = _get_hpo_id_sql(num_shards, shard_number)
+        SqlExporter(bucket_name).run_export(filename_prefix + _HPO_IDS_CSV % shard_number, sql, params, backup=True)
 
-  @classmethod
-  def _export_answers(self, bucket_name, filename_prefix, num_shards, shard_number):
-    sql, params = _get_answer_sql(num_shards, shard_number)
-    SqlExporter(bucket_name).run_export(filename_prefix + _ANSWERS_CSV % shard_number,
-                                        sql, params, backup=True)
+    @classmethod
+    def _export_answers(self, bucket_name, filename_prefix, num_shards, shard_number):
+        sql, params = _get_answer_sql(num_shards, shard_number)
+        SqlExporter(bucket_name).run_export(filename_prefix + _ANSWERS_CSV % shard_number, sql, params, backup=True)
 
-  @staticmethod
-  def start_export_tasks(bucket_name, num_shards):
-    """Entry point to exporting data for use by the metrics pipeline. Begins the export of
+    @staticmethod
+    def start_export_tasks(bucket_name, num_shards):
+        """Entry point to exporting data for use by the metrics pipeline. Begins the export of
     the first shard of the participant data."""
-    filename_prefix = '%s/' % clock.CLOCK.now().isoformat()
-    deferred.defer(MetricsExport._start_participant_export, bucket_name, filename_prefix,
-                    num_shards, 0)
+        filename_prefix = "%s/" % clock.CLOCK.now().isoformat()
+        deferred.defer(MetricsExport._start_participant_export, bucket_name, filename_prefix, num_shards, 0)
 
-  @staticmethod
-  def _start_export(bucket_name, filename_prefix, num_shards, shard_number, export_methodname,
-                    next_shard_methodname, next_type_methodname, finish_methodname=None):
-    getattr(MetricsExport, export_methodname)(bucket_name, filename_prefix,
-                                              num_shards, shard_number)
-    shard_number += 1
-    if shard_number == num_shards:
-      if next_type_methodname:
-        deferred.defer(getattr(MetricsExport, next_type_methodname), bucket_name, filename_prefix,
-                        num_shards, 0)
-      else:
-        getattr(MetricsExport, finish_methodname)(bucket_name, filename_prefix, num_shards)
-    else:
-      deferred.defer(getattr(MetricsExport, next_shard_methodname), bucket_name, filename_prefix,
-                      num_shards, shard_number)
+    @staticmethod
+    def _start_export(
+        bucket_name,
+        filename_prefix,
+        num_shards,
+        shard_number,
+        export_methodname,
+        next_shard_methodname,
+        next_type_methodname,
+        finish_methodname=None,
+    ):
+        getattr(MetricsExport, export_methodname)(bucket_name, filename_prefix, num_shards, shard_number)
+        shard_number += 1
+        if shard_number == num_shards:
+            if next_type_methodname:
+                deferred.defer(
+                    getattr(MetricsExport, next_type_methodname), bucket_name, filename_prefix, num_shards, 0
+                )
+            else:
+                getattr(MetricsExport, finish_methodname)(bucket_name, filename_prefix, num_shards)
+        else:
+            deferred.defer(
+                getattr(MetricsExport, next_shard_methodname), bucket_name, filename_prefix, num_shards, shard_number
+            )
 
+    @classmethod
+    def _start_participant_export(cls, bucket_name, filename_prefix, num_shards, shard_number):
+        MetricsExport._start_export(
+            bucket_name,
+            filename_prefix,
+            num_shards,
+            shard_number,
+            "_export_participants",
+            "_start_participant_export",
+            "_start_hpo_id_export",
+        )
 
-  @classmethod
-  def _start_participant_export(cls, bucket_name, filename_prefix, num_shards, shard_number):
-    MetricsExport._start_export(bucket_name, filename_prefix, num_shards, shard_number,
-                                '_export_participants', '_start_participant_export',
-                                '_start_hpo_id_export')
+    @classmethod
+    def _start_hpo_id_export(cls, bucket_name, filename_prefix, num_shards, shard_number):
+        MetricsExport._start_export(
+            bucket_name,
+            filename_prefix,
+            num_shards,
+            shard_number,
+            "_export_hpo_ids",
+            "_start_hpo_id_export",
+            "_start_answers_export",
+        )
 
-  @classmethod
-  def _start_hpo_id_export(cls, bucket_name, filename_prefix, num_shards, shard_number):
-    MetricsExport._start_export(bucket_name, filename_prefix, num_shards, shard_number,
-                                '_export_hpo_ids', '_start_hpo_id_export',
-                                '_start_answers_export')
-  @classmethod
-  def _start_answers_export(cls, bucket_name, filename_prefix, num_shards, shard_number):
-    MetricsExport._start_export(bucket_name, filename_prefix, num_shards, shard_number,
-                                '_export_answers', '_start_answers_export', None,
-                                '_start_metrics_pipeline')
+    @classmethod
+    def _start_answers_export(cls, bucket_name, filename_prefix, num_shards, shard_number):
+        MetricsExport._start_export(
+            bucket_name,
+            filename_prefix,
+            num_shards,
+            shard_number,
+            "_export_answers",
+            "_start_answers_export",
+            None,
+            "_start_metrics_pipeline",
+        )
 
-  # @classmethod
-  # def _start_metrics_pipeline(cls, bucket_name, filename_prefix, num_shards):
-  #   input_files = []
-  #   for csv_filename in _ALL_CSVS:
-  #     input_files.extend([filename_prefix + csv_filename % shard for shard
-  #                         in range(0, num_shards)])
-  #   pipeline = MetricsPipeline(bucket_name, clock.CLOCK.now(), input_files)
-  #   pipeline.start(queue_name=_QUEUE_NAME)
+    # @classmethod
+    # def _start_metrics_pipeline(cls, bucket_name, filename_prefix, num_shards):
+    #   input_files = []
+    #   for csv_filename in _ALL_CSVS:
+    #     input_files.extend([filename_prefix + csv_filename % shard for shard
+    #                         in range(0, num_shards)])
+    #   pipeline = MetricsPipeline(bucket_name, clock.CLOCK.now(), input_files)
+    #   pipeline.start(queue_name=_QUEUE_NAME)

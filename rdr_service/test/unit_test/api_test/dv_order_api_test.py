@@ -16,280 +16,260 @@ from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 
 class DvOrderApiTestBase(FlaskTestBase):
-  mayolink_response = None
+    mayolink_response = None
 
-  def setUp(self, use_mysql=True, with_data=True):
-    super(DvOrderApiTestBase, self).setUp(use_mysql=use_mysql, with_data=with_data)
-    self.dv_order_dao = DvOrderDao()
-    self.hpo_dao = HPODao()
-    self.participant_dao = ParticipantDao()
-    self.summary_dao = ParticipantSummaryDao()
-    self.code_dao = CodeDao()
+    def setUp(self, use_mysql=True, with_data=True):
+        super(DvOrderApiTestBase, self).setUp(use_mysql=use_mysql, with_data=with_data)
+        self.dv_order_dao = DvOrderDao()
+        self.hpo_dao = HPODao()
+        self.participant_dao = ParticipantDao()
+        self.summary_dao = ParticipantSummaryDao()
+        self.code_dao = CodeDao()
 
-    self.hpo = self.hpo_dao.get_by_name('PITT')
-    self.participant = Participant(
-        hpoId=self.hpo.hpoId,
-        participantId=123456789,
-        biobankId=7
-    )
-    self.participant_dao.insert(self.participant)
-    self.summary = self.participant_summary(self.participant)
-    self.summary_dao.insert(self.summary)
+        self.hpo = self.hpo_dao.get_by_name("PITT")
+        self.participant = Participant(hpoId=self.hpo.hpoId, participantId=123456789, biobankId=7)
+        self.participant_dao.insert(self.participant)
+        self.summary = self.participant_summary(self.participant)
+        self.summary_dao.insert(self.summary)
 
-    mayolinkapi_patcher = mock.patch(
-        'dao.dv_order_dao.MayoLinkApi',
-        **{'return_value.post.return_value': self.mayolink_response}
-    )
-    mayolinkapi_patcher.start()
-    self.addCleanup(mayolinkapi_patcher.stop)
+        mayolinkapi_patcher = mock.patch(
+            "dao.dv_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
+        )
+        mayolinkapi_patcher.start()
+        self.addCleanup(mayolinkapi_patcher.stop)
 
-  def get_payload(self, filename):
-    return load_test_data_json(filename)
+    def get_payload(self, filename):
+        return load_test_data_json(filename)
 
-  def get_orders(self):
-    with self.dv_order_dao.session() as session:
-      return list(session.query(BiobankDVOrder))
+    def get_orders(self):
+        with self.dv_order_dao.session() as session:
+            return list(session.query(BiobankDVOrder))
 
 
 class DvOrderApiTestPostSupplyRequest(DvOrderApiTestBase):
-
-  def test_order_created(self):
-    self.assertEqual(0, len(self.get_orders()))
-    response = self.send_post(
-        'SupplyRequest',
-        request_data=self.get_payload('dv_order_api_post_supply_request.json'),
-        expected_status=http.client.CREATED
-    )
-    self.assertTrue(response.location.endswith('/SupplyRequest/999999'))
-    orders = self.get_orders()
-    self.assertEqual(1, len(orders))
+    def test_order_created(self):
+        self.assertEqual(0, len(self.get_orders()))
+        response = self.send_post(
+            "SupplyRequest",
+            request_data=self.get_payload("dv_order_api_post_supply_request.json"),
+            expected_status=http.client.CREATED,
+        )
+        self.assertTrue(response.location.endswith("/SupplyRequest/999999"))
+        orders = self.get_orders()
+        self.assertEqual(1, len(orders))
 
 
 class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
-  mayolink_response = {
-      'orders': {
-          'order': {
-              'status': 'Queued',
-        'reference_number': 'somebarcodenumber',
-        'received': '2016-12-01T12:00:00-05:00',
-        'number': 'WEB1ABCD1234',
-        'patient': {
-            'medical_record_number': 'PAT-123-456'
+    mayolink_response = {
+        "orders": {
+            "order": {
+                "status": "Queued",
+                "reference_number": "somebarcodenumber",
+                "received": "2016-12-01T12:00:00-05:00",
+                "number": "WEB1ABCD1234",
+                "patient": {"medical_record_number": "PAT-123-456"},
+            }
         }
-      }
     }
-  }
 
-  def test_order_updated(self):
-    self.assertEqual(0, len(self.get_orders()))
-    post_response = self.send_post(
-        'SupplyRequest',
-        request_data=self.get_payload('dv_order_api_post_supply_request.json'),
-        expected_status=http.client.CREATED
-    )
-    location_id = post_response.location.rsplit('/', 1)[-1]
-    self.send_put(
-        'SupplyRequest/{}'.format(location_id),
-        request_data=self.get_payload('dv_order_api_put_supply_request.json'),
-    )
-    post_response = self.send_post(
-        'SupplyDelivery',
-        request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
-        expected_status=http.client.CREATED
-    )
-    location_id = post_response.location.rsplit('/', 1)[-1]
-    self.send_put(
-        'SupplyDelivery/{}'.format(location_id),
-        request_data=self.get_payload('dv_order_api_put_supply_delivery.json'),
-    )
+    def test_order_updated(self):
+        self.assertEqual(0, len(self.get_orders()))
+        post_response = self.send_post(
+            "SupplyRequest",
+            request_data=self.get_payload("dv_order_api_post_supply_request.json"),
+            expected_status=http.client.CREATED,
+        )
+        location_id = post_response.location.rsplit("/", 1)[-1]
+        self.send_put(
+            "SupplyRequest/{}".format(location_id),
+            request_data=self.get_payload("dv_order_api_put_supply_request.json"),
+        )
+        post_response = self.send_post(
+            "SupplyDelivery",
+            request_data=self.get_payload("dv_order_api_post_supply_delivery.json"),
+            expected_status=http.client.CREATED,
+        )
+        location_id = post_response.location.rsplit("/", 1)[-1]
+        self.send_put(
+            "SupplyDelivery/{}".format(location_id),
+            request_data=self.get_payload("dv_order_api_put_supply_delivery.json"),
+        )
 
-    orders = self.get_orders()
-    self.assertEqual(1, len(orders))
-    for i in orders:
-      self.assertEqual(i.barcode, 'SABR90160121INA')
-      self.assertEqual(i.id, int(1))
-      self.assertEqual(i.order_id, int(999999))
-      self.assertEqual(i.biobankOrderId, 'WEB1ABCD1234')
-      self.assertEqual(i.biobankStatus, 'Delivered')
-      self.assertEqual(i.biobankTrackingId, 'PAT-123-456')
+        orders = self.get_orders()
+        self.assertEqual(1, len(orders))
+        for i in orders:
+            self.assertEqual(i.barcode, "SABR90160121INA")
+            self.assertEqual(i.id, int(1))
+            self.assertEqual(i.order_id, int(999999))
+            self.assertEqual(i.biobankOrderId, "WEB1ABCD1234")
+            self.assertEqual(i.biobankStatus, "Delivered")
+            self.assertEqual(i.biobankTrackingId, "PAT-123-456")
 
-    with self.dv_order_dao.session() as session:
-      # there should be two identifier records in the BiobankOrderIdentifier table
-      identifiers = session.query(BiobankOrderIdentifier).all()
-      self.assertEqual(2, len(identifiers))
-      # there should be one ordered sample in the BiobankOrderedSample table
-      samples = session.query(BiobankOrderedSample).all()
-      self.assertEqual(1, len(samples))
+        with self.dv_order_dao.session() as session:
+            # there should be two identifier records in the BiobankOrderIdentifier table
+            identifiers = session.query(BiobankOrderIdentifier).all()
+            self.assertEqual(2, len(identifiers))
+            # there should be one ordered sample in the BiobankOrderedSample table
+            samples = session.query(BiobankOrderedSample).all()
+            self.assertEqual(1, len(samples))
 
-  def test_missing_authoredOn_works(self):
-    """authoredOn may not be sent in payload."""
-    request = self.get_payload('dv_order_api_post_supply_request.json')
-    del request['authoredOn']
-    post_response = self.send_post(
-        'SupplyRequest',
-        request_data=request,
-        expected_status=http.client.CREATED
-    )
-    order = self.get_orders()
-    self.assertEqual(1, len(order))
-    self.assertEqual(post_response._status_code, 201)
+    def test_missing_authoredOn_works(self):
+        """authoredOn may not be sent in payload."""
+        request = self.get_payload("dv_order_api_post_supply_request.json")
+        del request["authoredOn"]
+        post_response = self.send_post("SupplyRequest", request_data=request, expected_status=http.client.CREATED)
+        order = self.get_orders()
+        self.assertEqual(1, len(order))
+        self.assertEqual(post_response._status_code, 201)
+
 
 class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
-  mayolink_response = {
-    'orders': {
-      'order': {
-        'status': 'Queued',
-        'reference_number': 'somebarcodenumber',
-        'received': '2016-12-01T12:00:00-05:00',
-        'number': 'WEB1ABCD1234',
-        'patient': {
-          'medical_record_number': 'PAT-123-456'
+    mayolink_response = {
+        "orders": {
+            "order": {
+                "status": "Queued",
+                "reference_number": "somebarcodenumber",
+                "received": "2016-12-01T12:00:00-05:00",
+                "number": "WEB1ABCD1234",
+                "patient": {"medical_record_number": "PAT-123-456"},
+            }
         }
-      }
     }
-  }
 
-  def test_supply_delivery_fails_without_supply_request(self):
-    self.send_post(
-      'SupplyDelivery',
-      request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
-      expected_status=http.client.CONFLICT
-    )
+    def test_supply_delivery_fails_without_supply_request(self):
+        self.send_post(
+            "SupplyDelivery",
+            request_data=self.get_payload("dv_order_api_post_supply_delivery.json"),
+            expected_status=http.client.CONFLICT,
+        )
 
-  def test_delivery_pass_after_supply_request(self):
-    self.send_post(
-      'SupplyRequest',
-      request_data=self.get_payload('dv_order_api_post_supply_request.json'),
-      expected_status=http.client.CREATED
-    )
+    def test_delivery_pass_after_supply_request(self):
+        self.send_post(
+            "SupplyRequest",
+            request_data=self.get_payload("dv_order_api_post_supply_request.json"),
+            expected_status=http.client.CREATED,
+        )
 
-    self.send_post(
-      'SupplyDelivery',
-      request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
-      expected_status=http.client.CREATED
-    )
+        self.send_post(
+            "SupplyDelivery",
+            request_data=self.get_payload("dv_order_api_post_supply_delivery.json"),
+            expected_status=http.client.CREATED,
+        )
 
-    orders = self.get_orders()
-    self.assertEqual(1, len(orders))
-  @mock.patch('dao.dv_order_dao.get_code_id')
-  def test_biobank_address_received(self, patched_code_id):
-    patched_code_id.return_value = 1
+        orders = self.get_orders()
+        self.assertEqual(1, len(orders))
 
-    code = Code(system="a", value="b", display="c", topic="d",
-                codeType=CodeType.MODULE, mapped=True)
-    self.code_dao.insert(code)
-    self.send_post(
-      'SupplyRequest',
-      request_data=self.get_payload('dv_order_api_post_supply_request.json'),
-      expected_status=http.client.CREATED
-    )
+    @mock.patch("dao.dv_order_dao.get_code_id")
+    def test_biobank_address_received(self, patched_code_id):
+        patched_code_id.return_value = 1
 
-    response = self.send_post(
-      'SupplyDelivery',
-      request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
-      expected_status=http.client.CREATED
-    )
+        code = Code(system="a", value="b", display="c", topic="d", codeType=CodeType.MODULE, mapped=True)
+        self.code_dao.insert(code)
+        self.send_post(
+            "SupplyRequest",
+            request_data=self.get_payload("dv_order_api_post_supply_request.json"),
+            expected_status=http.client.CREATED,
+        )
 
-    request = self.get_payload('dv_order_api_put_supply_delivery.json')
-    biobank_address = self.dv_order_dao.biobank_address
-    request['contained'][0]['address'] = biobank_address
+        response = self.send_post(
+            "SupplyDelivery",
+            request_data=self.get_payload("dv_order_api_post_supply_delivery.json"),
+            expected_status=http.client.CREATED,
+        )
 
-    location_id = response.location.rsplit('/', 1)[-1]
-    self.send_put(
-      'SupplyDelivery/{}'.format(location_id),
-      request_data=request
-    )
+        request = self.get_payload("dv_order_api_put_supply_delivery.json")
+        biobank_address = self.dv_order_dao.biobank_address
+        request["contained"][0]["address"] = biobank_address
 
-    order = self.get_orders()
-    self.assertEqual(order[0].biobankCity, 'Rochester')
-    self.assertEqual(order[0].city, 'Fairfax')
-    self.assertEqual(order[0].biobankStreetAddress1, '3050 Superior Drive NW')
-    self.assertEqual(order[0].streetAddress1, '4114 Legato Rd')
-    self.assertEqual(order[0].streetAddress2, 'test line 2')
-    self.assertEqual(order[0].biobankStateId, 1)
-    self.assertEqual(order[0].stateId, 1)
-    self.assertEqual(order[0].biobankZipCode, '55901')
-    self.assertEqual(order[0].zipCode, '22033')
+        location_id = response.location.rsplit("/", 1)[-1]
+        self.send_put("SupplyDelivery/{}".format(location_id), request_data=request)
 
-    self.assertTrue(response.location.endswith('/SupplyDelivery/999999'))
-    self.assertEqual(1, len(order))
-    for i in order:
-      self.assertEqual(i.id, int(1))
-      self.assertEqual(i.order_id, int(999999))
+        order = self.get_orders()
+        self.assertEqual(order[0].biobankCity, "Rochester")
+        self.assertEqual(order[0].city, "Fairfax")
+        self.assertEqual(order[0].biobankStreetAddress1, "3050 Superior Drive NW")
+        self.assertEqual(order[0].streetAddress1, "4114 Legato Rd")
+        self.assertEqual(order[0].streetAddress2, "test line 2")
+        self.assertEqual(order[0].biobankStateId, 1)
+        self.assertEqual(order[0].stateId, 1)
+        self.assertEqual(order[0].biobankZipCode, "55901")
+        self.assertEqual(order[0].zipCode, "22033")
 
-  @mock.patch('dao.dv_order_dao.get_code_id')
-  def test_biobank_address_received_alt_json(self, patched_code_id):
-    patched_code_id.return_value = 1
+        self.assertTrue(response.location.endswith("/SupplyDelivery/999999"))
+        self.assertEqual(1, len(order))
+        for i in order:
+            self.assertEqual(i.id, int(1))
+            self.assertEqual(i.order_id, int(999999))
 
-    code = Code(system="a", value="b", display="c", topic="d",
-                codeType=CodeType.MODULE, mapped=True)
-    self.code_dao.insert(code)
-    self.send_post(
-      'SupplyRequest',
-      request_data=self.get_payload('dv_order_api_post_supply_request.json'),
-      expected_status=http.client.CREATED
-    )
+    @mock.patch("dao.dv_order_dao.get_code_id")
+    def test_biobank_address_received_alt_json(self, patched_code_id):
+        patched_code_id.return_value = 1
 
-    response = self.send_post(
-      'SupplyDelivery',
-      request_data=self.get_payload('dv_order_api_post_supply_delivery_alt.json'),
-      expected_status=http.client.CREATED
-    )
+        code = Code(system="a", value="b", display="c", topic="d", codeType=CodeType.MODULE, mapped=True)
+        self.code_dao.insert(code)
+        self.send_post(
+            "SupplyRequest",
+            request_data=self.get_payload("dv_order_api_post_supply_request.json"),
+            expected_status=http.client.CREATED,
+        )
 
-    request = self.get_payload('dv_order_api_put_supply_delivery.json')
-    biobank_address = self.dv_order_dao.biobank_address
-    request['contained'][0]['address'] = biobank_address
+        response = self.send_post(
+            "SupplyDelivery",
+            request_data=self.get_payload("dv_order_api_post_supply_delivery_alt.json"),
+            expected_status=http.client.CREATED,
+        )
 
-    location_id = response.location.rsplit('/', 1)[-1]
-    self.send_put(
-      'SupplyDelivery/{}'.format(location_id),
-      request_data=request
-    )
+        request = self.get_payload("dv_order_api_put_supply_delivery.json")
+        biobank_address = self.dv_order_dao.biobank_address
+        request["contained"][0]["address"] = biobank_address
 
-    order = self.get_orders()
-    self.assertEqual(order[0].biobankCity, 'Rochester')
-    self.assertEqual(order[0].biobankStreetAddress1, '3050 Superior Drive NW')
-    self.assertEqual(order[0].biobankStateId, 1)
-    self.assertEqual(order[0].biobankZipCode, '55901')
+        location_id = response.location.rsplit("/", 1)[-1]
+        self.send_put("SupplyDelivery/{}".format(location_id), request_data=request)
 
-    self.assertTrue(response.location.endswith('/SupplyDelivery/999999'))
-    self.assertEqual(1, len(order))
-    for i in order:
-      self.assertEqual(i.id, int(1))
-      self.assertEqual(i.order_id, int(999999))
+        order = self.get_orders()
+        self.assertEqual(order[0].biobankCity, "Rochester")
+        self.assertEqual(order[0].biobankStreetAddress1, "3050 Superior Drive NW")
+        self.assertEqual(order[0].biobankStateId, 1)
+        self.assertEqual(order[0].biobankZipCode, "55901")
+
+        self.assertTrue(response.location.endswith("/SupplyDelivery/999999"))
+        self.assertEqual(1, len(order))
+        for i in order:
+            self.assertEqual(i.id, int(1))
+            self.assertEqual(i.order_id, int(999999))
+
 
 class DvOrderApiTestPutSupplyDelivery(DvOrderApiTestBase):
-  mayolink_response = {
-      'orders': {
-          'order': {
-              'status': 'Queued',
-        'reference_number': 'somebarcodenumber',
-        'received': '2016-12-01T12:00:00-05:00',
-        'number': 'WEB1ABCD1234',
-        'patient': {
-            'medical_record_number': 'PAT-123-456'
+    mayolink_response = {
+        "orders": {
+            "order": {
+                "status": "Queued",
+                "reference_number": "somebarcodenumber",
+                "received": "2016-12-01T12:00:00-05:00",
+                "number": "WEB1ABCD1234",
+                "patient": {"medical_record_number": "PAT-123-456"},
+            }
         }
-      }
     }
-  }
-  def test_supply_delivery_put(self):
-    self.send_post(
-      'SupplyRequest',
-      request_data=self.get_payload('dv_order_api_post_supply_request.json'),
-      expected_status=http.client.CREATED
-    )
 
-    response = self.send_post(
-      'SupplyDelivery',
-      request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
-      expected_status=http.client.CREATED
-    )
+    def test_supply_delivery_put(self):
+        self.send_post(
+            "SupplyRequest",
+            request_data=self.get_payload("dv_order_api_post_supply_request.json"),
+            expected_status=http.client.CREATED,
+        )
 
-    location_id = response.location.rsplit('/', 1)[-1]
-    self.send_put(
-      'SupplyDelivery/{}'.format(location_id),
-      request_data=self.get_payload('dv_order_api_put_supply_delivery.json')
-    )
+        response = self.send_post(
+            "SupplyDelivery",
+            request_data=self.get_payload("dv_order_api_post_supply_delivery.json"),
+            expected_status=http.client.CREATED,
+        )
 
-    orders = self.get_orders()
-    self.assertEqual(1, len(orders))
+        location_id = response.location.rsplit("/", 1)[-1]
+        self.send_put(
+            "SupplyDelivery/{}".format(location_id),
+            request_data=self.get_payload("dv_order_api_put_supply_delivery.json"),
+        )
+
+        orders = self.get_orders()
+        self.assertEqual(1, len(orders))

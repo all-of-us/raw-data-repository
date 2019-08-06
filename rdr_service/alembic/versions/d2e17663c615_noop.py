@@ -7,12 +7,10 @@ Create Date: 2018-01-10 14:02:10.393509
 """
 
 # revision identifiers, used by Alembic.
-revision = 'd2e17663c615'
-down_revision = '106ecd33248b'
+revision = "d2e17663c615"
+down_revision = "106ecd33248b"
 branch_labels = None
 depends_on = None
-
-
 
 
 def upgrade(engine_name):

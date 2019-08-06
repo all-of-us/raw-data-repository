@@ -8,14 +8,16 @@ from rdr_service.model.utils import Enum, UTCDateTime
 
 
 class CodeType(messages.Enum):
-  """A type of code"""
-  MODULE = 1
-  TOPIC = 2
-  QUESTION = 3
-  ANSWER = 4
+    """A type of code"""
+
+    MODULE = 1
+    TOPIC = 2
+    QUESTION = 3
+    ANSWER = 4
+
 
 class CodeBook(Base):
-  """A book of codes.
+    """A book of codes.
 
   Code books contain a list of codes that are referenced in questionnaire concepts,
   questionnaire questions, and questionnaire response answers. They are also used in participant
@@ -26,79 +28,74 @@ class CodeBook(Base):
   book that are missing from the database are inserted. Existing codes that are not in the code
   book are left untouched.
   """
-  __tablename__ = 'code_book'
-  codeBookId = Column('code_book_id', Integer, primary_key=True)
-  created = Column('created', UTCDateTime, nullable=False)
-  # True if this is the latest imported code book.
-  latest = Column('latest', Boolean, nullable=False)
-  name = Column('name', String(80), nullable=False)
-  system = Column('system', String(255), nullable=False)
-  version = Column('version', String(80), nullable=False)
-  __table_args__ = (
-    UniqueConstraint('system', 'version'),
-  )
+
+    __tablename__ = "code_book"
+    codeBookId = Column("code_book_id", Integer, primary_key=True)
+    created = Column("created", UTCDateTime, nullable=False)
+    # True if this is the latest imported code book.
+    latest = Column("latest", Boolean, nullable=False)
+    name = Column("name", String(80), nullable=False)
+    system = Column("system", String(255), nullable=False)
+    version = Column("version", String(80), nullable=False)
+    __table_args__ = (UniqueConstraint("system", "version"),)
+
 
 class _CodeBase(object):
-  """Mixin with shared columns for Code and CodeHistory"""
-  codeId = Column('code_id', Integer, primary_key=True)
-  system = Column('system', String(255), nullable=False)
-  value = Column('value', String(80), nullable=False)
-  # OMOP codes are supposed to be at most 50 characters long; for legacy codes that exceeded this
-  # limit, we populate a shortened version for use in OMOP here. Otherwise, shortValue is identical
-  # to value.
-  shortValue = Column('short_value', String(50))
-  display = Column('display', UnicodeText)
-  topic = Column('topic', UnicodeText)
-  codeType = Column('code_type', Enum(CodeType), nullable=False)
-  mapped = Column('mapped', Boolean, nullable=False)
-  created = Column('created', UTCDateTime, nullable=False)
+    """Mixin with shared columns for Code and CodeHistory"""
 
-  @declared_attr
-  def codeBookId(cls):
-    return Column('code_book_id', Integer, ForeignKey('code_book.code_book_id'))
+    codeId = Column("code_id", Integer, primary_key=True)
+    system = Column("system", String(255), nullable=False)
+    value = Column("value", String(80), nullable=False)
+    # OMOP codes are supposed to be at most 50 characters long; for legacy codes that exceeded this
+    # limit, we populate a shortened version for use in OMOP here. Otherwise, shortValue is identical
+    # to value.
+    shortValue = Column("short_value", String(50))
+    display = Column("display", UnicodeText)
+    topic = Column("topic", UnicodeText)
+    codeType = Column("code_type", Enum(CodeType), nullable=False)
+    mapped = Column("mapped", Boolean, nullable=False)
+    created = Column("created", UTCDateTime, nullable=False)
 
-  @declared_attr
-  def parentId(cls):
-    return Column('parent_id', Integer, ForeignKey('code.code_id'))
+    @declared_attr
+    def codeBookId(cls):
+        return Column("code_book_id", Integer, ForeignKey("code_book.code_book_id"))
+
+    @declared_attr
+    def parentId(cls):
+        return Column("parent_id", Integer, ForeignKey("code.code_id"))
+
 
 class Code(_CodeBase, Base):
-  """A code for a module, question, or answer.
+    """A code for a module, question, or answer.
 
   Questions have modules for parents, and answers have questions for parents.
   """
-  __tablename__ = 'code'
 
-  @declared_attr
-  def children(cls):
-    return relationship(
-        cls.__name__,
-        backref=backref(
-            'parent',
-            remote_side='Code.codeId'
-        ),
-        cascade='all, delete-orphan'
-    )
+    __tablename__ = "code"
 
-  __table_args__ = (
-    UniqueConstraint('system', 'value'),
-  )
+    @declared_attr
+    def children(cls):
+        return relationship(
+            cls.__name__, backref=backref("parent", remote_side="Code.codeId"), cascade="all, delete-orphan"
+        )
+
+    __table_args__ = (UniqueConstraint("system", "value"),)
+
 
 class CodeHistory(_CodeBase, Base):
-  """A version of a code.
+    """A version of a code.
 
   New versions are inserted every time a code book is imported.
 
   At the moment, CodeHistory is not exposed by any endpoints, and is intended as a historical
   record of codes in case we need it in future.
   """
-  __tablename__ = 'code_history'
 
-  # Since codeBookId is nullable, it can't be a part of the primary key; instead create a
-  # separate PK for CodeHistory.
-  codeHistoryId = Column('code_history_id', Integer, primary_key=True)
-  codeId = Column('code_id', Integer)
+    __tablename__ = "code_history"
 
-  __table_args__ = (
-    UniqueConstraint('code_book_id', 'system', 'value'),
-    UniqueConstraint('code_book_id', 'code_id'),
-  )
+    # Since codeBookId is nullable, it can't be a part of the primary key; instead create a
+    # separate PK for CodeHistory.
+    codeHistoryId = Column("code_history_id", Integer, primary_key=True)
+    codeId = Column("code_id", Integer)
+
+    __table_args__ = (UniqueConstraint("code_book_id", "system", "value"), UniqueConstraint("code_book_id", "code_id"))

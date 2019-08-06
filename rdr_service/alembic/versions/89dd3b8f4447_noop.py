@@ -7,8 +7,8 @@ Create Date: 2017-10-04 17:10:35.319343
 """
 
 # revision identifiers, used by Alembic.
-revision = '89dd3b8f4447'
-down_revision = '8b1281fb55ed'
+revision = "89dd3b8f4447"
+down_revision = "8b1281fb55ed"
 branch_labels = None
 depends_on = None
 
@@ -34,8 +34,9 @@ def downgrade_metrics():
 
 
 def upgrade_rdr():
-  # View is replaced entirely in later migration.
-  pass
+    # View is replaced entirely in later migration.
+    pass
+
 
 def downgrade_rdr():
-  pass
+    pass

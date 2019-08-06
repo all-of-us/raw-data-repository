@@ -10,46 +10,51 @@ from rdr_service import config
 
 
 def delete_service_account_keys():
-  days_to_delete = config.getSetting(config.DAYS_TO_DELETE_KEYS)
-  service_accounts_with_long_lived_keys = config.getSettingList(
-    config.SERVICE_ACCOUNTS_WITH_LONG_LIVED_KEYS, default=[])
-  app_id = app_identity.get_application_id()
-  if app_id is None:
-    return
+    days_to_delete = config.getSetting(config.DAYS_TO_DELETE_KEYS)
+    service_accounts_with_long_lived_keys = config.getSettingList(
+        config.SERVICE_ACCOUNTS_WITH_LONG_LIVED_KEYS, default=[]
+    )
+    app_id = app_identity.get_application_id()
+    if app_id is None:
+        return
 
-  project_name = 'projects/' + app_id
-  try:
-    service = discovery.build('iam', 'v1')
-    request = service.projects().serviceAccounts().list(name=project_name)
-    response = request.execute()
-    accounts = response['accounts']
+    project_name = "projects/" + app_id
+    try:
+        service = discovery.build("iam", "v1")
+        request = service.projects().serviceAccounts().list(name=project_name)
+        response = request.execute()
+        accounts = response["accounts"]
 
-    for account in accounts:
-      if account['email'] in service_accounts_with_long_lived_keys:
-        logging.info('Skip key expiration check for Service Account {}'.format(account))
-        continue
+        for account in accounts:
+            if account["email"] in service_accounts_with_long_lived_keys:
+                logging.info("Skip key expiration check for Service Account {}".format(account))
+                continue
 
-      serviceaccount = project_name + '/serviceAccounts/' + account['email']
-      request = list(service.projects().serviceAccounts().keys()).list(name=serviceaccount,
-                                                                 keyTypes='USER_MANAGED')
-      response = request.execute()
-      if 'keys' in response:
-        keys = response['keys']
+            serviceaccount = project_name + "/serviceAccounts/" + account["email"]
+            request = list(service.projects().serviceAccounts().keys()).list(
+                name=serviceaccount, keyTypes="USER_MANAGED"
+            )
+            response = request.execute()
+            if "keys" in response:
+                keys = response["keys"]
 
-        for key in keys:
-          keyname = key['name']
-          startdate = datetime.strptime(key['validAfterTime'], '%Y-%m-%dT%H:%M:%SZ')
+                for key in keys:
+                    keyname = key["name"]
+                    startdate = datetime.strptime(key["validAfterTime"], "%Y-%m-%dT%H:%M:%SZ")
 
-          key_age_days = (datetime.utcnow() - startdate).days
+                    key_age_days = (datetime.utcnow() - startdate).days
 
-          if key_age_days >= days_to_delete:
-            logging.warning('Deleting service Account key older than {} days [{}]: {}'.format(
-              days_to_delete, key_age_days, keyname))
+                    if key_age_days >= days_to_delete:
+                        logging.warning(
+                            "Deleting service Account key older than {} days [{}]: {}".format(
+                                days_to_delete, key_age_days, keyname
+                            )
+                        )
 
-            delete_request = list(service.projects().serviceAccounts().keys()).delete(name=keyname)
-            delete_request.execute()
-          else:
-            logging.info('Service Account key is {} days old: {}'.format(key_age_days, keyname))
+                        delete_request = list(service.projects().serviceAccounts().keys()).delete(name=keyname)
+                        delete_request.execute()
+                    else:
+                        logging.info("Service Account key is {} days old: {}".format(key_age_days, keyname))
 
-  except KeyError:
-    logging.info('No Service Accounts found in project "{}"'.format(app_id))
+    except KeyError:
+        logging.info('No Service Accounts found in project "{}"'.format(app_id))

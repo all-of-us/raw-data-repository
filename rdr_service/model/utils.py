@@ -8,116 +8,119 @@ from werkzeug.routing import BaseConverter, ValidationError
 from rdr_service.query import PropertyType
 
 _PROPERTY_TYPE_MAP = {
-  'String': PropertyType.STRING,
-  'Date': PropertyType.DATE,
-  'DateTime': PropertyType.DATETIME,
-  'UTCDateTime': PropertyType.DATETIME,
-  'UTCDateTime6': PropertyType.DATETIME,
-  'Enum': PropertyType.ENUM,
-  'Integer': PropertyType.INTEGER,
-  'SmallInteger': PropertyType.INTEGER
+    "String": PropertyType.STRING,
+    "Date": PropertyType.DATE,
+    "DateTime": PropertyType.DATETIME,
+    "UTCDateTime": PropertyType.DATETIME,
+    "UTCDateTime6": PropertyType.DATETIME,
+    "Enum": PropertyType.ENUM,
+    "Integer": PropertyType.INTEGER,
+    "SmallInteger": PropertyType.INTEGER,
 }
 
+
 class Enum(TypeDecorator):
-  """A type for a SQLAlchemy column based on a protomsg Enum provided in the constructor"""
-  impl = SmallInteger
+    """A type for a SQLAlchemy column based on a protomsg Enum provided in the constructor"""
 
-  def __init__(self, enum_type):
-    super(Enum, self).__init__()
-    self.enum_type = enum_type
+    impl = SmallInteger
 
-  def __repr__(self):
-    return "Enum(%s)" % self.enum_type.__name__
+    def __init__(self, enum_type):
+        super(Enum, self).__init__()
+        self.enum_type = enum_type
 
-  def process_bind_param(self, value, dialect):  # pylint: disable=unused-argument
-    return int(value) if value else None
+    def __repr__(self):
+        return "Enum(%s)" % self.enum_type.__name__
 
-  def process_result_value(self, value, dialect):  # pylint: disable=unused-argument
-    return self.enum_type(value) if value else None
+    def process_bind_param(self, value, dialect):  # pylint: disable=unused-argument
+        return int(value) if value else None
+
+    def process_result_value(self, value, dialect):  # pylint: disable=unused-argument
+        return self.enum_type(value) if value else None
 
 
 class MultiEnum(TypeDecorator):
-  """
+    """
   A multi-value Enum type for simple uses.
 
   Data in this format cannot be searched easily and in most cases it is preferable to use a
   relationship table.
   """
-  impl = String
 
-  def __init__(self, enum_type, delimiter=',', max_length=80):
-    super(MultiEnum, self).__init__(max_length)
-    self.enum_type = enum_type
-    self.delimiter = delimiter
+    impl = String
 
-  def __repr__(self):
-    return "MultiEnum({})".format(self.enum_type.__name__)
+    def __init__(self, enum_type, delimiter=",", max_length=80):
+        super(MultiEnum, self).__init__(max_length)
+        self.enum_type = enum_type
+        self.delimiter = delimiter
 
-  def process_bind_param(self, value, dialect):  # pylint: disable=unused-argument
-    return self.delimiter.join([
-      str(int(item))
-      for item in value
-    ]) if value else None
+    def __repr__(self):
+        return "MultiEnum({})".format(self.enum_type.__name__)
 
-  def process_result_value(self, value, dialect):  # pylint: disable=unused-argument
-    return [
-      self.enum_type(int(raw_value))
-      for raw_value
-      in value.split(self.delimiter)
-      if len(raw_value)
-    ] if value else None
+    def process_bind_param(self, value, dialect):  # pylint: disable=unused-argument
+        return self.delimiter.join([str(int(item)) for item in value]) if value else None
+
+    def process_result_value(self, value, dialect):  # pylint: disable=unused-argument
+        return (
+            [self.enum_type(int(raw_value)) for raw_value in value.split(self.delimiter) if len(raw_value)]
+            if value
+            else None
+        )
 
 
 class UTCDateTime(TypeDecorator):
-  impl = DateTime
+    impl = DateTime
 
-  def process_bind_param(self, value, engine):
-    #pylint: disable=unused-argument
-    if value is not None and value.tzinfo:
-      return value.astimezone(tzutc()).replace(tzinfo=None)
-    return value
+    def process_bind_param(self, value, engine):
+        # pylint: disable=unused-argument
+        if value is not None and value.tzinfo:
+            return value.astimezone(tzutc()).replace(tzinfo=None)
+        return value
+
 
 class UTCDateTime6(TypeDecorator):
-  impl = DATETIME(fsp=6)
+    impl = DATETIME(fsp=6)
 
-  def process_bind_param(self, value, engine):
-    #pylint: disable=unused-argument
-    if value is not None and value.tzinfo:
-      return value.astimezone(tzutc()).replace(tzinfo=None)
-    return value
+    def process_bind_param(self, value, engine):
+        # pylint: disable=unused-argument
+        if value is not None and value.tzinfo:
+            return value.astimezone(tzutc()).replace(tzinfo=None)
+        return value
+
 
 def to_client_participant_id(participant_id):
-  return 'P%d' % participant_id
+    return "P%d" % participant_id
+
 
 def from_client_participant_id(participant_id):
-  if not participant_id.startswith('P'):
-    raise BadRequest("Invalid participant ID: %s" % participant_id)
-  try:
-    return int(participant_id[1:])
-  except ValueError:
-    raise BadRequest("Invalid participant ID: %s" % participant_id)
+    if not participant_id.startswith("P"):
+        raise BadRequest("Invalid participant ID: %s" % participant_id)
+    try:
+        return int(participant_id[1:])
+    except ValueError:
+        raise BadRequest("Invalid participant ID: %s" % participant_id)
+
 
 class ParticipantIdConverter(BaseConverter):
+    def to_python(self, value):
+        try:
+            return from_client_participant_id(value)
+        except BadRequest as ex:
+            raise ValidationError(ex.description)
 
-  def to_python(self, value):
-    try:
-      return from_client_participant_id(value)
-    except BadRequest as ex:
-      raise ValidationError(ex.description)
+    def to_url(self, value):
+        # Assume the client has already converted this.
+        return value
 
-  def to_url(self, value):
-    # Assume the client has already converted this.
-    return value
 
 def get_property_type(prop):
-  prop_property = getattr(prop, "property", None)
-  if not prop_property:
-    return None
-  columns = getattr(prop_property, "columns", None)
-  if not columns:
-    return None
-  property_classname = columns[0].type.__class__.__name__
-  property_type = _PROPERTY_TYPE_MAP.get(property_classname)
-  if not property_type:
-    return None
-  return property_type
+    prop_property = getattr(prop, "property", None)
+    if not prop_property:
+        return None
+    columns = getattr(prop_property, "columns", None)
+    if not columns:
+        return None
+    property_classname = columns[0].type.__class__.__name__
+    property_type = _PROPERTY_TYPE_MAP.get(property_classname)
+    if not property_type:
+        return None
+    return property_type

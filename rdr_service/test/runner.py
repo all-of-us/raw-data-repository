@@ -28,105 +28,95 @@ import unittest
 
 
 def fixup_paths(path):
-  """Adds GAE SDK path to system path and appends it to the google path
+    """Adds GAE SDK path to system path and appends it to the google path
   if that already exists."""
-  # Not all Google packages are inside namespace packages, which means
-  # there might be another non-namespace package named `google` already on
-  # the path and simply appending the App Engine SDK to the path will not
-  # work since the other package will get discovered and used first.
-  # This emulates namespace packages by first searching if a `google` package
-  # exists by importing it, and if so appending to its module search path.
-  try:
-    import google
-    google.__path__.append("{0}/google".format(path))
-  except ImportError:
-    pass
+    # Not all Google packages are inside namespace packages, which means
+    # there might be another non-namespace package named `google` already on
+    # the path and simply appending the App Engine SDK to the path will not
+    # work since the other package will get discovered and used first.
+    # This emulates namespace packages by first searching if a `google` package
+    # exists by importing it, and if so appending to its module search path.
+    try:
+        import google
 
-  sys.path.insert(0, path)
+        google.__path__.append("{0}/google".format(path))
+    except ImportError:
+        pass
+
+    sys.path.insert(0, path)
 
 
 def main(sdk_path, test_path, test_pattern, test_names=None):
-  # If the SDK path points to a Google Cloud SDK installation
-  # then we should alter it to point to the GAE platform location.
-  if os.path.exists(os.path.join(sdk_path, 'platform/google_appengine')):
-    sdk_path = os.path.join(sdk_path, 'platform/google_appengine')
+    # If the SDK path points to a Google Cloud SDK installation
+    # then we should alter it to point to the GAE platform location.
+    if os.path.exists(os.path.join(sdk_path, "platform/google_appengine")):
+        sdk_path = os.path.join(sdk_path, "platform/google_appengine")
 
-  # Make sure google.appengine.* modules are importable.
-  fixup_paths(sdk_path)
+    # Make sure google.appengine.* modules are importable.
+    fixup_paths(sdk_path)
 
-  # Make sure all bundled third-party packages are available.
-  import dev_appserver
-  dev_appserver.fix_sys_path()
+    # Make sure all bundled third-party packages are available.
+    import dev_appserver
 
-  # Loading appengine_config from the current project ensures that any
-  # changes to configuration there are available to all tests (e.g.
-  # sys.path modifications, namespaces, etc.)
-  try:
-    import appengine_config
-    (appengine_config)
-  except ImportError:
-    print('Note: unable to import appengine_config.')
+    dev_appserver.fix_sys_path()
 
-  # Discover and run tests.
-  if test_names:
-    suite = unittest.loader.TestLoader().loadTestsFromNames(test_names)
-  else:
-    suite = unittest.loader.TestLoader().discover(test_path, test_pattern)
-  return unittest.TextTestRunner(verbosity=2).run(suite)
+    # Loading appengine_config from the current project ensures that any
+    # changes to configuration there are available to all tests (e.g.
+    # sys.path modifications, namespaces, etc.)
+    try:
+        import appengine_config
+
+        (appengine_config)
+    except ImportError:
+        print("Note: unable to import appengine_config.")
+
+    # Discover and run tests.
+    if test_names:
+        suite = unittest.loader.TestLoader().loadTestsFromNames(test_names)
+    else:
+        suite = unittest.loader.TestLoader().discover(test_path, test_pattern)
+    return unittest.TextTestRunner(verbosity=2).run(suite)
 
 
-if __name__ == '__main__':
-  # Disables logging for the duration of the tests
-  import logging
-  logging.disable(logging.CRITICAL)
+if __name__ == "__main__":
+    # Disables logging for the duration of the tests
+    import logging
 
-  parser = argparse.ArgumentParser(
-    description=__doc__,
-    formatter_class=argparse.RawDescriptionHelpFormatter)
-  parser.add_argument(
-    'sdk_path',
-    help='The path to the Google App Engine SDK or the Google Cloud SDK.')
-  parser.add_argument(
-    '--test-path',
-    help='The path to look for tests, defaults to the current directory.',
-    default=os.getcwd())
-  parser.add_argument(
-    '--test-pattern',
-    help='The file pattern for test modules, defaults to *_test.py.',
-    default='*_test.py')
+    logging.disable(logging.CRITICAL)
 
-  parser.add_argument(
-    '--no-coverage',
-    dest='coverage',
-    action='store_false',
-    help='Turn off the coverage report'
-  )
-  parser.add_argument(
-    '--test-names',
-    dest='test_names',
-    nargs='+',
-    help='List of tests to run explicitly. Overrides --test-path & --test-pattern.'
-  )
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("sdk_path", help="The path to the Google App Engine SDK or the Google Cloud SDK.")
+    parser.add_argument(
+        "--test-path", help="The path to look for tests, defaults to the current directory.", default=os.getcwd()
+    )
+    parser.add_argument(
+        "--test-pattern", help="The file pattern for test modules, defaults to *_test.py.", default="*_test.py"
+    )
 
-  args = parser.parse_args()
+    parser.add_argument("--no-coverage", dest="coverage", action="store_false", help="Turn off the coverage report")
+    parser.add_argument(
+        "--test-names",
+        dest="test_names",
+        nargs="+",
+        help="List of tests to run explicitly. Overrides --test-path & --test-pattern.",
+    )
 
-  if args.coverage:
-    from coverage import Coverage
-    cov = Coverage(omit=[
-      '*/lib/*',
-      '*/appengine-mapreduce/*',
-      '*/site-packages/*',
-      '*/google_appengine/*',
-      '*/test/*',
-    ])
-    cov.start()
+    args = parser.parse_args()
 
-  result = main(args.sdk_path, args.test_path, args.test_pattern, test_names=args.test_names)
+    if args.coverage:
+        from coverage import Coverage
 
-  if args.coverage:
-    cov.stop()
-    cov.save()
-    cov.html_report()
+        cov = Coverage(
+            omit=["*/lib/*", "*/appengine-mapreduce/*", "*/site-packages/*", "*/google_appengine/*", "*/test/*"]
+        )
+        cov.start()
 
-  if not result.wasSuccessful():
-    sys.exit(1)
+    result = main(args.sdk_path, args.test_path, args.test_pattern, test_names=args.test_names)
+
+    if args.coverage:
+        cov.stop()
+        cov.save()
+        cov.html_report()
+
+    if not result.wasSuccessful():
+        sys.exit(1)

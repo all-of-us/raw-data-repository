@@ -9,8 +9,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = 'c2dd2332a63f'
-down_revision = '32d414bc9a1e'
+revision = "c2dd2332a63f"
+down_revision = "32d414bc9a1e"
 branch_labels = None
 depends_on = None
 
@@ -24,19 +24,23 @@ def downgrade(engine_name):
 
 
 def upgrade_rdr():
-    op.alter_column('questionnaire_response_answer',
-                    'value_string',
-                    existing_type=sa.String(1024),
-                    type_=sa.Text(),
-                    existing_nullable=True)
+    op.alter_column(
+        "questionnaire_response_answer",
+        "value_string",
+        existing_type=sa.String(1024),
+        type_=sa.Text(),
+        existing_nullable=True,
+    )
 
 
 def downgrade_rdr():
-    op.alter_column('questionnaire_response_answer',
-                    'value_string',
-                    existing_type=sa.Text(),
-                    type_=sa.String(1024),
-                    existing_nullable=True)
+    op.alter_column(
+        "questionnaire_response_answer",
+        "value_string",
+        existing_type=sa.Text(),
+        type_=sa.String(1024),
+        existing_nullable=True,
+    )
 
 
 def upgrade_metrics():
