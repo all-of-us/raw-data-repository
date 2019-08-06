@@ -1,21 +1,20 @@
 import json
 
-from rdr_service.code_constants import (
-  # Internal Use Codes
-  UNSET,
-  # PMI Codes
-  PMI_SKIP_CODE, PMI_UNANSWERED_CODE, PMI_FREE_TEXT_CODE, PMI_OTHER_CODE,
-  PMI_PREFER_NOT_TO_ANSWER_CODE,
-  # Race Codes
-  RACE_AIAN_CODE, RACE_ASIAN_CODE, RACE_BLACK_CODE, RACE_MENA_CODE, RACE_NHDPI_CODE,
-  RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_FREETEXT_CODE, RACE_NONE_OF_THESE_CODE,
-  # Gender Codes
-  GENDER_MAN_CODE, GENDER_WOMAN_CODE, GENDER_NONBINARY_CODE, GENDER_TRANSGENDER_CODE,
-  GENDER_OTHER_CODE, GENDER_NO_GENDER_IDENTITY_CODE
-  )
 from dateutil.relativedelta import relativedelta
 from protorpc import messages
 
+from rdr_service.code_constants import (GENDER_MAN_CODE, GENDER_NONBINARY_CODE,
+                                        GENDER_NO_GENDER_IDENTITY_CODE,
+                                        GENDER_OTHER_CODE, GENDER_TRANSGENDER_CODE,
+                                        GENDER_WOMAN_CODE,
+                                        PMI_FREE_TEXT_CODE, PMI_OTHER_CODE,
+                                        PMI_PREFER_NOT_TO_ANSWER_CODE,
+                                        PMI_SKIP_CODE, PMI_UNANSWERED_CODE, RACE_AIAN_CODE,
+                                        RACE_ASIAN_CODE,
+                                        RACE_BLACK_CODE, RACE_FREETEXT_CODE, RACE_HISPANIC_CODE,
+                                        RACE_MENA_CODE,
+                                        RACE_NHDPI_CODE, RACE_NONE_OF_THESE_CODE, RACE_WHITE_CODE,
+                                        UNSET)  # Internal Use Codes; PMI Codes; Race Codes; Gender Codes
 
 # These are handled specially in code; others will be inserted into the database and handled
 # dynamically.

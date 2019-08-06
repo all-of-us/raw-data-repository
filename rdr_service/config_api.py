@@ -9,8 +9,7 @@ from google.appengine.api import app_identity
 from google.appengine.ext import ndb
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-from rdr_service import app_util
-from rdr_service import config
+from rdr_service import app_util, config
 from rdr_service.api_util import parse_date
 
 # Read bootstrap config admin service account configuration

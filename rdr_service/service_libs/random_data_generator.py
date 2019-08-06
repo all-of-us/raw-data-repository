@@ -3,6 +3,7 @@
 # Generate random fake participant data
 #
 
+import argparse
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
 import csv
@@ -10,12 +11,10 @@ import logging
 import sys
 from time import sleep
 
-import argparse
 from rdr_service.service_libs import GCPProcessContext
-from rdr_service.services.gcp_utils import gcp_get_app_host_name, gcp_get_app_access_token, \
+from rdr_service.services.gcp_utils import gcp_get_app_access_token, gcp_get_app_host_name, \
   gcp_make_auth_header
-from rdr_service.services.system_utils import make_api_request
-from rdr_service.services.system_utils import setup_logging, setup_unicode
+from rdr_service.services.system_utils import make_api_request, setup_logging, setup_unicode
 
 _logger = logging.getLogger('rdr_logger')
 

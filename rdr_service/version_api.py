@@ -7,6 +7,7 @@ import os
 
 from flask_restful import Resource
 
+
 class VersionApi(Resource):
   """Api handler for retrieving version info."""
 

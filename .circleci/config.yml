@@ -19,6 +19,11 @@ filter_master: &filter_master
     branches:
       only: master
 
+filter_devel: &filter_devel
+  filters:
+    branches:
+      ignore: devel
+
 filter_releases: &filter_releases
   filters:
     branches:
@@ -121,11 +126,12 @@ workflows:
   version: 2
   build_and_test:
     jobs:
-      - build_and_test
+      - build_and_test:
+        <<: *filter_devel
   deploy_to_test:
     jobs:
-      - build_and_test:
-          <<: *filter_master
+      #- build_and_test:
+      #    <<: *filter_master
       - deploy_test:
           <<: *filter_master
           requires:

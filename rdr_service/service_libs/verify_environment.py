@@ -3,16 +3,16 @@
 # Simply verify the environment is valid for running the client apps.
 #
 
+import argparse
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
 import importlib
 import logging
 import sys
 
-import argparse
 from rdr_service.service_libs import GCPProcessContext
-from rdr_service.services.gcp_utils import gcp_get_app_host_name, gcp_get_app_access_token
-from rdr_service.services.system_utils import setup_logging, setup_unicode, make_api_request
+from rdr_service.services.gcp_utils import gcp_get_app_access_token, gcp_get_app_host_name
+from rdr_service.services.system_utils import make_api_request, setup_logging, setup_unicode
 
 _logger = logging.getLogger('rdr_logger')
 

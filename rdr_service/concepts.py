@@ -1,6 +1,7 @@
 """A single place for FHIR concepts."""
 
 from collections import namedtuple
+
 from rdr_service.census_regions import census_regions
 
 Concept = namedtuple('Concept', ['system', 'code'])

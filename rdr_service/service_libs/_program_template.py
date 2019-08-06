@@ -3,12 +3,12 @@
 # Template for RDR python program.
 #
 
+import argparse
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
 import logging
 import sys
 
-import argparse
 from rdr_service.service_libs import GCPProcessContext
 from rdr_service.services.system_utils import setup_logging, setup_unicode
 
