@@ -9,9 +9,6 @@ api_version: 1
 builtins:
 - deferred: on
 
-includes:
-  - appengine-mapreduce/python/src/mapreduce/include.yaml
-
 module: testing
 version: 1
 
