@@ -3,8 +3,8 @@ import json
 import os
 import unittest
 
-from client import Client
-from main_util import configure_logging
+from rdr_service.main_util import configure_logging
+from rdr_service.rdr_client.client import Client
 
 # To run the tests against the test instance instead,
 # set environment variable PMI_DRC_RDR_INSTANCE.

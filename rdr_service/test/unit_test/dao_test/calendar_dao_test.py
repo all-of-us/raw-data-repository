@@ -1,8 +1,9 @@
 import datetime
 
-from rdr_service.dao.calendar_dao import CalendarDao, INTERVAL_DAY, INTERVAL_WEEK, INTERVAL_MONTH, INTERVAL_QUARTER
+from rdr_service.dao.calendar_dao import CalendarDao, INTERVAL_DAY, INTERVAL_MONTH, \
+  INTERVAL_QUARTER, INTERVAL_WEEK
 from rdr_service.model.calendar import Calendar
-from test.unit_test.unit_test_util import SqlTestBase
+from rdr_service.test.unit_test.unit_test_util import SqlTestBase
 
 
 class MetricsEhrApiIntervalTest(SqlTestBase):

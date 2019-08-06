@@ -10,7 +10,7 @@ import requests_toolbelt.adapters.appengine
 from rdr_service import app_util
 import config_api
 import version_api
-from api import metrics_ehr_api
+from rdr_service.api import metrics_ehr_api
 from rdr_service.api.awardee_api import AwardeeApi
 from rdr_service.api.bigquery_participant_summary_api import BQParticipantSummaryApi
 from rdr_service.api.bigquery_task_queue_api import BQRebuildTaskApi

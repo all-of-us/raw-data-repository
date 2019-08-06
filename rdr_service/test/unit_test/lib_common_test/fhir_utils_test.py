@@ -2,7 +2,6 @@ import unittest
 
 from rdr_service.fhir_utils import SimpleFhirR4Reader
 
-
 EXAMPLE_SUPPLY_REQUEST = {
   "authoredOn": "2019-02-12",
   "contained": [

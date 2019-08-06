@@ -12,7 +12,7 @@ import os
 import jira
 import sys
 
-from main_util import get_parser, configure_logging
+from rdr_service.main_util import get_parser, configure_logging
 
 
 _JIRA_INSTANCE_URL = 'https://precisionmedicineinitiative.atlassian.net/'

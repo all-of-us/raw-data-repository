@@ -1,4 +1,4 @@
-from unit_test_util import FlaskTestBase
+from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 
 class MayoLinkApiTest(FlaskTestBase):

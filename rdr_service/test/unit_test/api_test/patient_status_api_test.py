@@ -1,13 +1,13 @@
 import copy
 import httplib
-import os
 import json
+import os
 
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant import Participant
-from unit_test_util import FlaskTestBase
+from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 
 class DvOrderApiTestBase(FlaskTestBase):

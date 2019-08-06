@@ -1,7 +1,7 @@
 import unittest
 
-from base import BaseClientTest
-from client import HttpException
+from rdr_service.rdr_client.client import HttpException
+from rdr_service.test.client_test.base import BaseClientTest
 
 
 class ParticipantTest(BaseClientTest):

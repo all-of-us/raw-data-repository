@@ -3,7 +3,7 @@
 import logging
 import sys
 
-from client import Client
+from rdr_service.rdr_client.client import Client
 from rdr_service.main_util import configure_logging, get_parser
 
 

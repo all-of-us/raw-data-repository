@@ -1,10 +1,9 @@
 
-from rdr_service.code_constants import RACE_QUESTION_CODE, RACE_WHITE_CODE, RACE_AIAN_CODE
-from rdr_service.model.code import CodeType
-from unit_test_util import SqlTestBase
-
+from rdr_service.code_constants import RACE_AIAN_CODE, RACE_QUESTION_CODE, RACE_WHITE_CODE
 from rdr_service.dao.code_dao import CodeDao
-from test_data import consent_code
+from rdr_service.model.code import CodeType
+from rdr_service.test.test_data import consent_code
+from rdr_service.test.unit_test.unit_test_util import SqlTestBase
 
 
 class SchemaTest(SqlTestBase):

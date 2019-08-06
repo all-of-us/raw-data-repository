@@ -1,4 +1,4 @@
-from main_util import get_parser, configure_logging
+from rdr_service.main_util import get_parser, configure_logging
 from rdr_service.unicode_csv import UnicodeDictReader
 import csv
 

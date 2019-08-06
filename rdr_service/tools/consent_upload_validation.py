@@ -16,7 +16,7 @@ import re
 import shlex
 import subprocess
 
-from main_util import get_parser, configure_logging
+from rdr_service.main_util import get_parser, configure_logging
 
 
 base_bucket = 'ptc-uploads-all-of-us-rdr-prod'

@@ -1,7 +1,7 @@
 import httplib
 import unittest
 
-from base import BaseClientTest
+from rdr_service.test.client_test.base import BaseClientTest
 
 
 class RequestsTest(BaseClientTest):

@@ -1,10 +1,11 @@
 import datetime
 
-from rdr_service.clock import FakeClock
-from unit_test_util import SqlTestBase
-from rdr_service.dao.code_dao import CodeDao, CodeBookDao, CodeHistoryDao
-from rdr_service.model.code import Code, CodeBook, CodeHistory, CodeType
 from werkzeug.exceptions import BadRequest
+
+from rdr_service.clock import FakeClock
+from rdr_service.dao.code_dao import CodeBookDao, CodeDao, CodeHistoryDao
+from rdr_service.model.code import Code, CodeBook, CodeHistory, CodeType
+from rdr_service.test.unit_test.unit_test_util import SqlTestBase
 
 TIME = datetime.datetime(2016, 1, 1, 10, 0)
 TIME_2 = datetime.datetime(2016, 1, 2, 10, 0)

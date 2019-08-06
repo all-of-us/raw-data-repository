@@ -1,14 +1,14 @@
 import datetime
 import time
 
+from cloudstorage import cloudstorage_api  # stubbed by testbed
+
 from rdr_service import config
 from rdr_service.clock import FakeClock
-from cloudstorage import cloudstorage_api  # stubbed by testbed
 from rdr_service.dao.participant_dao import ParticipantDao, ParticipantHistoryDao
 from rdr_service.model.participant import Participant
 from rdr_service.offline import exclude_ghost_participants
-from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
-
+from rdr_service.test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
 
 BUCKET_NAME = 'all-of-us-rdr-test-ghost-accounts'
 TIME = datetime.datetime(2019, 1, 30)

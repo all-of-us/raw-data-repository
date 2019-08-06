@@ -1,11 +1,13 @@
 import datetime
 
-from rdr_service.clock import FakeClock
-from rdr_service.model.metrics import MetricsVersion, MetricsBucket
-from rdr_service.dao.metrics_dao import MetricsVersionDao, MetricsBucketDao, SERVING_METRICS_DATA_VERSION
-from unit_test_util import SqlTestBase
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import PreconditionFailed
+
+from rdr_service.clock import FakeClock
+from rdr_service.dao.metrics_dao import MetricsBucketDao, MetricsVersionDao, \
+  SERVING_METRICS_DATA_VERSION
+from rdr_service.model.metrics import MetricsBucket, MetricsVersion
+from rdr_service.test.unit_test.unit_test_util import SqlTestBase
 
 TIME = datetime.datetime(2016, 1, 1, 10, 0)
 TIME_2 = datetime.datetime(2016, 1, 2, 9, 59)

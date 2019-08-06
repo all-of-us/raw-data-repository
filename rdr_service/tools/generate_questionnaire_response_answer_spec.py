@@ -3,7 +3,7 @@ import csv
 
 from rdr_service.dao import database_factory
 from sqlalchemy import text
-from main_util import get_parser
+from rdr_service.main_util import get_parser
 
 _BATCH_SIZE = 1000
 

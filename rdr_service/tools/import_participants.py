@@ -13,7 +13,7 @@ Usage:
 
 # fhirclient makes sys.path edits on import which mask our client module, so make sure to import
 # our client before importing fhirclient.
-from client import Client, client_log
+from rdr_service.rdr_client.client import Client, client_log
 
 import csv
 import logging
@@ -25,7 +25,7 @@ from rdr_service.code_constants import GENDER_IDENTITY_QUESTION_CODE, CONSENT_FO
 from rdr_service.code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE
 from rdr_service.code_constants import OVERALL_HEALTH_PPI_MODULE, LIFESTYLE_PPI_MODULE, THE_BASICS_PPI_MODULE
 from rdr_service.code_constants import PPI_SYSTEM
-from main_util import get_parser, configure_logging
+from rdr_service.main_util import get_parser, configure_logging
 
 ALL_MODULE_CODES = [CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
                     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,

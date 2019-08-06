@@ -22,8 +22,8 @@ from rdr_service.model.code import CodeType
 from rdr_service.model.hpo import HPO
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.participant_enums import ANSWER_CODE_TO_RACE, TEST_HPO_ID, TEST_HPO_NAME, OrganizationType, ANSWER_CODE_TO_GENDER
-from test_data import load_measurement_json, load_biobank_order_json, to_client_participant_id
-from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase,\
+from rdr_service.test.test_data import load_measurement_json, load_biobank_order_json, to_client_participant_id
+from rdr_service.test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase,\
   get_restore_or_cancel_info
 
 

@@ -12,7 +12,7 @@ import subprocess
 import urllib2
 
 from rdr_service.dao import database_factory
-from main_util import configure_logging, get_parser
+from rdr_service.main_util import configure_logging, get_parser
 from sqlalchemy import text, bindparam
 
 

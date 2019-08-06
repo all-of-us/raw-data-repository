@@ -18,7 +18,7 @@ import StringIO
 import sys
 
 import argparse
-from tools.tool_libs import GCPProcessContext
+from rdr_service.tools.tool_libs import GCPProcessContext
 from rdr_service.services.system_utils import setup_logging, setup_unicode, make_api_request, print_progress_bar
 from rdr_service.services.gcp_utils import gcp_cp, gcp_format_sql_instance, gcp_make_auth_header
 

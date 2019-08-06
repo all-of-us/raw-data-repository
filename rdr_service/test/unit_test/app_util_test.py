@@ -1,13 +1,11 @@
 import datetime
 import unittest
 
-from rdr_service import app_util
-from rdr_service import clock
-from rdr_service import config
-
 from mock import patch
-from test.unit_test.unit_test_util import NdbTestBase
 from werkzeug.exceptions import Forbidden, Unauthorized
+
+from rdr_service import app_util, clock, config
+from rdr_service.test.unit_test.unit_test_util import NdbTestBase
 
 
 @app_util.auth_required('foo')

@@ -1,8 +1,10 @@
 import unittest
+
 from mock import MagicMock
 
 from rdr_service.offline import gcloud_ips
 from rdr_service.offline.gcloud_ips import START, get_ip_ranges
+
 
 class GcloudIpsTest(unittest.TestCase):
   DNS_RESPONSES = [

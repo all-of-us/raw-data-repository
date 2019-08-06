@@ -6,10 +6,9 @@ from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
-from rdr_service.model.site_enums import SiteStatus, EnrollingStatus
-from rdr_service.participant_enums import UNSET_HPO_ID, OrganizationType
-
-from test.unit_test.unit_test_util import FlaskTestBase, PITT_HPO_ID, AZ_HPO_ID
+from rdr_service.model.site_enums import EnrollingStatus, SiteStatus
+from rdr_service.participant_enums import OrganizationType, UNSET_HPO_ID
+from rdr_service.test.unit_test.unit_test_util import AZ_HPO_ID, FlaskTestBase, PITT_HPO_ID
 
 
 def _make_awardee_resource(awardee_id, display_name, org_type, organizations=None):

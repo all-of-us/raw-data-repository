@@ -1,25 +1,26 @@
 import datetime
 import httplib
 import json
+
 import pytz
 from dateutil.parser import parse
-
-from rdr_service.code_constants import PPI_EXTRA_SYSTEM
-from rdr_service.clock import FakeClock
-from rdr_service.dao.code_dao import CodeDao
-from rdr_service.dao.questionnaire_dao import QuestionnaireDao
-from rdr_service.dao.participant_summary_dao import ParticipantRaceAnswersDao, ParticipantGenderAnswersDao
-from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
-from rdr_service.model.utils import from_client_participant_id
-from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
-from rdr_service.participant_enums import QuestionnaireDefinitionStatus
 from sqlalchemy.orm.session import make_transient
-from test.unit_test.unit_test_util import (
-    FlaskTestBase,
-    make_questionnaire_response_json as gen_response
-)
-from test.test_data import data_path
 
+from rdr_service.clock import FakeClock
+from rdr_service.code_constants import PPI_EXTRA_SYSTEM
+from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, \
+  ParticipantRaceAnswersDao
+from rdr_service.dao.questionnaire_dao import QuestionnaireDao
+from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
+from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
+from rdr_service.model.utils import from_client_participant_id
+from rdr_service.participant_enums import QuestionnaireDefinitionStatus
+from rdr_service.test.test_data import data_path
+from rdr_service.test.unit_test.unit_test_util import (
+  FlaskTestBase,
+  make_questionnaire_response_json as gen_response
+)
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)

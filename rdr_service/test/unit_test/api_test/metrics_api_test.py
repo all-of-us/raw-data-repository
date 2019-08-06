@@ -1,9 +1,9 @@
 import datetime
 
-from rdr_service.model.metrics import MetricsBucket
 from rdr_service.dao.metrics_dao import MetricsBucketDao, MetricsVersionDao
+from rdr_service.model.metrics import MetricsBucket
+from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
-from test.unit_test.unit_test_util import FlaskTestBase
 
 class MetricsApiTest(FlaskTestBase):
 

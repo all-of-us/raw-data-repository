@@ -2,7 +2,7 @@ import httplib
 
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
-from test.unit_test.unit_test_util import FlaskTestBase
+from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 
 class QuestionnaireAnswersApiTest(FlaskTestBase):

@@ -15,10 +15,10 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID, \
-  make_primary_provider_link_for_name, QuestionnaireStatus, WithdrawalStatus
-from test.unit_test.unit_test_util import FlaskTestBase
-
+from rdr_service.participant_enums import EnrollmentStatus, OrganizationType, QuestionnaireStatus, \
+  TEST_HPO_ID, \
+  TEST_HPO_NAME, WithdrawalStatus, make_primary_provider_link_for_name
+from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 REQUIRED_PPI_MODULE_COUNT = 3  # NOTE: could not import from config in test runner
 

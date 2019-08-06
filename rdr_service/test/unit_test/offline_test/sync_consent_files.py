@@ -1,5 +1,5 @@
-import mock
 import cloudstorage.common
+import mock
 
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -10,7 +10,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.site import Site
 from rdr_service.offline import sync_consent_files
 from rdr_service.participant_enums import UNSET_HPO_ID
-from test.unit_test.unit_test_util import CloudStorageSqlTestBase, TestBase, NdbTestBase
+from rdr_service.test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
 
 
 class TransformationTests(TestBase):

@@ -1,11 +1,12 @@
 import copy
 
+from dateutil.parser import parse
+
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.patient_status_dao import PatientStatusDao
-from dateutil.parser import parse
 from rdr_service.model.participant import Participant
-from test.unit_test.unit_test_util import FlaskTestBase
+from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 
 class PatientStatusTestBase(FlaskTestBase):

@@ -1,25 +1,24 @@
 import datetime
 
-from rdr_service.offline.public_metrics_export import PublicMetricsExport
 from rdr_service.clock import FakeClock
-from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE
-from rdr_service.code_constants import EHR_CONSENT_QUESTION_CODE, RACE_WHITE_CODE
-from rdr_service.code_constants import RACE_NONE_OF_THESE_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE
+from rdr_service.code_constants import CONSENT_PERMISSION_NO_CODE, CONSENT_PERMISSION_YES_CODE, \
+  EHR_CONSENT_QUESTION_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, RACE_NONE_OF_THESE_CODE, RACE_WHITE_CODE
+from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.metric_set_dao import AggregateMetricsDao, MetricSetDao
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
-from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
-from rdr_service.dao.hpo_dao import HPODao
-from rdr_service.dao.metric_set_dao import AggregateMetricsDao, MetricSetDao
-from rdr_service.dao.participant_dao import ParticipantDao
-from rdr_service.participant_enums import make_primary_provider_link_for_name
 from rdr_service.offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
-from rdr_service.participant_enums import WithdrawalStatus
-from test_data import load_biobank_order_json, load_measurement_json
-from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, TestBase
-from unit_test_util import PITT_HPO_ID, AZ_HPO_ID
+from rdr_service.offline.public_metrics_export import PublicMetricsExport
+from rdr_service.participant_enums import WithdrawalStatus, make_primary_provider_link_for_name
+from rdr_service.test.test_data import load_biobank_order_json, load_measurement_json
+from rdr_service.test.unit_test.unit_test_util import AZ_HPO_ID, CloudStorageSqlTestBase, \
+  FlaskTestBase, PITT_HPO_ID, \
+  SqlTestBase, TestBase
 
 TIME = datetime.datetime(2016, 1, 1)
 TIME2 = datetime.datetime(2016, 2, 2)

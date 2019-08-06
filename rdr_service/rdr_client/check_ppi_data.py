@@ -20,7 +20,7 @@ import logging
 import urllib2
 import re
 
-from client import Client
+from rdr_service.rdr_client.client import Client
 from rdr_service.code_constants import EMAIL_QUESTION_CODE as EQC, LOGIN_PHONE_NUMBER_QUESTION_CODE as PNQC
 from rdr_service.main_util import get_parser, configure_logging
 

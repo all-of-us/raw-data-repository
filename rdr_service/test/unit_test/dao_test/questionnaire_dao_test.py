@@ -1,15 +1,18 @@
 import datetime
 
-from rdr_service.dao.code_dao import CodeDao
-from rdr_service.dao.questionnaire_dao import QuestionnaireDao, QuestionnaireHistoryDao
-from rdr_service.dao.questionnaire_dao import QuestionnaireConceptDao, QuestionnaireQuestionDao
-from rdr_service.model.code import Code, CodeType
-from rdr_service.model.questionnaire import Questionnaire, QuestionnaireHistory
-from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
-from unit_test_util import SqlTestBase, sort_lists
-from rdr_service.clock import FakeClock
-from werkzeug.exceptions import NotFound, PreconditionFailed
 from sqlalchemy.exc import IntegrityError
+from werkzeug.exceptions import NotFound, PreconditionFailed
+
+from rdr_service.clock import FakeClock
+from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.questionnaire_dao import QuestionnaireConceptDao, QuestionnaireDao, \
+  QuestionnaireHistoryDao, \
+  QuestionnaireQuestionDao
+from rdr_service.model.code import Code, CodeType
+from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, \
+  QuestionnaireHistory, \
+  QuestionnaireQuestion
+from rdr_service.test.unit_test.unit_test_util import SqlTestBase, sort_lists
 
 EXPECTED_CONCEPT_1 = QuestionnaireConcept(questionnaireConceptId=1, questionnaireId=1,
                                           questionnaireVersion=1, codeId=1)

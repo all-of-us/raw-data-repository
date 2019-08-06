@@ -30,7 +30,7 @@ import urlparse
 
 from locust import Locust, TaskSet, events, task
 
-from client import Client, HttpException
+from rdr_service.rdr_client.client import Client, HttpException
 from rdr_service.data_gen.fake_participant_generator import FakeParticipantGenerator
 
 

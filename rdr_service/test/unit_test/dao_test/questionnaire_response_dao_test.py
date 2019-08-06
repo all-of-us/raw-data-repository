@@ -1,33 +1,35 @@
 import datetime
 import json
+
 import mock
-
-from testlib import testutil
 from cloudstorage import cloudstorage_api  # stubbed by testbed
-
-from rdr_service.code_constants import (
-  PPI_SYSTEM, GENDER_IDENTITY_QUESTION_CODE, THE_BASICS_PPI_MODULE, PMI_SKIP_CODE,
-)
+from sqlalchemy.exc import IntegrityError
+from testlib import testutil
+from werkzeug.exceptions import BadRequest, Forbidden
 
 from rdr_service import config
+from rdr_service.clock import FakeClock
+from rdr_service.code_constants import (GENDER_IDENTITY_QUESTION_CODE, PMI_SKIP_CODE, PPI_SYSTEM,
+                                        THE_BASICS_PPI_MODULE)
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
-from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao, QuestionnaireResponseAnswerDao
-from rdr_service.dao.questionnaire_response_dao import _raise_if_gcloud_file_missing
+from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao, \
+  QuestionnaireResponseDao, \
+  _raise_if_gcloud_file_missing
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
-from rdr_service.model.questionnaire import Questionnaire, QuestionnaireQuestion, QuestionnaireConcept
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from rdr_service.participant_enums import QuestionnaireStatus, WithdrawalStatus, GenderIdentity
-import test_data
-from test_data import consent_code, first_name_code, last_name_code, email_code, \
+from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, \
+  QuestionnaireQuestion
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, \
+  QuestionnaireResponseAnswer
+from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus
+from rdr_service.test import test_data
+from rdr_service.test.test_data import consent_code, email_code, first_name_code, last_name_code, \
   login_phone_number_code
-from unit_test_util import FlaskTestBase, make_questionnaire_response_json
-from rdr_service.clock import FakeClock
-from werkzeug.exceptions import BadRequest, Forbidden
-from sqlalchemy.exc import IntegrityError
+from rdr_service.test.unit_test.unit_test_util import FlaskTestBase, \
+  make_questionnaire_response_json
 
 TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)

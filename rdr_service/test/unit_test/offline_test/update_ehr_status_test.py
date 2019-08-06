@@ -4,18 +4,18 @@ import datetime
 import mock
 import pytz
 
-from rdr_service.clock import FakeClock
 from rdr_service import config
+from rdr_service.clock import FakeClock
 from rdr_service.dao.ehr_dao import EhrReceiptDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.offline import update_ehr_status
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
+from rdr_service.offline import update_ehr_status
 from rdr_service.participant_enums import EhrStatus
-from test.unit_test.unit_test_util import SqlTestBase, NdbTestBase
+from rdr_service.test.unit_test.unit_test_util import NdbTestBase, SqlTestBase
 
 
 class UpdateEhrStatusMakeJobsTestCase(NdbTestBase):

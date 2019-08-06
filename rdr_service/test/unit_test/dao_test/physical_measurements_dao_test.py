@@ -1,18 +1,19 @@
 import datetime
 import json
 
+from werkzeug.exceptions import BadRequest, Forbidden
+
 from rdr_service.clock import FakeClock
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
-from rdr_service.model.participant import Participant
-from rdr_service.model.measurements import PhysicalMeasurements
-from rdr_service.query import Query, FieldFilter, Operator
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
+from rdr_service.model.measurements import PhysicalMeasurements
+from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import PhysicalMeasurementsStatus, WithdrawalStatus
-from test_data import load_measurement_json, load_measurement_json_amendment
-from unit_test_util import SqlTestBase, get_restore_or_cancel_info
-from werkzeug.exceptions import BadRequest, Forbidden
+from rdr_service.query import FieldFilter, Operator, Query
+from rdr_service.test.test_data import load_measurement_json, load_measurement_json_amendment
+from rdr_service.test.unit_test.unit_test_util import SqlTestBase, get_restore_or_cancel_info
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)

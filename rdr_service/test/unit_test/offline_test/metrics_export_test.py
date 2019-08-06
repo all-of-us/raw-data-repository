@@ -3,33 +3,31 @@ from __future__ import print_function
 import datetime
 import json
 
-from rdr_service.offline import metrics_export
+# from rdr_service.offline import metrics_export
 from rdr_service.clock import FakeClock
-from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, \
-  GENDER_IDENTITY_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, RACE_QUESTION_CODE, \
-  STATE_QUESTION_CODE, RACE_WHITE_CODE, RACE_NONE_OF_THESE_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, \
-  PMI_SKIP_CODE
+from rdr_service.code_constants import CONSENT_PERMISSION_NO_CODE, CONSENT_PERMISSION_YES_CODE, \
+  EHR_CONSENT_QUESTION_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_SKIP_CODE, RACE_NONE_OF_THESE_CODE, \
+  RACE_WHITE_CODE
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.hpo_dao import HPODao
-from rdr_service.dao.metrics_dao import MetricsVersionDao, SERVING_METRICS_DATA_VERSION
+# from rdr_service.dao.metrics_dao import MetricsVersionDao, SERVING_METRICS_DATA_VERSION
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
-from mapreduce import test_support
+# from mapreduce import test_support
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
 from rdr_service.model.hpo import HPO
-from rdr_service.model.metrics import MetricsVersion
+# from rdr_service.model.metrics import MetricsVersion
 from rdr_service.model.participant import Participant
-from rdr_service.offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE, get_participant_fields, \
-  HPO_ID_FIELDS, ANSWER_FIELDS
-from rdr_service.offline.metrics_export import MetricsExport, _HPO_IDS_CSV, _PARTICIPANTS_CSV, _ANSWERS_CSV
-from offline_test.gcs_utils import assertCsvContents
-from rdr_service.participant_enums import WithdrawalStatus, make_primary_provider_link_for_name, \
-  WithdrawalReason
-from test_data import load_biobank_order_json, load_measurement_json
-from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, TestBase, \
-  cancel_biobank_order, make_questionnaire_response_json, pretty, run_deferred_tasks, PITT_HPO_ID
-
+from rdr_service.offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
+from rdr_service.participant_enums import WithdrawalReason, WithdrawalStatus, \
+  make_primary_provider_link_for_name
+from rdr_service.test.test_data import load_biobank_order_json, load_measurement_json
+# from rdr_service.offline.metrics_export import MetricsExport, _HPO_IDS_CSV, _PARTICIPANTS_CSV, _ANSWERS_CSV
+from rdr_service.test.unit_test.offline_test.gcs_utils import assertCsvContents
+from rdr_service.test.unit_test.unit_test_util import CloudStorageSqlTestBase, FlaskTestBase, \
+  PITT_HPO_ID, SqlTestBase, \
+  TestBase, cancel_biobank_order, make_questionnaire_response_json, pretty
 
 BUCKET_NAME = 'pmi-drc-biobank-test.appspot.com'
 TIME = datetime.datetime(2016, 1, 1)
@@ -263,476 +261,476 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant6.withdrawalStatus = WithdrawalStatus.NO_USE
       participant_dao.update(participant6)
 
-  def test_metric_export(self):
-    self._create_data()
-
-    with FakeClock(TIME_3):
-      MetricsExport.start_export_tasks(BUCKET_NAME, 2)
-      run_deferred_tasks(self)
-
-    t1 = TIME.strftime(TIME_FORMAT)
-    t2 = TIME_2.strftime(TIME_FORMAT)
-    t3 = TIME_3.strftime(TIME_FORMAT)
-    prefix = TIME_3.isoformat() + '/'
-
-    # Two shards are written for each file, one with the first participant and
-    # one with the second.
-    self.assertCsvContents(BUCKET_NAME, prefix + _HPO_IDS_CSV % 0, [
-      HPO_ID_FIELDS,
-      ['2', 'UNSET', t1],
-      ['2', 'PITT', t3],
-    ])
-
-    self.assertCsvContents(BUCKET_NAME, prefix + _HPO_IDS_CSV % 1, [
-      HPO_ID_FIELDS,
-      ['1', 'AZ_TUCSON', t1],
-      ['1', 'PITT', t3],
-      # See the FIXME above about this row of the CSV
-      ['1', 'AZ_TUCSON_2', t2],
-      ['5', 'AZ_TUCSON', t1],
-      ['9', 'PITT', t1],
-    ])
-
-    participant_fields = get_participant_fields()
-    #  The participant fields are as follows:
-    # ['participant_id',
-    #  'date_of_birth',
-    #  'first_order_date',
-    #  'first_samples_arrived_date',
-    #  'first_physical_measurements_date',
-    #  'first_samples_to_isolate_dna_date',
-    #  'consent_for_study_enrollment_time',
-    #  'questionnaire_on_family_health_time',
-    #  'questionnaire_on_healthcare_access_time',
-    #  'questionnaire_on_lifestyle_time',
-    #  'questionnaire_on_medical_history_time',
-    #  'questionnaire_on_medications_time',
-    #  'questionnaire_on_overall_health_time',
-    #  'questionnaire_on_the_basics_time']]
-
-    self.assertCsvContents(BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 0, [
-      participant_fields,
-      ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, '', t1, '', '', t3, '', '', t3, t2]
-    ])
-
-    self.assertCsvContents(BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 1, [
-      participant_fields,
-      ['1', '1980-01-03', '', t2, '', '', '', t1, '', '', '', '', '', '', t2],
-      ['5', '', '', '', '', '', '', t1, '', '', '', '', '', '', t2],
-      ['9', '', '', '', '', '', '', t1, '', '', '', '', '', '', t2]
-    ])
-
-    self.assertCsvContents(BUCKET_NAME, prefix + _ANSWERS_CSV % 0, [
-      ANSWER_FIELDS,
-      ['2', t3, STATE_QUESTION_CODE, 'PIIState_VA', ''],
-      ['2', t3, EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE, ''],
-      ['2', t2, RACE_QUESTION_CODE, RACE_NONE_OF_THESE_CODE, ''],
-      ['2', t3, GENDER_IDENTITY_QUESTION_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, ''],
-    ])
-
-    self.assertCsvContents(BUCKET_NAME, prefix + _ANSWERS_CSV % 1, [
-      ANSWER_FIELDS,
-      ['1', t2, GENDER_IDENTITY_QUESTION_CODE, 'UNMAPPED', ''],
-      ['1', t2, RACE_QUESTION_CODE, RACE_WHITE_CODE, ''],
-      ['1', t3, GENDER_IDENTITY_QUESTION_CODE, 'female', ''],
-      ['1', t3, RACE_QUESTION_CODE, 'UNMAPPED', ''],
-      ['1', t3, EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_NO_CODE, ''],
-      ['1', t2, STATE_QUESTION_CODE, PMI_SKIP_CODE, ''],
-      ['5', t2, GENDER_IDENTITY_QUESTION_CODE, PMI_SKIP_CODE, ''],
-      ['5', t2, RACE_QUESTION_CODE, PMI_SKIP_CODE, ''],
-      ['9', t2, GENDER_IDENTITY_QUESTION_CODE, PMI_SKIP_CODE, ''],
-      ['9', t2, RACE_QUESTION_CODE, PMI_SKIP_CODE, ''],
-    ])
-
-    # Wait for the metrics pipeline to run, processing the CSV output.
-    with FakeClock(TIME_4):
-      test_support.execute_until_empty(self.taskqueue)
-
-    metrics_version = MetricsVersionDao().get_serving_version()
-    expected_version = MetricsVersion(
-        metricsVersionId=1,
-        inProgress=False,
-        complete=True,
-        date=TIME_4,
-        dataVersion=SERVING_METRICS_DATA_VERSION)
-    self.assertEquals(expected_version.asdict(), metrics_version.asdict())
-
-    buckets = MetricsVersionDao().get_with_children(metrics_version.metricsVersionId).buckets
-    bucket_map = {(bucket.date, bucket.hpoId): bucket for bucket in buckets}
-
-    # N.B: If these data dicts are kept sorted, it is significantly easier both to read the source
-    # code and to compare the code with the output of any failures in this test.
-    # PLEASE keep these sorted.
-
-    # At TIME, P1 and P5 are affiliated with AZ_TUCSON and P2 is UNSET.
-    self.assertBucket(bucket_map, TIME, 'TEST')
-    self.assertBucket(bucket_map, TIME, 'AZ_TUCSON', {
-        'Participant': 2,
-        'Participant.ageRange.26-35': 1,
-        'Participant.ageRange.UNSET': 1,
-        'Participant.biospecimen.UNSET': 2,
-        'Participant.biospecimenSamples.UNSET': 2,
-        'Participant.biospecimenSummary.UNSET': 2,
-        'Participant.censusRegion.UNSET': 2,
-        'Participant.consentForElectronicHealthRecords.UNSET': 2,
-        'Participant.consentForStudyEnrollment.SUBMITTED': 2,
-        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2,
-        'Participant.enrollmentStatus.INTERESTED': 2,
-        'Participant.genderIdentity.UNSET': 2,
-        'Participant.hpoId.AZ_TUCSON': 2,
-        'Participant.numCompletedBaselinePPIModules.0': 2,
-        'Participant.physicalMeasurements.UNSET': 2,
-        'Participant.questionnaireOnFamilyHealth.UNSET': 2,
-        'Participant.questionnaireOnHealthcareAccess.UNSET': 2,
-        'Participant.questionnaireOnLifestyle.UNSET': 2,
-        'Participant.questionnaireOnMedicalHistory.UNSET': 2,
-        'Participant.questionnaireOnMedications.UNSET': 2,
-        'Participant.questionnaireOnOverallHealth.UNSET': 2,
-        'Participant.questionnaireOnTheBasics.UNSET': 2,
-        'Participant.race.UNSET': 2,
-        'Participant.samplesToIsolateDNA.UNSET': 2,
-        'Participant.state.UNSET': 2,
-        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 2
-    })
-    self.assertBucket(bucket_map, TIME, 'UNSET', {
-        'Participant': 1,
-        'Participant.ageRange.UNSET': 1,
-        'Participant.biospecimen.UNSET': 1,
-        'Participant.biospecimenSamples.UNSET': 1,
-        'Participant.biospecimenSummary.UNSET': 1,
-        'Participant.censusRegion.UNSET': 1,
-        'Participant.consentForElectronicHealthRecords.UNSET': 1,
-        'Participant.consentForStudyEnrollment.SUBMITTED': 1,
-        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
-        'Participant.enrollmentStatus.INTERESTED': 1,
-        'Participant.genderIdentity.UNSET': 1,
-        'Participant.hpoId.UNSET': 1,
-        'Participant.numCompletedBaselinePPIModules.0': 1,
-        'Participant.physicalMeasurements.UNSET': 1,
-        'Participant.questionnaireOnFamilyHealth.UNSET': 1,
-        'Participant.questionnaireOnHealthcareAccess.UNSET': 1,
-        'Participant.questionnaireOnLifestyle.UNSET': 1,
-        'Participant.questionnaireOnMedicalHistory.UNSET': 1,
-        'Participant.questionnaireOnMedications.UNSET': 1,
-        'Participant.questionnaireOnOverallHealth.UNSET': 1,
-        'Participant.questionnaireOnTheBasics.UNSET': 1,
-        'Participant.race.UNSET': 1,
-        'Participant.samplesToIsolateDNA.UNSET': 1,
-        'Participant.state.UNSET': 1,
-        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
-    })
-    self.assertBucket(bucket_map, TIME, '', {
-        'Participant': 4,
-        'Participant.ageRange.26-35': 1,
-        'Participant.ageRange.UNSET': 3,
-        'Participant.biospecimen.UNSET': 4,
-        'Participant.biospecimenSamples.UNSET': 4,
-        'Participant.biospecimenSummary.UNSET': 4,
-        'Participant.censusRegion.UNSET': 4,
-        'Participant.consentForElectronicHealthRecords.UNSET': 4,
-        'Participant.consentForStudyEnrollment.SUBMITTED': 4,
-        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 4,
-        'Participant.enrollmentStatus.INTERESTED': 4,
-        'Participant.genderIdentity.UNSET': 4,
-        'Participant.hpoId.AZ_TUCSON': 2,
-        'Participant.hpoId.UNSET': 1,
-        'Participant.hpoId.PITT': 1,
-        'Participant.numCompletedBaselinePPIModules.0': 4,
-        'Participant.physicalMeasurements.UNSET': 4,
-        'Participant.questionnaireOnFamilyHealth.UNSET': 4,
-        'Participant.questionnaireOnHealthcareAccess.UNSET': 4,
-        'Participant.questionnaireOnLifestyle.UNSET': 4,
-        'Participant.questionnaireOnMedicalHistory.UNSET': 4,
-        'Participant.questionnaireOnMedications.UNSET': 4,
-        'Participant.questionnaireOnOverallHealth.UNSET': 4,
-        'Participant.questionnaireOnTheBasics.UNSET': 4,
-        'Participant.race.UNSET': 4,
-        'Participant.samplesToIsolateDNA.UNSET': 4,
-        'Participant.state.UNSET': 4,
-        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 4,
-    })
-
-    # At TIME_2, P1 is white, UNMAPPED gender; biobank samples
-    # arrived for P1 and P2 (the latter updating samplesToIsolateDNA);
-    # and both participants have submitted the basics questionnaire.
-    self.assertBucket(bucket_map, TIME_2, 'AZ_TUCSON_2', {
-        'Participant': 1,
-        'Participant.ageRange.26-35': 1,
-        'Participant.biospecimen.UNSET': 1,
-        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
-        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
-        'Participant.censusRegion.PMI_Skip': 1,
-        'Participant.consentForElectronicHealthRecords.UNSET': 1,
-        'Participant.consentForStudyEnrollment.SUBMITTED': 1,
-        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
-        'Participant.enrollmentStatus.INTERESTED': 1,
-        'Participant.genderIdentity.UNMAPPED': 1,
-        'Participant.hpoId.AZ_TUCSON_2': 1,
-        'Participant.numCompletedBaselinePPIModules.1': 1,
-        'Participant.physicalMeasurements.UNSET': 1,
-        'Participant.questionnaireOnFamilyHealth.UNSET': 1,
-        'Participant.questionnaireOnHealthcareAccess.UNSET': 1,
-        'Participant.questionnaireOnLifestyle.UNSET': 1,
-        'Participant.questionnaireOnMedicalHistory.UNSET': 1,
-        'Participant.questionnaireOnMedications.UNSET': 1,
-        'Participant.questionnaireOnOverallHealth.UNSET': 1,
-        'Participant.questionnaireOnTheBasics.SUBMITTED': 1,
-        'Participant.race.WHITE': 1,
-        'Participant.samplesToIsolateDNA.UNSET': 1,
-        'Participant.state.PMI_Skip': 1,
-        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
-    })
-    self.assertBucket(bucket_map, TIME_2, 'UNSET', {
-        'Participant': 1,
-        'Participant.ageRange.UNSET': 1,
-        'Participant.biospecimen.UNSET': 1,
-        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
-        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
-        'Participant.censusRegion.UNSET': 1,
-        'Participant.consentForElectronicHealthRecords.UNSET': 1,
-        'Participant.consentForStudyEnrollment.SUBMITTED': 1,
-        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
-        'Participant.enrollmentStatus.INTERESTED': 1,
-        'Participant.genderIdentity.UNSET': 1,
-        'Participant.hpoId.UNSET': 1,
-        'Participant.numCompletedBaselinePPIModules.1': 1,
-        'Participant.physicalMeasurements.UNSET': 1,
-        'Participant.questionnaireOnFamilyHealth.UNSET': 1,
-        'Participant.questionnaireOnHealthcareAccess.UNSET': 1,
-        'Participant.questionnaireOnLifestyle.UNSET': 1,
-        'Participant.questionnaireOnMedicalHistory.UNSET': 1,
-        'Participant.questionnaireOnMedications.UNSET': 1,
-        'Participant.questionnaireOnOverallHealth.UNSET': 1,
-        'Participant.questionnaireOnTheBasics.SUBMITTED': 1,
-        'Participant.race.OTHER_RACE': 1,
-        'Participant.samplesToIsolateDNA.RECEIVED': 1,
-        'Participant.state.UNSET': 1,
-        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
-    })
-    self.assertBucket(bucket_map, TIME_2, '', {
-        'Participant': 4,
-        'Participant.ageRange.26-35': 1,
-        'Participant.ageRange.UNSET': 3,
-        'Participant.biospecimen.UNSET': 4,
-        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
-        'Participant.biospecimenSamples.UNSET': 2,
-        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
-        'Participant.biospecimenSummary.UNSET': 2,
-        'Participant.censusRegion.PMI_Skip': 1,
-        'Participant.censusRegion.UNSET': 3,
-        'Participant.consentForElectronicHealthRecords.UNSET': 4,
-        'Participant.consentForStudyEnrollment.SUBMITTED': 4,
-        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 4,
-        'Participant.enrollmentStatus.INTERESTED': 4,
-        'Participant.genderIdentity.PMI_Skip': 2,
-        'Participant.genderIdentity.UNMAPPED': 1,
-        'Participant.genderIdentity.UNSET': 1,
-        'Participant.hpoId.AZ_TUCSON': 1,
-        'Participant.hpoId.AZ_TUCSON_2': 1,
-        'Participant.hpoId.PITT': 1,
-        'Participant.hpoId.UNSET': 1,
-        'Participant.numCompletedBaselinePPIModules.1': 4,
-        'Participant.physicalMeasurements.UNSET': 4,
-        'Participant.questionnaireOnFamilyHealth.UNSET': 4,
-        'Participant.questionnaireOnHealthcareAccess.UNSET': 4,
-        'Participant.questionnaireOnLifestyle.UNSET': 4,
-        'Participant.questionnaireOnMedicalHistory.UNSET': 4,
-        'Participant.questionnaireOnMedications.UNSET': 4,
-        'Participant.questionnaireOnOverallHealth.UNSET': 4,
-        'Participant.questionnaireOnTheBasics.SUBMITTED': 4,
-        'Participant.race.OTHER_RACE': 1,
-        'Participant.race.PMI_Skip': 2,
-        'Participant.race.WHITE': 1,
-        'Participant.samplesToIsolateDNA.RECEIVED': 1,
-        'Participant.samplesToIsolateDNA.UNSET': 3,
-        'Participant.state.PMI_Skip': 1,
-        'Participant.state.UNSET': 3,
-        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 4,
-    })
-
-    # At TIME_3, P1 is UNSET race, UNMAPPED female gender, and now in PITT HPO;
-    # physical measurements and a questionnaire for personal
-    # habits and overall health are submitted for P2, both participants submit consent
-    # questionnaires, with P1 not consenting to EHR; and P2 is in SOUTH census region
-    # and in a new age bucket (since it was their birthday.)
-    # P2 now has an enrollment status of FULL_MEMBER, and P1 has MEMBER
-    # Therefore, only P5 should show up here
-    self.assertBucket(bucket_map, TIME_3, 'AZ_TUCSON', {
-        'Participant': 1,
-        'Participant.ageRange.UNSET': 1,
-        'Participant.biospecimen.UNSET': 1,
-        'Participant.biospecimenSamples.UNSET': 1,
-        'Participant.biospecimenSummary.UNSET': 1,
-        'Participant.censusRegion.UNSET': 1,
-        'Participant.consentForElectronicHealthRecords.UNSET': 1,
-        'Participant.consentForStudyEnrollment.SUBMITTED': 1,
-        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
-        'Participant.enrollmentStatus.INTERESTED': 1,
-        'Participant.genderIdentity.PMI_Skip': 1,
-        'Participant.hpoId.AZ_TUCSON': 1,
-        'Participant.numCompletedBaselinePPIModules.1': 1,
-        'Participant.physicalMeasurements.UNSET': 1,
-        'Participant.questionnaireOnFamilyHealth.UNSET': 1,
-        'Participant.questionnaireOnHealthcareAccess.UNSET': 1,
-        'Participant.questionnaireOnLifestyle.UNSET': 1,
-        'Participant.questionnaireOnMedicalHistory.UNSET': 1,
-        'Participant.questionnaireOnMedications.UNSET': 1,
-        'Participant.questionnaireOnOverallHealth.UNSET': 1,
-        'Participant.questionnaireOnTheBasics.SUBMITTED': 1,
-        'Participant.race.PMI_Skip': 1,
-        'Participant.samplesToIsolateDNA.UNSET': 1,
-        'Participant.state.UNSET': 1,
-        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
-    })
-
-    self.assertBucket(bucket_map, TIME_3, 'PITT', {
-        'Participant': 3,
-        'Participant.ageRange.36-45': 1,
-        'Participant.ageRange.UNSET': 2,
-        'Participant.biospecimen.UNSET': 3,
-        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
-        'Participant.biospecimenSamples.UNSET': 1,
-        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
-        'Participant.biospecimenSummary.UNSET': 1,
-        'Participant.censusRegion.PMI_Skip': 1,
-        'Participant.censusRegion.UNSET': 1,
-        'Participant.censusRegion.SOUTH': 1,
-        'Participant.consentForElectronicHealthRecords.SUBMITTED': 1,
-        'Participant.consentForElectronicHealthRecords.UNSET': 1,
-        'Participant.consentForElectronicHealthRecords.SUBMITTED_NO_CONSENT': 1,
-        'Participant.consentForStudyEnrollment.SUBMITTED': 3,
-        'Participant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
-        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2,
-        'Participant.enrollmentStatus.FULL_PARTICIPANT': 1,
-        'Participant.enrollmentStatus.INTERESTED': 2,
-        'Participant.genderIdentity.PMI_PreferNotToAnswer': 1,
-        'Participant.genderIdentity.female': 1,
-        'Participant.genderIdentity.PMI_Skip': 1,
-        'Participant.hpoId.PITT': 3,
-        'Participant.numCompletedBaselinePPIModules.1': 2,
-        'Participant.numCompletedBaselinePPIModules.3': 1,
-        'Participant.physicalMeasurements.COMPLETED': 1,
-        'Participant.physicalMeasurements.UNSET': 2,
-        'Participant.questionnaireOnFamilyHealth.UNSET': 3,
-        'Participant.questionnaireOnHealthcareAccess.UNSET': 3,
-        'Participant.questionnaireOnLifestyle.SUBMITTED': 1,
-        'Participant.questionnaireOnLifestyle.UNSET': 2,
-        'Participant.questionnaireOnMedicalHistory.UNSET': 3,
-        'Participant.questionnaireOnMedications.UNSET': 3,
-        'Participant.questionnaireOnOverallHealth.SUBMITTED': 1,
-        'Participant.questionnaireOnOverallHealth.UNSET': 2,
-        'Participant.questionnaireOnTheBasics.SUBMITTED': 3,
-        'Participant.race.OTHER_RACE': 1,
-        'Participant.race.PMI_Skip': 1,
-        'Participant.race.UNSET': 1,
-        'Participant.samplesToIsolateDNA.RECEIVED': 1,
-        'Participant.samplesToIsolateDNA.UNSET': 2,
-        'Participant.state.PIIState_VA': 1,
-        'Participant.state.PMI_Skip': 1,
-        'Participant.state.UNSET': 1,
-        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 3,
-
-        'FullParticipant.ageRange.UNSET': 1,
-        'FullParticipant.biospecimen.UNSET': 1,
-        'FullParticipant.biospecimenSamples.SAMPLES_ARRIVED': 1,
-        'FullParticipant.biospecimenSummary.SAMPLES_ARRIVED': 1,
-        'FullParticipant.censusRegion.SOUTH': 1,
-        'FullParticipant.consentForElectronicHealthRecords.SUBMITTED': 1,
-        'FullParticipant.consentForStudyEnrollment.SUBMITTED': 1,
-        'FullParticipant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
-        'FullParticipant.enrollmentStatus.FULL_PARTICIPANT': 1,
-        'FullParticipant.genderIdentity.PMI_PreferNotToAnswer': 1,
-        'FullParticipant.hpoId.PITT': 1,
-        'FullParticipant.numCompletedBaselinePPIModules.3': 1,
-        'FullParticipant.physicalMeasurements.COMPLETED': 1,
-        'FullParticipant.questionnaireOnFamilyHealth.UNSET': 1,
-        'FullParticipant.questionnaireOnHealthcareAccess.UNSET': 1,
-        'FullParticipant.questionnaireOnLifestyle.SUBMITTED': 1,
-        'FullParticipant.questionnaireOnMedicalHistory.UNSET': 1,
-        'FullParticipant.questionnaireOnMedications.UNSET': 1,
-        'FullParticipant.questionnaireOnOverallHealth.SUBMITTED': 1,
-        'FullParticipant.questionnaireOnTheBasics.SUBMITTED': 1,
-        'FullParticipant.race.OTHER_RACE': 1,
-        'FullParticipant.samplesToIsolateDNA.RECEIVED': 1,
-        'FullParticipant.state.PIIState_VA': 1,
-        'FullParticipant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
-    })
-    self.assertBucket(bucket_map, TIME_3, '', {
-        'Participant': 4,
-        'Participant.ageRange.36-45': 1,
-        'Participant.ageRange.UNSET': 3,
-        'Participant.biospecimen.UNSET': 4,
-        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
-        'Participant.biospecimenSamples.UNSET': 2,
-        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
-        'Participant.biospecimenSummary.UNSET': 2,
-        'Participant.censusRegion.PMI_Skip': 1,
-        'Participant.censusRegion.SOUTH': 1,
-        'Participant.censusRegion.UNSET': 2,
-        'Participant.consentForElectronicHealthRecords.SUBMITTED': 1,
-        'Participant.consentForElectronicHealthRecords.SUBMITTED_NO_CONSENT': 1,
-        'Participant.consentForElectronicHealthRecords.UNSET': 2,
-        'Participant.consentForStudyEnrollment.SUBMITTED': 4,
-        'Participant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
-        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 3,
-        'Participant.enrollmentStatus.FULL_PARTICIPANT': 1,
-        'Participant.enrollmentStatus.INTERESTED': 3,
-        'Participant.genderIdentity.PMI_PreferNotToAnswer': 1,
-        'Participant.genderIdentity.PMI_Skip': 2,
-        'Participant.genderIdentity.female': 1,
-        'Participant.hpoId.AZ_TUCSON': 1,
-        'Participant.hpoId.PITT': 3,
-        'Participant.numCompletedBaselinePPIModules.1': 3,
-        'Participant.numCompletedBaselinePPIModules.3': 1,
-        'Participant.physicalMeasurements.COMPLETED': 1,
-        'Participant.physicalMeasurements.UNSET': 3,
-        'Participant.questionnaireOnFamilyHealth.UNSET': 4,
-        'Participant.questionnaireOnHealthcareAccess.UNSET': 4,
-        'Participant.questionnaireOnLifestyle.SUBMITTED': 1,
-        'Participant.questionnaireOnLifestyle.UNSET': 3,
-        'Participant.questionnaireOnMedicalHistory.UNSET': 4,
-        'Participant.questionnaireOnMedications.UNSET': 4,
-        'Participant.questionnaireOnOverallHealth.SUBMITTED': 1,
-        'Participant.questionnaireOnOverallHealth.UNSET': 3,
-        'Participant.questionnaireOnTheBasics.SUBMITTED': 4,
-        'Participant.race.OTHER_RACE': 1,
-        'Participant.race.PMI_Skip': 2,
-        'Participant.race.UNSET': 1,
-        'Participant.samplesToIsolateDNA.RECEIVED': 1,
-        'Participant.samplesToIsolateDNA.UNSET': 3,
-        'Participant.state.PIIState_VA': 1,
-        'Participant.state.PMI_Skip': 1,
-        'Participant.state.UNSET': 2,
-        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 4,
-
-        'FullParticipant.ageRange.UNSET': 1,
-        'FullParticipant.biospecimen.UNSET': 1,
-        'FullParticipant.biospecimenSamples.SAMPLES_ARRIVED': 1,
-        'FullParticipant.biospecimenSummary.SAMPLES_ARRIVED': 1,
-        'FullParticipant.censusRegion.SOUTH': 1,
-        'FullParticipant.consentForElectronicHealthRecords.SUBMITTED': 1,
-        'FullParticipant.consentForStudyEnrollment.SUBMITTED': 1,
-        'FullParticipant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
-        'FullParticipant.enrollmentStatus.FULL_PARTICIPANT': 1,
-        'FullParticipant.genderIdentity.PMI_PreferNotToAnswer': 1,
-        'FullParticipant.hpoId.PITT': 1,
-        'FullParticipant.numCompletedBaselinePPIModules.3': 1,
-        'FullParticipant.physicalMeasurements.COMPLETED': 1,
-        'FullParticipant.questionnaireOnFamilyHealth.UNSET': 1,
-        'FullParticipant.questionnaireOnHealthcareAccess.UNSET': 1,
-        'FullParticipant.questionnaireOnLifestyle.SUBMITTED': 1,
-        'FullParticipant.questionnaireOnMedicalHistory.UNSET': 1,
-        'FullParticipant.questionnaireOnMedications.UNSET': 1,
-        'FullParticipant.questionnaireOnOverallHealth.SUBMITTED': 1,
-        'FullParticipant.questionnaireOnTheBasics.SUBMITTED': 1,
-        'FullParticipant.race.OTHER_RACE': 1,
-        'FullParticipant.samplesToIsolateDNA.RECEIVED': 1,
-        'FullParticipant.state.PIIState_VA': 1,
-        'FullParticipant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
-    })
-
-    # There is a biobank order on 1/4, but it gets ignored since it's after the run date.
-    self.assertBucket(bucket_map, TIME_4, '')
+  # def test_metric_export(self):
+  #   self._create_data()
+  #
+  #   with FakeClock(TIME_3):
+  #     MetricsExport.start_export_tasks(BUCKET_NAME, 2)
+  #     run_deferred_tasks(self)
+  #
+  #   t1 = TIME.strftime(TIME_FORMAT)
+  #   t2 = TIME_2.strftime(TIME_FORMAT)
+  #   t3 = TIME_3.strftime(TIME_FORMAT)
+  #   prefix = TIME_3.isoformat() + '/'
+  #
+  #   # Two shards are written for each file, one with the first participant and
+  #   # one with the second.
+  #   self.assertCsvContents(BUCKET_NAME, prefix + _HPO_IDS_CSV % 0, [
+  #     HPO_ID_FIELDS,
+  #     ['2', 'UNSET', t1],
+  #     ['2', 'PITT', t3],
+  #   ])
+  #
+  #   self.assertCsvContents(BUCKET_NAME, prefix + _HPO_IDS_CSV % 1, [
+  #     HPO_ID_FIELDS,
+  #     ['1', 'AZ_TUCSON', t1],
+  #     ['1', 'PITT', t3],
+  #     # See the FIXME above about this row of the CSV
+  #     ['1', 'AZ_TUCSON_2', t2],
+  #     ['5', 'AZ_TUCSON', t1],
+  #     ['9', 'PITT', t1],
+  #   ])
+  #
+  #   participant_fields = get_participant_fields()
+  #   #  The participant fields are as follows:
+  #   # ['participant_id',
+  #   #  'date_of_birth',
+  #   #  'first_order_date',
+  #   #  'first_samples_arrived_date',
+  #   #  'first_physical_measurements_date',
+  #   #  'first_samples_to_isolate_dna_date',
+  #   #  'consent_for_study_enrollment_time',
+  #   #  'questionnaire_on_family_health_time',
+  #   #  'questionnaire_on_healthcare_access_time',
+  #   #  'questionnaire_on_lifestyle_time',
+  #   #  'questionnaire_on_medical_history_time',
+  #   #  'questionnaire_on_medications_time',
+  #   #  'questionnaire_on_overall_health_time',
+  #   #  'questionnaire_on_the_basics_time']]
+  #
+  #   self.assertCsvContents(BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 0, [
+  #     participant_fields,
+  #     ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, '', t1, '', '', t3, '', '', t3, t2]
+  #   ])
+  #
+  #   self.assertCsvContents(BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 1, [
+  #     participant_fields,
+  #     ['1', '1980-01-03', '', t2, '', '', '', t1, '', '', '', '', '', '', t2],
+  #     ['5', '', '', '', '', '', '', t1, '', '', '', '', '', '', t2],
+  #     ['9', '', '', '', '', '', '', t1, '', '', '', '', '', '', t2]
+  #   ])
+  #
+  #   self.assertCsvContents(BUCKET_NAME, prefix + _ANSWERS_CSV % 0, [
+  #     ANSWER_FIELDS,
+  #     ['2', t3, STATE_QUESTION_CODE, 'PIIState_VA', ''],
+  #     ['2', t3, EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE, ''],
+  #     ['2', t2, RACE_QUESTION_CODE, RACE_NONE_OF_THESE_CODE, ''],
+  #     ['2', t3, GENDER_IDENTITY_QUESTION_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, ''],
+  #   ])
+  #
+  #   self.assertCsvContents(BUCKET_NAME, prefix + _ANSWERS_CSV % 1, [
+  #     ANSWER_FIELDS,
+  #     ['1', t2, GENDER_IDENTITY_QUESTION_CODE, 'UNMAPPED', ''],
+  #     ['1', t2, RACE_QUESTION_CODE, RACE_WHITE_CODE, ''],
+  #     ['1', t3, GENDER_IDENTITY_QUESTION_CODE, 'female', ''],
+  #     ['1', t3, RACE_QUESTION_CODE, 'UNMAPPED', ''],
+  #     ['1', t3, EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_NO_CODE, ''],
+  #     ['1', t2, STATE_QUESTION_CODE, PMI_SKIP_CODE, ''],
+  #     ['5', t2, GENDER_IDENTITY_QUESTION_CODE, PMI_SKIP_CODE, ''],
+  #     ['5', t2, RACE_QUESTION_CODE, PMI_SKIP_CODE, ''],
+  #     ['9', t2, GENDER_IDENTITY_QUESTION_CODE, PMI_SKIP_CODE, ''],
+  #     ['9', t2, RACE_QUESTION_CODE, PMI_SKIP_CODE, ''],
+  #   ])
+  #
+  #   # Wait for the metrics pipeline to run, processing the CSV output.
+  #   with FakeClock(TIME_4):
+  #     test_support.execute_until_empty(self.taskqueue)
+  #
+  #   metrics_version = MetricsVersionDao().get_serving_version()
+  #   expected_version = MetricsVersion(
+  #       metricsVersionId=1,
+  #       inProgress=False,
+  #       complete=True,
+  #       date=TIME_4,
+  #       dataVersion=SERVING_METRICS_DATA_VERSION)
+  #   self.assertEquals(expected_version.asdict(), metrics_version.asdict())
+  #
+  #   buckets = MetricsVersionDao().get_with_children(metrics_version.metricsVersionId).buckets
+  #   bucket_map = {(bucket.date, bucket.hpoId): bucket for bucket in buckets}
+  #
+  #   # N.B: If these data dicts are kept sorted, it is significantly easier both to read the source
+  #   # code and to compare the code with the output of any failures in this test.
+  #   # PLEASE keep these sorted.
+  #
+  #   # At TIME, P1 and P5 are affiliated with AZ_TUCSON and P2 is UNSET.
+  #   self.assertBucket(bucket_map, TIME, 'TEST')
+  #   self.assertBucket(bucket_map, TIME, 'AZ_TUCSON', {
+  #       'Participant': 2,
+  #       'Participant.ageRange.26-35': 1,
+  #       'Participant.ageRange.UNSET': 1,
+  #       'Participant.biospecimen.UNSET': 2,
+  #       'Participant.biospecimenSamples.UNSET': 2,
+  #       'Participant.biospecimenSummary.UNSET': 2,
+  #       'Participant.censusRegion.UNSET': 2,
+  #       'Participant.consentForElectronicHealthRecords.UNSET': 2,
+  #       'Participant.consentForStudyEnrollment.SUBMITTED': 2,
+  #       'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2,
+  #       'Participant.enrollmentStatus.INTERESTED': 2,
+  #       'Participant.genderIdentity.UNSET': 2,
+  #       'Participant.hpoId.AZ_TUCSON': 2,
+  #       'Participant.numCompletedBaselinePPIModules.0': 2,
+  #       'Participant.physicalMeasurements.UNSET': 2,
+  #       'Participant.questionnaireOnFamilyHealth.UNSET': 2,
+  #       'Participant.questionnaireOnHealthcareAccess.UNSET': 2,
+  #       'Participant.questionnaireOnLifestyle.UNSET': 2,
+  #       'Participant.questionnaireOnMedicalHistory.UNSET': 2,
+  #       'Participant.questionnaireOnMedications.UNSET': 2,
+  #       'Participant.questionnaireOnOverallHealth.UNSET': 2,
+  #       'Participant.questionnaireOnTheBasics.UNSET': 2,
+  #       'Participant.race.UNSET': 2,
+  #       'Participant.samplesToIsolateDNA.UNSET': 2,
+  #       'Participant.state.UNSET': 2,
+  #       'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 2
+  #   })
+  #   self.assertBucket(bucket_map, TIME, 'UNSET', {
+  #       'Participant': 1,
+  #       'Participant.ageRange.UNSET': 1,
+  #       'Participant.biospecimen.UNSET': 1,
+  #       'Participant.biospecimenSamples.UNSET': 1,
+  #       'Participant.biospecimenSummary.UNSET': 1,
+  #       'Participant.censusRegion.UNSET': 1,
+  #       'Participant.consentForElectronicHealthRecords.UNSET': 1,
+  #       'Participant.consentForStudyEnrollment.SUBMITTED': 1,
+  #       'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
+  #       'Participant.enrollmentStatus.INTERESTED': 1,
+  #       'Participant.genderIdentity.UNSET': 1,
+  #       'Participant.hpoId.UNSET': 1,
+  #       'Participant.numCompletedBaselinePPIModules.0': 1,
+  #       'Participant.physicalMeasurements.UNSET': 1,
+  #       'Participant.questionnaireOnFamilyHealth.UNSET': 1,
+  #       'Participant.questionnaireOnHealthcareAccess.UNSET': 1,
+  #       'Participant.questionnaireOnLifestyle.UNSET': 1,
+  #       'Participant.questionnaireOnMedicalHistory.UNSET': 1,
+  #       'Participant.questionnaireOnMedications.UNSET': 1,
+  #       'Participant.questionnaireOnOverallHealth.UNSET': 1,
+  #       'Participant.questionnaireOnTheBasics.UNSET': 1,
+  #       'Participant.race.UNSET': 1,
+  #       'Participant.samplesToIsolateDNA.UNSET': 1,
+  #       'Participant.state.UNSET': 1,
+  #       'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
+  #   })
+  #   self.assertBucket(bucket_map, TIME, '', {
+  #       'Participant': 4,
+  #       'Participant.ageRange.26-35': 1,
+  #       'Participant.ageRange.UNSET': 3,
+  #       'Participant.biospecimen.UNSET': 4,
+  #       'Participant.biospecimenSamples.UNSET': 4,
+  #       'Participant.biospecimenSummary.UNSET': 4,
+  #       'Participant.censusRegion.UNSET': 4,
+  #       'Participant.consentForElectronicHealthRecords.UNSET': 4,
+  #       'Participant.consentForStudyEnrollment.SUBMITTED': 4,
+  #       'Participant.consentForStudyEnrollmentAndEHR.UNSET': 4,
+  #       'Participant.enrollmentStatus.INTERESTED': 4,
+  #       'Participant.genderIdentity.UNSET': 4,
+  #       'Participant.hpoId.AZ_TUCSON': 2,
+  #       'Participant.hpoId.UNSET': 1,
+  #       'Participant.hpoId.PITT': 1,
+  #       'Participant.numCompletedBaselinePPIModules.0': 4,
+  #       'Participant.physicalMeasurements.UNSET': 4,
+  #       'Participant.questionnaireOnFamilyHealth.UNSET': 4,
+  #       'Participant.questionnaireOnHealthcareAccess.UNSET': 4,
+  #       'Participant.questionnaireOnLifestyle.UNSET': 4,
+  #       'Participant.questionnaireOnMedicalHistory.UNSET': 4,
+  #       'Participant.questionnaireOnMedications.UNSET': 4,
+  #       'Participant.questionnaireOnOverallHealth.UNSET': 4,
+  #       'Participant.questionnaireOnTheBasics.UNSET': 4,
+  #       'Participant.race.UNSET': 4,
+  #       'Participant.samplesToIsolateDNA.UNSET': 4,
+  #       'Participant.state.UNSET': 4,
+  #       'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 4,
+  #   })
+  #
+  #   # At TIME_2, P1 is white, UNMAPPED gender; biobank samples
+  #   # arrived for P1 and P2 (the latter updating samplesToIsolateDNA);
+  #   # and both participants have submitted the basics questionnaire.
+  #   self.assertBucket(bucket_map, TIME_2, 'AZ_TUCSON_2', {
+  #       'Participant': 1,
+  #       'Participant.ageRange.26-35': 1,
+  #       'Participant.biospecimen.UNSET': 1,
+  #       'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
+  #       'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
+  #       'Participant.censusRegion.PMI_Skip': 1,
+  #       'Participant.consentForElectronicHealthRecords.UNSET': 1,
+  #       'Participant.consentForStudyEnrollment.SUBMITTED': 1,
+  #       'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
+  #       'Participant.enrollmentStatus.INTERESTED': 1,
+  #       'Participant.genderIdentity.UNMAPPED': 1,
+  #       'Participant.hpoId.AZ_TUCSON_2': 1,
+  #       'Participant.numCompletedBaselinePPIModules.1': 1,
+  #       'Participant.physicalMeasurements.UNSET': 1,
+  #       'Participant.questionnaireOnFamilyHealth.UNSET': 1,
+  #       'Participant.questionnaireOnHealthcareAccess.UNSET': 1,
+  #       'Participant.questionnaireOnLifestyle.UNSET': 1,
+  #       'Participant.questionnaireOnMedicalHistory.UNSET': 1,
+  #       'Participant.questionnaireOnMedications.UNSET': 1,
+  #       'Participant.questionnaireOnOverallHealth.UNSET': 1,
+  #       'Participant.questionnaireOnTheBasics.SUBMITTED': 1,
+  #       'Participant.race.WHITE': 1,
+  #       'Participant.samplesToIsolateDNA.UNSET': 1,
+  #       'Participant.state.PMI_Skip': 1,
+  #       'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
+  #   })
+  #   self.assertBucket(bucket_map, TIME_2, 'UNSET', {
+  #       'Participant': 1,
+  #       'Participant.ageRange.UNSET': 1,
+  #       'Participant.biospecimen.UNSET': 1,
+  #       'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
+  #       'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
+  #       'Participant.censusRegion.UNSET': 1,
+  #       'Participant.consentForElectronicHealthRecords.UNSET': 1,
+  #       'Participant.consentForStudyEnrollment.SUBMITTED': 1,
+  #       'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
+  #       'Participant.enrollmentStatus.INTERESTED': 1,
+  #       'Participant.genderIdentity.UNSET': 1,
+  #       'Participant.hpoId.UNSET': 1,
+  #       'Participant.numCompletedBaselinePPIModules.1': 1,
+  #       'Participant.physicalMeasurements.UNSET': 1,
+  #       'Participant.questionnaireOnFamilyHealth.UNSET': 1,
+  #       'Participant.questionnaireOnHealthcareAccess.UNSET': 1,
+  #       'Participant.questionnaireOnLifestyle.UNSET': 1,
+  #       'Participant.questionnaireOnMedicalHistory.UNSET': 1,
+  #       'Participant.questionnaireOnMedications.UNSET': 1,
+  #       'Participant.questionnaireOnOverallHealth.UNSET': 1,
+  #       'Participant.questionnaireOnTheBasics.SUBMITTED': 1,
+  #       'Participant.race.OTHER_RACE': 1,
+  #       'Participant.samplesToIsolateDNA.RECEIVED': 1,
+  #       'Participant.state.UNSET': 1,
+  #       'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
+  #   })
+  #   self.assertBucket(bucket_map, TIME_2, '', {
+  #       'Participant': 4,
+  #       'Participant.ageRange.26-35': 1,
+  #       'Participant.ageRange.UNSET': 3,
+  #       'Participant.biospecimen.UNSET': 4,
+  #       'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
+  #       'Participant.biospecimenSamples.UNSET': 2,
+  #       'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
+  #       'Participant.biospecimenSummary.UNSET': 2,
+  #       'Participant.censusRegion.PMI_Skip': 1,
+  #       'Participant.censusRegion.UNSET': 3,
+  #       'Participant.consentForElectronicHealthRecords.UNSET': 4,
+  #       'Participant.consentForStudyEnrollment.SUBMITTED': 4,
+  #       'Participant.consentForStudyEnrollmentAndEHR.UNSET': 4,
+  #       'Participant.enrollmentStatus.INTERESTED': 4,
+  #       'Participant.genderIdentity.PMI_Skip': 2,
+  #       'Participant.genderIdentity.UNMAPPED': 1,
+  #       'Participant.genderIdentity.UNSET': 1,
+  #       'Participant.hpoId.AZ_TUCSON': 1,
+  #       'Participant.hpoId.AZ_TUCSON_2': 1,
+  #       'Participant.hpoId.PITT': 1,
+  #       'Participant.hpoId.UNSET': 1,
+  #       'Participant.numCompletedBaselinePPIModules.1': 4,
+  #       'Participant.physicalMeasurements.UNSET': 4,
+  #       'Participant.questionnaireOnFamilyHealth.UNSET': 4,
+  #       'Participant.questionnaireOnHealthcareAccess.UNSET': 4,
+  #       'Participant.questionnaireOnLifestyle.UNSET': 4,
+  #       'Participant.questionnaireOnMedicalHistory.UNSET': 4,
+  #       'Participant.questionnaireOnMedications.UNSET': 4,
+  #       'Participant.questionnaireOnOverallHealth.UNSET': 4,
+  #       'Participant.questionnaireOnTheBasics.SUBMITTED': 4,
+  #       'Participant.race.OTHER_RACE': 1,
+  #       'Participant.race.PMI_Skip': 2,
+  #       'Participant.race.WHITE': 1,
+  #       'Participant.samplesToIsolateDNA.RECEIVED': 1,
+  #       'Participant.samplesToIsolateDNA.UNSET': 3,
+  #       'Participant.state.PMI_Skip': 1,
+  #       'Participant.state.UNSET': 3,
+  #       'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 4,
+  #   })
+  #
+  #   # At TIME_3, P1 is UNSET race, UNMAPPED female gender, and now in PITT HPO;
+  #   # physical measurements and a questionnaire for personal
+  #   # habits and overall health are submitted for P2, both participants submit consent
+  #   # questionnaires, with P1 not consenting to EHR; and P2 is in SOUTH census region
+  #   # and in a new age bucket (since it was their birthday.)
+  #   # P2 now has an enrollment status of FULL_MEMBER, and P1 has MEMBER
+  #   # Therefore, only P5 should show up here
+  #   self.assertBucket(bucket_map, TIME_3, 'AZ_TUCSON', {
+  #       'Participant': 1,
+  #       'Participant.ageRange.UNSET': 1,
+  #       'Participant.biospecimen.UNSET': 1,
+  #       'Participant.biospecimenSamples.UNSET': 1,
+  #       'Participant.biospecimenSummary.UNSET': 1,
+  #       'Participant.censusRegion.UNSET': 1,
+  #       'Participant.consentForElectronicHealthRecords.UNSET': 1,
+  #       'Participant.consentForStudyEnrollment.SUBMITTED': 1,
+  #       'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
+  #       'Participant.enrollmentStatus.INTERESTED': 1,
+  #       'Participant.genderIdentity.PMI_Skip': 1,
+  #       'Participant.hpoId.AZ_TUCSON': 1,
+  #       'Participant.numCompletedBaselinePPIModules.1': 1,
+  #       'Participant.physicalMeasurements.UNSET': 1,
+  #       'Participant.questionnaireOnFamilyHealth.UNSET': 1,
+  #       'Participant.questionnaireOnHealthcareAccess.UNSET': 1,
+  #       'Participant.questionnaireOnLifestyle.UNSET': 1,
+  #       'Participant.questionnaireOnMedicalHistory.UNSET': 1,
+  #       'Participant.questionnaireOnMedications.UNSET': 1,
+  #       'Participant.questionnaireOnOverallHealth.UNSET': 1,
+  #       'Participant.questionnaireOnTheBasics.SUBMITTED': 1,
+  #       'Participant.race.PMI_Skip': 1,
+  #       'Participant.samplesToIsolateDNA.UNSET': 1,
+  #       'Participant.state.UNSET': 1,
+  #       'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
+  #   })
+  #
+  #   self.assertBucket(bucket_map, TIME_3, 'PITT', {
+  #       'Participant': 3,
+  #       'Participant.ageRange.36-45': 1,
+  #       'Participant.ageRange.UNSET': 2,
+  #       'Participant.biospecimen.UNSET': 3,
+  #       'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
+  #       'Participant.biospecimenSamples.UNSET': 1,
+  #       'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
+  #       'Participant.biospecimenSummary.UNSET': 1,
+  #       'Participant.censusRegion.PMI_Skip': 1,
+  #       'Participant.censusRegion.UNSET': 1,
+  #       'Participant.censusRegion.SOUTH': 1,
+  #       'Participant.consentForElectronicHealthRecords.SUBMITTED': 1,
+  #       'Participant.consentForElectronicHealthRecords.UNSET': 1,
+  #       'Participant.consentForElectronicHealthRecords.SUBMITTED_NO_CONSENT': 1,
+  #       'Participant.consentForStudyEnrollment.SUBMITTED': 3,
+  #       'Participant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
+  #       'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2,
+  #       'Participant.enrollmentStatus.FULL_PARTICIPANT': 1,
+  #       'Participant.enrollmentStatus.INTERESTED': 2,
+  #       'Participant.genderIdentity.PMI_PreferNotToAnswer': 1,
+  #       'Participant.genderIdentity.female': 1,
+  #       'Participant.genderIdentity.PMI_Skip': 1,
+  #       'Participant.hpoId.PITT': 3,
+  #       'Participant.numCompletedBaselinePPIModules.1': 2,
+  #       'Participant.numCompletedBaselinePPIModules.3': 1,
+  #       'Participant.physicalMeasurements.COMPLETED': 1,
+  #       'Participant.physicalMeasurements.UNSET': 2,
+  #       'Participant.questionnaireOnFamilyHealth.UNSET': 3,
+  #       'Participant.questionnaireOnHealthcareAccess.UNSET': 3,
+  #       'Participant.questionnaireOnLifestyle.SUBMITTED': 1,
+  #       'Participant.questionnaireOnLifestyle.UNSET': 2,
+  #       'Participant.questionnaireOnMedicalHistory.UNSET': 3,
+  #       'Participant.questionnaireOnMedications.UNSET': 3,
+  #       'Participant.questionnaireOnOverallHealth.SUBMITTED': 1,
+  #       'Participant.questionnaireOnOverallHealth.UNSET': 2,
+  #       'Participant.questionnaireOnTheBasics.SUBMITTED': 3,
+  #       'Participant.race.OTHER_RACE': 1,
+  #       'Participant.race.PMI_Skip': 1,
+  #       'Participant.race.UNSET': 1,
+  #       'Participant.samplesToIsolateDNA.RECEIVED': 1,
+  #       'Participant.samplesToIsolateDNA.UNSET': 2,
+  #       'Participant.state.PIIState_VA': 1,
+  #       'Participant.state.PMI_Skip': 1,
+  #       'Participant.state.UNSET': 1,
+  #       'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 3,
+  #
+  #       'FullParticipant.ageRange.UNSET': 1,
+  #       'FullParticipant.biospecimen.UNSET': 1,
+  #       'FullParticipant.biospecimenSamples.SAMPLES_ARRIVED': 1,
+  #       'FullParticipant.biospecimenSummary.SAMPLES_ARRIVED': 1,
+  #       'FullParticipant.censusRegion.SOUTH': 1,
+  #       'FullParticipant.consentForElectronicHealthRecords.SUBMITTED': 1,
+  #       'FullParticipant.consentForStudyEnrollment.SUBMITTED': 1,
+  #       'FullParticipant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
+  #       'FullParticipant.enrollmentStatus.FULL_PARTICIPANT': 1,
+  #       'FullParticipant.genderIdentity.PMI_PreferNotToAnswer': 1,
+  #       'FullParticipant.hpoId.PITT': 1,
+  #       'FullParticipant.numCompletedBaselinePPIModules.3': 1,
+  #       'FullParticipant.physicalMeasurements.COMPLETED': 1,
+  #       'FullParticipant.questionnaireOnFamilyHealth.UNSET': 1,
+  #       'FullParticipant.questionnaireOnHealthcareAccess.UNSET': 1,
+  #       'FullParticipant.questionnaireOnLifestyle.SUBMITTED': 1,
+  #       'FullParticipant.questionnaireOnMedicalHistory.UNSET': 1,
+  #       'FullParticipant.questionnaireOnMedications.UNSET': 1,
+  #       'FullParticipant.questionnaireOnOverallHealth.SUBMITTED': 1,
+  #       'FullParticipant.questionnaireOnTheBasics.SUBMITTED': 1,
+  #       'FullParticipant.race.OTHER_RACE': 1,
+  #       'FullParticipant.samplesToIsolateDNA.RECEIVED': 1,
+  #       'FullParticipant.state.PIIState_VA': 1,
+  #       'FullParticipant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
+  #   })
+  #   self.assertBucket(bucket_map, TIME_3, '', {
+  #       'Participant': 4,
+  #       'Participant.ageRange.36-45': 1,
+  #       'Participant.ageRange.UNSET': 3,
+  #       'Participant.biospecimen.UNSET': 4,
+  #       'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
+  #       'Participant.biospecimenSamples.UNSET': 2,
+  #       'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
+  #       'Participant.biospecimenSummary.UNSET': 2,
+  #       'Participant.censusRegion.PMI_Skip': 1,
+  #       'Participant.censusRegion.SOUTH': 1,
+  #       'Participant.censusRegion.UNSET': 2,
+  #       'Participant.consentForElectronicHealthRecords.SUBMITTED': 1,
+  #       'Participant.consentForElectronicHealthRecords.SUBMITTED_NO_CONSENT': 1,
+  #       'Participant.consentForElectronicHealthRecords.UNSET': 2,
+  #       'Participant.consentForStudyEnrollment.SUBMITTED': 4,
+  #       'Participant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
+  #       'Participant.consentForStudyEnrollmentAndEHR.UNSET': 3,
+  #       'Participant.enrollmentStatus.FULL_PARTICIPANT': 1,
+  #       'Participant.enrollmentStatus.INTERESTED': 3,
+  #       'Participant.genderIdentity.PMI_PreferNotToAnswer': 1,
+  #       'Participant.genderIdentity.PMI_Skip': 2,
+  #       'Participant.genderIdentity.female': 1,
+  #       'Participant.hpoId.AZ_TUCSON': 1,
+  #       'Participant.hpoId.PITT': 3,
+  #       'Participant.numCompletedBaselinePPIModules.1': 3,
+  #       'Participant.numCompletedBaselinePPIModules.3': 1,
+  #       'Participant.physicalMeasurements.COMPLETED': 1,
+  #       'Participant.physicalMeasurements.UNSET': 3,
+  #       'Participant.questionnaireOnFamilyHealth.UNSET': 4,
+  #       'Participant.questionnaireOnHealthcareAccess.UNSET': 4,
+  #       'Participant.questionnaireOnLifestyle.SUBMITTED': 1,
+  #       'Participant.questionnaireOnLifestyle.UNSET': 3,
+  #       'Participant.questionnaireOnMedicalHistory.UNSET': 4,
+  #       'Participant.questionnaireOnMedications.UNSET': 4,
+  #       'Participant.questionnaireOnOverallHealth.SUBMITTED': 1,
+  #       'Participant.questionnaireOnOverallHealth.UNSET': 3,
+  #       'Participant.questionnaireOnTheBasics.SUBMITTED': 4,
+  #       'Participant.race.OTHER_RACE': 1,
+  #       'Participant.race.PMI_Skip': 2,
+  #       'Participant.race.UNSET': 1,
+  #       'Participant.samplesToIsolateDNA.RECEIVED': 1,
+  #       'Participant.samplesToIsolateDNA.UNSET': 3,
+  #       'Participant.state.PIIState_VA': 1,
+  #       'Participant.state.PMI_Skip': 1,
+  #       'Participant.state.UNSET': 2,
+  #       'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 4,
+  #
+  #       'FullParticipant.ageRange.UNSET': 1,
+  #       'FullParticipant.biospecimen.UNSET': 1,
+  #       'FullParticipant.biospecimenSamples.SAMPLES_ARRIVED': 1,
+  #       'FullParticipant.biospecimenSummary.SAMPLES_ARRIVED': 1,
+  #       'FullParticipant.censusRegion.SOUTH': 1,
+  #       'FullParticipant.consentForElectronicHealthRecords.SUBMITTED': 1,
+  #       'FullParticipant.consentForStudyEnrollment.SUBMITTED': 1,
+  #       'FullParticipant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
+  #       'FullParticipant.enrollmentStatus.FULL_PARTICIPANT': 1,
+  #       'FullParticipant.genderIdentity.PMI_PreferNotToAnswer': 1,
+  #       'FullParticipant.hpoId.PITT': 1,
+  #       'FullParticipant.numCompletedBaselinePPIModules.3': 1,
+  #       'FullParticipant.physicalMeasurements.COMPLETED': 1,
+  #       'FullParticipant.questionnaireOnFamilyHealth.UNSET': 1,
+  #       'FullParticipant.questionnaireOnHealthcareAccess.UNSET': 1,
+  #       'FullParticipant.questionnaireOnLifestyle.SUBMITTED': 1,
+  #       'FullParticipant.questionnaireOnMedicalHistory.UNSET': 1,
+  #       'FullParticipant.questionnaireOnMedications.UNSET': 1,
+  #       'FullParticipant.questionnaireOnOverallHealth.SUBMITTED': 1,
+  #       'FullParticipant.questionnaireOnTheBasics.SUBMITTED': 1,
+  #       'FullParticipant.race.OTHER_RACE': 1,
+  #       'FullParticipant.samplesToIsolateDNA.RECEIVED': 1,
+  #       'FullParticipant.state.PIIState_VA': 1,
+  #       'FullParticipant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
+  #   })
+  #
+  #   # There is a biobank order on 1/4, but it gets ignored since it's after the run date.
+  #   self.assertBucket(bucket_map, TIME_4, '')
 
   def assertBucket(self, bucket_map, dt, hpoId, metrics=None):
     bucket = bucket_map.get((dt.date(), hpoId))

@@ -14,13 +14,13 @@ Usage:
 """
 # client needs to be top level import due to another client package in AppengineSDK
 
-from client import Client, client_log
+from rdr_service.rdr_client.client import Client, client_log
 
 import os
 import logging
 import googlemaps
 from dateutil.parser import parse
-from tools.csv_importer import CsvImporter
+from rdr_service.tools.csv_importer import CsvImporter
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
@@ -29,8 +29,8 @@ from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
 from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 from rdr_service.participant_enums import OrganizationType
-from main_util import get_parser, configure_logging
-from tools.import_participants import _setup_questionnaires, import_participant
+from rdr_service.main_util import get_parser, configure_logging
+from rdr_service.tools.import_participants import _setup_questionnaires, import_participant
 
 
 # Environments

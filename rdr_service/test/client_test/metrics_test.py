@@ -6,11 +6,11 @@ that metrics come back and that it doen't crash.
 """
 
 import httplib
-import unittest
 import pprint
+import unittest
 
-from client import HttpException
-from base import BaseClientTest
+from rdr_service.rdr_client.client import HttpException
+from rdr_service.test.client_test.base import BaseClientTest
 
 
 class MetricsTest(BaseClientTest):

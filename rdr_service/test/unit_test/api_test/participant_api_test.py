@@ -2,13 +2,15 @@ import datetime
 import httplib
 
 from rdr_service.clock import FakeClock
-from test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json
-from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus
-from rdr_service.model.hpo import HPO
-from rdr_service.dao.hpo_dao import HPODao
-from rdr_service.participant_enums import TEST_HPO_ID, TEST_HPO_NAME, OrganizationType
-from rdr_service.code_constants import RACE_WHITE_CODE, PPI_SYSTEM
+from rdr_service.code_constants import PPI_SYSTEM, RACE_WHITE_CODE
 from rdr_service.concepts import Concept
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.model.hpo import HPO
+from rdr_service.participant_enums import OrganizationType, SuspensionStatus, TEST_HPO_ID, \
+  TEST_HPO_NAME, \
+  WithdrawalStatus
+from rdr_service.test.unit_test.unit_test_util import FlaskTestBase, \
+  make_questionnaire_response_json
 
 TIME_1 = datetime.datetime(2018, 1, 1)
 TIME_2 = datetime.datetime(2018, 1, 3)

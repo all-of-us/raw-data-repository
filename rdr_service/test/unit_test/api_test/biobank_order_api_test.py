@@ -1,7 +1,6 @@
 import datetime
 import httplib
 
-from api_test.participant_summary_api_test import _add_code_answer
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (CONSENT_PERMISSION_YES_CODE, RACE_NONE_OF_THESE_CODE)
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
@@ -10,12 +9,12 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_order import BiobankOrderHistory, BiobankOrderIdentifierHistory, \
   BiobankOrderedSampleHistory
 from rdr_service.model.participant import Participant
-from rdr_service.model.utils import to_client_participant_id, from_client_participant_id
-from rdr_service.participant_enums import UNSET_HPO_ID, OrderStatus
-from test.test_data import load_biobank_order_json, load_measurement_json
-from test.unit_test.unit_test_util import FlaskTestBase, get_restore_or_cancel_info, \
+from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
+from rdr_service.participant_enums import OrderStatus, UNSET_HPO_ID
+from rdr_service.test.test_data import load_biobank_order_json, load_measurement_json
+from rdr_service.test.unit_test.api_test.participant_summary_api_test import _add_code_answer
+from rdr_service.test.unit_test.unit_test_util import FlaskTestBase, get_restore_or_cancel_info, \
   make_questionnaire_response_json
-
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)

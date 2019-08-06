@@ -1,55 +1,46 @@
-import datetime
 import StringIO
 import collections
 import contextlib
 import copy
-import faker
-from glob import glob
+import datetime
+import httplib
 # Python 3: change 'imp' to 'importlib'
 import imp
-import httplib
 import json
-import mock
 import os
 import re
 import unittest
 import uuid
 import warnings
+from glob import glob
 
-from rdr_service.dao import database_factory
-from rdr_service.dao.organization_dao import OrganizationDao
-
+import config_api
+import faker
+import mock
 from google.appengine.api import app_identity
-from google.appengine.ext import deferred
-from google.appengine.ext import ndb
-from google.appengine.ext import testbed
+from google.appengine.ext import deferred, ndb, testbed
 from mock import patch
-from rdr_service.model.code import CodeType
-from rdr_service.model.organization import Organization
 from testlib import testutil
 
-from rdr_service import api_util
-from rdr_service import config
-import config_api
-from rdr_service import main
-from rdr_service.dao import base_dao
-from rdr_service import singletons
-
+from rdr_service import api_util, config, main, singletons
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.site_dao import SiteDao
-from rdr_service.model.code import Code
+from rdr_service.model.code import Code, CodeType
 from rdr_service.model.hpo import HPO
-from rdr_service.model.site import Site
+from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.site import Site
 from rdr_service.offline import sql_exporter
-from rdr_service.participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
-from rdr_service.participant_enums import OrganizationType
-from test.test_data import data_path
+from rdr_service.participant_enums import EnrollmentStatus, OrganizationType, SuspensionStatus, \
+  UNSET_HPO_ID, \
+  WithdrawalStatus
+from rdr_service.test.test_data import data_path
 from rdr_service.unicode_csv import UnicodeDictReader
 
 PITT_HPO_ID = 2

@@ -10,7 +10,7 @@ import csv
 import logging
 from time import sleep
 
-from client import Client, HttpException
+from rdr_service.rdr_client.client import Client, HttpException
 from rdr_service.main_util import get_parser, configure_logging
 
 

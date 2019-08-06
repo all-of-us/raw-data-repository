@@ -1,9 +1,8 @@
-from rdr_service import clock
 import mock
 
-from rdr_service import config
+from rdr_service import clock, config
 from rdr_service.offline import main
-from test.unit_test.unit_test_util import TestBase
+from rdr_service.test.unit_test.unit_test_util import TestBase
 
 
 class MainTest(TestBase):

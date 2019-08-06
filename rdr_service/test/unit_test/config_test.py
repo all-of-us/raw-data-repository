@@ -5,7 +5,7 @@ from mock import patch
 
 from rdr_service import config
 from rdr_service.clock import FakeClock
-from test.unit_test.unit_test_util import FlaskTestBase
+from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 
 class TestConfig(FlaskTestBase):

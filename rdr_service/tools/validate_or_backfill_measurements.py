@@ -6,7 +6,7 @@ import logging
 
 from pprint import pprint
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
-from main_util import get_parser, configure_logging
+from rdr_service.main_util import get_parser, configure_logging
 
 
 def main(args):
@@ -15,6 +15,7 @@ def main(args):
     logging.info("%d measurements updated." % num_updated)
   else:
     pprint(PhysicalMeasurementsDao().get_distinct_measurements_json(), indent=2)
+
 
 if __name__ == '__main__':
   configure_logging()

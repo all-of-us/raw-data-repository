@@ -1,29 +1,31 @@
 import datetime
+import httplib
 import urllib
 
 from rdr_service.clock import FakeClock
-import httplib
-
-from rdr_service.dao.participant_dao import ParticipantDao
-from rdr_service.model.hpo import HPO
-from rdr_service.dao.hpo_dao import HPODao
-from rdr_service.model.code import Code, CodeType
-from rdr_service.dao.code_dao import CodeDao
-from rdr_service.model.calendar import Calendar
-from rdr_service.dao.calendar_dao import CalendarDao
-from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json
-from rdr_service.model.participant import Participant
+from rdr_service.code_constants import (PMI_SKIP_CODE, PPI_SYSTEM, RACE_AIAN_CODE,
+                                        RACE_HISPANIC_CODE, RACE_MENA_CODE,
+                                        RACE_NONE_OF_THESE_CODE, RACE_WHITE_CODE)
 from rdr_service.concepts import Concept
-from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID,\
-  WithdrawalStatus, make_primary_provider_link_for_name, MetricsCacheType, MetricsAPIVersion
+from rdr_service.dao.calendar_dao import CalendarDao
+from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.metrics_cache_dao import MetricsAgeCacheDao, MetricsEnrollmentStatusCacheDao, \
+  MetricsGenderCacheDao, MetricsLanguageCacheDao, MetricsLifecycleCacheDao, MetricsRaceCacheDao, \
+  MetricsRegionCacheDao
 from rdr_service.dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
-from rdr_service.dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
-  MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao, \
-  MetricsLanguageCacheDao
-from rdr_service.code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_AIAN_CODE,
-                            RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, RACE_MENA_CODE)
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.model.calendar import Calendar
+from rdr_service.model.code import Code, CodeType
+from rdr_service.model.hpo import HPO
+from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.participant_enums import EnrollmentStatus, MetricsAPIVersion, MetricsCacheType, \
+  OrganizationType, \
+  TEST_HPO_ID, TEST_HPO_NAME, WithdrawalStatus, make_primary_provider_link_for_name
+from rdr_service.test.unit_test.unit_test_util import FlaskTestBase, \
+  make_questionnaire_response_json
 
 TIME_1 = datetime.datetime(2017, 12, 31)
 

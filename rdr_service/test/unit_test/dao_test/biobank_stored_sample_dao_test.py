@@ -1,9 +1,9 @@
 from rdr_service import clock
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.participant import Participant
-from rdr_service.dao.participant_dao import ParticipantDao
-from unit_test_util import SqlTestBase
+from rdr_service.test.unit_test.unit_test_util import SqlTestBase
 
 
 class BiobankStoredSampleDaoTest(SqlTestBase):
