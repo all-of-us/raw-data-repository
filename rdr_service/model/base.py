@@ -41,12 +41,12 @@ class ModelMixin(object):
     # TODO: Needs to identify ModelEnum fields and set the Enum value from a string. See to_dict().
     """
     if args is not None and len(args) is not 0 and args[0] is not None:
-      for key, value in args[0].items():
+      for key, value in list(args[0].items()):
         self.__dict__[key] = value
         # print('{0} : {1}'.format(key, value))
 
     else:
-      for key, value in kwargs.items():
+      for key, value in list(kwargs.items()):
         self.__dict__[key] = value
         # print('{0} : {1}'.format(key, value))
 

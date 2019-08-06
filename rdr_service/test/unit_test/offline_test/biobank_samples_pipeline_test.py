@@ -1,4 +1,4 @@
-import StringIO
+import io
 import csv
 import datetime
 import random
@@ -49,25 +49,25 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     Kwargs pass through to BiobankOrder constructor, overriding defaults.
     """
     participantId = kwargs['participantId']
-    modified = datetime.datetime(2019, 03, 25, 15, 59, 30)
+    modified = datetime.datetime(2019, 0o3, 25, 15, 59, 30)
 
     for k, default_value in (
-        ('biobankOrderId', u'1'),
+        ('biobankOrderId', '1'),
         ('created', clock.CLOCK.now()),
         # ('participantId', self.participant.participantId),
         ('sourceSiteId', 1),
-        ('sourceUsername', u'fred@pmi-ops.org'),
+        ('sourceUsername', 'fred@pmi-ops.org'),
         ('collectedSiteId', 1),
-        ('collectedUsername', u'joe@pmi-ops.org'),
+        ('collectedUsername', 'joe@pmi-ops.org'),
         ('processedSiteId', 1),
-        ('processedUsername', u'sue@pmi-ops.org'),
+        ('processedUsername', 'sue@pmi-ops.org'),
         ('finalizedSiteId', 2),
-        ('finalizedUsername', u'bob@pmi-ops.org'),
+        ('finalizedUsername', 'bob@pmi-ops.org'),
         ('version', 1),
-        ('identifiers', [BiobankOrderIdentifier(system=u'a', value=u'c')]),
+        ('identifiers', [BiobankOrderIdentifier(system='a', value='c')]),
         ('samples', [BiobankOrderedSample(
-            test=u'1SAL2',
-            description=u'description',
+            test='1SAL2',
+            description='description',
             processingRequired=True)]),
         ('dvOrders', [BiobankDVOrder(
           participantId=participantId, modified=modified, version=1
@@ -83,8 +83,8 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     participant = self.participant_dao.insert(Participant())
     self.summary_dao.insert(self.participant_summary(participant))
 
-    created_ts = datetime.datetime(2019, 03, 22, 18, 30, 45)
-    confirmed_ts = datetime.datetime(2019, 03, 23, 12, 13, 00)
+    created_ts = datetime.datetime(2019, 0o3, 22, 18, 30, 45)
+    confirmed_ts = datetime.datetime(2019, 0o3, 23, 12, 13, 00)
 
     bo = self._make_biobank_order(participantId=participant.participantId)
     BiobankOrderDao().insert(bo)
@@ -92,7 +92,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     boi = bo.identifiers[0]
 
     bss = BiobankStoredSample(
-      biobankStoredSampleId=u'23523523', biobankId=participant.biobankId, test=u'1SAL2',
+      biobankStoredSampleId='23523523', biobankId=participant.biobankId, test='1SAL2',
       created=created_ts, biobankOrderIdentifier=boi.value, confirmed=confirmed_ts)
 
     with self.participant_dao.session() as session:
@@ -109,7 +109,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
   def test_end_to_end(self):
     dao = BiobankStoredSampleDao()
-    self.assertEquals(dao.count(), 0)
+    self.assertEqual(dao.count(), 0)
 
     # Create 3 participants and pass their (random) IDs into sample rows.
     summary_dao = ParticipantSummaryDao()
@@ -118,12 +118,12 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     nids = 16  # equal to the number of parent rows in 'biobank_samples_1.csv'
     cids = 1   # equal to the number of child rows in 'biobank_samples_1.csv'
 
-    for _ in xrange(nids):
+    for _ in range(nids):
       participant = self.participant_dao.insert(Participant())
       summary_dao.insert(self.participant_summary(participant))
       participant_ids.append(participant.participantId)
       biobank_ids.append(participant.biobankId)
-      self.assertEquals(summary_dao.get(participant.participantId).numBaselineSamplesArrived, 0)
+      self.assertEqual(summary_dao.get(participant.participantId).numBaselineSamplesArrived, 0)
 
     test_codes = random.sample(_BASELINE_TESTS, nids)
     samples_file = test_data.open_biobank_samples(biobank_ids=biobank_ids, tests=test_codes)
@@ -134,7 +134,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self._write_cloud_csv(input_filename, samples_file)
     biobank_samples_pipeline.upsert_from_latest_csv()
 
-    self.assertEquals(dao.count(), nids - cids)
+    self.assertEqual(dao.count(), nids - cids)
 
     for x in range(0, nids):
       cols = lines[x].split('\t')
@@ -144,7 +144,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
       # If status is 'In Prep', then sample confirmed timestamp should be empty
       if cols[2] == 'In Prep':
-        self.assertEquals(len(cols[11]), 0)
+        self.assertEqual(len(cols[11]), 0)
       else:
         status = SampleStatus.RECEIVED
         ts_str = cols[11]
@@ -174,12 +174,12 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
   def _check_summary(self, participant_id, test, date_formatted, status):
     summary = ParticipantSummaryDao().get(participant_id)
-    self.assertEquals(summary.numBaselineSamplesArrived, 1)
+    self.assertEqual(summary.numBaselineSamplesArrived, 1)
     # DA-614 - All specific disposal statuses in biobank_stored_samples are changed to DISPOSED
     # in the participant summary.
-    self.assertEquals(status, getattr(summary, 'sampleStatus' + test))
+    self.assertEqual(status, getattr(summary, 'sampleStatus' + test))
     sample_time = self._naive_utc_to_naive_central(getattr(summary, 'sampleStatus' + test + 'Time'))
-    self.assertEquals(date_formatted, sample_time)
+    self.assertEqual(date_formatted, sample_time)
 
   def test_find_latest_csv(self):
     # The cloud storage testbed does not expose an injectable time function.
@@ -194,53 +194,53 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
         '%s/created_last_in_subdir.csv' % biobank_samples_pipeline._REPORT_SUBDIR, 'any contents')
 
     latest_filename = biobank_samples_pipeline._find_latest_samples_csv(_FAKE_BUCKET)
-    self.assertEquals(latest_filename, '/%s/%s' % (_FAKE_BUCKET, created_last))
+    self.assertEqual(latest_filename, '/%s/%s' % (_FAKE_BUCKET, created_last))
 
   def test_sample_from_row(self):
     samples_file = test_data.open_biobank_samples([112, 222, 333], [])
-    reader = csv.DictReader(StringIO.StringIO(samples_file), delimiter='\t')
-    row = reader.next()
+    reader = csv.DictReader(io.StringIO(samples_file), delimiter='\t')
+    row = next(reader)
     sample = biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
     self.assertIsNotNone(sample)
 
     cols = biobank_samples_pipeline.CsvColumns
-    self.assertEquals(sample.biobankStoredSampleId, row[cols.SAMPLE_ID])
-    self.assertEquals(to_client_biobank_id(sample.biobankId), row[cols.EXTERNAL_PARTICIPANT_ID])
-    self.assertEquals(sample.test, row[cols.TEST_CODE])
+    self.assertEqual(sample.biobankStoredSampleId, row[cols.SAMPLE_ID])
+    self.assertEqual(to_client_biobank_id(sample.biobankId), row[cols.EXTERNAL_PARTICIPANT_ID])
+    self.assertEqual(sample.test, row[cols.TEST_CODE])
     confirmed_date = self._naive_utc_to_naive_central(sample.confirmed)
-    self.assertEquals(
+    self.assertEqual(
         confirmed_date.strftime(biobank_samples_pipeline._INPUT_TIMESTAMP_FORMAT),
         row[cols.CONFIRMED_DATE])
     received_date = self._naive_utc_to_naive_central(sample.created)
-    self.assertEquals(
+    self.assertEqual(
         received_date.strftime(biobank_samples_pipeline._INPUT_TIMESTAMP_FORMAT),
         row[cols.CREATE_DATE])
 
   def test_sample_from_row_wrong_prefix(self):
     samples_file = test_data.open_biobank_samples([111, 222, 333], [])
-    reader = csv.DictReader(StringIO.StringIO(samples_file), delimiter='\t')
-    row = reader.next()
+    reader = csv.DictReader(io.StringIO(samples_file), delimiter='\t')
+    row = next(reader)
     row[biobank_samples_pipeline.CsvColumns.CONFIRMED_DATE] = '2016 11 19'
     self.assertIsNone(biobank_samples_pipeline._create_sample_from_row(row, 'Q'))
 
   def test_sample_from_row_invalid(self):
     samples_file = test_data.open_biobank_samples([111, 222, 333], [])
-    reader = csv.DictReader(StringIO.StringIO(samples_file), delimiter='\t')
-    row = reader.next()
+    reader = csv.DictReader(io.StringIO(samples_file), delimiter='\t')
+    row = next(reader)
     row[biobank_samples_pipeline.CsvColumns.CONFIRMED_DATE] = '2016 11 19'
     with self.assertRaises(biobank_samples_pipeline.DataError):
       biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
 
   def test_sample_from_row_old_test(self):
     samples_file = test_data.open_biobank_samples([111, 222, 333], [])
-    reader = csv.DictReader(StringIO.StringIO(samples_file), delimiter='\t')
-    row = reader.next()
+    reader = csv.DictReader(io.StringIO(samples_file), delimiter='\t')
+    row = next(reader)
     row[biobank_samples_pipeline.CsvColumns.TEST_CODE] = '2PST8'
     sample = biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
     self.assertIsNotNone(sample)
     cols = biobank_samples_pipeline.CsvColumns
-    self.assertEquals(sample.biobankStoredSampleId, row[cols.SAMPLE_ID])
-    self.assertEquals(sample.test, row[cols.TEST_CODE])
+    self.assertEqual(sample.biobankStoredSampleId, row[cols.SAMPLE_ID])
+    self.assertEqual(sample.test, row[cols.TEST_CODE])
 
   def test_column_missing(self):
     with open(test_data.data_path('biobank_samples_missing_field.csv')) as samples_file:
@@ -253,7 +253,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     dt = datetime.datetime(2016, 12, 22, 18, 30, 45)
     expected_prefix = 'reconciliation/report_2016-12-22'
     paths = biobank_samples_pipeline._get_report_paths(dt)
-    self.assertEquals(len(paths), 4)
+    self.assertEqual(len(paths), 4)
     for path in paths:
       self.assertTrue(
           path.startswith(expected_prefix),

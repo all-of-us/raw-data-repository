@@ -83,7 +83,7 @@ def _load_org_data_map(sheet_id):
   # apply transformations that require full map
   return {
     org_data.org_id: _org_data_with_bucket_inheritance_from_org_data(org_data_map, org_data)
-    for org_data in org_data_map.values()
+    for org_data in list(org_data_map.values())
   }
 
 

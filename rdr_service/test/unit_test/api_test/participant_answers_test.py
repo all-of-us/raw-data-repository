@@ -1,4 +1,4 @@
-import httplib
+import http.client
 
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
@@ -20,12 +20,12 @@ class QuestionnaireAnswersApiTest(FlaskTestBase):
 
     email = 'answers@test.com'
     code_answers = [
-      ('language', Concept(PPI_SYSTEM, u'SpokenWrittenLanguage_English')),
-      ('language', Concept(PPI_SYSTEM, u'SpokenWrittenLanguage_ChineseChina'))
+      ('language', Concept(PPI_SYSTEM, 'SpokenWrittenLanguage_English')),
+      ('language', Concept(PPI_SYSTEM, 'SpokenWrittenLanguage_ChineseChina'))
     ]
     self.send_consent(p_id, email=email, language='en', code_values=code_answers)
 
-    response = self.send_get(self._answers_url(p_id, u'ConsentPII'))
+    response = self.send_get(self._answers_url(p_id, 'ConsentPII'))
 
     self.assertIsNotNone(response)
     self.assertEqual(len(response), 1)
@@ -45,12 +45,12 @@ class QuestionnaireAnswersApiTest(FlaskTestBase):
 
     email = 'answers@test.com'
     code_answers = [
-      ('language', Concept(PPI_SYSTEM, u'SpokenWrittenLanguage_English')),
-      ('language', Concept(PPI_SYSTEM, u'SpokenWrittenLanguage_ChineseChina'))
+      ('language', Concept(PPI_SYSTEM, 'SpokenWrittenLanguage_English')),
+      ('language', Concept(PPI_SYSTEM, 'SpokenWrittenLanguage_ChineseChina'))
     ]
     self.send_consent(p_id, email=email, language='en', code_values=code_answers)
 
-    response = self.send_get(self._answers_url(p_id, u'OverallHealth'), expected_status=httplib.NOT_FOUND)
+    response = self.send_get(self._answers_url(p_id, 'OverallHealth'), expected_status=http.client.NOT_FOUND)
 
     self.assertEqual(response, None)
 
@@ -62,11 +62,11 @@ class QuestionnaireAnswersApiTest(FlaskTestBase):
 
     email = 'answers@test.com'
     code_answers = [
-      ('language', Concept(PPI_SYSTEM, u'SpokenWrittenLanguage_English')),
-      ('language', Concept(PPI_SYSTEM, u'SpokenWrittenLanguage_ChineseChina'))
+      ('language', Concept(PPI_SYSTEM, 'SpokenWrittenLanguage_English')),
+      ('language', Concept(PPI_SYSTEM, 'SpokenWrittenLanguage_ChineseChina'))
     ]
     self.send_consent(p_id, email=email, language='en', code_values=code_answers)
 
-    response = self.send_get(self._answers_url(p_id, u'InvalidModule'), expected_status=httplib.BAD_REQUEST)
+    response = self.send_get(self._answers_url(p_id, 'InvalidModule'), expected_status=http.client.BAD_REQUEST)
 
     self.assertEqual(response, None)

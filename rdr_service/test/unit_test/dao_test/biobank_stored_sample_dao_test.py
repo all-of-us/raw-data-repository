@@ -26,5 +26,5 @@ class BiobankStoredSampleDaoTest(SqlTestBase):
         test=test_code,
         confirmed=now))
     fetched = self.dao.get(sample_id)
-    self.assertEquals(test_code, created.test)
-    self.assertEquals(test_code, fetched.test)
+    self.assertEqual(test_code, created.test)
+    self.assertEqual(test_code, fetched.test)

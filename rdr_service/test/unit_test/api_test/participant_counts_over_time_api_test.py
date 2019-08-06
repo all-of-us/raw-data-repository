@@ -1,6 +1,6 @@
 import datetime
-import httplib
-import urllib
+import http.client
+import urllib.request, urllib.parse, urllib.error
 
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (PMI_SKIP_CODE, PPI_SYSTEM, RACE_AIAN_CODE,
@@ -81,7 +81,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     # Insert 2 weeks of dates
     curr_date = datetime.date(2017, 12, 22)
-    for _ in xrange(0, 18):
+    for _ in range(0, 18):
       calendar_day = Calendar(day=curr_date )
       CalendarDao().insert(calendar_day)
       curr_date = curr_date + datetime.timedelta(days=1)
@@ -267,8 +267,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     interested_count_day_1 = response[0]['metrics']['INTERESTED']
     interested_count_day_2 = response[1]['metrics']['INTERESTED']
 
-    self.assertEquals(interested_count_day_1, 0)
-    self.assertEquals(interested_count_day_2, 1)
+    self.assertEqual(interested_count_day_1, 0)
+    self.assertEqual(interested_count_day_2, 1)
 
   def test_get_counts_with_single_awardee_filter(self):
     # Does the awardee filter work?
@@ -299,8 +299,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     interested_count_day_1 = response[0]['metrics']['INTERESTED']
     interested_count_day_2 = response[1]['metrics']['INTERESTED']
 
-    self.assertEquals(interested_count_day_1, 0)
-    self.assertEquals(interested_count_day_2, 1)
+    self.assertEqual(interested_count_day_1, 0)
+    self.assertEqual(interested_count_day_2, 1)
 
     qs = """
       bucketSize=1
@@ -317,8 +317,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     interested_count_day_1 = response[0]['metrics']['INTERESTED']
     interested_count_day_2 = response[1]['metrics']['INTERESTED']
 
-    self.assertEquals(interested_count_day_1, 0)
-    self.assertEquals(interested_count_day_2, 2)
+    self.assertEqual(interested_count_day_1, 0)
+    self.assertEqual(interested_count_day_2, 2)
 
   def test_get_counts_with_single_awardee_filter(self):
     # Does the awardee filter work when passed a single awardee?
@@ -347,8 +347,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     interested_count_day_1 = response[0]['metrics']['INTERESTED']
     interested_count_day_2 = response[1]['metrics']['INTERESTED']
 
-    self.assertEquals(interested_count_day_1, 0)
-    self.assertEquals(interested_count_day_2, 1)
+    self.assertEqual(interested_count_day_1, 0)
+    self.assertEqual(interested_count_day_2, 1)
 
     qs = """
         bucketSize=1
@@ -365,8 +365,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     interested_count_day_1 = response[0]['metrics']['INTERESTED']
     interested_count_day_2 = response[1]['metrics']['INTERESTED']
 
-    self.assertEquals(interested_count_day_1, 0)
-    self.assertEquals(interested_count_day_2, 2)
+    self.assertEqual(interested_count_day_1, 0)
+    self.assertEqual(interested_count_day_2, 2)
 
   def test_get_counts_with_multiple_awardee_filters(self):
     # Does the awardee filter work when passed more than one awardee?
@@ -396,8 +396,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     interested_count_day_1 = response[0]['metrics']['INTERESTED']
     interested_count_day_2 = response[1]['metrics']['INTERESTED']
 
-    self.assertEquals(interested_count_day_1, 0)
-    self.assertEquals(interested_count_day_2, 3)
+    self.assertEqual(interested_count_day_1, 0)
+    self.assertEqual(interested_count_day_2, 3)
 
   def test_get_counts_with_enrollment_status_member_filter(self):
 
@@ -433,11 +433,11 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     member_count_day_4 = response[3]['metrics']['MEMBER']
     interested_count_day_4 = response[1]['metrics']['INTERESTED']
 
-    self.assertEquals(member_count_day_1, 0)
-    self.assertEquals(member_count_day_2, 0)
-    self.assertEquals(member_count_day_3, 2)
-    self.assertEquals(member_count_day_4, 3)
-    self.assertEquals(interested_count_day_4, 0)
+    self.assertEqual(member_count_day_1, 0)
+    self.assertEqual(member_count_day_2, 0)
+    self.assertEqual(member_count_day_3, 2)
+    self.assertEqual(member_count_day_4, 3)
+    self.assertEqual(interested_count_day_4, 0)
 
     qs = """
       bucketSize=1
@@ -454,8 +454,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     total_count_day_1 = response[0]['metrics']['TOTAL']
     total_count_day_2 = response[1]['metrics']['TOTAL']
 
-    self.assertEquals(total_count_day_1, 0)
-    self.assertEquals(total_count_day_2, 3)
+    self.assertEqual(total_count_day_1, 0)
+    self.assertEqual(total_count_day_2, 3)
 
     # test filter by sample stored time doesn't affect MEMBER and TOTAL
     qs = """
@@ -478,11 +478,11 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     member_count_day_4 = response[3]['metrics']['MEMBER']
     interested_count_day_4 = response[1]['metrics']['INTERESTED']
 
-    self.assertEquals(member_count_day_1, 0)
-    self.assertEquals(member_count_day_2, 0)
-    self.assertEquals(member_count_day_3, 2)
-    self.assertEquals(member_count_day_4, 3)
-    self.assertEquals(interested_count_day_4, 0)
+    self.assertEqual(member_count_day_1, 0)
+    self.assertEqual(member_count_day_2, 0)
+    self.assertEqual(member_count_day_3, 2)
+    self.assertEqual(member_count_day_4, 3)
+    self.assertEqual(interested_count_day_4, 0)
 
     qs = """
           bucketSize=1
@@ -500,8 +500,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     total_count_day_1 = response[0]['metrics']['TOTAL']
     total_count_day_2 = response[1]['metrics']['TOTAL']
 
-    self.assertEquals(total_count_day_1, 0)
-    self.assertEquals(total_count_day_2, 3)
+    self.assertEqual(total_count_day_1, 0)
+    self.assertEqual(total_count_day_2, 3)
 
   def test_get_counts_with_enrollment_status_full_participant_filter(self):
 
@@ -543,11 +543,11 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     full_participant_count_day_4 = response[3]['metrics']['FULL_PARTICIPANT']
     member_count_day_4 = response[4]['metrics']['MEMBER']
 
-    self.assertEquals(full_participant_count_day_1, 0)
-    self.assertEquals(full_participant_count_day_2, 0)
-    self.assertEquals(full_participant_count_day_3, 2)
-    self.assertEquals(full_participant_count_day_4, 3)
-    self.assertEquals(member_count_day_4, 0)  # Excluded per enrollmentStatus parameter
+    self.assertEqual(full_participant_count_day_1, 0)
+    self.assertEqual(full_participant_count_day_2, 0)
+    self.assertEqual(full_participant_count_day_3, 2)
+    self.assertEqual(full_participant_count_day_4, 3)
+    self.assertEqual(member_count_day_4, 0)  # Excluded per enrollmentStatus parameter
 
     # test filter by sample stored time
     qs = """
@@ -570,12 +570,12 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     full_participant_count_day_6 = response[5]['metrics']['FULL_PARTICIPANT']
     member_count_day_4 = response[4]['metrics']['MEMBER']
 
-    self.assertEquals(full_participant_count_day_1, 0)
-    self.assertEquals(full_participant_count_day_2, 0)
-    self.assertEquals(full_participant_count_day_3, 1)
-    self.assertEquals(full_participant_count_day_4, 2)
-    self.assertEquals(full_participant_count_day_6, 3)
-    self.assertEquals(member_count_day_4, 0)  # Excluded per enrollmentStatus parameter
+    self.assertEqual(full_participant_count_day_1, 0)
+    self.assertEqual(full_participant_count_day_2, 0)
+    self.assertEqual(full_participant_count_day_3, 1)
+    self.assertEqual(full_participant_count_day_4, 2)
+    self.assertEqual(full_participant_count_day_6, 3)
+    self.assertEqual(member_count_day_4, 0)  # Excluded per enrollmentStatus parameter
 
   def test_get_counts_with_enrollment_status_v2(self):
     # REGISTERED @ time 1
@@ -634,25 +634,25 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     core_count_day_3 = response[2]['metrics']['CORE_PARTICIPANT']
     core_count_day_4 = response[3]['metrics']['CORE_PARTICIPANT']
 
-    self.assertEquals(registered_count_day_1, 0)
-    self.assertEquals(registered_count_day_2, 1)
-    self.assertEquals(registered_count_day_3, 1)
-    self.assertEquals(registered_count_day_4, 1)
+    self.assertEqual(registered_count_day_1, 0)
+    self.assertEqual(registered_count_day_2, 1)
+    self.assertEqual(registered_count_day_3, 1)
+    self.assertEqual(registered_count_day_4, 1)
 
-    self.assertEquals(participant_count_day_1, 0)
-    self.assertEquals(participant_count_day_2, 2)
-    self.assertEquals(participant_count_day_3, 1)
-    self.assertEquals(participant_count_day_4, 1)
+    self.assertEqual(participant_count_day_1, 0)
+    self.assertEqual(participant_count_day_2, 2)
+    self.assertEqual(participant_count_day_3, 1)
+    self.assertEqual(participant_count_day_4, 1)
 
-    self.assertEquals(consented_count_day_1, 0)
-    self.assertEquals(consented_count_day_2, 2)
-    self.assertEquals(consented_count_day_3, 2)
-    self.assertEquals(consented_count_day_4, 1)
+    self.assertEqual(consented_count_day_1, 0)
+    self.assertEqual(consented_count_day_2, 2)
+    self.assertEqual(consented_count_day_3, 2)
+    self.assertEqual(consented_count_day_4, 1)
 
-    self.assertEquals(core_count_day_1, 0)
-    self.assertEquals(core_count_day_2, 0)
-    self.assertEquals(core_count_day_3, 1)
-    self.assertEquals(core_count_day_4, 2)
+    self.assertEqual(core_count_day_1, 0)
+    self.assertEqual(core_count_day_2, 0)
+    self.assertEqual(core_count_day_3, 1)
+    self.assertEqual(core_count_day_4, 2)
 
   def test_get_counts_with_enrollment_status_v2_with_enrollment_status_filter(self):
     # REGISTERED @ time 1
@@ -712,25 +712,25 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     core_count_day_3 = response[2]['metrics']['CORE_PARTICIPANT']
     core_count_day_4 = response[3]['metrics']['CORE_PARTICIPANT']
 
-    self.assertEquals(registered_count_day_1, 0)
-    self.assertEquals(registered_count_day_2, 0)
-    self.assertEquals(registered_count_day_3, 0)
-    self.assertEquals(registered_count_day_4, 0)
+    self.assertEqual(registered_count_day_1, 0)
+    self.assertEqual(registered_count_day_2, 0)
+    self.assertEqual(registered_count_day_3, 0)
+    self.assertEqual(registered_count_day_4, 0)
 
-    self.assertEquals(participant_count_day_1, 0)
-    self.assertEquals(participant_count_day_2, 2)
-    self.assertEquals(participant_count_day_3, 1)
-    self.assertEquals(participant_count_day_4, 1)
+    self.assertEqual(participant_count_day_1, 0)
+    self.assertEqual(participant_count_day_2, 2)
+    self.assertEqual(participant_count_day_3, 1)
+    self.assertEqual(participant_count_day_4, 1)
 
-    self.assertEquals(consented_count_day_1, 0)
-    self.assertEquals(consented_count_day_2, 0)
-    self.assertEquals(consented_count_day_3, 0)
-    self.assertEquals(consented_count_day_4, 0)
+    self.assertEqual(consented_count_day_1, 0)
+    self.assertEqual(consented_count_day_2, 0)
+    self.assertEqual(consented_count_day_3, 0)
+    self.assertEqual(consented_count_day_4, 0)
 
-    self.assertEquals(core_count_day_1, 0)
-    self.assertEquals(core_count_day_2, 0)
-    self.assertEquals(core_count_day_3, 1)
-    self.assertEquals(core_count_day_4, 2)
+    self.assertEqual(core_count_day_1, 0)
+    self.assertEqual(core_count_day_2, 0)
+    self.assertEqual(core_count_day_3, 1)
+    self.assertEqual(core_count_day_4, 2)
 
   def test_get_counts_with_enrollment_status_v2_with_awardee_filter(self):
     # REGISTERED @ time 1
@@ -790,25 +790,25 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     core_count_day_3 = response[2]['metrics']['CORE_PARTICIPANT']
     core_count_day_4 = response[3]['metrics']['CORE_PARTICIPANT']
 
-    self.assertEquals(registered_count_day_1, 0)
-    self.assertEquals(registered_count_day_2, 1)
-    self.assertEquals(registered_count_day_3, 1)
-    self.assertEquals(registered_count_day_4, 1)
+    self.assertEqual(registered_count_day_1, 0)
+    self.assertEqual(registered_count_day_2, 1)
+    self.assertEqual(registered_count_day_3, 1)
+    self.assertEqual(registered_count_day_4, 1)
 
-    self.assertEquals(participant_count_day_1, 0)
-    self.assertEquals(participant_count_day_2, 1)
-    self.assertEquals(participant_count_day_3, 1)
-    self.assertEquals(participant_count_day_4, 1)
+    self.assertEqual(participant_count_day_1, 0)
+    self.assertEqual(participant_count_day_2, 1)
+    self.assertEqual(participant_count_day_3, 1)
+    self.assertEqual(participant_count_day_4, 1)
 
-    self.assertEquals(consented_count_day_1, 0)
-    self.assertEquals(consented_count_day_2, 1)
-    self.assertEquals(consented_count_day_3, 1)
-    self.assertEquals(consented_count_day_4, 0)
+    self.assertEqual(consented_count_day_1, 0)
+    self.assertEqual(consented_count_day_2, 1)
+    self.assertEqual(consented_count_day_3, 1)
+    self.assertEqual(consented_count_day_4, 0)
 
-    self.assertEquals(core_count_day_1, 0)
-    self.assertEquals(core_count_day_2, 0)
-    self.assertEquals(core_count_day_3, 0)
-    self.assertEquals(core_count_day_4, 1)
+    self.assertEqual(core_count_day_1, 0)
+    self.assertEqual(core_count_day_2, 0)
+    self.assertEqual(core_count_day_3, 0)
+    self.assertEqual(core_count_day_4, 1)
 
   def test_get_counts_with_total_enrollment_status_full_participant_filter(self):
     # When filtering with TOTAL stratification, filtered participants are
@@ -852,10 +852,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     total_count_day_3 = response[2]['metrics']['TOTAL']
     total_count_day_4 = response[3]['metrics']['TOTAL']
 
-    self.assertEquals(total_count_day_1, 0)
-    self.assertEquals(total_count_day_2, 3)
-    self.assertEquals(total_count_day_3, 3)
-    self.assertEquals(total_count_day_4, 3)
+    self.assertEqual(total_count_day_1, 0)
+    self.assertEqual(total_count_day_2, 3)
+    self.assertEqual(total_count_day_3, 3)
+    self.assertEqual(total_count_day_4, 3)
 
   def test_get_counts_with_single_various_filters(self):
     # Do the awardee and enrollment status filters work when passed single values?
@@ -891,13 +891,13 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     interested_count_day_2 = response[1]['metrics']['INTERESTED']
     member_count_day_2 = response[1]['metrics']['MEMBER']
 
-    self.assertEquals(interested_count_day_1, 0)
+    self.assertEqual(interested_count_day_1, 0)
 
     # We requested data for only MEMBERs, so no INTERESTEDs should be returned
-    self.assertEquals(interested_count_day_2, 0)
+    self.assertEqual(interested_count_day_2, 0)
 
     # We requested data for only MEMBERs in PITT, so no MEMBERs in AZ_TUCSON should be returned
-    self.assertEquals(member_count_day_2, 1)
+    self.assertEqual(member_count_day_2, 1)
 
   def test_get_counts_with_multiple_various_filters(self):
     # Do the awardee and enrollment status filters work when passed multiple values?
@@ -927,8 +927,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     interested_count_day_1 = response[0]['metrics']['INTERESTED']
     interested_count_day_2 = response[1]['metrics']['INTERESTED']
 
-    self.assertEquals(interested_count_day_1, 0)
-    self.assertEquals(interested_count_day_2, 3)
+    self.assertEqual(interested_count_day_1, 0)
+    self.assertEqual(interested_count_day_2, 3)
 
   def test_get_counts_with_total_stratification_unfiltered(self):
 
@@ -955,8 +955,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     total_count_day_1 = response[0]['metrics']['TOTAL']
     total_count_day_2 = response[1]['metrics']['TOTAL']
 
-    self.assertEquals(total_count_day_1, 0)
-    self.assertEquals(total_count_day_2, 3)
+    self.assertEqual(total_count_day_1, 0)
+    self.assertEqual(total_count_day_2, 3)
 
   def test_get_counts_excluding_interested_participants(self):
     # When filtering only for MEMBER, no INTERESTED (neither consented nor unconsented) should be counted
@@ -985,8 +985,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     interested_count_day_2 = response[1]['metrics']['INTERESTED']
     member_count_day_2 = response[1]['metrics']['MEMBER']
 
-    self.assertEquals(interested_count_day_2, 0)
-    self.assertEquals(member_count_day_2, 1)
+    self.assertEqual(interested_count_day_2, 0)
+    self.assertEqual(member_count_day_2, 1)
 
   def test_get_counts_excluding_withdrawn_participants(self):
     # Withdrawn participants should not appear in counts
@@ -1016,8 +1016,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     total_count_day_1 = response[0]['metrics']['TOTAL']
     total_count_day_2 = response[1]['metrics']['TOTAL']
 
-    self.assertEquals(total_count_day_1, 0)
-    self.assertEquals(total_count_day_2, 2)
+    self.assertEqual(total_count_day_1, 0)
+    self.assertEqual(total_count_day_2, 2)
 
   def test_get_counts_for_unconsented_individuals(self):
     # Those who have signed up but not consented should be INTERESTED
@@ -1045,8 +1045,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     total_count_day_1 = response[0]['metrics']['INTERESTED']
     total_count_day_2 = response[1]['metrics']['INTERESTED']
 
-    self.assertEquals(total_count_day_1, 0)
-    self.assertEquals(total_count_day_2, 3)
+    self.assertEqual(total_count_day_1, 0)
+    self.assertEqual(total_count_day_2, 3)
 
   def test_url_parameter_validation_for_date_range(self):
     # Ensure requests for very long date ranges are marked BAD REQUEST
@@ -1060,8 +1060,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     qs = ''.join(qs.split())  # Remove all whitespace
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs,
-                             expected_status=httplib.BAD_REQUEST)
-    self.assertEquals(response, None)
+                             expected_status=http.client.BAD_REQUEST)
+    self.assertEqual(response, None)
 
   def test_url_parameter_validation_for_stratifications(self):
     # Ensure requests invalid stratifications are marked BAD REQUEST
@@ -1075,8 +1075,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     qs = ''.join(qs.split())  # Remove all whitespace
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs,
-                             expected_status=httplib.BAD_REQUEST)
-    self.assertEquals(response, None)
+                             expected_status=http.client.BAD_REQUEST)
+    self.assertEqual(response, None)
 
   def test_url_parameter_validation_for_awardee(self):
     # Ensure requests invalid awardee are marked BAD REQUEST
@@ -1091,8 +1091,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     qs = ''.join(qs.split())  # Remove all whitespace
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs,
-                             expected_status=httplib.BAD_REQUEST)
-    self.assertEquals(response, None)
+                             expected_status=http.client.BAD_REQUEST)
+    self.assertEqual(response, None)
 
   def test_url_parameter_validation_for_enrollment_status(self):
     # Ensure requests invalid enrollment status are marked BAD REQUEST
@@ -1107,8 +1107,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     qs = ''.join(qs.split())  # Remove all whitespace
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs,
-                             expected_status=httplib.BAD_REQUEST)
-    self.assertEquals(response, None)
+                             expected_status=http.client.BAD_REQUEST)
+    self.assertEqual(response, None)
 
   # Add tests for more invalida parameters, e.g.:
   # * starting or ending halfway through the data
@@ -1132,26 +1132,26 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     service.refresh_data_for_metrics_cache(dao)
     results = dao.get_latest_version_from_cache('2018-01-01', '2018-01-08')
 
-    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 2L},
-                   'hpo': u'AZ_TUCSON'}, results)
-    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 1L, 'core': 0L, 'registered': 1L},
-                   'hpo': u'AZ_TUCSON'}, results)
-    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0L, 'core': 1L, 'registered': 1L},
-                   'hpo': u'AZ_TUCSON'}, results)
-    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0L, 'core': 1L, 'registered': 1L},
-                   'hpo': u'AZ_TUCSON'}, results)
-    self.assertIn({'date': '2018-01-07', 'metrics': {'consented': 0L, 'core': 1L, 'registered': 1L},
-                   'hpo': u'AZ_TUCSON'}, results)
-    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
-                   'hpo': u'UNSET'}, results)
-    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
-                   'hpo': u'UNSET'}, results)
-    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
-                   'hpo': u'UNSET'}, results)
-    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
-                   'hpo': u'UNSET'}, results)
-    self.assertIn({'date': '2018-01-06', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
-                   'hpo': u'UNSET'}, results)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0, 'core': 0, 'registered': 2},
+                   'hpo': 'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 1, 'core': 0, 'registered': 1},
+                   'hpo': 'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0, 'core': 1, 'registered': 1},
+                   'hpo': 'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0, 'core': 1, 'registered': 1},
+                   'hpo': 'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-07', 'metrics': {'consented': 0, 'core': 1, 'registered': 1},
+                   'hpo': 'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0, 'core': 0, 'registered': 1},
+                   'hpo': 'UNSET'}, results)
+    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 0, 'core': 0, 'registered': 1},
+                   'hpo': 'UNSET'}, results)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0, 'core': 0, 'registered': 1},
+                   'hpo': 'UNSET'}, results)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0, 'core': 0, 'registered': 1},
+                   'hpo': 'UNSET'}, results)
+    self.assertIn({'date': '2018-01-06', 'metrics': {'consented': 0, 'core': 0, 'registered': 1},
+                   'hpo': 'UNSET'}, results)
 
   def test_refresh_metrics_enrollment_status_cache_data_v2(self):
 
@@ -1174,24 +1174,24 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     service.refresh_data_for_metrics_cache(dao)
     results = dao.get_latest_version_from_cache('2018-01-01', '2018-01-08')
 
-    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L,
-                                                     'participant': 2L},
-                   'hpo': u'AZ_TUCSON'}, results)
-    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 2L, 'core': 0L, 'registered': 1L,
-                                                     'participant': 0L},
-                   'hpo': u'AZ_TUCSON'}, results)
-    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 1L, 'core': 1L, 'registered': 1L,
-                                                     'participant': 0L},
-                   'hpo': u'AZ_TUCSON'}, results)
-    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 1L, 'core': 1L, 'registered': 1L,
-                                                     'participant': 0L},
-                   'hpo': u'AZ_TUCSON'}, results)
-    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L,
-                                                     'participant': 0L},
-                   'hpo': u'UNSET'}, results)
-    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L,
-                                                     'participant': 0L},
-                   'hpo': u'UNSET'}, results)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0, 'core': 0, 'registered': 1,
+                                                     'participant': 2},
+                   'hpo': 'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 2, 'core': 0, 'registered': 1,
+                                                     'participant': 0},
+                   'hpo': 'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 1, 'core': 1, 'registered': 1,
+                                                     'participant': 0},
+                   'hpo': 'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 1, 'core': 1, 'registered': 1,
+                                                     'participant': 0},
+                   'hpo': 'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0, 'core': 0, 'registered': 1,
+                                                     'participant': 0},
+                   'hpo': 'UNSET'}, results)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0, 'core': 0, 'registered': 1,
+                                                     'participant': 0},
+                   'hpo': 'UNSET'}, results)
 
   def test_refresh_metrics_enrollment_status_cache_data_for_public_metrics_api(self):
 
@@ -1248,26 +1248,26 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 2L},
-                   'hpo': u'AZ_TUCSON'}, response)
-    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 1L, 'core': 0L, 'registered': 1L},
-                   'hpo': u'AZ_TUCSON'}, response)
-    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0L, 'core': 1L, 'registered': 1L},
-                   'hpo': u'AZ_TUCSON'}, response)
-    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0L, 'core': 1L, 'registered': 1L},
-                   'hpo': u'AZ_TUCSON'}, response)
-    self.assertIn({'date': '2018-01-07', 'metrics': {'consented': 0L, 'core': 1L, 'registered': 1L},
-                   'hpo': u'AZ_TUCSON'}, response)
-    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
-                   'hpo': u'UNSET'}, response)
-    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
-                   'hpo': u'UNSET'}, response)
-    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
-                   'hpo': u'UNSET'}, response)
-    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
-                   'hpo': u'UNSET'}, response)
-    self.assertIn({'date': '2018-01-06', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
-                   'hpo': u'UNSET'}, response)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0, 'core': 0, 'registered': 2},
+                   'hpo': 'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 1, 'core': 0, 'registered': 1},
+                   'hpo': 'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0, 'core': 1, 'registered': 1},
+                   'hpo': 'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0, 'core': 1, 'registered': 1},
+                   'hpo': 'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-07', 'metrics': {'consented': 0, 'core': 1, 'registered': 1},
+                   'hpo': 'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0, 'core': 0, 'registered': 1},
+                   'hpo': 'UNSET'}, response)
+    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 0, 'core': 0, 'registered': 1},
+                   'hpo': 'UNSET'}, response)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0, 'core': 0, 'registered': 1},
+                   'hpo': 'UNSET'}, response)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0, 'core': 0, 'registered': 1},
+                   'hpo': 'UNSET'}, response)
+    self.assertIn({'date': '2018-01-06', 'metrics': {'consented': 0, 'core': 0, 'registered': 1},
+                   'hpo': 'UNSET'}, response)
 
   def test_get_history_enrollment_status_api_v2(self):
 
@@ -1302,37 +1302,37 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    self.assertIn({u'date': u'2018-01-01', u'metrics': {u'consented': 0, u'core': 0,
-                                                        u'registered': 1, u'participant': 1},
-                   u'hpo': u'AZ_TUCSON'}, response)
-    self.assertIn({u'date': u'2018-01-02', u'metrics': {u'consented': 1, u'core': 0,
-                                                        u'registered': 1, u'participant': 0},
-                   u'hpo': u'AZ_TUCSON'}, response)
-    self.assertIn({u'date': u'2018-01-03', u'metrics': {u'consented': 0, u'core': 1,
-                                                        u'registered': 1, u'participant': 0},
-                   u'hpo': u'AZ_TUCSON'}, response)
-    self.assertIn({u'date': u'2018-01-04', u'metrics': {u'consented': 0, u'core': 1,
-                                                        u'registered': 1, u'participant': 0},
-                   u'hpo': u'AZ_TUCSON'}, response)
-    self.assertIn({u'date': u'2018-01-05', u'metrics': {u'consented': 0, u'core': 1,
-                                                        u'registered': 1, u'participant': 0},
-                   u'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0, 'core': 0,
+                                                        'registered': 1, 'participant': 1},
+                   'hpo': 'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 1, 'core': 0,
+                                                        'registered': 1, 'participant': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0, 'core': 1,
+                                                        'registered': 1, 'participant': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0, 'core': 1,
+                                                        'registered': 1, 'participant': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-05', 'metrics': {'consented': 0, 'core': 1,
+                                                        'registered': 1, 'participant': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
 
-    self.assertIn({u'date': u'2018-01-01', u'metrics': {u'consented': 0, u'core': 0,
-                                                        u'registered': 1, u'participant': 0},
-                   u'hpo': u'UNSET'}, response)
-    self.assertIn({u'date': u'2018-01-02', u'metrics': {u'consented': 0, u'core': 0,
-                                                        u'registered': 1, u'participant': 0},
-                   u'hpo': u'UNSET'}, response)
-    self.assertIn({u'date': u'2018-01-03', u'metrics': {u'consented': 0, u'core': 0,
-                                                        u'registered': 1, u'participant': 0},
-                   u'hpo': u'UNSET'}, response)
-    self.assertIn({u'date': u'2018-01-04', u'metrics': {u'consented': 0, u'core': 0,
-                                                        u'registered': 1, u'participant': 0},
-                   u'hpo': u'UNSET'}, response)
-    self.assertIn({u'date': u'2018-01-05', u'metrics': {u'consented': 0, u'core': 0,
-                                                        u'registered': 1, u'participant': 0},
-                   u'hpo': u'UNSET'}, response)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0, 'core': 0,
+                                                        'registered': 1, 'participant': 0},
+                   'hpo': 'UNSET'}, response)
+    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 0, 'core': 0,
+                                                        'registered': 1, 'participant': 0},
+                   'hpo': 'UNSET'}, response)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0, 'core': 0,
+                                                        'registered': 1, 'participant': 0},
+                   'hpo': 'UNSET'}, response)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0, 'core': 0,
+                                                        'registered': 1, 'participant': 0},
+                   'hpo': 'UNSET'}, response)
+    self.assertIn({'date': '2018-01-05', 'metrics': {'consented': 0, 'core': 0,
+                                                        'registered': 1, 'participant': 0},
+                   'hpo': 'UNSET'}, response)
 
   def test_get_history_enrollment_status_api_filtered_by_awardee(self):
 
@@ -1368,10 +1368,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
     self.assertNotIn({'date': '2018-01-01',
-                      'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L}, 'hpo': u'UNSET'},
+                      'metrics': {'consented': 0, 'core': 0, 'registered': 1}, 'hpo': 'UNSET'},
                      response)
     self.assertNotIn({'date': '2018-01-06',
-                      'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L}, 'hpo': u'UNSET'},
+                      'metrics': {'consented': 0, 'core': 0, 'registered': 1}, 'hpo': 'UNSET'},
                      response)
     self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0, 'core': 0, 'registered': 0},
                    'hpo': 'PITT'}, response)
@@ -1421,29 +1421,29 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
     self.assertNotIn({'date': '2018-01-01',
-                      'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L, 'participant': 0L},
-                      'hpo': u'UNSET'}, response)
+                      'metrics': {'consented': 0, 'core': 0, 'registered': 1, 'participant': 0},
+                      'hpo': 'UNSET'}, response)
     self.assertNotIn({'date': '2018-01-06',
-                      'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L, 'participant': 0L},
-                      'hpo': u'UNSET'}, response)
-    self.assertIn({u'date': u'2018-01-02', u'metrics': {u'consented': 0, u'core': 0,
-                                                        u'registered': 0, u'participant': 1},
-                   u'hpo': u'PITT'}, response)
-    self.assertIn({u'date': u'2018-01-03', u'metrics': {u'consented': 1, u'core': 0,
-                                                        u'registered': 0, u'participant': 0},
-                   u'hpo': u'PITT'}, response)
-    self.assertIn({u'date': u'2018-01-04', u'metrics': {u'consented': 0, u'core': 1,
-                                                        u'registered': 0, u'participant': 0},
-                   u'hpo': u'PITT'}, response)
-    self.assertIn({u'date': u'2018-01-01', u'metrics': {u'consented': 0, u'core': 0,
-                                                        u'registered': 1, u'participant': 0},
-                   u'hpo': u'AZ_TUCSON'}, response)
-    self.assertIn({u'date': u'2018-01-03', u'metrics': {u'consented': 0, u'core': 0,
-                                                        u'registered': 1, u'participant': 0},
-                   u'hpo': u'AZ_TUCSON'}, response)
-    self.assertIn({u'date': u'2018-01-07', u'metrics': {u'consented': 0, u'core': 0,
-                                                        u'registered': 1, u'participant': 0},
-                   u'hpo': u'AZ_TUCSON'}, response)
+                      'metrics': {'consented': 0, 'core': 0, 'registered': 1, 'participant': 0},
+                      'hpo': 'UNSET'}, response)
+    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 0, 'core': 0,
+                                                        'registered': 0, 'participant': 1},
+                   'hpo': 'PITT'}, response)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 1, 'core': 0,
+                                                        'registered': 0, 'participant': 0},
+                   'hpo': 'PITT'}, response)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0, 'core': 1,
+                                                        'registered': 0, 'participant': 0},
+                   'hpo': 'PITT'}, response)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0, 'core': 0,
+                                                        'registered': 1, 'participant': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0, 'core': 0,
+                                                        'registered': 1, 'participant': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-07', 'metrics': {'consented': 0, 'core': 0,
+                                                        'registered': 1, 'participant': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
 
   def test_refresh_metrics_gender_cache_data(self):
 
@@ -1472,35 +1472,35 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results = dao.get_latest_version_from_cache('2017-12-31', '2018-01-08')
 
     self.assertIn({'date': '2017-12-31',
-                   'metrics': {'Prefer not to say': 0L, 'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                   'metrics': {'Prefer not to say': 0, 'Woman': 1, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
                                'UNSET': 0, 'Man': 0, 'More than one gender identity': 0},
-                   'hpo': u'UNSET'}, results)
+                   'hpo': 'UNSET'}, results)
     self.assertIn({'date': '2018-01-01',
-                   'metrics': {'Prefer not to say': 0L, 'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                   'metrics': {'Prefer not to say': 0, 'Woman': 1, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
                                'UNSET': 0, 'Man': 0, 'More than one gender identity': 0},
-                   'hpo': u'UNSET'}, results)
+                   'hpo': 'UNSET'}, results)
     self.assertIn({'date': '2018-01-01',
-                   'metrics': {'Prefer not to say': 0L, 'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
-                               'Other/Additional Options': 0, 'Transgender': 0L, 'Non-Binary': 0,
-                               'UNSET': 0, 'Man': 1L, 'More than one gender identity': 0},
-                   'hpo': u'AZ_TUCSON'}, results)
+                   'metrics': {'Prefer not to say': 0, 'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
+                               'UNSET': 0, 'Man': 1, 'More than one gender identity': 0},
+                   'hpo': 'AZ_TUCSON'}, results)
     self.assertIn({'date': '2018-01-03',
-                   'metrics': {'Prefer not to say': 0L, 'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
-                               'Other/Additional Options': 0, 'Transgender': 2L, 'Non-Binary': 0,
-                               'UNSET': 0, 'Man': 1L, 'More than one gender identity': 0},
-                   'hpo': u'AZ_TUCSON'}, results)
+                   'metrics': {'Prefer not to say': 0, 'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 2, 'Non-Binary': 0,
+                               'UNSET': 0, 'Man': 1, 'More than one gender identity': 0},
+                   'hpo': 'AZ_TUCSON'}, results)
     self.assertIn({'date': '2018-01-04',
-                   'metrics': {'Prefer not to say': 0L, 'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
-                               'Other/Additional Options': 0, 'Transgender': 2L, 'Non-Binary': 0,
-                               'UNSET': 0, 'Man': 1L, 'More than one gender identity': 1},
-                   'hpo': u'AZ_TUCSON'}, results)
+                   'metrics': {'Prefer not to say': 0, 'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 2, 'Non-Binary': 0,
+                               'UNSET': 0, 'Man': 1, 'More than one gender identity': 1},
+                   'hpo': 'AZ_TUCSON'}, results)
     self.assertIn({'date': '2018-01-08',
-                   'metrics': {'Prefer not to say': 0L, 'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
-                               'Other/Additional Options': 0, 'Transgender': 2L, 'Non-Binary': 0,
-                               'UNSET': 0, 'Man': 1L, 'More than one gender identity': 1},
-                   'hpo': u'AZ_TUCSON'}, results)
+                   'metrics': {'Prefer not to say': 0, 'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 2, 'Non-Binary': 0,
+                               'UNSET': 0, 'Man': 1, 'More than one gender identity': 1},
+                   'hpo': 'AZ_TUCSON'}, results)
 
   def test_refresh_metrics_gender_cache_data_for_public_metrics_api(self):
 
@@ -1531,29 +1531,29 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results = dao.get_latest_version_from_cache('2017-12-31', '2018-01-08')
     self.assertIn({'date': '2017-12-31',
-                   'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
-                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0,
+                   'metrics': {'Woman': 1, 'PMI_Skip': 0, 'Other/Additional Options': 0,
+                               'Non-Binary': 0, 'UNMAPPED': 0, 'Transgender': 0,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 0,
                                'More than one gender identity': 0}}, results)
     self.assertIn({'date': '2018-01-01',
-                   'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
-                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                   'metrics': {'Woman': 1, 'PMI_Skip': 0, 'Other/Additional Options': 0,
+                               'Non-Binary': 0, 'UNMAPPED': 0, 'Transgender': 0,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1,
                                'More than one gender identity': 0}}, results)
     self.assertIn({'date': '2018-01-02',
-                   'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
-                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 1,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                   'metrics': {'Woman': 1, 'PMI_Skip': 0, 'Other/Additional Options': 0,
+                               'Non-Binary': 0, 'UNMAPPED': 0, 'Transgender': 1,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1,
                                'More than one gender identity': 0}}, results)
     self.assertIn({'date': '2018-01-03',
-                   'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
-                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                   'metrics': {'Woman': 1, 'PMI_Skip': 0, 'Other/Additional Options': 0,
+                               'Non-Binary': 0, 'UNMAPPED': 0, 'Transgender': 2,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1,
                                'More than one gender identity': 0}}, results)
     self.assertIn({'date': '2018-01-04',
-                   'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
-                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                   'metrics': {'Woman': 1, 'PMI_Skip': 0, 'Other/Additional Options': 0,
+                               'Non-Binary': 0, 'UNMAPPED': 0, 'Transgender': 2,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1,
                                'More than one gender identity': 1}}, results)
 
   def test_get_history_gender_api(self):
@@ -1589,34 +1589,34 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
     self.assertIn({'date': '2017-12-31',
-                   'metrics': {'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                   'metrics': {'Woman': 1, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
                                'Prefer not to say': 0, 'UNSET': 0, 'Man': 0,
-                               'More than one gender identity': 0}, 'hpo': u'UNSET'},
+                               'More than one gender identity': 0}, 'hpo': 'UNSET'},
                   response)
     self.assertIn({'date': '2018-01-01',
-                   'metrics': {'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                   'metrics': {'Woman': 1, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
                                'Prefer not to say': 0, 'UNSET': 0, 'Man': 0,
-                               'More than one gender identity': 0}, 'hpo': u'UNSET'},
+                               'More than one gender identity': 0}, 'hpo': 'UNSET'},
                   response)
     self.assertIn({'date': '2018-01-01',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
-                               'Other/Additional Options': 0, 'Transgender': 0L, 'Non-Binary': 0,
-                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L,
-                               'More than one gender identity': 0}, 'hpo': u'AZ_TUCSON'},
+                               'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1,
+                               'More than one gender identity': 0}, 'hpo': 'AZ_TUCSON'},
                   response)
     self.assertIn({'date': '2018-01-03',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
-                               'Other/Additional Options': 0, 'Transgender': 2L, 'Non-Binary': 0,
-                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L,
-                               'More than one gender identity': 0}, 'hpo': u'AZ_TUCSON'},
+                               'Other/Additional Options': 0, 'Transgender': 2, 'Non-Binary': 0,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1,
+                               'More than one gender identity': 0}, 'hpo': 'AZ_TUCSON'},
                   response)
     self.assertIn({'date': '2018-01-08',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
-                               'Other/Additional Options': 0, 'Transgender': 2L, 'Non-Binary': 0,
-                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L,
-                               'More than one gender identity': 0}, 'hpo': u'AZ_TUCSON'},
+                               'Other/Additional Options': 0, 'Transgender': 2, 'Non-Binary': 0,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1,
+                               'More than one gender identity': 0}, 'hpo': 'AZ_TUCSON'},
                   response)
 
   def test_get_history_gender_api_filtered_by_awardee(self):
@@ -1653,34 +1653,34 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
     self.assertNotIn({'date': '2017-12-31',
-                      'metrics': {'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                      'metrics': {'Woman': 1, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                   'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
                                   'Prefer not to say': 0, 'UNSET': 0, 'Man': 0,
-                                  'More than one gender identity': 0}, 'hpo': u'UNSET'},
+                                  'More than one gender identity': 0}, 'hpo': 'UNSET'},
                      response)
     self.assertNotIn({'date': '2018-01-01',
-                      'metrics': {'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                      'metrics': {'Woman': 1, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                   'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
                                   'Prefer not to say': 0, 'UNSET': 0, 'Man': 0,
-                                  'More than one gender identity': 0}, 'hpo': u'UNSET'},
+                                  'More than one gender identity': 0}, 'hpo': 'UNSET'},
                      response)
     self.assertIn({'date': '2018-01-01',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
-                               'Other/Additional Options': 0, 'Transgender': 0L, 'Non-Binary': 0,
-                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L,
-                               'More than one gender identity': 0}, 'hpo': u'AZ_TUCSON'},
+                               'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1,
+                               'More than one gender identity': 0}, 'hpo': 'AZ_TUCSON'},
                   response)
     self.assertIn({'date': '2018-01-03',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
-                               'Other/Additional Options': 0, 'Transgender': 1L, 'Non-Binary': 0,
-                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L,
-                               'More than one gender identity': 0}, 'hpo': u'AZ_TUCSON'},
+                               'Other/Additional Options': 0, 'Transgender': 1, 'Non-Binary': 0,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1,
+                               'More than one gender identity': 0}, 'hpo': 'AZ_TUCSON'},
                   response)
     self.assertIn({'date': '2018-01-08',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
-                               'Other/Additional Options': 0, 'Transgender': 1L, 'Non-Binary': 0,
-                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L,
-                               'More than one gender identity': 0}, 'hpo': u'AZ_TUCSON'},
+                               'Other/Additional Options': 0, 'Transgender': 1, 'Non-Binary': 0,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1,
+                               'More than one gender identity': 0}, 'hpo': 'AZ_TUCSON'},
                   response)
     self.assertIn({'date': '2018-01-03',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'Other/Additional Options': 0,
@@ -1734,21 +1734,21 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     self.assertIn({'date': '2018-01-02',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
-                               'Other/Additional Options': 0, 'Transgender': 0L, 'Non-Binary': 0,
-                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L,
-                               'More than one gender identity': 0}, 'hpo': u'AZ_TUCSON'},
+                               'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1,
+                               'More than one gender identity': 0}, 'hpo': 'AZ_TUCSON'},
                   response)
     self.assertIn({'date': '2018-01-03',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
-                               'Other/Additional Options': 0, 'Transgender': 1L, 'Non-Binary': 0,
-                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L,
-                               'More than one gender identity': 0}, 'hpo': u'AZ_TUCSON'},
+                               'Other/Additional Options': 0, 'Transgender': 1, 'Non-Binary': 0,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1,
+                               'More than one gender identity': 0}, 'hpo': 'AZ_TUCSON'},
                   response)
     self.assertIn({'date': '2018-01-08',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
-                               'Other/Additional Options': 0, 'Transgender': 1L, 'Non-Binary': 0,
-                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L,
-                               'More than one gender identity': 0}, 'hpo': u'AZ_TUCSON'},
+                               'Other/Additional Options': 0, 'Transgender': 1, 'Non-Binary': 0,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1,
+                               'More than one gender identity': 0}, 'hpo': 'AZ_TUCSON'},
                   response)
     self.assertIn({'date': '2018-01-03',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'Other/Additional Options': 0,
@@ -1797,25 +1797,25 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results = dao.get_latest_version_from_cache('2017-12-31', '2018-01-08')
 
     self.assertIn({'date': '2017-12-31',
-                   'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 1L,
-                               '26-35': 0, '66-75': 0, 'UNSET': 0, '56-65': 0}, 'hpo': u'UNSET'},
+                   'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 1,
+                               '26-35': 0, '66-75': 0, 'UNSET': 0, '56-65': 0}, 'hpo': 'UNSET'},
                   results)
     self.assertIn({'date': '2018-01-01',
                    'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 1L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'AZ_TUCSON'}, results)
+                               '26-35': 1, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'AZ_TUCSON'}, results)
     self.assertIn({'date': '2018-01-02',
                    'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'AZ_TUCSON'}, results)
+                               '26-35': 2, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'AZ_TUCSON'}, results)
     self.assertIn({'date': '2018-01-06',
-                   'metrics': {'0-17': 0, '18-25': 1L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'AZ_TUCSON'}, results)
+                   'metrics': {'0-17': 0, '18-25': 1, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 2, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'AZ_TUCSON'}, results)
     self.assertIn({'date': '2018-01-08',
-                   'metrics': {'0-17': 0, '18-25': 1L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'AZ_TUCSON'}, results)
+                   'metrics': {'0-17': 0, '18-25': 1, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 2, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'AZ_TUCSON'}, results)
 
     # test public metrics export cache
     dao = MetricsAgeCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
@@ -1823,17 +1823,17 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results = dao.get_latest_version_from_cache('2017-12-31', '2018-01-08')
 
     self.assertIn({'date': '2017-12-31',
-                   'metrics': {u'50-59': 0, u'60-69': 0, u'30-39': 1, u'40-49': 0, u'UNSET': 0,
-                               u'80-89': 0, u'90-': 0, u'18-29': 0, u'70-79': 0}}, results)
+                   'metrics': {'50-59': 0, '60-69': 0, '30-39': 1, '40-49': 0, 'UNSET': 0,
+                               '80-89': 0, '90-': 0, '18-29': 0, '70-79': 0}}, results)
     self.assertIn({'date': '2018-01-01',
-                   'metrics': {u'50-59': 0, u'60-69': 0, u'30-39': 1, u'40-49': 0, u'18-29': 1,
-                               u'80-89': 0, u'90-': 0, u'UNSET': 0, u'70-79': 0}}, results)
+                   'metrics': {'50-59': 0, '60-69': 0, '30-39': 1, '40-49': 0, '18-29': 1,
+                               '80-89': 0, '90-': 0, 'UNSET': 0, '70-79': 0}}, results)
     self.assertIn({'date': '2018-01-02',
-                   'metrics': {u'50-59': 0, u'60-69': 0, u'30-39': 1, u'40-49': 0, u'18-29': 2,
-                               u'80-89': 0, u'70-79': 0, u'UNSET': 0, u'90-': 0}}, results)
+                   'metrics': {'50-59': 0, '60-69': 0, '30-39': 1, '40-49': 0, '18-29': 2,
+                               '80-89': 0, '70-79': 0, 'UNSET': 0, '90-': 0}}, results)
     self.assertIn({'date': '2018-01-03',
-                   'metrics': {u'50-59': 0, u'60-69': 0, u'30-39': 1, u'40-49': 0, u'18-29': 3,
-                               u'80-89': 0, u'70-79': 0, u'UNSET': 0, u'90-': 0}}, results)
+                   'metrics': {'50-59': 0, '60-69': 0, '30-39': 1, '40-49': 0, '18-29': 3,
+                               '80-89': 0, '70-79': 0, 'UNSET': 0, '90-': 0}}, results)
 
   def test_get_history_age_range_api(self):
 
@@ -1873,25 +1873,25 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
     self.assertIn({'date': '2017-12-31',
-                   'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 1L,
-                               '26-35': 0, '66-75': 0, 'UNSET': 0, '56-65': 0}, 'hpo': u'UNSET'},
+                   'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 1,
+                               '26-35': 0, '66-75': 0, 'UNSET': 0, '56-65': 0}, 'hpo': 'UNSET'},
                   response)
     self.assertIn({'date': '2018-01-01',
                    'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 1L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'AZ_TUCSON'}, response)
+                               '26-35': 1, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
     self.assertIn({'date': '2018-01-02',
                    'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'AZ_TUCSON'}, response)
+                               '26-35': 2, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
     self.assertIn({'date': '2018-01-06',
-                   'metrics': {'0-17': 0, '18-25': 1L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'AZ_TUCSON'}, response)
+                   'metrics': {'0-17': 0, '18-25': 1, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 2, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
     self.assertIn({'date': '2018-01-08',
-                   'metrics': {'0-17': 0, '18-25': 1L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'AZ_TUCSON'}, response)
+                   'metrics': {'0-17': 0, '18-25': 1, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 2, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
 
   def test_get_history_age_range_api_filtered_by_awardee(self):
 
@@ -1933,24 +1933,24 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     self.assertNotIn({'date': '2017-12-31',
                       'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0,
-                                  '36-45': 1L, '26-35': 0, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                      'hpo': u'UNSET'}, response)
+                                  '36-45': 1, '26-35': 0, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                      'hpo': 'UNSET'}, response)
     self.assertIn({'date': '2018-01-01',
                    'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 1L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'AZ_TUCSON'}, response)
+                               '26-35': 1, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
     self.assertIn({'date': '2018-01-02',
                    'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'AZ_TUCSON'}, response)
+                               '26-35': 2, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
     self.assertIn({'date': '2018-01-06',
-                   'metrics': {'0-17': 0, '18-25': 0L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'AZ_TUCSON'}, response)
+                   'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 2, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
     self.assertIn({'date': '2018-01-08',
-                   'metrics': {'0-17': 0, '18-25': 1L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 0L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'PITT'}, response)
+                   'metrics': {'0-17': 0, '18-25': 1, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 0, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'PITT'}, response)
 
   def test_get_history_age_range_api_filtered_by_awardee_and_enrollment_status(self):
 
@@ -1996,20 +1996,20 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     self.assertIn({'date': '2018-01-01',
                    'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 0L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'AZ_TUCSON'}, response)
+                               '26-35': 0, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
     self.assertIn({'date': '2018-01-02',
                    'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 1L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'AZ_TUCSON'}, response)
+                               '26-35': 1, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
     self.assertIn({'date': '2018-01-06',
-                   'metrics': {'0-17': 0, '18-25': 0L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'AZ_TUCSON'}, response)
+                   'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 2, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'AZ_TUCSON'}, response)
     self.assertIn({'date': '2018-01-08',
-                   'metrics': {'0-17': 0, '18-25': 1L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
-                               '26-35': 0L, '66-75': 0, 'UNSET': 0, '56-65': 0},
-                   'hpo': u'PITT'}, response)
+                   'metrics': {'0-17': 0, '18-25': 1, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 0, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': 'PITT'}, response)
 
   def test_get_history_total_api(self):
 
@@ -2043,10 +2043,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    self.assertIn({u'date': u'2018-01-01', u'metrics': {u'TOTAL': 2}}, response)
-    self.assertIn({u'date': u'2018-01-02', u'metrics': {u'TOTAL': 3}}, response)
-    self.assertIn({u'date': u'2018-01-07', u'metrics': {u'TOTAL': 3}}, response)
-    self.assertIn({u'date': u'2018-01-08', u'metrics': {u'TOTAL': 3}}, response)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'TOTAL': 2}}, response)
+    self.assertIn({'date': '2018-01-02', 'metrics': {'TOTAL': 3}}, response)
+    self.assertIn({'date': '2018-01-07', 'metrics': {'TOTAL': 3}}, response)
+    self.assertIn({'date': '2018-01-08', 'metrics': {'TOTAL': 3}}, response)
 
   def test_get_history_total_api_filter_by_awardees(self):
     p1 = Participant(participantId=1, biobankId=4)
@@ -2080,10 +2080,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    self.assertIn({u'date': u'2018-01-01', u'metrics': {u'TOTAL': 1}}, response)
-    self.assertIn({u'date': u'2018-01-02', u'metrics': {u'TOTAL': 2}}, response)
-    self.assertIn({u'date': u'2018-01-07', u'metrics': {u'TOTAL': 2}}, response)
-    self.assertIn({u'date': u'2018-01-08', u'metrics': {u'TOTAL': 2}}, response)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'TOTAL': 1}}, response)
+    self.assertIn({'date': '2018-01-02', 'metrics': {'TOTAL': 2}}, response)
+    self.assertIn({'date': '2018-01-07', 'metrics': {'TOTAL': 2}}, response)
+    self.assertIn({'date': '2018-01-08', 'metrics': {'TOTAL': 2}}, response)
 
   def test_refresh_metrics_race_cache_data(self):
 
@@ -2134,53 +2134,53 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results = dao.get_latest_version_from_cache('2017-12-31', '2018-01-08')
 
-    self.assertIn({'date': '2017-12-31', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
-                                                     'Middle_Eastern_North_African': 0L,
-                                                     'Multi_Ancestry': 1L,
-                                                     'American_Indian_Alaska_Native': 0L,
-                                                     'No_Ancestry_Checked': 0L,
-                                                     'Black_African_American': 0L,
-                                                     'White': 0L,
-                                                     'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 0L,
-                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
-                                                     'Asian': 0L}, 'hpo': u'PITT'}, results)
+    self.assertIn({'date': '2017-12-31', 'metrics': {'None_Of_These_Fully_Describe_Me': 0,
+                                                     'Middle_Eastern_North_African': 0,
+                                                     'Multi_Ancestry': 1,
+                                                     'American_Indian_Alaska_Native': 0,
+                                                     'No_Ancestry_Checked': 0,
+                                                     'Black_African_American': 0,
+                                                     'White': 0,
+                                                     'Prefer_Not_To_Answer': 0,
+                                                     'Hispanic_Latino_Spanish': 0,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0,
+                                                     'Asian': 0}, 'hpo': 'PITT'}, results)
 
-    self.assertIn({'date': '2018-01-03', 'metrics': {'None_Of_These_Fully_Describe_Me': 1L,
-                                                     'Middle_Eastern_North_African': 0L,
-                                                     'Multi_Ancestry': 2L,
-                                                     'American_Indian_Alaska_Native': 1L,
-                                                     'No_Ancestry_Checked': 1L,
-                                                     'Black_African_American': 0L,
-                                                     'White': 0L,
-                                                     'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 0L,
-                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
-                                                     'Asian': 0L}, 'hpo': u'PITT'}, results)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'None_Of_These_Fully_Describe_Me': 1,
+                                                     'Middle_Eastern_North_African': 0,
+                                                     'Multi_Ancestry': 2,
+                                                     'American_Indian_Alaska_Native': 1,
+                                                     'No_Ancestry_Checked': 1,
+                                                     'Black_African_American': 0,
+                                                     'White': 0,
+                                                     'Prefer_Not_To_Answer': 0,
+                                                     'Hispanic_Latino_Spanish': 0,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0,
+                                                     'Asian': 0}, 'hpo': 'PITT'}, results)
 
-    self.assertIn({'date': '2018-01-01', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
-                                                     'Middle_Eastern_North_African': 0L,
-                                                     'Multi_Ancestry': 0L,
-                                                     'American_Indian_Alaska_Native': 1L,
-                                                     'No_Ancestry_Checked': 0L,
-                                                     'Black_African_American': 0L,
-                                                     'White': 0L,
-                                                     'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 0L,
-                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
-                                                     'Asian': 0L}, 'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'None_Of_These_Fully_Describe_Me': 0,
+                                                     'Middle_Eastern_North_African': 0,
+                                                     'Multi_Ancestry': 0,
+                                                     'American_Indian_Alaska_Native': 1,
+                                                     'No_Ancestry_Checked': 0,
+                                                     'Black_African_American': 0,
+                                                     'White': 0,
+                                                     'Prefer_Not_To_Answer': 0,
+                                                     'Hispanic_Latino_Spanish': 0,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0,
+                                                     'Asian': 0}, 'hpo': 'AZ_TUCSON'}, results)
 
-    self.assertIn({'date': '2018-01-08', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
-                                                     'Middle_Eastern_North_African': 0L,
-                                                     'Multi_Ancestry': 1L,
-                                                     'American_Indian_Alaska_Native': 1L,
-                                                     'No_Ancestry_Checked': 0L,
-                                                     'Black_African_American': 0L,
-                                                     'White': 0L,
-                                                     'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 0L,
-                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
-                                                     'Asian': 0L}, 'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-08', 'metrics': {'None_Of_These_Fully_Describe_Me': 0,
+                                                     'Middle_Eastern_North_African': 0,
+                                                     'Multi_Ancestry': 1,
+                                                     'American_Indian_Alaska_Native': 1,
+                                                     'No_Ancestry_Checked': 0,
+                                                     'Black_African_American': 0,
+                                                     'White': 0,
+                                                     'Prefer_Not_To_Answer': 0,
+                                                     'Hispanic_Latino_Spanish': 0,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0,
+                                                     'Asian': 0}, 'hpo': 'AZ_TUCSON'}, results)
 
   def test_refresh_metrics_race_cache_data_for_public_metrics_api(self):
 
@@ -2326,53 +2326,53 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    self.assertIn({'date': '2017-12-31', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
-                                                     'Middle_Eastern_North_African': 0L,
-                                                     'Multi_Ancestry': 1L,
-                                                     'American_Indian_Alaska_Native': 0L,
-                                                     'No_Ancestry_Checked': 0L,
-                                                     'Black_African_American': 0L,
-                                                     'White': 0L,
-                                                     'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 0L,
-                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
-                                                     'Asian': 0L}, 'hpo': u'PITT'}, response)
+    self.assertIn({'date': '2017-12-31', 'metrics': {'None_Of_These_Fully_Describe_Me': 0,
+                                                     'Middle_Eastern_North_African': 0,
+                                                     'Multi_Ancestry': 1,
+                                                     'American_Indian_Alaska_Native': 0,
+                                                     'No_Ancestry_Checked': 0,
+                                                     'Black_African_American': 0,
+                                                     'White': 0,
+                                                     'Prefer_Not_To_Answer': 0,
+                                                     'Hispanic_Latino_Spanish': 0,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0,
+                                                     'Asian': 0}, 'hpo': 'PITT'}, response)
 
-    self.assertIn({'date': '2018-01-03', 'metrics': {'None_Of_These_Fully_Describe_Me': 1L,
-                                                     'Middle_Eastern_North_African': 0L,
-                                                     'Multi_Ancestry': 2L,
-                                                     'American_Indian_Alaska_Native': 1L,
-                                                     'No_Ancestry_Checked': 1L,
-                                                     'Black_African_American': 0L,
-                                                     'White': 0L,
-                                                     'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 0L,
-                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
-                                                     'Asian': 0L}, 'hpo': u'PITT'}, response)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'None_Of_These_Fully_Describe_Me': 1,
+                                                     'Middle_Eastern_North_African': 0,
+                                                     'Multi_Ancestry': 2,
+                                                     'American_Indian_Alaska_Native': 1,
+                                                     'No_Ancestry_Checked': 1,
+                                                     'Black_African_American': 0,
+                                                     'White': 0,
+                                                     'Prefer_Not_To_Answer': 0,
+                                                     'Hispanic_Latino_Spanish': 0,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0,
+                                                     'Asian': 0}, 'hpo': 'PITT'}, response)
 
-    self.assertIn({'date': '2018-01-01', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
-                                                     'Middle_Eastern_North_African': 0L,
-                                                     'Multi_Ancestry': 0L,
-                                                     'American_Indian_Alaska_Native': 1L,
-                                                     'No_Ancestry_Checked': 0L,
-                                                     'Black_African_American': 0L,
-                                                     'White': 0L,
-                                                     'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 0L,
-                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
-                                                     'Asian': 0L}, 'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'None_Of_These_Fully_Describe_Me': 0,
+                                                     'Middle_Eastern_North_African': 0,
+                                                     'Multi_Ancestry': 0,
+                                                     'American_Indian_Alaska_Native': 1,
+                                                     'No_Ancestry_Checked': 0,
+                                                     'Black_African_American': 0,
+                                                     'White': 0,
+                                                     'Prefer_Not_To_Answer': 0,
+                                                     'Hispanic_Latino_Spanish': 0,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0,
+                                                     'Asian': 0}, 'hpo': 'AZ_TUCSON'}, response)
 
-    self.assertIn({'date': '2018-01-08', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
-                                                     'Middle_Eastern_North_African': 0L,
-                                                     'Multi_Ancestry': 1L,
-                                                     'American_Indian_Alaska_Native': 1L,
-                                                     'No_Ancestry_Checked': 0L,
-                                                     'Black_African_American': 0L,
-                                                     'White': 0L,
-                                                     'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 0L,
-                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
-                                                     'Asian': 0L}, 'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-08', 'metrics': {'None_Of_These_Fully_Describe_Me': 0,
+                                                     'Middle_Eastern_North_African': 0,
+                                                     'Multi_Ancestry': 1,
+                                                     'American_Indian_Alaska_Native': 1,
+                                                     'No_Ancestry_Checked': 0,
+                                                     'Black_African_American': 0,
+                                                     'White': 0,
+                                                     'Prefer_Not_To_Answer': 0,
+                                                     'Hispanic_Latino_Spanish': 0,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0,
+                                                     'Asian': 0}, 'hpo': 'AZ_TUCSON'}, response)
 
   def test_get_history_race_data_api_filter_by_awardee(self):
 
@@ -2433,29 +2433,29 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    self.assertIn({'date': '2017-12-31', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
-                                                     'Middle_Eastern_North_African': 0L,
-                                                     'Multi_Ancestry': 1L,
-                                                     'American_Indian_Alaska_Native': 0L,
-                                                     'No_Ancestry_Checked': 0L,
-                                                     'Black_African_American': 0L,
-                                                     'White': 0L,
-                                                     'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 0L,
-                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
-                                                     'Asian': 0L}, 'hpo': u'PITT'}, response)
+    self.assertIn({'date': '2017-12-31', 'metrics': {'None_Of_These_Fully_Describe_Me': 0,
+                                                     'Middle_Eastern_North_African': 0,
+                                                     'Multi_Ancestry': 1,
+                                                     'American_Indian_Alaska_Native': 0,
+                                                     'No_Ancestry_Checked': 0,
+                                                     'Black_African_American': 0,
+                                                     'White': 0,
+                                                     'Prefer_Not_To_Answer': 0,
+                                                     'Hispanic_Latino_Spanish': 0,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0,
+                                                     'Asian': 0}, 'hpo': 'PITT'}, response)
 
-    self.assertIn({'date': '2018-01-03', 'metrics': {'None_Of_These_Fully_Describe_Me': 1L,
-                                                     'Middle_Eastern_North_African': 0L,
-                                                     'Multi_Ancestry': 2L,
-                                                     'American_Indian_Alaska_Native': 1L,
-                                                     'No_Ancestry_Checked': 1L,
-                                                     'Black_African_American': 0L,
-                                                     'White': 0L,
-                                                     'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 0L,
-                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
-                                                     'Asian': 0L}, 'hpo': u'PITT'}, response)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'None_Of_These_Fully_Describe_Me': 1,
+                                                     'Middle_Eastern_North_African': 0,
+                                                     'Multi_Ancestry': 2,
+                                                     'American_Indian_Alaska_Native': 1,
+                                                     'No_Ancestry_Checked': 1,
+                                                     'Black_African_American': 0,
+                                                     'White': 0,
+                                                     'Prefer_Not_To_Answer': 0,
+                                                     'Hispanic_Latino_Spanish': 0,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0,
+                                                     'Asian': 0}, 'hpo': 'PITT'}, response)
 
   def test_get_history_race_data_api_filter_by_enrollment_status(self):
 
@@ -2524,37 +2524,37 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    self.assertIn({'date': '2018-01-03', 'metrics': {'None_Of_These_Fully_Describe_Me': 1L,
-                                                     'Middle_Eastern_North_African': 0L,
-                                                     'Multi_Ancestry': 2L,
-                                                     'American_Indian_Alaska_Native': 1L,
-                                                     'No_Ancestry_Checked': 0L,
-                                                     'Black_African_American': 0L,
-                                                     'White': 0L,
-                                                     'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 0L,
-                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
-                                                     'Asian': 0L}, 'hpo': u'PITT'}, response)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'None_Of_These_Fully_Describe_Me': 1,
+                                                     'Middle_Eastern_North_African': 0,
+                                                     'Multi_Ancestry': 2,
+                                                     'American_Indian_Alaska_Native': 1,
+                                                     'No_Ancestry_Checked': 0,
+                                                     'Black_African_American': 0,
+                                                     'White': 0,
+                                                     'Prefer_Not_To_Answer': 0,
+                                                     'Hispanic_Latino_Spanish': 0,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0,
+                                                     'Asian': 0}, 'hpo': 'PITT'}, response)
 
-    self.assertIn({'date': '2018-01-04', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
-                                                     'Middle_Eastern_North_African': 0L,
-                                                     'Multi_Ancestry': 1L,
-                                                     'American_Indian_Alaska_Native': 1L,
-                                                     'No_Ancestry_Checked': 1L,
-                                                     'Black_African_American': 0L,
-                                                     'White': 0L,
-                                                     'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 0L,
-                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
-                                                     'Asian': 0L}, 'hpo': u'PITT'}, response)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'None_Of_These_Fully_Describe_Me': 0,
+                                                     'Middle_Eastern_North_African': 0,
+                                                     'Multi_Ancestry': 1,
+                                                     'American_Indian_Alaska_Native': 1,
+                                                     'No_Ancestry_Checked': 1,
+                                                     'Black_African_American': 0,
+                                                     'White': 0,
+                                                     'Prefer_Not_To_Answer': 0,
+                                                     'Hispanic_Latino_Spanish': 0,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0,
+                                                     'Asian': 0}, 'hpo': 'PITT'}, response)
 
   def test_refresh_metrics_region_cache_data(self):
 
-    code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
+    code1 = Code(codeId=1, system="a", value="PIIState_IL", display="PIIState_IL", topic="a",
                  codeType=CodeType.MODULE, mapped=True)
-    code2 = Code(codeId=2, system="b", value="PIIState_IN", display=u"PIIState_IN", topic=u"b",
+    code2 = Code(codeId=2, system="b", value="PIIState_IN", display="PIIState_IN", topic="b",
                  codeType=CodeType.MODULE, mapped=True)
-    code3 = Code(codeId=3, system="c", value="PIIState_CA", display=u"PIIState_CA", topic=u"c",
+    code3 = Code(codeId=3, system="c", value="PIIState_CA", display="PIIState_CA", topic="c",
                  codeType=CodeType.MODULE, mapped=True)
 
     self.code_dao.insert(code1)
@@ -2594,158 +2594,158 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results2 = dao.get_latest_version_from_cache('2018-01-01', 'FULL_STATE')
     results3 = dao.get_latest_version_from_cache('2018-01-02', 'FULL_STATE')
 
-    self.assertEquals(results1, [{'date': '2017-12-31',
+    self.assertEqual(results1, [{'date': '2017-12-31',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                               'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                                              'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'UNSET'}])
+                                              'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'UNSET'}])
     self.assertIn({'date': '2018-01-01',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'AZ_TUCSON'}, results2)
+                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'AZ_TUCSON'}, results2)
     self.assertIn({'date': '2018-01-01',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'UNSET'}, results2)
+                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'UNSET'}, results2)
 
     self.assertIn({'date': '2018-01-02',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 1L, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'CA': 1, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'AZ_TUCSON'}, results3)
+                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'AZ_TUCSON'}, results3)
     self.assertIn({'date': '2018-01-02',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 2, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'PITT'}, results3)
+                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'PITT'}, results3)
     self.assertIn({'date': '2018-01-02',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'UNSET'}, results3)
+                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'UNSET'}, results3)
 
     results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_STATE')
     results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_STATE')
     results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_STATE')
 
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'UNSET',
+                   'hpo': 'UNSET',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results1)
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results1)
 
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'UNSET',
+                   'hpo': 'UNSET',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'AZ_TUCSON',
+                   'hpo': 'AZ_TUCSON',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'UNSET',
+                   'hpo': 'UNSET',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 2, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'AZ_TUCSON',
+                   'hpo': 'AZ_TUCSON',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 1L, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'CA': 1, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
@@ -2753,91 +2753,91 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results1 = dao.get_latest_version_from_cache('2017-12-31', 'FULL_CENSUS')
     results2 = dao.get_latest_version_from_cache('2018-01-01', 'FULL_CENSUS')
     results3 = dao.get_latest_version_from_cache('2018-01-02', 'FULL_CENSUS')
-    self.assertEquals(results1, [{'date': '2017-12-31',
-                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
-                                  'hpo': u'UNSET'}])
+    self.assertEqual(results1, [{'date': '2017-12-31',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0},
+                                  'hpo': 'UNSET'}])
     self.assertIn({'date': '2018-01-01',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
-                   'hpo': u'UNSET'}, results2)
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0},
+                   'hpo': 'UNSET'}, results2)
     self.assertIn({'date': '2018-01-01',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
-                   'hpo': u'AZ_TUCSON'}, results2)
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0},
+                   'hpo': 'AZ_TUCSON'}, results2)
     self.assertIn({'date': '2018-01-02',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
-                   'hpo': u'UNSET'}, results3)
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0},
+                   'hpo': 'UNSET'}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0},
-                   'hpo': u'PITT'}, results3)
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2, 'SOUTH': 0},
+                   'hpo': 'PITT'}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
-                   'hpo': u'AZ_TUCSON'}, results3)
+                   'metrics': {'WEST': 1, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0},
+                   'hpo': 'AZ_TUCSON'}, results3)
 
     results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_CENSUS')
     results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_CENSUS')
     results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_CENSUS')
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'UNSET',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results1)
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results1)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'UNSET',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'AZ_TUCSON',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'AZ_TUCSON',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'UNSET',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2, 'SOUTH': 0}
                    }, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'AZ_TUCSON',
-                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'AZ_TUCSON',
+                   'metrics': {'WEST': 1, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results3)
 
     results1 = dao.get_latest_version_from_cache('2017-12-31', 'FULL_AWARDEE')
     results2 = dao.get_latest_version_from_cache('2018-01-01', 'FULL_AWARDEE')
     results3 = dao.get_latest_version_from_cache('2018-01-02', 'FULL_AWARDEE')
-    self.assertEquals(results1, [{'date': '2017-12-31', 'count': 1L, 'hpo': u'UNSET'}])
-    self.assertIn({'date': '2018-01-01', 'count': 1L, 'hpo': u'UNSET'}, results2)
-    self.assertIn({'date': '2018-01-01', 'count': 1L, 'hpo': u'AZ_TUCSON'}, results2)
-    self.assertIn({'date': '2018-01-02', 'count': 1L, 'hpo': u'UNSET'}, results3)
-    self.assertIn({'date': '2018-01-02', 'count': 2L, 'hpo': u'PITT'}, results3)
-    self.assertIn({'date': '2018-01-02', 'count': 2L, 'hpo': u'AZ_TUCSON'}, results3)
+    self.assertEqual(results1, [{'date': '2017-12-31', 'count': 1, 'hpo': 'UNSET'}])
+    self.assertIn({'date': '2018-01-01', 'count': 1, 'hpo': 'UNSET'}, results2)
+    self.assertIn({'date': '2018-01-01', 'count': 1, 'hpo': 'AZ_TUCSON'}, results2)
+    self.assertIn({'date': '2018-01-02', 'count': 1, 'hpo': 'UNSET'}, results3)
+    self.assertIn({'date': '2018-01-02', 'count': 2, 'hpo': 'PITT'}, results3)
+    self.assertIn({'date': '2018-01-02', 'count': 2, 'hpo': 'AZ_TUCSON'}, results3)
 
     results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_AWARDEE')
     results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_AWARDEE')
     results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_AWARDEE')
-    self.assertIn({'date': '2017-12-31', 'hpo': u'UNSET', 'count': 1L}, results1)
-    self.assertIn({'date': '2017-12-31', 'hpo': u'PITT', 'count': 1L}, results1)
-    self.assertIn({'date': '2018-01-01', 'hpo': u'PITT', 'count': 1L}, results2)
-    self.assertIn({'date': '2018-01-01', 'hpo': u'UNSET', 'count': 1L}, results2)
-    self.assertIn({'date': '2018-01-01', 'hpo': u'AZ_TUCSON', 'count': 1L}, results2)
+    self.assertIn({'date': '2017-12-31', 'hpo': 'UNSET', 'count': 1}, results1)
+    self.assertIn({'date': '2017-12-31', 'hpo': 'PITT', 'count': 1}, results1)
+    self.assertIn({'date': '2018-01-01', 'hpo': 'PITT', 'count': 1}, results2)
+    self.assertIn({'date': '2018-01-01', 'hpo': 'UNSET', 'count': 1}, results2)
+    self.assertIn({'date': '2018-01-01', 'hpo': 'AZ_TUCSON', 'count': 1}, results2)
 
-    self.assertIn({'date': '2018-01-02', 'hpo': u'UNSET', 'count': 1L}, results3)
-    self.assertIn({'date': '2018-01-02', 'hpo': u'PITT', 'count': 2L}, results3)
-    self.assertIn({'date': '2018-01-02', 'hpo': u'AZ_TUCSON', 'count': 2L}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'UNSET', 'count': 1}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'PITT', 'count': 2}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'AZ_TUCSON', 'count': 2}, results3)
 
   def test_refresh_metrics_region_cache_data_v2(self):
 
-    code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
+    code1 = Code(codeId=1, system="a", value="PIIState_IL", display="PIIState_IL", topic="a",
                  codeType=CodeType.MODULE, mapped=True)
-    code2 = Code(codeId=2, system="b", value="PIIState_IN", display=u"PIIState_IN", topic=u"b",
+    code2 = Code(codeId=2, system="b", value="PIIState_IN", display="PIIState_IN", topic="b",
                  codeType=CodeType.MODULE, mapped=True)
-    code3 = Code(codeId=3, system="c", value="PIIState_CA", display=u"PIIState_CA", topic=u"c",
+    code3 = Code(codeId=3, system="c", value="PIIState_CA", display="PIIState_CA", topic="c",
                  codeType=CodeType.MODULE, mapped=True)
 
     self.code_dao.insert(code1)
@@ -2878,91 +2878,91 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_STATE')
 
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'UNSET',
+                   'hpo': 'UNSET',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results1)
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results1)
 
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'UNSET',
+                   'hpo': 'UNSET',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'AZ_TUCSON',
+                   'hpo': 'AZ_TUCSON',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'UNSET',
+                   'hpo': 'UNSET',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 2, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'AZ_TUCSON',
+                   'hpo': 'AZ_TUCSON',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 1L, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'CA': 1, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
@@ -2971,58 +2971,58 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_CENSUS')
     results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_CENSUS')
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'UNSET',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results1)
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results1)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'UNSET',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'AZ_TUCSON',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'AZ_TUCSON',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'UNSET',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2, 'SOUTH': 0}
                    }, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'AZ_TUCSON',
-                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'AZ_TUCSON',
+                   'metrics': {'WEST': 1, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results3)
 
     results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_AWARDEE')
     results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_AWARDEE')
     results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_AWARDEE')
-    self.assertIn({'date': '2017-12-31', 'hpo': u'UNSET', 'count': 1L}, results1)
-    self.assertIn({'date': '2017-12-31', 'hpo': u'PITT', 'count': 1L}, results1)
-    self.assertIn({'date': '2018-01-01', 'hpo': u'PITT', 'count': 1L}, results2)
-    self.assertIn({'date': '2018-01-01', 'hpo': u'UNSET', 'count': 1L}, results2)
-    self.assertIn({'date': '2018-01-01', 'hpo': u'AZ_TUCSON', 'count': 1L}, results2)
+    self.assertIn({'date': '2017-12-31', 'hpo': 'UNSET', 'count': 1}, results1)
+    self.assertIn({'date': '2017-12-31', 'hpo': 'PITT', 'count': 1}, results1)
+    self.assertIn({'date': '2018-01-01', 'hpo': 'PITT', 'count': 1}, results2)
+    self.assertIn({'date': '2018-01-01', 'hpo': 'UNSET', 'count': 1}, results2)
+    self.assertIn({'date': '2018-01-01', 'hpo': 'AZ_TUCSON', 'count': 1}, results2)
 
-    self.assertIn({'date': '2018-01-02', 'hpo': u'UNSET', 'count': 1L}, results3)
-    self.assertIn({'date': '2018-01-02', 'hpo': u'PITT', 'count': 2L}, results3)
-    self.assertIn({'date': '2018-01-02', 'hpo': u'AZ_TUCSON', 'count': 2L}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'UNSET', 'count': 1}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'PITT', 'count': 2}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'AZ_TUCSON', 'count': 2}, results3)
 
   def test_refresh_metrics_region_cache_data_for_public_metrics_api(self):
 
-    code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
+    code1 = Code(codeId=1, system="a", value="PIIState_IL", display="PIIState_IL", topic="a",
                  codeType=CodeType.MODULE, mapped=True)
-    code2 = Code(codeId=2, system="b", value="PIIState_IN", display=u"PIIState_IN", topic=u"b",
+    code2 = Code(codeId=2, system="b", value="PIIState_IN", display="PIIState_IN", topic="b",
                  codeType=CodeType.MODULE, mapped=True)
-    code3 = Code(codeId=3, system="c", value="PIIState_CA", display=u"PIIState_CA", topic=u"c",
+    code3 = Code(codeId=3, system="c", value="PIIState_CA", display="PIIState_CA", topic="c",
                  codeType=CodeType.MODULE, mapped=True)
 
     self.code_dao.insert(code1)
@@ -3074,17 +3074,17 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertIn({'date': '2018-01-01',
                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 3,
                               'SOUTH': 0}}, results2)
-    self.assertIn({'date': '2018-01-02', 'count': 1, 'hpo': u'UNSET'}, results3)
-    self.assertIn({'date': '2018-01-02', 'count': 2, 'hpo': u'PITT'}, results3)
-    self.assertIn({'date': '2018-01-02', 'count': 2, 'hpo': u'AZ_TUCSON'}, results3)
+    self.assertIn({'date': '2018-01-02', 'count': 1, 'hpo': 'UNSET'}, results3)
+    self.assertIn({'date': '2018-01-02', 'count': 2, 'hpo': 'PITT'}, results3)
+    self.assertIn({'date': '2018-01-02', 'count': 2, 'hpo': 'AZ_TUCSON'}, results3)
 
   def test_get_metrics_region_data_api(self):
 
-    code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
+    code1 = Code(codeId=1, system="a", value="PIIState_IL", display="PIIState_IL", topic="a",
                  codeType=CodeType.MODULE, mapped=True)
-    code2 = Code(codeId=2, system="b", value="PIIState_IN", display=u"PIIState_IN", topic=u"b",
+    code2 = Code(codeId=2, system="b", value="PIIState_IN", display="PIIState_IN", topic="b",
                  codeType=CodeType.MODULE, mapped=True)
-    code3 = Code(codeId=3, system="c", value="PIIState_CA", display=u"PIIState_CA", topic=u"c",
+    code3 = Code(codeId=3, system="c", value="PIIState_CA", display="PIIState_CA", topic="c",
                  codeType=CodeType.MODULE, mapped=True)
 
     self.code_dao.insert(code1)
@@ -3149,67 +3149,67 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [{'date': '2017-12-31',
+    self.assertEqual(results1, [{'date': '2017-12-31',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                               'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                                              'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'UNSET'}])
+                                              'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'UNSET'}])
     self.assertIn({'date': '2018-01-01',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'AZ_TUCSON'}, results2)
+                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'AZ_TUCSON'}, results2)
     self.assertIn({'date': '2018-01-01',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'UNSET'}, results2)
+                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'UNSET'}, results2)
 
     self.assertIn({'date': '2018-01-02',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 1L, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'CA': 1, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'AZ_TUCSON'}, results3)
+                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'AZ_TUCSON'}, results3)
     self.assertIn({'date': '2018-01-02',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 2, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'PITT'}, results3)
+                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'PITT'}, results3)
     self.assertIn({'date': '2018-01-02',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'UNSET'}, results3)
+                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'UNSET'}, results3)
 
     qs1 = """
                       &stratification=GEO_STATE
@@ -3242,91 +3242,91 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'UNSET',
+                   'hpo': 'UNSET',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results1)
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results1)
 
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'UNSET',
+                   'hpo': 'UNSET',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'AZ_TUCSON',
+                   'hpo': 'AZ_TUCSON',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'UNSET',
+                   'hpo': 'UNSET',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 2, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'AZ_TUCSON',
+                   'hpo': 'AZ_TUCSON',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 1L, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'CA': 1, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
@@ -3360,24 +3360,24 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [{'date': '2017-12-31',
-                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
-                                  'hpo': u'UNSET'}])
+    self.assertEqual(results1, [{'date': '2017-12-31',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0},
+                                  'hpo': 'UNSET'}])
     self.assertIn({'date': '2018-01-01',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
-                   'hpo': u'UNSET'}, results2)
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0},
+                   'hpo': 'UNSET'}, results2)
     self.assertIn({'date': '2018-01-01',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
-                   'hpo': u'AZ_TUCSON'}, results2)
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0},
+                   'hpo': 'AZ_TUCSON'}, results2)
     self.assertIn({'date': '2018-01-02',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
-                   'hpo': u'UNSET'}, results3)
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0},
+                   'hpo': 'UNSET'}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0},
-                   'hpo': u'PITT'}, results3)
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2, 'SOUTH': 0},
+                   'hpo': 'PITT'}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
-                   'hpo': u'AZ_TUCSON'}, results3)
+                   'metrics': {'WEST': 1, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0},
+                   'hpo': 'AZ_TUCSON'}, results3)
 
     qs1 = """
                           &stratification=GEO_CENSUS
@@ -3409,36 +3409,36 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'UNSET',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results1)
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results1)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'UNSET',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'AZ_TUCSON',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'AZ_TUCSON',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'UNSET',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2, 'SOUTH': 0}
                    }, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'AZ_TUCSON',
-                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'AZ_TUCSON',
+                   'metrics': {'WEST': 1, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results3)
 
     qs1 = """
@@ -3470,12 +3470,12 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [{'date': '2017-12-31', 'count': 1L, 'hpo': u'UNSET'}])
-    self.assertIn({'date': '2018-01-01', 'count': 1L, 'hpo': u'UNSET'}, results2)
-    self.assertIn({'date': '2018-01-01', 'count': 1L, 'hpo': u'AZ_TUCSON'}, results2)
-    self.assertIn({'date': '2018-01-02', 'count': 1L, 'hpo': u'UNSET'}, results3)
-    self.assertIn({'date': '2018-01-02', 'count': 2L, 'hpo': u'PITT'}, results3)
-    self.assertIn({'date': '2018-01-02', 'count': 2L, 'hpo': u'AZ_TUCSON'}, results3)
+    self.assertEqual(results1, [{'date': '2017-12-31', 'count': 1, 'hpo': 'UNSET'}])
+    self.assertIn({'date': '2018-01-01', 'count': 1, 'hpo': 'UNSET'}, results2)
+    self.assertIn({'date': '2018-01-01', 'count': 1, 'hpo': 'AZ_TUCSON'}, results2)
+    self.assertIn({'date': '2018-01-02', 'count': 1, 'hpo': 'UNSET'}, results3)
+    self.assertIn({'date': '2018-01-02', 'count': 2, 'hpo': 'PITT'}, results3)
+    self.assertIn({'date': '2018-01-02', 'count': 2, 'hpo': 'AZ_TUCSON'}, results3)
 
     qs1 = """
                               &stratification=GEO_AWARDEE
@@ -3506,23 +3506,23 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertIn({'date': '2017-12-31', 'hpo': u'UNSET', 'count': 1L}, results1)
-    self.assertIn({'date': '2017-12-31', 'hpo': u'PITT', 'count': 1L}, results1)
-    self.assertIn({'date': '2018-01-01', 'hpo': u'PITT', 'count': 1L}, results2)
-    self.assertIn({'date': '2018-01-01', 'hpo': u'UNSET', 'count': 1L}, results2)
-    self.assertIn({'date': '2018-01-01', 'hpo': u'AZ_TUCSON', 'count': 1L}, results2)
+    self.assertIn({'date': '2017-12-31', 'hpo': 'UNSET', 'count': 1}, results1)
+    self.assertIn({'date': '2017-12-31', 'hpo': 'PITT', 'count': 1}, results1)
+    self.assertIn({'date': '2018-01-01', 'hpo': 'PITT', 'count': 1}, results2)
+    self.assertIn({'date': '2018-01-01', 'hpo': 'UNSET', 'count': 1}, results2)
+    self.assertIn({'date': '2018-01-01', 'hpo': 'AZ_TUCSON', 'count': 1}, results2)
 
-    self.assertIn({'date': '2018-01-02', 'hpo': u'UNSET', 'count': 1L}, results3)
-    self.assertIn({'date': '2018-01-02', 'hpo': u'PITT', 'count': 2L}, results3)
-    self.assertIn({'date': '2018-01-02', 'hpo': u'AZ_TUCSON', 'count': 2L}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'UNSET', 'count': 1}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'PITT', 'count': 2}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'AZ_TUCSON', 'count': 2}, results3)
 
   def test_get_metrics_region_data_api_v2(self):
 
-    code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
+    code1 = Code(codeId=1, system="a", value="PIIState_IL", display="PIIState_IL", topic="a",
                  codeType=CodeType.MODULE, mapped=True)
-    code2 = Code(codeId=2, system="b", value="PIIState_IN", display=u"PIIState_IN", topic=u"b",
+    code2 = Code(codeId=2, system="b", value="PIIState_IN", display="PIIState_IN", topic="b",
                  codeType=CodeType.MODULE, mapped=True)
-    code3 = Code(codeId=3, system="c", value="PIIState_CA", display=u"PIIState_CA", topic=u"c",
+    code3 = Code(codeId=3, system="c", value="PIIState_CA", display="PIIState_CA", topic="c",
                  codeType=CodeType.MODULE, mapped=True)
 
     self.code_dao.insert(code1)
@@ -3592,91 +3592,91 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'UNSET',
+                   'hpo': 'UNSET',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results1)
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results1)
 
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'UNSET',
+                   'hpo': 'UNSET',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'AZ_TUCSON',
+                   'hpo': 'AZ_TUCSON',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'UNSET',
+                   'hpo': 'UNSET',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 2, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'AZ_TUCSON',
+                   'hpo': 'AZ_TUCSON',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 1L, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'CA': 1, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
@@ -3714,36 +3714,36 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'UNSET',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results1)
     self.assertIn({'date': '2017-12-31',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results1)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'UNSET',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'AZ_TUCSON',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'AZ_TUCSON',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'UNSET',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2, 'SOUTH': 0}
                    }, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'AZ_TUCSON',
-                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'AZ_TUCSON',
+                   'metrics': {'WEST': 1, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results3)
 
     qs1 = """
@@ -3778,21 +3778,21 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertIn({'date': '2017-12-31', 'hpo': u'UNSET', 'count': 1L}, results1)
-    self.assertIn({'date': '2017-12-31', 'hpo': u'PITT', 'count': 1L}, results1)
-    self.assertIn({'date': '2018-01-01', 'hpo': u'PITT', 'count': 1L}, results2)
-    self.assertIn({'date': '2018-01-01', 'hpo': u'UNSET', 'count': 1L}, results2)
-    self.assertIn({'date': '2018-01-01', 'hpo': u'AZ_TUCSON', 'count': 1L}, results2)
+    self.assertIn({'date': '2017-12-31', 'hpo': 'UNSET', 'count': 1}, results1)
+    self.assertIn({'date': '2017-12-31', 'hpo': 'PITT', 'count': 1}, results1)
+    self.assertIn({'date': '2018-01-01', 'hpo': 'PITT', 'count': 1}, results2)
+    self.assertIn({'date': '2018-01-01', 'hpo': 'UNSET', 'count': 1}, results2)
+    self.assertIn({'date': '2018-01-01', 'hpo': 'AZ_TUCSON', 'count': 1}, results2)
 
-    self.assertIn({'date': '2018-01-02', 'hpo': u'UNSET', 'count': 1L}, results3)
-    self.assertIn({'date': '2018-01-02', 'hpo': u'PITT', 'count': 2L}, results3)
-    self.assertIn({'date': '2018-01-02', 'hpo': u'AZ_TUCSON', 'count': 2L}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'UNSET', 'count': 1}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'PITT', 'count': 2}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'AZ_TUCSON', 'count': 2}, results3)
 
   def test_get_metrics_region_data_api_filter_by_enrollment_status(self):
 
-    code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
+    code1 = Code(codeId=1, system="a", value="PIIState_IL", display="PIIState_IL", topic="a",
                  codeType=CodeType.MODULE, mapped=True)
-    code2 = Code(codeId=2, system="b", value="PIIState_IN", display=u"PIIState_IN", topic=u"b",
+    code2 = Code(codeId=2, system="b", value="PIIState_IN", display="PIIState_IN", topic="b",
                  codeType=CodeType.MODULE, mapped=True)
 
     self.code_dao.insert(code1)
@@ -3829,13 +3829,13 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     qs = ''.join(qs.split())
     results = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    self.assertEquals(results, [{'date': '2017-12-31',
-                                 'hpo': u'UNSET',
+    self.assertEqual(results, [{'date': '2017-12-31',
+                                 'hpo': 'UNSET',
                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                                             'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                                             'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
                                              'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
@@ -3851,9 +3851,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     qs = ''.join(qs.split())
     results = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    self.assertEquals(results, [{'date': '2017-12-31',
-                                 'hpo': u'UNSET',
-                                 'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+    self.assertEqual(results, [{'date': '2017-12-31',
+                                 'hpo': 'UNSET',
+                                 'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                                  }])
 
     qs = """
@@ -3866,13 +3866,13 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     qs = ''.join(qs.split())
     results = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    self.assertEquals(results, [{'date': '2017-12-31', 'hpo': u'UNSET', 'count': 1L}])
+    self.assertEqual(results, [{'date': '2017-12-31', 'hpo': 'UNSET', 'count': 1}])
 
   def test_get_metrics_region_data_api_filter_by_enrollment_status_v2(self):
 
-    code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
+    code1 = Code(codeId=1, system="a", value="PIIState_IL", display="PIIState_IL", topic="a",
                  codeType=CodeType.MODULE, mapped=True)
-    code2 = Code(codeId=2, system="b", value="PIIState_IN", display=u"PIIState_IN", topic=u"b",
+    code2 = Code(codeId=2, system="b", value="PIIState_IN", display="PIIState_IN", topic="b",
                  codeType=CodeType.MODULE, mapped=True)
 
     self.code_dao.insert(code1)
@@ -3910,26 +3910,26 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     qs = ''.join(qs.split())
     results = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    self.assertIn({u'date': u'2017-12-31',
-                   u'metrics': {u'WA': 0, u'DE': 0, u'DC': 0, u'WI': 0, u'WV': 0, u'HI': 0,
-                                u'FL': 0, u'WY': 0, u'NH': 0, u'NJ': 0, u'NM': 0, u'TX': 0,
-                                u'LA': 0, u'NC': 0, u'ND': 0, u'NE': 0, u'TN': 0, u'NY': 0,
-                                u'PA': 0, u'RI': 0, u'NV': 0, u'VA': 0, u'CO': 0, u'AK': 0,
-                                u'AL': 0, u'AR': 0, u'VT': 0, u'IL': 1, u'GA': 0, u'IN': 0,
-                                u'IA': 0, u'OK': 0, u'AZ': 0, u'CA': 0, u'ID': 0, u'CT': 0,
-                                u'ME': 0, u'MD': 0, u'MA': 0, u'OH': 0, u'UT': 0, u'MO': 0,
-                                u'MN': 0, u'MI': 0, u'KS': 0, u'MT': 0, u'MS': 0, u'SC': 0,
-                                u'KY': 0, u'OR': 0, u'SD': 0}, u'hpo': u'UNSET'}, results)
-    self.assertIn({u'date': u'2017-12-31',
-                   u'metrics': {u'WA': 0, u'DE': 0, u'DC': 0, u'WI': 0, u'WV': 0, u'HI': 0,
-                                u'FL': 0, u'WY': 0, u'NH': 0, u'NJ': 0, u'NM': 0, u'TX': 0,
-                                u'LA': 0, u'NC': 0, u'ND': 0, u'NE': 0, u'TN': 0, u'NY': 0,
-                                u'PA': 0, u'RI': 0, u'NV': 0, u'VA': 0, u'CO': 0, u'AK': 0,
-                                u'AL': 0, u'AR': 0, u'VT': 0, u'IL': 0, u'GA': 0, u'IN': 1,
-                                u'IA': 0, u'OK': 0, u'AZ': 0, u'CA': 0, u'ID': 0, u'CT': 0,
-                                u'ME': 0, u'MD': 0, u'MA': 0, u'OH': 0, u'UT': 0, u'MO': 0,
-                                u'MN': 0, u'MI': 0, u'KS': 0, u'MT': 0, u'MS': 0, u'SC': 0,
-                                u'KY': 0, u'OR': 0, u'SD': 0}, u'hpo': u'PITT'}, results)
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                'LA': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0, 'NY': 0,
+                                'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0, 'AK': 0,
+                                'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0, 'IN': 0,
+                                'IA': 0, 'OK': 0, 'AZ': 0, 'CA': 0, 'ID': 0, 'CT': 0,
+                                'ME': 0, 'MD': 0, 'MA': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'UNSET'}, results)
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                'LA': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0, 'NY': 0,
+                                'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0, 'AK': 0,
+                                'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0, 'IN': 1,
+                                'IA': 0, 'OK': 0, 'AZ': 0, 'CA': 0, 'ID': 0, 'CT': 0,
+                                'ME': 0, 'MD': 0, 'MA': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'PITT'}, results)
 
     qs = """
           &stratification=GEO_CENSUS
@@ -3942,12 +3942,12 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     qs = ''.join(qs.split())
     results = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    self.assertIn({u'date': u'2017-12-31',
-                   u'metrics': {u'WEST': 0, u'NORTHEAST': 0, u'MIDWEST': 1, u'SOUTH': 0},
-                   u'hpo': u'UNSET'}, results)
-    self.assertIn({u'date': u'2017-12-31',
-                   u'metrics': {u'WEST': 0, u'NORTHEAST': 0, u'MIDWEST': 1, u'SOUTH': 0},
-                   u'hpo': u'PITT'}, results)
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0},
+                   'hpo': 'UNSET'}, results)
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0},
+                   'hpo': 'PITT'}, results)
 
     qs = """
           &stratification=GEO_AWARDEE
@@ -3961,15 +3961,15 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     qs = ''.join(qs.split())
     results = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    self.assertIn({u'date': u'2017-12-31', u'count': 1, u'hpo': u'PITT'}, results)
+    self.assertIn({'date': '2017-12-31', 'count': 1, 'hpo': 'PITT'}, results)
 
   def test_get_metrics_region_data_api_filter_by_awardee(self):
 
-    code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
+    code1 = Code(codeId=1, system="a", value="PIIState_IL", display="PIIState_IL", topic="a",
                  codeType=CodeType.MODULE, mapped=True)
-    code2 = Code(codeId=2, system="b", value="PIIState_IN", display=u"PIIState_IN", topic=u"b",
+    code2 = Code(codeId=2, system="b", value="PIIState_IN", display="PIIState_IN", topic="b",
                  codeType=CodeType.MODULE, mapped=True)
-    code3 = Code(codeId=3, system="c", value="PIIState_CA", display=u"PIIState_CA", topic=u"c",
+    code3 = Code(codeId=3, system="c", value="PIIState_CA", display="PIIState_CA", topic="c",
                  codeType=CodeType.MODULE, mapped=True)
 
     self.code_dao.insert(code1)
@@ -4037,37 +4037,37 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [])
-    self.assertEquals(results2, [{'date': '2018-01-01',
+    self.assertEqual(results1, [])
+    self.assertEqual(results2, [{'date': '2018-01-01',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                                              'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'AZ_TUCSON'}])
+                                              'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'AZ_TUCSON'}])
     self.assertIn({'date': '2018-01-02',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 1L, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'CA': 1, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'AZ_TUCSON'}, results3)
+                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'AZ_TUCSON'}, results3)
     self.assertIn({'date': '2018-01-02',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 2, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'PITT'}, results3)
+                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'PITT'}, results3)
 
     qs1 = """
                           &stratification=GEO_STATE
@@ -4101,69 +4101,69 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [{'date': '2017-12-31',
-                                  'hpo': u'PITT',
+    self.assertEqual(results1, [{'date': '2017-12-31',
+                                  'hpo': 'PITT',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}}])
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'AZ_TUCSON',
+                   'hpo': 'AZ_TUCSON',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 2, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 2, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'AZ_TUCSON',
+                   'hpo': 'AZ_TUCSON',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 1L, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'CA': 1, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
@@ -4200,16 +4200,16 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [])
-    self.assertEquals(results2, [{'date': '2018-01-01',
-                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
-                                  'hpo': u'AZ_TUCSON'}])
+    self.assertEqual(results1, [])
+    self.assertEqual(results2, [{'date': '2018-01-01',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0},
+                                  'hpo': 'AZ_TUCSON'}])
     self.assertIn({'date': '2018-01-02',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0},
-                   'hpo': u'PITT'}, results3)
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2, 'SOUTH': 0},
+                   'hpo': 'PITT'}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
-                   'hpo': u'AZ_TUCSON'}, results3)
+                   'metrics': {'WEST': 1, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0},
+                   'hpo': 'AZ_TUCSON'}, results3)
 
     qs1 = """
                               &stratification=GEO_CENSUS
@@ -4243,25 +4243,25 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [{'date': '2017-12-31',
-                                  'hpo': u'PITT',
-                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+    self.assertEqual(results1, [{'date': '2017-12-31',
+                                  'hpo': 'PITT',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                                   }])
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'AZ_TUCSON',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'AZ_TUCSON',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2, 'SOUTH': 0}
                    }, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'AZ_TUCSON',
-                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'AZ_TUCSON',
+                   'metrics': {'WEST': 1, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results3)
 
     qs1 = """
@@ -4296,10 +4296,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [])
-    self.assertEquals(results2, [{'date': '2018-01-01', 'count': 1L, 'hpo': u'AZ_TUCSON'}])
-    self.assertIn({'date': '2018-01-02', 'count': 2L, 'hpo': u'PITT'}, results3)
-    self.assertIn({'date': '2018-01-02', 'count': 2L, 'hpo': u'AZ_TUCSON'}, results3)
+    self.assertEqual(results1, [])
+    self.assertEqual(results2, [{'date': '2018-01-01', 'count': 1, 'hpo': 'AZ_TUCSON'}])
+    self.assertIn({'date': '2018-01-02', 'count': 2, 'hpo': 'PITT'}, results3)
+    self.assertIn({'date': '2018-01-02', 'count': 2, 'hpo': 'AZ_TUCSON'}, results3)
 
     qs1 = """
                                   &stratification=GEO_AWARDEE
@@ -4333,20 +4333,20 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [{'date': '2017-12-31', 'hpo': u'PITT', 'count': 1L}
+    self.assertEqual(results1, [{'date': '2017-12-31', 'hpo': 'PITT', 'count': 1}
                                  ])
-    self.assertIn({'date': '2018-01-01', 'hpo': u'PITT', 'count': 1L}, results2)
-    self.assertIn({'date': '2018-01-01',  'hpo': u'AZ_TUCSON', 'count': 1L}, results2)
-    self.assertIn({'date': '2018-01-02', 'hpo': u'PITT', 'count': 2L}, results3)
-    self.assertIn({'date': '2018-01-02', 'hpo': u'AZ_TUCSON', 'count': 2L}, results3)
+    self.assertIn({'date': '2018-01-01', 'hpo': 'PITT', 'count': 1}, results2)
+    self.assertIn({'date': '2018-01-01',  'hpo': 'AZ_TUCSON', 'count': 1}, results2)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'PITT', 'count': 2}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'AZ_TUCSON', 'count': 2}, results3)
 
   def test_get_metrics_region_data_api_filter_by_awardee_v2(self):
 
-    code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
+    code1 = Code(codeId=1, system="a", value="PIIState_IL", display="PIIState_IL", topic="a",
                  codeType=CodeType.MODULE, mapped=True)
-    code2 = Code(codeId=2, system="b", value="PIIState_IN", display=u"PIIState_IN", topic=u"b",
+    code2 = Code(codeId=2, system="b", value="PIIState_IN", display="PIIState_IN", topic="b",
                  codeType=CodeType.MODULE, mapped=True)
-    code3 = Code(codeId=3, system="c", value="PIIState_CA", display=u"PIIState_CA", topic=u"c",
+    code3 = Code(codeId=3, system="c", value="PIIState_CA", display="PIIState_CA", topic="c",
                  codeType=CodeType.MODULE, mapped=True)
 
     self.code_dao.insert(code1)
@@ -4417,69 +4417,69 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [{'date': '2017-12-31',
-                                  'hpo': u'PITT',
+    self.assertEqual(results1, [{'date': '2017-12-31',
+                                  'hpo': 'PITT',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}}])
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'AZ_TUCSON',
+                   'hpo': 'AZ_TUCSON',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results2)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 2, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'PITT',
+                   'hpo': 'PITT',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'IN': 2, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'AZ_TUCSON',
+                   'hpo': 'AZ_TUCSON',
                    'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                               'CA': 1L, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'CA': 1, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                'KY': 0, 'OR': 0, 'SD': 0}}, results3)
@@ -4519,25 +4519,25 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [{'date': '2017-12-31',
-                                  'hpo': u'PITT',
-                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+    self.assertEqual(results1, [{'date': '2017-12-31',
+                                  'hpo': 'PITT',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                                   }])
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-01',
-                   'hpo': u'AZ_TUCSON',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'AZ_TUCSON',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results2)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'PITT',
-                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0}
+                   'hpo': 'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2, 'SOUTH': 0}
                    }, results3)
     self.assertIn({'date': '2018-01-02',
-                   'hpo': u'AZ_TUCSON',
-                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   'hpo': 'AZ_TUCSON',
+                   'metrics': {'WEST': 1, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0}
                    }, results3)
 
     qs1 = """
@@ -4575,18 +4575,18 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [{'date': '2017-12-31', 'hpo': u'PITT', 'count': 1L}
+    self.assertEqual(results1, [{'date': '2017-12-31', 'hpo': 'PITT', 'count': 1}
                                  ])
-    self.assertIn({'date': '2018-01-01', 'hpo': u'PITT', 'count': 1L}, results2)
-    self.assertIn({'date': '2018-01-01',  'hpo': u'AZ_TUCSON', 'count': 1L}, results2)
-    self.assertIn({'date': '2018-01-02', 'hpo': u'PITT', 'count': 2L}, results3)
-    self.assertIn({'date': '2018-01-02', 'hpo': u'AZ_TUCSON', 'count': 2L}, results3)
+    self.assertIn({'date': '2018-01-01', 'hpo': 'PITT', 'count': 1}, results2)
+    self.assertIn({'date': '2018-01-01',  'hpo': 'AZ_TUCSON', 'count': 1}, results2)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'PITT', 'count': 2}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': 'AZ_TUCSON', 'count': 2}, results3)
 
   def test_unrecognized_state_value(self):
     # PW is not in the state list
-    code1 = Code(codeId=1, system="a", value="PIIState_PW", display=u"PIIState_PW", topic=u"a",
+    code1 = Code(codeId=1, system="a", value="PIIState_PW", display="PIIState_PW", topic="a",
                  codeType=CodeType.MODULE, mapped=True)
-    code2 = Code(codeId=2, system="b", value="PIIState_IN", display=u"PIIState_IN", topic=u"b",
+    code2 = Code(codeId=2, system="b", value="PIIState_IN", display="PIIState_IN", topic="b",
                  codeType=CodeType.MODULE, mapped=True)
 
     self.code_dao.insert(code1)
@@ -4609,7 +4609,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results3 = dao.get_latest_version_from_cache('2018-01-01', 'FULL_CENSUS')
     results4 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_CENSUS')
 
-    self.assertEquals(results1, [{'date': '2018-01-01',
+    self.assertEqual(results1, [{'date': '2018-01-01',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
@@ -4618,9 +4618,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                                              'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'AZ_TUCSON'}])
-    self.assertEquals(results2, [{'date': '2018-01-01',
-                                  'hpo': u'AZ_TUCSON',
+                                              'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': 'AZ_TUCSON'}])
+    self.assertEqual(results2, [{'date': '2018-01-01',
+                                  'hpo': 'AZ_TUCSON',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
@@ -4630,11 +4630,11 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}}])
-    self.assertEquals(results3, [{'date': '2018-01-01',
-                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
-                                  'hpo': u'AZ_TUCSON'}])
-    self.assertEquals(results4, [{'date': '2018-01-01',  'hpo': u'AZ_TUCSON',
-                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L,
+    self.assertEqual(results3, [{'date': '2018-01-01',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1, 'SOUTH': 0},
+                                  'hpo': 'AZ_TUCSON'}])
+    self.assertEqual(results4, [{'date': '2018-01-01',  'hpo': 'AZ_TUCSON',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1,
                                               'SOUTH': 0}}])
 
   def test_refresh_metrics_lifecycle_cache_data(self):
@@ -4669,140 +4669,140 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     service.refresh_data_for_metrics_cache(dao)
 
     results = dao.get_latest_version_from_cache('2018-01-03')
-    self.assertEquals(results, [{'date': '2018-01-03',
-                                 'metrics': {'not_completed': {'Full_Participant': 0L,
-                                                               'Baseline_PPI_Modules_Complete': 0L,
-                                                               'PPI_Module_The_Basics': 0L,
-                                                               'Consent_Complete': 0L,
-                                                               'PPI_Module_Overall_Health': 0L,
-                                                               'Consent_Enrollment': 0L,
-                                                               'PPI_Module_Lifestyle': 0L,
-                                                               'Physical_Measurements': 0L,
+    self.assertEqual(results, [{'date': '2018-01-03',
+                                 'metrics': {'not_completed': {'Full_Participant': 0,
+                                                               'Baseline_PPI_Modules_Complete': 0,
+                                                               'PPI_Module_The_Basics': 0,
+                                                               'Consent_Complete': 0,
+                                                               'PPI_Module_Overall_Health': 0,
+                                                               'Consent_Enrollment': 0,
+                                                               'PPI_Module_Lifestyle': 0,
+                                                               'Physical_Measurements': 0,
                                                                'Registered': 0,
-                                                               'Samples_Received': 0L},
-                                             'completed': {'Full_Participant': 1L,
-                                                           'Baseline_PPI_Modules_Complete': 1L,
-                                                           'PPI_Module_The_Basics': 1L,
-                                                           'Consent_Complete': 1L,
-                                                           'PPI_Module_Overall_Health': 1L,
-                                                           'Consent_Enrollment': 1L,
-                                                           'PPI_Module_Lifestyle': 1L,
-                                                           'Physical_Measurements': 1L,
-                                                           'Registered': 1L,
-                                                           'Samples_Received': 1L}
-                                             }, 'hpo': u'UNSET'},
+                                                               'Samples_Received': 0},
+                                             'completed': {'Full_Participant': 1,
+                                                           'Baseline_PPI_Modules_Complete': 1,
+                                                           'PPI_Module_The_Basics': 1,
+                                                           'Consent_Complete': 1,
+                                                           'PPI_Module_Overall_Health': 1,
+                                                           'Consent_Enrollment': 1,
+                                                           'PPI_Module_Lifestyle': 1,
+                                                           'Physical_Measurements': 1,
+                                                           'Registered': 1,
+                                                           'Samples_Received': 1}
+                                             }, 'hpo': 'UNSET'},
                                 {'date': '2018-01-03',
-                                 'metrics': {'not_completed': {'Full_Participant': 2L,
-                                                               'Baseline_PPI_Modules_Complete': 1L,
-                                                               'PPI_Module_The_Basics': 1L,
-                                                               'Consent_Complete': 1L,
-                                                               'PPI_Module_Overall_Health': 1L,
-                                                               'Consent_Enrollment': 0L,
-                                                               'PPI_Module_Lifestyle': 1L,
-                                                               'Physical_Measurements': 1L,
+                                 'metrics': {'not_completed': {'Full_Participant': 2,
+                                                               'Baseline_PPI_Modules_Complete': 1,
+                                                               'PPI_Module_The_Basics': 1,
+                                                               'Consent_Complete': 1,
+                                                               'PPI_Module_Overall_Health': 1,
+                                                               'Consent_Enrollment': 0,
+                                                               'PPI_Module_Lifestyle': 1,
+                                                               'Physical_Measurements': 1,
                                                                'Registered': 0,
-                                                               'Samples_Received': 1L},
-                                             'completed': {'Full_Participant': 0L,
-                                                           'Baseline_PPI_Modules_Complete': 1L,
-                                                           'PPI_Module_The_Basics': 1L,
-                                                           'Consent_Complete': 1L,
-                                                           'PPI_Module_Overall_Health': 1L,
-                                                           'Consent_Enrollment': 2L,
-                                                           'PPI_Module_Lifestyle': 1L,
-                                                           'Physical_Measurements': 1L,
-                                                           'Registered': 2L,
-                                                           'Samples_Received': 1L}
-                                             }, 'hpo': u'PITT'},
+                                                               'Samples_Received': 1},
+                                             'completed': {'Full_Participant': 0,
+                                                           'Baseline_PPI_Modules_Complete': 1,
+                                                           'PPI_Module_The_Basics': 1,
+                                                           'Consent_Complete': 1,
+                                                           'PPI_Module_Overall_Health': 1,
+                                                           'Consent_Enrollment': 2,
+                                                           'PPI_Module_Lifestyle': 1,
+                                                           'Physical_Measurements': 1,
+                                                           'Registered': 2,
+                                                           'Samples_Received': 1}
+                                             }, 'hpo': 'PITT'},
                                 {'date': '2018-01-03',
-                                 'metrics': {'not_completed': {'Full_Participant': 1L,
-                                                               'Baseline_PPI_Modules_Complete': 1L,
-                                                               'PPI_Module_The_Basics': 1L,
-                                                               'Consent_Complete': 0L,
-                                                               'PPI_Module_Overall_Health': 1L,
-                                                               'Consent_Enrollment': 0L,
-                                                               'PPI_Module_Lifestyle': 1L,
-                                                               'Physical_Measurements': 1L,
+                                 'metrics': {'not_completed': {'Full_Participant': 1,
+                                                               'Baseline_PPI_Modules_Complete': 1,
+                                                               'PPI_Module_The_Basics': 1,
+                                                               'Consent_Complete': 0,
+                                                               'PPI_Module_Overall_Health': 1,
+                                                               'Consent_Enrollment': 0,
+                                                               'PPI_Module_Lifestyle': 1,
+                                                               'Physical_Measurements': 1,
                                                                'Registered': 0,
-                                                               'Samples_Received': 1L},
-                                             'completed': {'Full_Participant': 1L,
-                                                           'Baseline_PPI_Modules_Complete': 1L,
-                                                           'PPI_Module_The_Basics': 1L,
-                                                           'Consent_Complete': 2L,
-                                                           'PPI_Module_Overall_Health': 1L,
-                                                           'Consent_Enrollment': 2L,
-                                                           'PPI_Module_Lifestyle': 1L,
-                                                           'Physical_Measurements': 1L,
-                                                           'Registered': 2L,
-                                                           'Samples_Received': 1L}
-                                             }, 'hpo': u'AZ_TUCSON'}
+                                                               'Samples_Received': 1},
+                                             'completed': {'Full_Participant': 1,
+                                                           'Baseline_PPI_Modules_Complete': 1,
+                                                           'PPI_Module_The_Basics': 1,
+                                                           'Consent_Complete': 2,
+                                                           'PPI_Module_Overall_Health': 1,
+                                                           'Consent_Enrollment': 2,
+                                                           'PPI_Module_Lifestyle': 1,
+                                                           'Physical_Measurements': 1,
+                                                           'Registered': 2,
+                                                           'Samples_Received': 1}
+                                             }, 'hpo': 'AZ_TUCSON'}
                                 ])
 
     results2 = dao.get_latest_version_from_cache('2018-01-08')
-    self.assertEquals(results2, [{'date': '2018-01-08',
-                                  'metrics': {'not_completed': {'Full_Participant': 0L,
-                                                                'Baseline_PPI_Modules_Complete': 0L,
-                                                                'PPI_Module_The_Basics': 0L,
-                                                                'Consent_Complete': 0L,
-                                                                'PPI_Module_Overall_Health': 0L,
-                                                                'Consent_Enrollment': 0L,
-                                                                'PPI_Module_Lifestyle': 0L,
-                                                                'Physical_Measurements': 0L,
+    self.assertEqual(results2, [{'date': '2018-01-08',
+                                  'metrics': {'not_completed': {'Full_Participant': 0,
+                                                                'Baseline_PPI_Modules_Complete': 0,
+                                                                'PPI_Module_The_Basics': 0,
+                                                                'Consent_Complete': 0,
+                                                                'PPI_Module_Overall_Health': 0,
+                                                                'Consent_Enrollment': 0,
+                                                                'PPI_Module_Lifestyle': 0,
+                                                                'Physical_Measurements': 0,
                                                                 'Registered': 0,
-                                                                'Samples_Received': 0L},
-                                              'completed': {'Full_Participant': 1L,
-                                                            'Baseline_PPI_Modules_Complete': 1L,
-                                                            'PPI_Module_The_Basics': 1L,
-                                                            'Consent_Complete': 1L,
-                                                            'PPI_Module_Overall_Health': 1L,
-                                                            'Consent_Enrollment': 1L,
-                                                            'PPI_Module_Lifestyle': 1L,
-                                                            'Physical_Measurements': 1L,
-                                                            'Registered': 1L,
-                                                            'Samples_Received': 1L}
-                                              }, 'hpo': u'UNSET'},
+                                                                'Samples_Received': 0},
+                                              'completed': {'Full_Participant': 1,
+                                                            'Baseline_PPI_Modules_Complete': 1,
+                                                            'PPI_Module_The_Basics': 1,
+                                                            'Consent_Complete': 1,
+                                                            'PPI_Module_Overall_Health': 1,
+                                                            'Consent_Enrollment': 1,
+                                                            'PPI_Module_Lifestyle': 1,
+                                                            'Physical_Measurements': 1,
+                                                            'Registered': 1,
+                                                            'Samples_Received': 1}
+                                              }, 'hpo': 'UNSET'},
                                  {'date': '2018-01-08',
-                                  'metrics': {'not_completed': {'Full_Participant': 0L,
-                                                                'Baseline_PPI_Modules_Complete': 0L,
-                                                                'PPI_Module_The_Basics': 0L,
-                                                                'Consent_Complete': 0L,
-                                                                'PPI_Module_Overall_Health': 0L,
-                                                                'Consent_Enrollment': 0L,
-                                                                'PPI_Module_Lifestyle': 0L,
-                                                                'Physical_Measurements': 0L,
+                                  'metrics': {'not_completed': {'Full_Participant': 0,
+                                                                'Baseline_PPI_Modules_Complete': 0,
+                                                                'PPI_Module_The_Basics': 0,
+                                                                'Consent_Complete': 0,
+                                                                'PPI_Module_Overall_Health': 0,
+                                                                'Consent_Enrollment': 0,
+                                                                'PPI_Module_Lifestyle': 0,
+                                                                'Physical_Measurements': 0,
                                                                 'Registered': 0,
-                                                                'Samples_Received': 0L},
-                                              'completed': {'Full_Participant': 2L,
-                                                            'Baseline_PPI_Modules_Complete': 2L,
-                                                            'PPI_Module_The_Basics': 2L,
-                                                            'Consent_Complete': 2L,
-                                                            'PPI_Module_Overall_Health': 2L,
-                                                            'Consent_Enrollment': 2L,
-                                                            'PPI_Module_Lifestyle': 2L,
-                                                            'Physical_Measurements': 2L,
-                                                            'Registered': 2L,
-                                                            'Samples_Received': 2L}
-                                              }, 'hpo': u'PITT'},
+                                                                'Samples_Received': 0},
+                                              'completed': {'Full_Participant': 2,
+                                                            'Baseline_PPI_Modules_Complete': 2,
+                                                            'PPI_Module_The_Basics': 2,
+                                                            'Consent_Complete': 2,
+                                                            'PPI_Module_Overall_Health': 2,
+                                                            'Consent_Enrollment': 2,
+                                                            'PPI_Module_Lifestyle': 2,
+                                                            'Physical_Measurements': 2,
+                                                            'Registered': 2,
+                                                            'Samples_Received': 2}
+                                              }, 'hpo': 'PITT'},
                                  {'date': '2018-01-08',
-                                  'metrics': {'not_completed': {'Full_Participant': 0L,
-                                                                'Baseline_PPI_Modules_Complete': 0L,
-                                                                'PPI_Module_The_Basics': 0L,
-                                                                'Consent_Complete': 0L,
-                                                                'PPI_Module_Overall_Health': 0L,
-                                                                'Consent_Enrollment': 0L,
-                                                                'PPI_Module_Lifestyle': 0L,
-                                                                'Physical_Measurements': 0L,
+                                  'metrics': {'not_completed': {'Full_Participant': 0,
+                                                                'Baseline_PPI_Modules_Complete': 0,
+                                                                'PPI_Module_The_Basics': 0,
+                                                                'Consent_Complete': 0,
+                                                                'PPI_Module_Overall_Health': 0,
+                                                                'Consent_Enrollment': 0,
+                                                                'PPI_Module_Lifestyle': 0,
+                                                                'Physical_Measurements': 0,
                                                                 'Registered': 0,
-                                                                'Samples_Received': 0L},
-                                              'completed': {'Full_Participant': 2L,
-                                                            'Baseline_PPI_Modules_Complete': 2L,
-                                                            'PPI_Module_The_Basics': 2L,
-                                                            'Consent_Complete': 2L,
-                                                            'PPI_Module_Overall_Health': 2L,
-                                                            'Consent_Enrollment': 2L,
-                                                            'PPI_Module_Lifestyle': 2L,
-                                                            'Physical_Measurements': 2L,
-                                                            'Registered': 2L, 'Samples_Received': 2L}
-                                              }, 'hpo': u'AZ_TUCSON'}])
+                                                                'Samples_Received': 0},
+                                              'completed': {'Full_Participant': 2,
+                                                            'Baseline_PPI_Modules_Complete': 2,
+                                                            'PPI_Module_The_Basics': 2,
+                                                            'Consent_Complete': 2,
+                                                            'PPI_Module_Overall_Health': 2,
+                                                            'Consent_Enrollment': 2,
+                                                            'PPI_Module_Lifestyle': 2,
+                                                            'Physical_Measurements': 2,
+                                                            'Registered': 2, 'Samples_Received': 2}
+                                              }, 'hpo': 'AZ_TUCSON'}])
 
   def test_refresh_metrics_lifecycle_cache_data_v2(self):
 
@@ -4853,197 +4853,197 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     service.refresh_data_for_metrics_cache(dao)
 
     results = dao.get_latest_version_from_cache('2018-01-01')
-    self.assertEquals(results, [{'date': '2018-01-01',
+    self.assertEqual(results, [{'date': '2018-01-01',
                                  'metrics': {'not_completed':
-                                               {'Full_Participant': 0L,
-                                                'PPI_Module_The_Basics': 0L,
-                                                'Consent_Complete': 0L,
-                                                'Consent_Enrollment': 0L,
-                                                'PPI_Module_Lifestyle': 0L,
-                                                'Baseline_PPI_Modules_Complete': 0L,
-                                                'PPI_Module_Family_Health': 0L,
-                                                'PPI_Module_Overall_Health': 0L,
-                                                'PPI_Retention_Modules_Complete': 0L,
-                                                'Physical_Measurements': 0L,
+                                               {'Full_Participant': 0,
+                                                'PPI_Module_The_Basics': 0,
+                                                'Consent_Complete': 0,
+                                                'Consent_Enrollment': 0,
+                                                'PPI_Module_Lifestyle': 0,
+                                                'Baseline_PPI_Modules_Complete': 0,
+                                                'PPI_Module_Family_Health': 0,
+                                                'PPI_Module_Overall_Health': 0,
+                                                'PPI_Retention_Modules_Complete': 0,
+                                                'Physical_Measurements': 0,
                                                 'Registered': 0,
-                                                'PPI_Module_Medical_History': 0L,
-                                                'PPI_Module_Healthcare_Access': 0L,
-                                                'Samples_Received': 0L},
+                                                'PPI_Module_Medical_History': 0,
+                                                'PPI_Module_Healthcare_Access': 0,
+                                                'Samples_Received': 0},
                                              'completed':
-                                               {'Full_Participant': 1L,
-                                                'PPI_Module_The_Basics': 1L,
-                                                'Consent_Complete': 1L,
-                                                'Consent_Enrollment': 1L,
-                                                'PPI_Module_Lifestyle': 1L,
-                                                'Baseline_PPI_Modules_Complete': 1L,
-                                                'PPI_Module_Family_Health': 0L,
-                                                'PPI_Module_Overall_Health': 1L,
-                                                'PPI_Retention_Modules_Complete': 0L,
-                                                'Physical_Measurements': 1L,
-                                                'Registered': 1L,
-                                                'PPI_Module_Medical_History': 0L,
-                                                'PPI_Module_Healthcare_Access': 0L,
-                                                'Samples_Received': 1L}}, 'hpo': u'UNSET'},
+                                               {'Full_Participant': 1,
+                                                'PPI_Module_The_Basics': 1,
+                                                'Consent_Complete': 1,
+                                                'Consent_Enrollment': 1,
+                                                'PPI_Module_Lifestyle': 1,
+                                                'Baseline_PPI_Modules_Complete': 1,
+                                                'PPI_Module_Family_Health': 0,
+                                                'PPI_Module_Overall_Health': 1,
+                                                'PPI_Retention_Modules_Complete': 0,
+                                                'Physical_Measurements': 1,
+                                                'Registered': 1,
+                                                'PPI_Module_Medical_History': 0,
+                                                'PPI_Module_Healthcare_Access': 0,
+                                                'Samples_Received': 1}}, 'hpo': 'UNSET'},
                                 {'date': '2018-01-01',
                                  'metrics': {'not_completed':
-                                               {'Full_Participant': 0L,
-                                                'PPI_Module_The_Basics': 0L,
-                                                'Consent_Complete': 0L,
-                                                'Consent_Enrollment': 0L,
-                                                'PPI_Module_Lifestyle': 0L,
-                                                'Baseline_PPI_Modules_Complete': 0L,
-                                                'PPI_Module_Family_Health': 0L,
-                                                'PPI_Module_Overall_Health': 0L,
-                                                'PPI_Retention_Modules_Complete': 0L,
-                                                'Physical_Measurements': 0L,
+                                               {'Full_Participant': 0,
+                                                'PPI_Module_The_Basics': 0,
+                                                'Consent_Complete': 0,
+                                                'Consent_Enrollment': 0,
+                                                'PPI_Module_Lifestyle': 0,
+                                                'Baseline_PPI_Modules_Complete': 0,
+                                                'PPI_Module_Family_Health': 0,
+                                                'PPI_Module_Overall_Health': 0,
+                                                'PPI_Retention_Modules_Complete': 0,
+                                                'Physical_Measurements': 0,
                                                 'Registered': 0,
-                                                'PPI_Module_Medical_History': 0L,
-                                                'PPI_Module_Healthcare_Access': 0L,
-                                                'Samples_Received': 0L},
+                                                'PPI_Module_Medical_History': 0,
+                                                'PPI_Module_Healthcare_Access': 0,
+                                                'Samples_Received': 0},
                                              'completed':
-                                               {'Full_Participant': 2L,
-                                                'PPI_Module_The_Basics': 2L,
-                                                'Consent_Complete': 2L,
-                                                'Consent_Enrollment': 2L,
-                                                'PPI_Module_Lifestyle': 2L,
-                                                'Baseline_PPI_Modules_Complete': 2L,
-                                                'PPI_Module_Family_Health': 0L,
-                                                'PPI_Module_Overall_Health': 2L,
-                                                'PPI_Retention_Modules_Complete': 0L,
-                                                'Physical_Measurements': 2L,
-                                                'Registered': 2L,
-                                                'PPI_Module_Medical_History': 0L,
-                                                'PPI_Module_Healthcare_Access': 0L,
-                                                'Samples_Received': 2L}}, 'hpo': u'PITT'},
+                                               {'Full_Participant': 2,
+                                                'PPI_Module_The_Basics': 2,
+                                                'Consent_Complete': 2,
+                                                'Consent_Enrollment': 2,
+                                                'PPI_Module_Lifestyle': 2,
+                                                'Baseline_PPI_Modules_Complete': 2,
+                                                'PPI_Module_Family_Health': 0,
+                                                'PPI_Module_Overall_Health': 2,
+                                                'PPI_Retention_Modules_Complete': 0,
+                                                'Physical_Measurements': 2,
+                                                'Registered': 2,
+                                                'PPI_Module_Medical_History': 0,
+                                                'PPI_Module_Healthcare_Access': 0,
+                                                'Samples_Received': 2}}, 'hpo': 'PITT'},
                                 {'date': '2018-01-01',
                                  'metrics': {'not_completed':
-                                               {'Full_Participant': 1L,
-                                                'PPI_Module_The_Basics': 1L,
-                                                'Consent_Complete': 0L,
-                                                'Consent_Enrollment': 0L,
-                                                'PPI_Module_Lifestyle': 1L,
-                                                'Baseline_PPI_Modules_Complete': 1L,
-                                                'PPI_Module_Family_Health': 0L,
-                                                'PPI_Module_Overall_Health': 1L,
-                                                'PPI_Retention_Modules_Complete': 0L,
-                                                'Physical_Measurements': 1L,
+                                               {'Full_Participant': 1,
+                                                'PPI_Module_The_Basics': 1,
+                                                'Consent_Complete': 0,
+                                                'Consent_Enrollment': 0,
+                                                'PPI_Module_Lifestyle': 1,
+                                                'Baseline_PPI_Modules_Complete': 1,
+                                                'PPI_Module_Family_Health': 0,
+                                                'PPI_Module_Overall_Health': 1,
+                                                'PPI_Retention_Modules_Complete': 0,
+                                                'Physical_Measurements': 1,
                                                 'Registered': 0,
-                                                'PPI_Module_Medical_History': 0L,
-                                                'PPI_Module_Healthcare_Access': 0L,
-                                                'Samples_Received': 1L},
+                                                'PPI_Module_Medical_History': 0,
+                                                'PPI_Module_Healthcare_Access': 0,
+                                                'Samples_Received': 1},
                                              'completed':
-                                               {'Full_Participant': 0L,
-                                                'PPI_Module_The_Basics': 0L,
-                                                'Consent_Complete': 1L,
-                                                'Consent_Enrollment': 1L,
-                                                'PPI_Module_Lifestyle': 0L,
-                                                'Baseline_PPI_Modules_Complete': 0L,
-                                                'PPI_Module_Family_Health': 0L,
-                                                'PPI_Module_Overall_Health': 0L,
-                                                'PPI_Retention_Modules_Complete': 0L,
-                                                'Physical_Measurements': 0L,
-                                                'Registered': 1L,
-                                                'PPI_Module_Medical_History': 0L,
-                                                'PPI_Module_Healthcare_Access': 0L,
-                                                'Samples_Received': 0L}}, 'hpo': u'AZ_TUCSON'}])
+                                               {'Full_Participant': 0,
+                                                'PPI_Module_The_Basics': 0,
+                                                'Consent_Complete': 1,
+                                                'Consent_Enrollment': 1,
+                                                'PPI_Module_Lifestyle': 0,
+                                                'Baseline_PPI_Modules_Complete': 0,
+                                                'PPI_Module_Family_Health': 0,
+                                                'PPI_Module_Overall_Health': 0,
+                                                'PPI_Retention_Modules_Complete': 0,
+                                                'Physical_Measurements': 0,
+                                                'Registered': 1,
+                                                'PPI_Module_Medical_History': 0,
+                                                'PPI_Module_Healthcare_Access': 0,
+                                                'Samples_Received': 0}}, 'hpo': 'AZ_TUCSON'}])
 
     results2 = dao.get_latest_version_from_cache('2018-01-03')
-    self.assertEquals(results2, [{'date': '2018-01-03',
+    self.assertEqual(results2, [{'date': '2018-01-03',
                                   'metrics': {
                                     'not_completed':
-                                      {'Full_Participant': 0L,
-                                       'PPI_Module_The_Basics': 0L,
-                                       'Consent_Complete': 0L,
-                                       'Consent_Enrollment': 0L,
-                                       'PPI_Module_Lifestyle': 0L,
-                                       'Baseline_PPI_Modules_Complete': 0L,
-                                       'PPI_Module_Family_Health': 0L,
-                                       'PPI_Module_Overall_Health': 0L,
-                                       'PPI_Retention_Modules_Complete': 0L,
-                                       'Physical_Measurements': 0L,
+                                      {'Full_Participant': 0,
+                                       'PPI_Module_The_Basics': 0,
+                                       'Consent_Complete': 0,
+                                       'Consent_Enrollment': 0,
+                                       'PPI_Module_Lifestyle': 0,
+                                       'Baseline_PPI_Modules_Complete': 0,
+                                       'PPI_Module_Family_Health': 0,
+                                       'PPI_Module_Overall_Health': 0,
+                                       'PPI_Retention_Modules_Complete': 0,
+                                       'Physical_Measurements': 0,
                                        'Registered': 0,
-                                       'PPI_Module_Medical_History': 0L,
-                                       'PPI_Module_Healthcare_Access': 0L,
-                                       'Samples_Received': 0L},
+                                       'PPI_Module_Medical_History': 0,
+                                       'PPI_Module_Healthcare_Access': 0,
+                                       'Samples_Received': 0},
                                     'completed':
-                                      {'Full_Participant': 1L,
-                                       'PPI_Module_The_Basics': 1L,
-                                       'Consent_Complete': 1L,
-                                       'Consent_Enrollment': 1L,
-                                       'PPI_Module_Lifestyle': 1L,
-                                       'Baseline_PPI_Modules_Complete': 1L,
-                                       'PPI_Module_Family_Health': 0L,
-                                       'PPI_Module_Overall_Health': 1L,
-                                       'PPI_Retention_Modules_Complete': 0L,
-                                       'Physical_Measurements': 1L,
-                                       'Registered': 1L,
-                                       'PPI_Module_Medical_History': 0L,
-                                       'PPI_Module_Healthcare_Access': 0L,
-                                       'Samples_Received': 1L}}, 'hpo': u'UNSET'},
+                                      {'Full_Participant': 1,
+                                       'PPI_Module_The_Basics': 1,
+                                       'Consent_Complete': 1,
+                                       'Consent_Enrollment': 1,
+                                       'PPI_Module_Lifestyle': 1,
+                                       'Baseline_PPI_Modules_Complete': 1,
+                                       'PPI_Module_Family_Health': 0,
+                                       'PPI_Module_Overall_Health': 1,
+                                       'PPI_Retention_Modules_Complete': 0,
+                                       'Physical_Measurements': 1,
+                                       'Registered': 1,
+                                       'PPI_Module_Medical_History': 0,
+                                       'PPI_Module_Healthcare_Access': 0,
+                                       'Samples_Received': 1}}, 'hpo': 'UNSET'},
                                  {'date': '2018-01-03',
                                   'metrics': {
                                     'not_completed':
-                                      {'Full_Participant': 2L,
-                                       'PPI_Module_The_Basics': 1L,
-                                       'Consent_Complete': 1L,
-                                       'Consent_Enrollment': 0L,
-                                       'PPI_Module_Lifestyle': 1L,
-                                       'Baseline_PPI_Modules_Complete': 1L,
-                                       'PPI_Module_Family_Health': 1L,
-                                       'PPI_Module_Overall_Health': 1L,
-                                       'PPI_Retention_Modules_Complete': 1L,
-                                       'Physical_Measurements': 1L,
+                                      {'Full_Participant': 2,
+                                       'PPI_Module_The_Basics': 1,
+                                       'Consent_Complete': 1,
+                                       'Consent_Enrollment': 0,
+                                       'PPI_Module_Lifestyle': 1,
+                                       'Baseline_PPI_Modules_Complete': 1,
+                                       'PPI_Module_Family_Health': 1,
+                                       'PPI_Module_Overall_Health': 1,
+                                       'PPI_Retention_Modules_Complete': 1,
+                                       'Physical_Measurements': 1,
                                        'Registered': 0,
-                                       'PPI_Module_Medical_History': 0L,
-                                       'PPI_Module_Healthcare_Access': 0L,
-                                       'Samples_Received': 1L},
+                                       'PPI_Module_Medical_History': 0,
+                                       'PPI_Module_Healthcare_Access': 0,
+                                       'Samples_Received': 1},
                                     'completed':
-                                      {'Full_Participant': 2L,
-                                       'PPI_Module_The_Basics': 3L,
-                                       'Consent_Complete': 3L,
-                                       'Consent_Enrollment': 4L,
-                                       'PPI_Module_Lifestyle': 3L,
-                                       'Baseline_PPI_Modules_Complete': 3L,
-                                       'PPI_Module_Family_Health': 1L,
-                                       'PPI_Module_Overall_Health': 3L,
-                                       'PPI_Retention_Modules_Complete': 1L,
-                                       'Physical_Measurements': 3L,
-                                       'Registered': 4L,
-                                       'PPI_Module_Medical_History': 2L,
-                                       'PPI_Module_Healthcare_Access': 2L,
-                                       'Samples_Received': 3L}}, 'hpo': u'PITT'},
+                                      {'Full_Participant': 2,
+                                       'PPI_Module_The_Basics': 3,
+                                       'Consent_Complete': 3,
+                                       'Consent_Enrollment': 4,
+                                       'PPI_Module_Lifestyle': 3,
+                                       'Baseline_PPI_Modules_Complete': 3,
+                                       'PPI_Module_Family_Health': 1,
+                                       'PPI_Module_Overall_Health': 3,
+                                       'PPI_Retention_Modules_Complete': 1,
+                                       'Physical_Measurements': 3,
+                                       'Registered': 4,
+                                       'PPI_Module_Medical_History': 2,
+                                       'PPI_Module_Healthcare_Access': 2,
+                                       'Samples_Received': 3}}, 'hpo': 'PITT'},
                                  {'date': '2018-01-03',
                                   'metrics':
                                     {'not_completed':
-                                       {'Full_Participant': 1L,
-                                        'PPI_Module_The_Basics': 1L,
-                                        'Consent_Complete': 0L,
-                                        'Consent_Enrollment': 0L,
-                                        'PPI_Module_Lifestyle': 1L,
-                                        'Baseline_PPI_Modules_Complete': 1L,
-                                        'PPI_Module_Family_Health': 0L,
-                                        'PPI_Module_Overall_Health': 1L,
-                                        'PPI_Retention_Modules_Complete': 0L,
-                                        'Physical_Measurements': 1L,
+                                       {'Full_Participant': 1,
+                                        'PPI_Module_The_Basics': 1,
+                                        'Consent_Complete': 0,
+                                        'Consent_Enrollment': 0,
+                                        'PPI_Module_Lifestyle': 1,
+                                        'Baseline_PPI_Modules_Complete': 1,
+                                        'PPI_Module_Family_Health': 0,
+                                        'PPI_Module_Overall_Health': 1,
+                                        'PPI_Retention_Modules_Complete': 0,
+                                        'Physical_Measurements': 1,
                                         'Registered': 0,
-                                        'PPI_Module_Medical_History': 0L,
-                                        'PPI_Module_Healthcare_Access': 0L,
-                                        'Samples_Received': 1L},
+                                        'PPI_Module_Medical_History': 0,
+                                        'PPI_Module_Healthcare_Access': 0,
+                                        'Samples_Received': 1},
                                      'completed':
-                                       {'Full_Participant': 1L,
-                                        'PPI_Module_The_Basics': 1L,
-                                        'Consent_Complete': 2L,
-                                        'Consent_Enrollment': 2L,
-                                        'PPI_Module_Lifestyle': 1L,
-                                        'Baseline_PPI_Modules_Complete': 1L,
-                                        'PPI_Module_Family_Health': 0L,
-                                        'PPI_Module_Overall_Health': 1L,
-                                        'PPI_Retention_Modules_Complete': 0L,
-                                        'Physical_Measurements': 1L,
-                                        'Registered': 2L,
-                                        'PPI_Module_Medical_History': 0L,
-                                        'PPI_Module_Healthcare_Access': 0L,
-                                        'Samples_Received': 1L}}, 'hpo': u'AZ_TUCSON'}])
+                                       {'Full_Participant': 1,
+                                        'PPI_Module_The_Basics': 1,
+                                        'Consent_Complete': 2,
+                                        'Consent_Enrollment': 2,
+                                        'PPI_Module_Lifestyle': 1,
+                                        'Baseline_PPI_Modules_Complete': 1,
+                                        'PPI_Module_Family_Health': 0,
+                                        'PPI_Module_Overall_Health': 1,
+                                        'PPI_Retention_Modules_Complete': 0,
+                                        'Physical_Measurements': 1,
+                                        'Registered': 2,
+                                        'PPI_Module_Medical_History': 0,
+                                        'PPI_Module_Healthcare_Access': 0,
+                                        'Samples_Received': 1}}, 'hpo': 'AZ_TUCSON'}])
 
   def test_get_metrics_lifecycle_data_api(self):
 
@@ -5098,115 +5098,115 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
 
-    self.assertEquals(results,
-                      [{u'date': u'2018-01-03',
-                        u'metrics': {u'not_completed': {u'Full_Participant': 0,
-                                                        u'PPI_Module_The_Basics': 0,
-                                                        u'Consent_Complete': 0,
-                                                        u'Consent_Enrollment': 0,
-                                                        u'PPI_Module_Lifestyle': 0,
-                                                        u'Registered': 0,
-                                                        u'Baseline_PPI_Modules_Complete': 0,
-                                                        u'PPI_Module_Overall_Health': 0,
-                                                        u'Physical_Measurements': 0,
-                                                        u'Samples_Received': 0},
-                                     u'completed': {u'Full_Participant': 1,
-                                                    u'PPI_Module_The_Basics': 1,
-                                                    u'Consent_Complete': 1,
-                                                    u'Consent_Enrollment': 1,
-                                                    u'PPI_Module_Lifestyle': 1,
-                                                    u'Registered': 1,
-                                                    u'Baseline_PPI_Modules_Complete': 1,
-                                                    u'PPI_Module_Overall_Health': 1,
-                                                    u'Physical_Measurements': 1,
-                                                    u'Samples_Received': 1}}, u'hpo': u'UNSET'},
-                       {u'date': u'2018-01-03',
-                        u'metrics': {u'not_completed': {u'Full_Participant': 2,
-                                                        u'PPI_Module_The_Basics': 1,
-                                                        u'Consent_Complete': 1,
-                                                        u'Consent_Enrollment': 0,
-                                                        u'PPI_Module_Lifestyle': 1,
-                                                        u'Registered': 0,
-                                                        u'Baseline_PPI_Modules_Complete': 1,
-                                                        u'PPI_Module_Overall_Health': 1,
-                                                        u'Physical_Measurements': 1,
-                                                        u'Samples_Received': 1},
-                                     u'completed': {u'Full_Participant': 0,
-                                                    u'PPI_Module_The_Basics': 1,
-                                                    u'Consent_Complete': 1,
-                                                    u'Consent_Enrollment': 2,
-                                                    u'PPI_Module_Lifestyle': 1,
-                                                    u'Registered': 2,
-                                                    u'Baseline_PPI_Modules_Complete': 1,
-                                                    u'PPI_Module_Overall_Health': 1,
-                                                    u'Physical_Measurements': 1,
-                                                    u'Samples_Received': 1}}, u'hpo': u'PITT'},
-                       {u'date': u'2018-01-03',
-                        u'metrics': {u'not_completed': {u'Full_Participant': 1,
-                                                        u'PPI_Module_The_Basics': 1,
-                                                        u'Consent_Complete': 0,
-                                                        u'Consent_Enrollment': 0,
-                                                        u'PPI_Module_Lifestyle': 1,
-                                                        u'Registered': 0,
-                                                        u'Baseline_PPI_Modules_Complete': 1,
-                                                        u'PPI_Module_Overall_Health': 1,
-                                                        u'Physical_Measurements': 1,
-                                                        u'Samples_Received': 1},
-                                     u'completed': {u'Full_Participant': 1,
-                                                    u'PPI_Module_The_Basics': 1,
-                                                    u'Consent_Complete': 2,
-                                                    u'Consent_Enrollment': 2,
-                                                    u'PPI_Module_Lifestyle': 1,
-                                                    u'Registered': 2,
-                                                    u'Baseline_PPI_Modules_Complete': 1,
-                                                    u'PPI_Module_Overall_Health': 1,
-                                                    u'Physical_Measurements': 1,
-                                                    u'Samples_Received': 1}}, u'hpo': u'AZ_TUCSON'}
+    self.assertEqual(results,
+                      [{'date': '2018-01-03',
+                        'metrics': {'not_completed': {'Full_Participant': 0,
+                                                        'PPI_Module_The_Basics': 0,
+                                                        'Consent_Complete': 0,
+                                                        'Consent_Enrollment': 0,
+                                                        'PPI_Module_Lifestyle': 0,
+                                                        'Registered': 0,
+                                                        'Baseline_PPI_Modules_Complete': 0,
+                                                        'PPI_Module_Overall_Health': 0,
+                                                        'Physical_Measurements': 0,
+                                                        'Samples_Received': 0},
+                                     'completed': {'Full_Participant': 1,
+                                                    'PPI_Module_The_Basics': 1,
+                                                    'Consent_Complete': 1,
+                                                    'Consent_Enrollment': 1,
+                                                    'PPI_Module_Lifestyle': 1,
+                                                    'Registered': 1,
+                                                    'Baseline_PPI_Modules_Complete': 1,
+                                                    'PPI_Module_Overall_Health': 1,
+                                                    'Physical_Measurements': 1,
+                                                    'Samples_Received': 1}}, 'hpo': 'UNSET'},
+                       {'date': '2018-01-03',
+                        'metrics': {'not_completed': {'Full_Participant': 2,
+                                                        'PPI_Module_The_Basics': 1,
+                                                        'Consent_Complete': 1,
+                                                        'Consent_Enrollment': 0,
+                                                        'PPI_Module_Lifestyle': 1,
+                                                        'Registered': 0,
+                                                        'Baseline_PPI_Modules_Complete': 1,
+                                                        'PPI_Module_Overall_Health': 1,
+                                                        'Physical_Measurements': 1,
+                                                        'Samples_Received': 1},
+                                     'completed': {'Full_Participant': 0,
+                                                    'PPI_Module_The_Basics': 1,
+                                                    'Consent_Complete': 1,
+                                                    'Consent_Enrollment': 2,
+                                                    'PPI_Module_Lifestyle': 1,
+                                                    'Registered': 2,
+                                                    'Baseline_PPI_Modules_Complete': 1,
+                                                    'PPI_Module_Overall_Health': 1,
+                                                    'Physical_Measurements': 1,
+                                                    'Samples_Received': 1}}, 'hpo': 'PITT'},
+                       {'date': '2018-01-03',
+                        'metrics': {'not_completed': {'Full_Participant': 1,
+                                                        'PPI_Module_The_Basics': 1,
+                                                        'Consent_Complete': 0,
+                                                        'Consent_Enrollment': 0,
+                                                        'PPI_Module_Lifestyle': 1,
+                                                        'Registered': 0,
+                                                        'Baseline_PPI_Modules_Complete': 1,
+                                                        'PPI_Module_Overall_Health': 1,
+                                                        'Physical_Measurements': 1,
+                                                        'Samples_Received': 1},
+                                     'completed': {'Full_Participant': 1,
+                                                    'PPI_Module_The_Basics': 1,
+                                                    'Consent_Complete': 2,
+                                                    'Consent_Enrollment': 2,
+                                                    'PPI_Module_Lifestyle': 1,
+                                                    'Registered': 2,
+                                                    'Baseline_PPI_Modules_Complete': 1,
+                                                    'PPI_Module_Overall_Health': 1,
+                                                    'Physical_Measurements': 1,
+                                                    'Samples_Received': 1}}, 'hpo': 'AZ_TUCSON'}
                        ])
 
-    self.assertEquals(results2,
-                      [{u'date': u'2018-01-08',
-                        u'metrics': {u'not_completed': {u'Full_Participant': 0,
-                                                        u'PPI_Module_The_Basics': 0,
-                                                        u'Consent_Complete': 0,
-                                                        u'Consent_Enrollment': 0,
-                                                        u'PPI_Module_Lifestyle': 0,
-                                                        u'Registered': 0,
-                                                        u'Baseline_PPI_Modules_Complete': 0,
-                                                        u'PPI_Module_Overall_Health': 0,
-                                                        u'Physical_Measurements': 0,
-                                                        u'Samples_Received': 0},
-                                     u'completed': {u'Full_Participant': 2,
-                                                    u'PPI_Module_The_Basics': 2,
-                                                    u'Consent_Complete': 2,
-                                                    u'Consent_Enrollment': 2,
-                                                    u'PPI_Module_Lifestyle': 2,
-                                                    u'Registered': 2,
-                                                    u'Baseline_PPI_Modules_Complete': 2,
-                                                    u'PPI_Module_Overall_Health': 2,
-                                                    u'Physical_Measurements': 2,
-                                                    u'Samples_Received': 2}}, u'hpo': u'PITT'},
-                       {u'date': u'2018-01-08',
-                        u'metrics': {u'not_completed': {u'Full_Participant': 0,
-                                                        u'PPI_Module_The_Basics': 0,
-                                                        u'Consent_Complete': 0,
-                                                        u'Consent_Enrollment': 0,
-                                                        u'PPI_Module_Lifestyle': 0,
-                                                        u'Registered': 0,
-                                                        u'Baseline_PPI_Modules_Complete': 0,
-                                                        u'PPI_Module_Overall_Health': 0,
-                                                        u'Physical_Measurements': 0,
-                                                        u'Samples_Received': 0},
-                                     u'completed': {u'Full_Participant': 2,
-                                                    u'PPI_Module_The_Basics': 2,
-                                                    u'Consent_Complete': 2,
-                                                    u'Consent_Enrollment': 2,
-                                                    u'PPI_Module_Lifestyle': 2,
-                                                    u'Registered': 2,
-                                                    u'Baseline_PPI_Modules_Complete': 2,
-                                                    u'PPI_Module_Overall_Health': 2,
-                                                    u'Physical_Measurements': 2,
-                                                    u'Samples_Received': 2}}, u'hpo': u'AZ_TUCSON'}
+    self.assertEqual(results2,
+                      [{'date': '2018-01-08',
+                        'metrics': {'not_completed': {'Full_Participant': 0,
+                                                        'PPI_Module_The_Basics': 0,
+                                                        'Consent_Complete': 0,
+                                                        'Consent_Enrollment': 0,
+                                                        'PPI_Module_Lifestyle': 0,
+                                                        'Registered': 0,
+                                                        'Baseline_PPI_Modules_Complete': 0,
+                                                        'PPI_Module_Overall_Health': 0,
+                                                        'Physical_Measurements': 0,
+                                                        'Samples_Received': 0},
+                                     'completed': {'Full_Participant': 2,
+                                                    'PPI_Module_The_Basics': 2,
+                                                    'Consent_Complete': 2,
+                                                    'Consent_Enrollment': 2,
+                                                    'PPI_Module_Lifestyle': 2,
+                                                    'Registered': 2,
+                                                    'Baseline_PPI_Modules_Complete': 2,
+                                                    'PPI_Module_Overall_Health': 2,
+                                                    'Physical_Measurements': 2,
+                                                    'Samples_Received': 2}}, 'hpo': 'PITT'},
+                       {'date': '2018-01-08',
+                        'metrics': {'not_completed': {'Full_Participant': 0,
+                                                        'PPI_Module_The_Basics': 0,
+                                                        'Consent_Complete': 0,
+                                                        'Consent_Enrollment': 0,
+                                                        'PPI_Module_Lifestyle': 0,
+                                                        'Registered': 0,
+                                                        'Baseline_PPI_Modules_Complete': 0,
+                                                        'PPI_Module_Overall_Health': 0,
+                                                        'Physical_Measurements': 0,
+                                                        'Samples_Received': 0},
+                                     'completed': {'Full_Participant': 2,
+                                                    'PPI_Module_The_Basics': 2,
+                                                    'Consent_Complete': 2,
+                                                    'Consent_Enrollment': 2,
+                                                    'PPI_Module_Lifestyle': 2,
+                                                    'Registered': 2,
+                                                    'Baseline_PPI_Modules_Complete': 2,
+                                                    'PPI_Module_Overall_Health': 2,
+                                                    'Physical_Measurements': 2,
+                                                    'Samples_Received': 2}}, 'hpo': 'AZ_TUCSON'}
                        ])
 
   def test_get_metrics_lifecycle_data_api_v2(self):
@@ -5267,102 +5267,102 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     qs1 = ''.join(qs1.split())
     results = self.send_get('ParticipantCountsOverTime', query_string=qs1)
-    self.assertEquals(results, [{u'date': u'2018-01-03',
-                                 u'metrics':
-                                   {u'not_completed':
-                                      {u'Full_Participant': 0,
-                                       u'PPI_Module_The_Basics': 0,
-                                       u'Consent_Complete': 0,
-                                       u'Consent_Enrollment': 0,
-                                       u'PPI_Module_Lifestyle': 0,
-                                       u'Registered': 0,
-                                       u'Baseline_PPI_Modules_Complete': 0,
-                                       u'Physical_Measurements': 0,
-                                       u'PPI_Module_Family_Health': 0,
-                                       u'PPI_Module_Overall_Health': 0,
-                                       u'PPI_Module_Medical_History': 0,
-                                       u'PPI_Retention_Modules_Complete': 0,
-                                       u'PPI_Module_Healthcare_Access': 0,
-                                       u'Samples_Received': 0},
-                                    u'completed':
-                                      {u'Full_Participant': 1,
-                                       u'PPI_Module_The_Basics': 1,
-                                       u'Consent_Complete': 1,
-                                       u'Consent_Enrollment': 1,
-                                       u'PPI_Module_Lifestyle': 1,
-                                       u'Registered': 1,
-                                       u'Baseline_PPI_Modules_Complete': 1,
-                                       u'Physical_Measurements': 1,
-                                       u'PPI_Module_Family_Health': 0,
-                                       u'PPI_Module_Overall_Health': 1,
-                                       u'PPI_Module_Medical_History': 0,
-                                       u'PPI_Retention_Modules_Complete': 0,
-                                       u'PPI_Module_Healthcare_Access': 0,
-                                       u'Samples_Received': 1}}, u'hpo': u'UNSET'},
-                                {u'date': u'2018-01-03',
-                                 u'metrics':
-                                   {u'not_completed':
-                                      {u'Full_Participant': 2,
-                                       u'PPI_Module_The_Basics': 1,
-                                       u'Consent_Complete': 1,
-                                       u'Consent_Enrollment': 0,
-                                       u'PPI_Module_Lifestyle': 1,
-                                       u'Registered': 0,
-                                       u'Baseline_PPI_Modules_Complete': 1,
-                                       u'Physical_Measurements': 1,
-                                       u'PPI_Module_Family_Health': 1,
-                                       u'PPI_Module_Overall_Health': 1,
-                                       u'PPI_Module_Medical_History': 0,
-                                       u'PPI_Retention_Modules_Complete': 1,
-                                       u'PPI_Module_Healthcare_Access': 0,
-                                       u'Samples_Received': 1},
-                                    u'completed':
-                                      {u'Full_Participant': 2,
-                                       u'PPI_Module_The_Basics': 3,
-                                       u'Consent_Complete': 3,
-                                       u'Consent_Enrollment': 4,
-                                       u'PPI_Module_Lifestyle': 3,
-                                       u'Registered': 4,
-                                       u'Baseline_PPI_Modules_Complete': 3,
-                                       u'Physical_Measurements': 3,
-                                       u'PPI_Module_Family_Health': 1,
-                                       u'PPI_Module_Overall_Health': 3,
-                                       u'PPI_Module_Medical_History': 2,
-                                       u'PPI_Retention_Modules_Complete': 1,
-                                       u'PPI_Module_Healthcare_Access': 2,
-                                       u'Samples_Received': 3}}, u'hpo': u'PITT'},
-                                {u'date': u'2018-01-03',
-                                 u'metrics':
-                                   {u'not_completed':
-                                      {u'Full_Participant': 1,
-                                       u'PPI_Module_The_Basics': 1,
-                                       u'Consent_Complete': 0,
-                                       u'Consent_Enrollment': 0,
-                                       u'PPI_Module_Lifestyle': 1,
-                                       u'Registered': 0,
-                                       u'Baseline_PPI_Modules_Complete': 1,
-                                       u'Physical_Measurements': 1,
-                                       u'PPI_Module_Family_Health': 0,
-                                       u'PPI_Module_Overall_Health': 1,
-                                       u'PPI_Module_Medical_History': 0,
-                                       u'PPI_Retention_Modules_Complete': 0,
-                                       u'PPI_Module_Healthcare_Access': 0,
-                                       u'Samples_Received': 1},
-                                    u'completed':
-                                      {u'Full_Participant': 1,
-                                       u'PPI_Module_The_Basics': 1,
-                                       u'Consent_Complete': 2,
-                                       u'Consent_Enrollment': 2,
-                                       u'PPI_Module_Lifestyle': 1,
-                                       u'Registered': 2,
-                                       u'Baseline_PPI_Modules_Complete': 1,
-                                       u'Physical_Measurements': 1,
-                                       u'PPI_Module_Family_Health': 0,
-                                       u'PPI_Module_Overall_Health': 1,
-                                       u'PPI_Module_Medical_History': 0,
-                                       u'PPI_Retention_Modules_Complete': 0,
-                                       u'PPI_Module_Healthcare_Access': 0,
-                                       u'Samples_Received': 1}}, u'hpo': u'AZ_TUCSON'}])
+    self.assertEqual(results, [{'date': '2018-01-03',
+                                 'metrics':
+                                   {'not_completed':
+                                      {'Full_Participant': 0,
+                                       'PPI_Module_The_Basics': 0,
+                                       'Consent_Complete': 0,
+                                       'Consent_Enrollment': 0,
+                                       'PPI_Module_Lifestyle': 0,
+                                       'Registered': 0,
+                                       'Baseline_PPI_Modules_Complete': 0,
+                                       'Physical_Measurements': 0,
+                                       'PPI_Module_Family_Health': 0,
+                                       'PPI_Module_Overall_Health': 0,
+                                       'PPI_Module_Medical_History': 0,
+                                       'PPI_Retention_Modules_Complete': 0,
+                                       'PPI_Module_Healthcare_Access': 0,
+                                       'Samples_Received': 0},
+                                    'completed':
+                                      {'Full_Participant': 1,
+                                       'PPI_Module_The_Basics': 1,
+                                       'Consent_Complete': 1,
+                                       'Consent_Enrollment': 1,
+                                       'PPI_Module_Lifestyle': 1,
+                                       'Registered': 1,
+                                       'Baseline_PPI_Modules_Complete': 1,
+                                       'Physical_Measurements': 1,
+                                       'PPI_Module_Family_Health': 0,
+                                       'PPI_Module_Overall_Health': 1,
+                                       'PPI_Module_Medical_History': 0,
+                                       'PPI_Retention_Modules_Complete': 0,
+                                       'PPI_Module_Healthcare_Access': 0,
+                                       'Samples_Received': 1}}, 'hpo': 'UNSET'},
+                                {'date': '2018-01-03',
+                                 'metrics':
+                                   {'not_completed':
+                                      {'Full_Participant': 2,
+                                       'PPI_Module_The_Basics': 1,
+                                       'Consent_Complete': 1,
+                                       'Consent_Enrollment': 0,
+                                       'PPI_Module_Lifestyle': 1,
+                                       'Registered': 0,
+                                       'Baseline_PPI_Modules_Complete': 1,
+                                       'Physical_Measurements': 1,
+                                       'PPI_Module_Family_Health': 1,
+                                       'PPI_Module_Overall_Health': 1,
+                                       'PPI_Module_Medical_History': 0,
+                                       'PPI_Retention_Modules_Complete': 1,
+                                       'PPI_Module_Healthcare_Access': 0,
+                                       'Samples_Received': 1},
+                                    'completed':
+                                      {'Full_Participant': 2,
+                                       'PPI_Module_The_Basics': 3,
+                                       'Consent_Complete': 3,
+                                       'Consent_Enrollment': 4,
+                                       'PPI_Module_Lifestyle': 3,
+                                       'Registered': 4,
+                                       'Baseline_PPI_Modules_Complete': 3,
+                                       'Physical_Measurements': 3,
+                                       'PPI_Module_Family_Health': 1,
+                                       'PPI_Module_Overall_Health': 3,
+                                       'PPI_Module_Medical_History': 2,
+                                       'PPI_Retention_Modules_Complete': 1,
+                                       'PPI_Module_Healthcare_Access': 2,
+                                       'Samples_Received': 3}}, 'hpo': 'PITT'},
+                                {'date': '2018-01-03',
+                                 'metrics':
+                                   {'not_completed':
+                                      {'Full_Participant': 1,
+                                       'PPI_Module_The_Basics': 1,
+                                       'Consent_Complete': 0,
+                                       'Consent_Enrollment': 0,
+                                       'PPI_Module_Lifestyle': 1,
+                                       'Registered': 0,
+                                       'Baseline_PPI_Modules_Complete': 1,
+                                       'Physical_Measurements': 1,
+                                       'PPI_Module_Family_Health': 0,
+                                       'PPI_Module_Overall_Health': 1,
+                                       'PPI_Module_Medical_History': 0,
+                                       'PPI_Retention_Modules_Complete': 0,
+                                       'PPI_Module_Healthcare_Access': 0,
+                                       'Samples_Received': 1},
+                                    'completed':
+                                      {'Full_Participant': 1,
+                                       'PPI_Module_The_Basics': 1,
+                                       'Consent_Complete': 2,
+                                       'Consent_Enrollment': 2,
+                                       'PPI_Module_Lifestyle': 1,
+                                       'Registered': 2,
+                                       'Baseline_PPI_Modules_Complete': 1,
+                                       'Physical_Measurements': 1,
+                                       'PPI_Module_Family_Health': 0,
+                                       'PPI_Module_Overall_Health': 1,
+                                       'PPI_Module_Medical_History': 0,
+                                       'PPI_Retention_Modules_Complete': 0,
+                                       'PPI_Module_Healthcare_Access': 0,
+                                       'Samples_Received': 1}}, 'hpo': 'AZ_TUCSON'}])
 
   def test_refresh_metrics_lifecycle_cache_data_for_public_metrics_api(self):
 
@@ -5398,7 +5398,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     service.refresh_data_for_metrics_cache(dao)
 
     results = dao.get_latest_version_from_cache('2018-01-03')
-    self.assertEquals(results, [{'date': '2018-01-03',
+    self.assertEqual(results, [{'date': '2018-01-03',
                                  'metrics': {
                                    'not_completed': {
                                      'Full_Participant': 3, 'PPI_Module_The_Basics': 2,
@@ -5420,7 +5420,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                  }])
 
     results2 = dao.get_latest_version_from_cache('2018-01-08')
-    self.assertEquals(results2, [{'date': '2018-01-08',
+    self.assertEqual(results2, [{'date': '2018-01-08',
                                   'metrics': {
                                     'not_completed': {
                                       'Full_Participant': 0, 'PPI_Module_The_Basics': 0,
@@ -5464,15 +5464,15 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results = dao.get_latest_version_from_cache('2017-12-30', '2018-01-03')
 
     self.assertIn({'date': '2017-12-30',
-                   'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': u'UNSET'}, results)
+                   'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': 'UNSET'}, results)
     self.assertIn({'date': '2017-12-31',
-                   'metrics': {'EN': 0, 'UNSET': 1, 'ES': 0}, 'hpo': u'UNSET'}, results)
+                   'metrics': {'EN': 0, 'UNSET': 1, 'ES': 0}, 'hpo': 'UNSET'}, results)
     self.assertIn({'date': '2017-12-30',
-                   'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': u'AZ_TUCSON'}, results)
+                   'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': 'AZ_TUCSON'}, results)
     self.assertIn({'date': '2017-12-31',
-                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 0}, 'hpo': u'AZ_TUCSON'}, results)
+                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 0}, 'hpo': 'AZ_TUCSON'}, results)
     self.assertIn({'date': '2018-01-01',
-                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 1}, 'hpo': u'AZ_TUCSON'}, results)
+                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 1}, 'hpo': 'AZ_TUCSON'}, results)
 
   def test_metrics_language_cache_api(self):
 
@@ -5508,15 +5508,15 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results1 = self.send_get('ParticipantCountsOverTime', query_string=qs1)
 
     self.assertIn({'date': '2017-12-30',
-                   'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': u'UNSET'}, results1)
+                   'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': 'UNSET'}, results1)
     self.assertIn({'date': '2017-12-31',
-                   'metrics': {'EN': 0, 'UNSET': 1, 'ES': 0}, 'hpo': u'UNSET'}, results1)
+                   'metrics': {'EN': 0, 'UNSET': 1, 'ES': 0}, 'hpo': 'UNSET'}, results1)
     self.assertIn({'date': '2017-12-30',
-                   'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': u'AZ_TUCSON'}, results1)
+                   'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': 'AZ_TUCSON'}, results1)
     self.assertIn({'date': '2017-12-31',
-                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 0}, 'hpo': u'AZ_TUCSON'}, results1)
+                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 0}, 'hpo': 'AZ_TUCSON'}, results1)
     self.assertIn({'date': '2018-01-01',
-                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 1}, 'hpo': u'AZ_TUCSON'}, results1)
+                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 1}, 'hpo': 'AZ_TUCSON'}, results1)
 
     # test API with awardee parameters
     qs2 = """
@@ -5532,15 +5532,15 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
 
     self.assertNotIn({'date': '2017-12-30',
-                      'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': u'UNSET'}, results2)
+                      'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': 'UNSET'}, results2)
     self.assertNotIn({'date': '2017-12-31',
-                      'metrics': {'EN': 0, 'UNSET': 1, 'ES': 0}, 'hpo': u'UNSET'}, results2)
+                      'metrics': {'EN': 0, 'UNSET': 1, 'ES': 0}, 'hpo': 'UNSET'}, results2)
     self.assertIn({'date': '2017-12-30',
-                   'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': u'AZ_TUCSON'}, results2)
+                   'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': 'AZ_TUCSON'}, results2)
     self.assertIn({'date': '2017-12-31',
-                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 0}, 'hpo': u'AZ_TUCSON'}, results2)
+                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 0}, 'hpo': 'AZ_TUCSON'}, results2)
     self.assertIn({'date': '2018-01-01',
-                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 1}, 'hpo': u'AZ_TUCSON'}, results2)
+                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 1}, 'hpo': 'AZ_TUCSON'}, results2)
 
     # test API with enrollmentStatus parameters
     qs3 = """
@@ -5556,13 +5556,13 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
     self.assertNotIn({'date': '2017-12-31',
-                      'metrics': {'EN': 0, 'UNSET': 1, 'ES': 0}, 'hpo': u'UNSET'}, results3)
-    self.assertIn({u'date': u'2018-01-02',
-                   u'metrics': {u'EN': 0, u'ES': 0, u'UNSET': 0}, u'hpo': u'UNSET'}, results3)
-    self.assertIn({u'date': u'2018-01-01',
-                   u'metrics': {u'EN': 0, u'ES': 0, u'UNSET': 1}, u'hpo': u'AZ_TUCSON'}, results3)
-    self.assertIn({u'date': u'2018-01-02',
-                   u'metrics': {u'EN': 1, u'ES': 0, u'UNSET': 1}, u'hpo': u'AZ_TUCSON'}, results3)
+                      'metrics': {'EN': 0, 'UNSET': 1, 'ES': 0}, 'hpo': 'UNSET'}, results3)
+    self.assertIn({'date': '2018-01-02',
+                   'metrics': {'EN': 0, 'ES': 0, 'UNSET': 0}, 'hpo': 'UNSET'}, results3)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {'EN': 0, 'ES': 0, 'UNSET': 1}, 'hpo': 'AZ_TUCSON'}, results3)
+    self.assertIn({'date': '2018-01-02',
+                   'metrics': {'EN': 1, 'ES': 0, 'UNSET': 1}, 'hpo': 'AZ_TUCSON'}, results3)
 
   def test_refresh_metrics_language_cache_data_for_public_metrics_api(self):
 
@@ -5638,7 +5638,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       time_fp=datetime.datetime(2018, 1, 4)
     )
 
-    qs = urllib.urlencode([
+    qs = urllib.parse.urlencode([
       ('stratification', 'TOTAL'),
       ('startDate', '2018-01-01'),
       ('endDate', '2018-01-05')
@@ -5667,7 +5667,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       time_fp=datetime.datetime(2018, 1, 4)
     )
 
-    qs = urllib.urlencode([
+    qs = urllib.parse.urlencode([
       ('stratification', 'EHR_CONSENT'),
       ('startDate', '2018-01-01'),
       ('endDate', '2018-01-05')
@@ -5705,7 +5705,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       time_fp=datetime.datetime(2018, 1, 6)
     )
 
-    qs = urllib.urlencode([
+    qs = urllib.parse.urlencode([
       ('stratification', 'EHR_RATIO'),
       ('startDate', '2018-01-01'),
       ('endDate', '2018-01-06')

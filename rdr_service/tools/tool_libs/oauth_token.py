@@ -37,7 +37,7 @@ class OAuthTokenClass(object):
     """
     global do_continue
     token = gcp_get_app_access_token()
-    print('\ntoken: {0}\n'.format(token))
+    print(('\ntoken: {0}\n'.format(token)))
     print('press ctrl-c to clean up key')
 
     while do_continue:

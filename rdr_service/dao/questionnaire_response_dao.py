@@ -103,7 +103,7 @@ class QuestionnaireResponseDao(BaseDao):
     if 'group' in resource:
       self._validate_link_ids_from_resource_json_group(resource['group'], link_ids)
 
-    if 'question' not in resource and type(resource) is list:
+    if 'question' not in resource and isinstance(resource, list):
       for item in resource:
         self._validate_link_ids_from_resource_json_group(item, link_ids)
 

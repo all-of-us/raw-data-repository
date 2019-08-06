@@ -200,7 +200,7 @@ def merge_dicts(dict_a, dict_b):
   """Recursively merge dictionary b into dictionary a.
   """
   def _merge_dicts_(a, b):
-    for key in set(a.keys()).union(b.keys()):
+    for key in set(a.keys()).union(list(b.keys())):
       if key in a and key in b:
         if isinstance(a[key], dict) and isinstance(b[key], dict):
           yield (key, dict(_merge_dicts_(a[key], b[key])))

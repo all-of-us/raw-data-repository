@@ -1,9 +1,9 @@
-import StringIO
+import io
 import collections
 import contextlib
 import copy
 import datetime
-import httplib
+import http.client
 # Python 3: change 'imp' to 'importlib'
 import imp
 import json
@@ -251,37 +251,37 @@ class _TestDb(object):
       return code
 
     with CodeDao().session() as session:
-      module = create_code(u'Module Name', u'ConsentPII', CodeType.MODULE, None)
+      module = create_code('Module Name', 'ConsentPII', CodeType.MODULE, None)
       session.add(module)
 
-      topic = create_code(u'Language', u'ConsentPII_Language', CodeType.TOPIC, module)
+      topic = create_code('Language', 'ConsentPII_Language', CodeType.TOPIC, module)
       session.add(topic)
 
-      qn = create_code(u'Language', u'Language_SpokenWrittenLanguage', CodeType.QUESTION, topic)
+      qn = create_code('Language', 'Language_SpokenWrittenLanguage', CodeType.QUESTION, topic)
       session.add(qn)
-      session.add(create_code(u'Language', u'SpokenWrittenLanguage_English', CodeType.ANSWER, qn))
-      session.add(create_code(u'Language', u'SpokenWrittenLanguage_ChineseChina', CodeType.ANSWER, qn))
-      session.add(create_code(u'Language', u'SpokenWrittenLanguage_French', CodeType.ANSWER, qn))
+      session.add(create_code('Language', 'SpokenWrittenLanguage_English', CodeType.ANSWER, qn))
+      session.add(create_code('Language', 'SpokenWrittenLanguage_ChineseChina', CodeType.ANSWER, qn))
+      session.add(create_code('Language', 'SpokenWrittenLanguage_French', CodeType.ANSWER, qn))
 
-      topic = create_code(u'Address', u'ConsentPII_PIIAddress', CodeType.TOPIC, module)
+      topic = create_code('Address', 'ConsentPII_PIIAddress', CodeType.TOPIC, module)
       session.add(topic)
 
-      session.add(create_code(u'Address', u'PIIAddress_StreetAddress', CodeType.QUESTION, topic))
-      session.add(create_code(u'Address', u'PIIAddress_StreetAddress2', CodeType.QUESTION, topic))
+      session.add(create_code('Address', 'PIIAddress_StreetAddress', CodeType.QUESTION, topic))
+      session.add(create_code('Address', 'PIIAddress_StreetAddress2', CodeType.QUESTION, topic))
 
-      topic = create_code(u'Name', u'ConsentPII_PIIName', CodeType.TOPIC, module)
+      topic = create_code('Name', 'ConsentPII_PIIName', CodeType.TOPIC, module)
       session.add(topic)
 
-      session.add(create_code(u'Name', u'PIIName_First', CodeType.QUESTION, topic))
-      session.add(create_code(u'Name', u'PIIName_Middle', CodeType.QUESTION, topic))
-      session.add(create_code(u'Name', u'PIIName_Last', CodeType.QUESTION, topic))
+      session.add(create_code('Name', 'PIIName_First', CodeType.QUESTION, topic))
+      session.add(create_code('Name', 'PIIName_Middle', CodeType.QUESTION, topic))
+      session.add(create_code('Name', 'PIIName_Last', CodeType.QUESTION, topic))
 
-      session.add(create_code(u'Email Address', u'ConsentPII_EmailAddress', CodeType.QUESTION, module))
+      session.add(create_code('Email Address', 'ConsentPII_EmailAddress', CodeType.QUESTION, module))
 
-      topic = create_code(u'Extra Consent Items', u'ConsentPII_ExtraConsent', CodeType.TOPIC, module)
-      session.add(create_code(u'Extra Consent Items', u'ExtraConsent_CABoRSignature', CodeType.QUESTION, topic))
+      topic = create_code('Extra Consent Items', 'ConsentPII_ExtraConsent', CodeType.TOPIC, module)
+      session.add(create_code('Extra Consent Items', 'ExtraConsent_CABoRSignature', CodeType.QUESTION, topic))
 
-      module = create_code(u'Module Name', u'OverallHealth', CodeType.MODULE, None)
+      module = create_code('Module Name', 'OverallHealth', CodeType.MODULE, None)
       session.add(module)
 
       session.commit()
@@ -447,7 +447,7 @@ class SqlTestBase(TestbedTestBase):
     dict2 = obj2.asdict()
     del dict1['lastModified']
     del dict2['lastModified']
-    self.assertEquals(dict1, dict2)
+    self.assertEqual(dict1, dict2)
 
   def assertListAsDictEquals(self, list_a, list_b):
     if len(list_a) != len(list_b):
@@ -455,7 +455,7 @@ class SqlTestBase(TestbedTestBase):
                                                                 list_as_dict(list_a),
                                                                 list_as_dict(list_b)))
     for i in range(0, len(list_a)):
-      self.assertEquals(list_a[i].asdict(), list_b[i].asdict())
+      self.assertEqual(list_a[i].asdict(), list_b[i].asdict())
 
 
 class InMemorySqlExporter(sql_exporter.SqlExporter):
@@ -466,7 +466,7 @@ class InMemorySqlExporter(sql_exporter.SqlExporter):
   def __init__(self, test):
     super(InMemorySqlExporter, self).__init__('inmemory')  # fake bucket name
     self._test = test
-    self._path_to_buffer = collections.defaultdict(StringIO.StringIO)
+    self._path_to_buffer = collections.defaultdict(io.StringIO)
 
   @contextlib.contextmanager
   def open_writer(self, file_name, predicate=None):
@@ -474,11 +474,11 @@ class InMemorySqlExporter(sql_exporter.SqlExporter):
                                            use_unicode=True)
 
   def assertFilesEqual(self, paths):
-    self._test.assertItemsEqual(paths, self._path_to_buffer.keys())
+    self._test.assertItemsEqual(paths, list(self._path_to_buffer.keys()))
 
   def _get_dict_reader(self, file_name):
     return UnicodeDictReader(
-        StringIO.StringIO(self._path_to_buffer[file_name].getvalue()),
+        io.StringIO(self._path_to_buffer[file_name].getvalue()),
         delimiter=sql_exporter.DELIMITER)
 
   def assertColumnNamesEqual(self, file_name, col_names):
@@ -486,7 +486,7 @@ class InMemorySqlExporter(sql_exporter.SqlExporter):
 
   def assertRowCount(self, file_name, n):
     rows = list(self._get_dict_reader(file_name))
-    self._test.assertEquals(
+    self._test.assertEqual(
         n, len(rows), 'Expected %d rows in %r but found %d: %s.' % (n, file_name, len(rows), rows))
 
   def assertHasRow(self, file_name, expected_row):
@@ -502,7 +502,7 @@ class InMemorySqlExporter(sql_exporter.SqlExporter):
     rows = list(self._get_dict_reader(file_name))
     for row in rows:
       found_all = True
-      for required_k, required_v in expected_row.iteritems():
+      for required_k, required_v in expected_row.items():
         if required_k not in row or row[required_k] != required_v:
           found_all = False
           break
@@ -605,7 +605,7 @@ class FlaskTestBase(NdbTestBase):
     return self.send_request('GET', *args, **kwargs)
 
   def send_request(self, method, local_path, request_data=None, query_string=None,
-                   expected_status=httplib.OK, headers=None, expected_response_headers=None):
+                   expected_status=http.client.OK, headers=None, expected_response_headers=None):
     """Makes a JSON API call against the test client and returns its response data.
 
     Args:
@@ -621,15 +621,15 @@ class FlaskTestBase(NdbTestBase):
         query_string=query_string,
         content_type='application/json',
         headers=headers)
-    self.assertEquals(response.status_code, expected_status, response.data)
+    self.assertEqual(response.status_code, expected_status, response.data)
     if expected_response_headers:
       self.assertTrue(set(expected_response_headers.items())
                           .issubset(set(response.headers.items())),
                       "Expected response headers: %s; actual: %s" %
                       (expected_response_headers, response.headers))
-    if expected_status == httplib.OK:
+    if expected_status == http.client.OK:
       return json.loads(response.data)
-    if expected_status == httplib.CREATED:
+    if expected_status == http.client.CREATED:
       return response
     return None
 
@@ -678,15 +678,15 @@ class FlaskTestBase(NdbTestBase):
         _clean_and_format_response_json(obj_a), _clean_and_format_response_json(obj_b))
 
   def assertBundle(self, expected_entries, response, has_next=False):
-    self.assertEquals('Bundle', response['resourceType'])
-    self.assertEquals('searchset', response['type'])
+    self.assertEqual('Bundle', response['resourceType'])
+    self.assertEqual('searchset', response['type'])
     if len(expected_entries) != len(response['entry']):
       self.fail("Expected %d entries, got %d: %s" % (len(expected_entries), len(response['entry']),
                                                      response['entry']))
     for i in range(0, len(expected_entries)):
       self.assertJsonResponseMatches(expected_entries[i], response['entry'][i])
     if has_next:
-      self.assertEquals('next', response['link'][0]['relation'])
+      self.assertEqual('next', response['link'][0]['relation'])
       return response['link'][0]['url']
     else:
       self.assertIsNone(response.get('link'))
@@ -717,8 +717,8 @@ def to_dict_strip_last_modified(obj):
 
 
 def sort_lists(obj):
-  for key, val in obj.iteritems():
-    if type(val) is list:
+  for key, val in obj.items():
+    if isinstance(val, list):
       obj[key] = sorted(val)
   return obj
 

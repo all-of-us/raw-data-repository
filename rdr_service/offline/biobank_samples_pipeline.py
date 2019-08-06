@@ -177,7 +177,7 @@ def _upsert_samples_from_csv(csv_reader):
         written += samples_dao.upsert_all(samples)
 
     return written
-  except ValueError, e:
+  except ValueError as e:
     raise DataError('Error upserting samples from CSV: %s' % e.message)
 
 def _parse_timestamp(row, key, sample):
@@ -185,7 +185,7 @@ def _parse_timestamp(row, key, sample):
   if str_val:
     try:
       naive = datetime.datetime.strptime(str_val, _INPUT_TIMESTAMP_FORMAT)
-    except ValueError, e:
+    except ValueError as e:
       raise DataError(
           'Sample %r for %r has bad timestamp %r: %s'
           % (sample.biobankStoredSampleId, sample.biobankId, str_val, e.message))

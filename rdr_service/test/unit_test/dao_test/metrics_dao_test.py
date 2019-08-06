@@ -37,8 +37,8 @@ class MetricsDaoTest(SqlTestBase):
       self.metrics_version_dao.set_pipeline_in_progress()
     expected_mv = MetricsVersion(metricsVersionId=1, inProgress=True, complete=False,
                                  date=TIME, dataVersion=SERVING_METRICS_DATA_VERSION)
-    self.assertEquals(expected_mv.asdict(), self.metrics_version_dao.get(1).asdict())
-    self.assertEquals(expected_mv.asdict(),
+    self.assertEqual(expected_mv.asdict(), self.metrics_version_dao.get(1).asdict())
+    self.assertEqual(expected_mv.asdict(),
                       self.metrics_version_dao.get_version_in_progress().asdict())
     self.assertIsNone(self.metrics_version_dao.get_serving_version())
     self.assertIsNone(self.metrics_bucket_dao.get_active_buckets())
@@ -57,10 +57,10 @@ class MetricsDaoTest(SqlTestBase):
       self.metrics_version_dao.set_pipeline_in_progress()
     expected_mv = MetricsVersion(metricsVersionId=1, inProgress=False, complete=False,
                                  date=TIME, dataVersion=SERVING_METRICS_DATA_VERSION)
-    self.assertEquals(expected_mv.asdict(), self.metrics_version_dao.get(1).asdict())
+    self.assertEqual(expected_mv.asdict(), self.metrics_version_dao.get(1).asdict())
     expected_mv2 = MetricsVersion(metricsVersionId=2, inProgress=True, complete=False,
                                   date=TIME_3, dataVersion=SERVING_METRICS_DATA_VERSION)
-    self.assertEquals(expected_mv2.asdict(), self.metrics_version_dao.get(2).asdict())
+    self.assertEqual(expected_mv2.asdict(), self.metrics_version_dao.get(2).asdict())
 
   def test_set_pipeline_finished_not_in_progress(self):
     self.metrics_version_dao.set_pipeline_finished(True)
@@ -72,8 +72,8 @@ class MetricsDaoTest(SqlTestBase):
       self.metrics_version_dao.set_pipeline_finished(True)
     expected_mv = MetricsVersion(metricsVersionId=1, inProgress=False, complete=True,
                                  date=TIME, dataVersion=SERVING_METRICS_DATA_VERSION)
-    self.assertEquals(expected_mv.asdict(), self.metrics_version_dao.get(1).asdict())
-    self.assertEquals([], self.metrics_bucket_dao.get_active_buckets())
+    self.assertEqual(expected_mv.asdict(), self.metrics_version_dao.get(1).asdict())
+    self.assertEqual([], self.metrics_bucket_dao.get_active_buckets())
 
   def test_set_pipeline_finished_in_progress_with_buckets(self):
     with FakeClock(TIME):
@@ -92,36 +92,36 @@ class MetricsDaoTest(SqlTestBase):
       self.metrics_version_dao.set_pipeline_finished(True)
     expected_mv = MetricsVersion(metricsVersionId=1, inProgress=False, complete=True,
                                  date=TIME, dataVersion=SERVING_METRICS_DATA_VERSION)
-    self.assertEquals(expected_mv.asdict(),
+    self.assertEqual(expected_mv.asdict(),
                       self.metrics_version_dao.get_serving_version().asdict())
     active_buckets = self.metrics_bucket_dao.get_active_buckets()
-    self.assertEquals(3, len(active_buckets))
-    self.assertEquals(metrics_bucket_1.asdict(), active_buckets[0].asdict())
-    self.assertEquals(metrics_bucket_2.asdict(), active_buckets[1].asdict())
-    self.assertEquals(metrics_bucket_3.asdict(), active_buckets[2].asdict())
+    self.assertEqual(3, len(active_buckets))
+    self.assertEqual(metrics_bucket_1.asdict(), active_buckets[0].asdict())
+    self.assertEqual(metrics_bucket_2.asdict(), active_buckets[1].asdict())
+    self.assertEqual(metrics_bucket_3.asdict(), active_buckets[2].asdict())
 
     # Filter on start date.
     active_buckets = self.metrics_bucket_dao.get_active_buckets(start_date=datetime.date.today())
-    self.assertEquals(3, len(active_buckets))
-    self.assertEquals(metrics_bucket_1.asdict(), active_buckets[0].asdict())
-    self.assertEquals(metrics_bucket_2.asdict(), active_buckets[1].asdict())
-    self.assertEquals(metrics_bucket_3.asdict(), active_buckets[2].asdict())
+    self.assertEqual(3, len(active_buckets))
+    self.assertEqual(metrics_bucket_1.asdict(), active_buckets[0].asdict())
+    self.assertEqual(metrics_bucket_2.asdict(), active_buckets[1].asdict())
+    self.assertEqual(metrics_bucket_3.asdict(), active_buckets[2].asdict())
 
     active_buckets = self.metrics_bucket_dao.get_active_buckets(start_date=tomorrow)
-    self.assertEquals(1, len(active_buckets))
-    self.assertEquals(metrics_bucket_3.asdict(), active_buckets[0].asdict())
+    self.assertEqual(1, len(active_buckets))
+    self.assertEqual(metrics_bucket_3.asdict(), active_buckets[0].asdict())
 
     # Filter on end date.
     active_buckets = self.metrics_bucket_dao.get_active_buckets(end_date=tomorrow)
-    self.assertEquals(3, len(active_buckets))
-    self.assertEquals(metrics_bucket_1.asdict(), active_buckets[0].asdict())
-    self.assertEquals(metrics_bucket_2.asdict(), active_buckets[1].asdict())
-    self.assertEquals(metrics_bucket_3.asdict(), active_buckets[2].asdict())
+    self.assertEqual(3, len(active_buckets))
+    self.assertEqual(metrics_bucket_1.asdict(), active_buckets[0].asdict())
+    self.assertEqual(metrics_bucket_2.asdict(), active_buckets[1].asdict())
+    self.assertEqual(metrics_bucket_3.asdict(), active_buckets[2].asdict())
 
     active_buckets = self.metrics_bucket_dao.get_active_buckets(end_date=datetime.date.today())
-    self.assertEquals(2, len(active_buckets))
-    self.assertEquals(metrics_bucket_1.asdict(), active_buckets[0].asdict())
-    self.assertEquals(metrics_bucket_2.asdict(), active_buckets[1].asdict())
+    self.assertEqual(2, len(active_buckets))
+    self.assertEqual(metrics_bucket_1.asdict(), active_buckets[0].asdict())
+    self.assertEqual(metrics_bucket_2.asdict(), active_buckets[1].asdict())
 
   def test_insert_duplicate_bucket(self):
     with FakeClock(TIME):
@@ -136,7 +136,7 @@ class MetricsDaoTest(SqlTestBase):
 
     # Upsert should work, and replace the bucket.
     self.metrics_bucket_dao.upsert(metrics_bucket_2)
-    self.assertEquals(metrics_bucket_2.asdict(),
+    self.assertEqual(metrics_bucket_2.asdict(),
                       self.metrics_bucket_dao.get([1, datetime.date.today(), PITT]).asdict())
 
   def test_delete_old_metrics(self):
@@ -156,7 +156,7 @@ class MetricsDaoTest(SqlTestBase):
                                    date=TIME, dataVersion=SERVING_METRICS_DATA_VERSION)
       expected_mv.buckets.append(metrics_bucket_1)
       expected_mv.buckets.append(metrics_bucket_2)
-      self.assertEquals(expected_mv.asdict(follow=['buckets']),
+      self.assertEqual(expected_mv.asdict(follow=['buckets']),
                         self.metrics_version_dao.get_with_children(1).asdict(follow=['buckets']))
 
      # After 3 days, the metrics are gone.

@@ -111,7 +111,7 @@ _QUESTIONNAIRE_CONCEPTS = [CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
                           THE_BASICS_PPI_MODULE]
 _CALIFORNIA_HPOS = ['CAL_PMC', 'SAN_YSIDRO']
 
-_QUESTION_CODES = QUESTION_CODE_TO_FIELD.keys() + [RACE_QUESTION_CODE,
+_QUESTION_CODES = list(QUESTION_CODE_TO_FIELD.keys()) + [RACE_QUESTION_CODE,
                                                    CABOR_SIGNATURE_QUESTION_CODE]
 
 _CONSTANT_CODES = [PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE]
@@ -185,7 +185,7 @@ class FakeParticipantGenerator(object):
             all_codes = (answer_codes + _CONSTANT_CODES) if answer_codes else _CONSTANT_CODES
             self._question_code_to_answer_codes[question_code.value] = all_codes
     # Log warnings for any question codes not found in the questionnaires.
-    for code_value in _QUESTION_CODES + self._answer_specs.keys():
+    for code_value in _QUESTION_CODES + list(self._answer_specs.keys()):
       questionnaire_id = question_code_to_questionnaire_id.get(code_value)
       if not questionnaire_id:
         logging.warning('Question for code %s missing; import questionnaires', code_value)
@@ -320,7 +320,7 @@ class FakeParticipantGenerator(object):
         "value": value
       }
     if 'string' in measurement['types']:
-      resource['valueString'] = ''.join([random.choice(string.lowercase) for _ in xrange(20)])
+      resource['valueString'] = ''.join([random.choice(string.lowercase) for _ in range(20)])
     if measurement['valueCodes']:
       value_code = random.choice(measurement['valueCodes'])
       resource['valueCodeableConcept'] = {
@@ -539,7 +539,7 @@ class FakeParticipantGenerator(object):
       entries.append(first_entry)
       if num_measurements > 1:
         measurement_resources.append(first_entry['resource'])
-        for i in xrange(1, num_measurements):
+        for i in range(1, num_measurements):
           entry = self._make_measurement_entry(measurement, time_str, participant_id,
                                                qualifier_set, first_entry['resource'], i + 1)
           measurement_resources.append(entry['resource'])
@@ -790,7 +790,7 @@ class FakeParticipantGenerator(object):
   def _choose_state_and_zip(self, answer_map):
     if random.random() <= _QUESTION_NOT_ANSWERED:
       return
-    zip_code = random.choice(self._zip_code_to_state.keys())
+    zip_code = random.choice(list(self._zip_code_to_state.keys()))
     state = self._zip_code_to_state.get(zip_code)
     answer_map[ZIPCODE_QUESTION_CODE] = _string_answer(zip_code)
     answer_map[STATE_QUESTION_CODE] = [_code_answer('PIIState_%s' % state)]
@@ -821,18 +821,18 @@ class FakeParticipantGenerator(object):
     if int(answer_spec['decimal_answer_count']) > 0:
       return [{'valueDecimal': round(random.uniform(float(answer_spec['min_decimal_answer']),
                                                     float(answer_spec['max_decimal_answer'])), 1)}
-              for _ in xrange(answer_count)]
+              for _ in range(answer_count)]
     if int(answer_spec['integer_answer_count']) > 0:
       return [{'valueInteger': random.randint(int(answer_spec['min_integer_answer']),
                                               int(answer_spec['max_integer_answer']))}
-              for _ in xrange(answer_count)]
+              for _ in range(answer_count)]
     if int(answer_spec['date_answer_count']) > 0:
       min_date = parse(answer_spec['min_date_answer'])
       max_date = parse(answer_spec['max_date_answer'])
       days_diff = (max_date - min_date).days
       return [{'valueDate': (min_date +
                              datetime.timedelta(days=random.randint(0, days_diff))).isoformat()}
-              for _ in xrange(answer_count)]
+              for _ in range(answer_count)]
     if int(answer_spec['datetime_answer_count']) > 0:
       min_date = parse(answer_spec['min_datetime_answer'])
       max_date = parse(answer_spec['max_datetime_answer'])
@@ -840,21 +840,21 @@ class FakeParticipantGenerator(object):
       return [{'valueDateTime': (min_date +
                                  datetime.timedelta(seconds=random.randint(0, seconds_diff)))
                                  .isoformat()}
-              for _ in xrange(answer_count)]
+              for _ in range(answer_count)]
     if int(answer_spec['boolean_answer_count']) > 0:
       return [{'valueBoolean': random.random() < 0.5}]
     if int(answer_spec['string_answer_count']) > 0:
-      return [{'valueString': ''.join([random.choice(string.lowercase) for _ in xrange(20)])}
-              for _ in xrange(answer_count)]
+      return [{'valueString': ''.join([random.choice(string.lowercase) for _ in range(20)])}
+              for _ in range(answer_count)]
     if int(answer_spec['uri_answer_count']) > 0:
       return [{'valueUri': 'gs://notarealbucket.example.com/%s' %
-               ''.join([random.choice(string.lowercase) for _ in xrange(20)])}
-               for _ in xrange(answer_count)]
+               ''.join([random.choice(string.lowercase) for _ in range(20)])}
+               for _ in range(answer_count)]
     logging.warn('No answer type found for %s, skipping...' % answer_spec['question_code'])
     return None
 
   def _choose_answers_for_other_questions(self, answer_map):
-    for question_code, answer_spec in self._answer_specs.iteritems():
+    for question_code, answer_spec in list(self._answer_specs.items()):
       num_participants = int(answer_spec['num_participants'])
       # Skip answering this question based on the percentage of participants that answered it.
       if random.random() > float(num_participants) / float(self._answer_specs_max_participants):
@@ -918,7 +918,7 @@ class FakeParticipantGenerator(object):
                                         questions, submission_time, answer_map, ignore_failure)
 
     the_basics_submission_time = None
-    for questionnaire_id_and_version, questions in self._questionnaire_to_questions.iteritems():
+    for questionnaire_id_and_version, questions in list(self._questionnaire_to_questions.items()):
       if (questionnaire_id_and_version != self._consent_questionnaire_id_and_version and
         (random.random() > _QUESTIONNAIRE_NOT_SUBMITTED or force_measurement)):
 

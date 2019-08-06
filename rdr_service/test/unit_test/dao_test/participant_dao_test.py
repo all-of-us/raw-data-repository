@@ -38,10 +38,10 @@ class ParticipantDaoTest(SqlTestBase):
         self.dao.insert(p)
     expected_participant = self._participant_with_defaults(
         participantId=1, version=1, biobankId=2, lastModified=time, signUpTime=time)
-    self.assertEquals(expected_participant.asdict(), p.asdict())
+    self.assertEqual(expected_participant.asdict(), p.asdict())
 
     p2 = self.dao.get(1)
-    self.assertEquals(p.asdict(), p2.asdict())
+    self.assertEqual(p.asdict(), p2.asdict())
 
     # Creating a participant also creates a ParticipantHistory row, but not a ParticipantSummary row
     ps = self.participant_summary_dao.get(1)
@@ -49,7 +49,7 @@ class ParticipantDaoTest(SqlTestBase):
     ph = self.participant_history_dao.get([1, 1])
     expected_ph = self._participant_history_with_defaults(
         participantId=1, biobankId=2, lastModified=time, signUpTime=time)
-    self.assertEquals(expected_ph.asdict(), ph.asdict())
+    self.assertEqual(expected_ph.asdict(), ph.asdict())
 
   def test_insert_with_external_id(self):
     p = Participant(externalId=3)
@@ -59,10 +59,10 @@ class ParticipantDaoTest(SqlTestBase):
         self.dao.insert(p)
     expected_participant = self._participant_with_defaults(
       participantId=1, externalId=3, version=1, biobankId=2, lastModified=time, signUpTime=time)
-    self.assertEquals(expected_participant.asdict(), p.asdict())
+    self.assertEqual(expected_participant.asdict(), p.asdict())
 
     p2 = self.dao.get(1)
-    self.assertEquals(p.asdict(), p2.asdict())
+    self.assertEqual(p.asdict(), p2.asdict())
 
     # Creating a participant also creates a ParticipantHistory row, but not a ParticipantSummary row
     ps = self.participant_summary_dao.get(1)
@@ -70,7 +70,7 @@ class ParticipantDaoTest(SqlTestBase):
     ph = self.participant_history_dao.get([1, 1])
     expected_ph = self._participant_history_with_defaults(
       participantId=1, externalId=3, biobankId=2, lastModified=time, signUpTime=time)
-    self.assertEquals(expected_ph.asdict(), ph.asdict())
+    self.assertEqual(expected_ph.asdict(), ph.asdict())
 
 
   def test_insert_duplicate_participant_id_retry(self):
@@ -84,7 +84,7 @@ class ParticipantDaoTest(SqlTestBase):
         p2 = self.dao.insert(p2)
     expected_participant = self._participant_with_defaults(
         participantId=2, version=1, biobankId=3, lastModified=time, signUpTime=time)
-    self.assertEquals(expected_participant.asdict(), p2.asdict())
+    self.assertEqual(expected_participant.asdict(), p2.asdict())
 
   def test_insert_duplicate_participant_id_give_up(self):
     p = Participant()
@@ -128,8 +128,8 @@ class ParticipantDaoTest(SqlTestBase):
     expected_participant = self._participant_with_defaults(
         participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
-    self.assertEquals(expected_participant.asdict(), p2.asdict())
-    self.assertEquals(p.asdict(), p2.asdict())
+    self.assertEqual(expected_participant.asdict(), p2.asdict())
+    self.assertEqual(p.asdict(), p2.asdict())
 
     ps = self.participant_summary_dao.get(1)
     self.assertIsNone(ps)
@@ -138,12 +138,12 @@ class ParticipantDaoTest(SqlTestBase):
         participantId=1, biobankId=2, lastModified=time, signUpTime=time)
     # Updating the participant adds a new ParticipantHistory row.
     ph = self.participant_history_dao.get([1, 1])
-    self.assertEquals(expected_ph.asdict(), ph.asdict())
+    self.assertEqual(expected_ph.asdict(), ph.asdict())
     ph2 = self.participant_history_dao.get([1, 2])
     expected_ph2 = self._participant_history_with_defaults(
         participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
-    self.assertEquals(expected_ph2.asdict(), ph2.asdict())
+    self.assertEqual(expected_ph2.asdict(), ph2.asdict())
 
   def test_update_no_expected_version_with_ps(self):
     p = Participant()
@@ -164,8 +164,8 @@ class ParticipantDaoTest(SqlTestBase):
     expected_participant = self._participant_with_defaults(
         participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
-    self.assertEquals(expected_participant.asdict(), p2.asdict())
-    self.assertEquals(p.asdict(), p2.asdict())
+    self.assertEqual(expected_participant.asdict(), p2.asdict())
+    self.assertEqual(p.asdict(), p2.asdict())
 
     # Updating the participant provider link also updates the HPO ID on the participant summary.
     ps = self.participant_summary_dao.get(1)
@@ -173,25 +173,25 @@ class ParticipantDaoTest(SqlTestBase):
         participantId=1, biobankId=2, signUpTime=time, hpoId=PITT_HPO_ID,
         lastModified=time2, firstName=summary.firstName, lastName=summary.lastName,
       email=summary.email, patientStatus=[])
-    self.assertEquals(expected_ps.asdict(), ps.asdict())
+    self.assertEqual(expected_ps.asdict(), ps.asdict())
 
     p2_last_modified = p2.lastModified
     p2.hpoId = 2
     self.dao.update(p2)
     p2_update = self.dao.get(1)
-    self.assertNotEquals(p2_last_modified, p2_update.lastModified)
-    self.assertEquals(p2_update.lastModified, p2.lastModified)
+    self.assertNotEqual(p2_last_modified, p2_update.lastModified)
+    self.assertEqual(p2_update.lastModified, p2.lastModified)
 
     expected_ph = self._participant_history_with_defaults(
         participantId=1, biobankId=2, lastModified=time, signUpTime=time)
     # And updating the participant adds a new ParticipantHistory row.
     ph = self.participant_history_dao.get([1, 1])
-    self.assertEquals(expected_ph.asdict(), ph.asdict())
+    self.assertEqual(expected_ph.asdict(), ph.asdict())
     ph2 = self.participant_history_dao.get([1, 2])
     expected_ph2 = self._participant_history_with_defaults(
         participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
-    self.assertEquals(expected_ph2.asdict(), ph2.asdict())
+    self.assertEqual(expected_ph2.asdict(), ph2.asdict())
 
   def test_update_right_expected_version(self):
     p = Participant()
@@ -209,7 +209,7 @@ class ParticipantDaoTest(SqlTestBase):
     expected_participant = self._participant_with_defaults(
         participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
-    self.assertEquals(expected_participant.asdict(), p2.asdict())
+    self.assertEqual(expected_participant.asdict(), p2.asdict())
 
   def test_update_withdraw(self):
     p = Participant()
@@ -227,7 +227,7 @@ class ParticipantDaoTest(SqlTestBase):
     expected_participant = self._participant_with_defaults(
         participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
         withdrawalStatus=WithdrawalStatus.NO_USE, withdrawalTime=time2)
-    self.assertEquals(expected_participant.asdict(), p2.asdict())
+    self.assertEqual(expected_participant.asdict(), p2.asdict())
 
     p.version = 2
     p.providerLink = make_primary_provider_link_for_name('PITT')
@@ -242,7 +242,7 @@ class ParticipantDaoTest(SqlTestBase):
         participantId=1, version=3, biobankId=2, lastModified=time3, signUpTime=time,
         withdrawalStatus=WithdrawalStatus.NO_USE, withdrawalTime=time2,
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
-    self.assertEquals(expected_participant.asdict(), p2.asdict())
+    self.assertEqual(expected_participant.asdict(), p2.asdict())
 
   def test_update_suspend(self):
     p = Participant()
@@ -260,7 +260,7 @@ class ParticipantDaoTest(SqlTestBase):
     expected_participant = self._participant_with_defaults(
         participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
         suspensionStatus=SuspensionStatus.NO_CONTACT, suspensionTime=time2)
-    self.assertEquals(expected_participant.asdict(), p2.asdict())
+    self.assertEqual(expected_participant.asdict(), p2.asdict())
 
     p.version = 2
     p.providerLink = make_primary_provider_link_for_name('PITT')
@@ -275,7 +275,7 @@ class ParticipantDaoTest(SqlTestBase):
         participantId=1, version=3, biobankId=2, lastModified=time3, signUpTime=time,
         suspensionStatus=SuspensionStatus.NO_CONTACT, suspensionTime=time2,
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
-    self.assertEquals(expected_participant.asdict(), p2.asdict())
+    self.assertEqual(expected_participant.asdict(), p2.asdict())
 
 
   def test_update_wrong_expected_version(self):
@@ -302,10 +302,10 @@ class ParticipantDaoTest(SqlTestBase):
     expected_participant = self._participant_with_defaults(
         participantId=1, version=1, biobankId=2, lastModified=time, signUpTime=time,
         withdrawalStatus=WithdrawalStatus.NO_USE)
-    self.assertEquals(expected_participant.asdict(), p.asdict())
+    self.assertEqual(expected_participant.asdict(), p.asdict())
 
     p2 = self.dao.get(1)
-    self.assertEquals(p.asdict(), p2.asdict())
+    self.assertEqual(p.asdict(), p2.asdict())
 
     p.version = 1
     p.providerLink = make_primary_provider_link_for_name('PITT')
@@ -321,10 +321,10 @@ class ParticipantDaoTest(SqlTestBase):
     expected_participant = self._participant_with_defaults(
         participantId=1, version=1, biobankId=2, lastModified=time, signUpTime=time,
         withdrawalStatus=WithdrawalStatus.NO_USE)
-    self.assertEquals(expected_participant.asdict(), p.asdict())
+    self.assertEqual(expected_participant.asdict(), p.asdict())
 
     p2 = self.dao.get(1)
-    self.assertEquals(p.asdict(), p2.asdict())
+    self.assertEqual(p.asdict(), p2.asdict())
 
     p.version = 1
     p.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
@@ -356,18 +356,18 @@ class ParticipantDaoTest(SqlTestBase):
     participant_id = 22
     self.dao.insert(Participant(participantId=participant_id, biobankId=2))
     refetched = self.dao.get(participant_id)
-    self.assertEquals(refetched.hpoId, UNSET_HPO_ID)  # sanity check
+    self.assertEqual(refetched.hpoId, UNSET_HPO_ID)  # sanity check
     self.participant_summary_dao.insert(self.participant_summary(refetched))
 
     with self.dao.session() as session:
       self.dao.add_missing_hpo_from_site(session, participant_id, self._test_db.site_id)
 
     paired = self.dao.get(participant_id)
-    self.assertEquals(paired.hpoId, self._test_db.hpo_id)
-    self.assertEquals(paired.providerLink, make_primary_provider_link_for_id(self._test_db.hpo_id))
-    self.assertEquals(self.participant_summary_dao.get(participant_id).hpoId, self._test_db.hpo_id)
-    self.assertEquals(paired.organizationId, self._test_db.organization_id)
-    self.assertEquals(paired.siteId, self._test_db.site_id)
+    self.assertEqual(paired.hpoId, self._test_db.hpo_id)
+    self.assertEqual(paired.providerLink, make_primary_provider_link_for_id(self._test_db.hpo_id))
+    self.assertEqual(self.participant_summary_dao.get(participant_id).hpoId, self._test_db.hpo_id)
+    self.assertEqual(paired.organizationId, self._test_db.organization_id)
+    self.assertEqual(paired.siteId, self._test_db.site_id)
 
   def test_overwrite_existing_pairing(self):
     participant_id = 99
@@ -377,7 +377,7 @@ class ParticipantDaoTest(SqlTestBase):
         hpoId=self._test_db.hpo_id,
         providerLink=make_primary_provider_link_for_id(self._test_db.hpo_id)))
     self.participant_summary_dao.insert(self.participant_summary(created))
-    self.assertEquals(created.hpoId, self._test_db.hpo_id)  # sanity check
+    self.assertEqual(created.hpoId, self._test_db.hpo_id)  # sanity check
 
     other_hpo = HPODao().insert(HPO(hpoId=PITT_HPO_ID + 1, name='DIFFERENT_HPO'))
     other_site = SiteDao().insert(Site(
@@ -391,9 +391,9 @@ class ParticipantDaoTest(SqlTestBase):
     # Original Participant + summary is affected.
     refetched = self.dao.get(participant_id)
 
-    self.assertEquals(refetched.hpoId, other_hpo.hpoId)
-    self.assertEquals(refetched.providerLink, make_primary_provider_link_for_id(other_hpo.hpoId))
-    self.assertEquals(self.participant_summary_dao.get(participant_id).hpoId, other_hpo.hpoId)
+    self.assertEqual(refetched.hpoId, other_hpo.hpoId)
+    self.assertEqual(refetched.providerLink, make_primary_provider_link_for_id(other_hpo.hpoId))
+    self.assertEqual(self.participant_summary_dao.get(participant_id).hpoId, other_hpo.hpoId)
 
   def test_pairing_at_different_levels(self):
     p = Participant()
@@ -413,7 +413,7 @@ class ParticipantDaoTest(SqlTestBase):
         participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
         hpoId=PITT_HPO_ID, siteId=1, organizationId=PITT_ORG_ID,
                                                            providerLink=p2.providerLink)
-    self.assertEquals(ep.siteId, p2.siteId)
+    self.assertEqual(ep.siteId, p2.siteId)
     # ensure that p2 get paired with expected awardee and organization from update().
-    self.assertEquals(ep.hpoId, p2.hpoId)
-    self.assertEquals(ep.organizationId, p2.organizationId)
+    self.assertEqual(ep.hpoId, p2.hpoId)
+    self.assertEqual(ep.organizationId, p2.organizationId)

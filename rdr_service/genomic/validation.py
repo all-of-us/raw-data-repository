@@ -42,10 +42,7 @@ def validate_and_update_genomic_set_by_id(genomic_set_id, dao=None):
       dao.member_dao.bulk_update_validation_status_with_session(session, update_queue)
 
       genomic_set = dao.get_with_session(session, genomic_set_id)
-      if any(itertools.imap(
-        lambda task: task.status == GenomicSetMemberStatus.INVALID,
-        update_queue
-      )):
+      if any([task.status == GenomicSetMemberStatus.INVALID for task in update_queue]):
         genomic_set.genomicSetStatus = GenomicSetStatus.INVALID
       else:
         genomic_set.genomicSetStatus = GenomicSetStatus.VALID

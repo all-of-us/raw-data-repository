@@ -56,7 +56,7 @@ class EhrReceiptDao(BaseDao):
     with self.session() as session:
       cursor = session.execute(query)
     return [
-      dict(zip(cursor.keys(), row))
+      dict(list(zip(list(cursor.keys()), row)))
       for row
       in cursor
     ]

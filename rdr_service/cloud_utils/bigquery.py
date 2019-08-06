@@ -49,7 +49,7 @@ class BigQueryJob(object):
     else:
       return self.get_rows_from_response(self.get_job_results(page_token=self._page_token))
 
-  def next(self):
+  def __next__(self):
     return self.__next__()
 
   def _make_job_body(self):
@@ -98,7 +98,7 @@ class BigQueryJob(object):
   def _merge_schema_data(cls, schema, row):
     """ Recursive function to merge schema and values together """
     data = collections.OrderedDict()
-    tmp_row = zip(schema, row['f'])
+    tmp_row = list(zip(schema, row['f']))
 
     for field, value in tmp_row:
       if field['mode'] == 'REPEATED':

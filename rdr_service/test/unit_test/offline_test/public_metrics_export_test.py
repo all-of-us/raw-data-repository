@@ -41,10 +41,10 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     HPODao().insert(HPO(hpoId=AZ_HPO_ID + 1, name='AZ_TUCSON_2'))
     HPODao().insert(HPO(hpoId=PITT_HPO_ID + 4, name='TEST'))
     SqlTestBase.setup_codes(
-        ANSWER_FIELD_TO_QUESTION_CODE.values() + [EHR_CONSENT_QUESTION_CODE],
+        list(ANSWER_FIELD_TO_QUESTION_CODE.values()) + [EHR_CONSENT_QUESTION_CODE],
         code_type=CodeType.QUESTION)
     SqlTestBase.setup_codes(
-        FIELD_TO_QUESTIONNAIRE_MODULE_CODE.values(), code_type=CodeType.MODULE)
+        list(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.values()), code_type=CodeType.MODULE)
     # Import codes for white and female, but not male or black.
     SqlTestBase.setup_codes(
         [
@@ -157,11 +157,11 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         agg_by_key[agg.metricsKey] = []
       agg_by_key[agg.metricsKey].append(agg)
 
-    self.assertNotEquals(0, len(agg_by_key), 'no metrics were persisted')
+    self.assertNotEqual(0, len(agg_by_key), 'no metrics were persisted')
 
-    for (k, aggs) in agg_by_key.iteritems():
+    for (k, aggs) in agg_by_key.items():
       count = sum([agg.count for agg in aggs])
-      self.assertEquals(want_total_count, count,
+      self.assertEqual(want_total_count, count,
                         ('metric {} must contain aggregates over exactly '
                          'the set of {} qualified participants, got {}').format(
                              k, want_total_count, count))
@@ -186,8 +186,8 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       PublicMetricsExport.export('123')
     aggs2 = [a.asdict() for a in AggregateMetricsDao().get_all()]
 
-    self.assertEquals(TIME2, MetricSetDao().get('123').lastModified)
-    self.assertEquals(aggs1, aggs2)
+    self.assertEqual(TIME2, MetricSetDao().get('123').lastModified)
+    self.assertEqual(aggs1, aggs2)
 
 
   def test_metrics_redaction(self):

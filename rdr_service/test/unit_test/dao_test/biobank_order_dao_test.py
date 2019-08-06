@@ -115,27 +115,27 @@ class BiobankOrderDaoTest(SqlTestBase):
     order_json = load_biobank_order_json(self.participant.participantId)
     order = BiobankOrderDao().from_client_json(order_json,
                                                participant_id=self.participant.participantId)
-    self.assertEquals(1, order.sourceSiteId)
-    self.assertEquals('fred@pmi-ops.org', order.sourceUsername)
-    self.assertEquals(1, order.collectedSiteId)
-    self.assertEquals('joe@pmi-ops.org', order.collectedUsername)
-    self.assertEquals(1, order.processedSiteId)
-    self.assertEquals('sue@pmi-ops.org', order.processedUsername)
-    self.assertEquals(2, order.finalizedSiteId)
-    self.assertEquals('bob@pmi-ops.org', order.finalizedUsername)
+    self.assertEqual(1, order.sourceSiteId)
+    self.assertEqual('fred@pmi-ops.org', order.sourceUsername)
+    self.assertEqual(1, order.collectedSiteId)
+    self.assertEqual('joe@pmi-ops.org', order.collectedUsername)
+    self.assertEqual(1, order.processedSiteId)
+    self.assertEqual('sue@pmi-ops.org', order.processedUsername)
+    self.assertEqual(2, order.finalizedSiteId)
+    self.assertEqual('bob@pmi-ops.org', order.finalizedUsername)
 
   def test_to_json(self):
     order = self._make_biobank_order()
     order_json = self.dao.to_client_json(order)
     expected_order_json = load_biobank_order_json(self.participant.participantId)
     for key in ('createdInfo', 'collectedInfo', 'processedInfo', 'finalizedInfo'):
-      self.assertEquals(expected_order_json[key], order_json.get(key))
+      self.assertEqual(expected_order_json[key], order_json.get(key))
 
   def test_duplicate_insert_ok(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
     order_1 = self.dao.insert(self._make_biobank_order(created=self.TIME_1))
     order_2 = self.dao.insert(self._make_biobank_order(created=self.TIME_1))
-    self.assertEquals(order_1.asdict(), order_2.asdict())
+    self.assertEqual(order_1.asdict(), order_2.asdict())
 
   def test_same_id_different_identifier_not_ok(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
@@ -177,7 +177,7 @@ class BiobankOrderDaoTest(SqlTestBase):
     with self.assertRaises(BadRequest):
       self.dao.insert(self._make_biobank_order(
           samples=[BiobankOrderedSample(
-              test='InvalidTestName', processingRequired=True, description=u'tested it')]))
+              test='InvalidTestName', processingRequired=True, description='tested it')]))
 
   def test_cancelling_an_order(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
@@ -196,7 +196,7 @@ class BiobankOrderDaoTest(SqlTestBase):
   def test_cancelled_order_removes_from_participant_summary(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
     samples = [BiobankOrderedSample(
-      test=self._B_TEST, processingRequired=True, description=u'new sample')]
+      test=self._B_TEST, processingRequired=True, description='new sample')]
     biobank_order_id = 2
     with clock.FakeClock(self.TIME_1):
       order_1 = self.dao.insert(self._make_biobank_order())
@@ -253,7 +253,7 @@ class BiobankOrderDaoTest(SqlTestBase):
     amended_info = self._get_amended_info(order_1)
     amended_info.sourceSiteId = 2
     samples = [BiobankOrderedSample(
-      test=self._B_TEST, processingRequired=True, description=u'new sample')]
+      test=self._B_TEST, processingRequired=True, description='new sample')]
     amended_info.samples = samples
     with self.dao.session() as session:
       self.dao._do_update(session, amended_info, order_1)

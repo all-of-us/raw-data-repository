@@ -14,14 +14,14 @@ environment variables to be set. If it is also set, the comma-separated list of 
 will be set as watchers on newly created release trackers.
 """
 
-import httplib
+import http.client
 import json
 import logging
 import os
 import re
 import subprocess
 import sys
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 
 import jira
 
@@ -70,8 +70,8 @@ def _get_deployed_version(project_id):
     A version ID / git tag of the currently serving code in the given environment.
   """
   version_url = 'https://%s.appspot.com/' % project_id
-  response = urllib2.urlopen(version_url)
-  if response.getcode() != httplib.OK:
+  response = urllib.request.urlopen(version_url)
+  if response.getcode() != http.client.OK:
     raise RuntimeError('HTTP %d for %r' % (response.getcode(), version_url))
   app_version = json.loads(response.read())['version_id']
   return app_version.split('.')[0]
@@ -159,7 +159,7 @@ def _update_or_create_release_tracker(jira_connection, full_version_id, release_
     for watcher_username in _get_watchers():
       try:
         jira_connection.add_watcher(issue, watcher_username)
-      except jira.exceptions.JIRAError, e:
+      except jira.exceptions.JIRAError as e:
         logging.warning('Skipping invalid watcher %r (got %s).', watcher_username, e.status_code)
     what_happened = 'Created'
   logging.info('%s [%s] with release notes for %s.', what_happened, issue.key, full_version_id)

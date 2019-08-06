@@ -23,18 +23,18 @@ class SingletonsTest(unittest.TestCase):
 
   def test_get_no_ttl(self):
     with FakeClock(TIME_1):
-      self.assertEquals(1, singletons.get(123, SingletonsTest.foo))
+      self.assertEqual(1, singletons.get(123, SingletonsTest.foo))
 
     with FakeClock(TIME_2):
-      self.assertEquals(1, singletons.get(123, SingletonsTest.foo))
+      self.assertEqual(1, singletons.get(123, SingletonsTest.foo))
 
   def test_get_ttl(self):
     with FakeClock(TIME_1):
-      self.assertEquals(1, singletons.get(123, SingletonsTest.foo, 86401))
+      self.assertEqual(1, singletons.get(123, SingletonsTest.foo, 86401))
 
     with FakeClock(TIME_2):
-      self.assertEquals(1, singletons.get(123, SingletonsTest.foo, 86401))
+      self.assertEqual(1, singletons.get(123, SingletonsTest.foo, 86401))
 
     with FakeClock(TIME_3):
-      self.assertEquals(2, singletons.get(123, SingletonsTest.foo, 86401))
+      self.assertEqual(2, singletons.get(123, SingletonsTest.foo, 86401))
 

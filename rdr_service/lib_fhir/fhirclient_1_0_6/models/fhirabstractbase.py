@@ -286,8 +286,8 @@ class FHIRAbstractBase(object):
             return True
         if int == typ or float == typ:
             return (isinstance(value, int) or isinstance(value, float))
-        if (sys.version_info < (3, 0)) and (str == typ or unicode == typ):
-            return (isinstance(value, str) or isinstance(value, unicode))
+        if (sys.version_info < (3, 0)) and (str == typ or str == typ):
+            return (isinstance(value, str) or isinstance(value, str))
         return False
 
 

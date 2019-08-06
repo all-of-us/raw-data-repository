@@ -28,7 +28,7 @@ class BigQueryJobTest(unittest.TestCase):
     pages = list(job)
     self.assertEqual(len(pages), 2)
     row = pages[0][0]
-    self.assertTrue(isinstance(row.gameId, basestring))
+    self.assertTrue(isinstance(row.gameId, str))
     self.assertTrue(isinstance(row.gameNumber, int))
     self.assertTrue(isinstance(row.created, datetime.datetime))
 
@@ -39,65 +39,65 @@ class BigQueryJobTransformationTest(unittest.TestCase):
     """
     Test the transformation function to make bigquery responses easier to use practically.
     """
-    response = {u'cacheHit': True,
-                u'jobComplete': True,
-                u'jobReference': {u'jobId': u'job_TT9ZzgKsi9wg_pwXYS_Krm1D_2IV',
-                                  u'location': u'US',
-                                  u'projectId': u'all-of-us-rdr-sandbox'},
-                u'kind': u'bigquery#queryResponse',
-                u'rows': [{u'f': [{u'v': u'LVII'},
-                                  {u'v': u'1'},
-                                  {u'v': u'sonnets'},
-                                  {u'v': u'0'}]},
-                          {u'f': [{u'v': u'augurs'},
-                                  {u'v': u'1'},
-                                  {u'v': u'sonnets'},
-                                  {u'v': u'0'}]},
-                          {u'f': [{u'v': u"dimm'd"},
-                                  {u'v': u'1'},
-                                  {u'v': u'sonnets'},
-                                  {u'v': u'0'}]}],
-                u'schema': {u'fields': [{u'mode': u'NULLABLE',
-                                         u'name': u'word',
-                                         u'type': u'STRING'},
-                                        {u'mode': u'NULLABLE',
-                                         u'name': u'word_count',
-                                         u'type': u'INTEGER'},
-                                        {u'mode': u'NULLABLE',
-                                         u'name': u'corpus',
-                                         u'type': u'STRING'},
-                                        {u'mode': u'NULLABLE',
-                                         u'name': u'corpus_date',
-                                         u'type': u'INTEGER'}]},
-                u'totalBytesProcessed': u'0',
-                u'totalRows': u'3'}
+    response = {'cacheHit': True,
+                'jobComplete': True,
+                'jobReference': {'jobId': 'job_TT9ZzgKsi9wg_pwXYS_Krm1D_2IV',
+                                  'location': 'US',
+                                  'projectId': 'all-of-us-rdr-sandbox'},
+                'kind': 'bigquery#queryResponse',
+                'rows': [{'f': [{'v': 'LVII'},
+                                  {'v': '1'},
+                                  {'v': 'sonnets'},
+                                  {'v': '0'}]},
+                          {'f': [{'v': 'augurs'},
+                                  {'v': '1'},
+                                  {'v': 'sonnets'},
+                                  {'v': '0'}]},
+                          {'f': [{'v': "dimm'd"},
+                                  {'v': '1'},
+                                  {'v': 'sonnets'},
+                                  {'v': '0'}]}],
+                'schema': {'fields': [{'mode': 'NULLABLE',
+                                         'name': 'word',
+                                         'type': 'STRING'},
+                                        {'mode': 'NULLABLE',
+                                         'name': 'word_count',
+                                         'type': 'INTEGER'},
+                                        {'mode': 'NULLABLE',
+                                         'name': 'corpus',
+                                         'type': 'STRING'},
+                                        {'mode': 'NULLABLE',
+                                         'name': 'corpus_date',
+                                         'type': 'INTEGER'}]},
+                'totalBytesProcessed': '0',
+                'totalRows': '3'}
     rows = bigquery.BigQueryJob.get_rows_from_response(response)
     self.assertEqual(len(rows), 3)
     first_row = rows[0]
-    self.assertEqual(first_row._asdict().keys(), [
+    self.assertEqual(list(first_row._asdict().keys()), [
       'word',
       'word_count',
       'corpus',
       'corpus_date',
     ])
-    self.assertEqual(type(first_row.word), type(u'some unicode string'))
+    self.assertEqual(type(first_row.word), type('some unicode string'))
     self.assertEqual(type(first_row.word_count), type(12345))
 
   def test_type_timestamp(self):
     response = {
-      u'rows': [
-        {u'f': [{u'v': u'2019-05-25 04:22:16.052 UTC'}]},
-        {u'f': [{u'v': u'1.475735115E9'}]},
-        {u'f': [{u'v': 1.475735115E9}]},
-        {u'f': [{u'v': None}]},
-        {u'f': [{u'v': u''}]},
+      'rows': [
+        {'f': [{'v': '2019-05-25 04:22:16.052 UTC'}]},
+        {'f': [{'v': '1.475735115E9'}]},
+        {'f': [{'v': 1.475735115E9}]},
+        {'f': [{'v': None}]},
+        {'f': [{'v': ''}]},
       ],
-      u'schema': {
-        u'fields': [
+      'schema': {
+        'fields': [
           {
-            u'mode': u'NULLABLE',
-            u'name': u'timestamp',
-            u'type': u'TIMESTAMP',
+            'mode': 'NULLABLE',
+            'name': 'timestamp',
+            'type': 'TIMESTAMP',
           }
         ]
       }
@@ -110,16 +110,16 @@ class BigQueryJobTransformationTest(unittest.TestCase):
     self.assertEqual(rows[4].timestamp, None)
 
     response = {
-      u'rows': [
-        {u'f': [{u'v': dict(foo='bar')}]},
-        {u'f': [{u'v': u'An invalid datestring'}]},
+      'rows': [
+        {'f': [{'v': dict(foo='bar')}]},
+        {'f': [{'v': 'An invalid datestring'}]},
       ],
-      u'schema': {
-        u'fields': [
+      'schema': {
+        'fields': [
           {
-            u'mode': u'NULLABLE',
-            u'name': u'timestamp',
-            u'type': u'TIMESTAMP',
+            'mode': 'NULLABLE',
+            'name': 'timestamp',
+            'type': 'TIMESTAMP',
           }
         ]
       }

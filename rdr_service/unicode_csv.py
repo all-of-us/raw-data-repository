@@ -1,4 +1,4 @@
-import cStringIO
+import io
 import codecs
 import csv
 # Writes CSV files with Unicode encoding. (Standard CSV libraries don't handle Unicode.)
@@ -17,13 +17,13 @@ class UnicodeWriter:
 
   def __init__(self, f, dialect=csv.excel, encoding="utf-8", **kwds):
     # Redirect output to a queue
-    self.queue = cStringIO.StringIO()
+    self.queue = io.StringIO()
     self.writer = csv.writer(self.queue, dialect=dialect, **kwds)
     self.stream = f
     self.encoder = codecs.getincrementalencoder(encoding)()
 
   def writerow(self, row):
-    self.writer.writerow([s.encode("utf-8") if isinstance(s, unicode) else s for s in row])
+    self.writer.writerow([s.encode("utf-8") if isinstance(s, str) else s for s in row])
     # Fetch UTF-8 output from the queue ...
     data = self.queue.getvalue()
     data = data.decode("utf-8")
@@ -48,7 +48,7 @@ class UTF8Recoder:
   def __iter__(self):
     return self
 
-  def next(self):
+  def __next__(self):
     return self.reader.next().encode("utf-8")
 
 class UnicodeDictReader:
@@ -60,12 +60,12 @@ class UnicodeDictReader:
   def __init__(self, f, dialect=csv.excel, encoding="utf-8", **kwds):
     f = UTF8Recoder(f, encoding)
     self.reader = csv.reader(f, dialect=dialect, **kwds)
-    self.fieldnames = self.reader.next()
+    self.fieldnames = next(self.reader)
 
 
-  def next(self):
-    row = self.reader.next()
-    vals = [unicode(s, "utf-8") for s in row]
+  def __next__(self):
+    row = next(self.reader)
+    vals = [str(s, "utf-8") for s in row]
     return dict((self.fieldnames[x], vals[x]) for x in range(len(self.fieldnames)))
 
   def __iter__(self):

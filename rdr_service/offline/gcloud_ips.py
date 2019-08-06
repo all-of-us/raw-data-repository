@@ -28,8 +28,8 @@ def get_ip_ranges(start):
   explore(Response([start], [], []), resolved_blocks)
   return Response(
     [],
-    [v for r in resolved_blocks.values() for v in r.ip4],
-    [v for r in resolved_blocks.values() for v in r.ip6])
+    [v for r in list(resolved_blocks.values()) for v in r.ip4],
+    [v for r in list(resolved_blocks.values()) for v in r.ip6])
 
 def lookup_txt(domain):
   """Return the TXT record associated with a domain"""
@@ -55,7 +55,7 @@ def explore(to_visit, resolved_blocks):
 def print_json_for_debug():
   """Heler to print the entire AppEngine IP range to stdout, in JSON"""
   ips = get_ip_ranges(START)
-  print json.dumps({'ip4': ips.ip4, 'ip6': ips.ip6}, indent=2)
+  print(json.dumps({'ip4': ips.ip4, 'ip6': ips.ip6}, indent=2))
 
 
 if __name__ == "__main__":

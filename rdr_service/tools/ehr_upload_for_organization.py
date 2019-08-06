@@ -36,7 +36,7 @@ def read_csv(input_file):
 
         participant[row['pmi_id']] = row['paired_site']
     except KeyError as e:
-      print 'Check csv file headers. Error: {}'.format(e)
+      print('Check csv file headers. Error: {}'.format(e))
 
     return participant
 
@@ -44,7 +44,7 @@ def read_csv(input_file):
 def upload_consents(participant, bucket):
   """ Naively copy (multithreaded) from ptc upload bucket to the awardee bucket under a site name
   (google_group) identifier"""
-  for pid, google_group in participant.items():
+  for pid, google_group in list(participant.items()):
     gsutil = "gsutil -m cp -r gs://" + SOURCE_BUCKET + "/Participant/P" + str(
       pid) + "/* " + "gs://" + bucket + "/Participant/" + \
              google_group + "/P" + str(pid) + "/"

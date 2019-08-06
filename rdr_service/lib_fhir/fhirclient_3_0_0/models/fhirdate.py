@@ -24,7 +24,7 @@ class FHIRDate(object):
         if jsonval is not None:
             isstr = isinstance(jsonval, str)
             if not isstr and sys.version_info[0] < 3:       # Python 2.x has 'str' and 'unicode'
-                isstr = isinstance(jsonval, basestring)
+                isstr = isinstance(jsonval, str)
             if not isstr:
                 raise TypeError("Expecting string when initializing {}, but got {}"
                     .format(type(self), type(jsonval)))
@@ -58,7 +58,7 @@ class FHIRDate(object):
         """
         isstr = isinstance(jsonobj, str)
         if not isstr and sys.version_info[0] < 3:       # Python 2.x has 'str' and 'unicode'
-            isstr = isinstance(jsonobj, basestring)
+            isstr = isinstance(jsonobj, str)
         if isstr:
             return cls(jsonobj)
 

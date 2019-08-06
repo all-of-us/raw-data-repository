@@ -607,14 +607,14 @@ class QuestionnaireGen(BaseGen):
       if item:
         if int(item['string_answer_count']) > 0:
           answer = ' '.join([random.choice(self._app_data['latin_words'])
-                             for _ in xrange(random.randint(1, 5))])
+                             for _ in range(random.randint(1, 5))])
       else:
         answer = ' '.join([random.choice(self._app_data['latin_words'])
-                           for _ in xrange(random.randint(1, 5))])
+                           for _ in range(random.randint(1, 5))])
 
     elif question.type == 'text':
       answer = ' '.join([random.choice(self._app_data['latin_words'])
-                         for _ in xrange(random.randint(1, 5))])
+                         for _ in range(random.randint(1, 5))])
 
     elif question.type == 'choice':
       choices = self._get_question_choices(question)
@@ -626,7 +626,7 @@ class QuestionnaireGen(BaseGen):
 
     elif question.type == 'url' or question.type == 'uri':
       bucket = 'gs://notarealbucket.example.com/{0}'.format(
-        ''.join([random.choice(string.lowercase) for _ in xrange(20)]))
+        ''.join([random.choice(string.lowercase) for _ in range(20)]))
       if item:
         if int(item['uri_answer_count']) > 0:
           answer = bucket
@@ -722,7 +722,7 @@ class QuestionnaireGen(BaseGen):
     _host = 'raw.githubusercontent.com'
     _url = 'all-of-us-terminology/api-payloads/master/questionnaire_payloads/'
 
-    for key, data in self._module_data.items():
+    for key, data in list(self._module_data.items()):
       if key.lower() == module.lower():
 
         code, resp = make_api_request(_host, '{0}/{1}'.format(_url, data['file']))
@@ -812,7 +812,7 @@ class QuestionnaireGen(BaseGen):
       if not question.concept[0].code:
         continue
       if 'Language' in question.concept[0].code:
-        print(question.concept[0].code)
+        print((question.concept[0].code))
       if question_code == question.concept[0].code:
         return question
 

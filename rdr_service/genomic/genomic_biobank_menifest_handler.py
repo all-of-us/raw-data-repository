@@ -10,7 +10,7 @@ import logging
 import pytz
 from cloudstorage import cloudstorage_api
 
-from genomic_set_file_handler import DataError, timestamp_from_filename
+from .genomic_set_file_handler import DataError, timestamp_from_filename
 from rdr_service import clock, config
 from rdr_service.config import GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME, \
   GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME
@@ -56,8 +56,8 @@ def process_genomic_manifest_result_file_from_bucket():
   if now - timestamp > _MAX_INPUT_AGE:
     logging.info('Input %r (timestamp %s UTC) is > 24h old (relative to %s UTC), not processing.'
                  % (filename, timestamp, now))
-    print('Input %r (timestamp %s UTC) is > 24h old (relative to %s UTC), not processing.'
-                 % (filename, timestamp, now))
+    print(('Input %r (timestamp %s UTC) is > 24h old (relative to %s UTC), not processing.'
+                 % (filename, timestamp, now)))
     return None
 
   genomic_set_id = _get_genomic_set_id_from_filename(filename)
@@ -119,7 +119,7 @@ def update_package_id_from_manifest_result_file(genomic_set_id, csv_file):
 
     dao.bulk_update_package_id(genomic_set_id, update_queue)
 
-  except ValueError, e:
+  except ValueError as e:
     raise DataError(e)
 
 

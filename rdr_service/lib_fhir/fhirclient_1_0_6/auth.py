@@ -4,8 +4,8 @@ import logging
 import uuid
 
 try:                                # Python 2.x
-    import urlparse
-    from urllib import urlencode
+    import urllib.parse
+    from urllib.parse import urlencode
 except Exception as e:              # Python 3
     import urllib.parse as urlparse
     from urllib.parse import urlencode
@@ -186,14 +186,14 @@ class FHIROAuth2Auth(FHIRAuth):
         logging.debug("SMART AUTH: Will use parameters for `authorize_uri`: {0}".format(auth_params))
         
         # the authorize uri may have params, make sure to not lose them
-        parts = list(urlparse.urlsplit(self._authorize_uri))
+        parts = list(urllib.parse.urlsplit(self._authorize_uri))
         if len(parts[3]) > 0:
-            args = urlparse.parse_qs(parts[3])
+            args = urllib.parse.parse_qs(parts[3])
             args.update(auth_params)
             auth_params = args
         parts[3] = urlencode(auth_params, doseq=True)
         
-        return urlparse.urlunsplit(parts)
+        return urllib.parse.urlunsplit(parts)
     
     def _authorize_params(self, server):
         """ The URL parameters to use when requesting a token code.
@@ -228,7 +228,7 @@ class FHIROAuth2Auth(FHIRAuth):
         if url is None:
             raise Exception("No callback URL received")
         try:
-            args = dict(urlparse.parse_qsl(urlparse.urlsplit(url)[3]))
+            args = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(url)[3]))
         except Exception as e:
             raise Exception("Invalid callback URL: {0}".format(e))
         
@@ -243,7 +243,7 @@ class FHIROAuth2Auth(FHIRAuth):
         
         code = args.get('code')
         if code is None:
-            raise Exception("Did not receive a code, only have: {0}".format(', '.join(args.keys())))
+            raise Exception("Did not receive a code, only have: {0}".format(', '.join(list(args.keys()))))
         
         # exchange code for token
         exchange = self._code_exchange_params(code)

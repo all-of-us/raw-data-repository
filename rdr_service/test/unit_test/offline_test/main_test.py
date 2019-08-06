@@ -25,4 +25,4 @@ class MainTest(TestBase):
     mock_upsert.side_effect = ValueError('should be thrown for test')
     with self.assertRaises(ValueError):
       main.import_biobank_samples()
-    self.assertEquals(mock_send_mail.call_count, 1)
+    self.assertEqual(mock_send_mail.call_count, 1)

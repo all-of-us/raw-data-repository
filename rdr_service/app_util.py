@@ -189,7 +189,7 @@ def auth_required(role_whitelist):
 
   assert role_whitelist, "Can't call `auth_required` with empty role_whitelist."
 
-  if type(role_whitelist) != list:
+  if not isinstance(role_whitelist, list):
     role_whitelist = [role_whitelist]
 
   def auth_required_wrapper(func):

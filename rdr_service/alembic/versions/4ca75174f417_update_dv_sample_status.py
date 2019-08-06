@@ -33,7 +33,7 @@ def upgrade_rdr():
     op.alter_column('biobank_dv_order', 'modified',
                existing_type=mysql.DATETIME(fsp=6),
                nullable=True,
-               existing_server_default=sa.text(u'current_timestamp(6) ON UPDATE current_timestamp(6)'))
+               existing_server_default=sa.text('current_timestamp(6) ON UPDATE current_timestamp(6)'))
     op.create_index(op.f('ix_biobank_stored_sample_test'), 'biobank_stored_sample', ['test'], unique=False)
     op.execute(
       'ALTER TABLE biobank_dv_order CHANGE COLUMN `created` `created` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) AFTER id;')
@@ -46,7 +46,7 @@ def downgrade_rdr():
     op.alter_column('biobank_dv_order', 'modified',
                existing_type=mysql.DATETIME(fsp=6),
                nullable=False,
-               existing_server_default=sa.text(u'current_timestamp(6) ON UPDATE current_timestamp(6)'))
+               existing_server_default=sa.text('current_timestamp(6) ON UPDATE current_timestamp(6)'))
     op.alter_column('biobank_dv_order', 'created',
                existing_type=mysql.DATETIME(),
                nullable=False)

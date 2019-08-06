@@ -149,7 +149,7 @@ class PhysicalMeasurementsGen(BaseGen):
         "value": value
       }
     if 'string' in measurement['types']:
-      resource['valueString'] = ''.join([random.choice(string.lowercase) for _ in xrange(20)])
+      resource['valueString'] = ''.join([random.choice(string.lowercase) for _ in range(20)])
     if measurement['valueCodes']:
       value_code = random.choice(measurement['valueCodes'])
       resource['valueCodeableConcept'] = {
@@ -380,7 +380,7 @@ class PhysicalMeasurementsGen(BaseGen):
       entries.append(first_entry)
       if num_measurements > 1:
         measurement_resources.append(first_entry['resource'])
-        for i in xrange(1, num_measurements):
+        for i in range(1, num_measurements):
           entry = self._make_measurement_entry(measurement, now, self._participant_id,
                                                qualifier_set, first_entry['resource'], i + 1)
           measurement_resources.append(entry['resource'])

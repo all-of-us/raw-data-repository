@@ -117,13 +117,13 @@ class EhrReceiptDaoTest(SqlTestBase):
     )
 
     self.assertEqual([(r['start_date'], r['active_organization_count']) for r in results], [
-      (datetime.date(2019, 2, 1), 0L),
-      (datetime.date(2019, 2, 2), 2L),
-      (datetime.date(2019, 2, 3), 0L),
-      (datetime.date(2019, 2, 4), 1L),
-      (datetime.date(2019, 2, 5), 0L),
-      (datetime.date(2019, 2, 6), 0L),
-      (datetime.date(2019, 2, 7), 0L),
+      (datetime.date(2019, 2, 1), 0),
+      (datetime.date(2019, 2, 2), 2),
+      (datetime.date(2019, 2, 3), 0),
+      (datetime.date(2019, 2, 4), 1),
+      (datetime.date(2019, 2, 5), 0),
+      (datetime.date(2019, 2, 6), 0),
+      (datetime.date(2019, 2, 7), 0),
     ])
 
   def test_get_active_organization_counts_in_interval_week(self):
@@ -140,11 +140,11 @@ class EhrReceiptDaoTest(SqlTestBase):
     )
 
     self.assertEqual([(r['start_date'], r['active_organization_count']) for r in results], [
-      (datetime.date(2019, 1, 27), 0L),
-      (datetime.date(2019, 2, 3), 2L),
-      (datetime.date(2019, 2, 10), 0L),
-      (datetime.date(2019, 2, 17), 1L),
-      (datetime.date(2019, 2, 24), 0L),
+      (datetime.date(2019, 1, 27), 0),
+      (datetime.date(2019, 2, 3), 2),
+      (datetime.date(2019, 2, 10), 0),
+      (datetime.date(2019, 2, 17), 1),
+      (datetime.date(2019, 2, 24), 0),
     ])
 
   def test_get_active_organization_counts_in_interval_month(self):
@@ -161,11 +161,11 @@ class EhrReceiptDaoTest(SqlTestBase):
     )
 
     self.assertEqual([(r['start_date'], r['active_organization_count']) for r in results], [
-      (datetime.date(2019, 1, 1), 0L),
-      (datetime.date(2019, 2, 1), 2L),
-      (datetime.date(2019, 3, 1), 0L),
-      (datetime.date(2019, 4, 1), 1L),
-      (datetime.date(2019, 5, 1), 0L),
+      (datetime.date(2019, 1, 1), 0),
+      (datetime.date(2019, 2, 1), 2),
+      (datetime.date(2019, 3, 1), 0),
+      (datetime.date(2019, 4, 1), 1),
+      (datetime.date(2019, 5, 1), 0),
     ])
 
   def test_get_active_organization_counts_in_interval_quarter(self):
@@ -182,10 +182,10 @@ class EhrReceiptDaoTest(SqlTestBase):
     )
 
     self.assertEqual([(r['start_date'], r['active_organization_count']) for r in results], [
-      (datetime.date(2019, 1, 1), 0L),
-      (datetime.date(2019, 4, 1), 2L),
-      (datetime.date(2019, 7, 1), 0L),
-      (datetime.date(2019, 10, 1), 1L),
-      (datetime.date(2020, 1, 1), 0L),
+      (datetime.date(2019, 1, 1), 0),
+      (datetime.date(2019, 4, 1), 2),
+      (datetime.date(2019, 7, 1), 0),
+      (datetime.date(2019, 10, 1), 1),
+      (datetime.date(2020, 1, 1), 0),
     ])
 

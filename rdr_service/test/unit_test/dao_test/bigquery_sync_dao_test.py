@@ -23,7 +23,7 @@ from rdr_service.test.unit_test.unit_test_util import SqlTestBase
 class BigQuerySyncDaoTest(SqlTestBase):
 
   TIME_1 = datetime.datetime(2018, 9, 20, 5, 49, 11)
-  TIME_2 = datetime.datetime(2018, 9, 24, 14, 21, 01)
+  TIME_2 = datetime.datetime(2018, 9, 24, 14, 21, 0o1)
 
   site = None
   hpo = None
@@ -97,7 +97,7 @@ class BigQuerySyncDaoTest(SqlTestBase):
         ('samples', [BiobankOrderedSample(
             biobankOrderId='1',
             test=BIOBANK_TESTS[0],
-            description=u'description',
+            description='description',
             finalized=self.TIME_1,
             processingRequired=True)])):
       if k not in kwargs:

@@ -28,7 +28,7 @@ def read_csv(input_file):
     try:
       reader = csv.DictReader(csv_file)
     except UnicodeDecodeError:
-      print 'Decode Error'
+      print('Decode Error')
 
     try:
       for row in reader:
@@ -38,7 +38,7 @@ def read_csv(input_file):
 
         participant[row['pmi_id']] = row['paired_site']
     except KeyError as e:
-      print 'Check csv file headers. Error: {}'.format(e)
+      print('Check csv file headers. Error: {}'.format(e))
 
     return participant
 
@@ -56,7 +56,7 @@ def get_bucket_file_info(participant_ids, bucket, p_dict=None):
       output = subprocess.check_output(gsutil_command)
       output_list.extend(output.split())
     except subprocess.CalledProcessError:
-      print 'Skipping participant {}: Directory does not exist.'.format(_id)
+      print('Skipping participant {}: Directory does not exist.'.format(_id))
 
     participant_files[_id] = output_list
 
@@ -68,18 +68,18 @@ def _strip_path(f):
 
 
 def remove_path(participant_files):
-  for _id, files in participant_files.items():
-    strip = map(_strip_path, files)
+  for _id, files in list(participant_files.items()):
+    strip = list(map(_strip_path, files))
     participant_files[_id] = strip
 
 
 def get_missing_file_info(participant_files):
-  for _id, files in participant_files.items():
+  for _id, files in list(participant_files.items()):
     files = set(files)
     no_version_list = {re.sub(r'__\d+', '', f) for f in files}
     missing_files = required_files.difference(no_version_list)
     participant_files[_id] = {'files_found': list(files), 'missing_files': list(missing_files)}
-    print 'Missing Files for participant {}: {}'.format(_id, list(missing_files))
+    print('Missing Files for participant {}: {}'.format(_id, list(missing_files)))
 
 
 def write_to_csv(participant_files, descriptor):
@@ -87,7 +87,7 @@ def write_to_csv(participant_files, descriptor):
   found_fields = ['pmi_id', 'files found']
   missing_filename = 'missing_files_' + descriptor + '_' + str(datetime.date.today()) + '.csv'
   existing_filename = 'existing_files_' + descriptor + '_' + str(datetime.date.today()) + '.csv'
-  print 'Creating csv files...'
+  print('Creating csv files...')
   with open(missing_filename, 'w') as missing:
     with open(existing_filename, 'w') as found:
       missing_writer = csv.writer(missing)
@@ -95,7 +95,7 @@ def write_to_csv(participant_files, descriptor):
       missing_writer.writerow(missing_fields)
       found_writer.writerow(found_fields)
 
-      for _id, files in participant_files.items():
+      for _id, files in list(participant_files.items()):
         missing_files = files['missing_files']
         existing_files = files['files_found']
         missing_files.insert(0, _id)
@@ -105,7 +105,7 @@ def write_to_csv(participant_files, descriptor):
         if len(existing_files) > 1:
           found_writer.writerow(existing_files)
 
-  print 'Created files: {} | {}'.format(missing_filename, existing_filename)
+  print('Created files: {} | {}'.format(missing_filename, existing_filename))
 
 
 def main(args):

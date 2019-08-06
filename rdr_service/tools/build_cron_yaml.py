@@ -21,7 +21,7 @@ except ImportError:
 if sys.version > '3':
   imap = map
 else:
-  from itertools import imap
+  
 
 
 BASE_CRON_NAME = 'default'
@@ -46,7 +46,7 @@ def _get_cron_names_for_project_name(project_name):
   Make a list of crons to merge for the given project name.
   """
   name = PROJECT_NAME_MAPPING.get(project_name)
-  return filter(bool, [BASE_CRON_NAME, name])
+  return list(filter(bool, [BASE_CRON_NAME, name]))
 
 
 def _lazy_chain(iterators):
@@ -89,7 +89,7 @@ def _compile_job_list(job_iterator):
       jobs_dict[job_id] = job
     elif job_id in jobs_dict:
       del jobs_dict[job_id]
-  return jobs_dict.values()
+  return list(jobs_dict.values())
 
 
 def build_cron_yaml(project_name, outstream):
@@ -101,7 +101,7 @@ def build_cron_yaml(project_name, outstream):
   config_job_list_iterator = [
     config.get('cron')
     for config
-    in imap(_load_yaml_file_by_name, yaml_names)
+    in map(_load_yaml_file_by_name, yaml_names)
     if config
   ]
   job_iterator = _lazy_chain(config_job_list_iterator)

@@ -56,7 +56,7 @@ class GenomicSetDao(UpdatableDao):
     """
     query = self._get_validation_data_query_for_genomic_set_id(genomic_set_id)
     cursor = session.execute(query)
-    Row = collections.namedtuple('Row', cursor.keys())
+    Row = collections.namedtuple('Row', list(cursor.keys()))
     for row in cursor:
       yield Row(*row)
 

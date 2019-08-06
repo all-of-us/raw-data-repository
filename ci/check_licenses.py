@@ -28,16 +28,16 @@ def check_licenses(whitelist, root, exceptions):
   """
   installed = pkg_resources.WorkingSet()
 
-  print '--- Checking packages installed under {} ---'.format(root)
+  print(('--- Checking packages installed under {} ---'.format(root)))
 
   for pkg in installed:
     if not os.path.commonprefix([pkg.location, root]) == root:
       # This package is not under root.
-      print ' {} : {} not under root.'.format(pkg.project_name, pkg.location)
+      print((' {} : {} not under root.'.format(pkg.project_name, pkg.location)))
       continue
 
     if pkg.project_name in exceptions:
-      print '{} is a known exception'.format(pkg.project_name)
+      print(('{} is a known exception'.format(pkg.project_name)))
       continue
 
     pkg_info = _load_metadata(pkg)
@@ -70,7 +70,7 @@ def _verify_license(pkg, lic, whitelist):
     raise InvalidLicenseException(
         '{} has unknown license "{}"\n{} is installed in: {}\nKnown licenses are {}.'.format(
             pkgname, lic, pkgname, pkg.location, whitelist))
-  print '{} : {} OK!'.format(pkgname, lic)
+  print(('{} : {} OK!'.format(pkgname, lic)))
 
 
 def _load_metadata(pkg):

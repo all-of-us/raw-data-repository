@@ -79,21 +79,21 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     participant_id = kwargs['participantId']
 
     for k, default_value in (
-        ('biobankOrderId', u'1'),
+        ('biobankOrderId', '1'),
         ('created', clock.CLOCK.now()),
         ('sourceSiteId', 1),
-        ('sourceUsername', u'fred@pmi-ops.org'),
+        ('sourceUsername', 'fred@pmi-ops.org'),
         ('collectedSiteId', 1),
-        ('collectedUsername', u'joe@pmi-ops.org'),
+        ('collectedUsername', 'joe@pmi-ops.org'),
         ('processedSiteId', 1),
-        ('processedUsername', u'sue@pmi-ops.org'),
+        ('processedUsername', 'sue@pmi-ops.org'),
         ('finalizedSiteId', 2),
-        ('finalizedUsername', u'bob@pmi-ops.org'),
+        ('finalizedUsername', 'bob@pmi-ops.org'),
         ('version', 1),
-        ('identifiers', [BiobankOrderIdentifier(system=u'a', value=u'c')]),
+        ('identifiers', [BiobankOrderIdentifier(system='a', value='c')]),
         ('samples', [BiobankOrderedSample(
-            test=u'1SAL2',
-            description=u'description',
+            test='1SAL2',
+            description='description',
             processingRequired=True)]),
         ('dvOrders', [BiobankDVOrder(
           participantId=participant_id, version=1)])):
@@ -131,22 +131,22 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self._make_summary(participant)
     self._make_biobank_order(participantId=participant.participantId,
                              biobankOrderId=participant.participantId,
-                             identifiers=[BiobankOrderIdentifier(system=u'https://www.pmi-ops.org',
-                                                                 value=u'12345678')])
+                             identifiers=[BiobankOrderIdentifier(system='https://www.pmi-ops.org',
+                                                                 value='12345678')])
 
     participant2 = self._make_participant()
     self._make_summary(participant2)
     self._make_biobank_order(participantId=participant2.participantId,
                              biobankOrderId=participant2.participantId,
-                             identifiers=[BiobankOrderIdentifier(system=u'https://www.pmi-ops.org',
-                                                                 value=u'12345679')])
+                             identifiers=[BiobankOrderIdentifier(system='https://www.pmi-ops.org',
+                                                                 value='12345679')])
 
     participant3 = self._make_participant()
     self._make_summary(participant3)
     self._make_biobank_order(participantId=participant3.participantId,
                              biobankOrderId=participant3.participantId,
-                             identifiers=[BiobankOrderIdentifier(system=u'https://www.pmi-ops.org',
-                                                                 value=u'12345680')])
+                             identifiers=[BiobankOrderIdentifier(system='https://www.pmi-ops.org',
+                                                                 value='12345680')])
 
     samples_file = test_data.open_genomic_set_file('Genomic-Test-Set-test-2.csv')
 
@@ -355,28 +355,28 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self._make_summary(participant, dateOfBirth='2018-02-14', zipCode='')
     self._make_biobank_order(participantId=participant.participantId,
                              biobankOrderId=participant.participantId,
-                             identifiers=[BiobankOrderIdentifier(system=u'https://www.pmi-ops.org',
-                                                                 value=u'12345678')])
+                             identifiers=[BiobankOrderIdentifier(system='https://www.pmi-ops.org',
+                                                                 value='12345678')])
 
     participant2 = self._make_participant()
     self._make_summary(participant2, consentForStudyEnrollmentTime=datetime.datetime(1990, 1, 1))
     self._make_biobank_order(participantId=participant2.participantId,
                              biobankOrderId=participant2.participantId,
-                             identifiers=[BiobankOrderIdentifier(system=u'https://www.pmi-ops.org',
-                                                                 value=u'12345679')])
+                             identifiers=[BiobankOrderIdentifier(system='https://www.pmi-ops.org',
+                                                                 value='12345679')])
 
     participant3 = self._make_participant()
     self._make_summary(participant3, zipCode='')
     self._make_biobank_order(participantId=participant3.participantId,
                              biobankOrderId=participant3.participantId,
-                             identifiers=[BiobankOrderIdentifier(system=u'https://www.pmi-ops.org',
-                                                                 value=u'12345680')])
+                             identifiers=[BiobankOrderIdentifier(system='https://www.pmi-ops.org',
+                                                                 value='12345680')])
 
     participant4 = self._make_participant()
     self._make_summary(participant4)
     self._make_biobank_order(participantId=participant4.participantId,
                              biobankOrderId=participant4.participantId,
-                             identifiers=[BiobankOrderIdentifier(system=u'c', value=u'e')])
+                             identifiers=[BiobankOrderIdentifier(system='c', value='e')])
 
     samples_file = test_data.open_genomic_set_file('Genomic-Test-Set-test-3.csv')
 

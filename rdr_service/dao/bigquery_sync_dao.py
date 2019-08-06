@@ -41,9 +41,9 @@ class BQParticipantSummaryGenerator(object):
     :param dict2: dict object
     :return: dict
     """
-    lists = {key: val for key, val in dict1.iteritems()}
+    lists = {key: val for key, val in list(dict1.items())}
     dict1.update(dict2)
-    for key, val in lists.iteritems():  # pylint: disable=unused-variable
+    for key, val in list(lists.items()):  # pylint: disable=unused-variable
       if key in dict2:
         # This assumes all sub-tables are set to repeated (multi-row) type.
         dict1[key] = lists[key] + dict2[key]
@@ -443,7 +443,7 @@ class BQParticipantSummaryGenerator(object):
     results = [r for r in cursor]
     # loop through results and create one order record for each biobank_order_id value.
     for row in results:
-      if not filter(lambda order: order['bbo_biobank_order_id'] == row.biobank_order_id, orders):
+      if not [order for order in orders if order['bbo_biobank_order_id'] == row.biobank_order_id]:
         orders.append({
           'bbo_biobank_order_id': row.biobank_order_id,
           'bbo_created': row.created,
@@ -460,7 +460,7 @@ class BQParticipantSummaryGenerator(object):
     # loop through results again and add each sample to it's order.
     for row in results:
       # get the order list index for this sample record
-      idx = orders.index(filter(lambda order: order['bbo_biobank_order_id'] == row.biobank_order_id, orders)[0])
+      idx = orders.index([order for order in orders if order['bbo_biobank_order_id'] == row.biobank_order_id][0])
       # if we haven't added any samples to this order, create an empty list.
       if 'samples' not in orders[idx]:
         orders[idx]['bbo_samples'] = list()
@@ -517,11 +517,11 @@ class BQParticipantSummaryGenerator(object):
 
     baseline_module_count = dna_sample_count = 0
     if 'modules' in summary:
-      baseline_module_count = len(filter(lambda module: module['mod_baseline_module'] == 'true', summary['modules']))
+      baseline_module_count = len([module for module in summary['modules'] if module['mod_baseline_module'] == 'true'])
     if 'biobank_orders' in summary:
       for order in summary['biobank_orders']:
         if 'samples' in order:
-          dna_sample_count += len(filter(lambda sample: sample['bbs_dna_test'] == 'true', order['samples']))
+          dna_sample_count += len([sample for sample in order['samples'] if sample['bbs_dna_test'] == 'true'])
 
     if study_consent:
       status = EnrollmentStatus.INTERESTED

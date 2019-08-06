@@ -206,12 +206,12 @@ class PublicMetricsExport(object):
           p.update(params)
         result = session.execute(text(sql), params=p)
         for row in result:
-          v = row.items()[0][1]
+          v = list(row.items())[0][1]
           if valuef:
             v = valuef(v)
           out[key].append({
               'value': v,
-              'count': row.items()[1][1],
+              'count': list(row.items())[1][1],
           })
     return out
 
@@ -228,7 +228,7 @@ class PublicMetricsExport(object):
       MetricSetDao().upsert_with_session(session, ms)
       agg_dao = AggregateMetricsDao()
       agg_dao.delete_all_for_metric_set_with_session(session, metric_set_id)
-      for (k, vals) in metrics.iteritems():
+      for (k, vals) in metrics.items():
         for v in vals:
           agg = AggregateMetrics(
               metricSetId=metric_set_id,

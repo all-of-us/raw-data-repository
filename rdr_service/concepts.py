@@ -76,7 +76,7 @@ LAST_NAME = Concept(SYSTEM_PPI_QUESTION, 'last-name')
 STATE_OF_RESIDENCE = Concept(SYSTEM_LOINC, '46499-0')
 
 SYSTEM_STATE = SYSTEM_PMI_BASE + 'us-state'
-STATE_LIST = [Concept(SYSTEM_STATE, s) for s in census_regions.keys()]
+STATE_LIST = [Concept(SYSTEM_STATE, s) for s in list(census_regions.keys())]
 STATES_BY_ABBREV = {c.code:c for c in STATE_LIST}
 
 

@@ -52,14 +52,14 @@ class ParticipantTest(BaseClientTest):
       response = self.client.request_json(
           'Participant/{}'.format(participant_id), 'PUT', response)
       self.fail("Need If-Match header for update")
-    except HttpException, ex:
+    except HttpException as ex:
       self.assertEqual(ex.code, 400)
     try:
       response = self.client.request_json(
           'Participant/{}'.format(participant_id), 'PUT', response,
           headers={'If-Match': 'W/"12345"'})
       self.fail("Wrong If-Match header for update")
-    except HttpException, ex:
+    except HttpException as ex:
       self.assertEqual(ex.code, 412)
     new_response = self.client.request_json(
           'Participant/{}'.format(participant_id), 'PUT', new_response,
@@ -107,7 +107,7 @@ class ParticipantTest(BaseClientTest):
     # Get the participant from DB.
     updated_response = self.client.request_json('Participant/{}'.format(participant_id))
     # Ensure that setting awardee to UNSET will unpair at all levels.
-    unset_provider = [{u'organization': {u'reference': u'Organization/UNSET'}, u'primary': True}]
+    unset_provider = [{'organization': {'reference': 'Organization/UNSET'}, 'primary': True}]
     self.assertEqual(updated_response['awardee'], 'UNSET')
     self.assertEqual(updated_response['providerLink'], unset_provider)
     self.assertEqual(updated_response['site'], 'UNSET')

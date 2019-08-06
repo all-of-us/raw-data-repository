@@ -53,7 +53,7 @@ def upgrade_metrics():
     sa.Column('metrics_key', model.utils.Enum(MetricsKey), nullable=False),
     sa.Column('value', sa.String(length=50), nullable=False),
     sa.Column('count', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['metric_set_id'], [u'metrics.metric_set.metric_set_id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['metric_set_id'], ['metrics.metric_set.metric_set_id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('metric_set_id', 'metrics_key', 'value'),
     schema='metrics'
     )

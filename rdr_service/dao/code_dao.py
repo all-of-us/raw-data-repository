@@ -113,7 +113,7 @@ class CodeDao(CacheAllDao):
 
   def _load_cache(self):
     result = super(CodeDao, self)._load_cache()
-    for code in result.id_to_entity.values():
+    for code in list(result.id_to_entity.values()):
       if code.parentId is not None:
         parent = result.id_to_entity.get(code.parentId)
         if parent:
@@ -174,14 +174,14 @@ class CodeDao(CacheAllDao):
     """
     # First get whatever is already in the cache.
     result_map = {}
-    for system, value in code_map.keys():
+    for system, value in list(code_map.keys()):
       code = self.get_code(system, value)
       if code:
         result_map[(system, value)] = code.codeId
     if len(result_map) == len(code_map):
       return result_map
     with self.session() as session:
-      for system, value in code_map.keys():
+      for system, value in list(code_map.keys()):
         existing_code = result_map.get((system, value))
         if not existing_code:
           # Check to see if it's in the database. (Normally it won't be.)

@@ -45,7 +45,7 @@ def main(args):
     with database_factory.get_database().session() as session:
       cursor = session.execute(text(_QUESTION_SPEC_SQL))
       try:
-        writer.writerow(cursor.keys())
+        writer.writerow(list(cursor.keys()))
         results = cursor.fetchall()
         for result in results:
           writer.writerow(result)

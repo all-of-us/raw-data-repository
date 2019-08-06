@@ -48,31 +48,31 @@ class DatabaseTest(SqlTestBase):
     site = Site(siteId=1, siteName='site', googleGroup='site@googlegroups.com',
                 mayolinkClientNumber=12345, organizationId=1)
     code1 = Code(codeId=1, codeBookId=1, system="a", value="b", shortValue="q",
-                 display=u"c", topic=u"d", codeType=CodeType.MODULE, mapped=True,
+                 display="c", topic="d", codeType=CodeType.MODULE, mapped=True,
                  created=datetime.datetime.now())
     codeHistory1 = CodeHistory(codeId=1, codeBookId=1, system="a", value="b", shortValue="q",
-                               display=u"c", topic=u"d", codeType=CodeType.MODULE, mapped=True,
+                               display="c", topic="d", codeType=CodeType.MODULE, mapped=True,
                                created=datetime.datetime.now())
     session.add(site)
     session.add(code1)
     session.add(codeHistory1)
     session.commit()
 
-    code2 = Code(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display=u"X", topic=u"d",
+    code2 = Code(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display="X", topic="d",
                  codeType=CodeType.QUESTION, mapped=True, created=datetime.datetime.now())
     codeHistory2 = CodeHistory(codeId=2, codeBookId=1, parentId=1, system="a", value="c",
-                               display=u"X", topic=u"d",
+                               display="X", topic="d",
                                codeType=CodeType.QUESTION, mapped=True,
                                created=datetime.datetime.now())
     session.add(code2)
     session.add(codeHistory2)
     session.commit()
 
-    code3 = Code(codeId=3, codeBookId=1, parentId=2, system="a", value="d", display=u"Y",
-                 topic=u"d", codeType=CodeType.ANSWER, mapped=False,
+    code3 = Code(codeId=3, codeBookId=1, parentId=2, system="a", value="d", display="Y",
+                 topic="d", codeType=CodeType.ANSWER, mapped=False,
                  created=datetime.datetime.now())
     codeHistory3 = CodeHistory(codeId=3, codeBookId=1, parentId=2, system="a", value="d",
-                               display=u"Y", topic=u"d",
+                               display="Y", topic="d",
                                codeType=CodeType.ANSWER, mapped=False,
                                created=datetime.datetime.now())
     session.add(code3)
@@ -233,13 +233,13 @@ class DatabaseTest(SqlTestBase):
         finalizedSiteId=1,
         finalizedUsername='elvis@pmi-ops.org',
         collectedNote=r'written by ' + self.fake.last_name(),
-        processedNote=u'd',
-        finalizedNote=u'e',
+        processedNote='d',
+        finalizedNote='e',
         logPosition=LogPosition())
     bo.identifiers.append(BiobankOrderIdentifier(system='a', value='b'))
     bo.samples.append(BiobankOrderedSample(
         test='a',
-        description=u'a test invented by ' + self.fake.first_name(),
+        description='a test invented by ' + self.fake.first_name(),
         processingRequired=True,
         collected=now,
         processed=now,
@@ -249,5 +249,5 @@ class DatabaseTest(SqlTestBase):
 
     read_session = self.database.make_session()
     bo = read_session.query(BiobankOrder).get(bo_id)
-    self.assertEquals(bo.created.isoformat(),
+    self.assertEqual(bo.created.isoformat(),
                       now.astimezone(tzutc()).replace(tzinfo=None).isoformat())

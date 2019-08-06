@@ -85,7 +85,7 @@ def run_migrations_offline():
     url.database = name
     engines[name] = {'url': str(url)}
 
-  for name, rec in engines.items():
+  for name, rec in list(engines.items()):
     logger.info("Migrating database %s" % name)
     file_ = "%s.sql" % name
     logger.info("Writing output to %s" % file_)
@@ -145,7 +145,7 @@ def run_migrations_online():
             poolclass=pool.NullPool)
     }
 
-  for name, rec in engines.items():
+  for name, rec in list(engines.items()):
     engine = rec['engine']
     rec['connection'] = conn = engine.connect()
 
@@ -155,7 +155,7 @@ def run_migrations_online():
       rec['transaction'] = conn.begin()
 
   try:
-    for name, rec in engines.items():
+    for name, rec in list(engines.items()):
       logger.info("Migrating database %s" % name)
       context.configure(
           connection=rec['connection'],
@@ -167,17 +167,17 @@ def run_migrations_online():
       context.run_migrations(engine_name=name)
 
     if USE_TWOPHASE:
-      for rec in engines.values():
+      for rec in list(engines.values()):
         rec['transaction'].prepare()
 
-    for rec in engines.values():
+    for rec in list(engines.values()):
       rec['transaction'].commit()
   except:
-    for rec in engines.values():
+    for rec in list(engines.values()):
       rec['transaction'].rollback()
     raise
   finally:
-    for rec in engines.values():
+    for rec in list(engines.values()):
       rec['connection'].close()
 
 

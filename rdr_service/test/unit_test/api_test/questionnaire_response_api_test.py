@@ -1,5 +1,5 @@
 import datetime
-import httplib
+import http.client
 import json
 
 import pytz
@@ -77,14 +77,14 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     string_answers = [["nameOfChild", string]]
     resource = gen_response(participant_id, questionnaire_id, string_answers=string_answers)
     response = self.send_post(url, resource)
-    self.assertEquals(response['group']['question'][0]['answer'][0]['valueString'], string)
+    self.assertEqual(response['group']['question'][0]['answer'][0]['valueString'], string)
 
     # Check that a string longer than the max will not
     # This one should evaluate to a string that is one char too long; i.e. exactly 64KiB
     string = 'a' * (QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN + 1)
     string_answers = [["nameOfChild", string]]
     resource = gen_response(participant_id, questionnaire_id, string_answers=string_answers)
-    self.send_post(url, resource, expected_status=httplib.BAD_REQUEST)
+    self.send_post(url, resource, expected_status=http.client.BAD_REQUEST)
 
   def test_insert(self):
     participant_id = self.create_participant()
@@ -94,13 +94,13 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
 
     # Sending response with the dummy participant id in the file is an error
     self.send_post(_questionnaire_response_url('{participant_id}'), resource,
-                   expected_status=httplib.NOT_FOUND)
+                   expected_status=http.client.NOT_FOUND)
 
     # Fixing participant id but not the questionnaire id is also an error
     resource['subject']['reference'] = \
         resource['subject']['reference'].format(participant_id=participant_id)
     self.send_post(_questionnaire_response_url(participant_id), resource,
-                   expected_status=httplib.BAD_REQUEST)
+                   expected_status=http.client.BAD_REQUEST)
 
     # Fix the reference
     resource['questionnaire']['reference'] = \
@@ -108,7 +108,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
 
     # Sending the response before the consent is an error.
     self.send_post(_questionnaire_response_url(participant_id), resource,
-                   expected_status=httplib.BAD_REQUEST)
+                   expected_status=http.client.BAD_REQUEST)
 
     # After consent, the post succeeds
     self.send_consent(participant_id)
@@ -141,21 +141,21 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                   hep_b_given, abnormalities_at_birth]]
       current_answers = answer_dao.get_current_answers_for_concepts(session,\
           from_client_participant_id(participant_id), code_ids)
-    self.assertEquals(7, len(current_answers))
+    self.assertEqual(7, len(current_answers))
     questionnaire = QuestionnaireDao().get_with_children(questionnaire_id)
     question_id_to_answer = {answer.questionId : answer for answer in current_answers}
     code_id_to_answer = {question.codeId:
                          question_id_to_answer.get(question.questionnaireQuestionId)
                          for question in questionnaire.questions}
-    self.assertEquals("Cathy Jones", code_id_to_answer[name_of_child.codeId].valueString)
-    self.assertEquals(3.25, code_id_to_answer[birth_weight.codeId].valueDecimal)
-    self.assertEquals(44.3, code_id_to_answer[birth_length.codeId].valueDecimal)
-    self.assertEquals(44, code_id_to_answer[birth_length.codeId].valueInteger)
-    self.assertEquals(True, code_id_to_answer[hep_b_given.codeId].valueBoolean)
-    self.assertEquals(0, code_id_to_answer[abnormalities_at_birth.codeId].valueInteger)
-    self.assertEquals(datetime.date(1972, 11, 30),
+    self.assertEqual("Cathy Jones", code_id_to_answer[name_of_child.codeId].valueString)
+    self.assertEqual(3.25, code_id_to_answer[birth_weight.codeId].valueDecimal)
+    self.assertEqual(44.3, code_id_to_answer[birth_length.codeId].valueDecimal)
+    self.assertEqual(44, code_id_to_answer[birth_length.codeId].valueInteger)
+    self.assertEqual(True, code_id_to_answer[hep_b_given.codeId].valueBoolean)
+    self.assertEqual(0, code_id_to_answer[abnormalities_at_birth.codeId].valueInteger)
+    self.assertEqual(datetime.date(1972, 11, 30),
                       code_id_to_answer[vitamin_k_dose_1.codeId].valueDate)
-    self.assertEquals(datetime.datetime(1972, 11, 30, 12, 34, 42),
+    self.assertEqual(datetime.datetime(1972, 11, 30, 12, 34, 42),
                       code_id_to_answer[vitamin_k_dose_2.codeId].valueDateTime)
 
   def test_demographic_questionnaire_responses(self):
@@ -415,10 +415,10 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     # The resource gets rewritten to include the version
     resource['questionnaire']['reference'] = 'Questionnaire/%s' % questionnaire_id
     self.send_post(_questionnaire_response_url(participant_id), resource,
-                   expected_status=httplib.BAD_REQUEST)
+                   expected_status=http.client.BAD_REQUEST)
     resource['questionnaire']['reference'] = 'Questionnaire/%s/_history/2' % questionnaire_id
     self.send_post(_questionnaire_response_url(participant_id), resource,
-                   expected_status=httplib.BAD_REQUEST)
+                   expected_status=http.client.BAD_REQUEST)
 
   def test_invalid_questionnaire_linkid(self):
     """
@@ -442,7 +442,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
       resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
 
     self.send_post(_questionnaire_response_url(participant_id), resource,
-                              expected_status=httplib.OK)
+                              expected_status=http.client.OK)
 
     # Alter response to set a bad link id value
     # resource['group']['question'][0]['linkId'] = 'bad-link-id'

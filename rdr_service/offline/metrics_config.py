@@ -107,7 +107,7 @@ def _get_sample_statuses():
   return [str(status) for status in participant_enums.SampleStatus]
 
 def _get_completed_baseline_ppi_modules_values():
-  return range(0, len(_get_baseline_ppi_module_fields()) + 1)
+  return list(range(0, len(_get_baseline_ppi_module_fields()) + 1))
 
 def _get_submission_statuses():
   return [str(status) for status in participant_enums.QuestionnaireStatus]
@@ -172,7 +172,7 @@ CONFIG = {
   ] + [FieldDef(fieldname, _get_submission_statuses) for fieldname in
        QUESTIONNAIRE_MODULE_FIELD_NAMES]
     + [CodeIdFieldDef(fieldname, _get_answer_values_func(question_code)) for
-       fieldname, question_code in ANSWER_FIELD_TO_QUESTION_CODE.iteritems()],
+       fieldname, question_code in ANSWER_FIELD_TO_QUESTION_CODE.items()],
   # These fields are computed using the first provided function in the definition,
   # based on the state of other fields.
   'summary_fields': [

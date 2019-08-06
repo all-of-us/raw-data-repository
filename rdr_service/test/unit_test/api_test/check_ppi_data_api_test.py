@@ -17,14 +17,14 @@ class CheckPpiDataApiTest(FlaskTestBase):
 
   def test_empty_request(self):
     response = self.send_post('CheckPpiData', {'ppi_data': {}})
-    self.assertEquals({'ppi_results': {}}, response)
+    self.assertEqual({'ppi_results': {}}, response)
 
   def test_result_to_json(self):
     result = check_ppi_data_api._ValidationResult()
     result.add_error('ez')
     result.add_error('ea')
     result.tests_count += 11
-    self.assertEquals(
+    self.assertEqual(
         {'tests_count': 11, 'errors_count': 2, 'error_messages': ['ez', 'ea']},
         result.to_json())
 
@@ -36,9 +36,9 @@ class CheckPpiDataApiTest(FlaskTestBase):
 
     result = check_ppi_data_api._get_validation_result(
         summary.email, {FIRST_NAME_QUESTION_CODE: 'NotAnswered'})
-    self.assertEquals(1, result.tests_count)
-    self.assertEquals(1, result.errors_count)
-    self.assertEquals(1, len(result.messages))
+    self.assertEqual(1, result.tests_count)
+    self.assertEqual(1, result.errors_count)
+    self.assertEqual(1, len(result.messages))
     self.assertIn(FIRST_NAME_QUESTION_CODE, result.messages[0])
 
     # test using phone number as lookup value in API.
@@ -46,7 +46,7 @@ class CheckPpiDataApiTest(FlaskTestBase):
     ParticipantSummaryDao().update(summary)
     result = check_ppi_data_api._get_validation_result(
       summary.loginPhoneNumber, {FIRST_NAME_QUESTION_CODE: 'NotAnswered'})
-    self.assertEquals(1, result.tests_count)
-    self.assertEquals(1, result.errors_count)
-    self.assertEquals(1, len(result.messages))
+    self.assertEqual(1, result.tests_count)
+    self.assertEqual(1, result.errors_count)
+    self.assertEqual(1, len(result.messages))
     self.assertIn(FIRST_NAME_QUESTION_CODE, result.messages[0])

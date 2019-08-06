@@ -13,7 +13,7 @@ import os
 import random
 import sys
 import time
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 
 from rdr_service import clock
 from rdr_service.data_gen.generators import BioBankOrderGen, CodeBook, ParticipantGen, \
@@ -64,7 +64,7 @@ class DataGeneratorClass(object):
     :return: A list object with rows from spreadsheet
     """
     url = 'https://docs.google.com/spreadsheets/d/{0}/export?format=csv'.format(doc_id)
-    response = urllib2.urlopen(url)
+    response = urllib.request.urlopen(url)
     if response.code != 200:  # urllib2 already raises urllib2.HTTPError for some of these.
       return None
 
@@ -325,7 +325,7 @@ class DataGeneratorClass(object):
 
     # see if we need to rotate the csv data
     if self.args.horiz is True:
-      csv_data = zip(*csv_data)
+      csv_data = list(zip(*csv_data))
 
     # Loop through each column and generate data.
     for column in range(0, len(csv_data[0]) - 1):
@@ -366,7 +366,7 @@ class DataGeneratorClass(object):
         modules = ppi_modules.split('|')
         for module in modules:
           with clock.FakeClock(mod_dt):
-            mod_obj = self.submit_module_response(module, p_obj.participantId, p_data.items())
+            mod_obj = self.submit_module_response(module, p_obj.participantId, list(p_data.items()))
             if mod_obj:
               _logger.info('  module: [{0}]: submitted.'.format(module))
             else:

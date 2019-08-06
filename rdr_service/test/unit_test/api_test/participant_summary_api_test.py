@@ -1,9 +1,9 @@
 import datetime
-import httplib
+import http.client
 import threading
 import unittest
 try:                                # Python 2.x
-  from urllib import urlencode
+  from urllib.parse import urlencode
 except ImportError:                 # Python 3
   from urllib.parse import urlencode
 
@@ -76,7 +76,7 @@ class ParticipantSummaryMySqlApiTest(FlaskTestBase):
     # This used to fail a decent percentage of the time, before we started using FOR UPDATE in
     # our update statements; see DA-256.
     ps = self.send_get('Participant/%s/Summary' % participant_id)
-    self.assertEquals('PITT', ps.get('hpoId'))
+    self.assertEqual('PITT', ps.get('hpoId'))
 
 
 class ParticipantSummaryApiTest(FlaskTestBase):
@@ -203,7 +203,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'consentForCABoR': 'SUBMITTED',
       'consentForCABoRTime': TIME_1.isoformat(),
       'consentForCABoRAuthored': TIME_1.isoformat(),
-      'questionnaireOnMedicalHistory': u'UNSET',
+      'questionnaireOnMedicalHistory': 'UNSET',
       'participantId': participant['participantId'],
       'hpoId': 'PITT',
       'awardee': 'PITT',
@@ -291,17 +291,17 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     last_modified = summary['lastModified']
 
     results = self.send_get('ParticipantSummary/Modified')
-    self.assertEquals(len(results), 1)
+    self.assertEqual(len(results), 1)
 
     rec = results[0]
-    self.assertEquals(participant_id, rec['participantId'])
-    self.assertEquals(last_modified, rec['lastModified'])
+    self.assertEqual(participant_id, rec['participantId'])
+    self.assertEqual(last_modified, rec['lastModified'])
 
     results = self.send_get('ParticipantSummary/Modified?awardee=PITT')
 
     rec = results[0]
-    self.assertEquals(participant_id, rec['participantId'])
-    self.assertEquals(last_modified, rec['lastModified'])
+    self.assertEqual(participant_id, rec['participantId'])
+    self.assertEqual(last_modified, rec['lastModified'])
 
 
   def test_pairing_summary(self):
@@ -310,11 +310,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     path = 'Participant/%s' % participant_id
     participant['awardee'] = 'PITT'
     particpant_update = self.send_put(path, participant, headers={'If-Match': 'W/"1"'})
-    self.assertEquals(particpant_update['awardee'], participant['awardee'])
+    self.assertEqual(particpant_update['awardee'], participant['awardee'])
     participant['organization'] = 'AZ_TUCSON_BANNER_HEALTH'
     participant_update_2 = self.send_put(path, participant, headers={'If-Match': 'W/"2"'})
-    self.assertEquals(participant_update_2['organization'], participant['organization'])
-    self.assertEquals(participant_update_2['awardee'], 'AZ_TUCSON')
+    self.assertEqual(participant_update_2['organization'], participant['organization'])
+    self.assertEqual(participant_update_2['awardee'], 'AZ_TUCSON')
 
   def test_admin_withdrawal_returns_right_info(self):
     with FakeClock(TIME_1):
@@ -361,7 +361,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       response = self.send_get('Participant/%s/Summary' % participant_id)
       del answers['CABoRSignature']
       # all fields available 24 hours after withdraw.
-      for key in answers.keys():
+      for key in list(answers.keys()):
         self.assertIn(key, response)
 
     with FakeClock(TIME_5):
@@ -467,11 +467,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       participant['withdrawalStatus'] = "NO_USE"
       participant['withdrawalReason'] = "DUPLICATE"
       # no withdrawalReasonJustification should fail.
-      self.send_put(path, participant, headers={'If-Match': 'W/"1"'}, expected_status=httplib.BAD_REQUEST)
+      self.send_put(path, participant, headers={'If-Match': 'W/"1"'}, expected_status=http.client.BAD_REQUEST)
 
 
   def testQuery_noParticipants(self):
-    self.send_get('Participant/P1/Summary', expected_status=httplib.NOT_FOUND)
+    self.send_get('Participant/P1/Summary', expected_status=http.client.NOT_FOUND)
     response = self.send_get('ParticipantSummary')
     self.assertBundle([], response)
 
@@ -512,7 +512,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
   def testQuery_noSummaries(self):
     participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
     participant_id = participant['participantId']
-    self.send_get('Participant/%s/Summary' % participant_id, expected_status=httplib.NOT_FOUND)
+    self.send_get('Participant/%s/Summary' % participant_id, expected_status=http.client.NOT_FOUND)
     response = self.send_get('ParticipantSummary')
     self.assertBundle([], response)
 
@@ -651,7 +651,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     no_count_url = 'ParticipantSummary?lastModified=lt%s&_sync=true&awardee=PITT' % TIME_4
     no_count_response = self.send_get(no_count_url)
     total_count = len(no_count_response['entry'])
-    self.assertEquals(total_count, 20)
+    self.assertEqual(total_count, 20)
     url = 'ParticipantSummary?lastModified=lt%s&_count=10&_sync=true&awardee=PITT' % TIME_4
     response = self.send_get(url)
     self.assertEqual(len(response['entry']), 10)
@@ -661,8 +661,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     sort_by_lastmodified = 'ParticipantSummary?_sync=true&awardee=PITT&_sort=lastModified'
     sort_lm_response = self.send_get(sort_by_lastmodified)
-    self.assertEquals(len(sort_lm_response['entry']), 20)
-    self.assertEquals(sort_lm_response['link'][0]['relation'], 'sync')
+    self.assertEqual(len(sort_lm_response['entry']), 20)
+    self.assertEqual(sort_lm_response['link'][0]['relation'], 'sync')
     # ensure same participants are returned before 5 min. buffer
     sync_url = sort_lm_response['link'][0]['url']
     setup_participant(t5)
@@ -671,9 +671,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     setup_participant(t5, self.az_provider_link)
     sync_again = self.send_get(sync_url[index:])
     self.send_get(sort_by_lastmodified)
-    self.assertEquals(len(sync_again['entry']), 14)
+    self.assertEqual(len(sync_again['entry']), 14)
     # The last 14 participants from sort_lm_response should be equal to the sync_again response.
-    self.assertEquals(sort_lm_response['entry'][7:], sync_again['entry'][:13])
+    self.assertEqual(sort_lm_response['entry'][7:], sync_again['entry'][:13])
 
     one_min_modified = list()
     for i in sync_again['entry']:
@@ -692,7 +692,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     setup_participant(t5, self.az_provider_link)
     sync_again = self.send_get(sync_url[index:])
     self.send_get(sort_by_lastmodified)
-    self.assertEquals(len(sync_again['entry']), 14)
+    self.assertEqual(len(sync_again['entry']), 14)
 
   def test_get_summary_list_returns_total(self):
     page_size = 10
@@ -1000,7 +1000,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'Organization',
       status_org_name
     ])
-    self.send_post(status_post_url, patient_status_dict, expected_status=httplib.CREATED)
+    self.send_post(status_post_url, patient_status_dict, expected_status=http.client.CREATED)
 
     # Populate some answers to the questionnaire
     answers = {
@@ -1177,19 +1177,19 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     participant_id_1 = participant_1['participantId']
     self.send_consent(participant_id_1)
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('UNSET', ps_1['consentForElectronicHealthRecords'])
-    self.assertEquals(None, ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual('UNSET', ps_1['consentForElectronicHealthRecords'])
+    self.assertEqual(None, ps_1.get('enrollmentStatusMemberTime'))
 
     self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id, 'NOPE')
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('SUBMITTED_NO_CONSENT', ps_1['consentForElectronicHealthRecords'])
-    self.assertEquals(None, ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual('SUBMITTED_NO_CONSENT', ps_1['consentForElectronicHealthRecords'])
+    self.assertEqual(None, ps_1.get('enrollmentStatusMemberTime'))
 
     self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id,
                                                 CONSENT_PERMISSION_YES_CODE)
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('SUBMITTED', ps_1['consentForElectronicHealthRecords'])
-    self.assertEquals(TIME_1.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual('SUBMITTED', ps_1['consentForElectronicHealthRecords'])
+    self.assertEqual(TIME_1.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
 
   def _submit_dvehr_consent_questionnaire_response(self, participant_id, questionnaire_id,
                                              dvehr_consent_answer, time=TIME_1):
@@ -1206,29 +1206,29 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     participant_id_1 = participant_1['participantId']
     self.send_consent(participant_id_1)
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('UNSET', ps_1['consentForDvElectronicHealthRecordsSharing'])
+    self.assertEqual('UNSET', ps_1['consentForDvElectronicHealthRecordsSharing'])
 
     self._submit_dvehr_consent_questionnaire_response(participant_id_1, questionnaire_id,
                                                 DVEHRSHARING_CONSENT_CODE_NO)
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('SUBMITTED_NO_CONSENT', ps_1['consentForDvElectronicHealthRecordsSharing'])
+    self.assertEqual('SUBMITTED_NO_CONSENT', ps_1['consentForDvElectronicHealthRecordsSharing'])
 
     self._submit_dvehr_consent_questionnaire_response(participant_id_1, questionnaire_id,
                                                 DVEHRSHARING_CONSENT_CODE_YES)
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('SUBMITTED', ps_1['consentForDvElectronicHealthRecordsSharing'])
+    self.assertEqual('SUBMITTED', ps_1['consentForDvElectronicHealthRecordsSharing'])
 
     self._submit_dvehr_consent_questionnaire_response(participant_id_1, questionnaire_id,
                                                       DVEHRSHARING_CONSENT_CODE_NOT_SURE)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('SUBMITTED_NOT_SURE', ps_1['consentForDvElectronicHealthRecordsSharing'])
+    self.assertEqual('SUBMITTED_NOT_SURE', ps_1['consentForDvElectronicHealthRecordsSharing'])
 
     self._submit_dvehr_consent_questionnaire_response(participant_id_1, questionnaire_id,
                                                       '')
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('SUBMITTED_NO_CONSENT', ps_1['consentForDvElectronicHealthRecordsSharing'])
+    self.assertEqual('SUBMITTED_NO_CONSENT', ps_1['consentForDvElectronicHealthRecordsSharing'])
 
   def testWithdrawThenPair(self):
     participant_1 = self.send_post('Participant', {"providerLink": [self.provider_link]})
@@ -1237,8 +1237,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.send_consent(participant_id_1)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('NOT_WITHDRAWN', ps_1['withdrawalStatus'])
-    self.assertEquals('PITT', ps_1['awardee'])
+    self.assertEqual('NOT_WITHDRAWN', ps_1['withdrawalStatus'])
+    self.assertEqual('PITT', ps_1['awardee'])
     self.assertIsNone(ps_1.get('withdrawalTime'))
 
     with FakeClock(TIME_2):
@@ -1247,9 +1247,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                     headers={'If-Match': 'W/"1"'})
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('NO_USE', ps_1['withdrawalStatus'])
-    self.assertEquals('PITT', ps_1['awardee'])
-    self.assertEquals(TIME_2.isoformat(), ps_1.get('withdrawalTime'))
+    self.assertEqual('NO_USE', ps_1['withdrawalStatus'])
+    self.assertEqual('PITT', ps_1['awardee'])
+    self.assertEqual(TIME_2.isoformat(), ps_1.get('withdrawalTime'))
 
     with FakeClock(TIME_3):
       participant_1['providerLink'] = [self.az_provider_link]
@@ -1257,9 +1257,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                     headers={'If-Match': 'W/"2"'})
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('AZ_TUCSON', ps_1['awardee'])
-    self.assertEquals('NO_USE', ps_1['withdrawalStatus'])
-    self.assertEquals(TIME_2.isoformat(), ps_1.get('withdrawalTime'))
+    self.assertEqual('AZ_TUCSON', ps_1['awardee'])
+    self.assertEqual('NO_USE', ps_1['withdrawalStatus'])
+    self.assertEqual(TIME_2.isoformat(), ps_1.get('withdrawalTime'))
 
   def test_ehr_consent_after_dv_consent(self):
     questionnaire_id_1 = self.create_questionnaire('dv_ehr_share_consent_questionnaire.json')
@@ -1275,9 +1275,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                                       DVEHRSHARING_CONSENT_CODE_YES, time=TIME_1)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_1.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
-    self.assertEquals('SUBMITTED', ps_1['consentForDvElectronicHealthRecordsSharing'])
-    self.assertEquals(TIME_1.isoformat(), ps_1['consentForDvElectronicHealthRecordsSharingTime'])
+    self.assertEqual(TIME_1.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual('SUBMITTED', ps_1['consentForDvElectronicHealthRecordsSharing'])
+    self.assertEqual(TIME_1.isoformat(), ps_1['consentForDvElectronicHealthRecordsSharingTime'])
 
     # submit ehr consent after dv consent at TIME_2
     self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id_2,
@@ -1285,7 +1285,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     # the enrollmentStatusMemberTime should still be TIME_1
-    self.assertEquals(TIME_1.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual(TIME_1.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
 
   def test_dv_consent_after_ehr_consent(self):
     questionnaire_id_1 = self.create_questionnaire('dv_ehr_share_consent_questionnaire.json')
@@ -1302,7 +1302,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     # the enrollmentStatusMemberTime should still be TIME_1
-    self.assertEquals(TIME_1.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual(TIME_1.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
 
     # submit dv consent after ehr consent at TIME_2
     self._submit_dvehr_consent_questionnaire_response(participant_id_1, questionnaire_id_1,
@@ -1310,7 +1310,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     # the enrollmentStatusMemberTime should still be TIME_1
-    self.assertEquals(TIME_1.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual(TIME_1.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
 
   def test_dv_consent_withdraw_ehr_consent(self):
     questionnaire_id_1 = self.create_questionnaire('dv_ehr_share_consent_questionnaire.json')
@@ -1326,7 +1326,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                                       DVEHRSHARING_CONSENT_CODE_YES, time=TIME_1)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_1.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual(TIME_1.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
 
     # withdraw ehr consent after dv consent at TIME_2
     self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id_2,
@@ -1335,8 +1335,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     # ehr consent overwrite dv consent, enrollmentStatusMemberTime should be None
     self.assertIsNone(ps_1.get('enrollmentStatusMemberTime'))
-    self.assertEquals('INTERESTED', ps_1.get('enrollmentStatus'))
-    self.assertEquals('SUBMITTED_NO_CONSENT', ps_1.get('consentForElectronicHealthRecords'))
+    self.assertEqual('INTERESTED', ps_1.get('enrollmentStatus'))
+    self.assertEqual('SUBMITTED_NO_CONSENT', ps_1.get('consentForElectronicHealthRecords'))
 
   def test_member_ordered_stored_times_for_multi_biobank_order_with_only_dv_consent(self):
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
@@ -1351,7 +1351,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                                       DVEHRSHARING_CONSENT_CODE_YES, time=TIME_6)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
@@ -1374,8 +1374,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.send_post(path, measurements_1)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
-    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
     # Send another biobank order for participant 1 with a different timestamp
@@ -1384,8 +1384,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self._send_biobank_order(participant_id_1, order_json2, time=TIME_2)
     # make sure enrollmentStatusCoreOrderedSampleTime is not changed
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
-    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
   def test_member_ordered_stored_times_for_multi_biobank_order(self):
@@ -1401,7 +1401,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                                 CONSENT_PERMISSION_YES_CODE, time=TIME_6)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
@@ -1424,8 +1424,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.send_post(path, measurements_1)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
-    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
     # Send another biobank order for participant 1 with a different timestamp
@@ -1434,8 +1434,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self._send_biobank_order(participant_id_1, order_json2, time=TIME_2)
     # make sure enrollmentStatusCoreOrderedSampleTime is not changed
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
-    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
   def test_member_ordered_stored_times_for_biobank_order_cancel(self):
@@ -1451,7 +1451,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                                 CONSENT_PERMISSION_YES_CODE, time=TIME_6)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
@@ -1474,8 +1474,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.send_post(path, measurements_1)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
-    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
     # Store samples for DNA for participants 1
@@ -1485,9 +1485,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     ParticipantSummaryDao().update_from_biobank_stored_samples()
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
-    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
-    self.assertEquals(TIME_4.isoformat(), ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertEqual(TIME_4.isoformat(), ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
     # cancel a biobank order
     biobank_order_id = order_json['identifier'][1]['value']
@@ -1512,7 +1512,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertIsNone(ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
     self.assertIsNone(ps_1.get('sampleOrderStatus2ED10Time'))
-    self.assertEquals(ps_1.get('sampleOrderStatus2ED10'), 'UNSET')
+    self.assertEqual(ps_1.get('sampleOrderStatus2ED10'), 'UNSET')
 
   def test_member_ordered_stored_times_for_consent_withdraw(self):
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
@@ -1527,7 +1527,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                                 CONSENT_PERMISSION_YES_CODE, time=TIME_6)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
@@ -1550,8 +1550,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.send_post(path, measurements_1)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
-    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
     # Store samples for DNA for participants 1
@@ -1561,9 +1561,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     ParticipantSummaryDao().update_from_biobank_stored_samples()
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
-    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
-    self.assertEquals(TIME_4.isoformat(), ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertEqual(TIME_4.isoformat(), ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
     # test withdraws
     with FakeClock(TIME_3):
@@ -1575,9 +1575,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     # one day after withdraw
     with FakeClock(TIME_4):
       ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
-    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
-    self.assertEquals(TIME_4.isoformat(), ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertEqual(TIME_4.isoformat(), ps_1.get('enrollmentStatusCoreStoredSampleTime'))
     # two days after withdraw
     with FakeClock(TIME_5):
       ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
@@ -1598,7 +1598,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                                 CONSENT_PERMISSION_YES_CODE, time=TIME_6)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
@@ -1621,8 +1621,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       pm_response = self.send_post(path, measurements_1)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
-    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
     # Store samples for DNA for participants 1
@@ -1632,9 +1632,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     ParticipantSummaryDao().update_from_biobank_stored_samples()
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
-    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
-    self.assertEquals(TIME_4.isoformat(), ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+    self.assertEqual(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEqual('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertEqual(TIME_4.isoformat(), ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
     # cancel a physical measurement
     path = 'Participant/%s/PhysicalMeasurements' % participant_id_1
@@ -1642,7 +1642,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     cancel_info = get_restore_or_cancel_info()
     self.send_patch(path, cancel_info)
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('CANCELLED', ps_1.get('physicalMeasurementsStatus'))
+    self.assertEqual('CANCELLED', ps_1.get('physicalMeasurementsStatus'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
@@ -1665,7 +1665,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       pm_response2 = self.send_post(path, measurements_2)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('COMPLETED', ps_1.get('physicalMeasurementsStatus'))
+    self.assertEqual('COMPLETED', ps_1.get('physicalMeasurementsStatus'))
 
     ParticipantSummaryDao().update_from_biobank_stored_samples()
 
@@ -1677,11 +1677,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     # status should still be completed because participant has another valid PM
-    self.assertEquals('COMPLETED', ps_1.get('physicalMeasurementsStatus'))
-    self.assertEquals(ps_1.get('physicalMeasurementsFinalizedTime'), TIME_1.isoformat())
-    self.assertEquals(ps_1.get('physicalMeasurementsTime'), TIME_1.isoformat())
-    self.assertEquals(ps_1.get('physicalMeasurementsCreatedSite'), 'hpo-site-monroeville')
-    self.assertEquals(ps_1.get('physicalMeasurementsFinalizedSite'), 'hpo-site-bannerphoenix')
+    self.assertEqual('COMPLETED', ps_1.get('physicalMeasurementsStatus'))
+    self.assertEqual(ps_1.get('physicalMeasurementsFinalizedTime'), TIME_1.isoformat())
+    self.assertEqual(ps_1.get('physicalMeasurementsTime'), TIME_1.isoformat())
+    self.assertEqual(ps_1.get('physicalMeasurementsCreatedSite'), 'hpo-site-monroeville')
+    self.assertEqual(ps_1.get('physicalMeasurementsFinalizedSite'), 'hpo-site-bannerphoenix')
 
   def test_participant_summary_returns_latest_pm(self):
     questionnaire_id_1 = self.create_questionnaire('all_consents_questionnaire.json')
@@ -1728,8 +1728,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                        datetime.date(1978, 10, 9), "signature.pdf")
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('215-222-2222', ps_1['loginPhoneNumber'])
-    self.assertEquals('PITT', ps_1['hpoId'])
+    self.assertEqual('215-222-2222', ps_1['loginPhoneNumber'])
+    self.assertEqual('PITT', ps_1['hpoId'])
 
     # change login phone number to 444-222-2222
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
@@ -1741,8 +1741,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     ps_1_with_test_login_phone_number = self.send_get('Participant/%s/Summary' % participant_id_1)
 
-    self.assertEquals('444-222-2222', ps_1_with_test_login_phone_number['loginPhoneNumber'])
-    self.assertEquals('TEST', ps_1_with_test_login_phone_number['hpoId'])
+    self.assertEqual('444-222-2222', ps_1_with_test_login_phone_number['loginPhoneNumber'])
+    self.assertEqual('TEST', ps_1_with_test_login_phone_number['hpoId'])
 
   def testQuery_manyParticipants(self):
     SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
@@ -1829,98 +1829,98 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
       ps_3 = self.send_get('Participant/%s/Summary' % participant_id_3)
 
-    self.assertEquals(1, ps_1['numCompletedBaselinePPIModules'])
-    self.assertEquals(1, ps_1['numBaselineSamplesArrived'])
-    self.assertEquals('RECEIVED', ps_1['sampleStatus1ED10'])
-    self.assertEquals(TIME_1.isoformat(), ps_1['sampleStatus1ED10Time'])
-    self.assertEquals('UNSET', ps_1['sampleStatus1SAL'])
-    self.assertEquals('UNSET', ps_1['sampleStatus2ED10'])
-    self.assertEquals('RECEIVED', ps_1['sampleStatus1SAL2'])
-    self.assertEquals('RECEIVED', ps_1['samplesToIsolateDNA'])
-    self.assertEquals('INTERESTED', ps_1['enrollmentStatus'])
-    self.assertEquals('UNSET', ps_1['physicalMeasurementsStatus'])
+    self.assertEqual(1, ps_1['numCompletedBaselinePPIModules'])
+    self.assertEqual(1, ps_1['numBaselineSamplesArrived'])
+    self.assertEqual('RECEIVED', ps_1['sampleStatus1ED10'])
+    self.assertEqual(TIME_1.isoformat(), ps_1['sampleStatus1ED10Time'])
+    self.assertEqual('UNSET', ps_1['sampleStatus1SAL'])
+    self.assertEqual('UNSET', ps_1['sampleStatus2ED10'])
+    self.assertEqual('RECEIVED', ps_1['sampleStatus1SAL2'])
+    self.assertEqual('RECEIVED', ps_1['samplesToIsolateDNA'])
+    self.assertEqual('INTERESTED', ps_1['enrollmentStatus'])
+    self.assertEqual('UNSET', ps_1['physicalMeasurementsStatus'])
     self.assertIsNone(ps_1.get('physicalMeasurementsTime'))
-    self.assertEquals('GenderIdentity_Man', ps_1['genderIdentity'])
-    self.assertEquals('NOT_WITHDRAWN', ps_1['withdrawalStatus'])
-    self.assertEquals('NOT_SUSPENDED', ps_1['suspensionStatus'])
-    self.assertEquals('email_code', ps_1['recontactMethod'])
+    self.assertEqual('GenderIdentity_Man', ps_1['genderIdentity'])
+    self.assertEqual('NOT_WITHDRAWN', ps_1['withdrawalStatus'])
+    self.assertEqual('NOT_SUSPENDED', ps_1['suspensionStatus'])
+    self.assertEqual('email_code', ps_1['recontactMethod'])
     self.assertIsNone(ps_1.get('withdrawalTime'))
     self.assertIsNone(ps_1.get('suspensionTime'))
-    self.assertEquals('UNSET', ps_1['physicalMeasurementsCreatedSite'])
-    self.assertEquals('UNSET', ps_1['physicalMeasurementsFinalizedSite'])
+    self.assertEqual('UNSET', ps_1['physicalMeasurementsCreatedSite'])
+    self.assertEqual('UNSET', ps_1['physicalMeasurementsFinalizedSite'])
     self.assertIsNone(ps_1.get('physicalMeasurementsTime'))
     self.assertIsNone(ps_1.get('physicalMeasurementsFinalizedTime'))
-    self.assertEquals('FINALIZED', ps_1['biospecimenStatus'])
-    self.assertEquals('2016-01-04T09:40:21', ps_1['biospecimenOrderTime'])
-    self.assertEquals('hpo-site-monroeville', ps_1['biospecimenSourceSite'])
-    self.assertEquals('hpo-site-monroeville', ps_1['biospecimenCollectedSite'])
-    self.assertEquals('hpo-site-monroeville', ps_1['biospecimenProcessedSite'])
-    self.assertEquals('hpo-site-bannerphoenix', ps_1['biospecimenFinalizedSite'])
-    self.assertEquals('UNSET', ps_1['sampleOrderStatus1ED04'])
-    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1ED10'])
-    self.assertEquals('2016-01-04T10:55:41', ps_1['sampleOrderStatus1ED10Time'])
-    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1PST8'])
-    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus2ED10'])
-    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1SST8'])
-    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1HEP4'])
-    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1UR10'])
-    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1SAL'])
-    self.assertEquals('215-222-2222', ps_1['loginPhoneNumber'])
+    self.assertEqual('FINALIZED', ps_1['biospecimenStatus'])
+    self.assertEqual('2016-01-04T09:40:21', ps_1['biospecimenOrderTime'])
+    self.assertEqual('hpo-site-monroeville', ps_1['biospecimenSourceSite'])
+    self.assertEqual('hpo-site-monroeville', ps_1['biospecimenCollectedSite'])
+    self.assertEqual('hpo-site-monroeville', ps_1['biospecimenProcessedSite'])
+    self.assertEqual('hpo-site-bannerphoenix', ps_1['biospecimenFinalizedSite'])
+    self.assertEqual('UNSET', ps_1['sampleOrderStatus1ED04'])
+    self.assertEqual('FINALIZED', ps_1['sampleOrderStatus1ED10'])
+    self.assertEqual('2016-01-04T10:55:41', ps_1['sampleOrderStatus1ED10Time'])
+    self.assertEqual('FINALIZED', ps_1['sampleOrderStatus1PST8'])
+    self.assertEqual('FINALIZED', ps_1['sampleOrderStatus2ED10'])
+    self.assertEqual('FINALIZED', ps_1['sampleOrderStatus1SST8'])
+    self.assertEqual('FINALIZED', ps_1['sampleOrderStatus1HEP4'])
+    self.assertEqual('FINALIZED', ps_1['sampleOrderStatus1UR10'])
+    self.assertEqual('FINALIZED', ps_1['sampleOrderStatus1SAL'])
+    self.assertEqual('215-222-2222', ps_1['loginPhoneNumber'])
 
     # One day after participant 2 withdraws, their fields are still all populated.
-    self.assertEquals(1, ps_2['numCompletedBaselinePPIModules'])
-    self.assertEquals(0, ps_2['numBaselineSamplesArrived'])
-    self.assertEquals('UNSET', ps_2['sampleStatus1ED10'])
-    self.assertEquals('UNSET', ps_2['sampleStatus1SAL'])
-    self.assertEquals('UNSET', ps_2['sampleStatus2ED10'])
-    self.assertEquals('UNSET', ps_2['samplesToIsolateDNA'])
-    self.assertEquals('MEMBER', ps_2['enrollmentStatus'])
-    self.assertEquals('COMPLETED', ps_2['physicalMeasurementsStatus'])
-    self.assertEquals(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
-    self.assertEquals('GenderIdentity_Woman', ps_2['genderIdentity'])
-    self.assertEquals('NO_USE', ps_2['withdrawalStatus'])
-    self.assertEquals('DUPLICATE', ps_2['withdrawalReason'])
-    self.assertEquals('NOT_SUSPENDED', ps_2['suspensionStatus'])
-    self.assertEquals('NO_CONTACT', ps_2['recontactMethod'])
+    self.assertEqual(1, ps_2['numCompletedBaselinePPIModules'])
+    self.assertEqual(0, ps_2['numBaselineSamplesArrived'])
+    self.assertEqual('UNSET', ps_2['sampleStatus1ED10'])
+    self.assertEqual('UNSET', ps_2['sampleStatus1SAL'])
+    self.assertEqual('UNSET', ps_2['sampleStatus2ED10'])
+    self.assertEqual('UNSET', ps_2['samplesToIsolateDNA'])
+    self.assertEqual('MEMBER', ps_2['enrollmentStatus'])
+    self.assertEqual('COMPLETED', ps_2['physicalMeasurementsStatus'])
+    self.assertEqual(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
+    self.assertEqual('GenderIdentity_Woman', ps_2['genderIdentity'])
+    self.assertEqual('NO_USE', ps_2['withdrawalStatus'])
+    self.assertEqual('DUPLICATE', ps_2['withdrawalReason'])
+    self.assertEqual('NOT_SUSPENDED', ps_2['suspensionStatus'])
+    self.assertEqual('NO_CONTACT', ps_2['recontactMethod'])
     self.assertIsNotNone(ps_2['withdrawalTime'])
-    self.assertEquals('hpo-site-monroeville', ps_2['physicalMeasurementsCreatedSite'])
-    self.assertEquals('hpo-site-bannerphoenix', ps_2['physicalMeasurementsFinalizedSite'])
-    self.assertEquals(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
-    self.assertEquals(TIME_1.isoformat(), ps_2['physicalMeasurementsFinalizedTime'])
-    self.assertEquals('UNSET', ps_2['biospecimenStatus'])
+    self.assertEqual('hpo-site-monroeville', ps_2['physicalMeasurementsCreatedSite'])
+    self.assertEqual('hpo-site-bannerphoenix', ps_2['physicalMeasurementsFinalizedSite'])
+    self.assertEqual(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
+    self.assertEqual(TIME_1.isoformat(), ps_2['physicalMeasurementsFinalizedTime'])
+    self.assertEqual('UNSET', ps_2['biospecimenStatus'])
     self.assertIsNone(ps_2.get('biospecimenOrderTime'))
-    self.assertEquals('UNSET', ps_2['biospecimenSourceSite'])
-    self.assertEquals('UNSET', ps_2['biospecimenCollectedSite'])
-    self.assertEquals('UNSET', ps_2['biospecimenProcessedSite'])
-    self.assertEquals('UNSET', ps_2['biospecimenFinalizedSite'])
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus1ED04'])
+    self.assertEqual('UNSET', ps_2['biospecimenSourceSite'])
+    self.assertEqual('UNSET', ps_2['biospecimenCollectedSite'])
+    self.assertEqual('UNSET', ps_2['biospecimenProcessedSite'])
+    self.assertEqual('UNSET', ps_2['biospecimenFinalizedSite'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus1ED04'])
     self.assertIsNone(ps_2.get('sampleOrderStatus1ED10Time'))
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus1ED10'])
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus1PST8'])
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus2ED10'])
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus1SST8'])
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus1HEP4'])
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus1UR10'])
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus1SAL'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus1ED10'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus1PST8'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus2ED10'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus1SST8'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus1HEP4'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus1UR10'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus1SAL'])
 
 
     self.assertIsNone(ps_2.get('suspensionTime'))
-    self.assertEquals(3, ps_3['numCompletedBaselinePPIModules'])
-    self.assertEquals(1, ps_3['numBaselineSamplesArrived'])
-    self.assertEquals('UNSET', ps_3['sampleStatus1ED10'])
-    self.assertEquals('RECEIVED', ps_3['sampleStatus1SAL'])
-    self.assertEquals(TIME_1.isoformat(), ps_3['sampleStatus1SALTime'])
-    self.assertEquals('RECEIVED', ps_3['sampleStatus2ED10'])
-    self.assertEquals(TIME_1.isoformat(), ps_3['sampleStatus2ED10Time'])
-    self.assertEquals('RECEIVED', ps_3['samplesToIsolateDNA'])
-    self.assertEquals('FULL_PARTICIPANT', ps_3['enrollmentStatus'])
-    self.assertEquals('COMPLETED', ps_3['physicalMeasurementsStatus'])
-    self.assertEquals(TIME_2.isoformat(), ps_3['physicalMeasurementsTime'])
-    self.assertEquals('GenderIdentity_NonBinary', ps_3['genderIdentity'])
-    self.assertEquals('NOT_WITHDRAWN', ps_3['withdrawalStatus'])
-    self.assertEquals('NO_CONTACT', ps_3['suspensionStatus'])
-    self.assertEquals('NO_CONTACT', ps_3['recontactMethod'])
-    self.assertEquals('hpo-site-monroeville', ps_3['site'])
+    self.assertEqual(3, ps_3['numCompletedBaselinePPIModules'])
+    self.assertEqual(1, ps_3['numBaselineSamplesArrived'])
+    self.assertEqual('UNSET', ps_3['sampleStatus1ED10'])
+    self.assertEqual('RECEIVED', ps_3['sampleStatus1SAL'])
+    self.assertEqual(TIME_1.isoformat(), ps_3['sampleStatus1SALTime'])
+    self.assertEqual('RECEIVED', ps_3['sampleStatus2ED10'])
+    self.assertEqual(TIME_1.isoformat(), ps_3['sampleStatus2ED10Time'])
+    self.assertEqual('RECEIVED', ps_3['samplesToIsolateDNA'])
+    self.assertEqual('FULL_PARTICIPANT', ps_3['enrollmentStatus'])
+    self.assertEqual('COMPLETED', ps_3['physicalMeasurementsStatus'])
+    self.assertEqual(TIME_2.isoformat(), ps_3['physicalMeasurementsTime'])
+    self.assertEqual('GenderIdentity_NonBinary', ps_3['genderIdentity'])
+    self.assertEqual('NOT_WITHDRAWN', ps_3['withdrawalStatus'])
+    self.assertEqual('NO_CONTACT', ps_3['suspensionStatus'])
+    self.assertEqual('NO_CONTACT', ps_3['recontactMethod'])
+    self.assertEqual('hpo-site-monroeville', ps_3['site'])
     self.assertIsNone(ps_3.get('withdrawalTime'))
     self.assertIsNotNone(ps_3['suspensionTime'])
 
@@ -2091,32 +2091,32 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       new_ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
       new_ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
       new_ps_3 = self.send_get('Participant/%s/Summary' % participant_id_3)
-    self.assertEquals(ps_1, new_ps_1)
-    self.assertEquals(ps_3, new_ps_3)
-    self.assertEquals('Mary', new_ps_2['firstName'])
-    self.assertEquals('Q', new_ps_2['middleName'])
-    self.assertEquals('Jones', new_ps_2['lastName'])
+    self.assertEqual(ps_1, new_ps_1)
+    self.assertEqual(ps_3, new_ps_3)
+    self.assertEqual('Mary', new_ps_2['firstName'])
+    self.assertEqual('Q', new_ps_2['middleName'])
+    self.assertEqual('Jones', new_ps_2['lastName'])
     self.assertIsNone(new_ps_2.get('numCompletedBaselinePPIModules'))
     self.assertIsNone(new_ps_2.get('numBaselineSamplesArrived'))
-    self.assertEquals('UNSET', new_ps_2['sampleStatus1ED10'])
-    self.assertEquals('UNSET', new_ps_2['sampleStatus1SAL'])
-    self.assertEquals('UNSET', new_ps_2['samplesToIsolateDNA'])
-    self.assertEquals('UNSET', new_ps_2['enrollmentStatus'])
-    self.assertEquals('UNSET', new_ps_2['physicalMeasurementsStatus'])
-    self.assertEquals('SUBMITTED', new_ps_2['consentForStudyEnrollment'])
+    self.assertEqual('UNSET', new_ps_2['sampleStatus1ED10'])
+    self.assertEqual('UNSET', new_ps_2['sampleStatus1SAL'])
+    self.assertEqual('UNSET', new_ps_2['samplesToIsolateDNA'])
+    self.assertEqual('UNSET', new_ps_2['enrollmentStatus'])
+    self.assertEqual('UNSET', new_ps_2['physicalMeasurementsStatus'])
+    self.assertEqual('SUBMITTED', new_ps_2['consentForStudyEnrollment'])
     self.assertIsNotNone(new_ps_2['consentForStudyEnrollmentTime'])
-    self.assertEquals('SUBMITTED', new_ps_2['consentForElectronicHealthRecords'])
+    self.assertEqual('SUBMITTED', new_ps_2['consentForElectronicHealthRecords'])
     self.assertIsNotNone(new_ps_2['consentForElectronicHealthRecordsTime'])
     self.assertIsNone(new_ps_2.get('physicalMeasurementsTime'))
-    self.assertEquals('UNSET', new_ps_2['genderIdentity'])
-    self.assertEquals('NO_USE', new_ps_2['withdrawalStatus'])
-    self.assertEquals(ps_2['biobankId'], new_ps_2['biobankId'])
-    self.assertEquals('UNSET', new_ps_2['suspensionStatus'])
-    self.assertEquals('NO_CONTACT', new_ps_2['recontactMethod'])
-    self.assertEquals('PITT', new_ps_2['hpoId'])
-    self.assertEquals('UNSET', new_ps_2['organization'])
-    self.assertEquals('UNSET', new_ps_2['site'])
-    self.assertEquals(participant_id_2, new_ps_2['participantId'])
+    self.assertEqual('UNSET', new_ps_2['genderIdentity'])
+    self.assertEqual('NO_USE', new_ps_2['withdrawalStatus'])
+    self.assertEqual(ps_2['biobankId'], new_ps_2['biobankId'])
+    self.assertEqual('UNSET', new_ps_2['suspensionStatus'])
+    self.assertEqual('NO_CONTACT', new_ps_2['recontactMethod'])
+    self.assertEqual('PITT', new_ps_2['hpoId'])
+    self.assertEqual('UNSET', new_ps_2['organization'])
+    self.assertEqual('UNSET', new_ps_2['site'])
+    self.assertEqual(participant_id_2, new_ps_2['participantId'])
     self.assertIsNotNone(ps_2['withdrawalTime'])
     self.assertIsNone(new_ps_2.get('suspensionTime'))
     # Queries that filter on fields not returned for withdrawn participants no longer return
@@ -2232,7 +2232,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     ParticipantSummaryDao().update_from_biobank_stored_samples()
 
     ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
-    self.assertEquals('SUBMITTED', ps_2['consentForDvElectronicHealthRecordsSharing'])
+    self.assertEqual('SUBMITTED', ps_2['consentForDvElectronicHealthRecordsSharing'])
     self.assertIsNotNone(ps_2['consentForDvElectronicHealthRecordsSharingTime'])
 
     # Update version for participant 3, which has changed.
@@ -2254,98 +2254,98 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
       ps_3 = self.send_get('Participant/%s/Summary' % participant_id_3)
 
-    self.assertEquals(1, ps_1['numCompletedBaselinePPIModules'])
-    self.assertEquals(1, ps_1['numBaselineSamplesArrived'])
-    self.assertEquals('RECEIVED', ps_1['sampleStatus1ED10'])
-    self.assertEquals(TIME_1.isoformat(), ps_1['sampleStatus1ED10Time'])
-    self.assertEquals('UNSET', ps_1['sampleStatus1SAL'])
-    self.assertEquals('UNSET', ps_1['sampleStatus2ED10'])
-    self.assertEquals('RECEIVED', ps_1['sampleStatus1SAL2'])
-    self.assertEquals('RECEIVED', ps_1['samplesToIsolateDNA'])
-    self.assertEquals('INTERESTED', ps_1['enrollmentStatus'])
-    self.assertEquals('UNSET', ps_1['physicalMeasurementsStatus'])
+    self.assertEqual(1, ps_1['numCompletedBaselinePPIModules'])
+    self.assertEqual(1, ps_1['numBaselineSamplesArrived'])
+    self.assertEqual('RECEIVED', ps_1['sampleStatus1ED10'])
+    self.assertEqual(TIME_1.isoformat(), ps_1['sampleStatus1ED10Time'])
+    self.assertEqual('UNSET', ps_1['sampleStatus1SAL'])
+    self.assertEqual('UNSET', ps_1['sampleStatus2ED10'])
+    self.assertEqual('RECEIVED', ps_1['sampleStatus1SAL2'])
+    self.assertEqual('RECEIVED', ps_1['samplesToIsolateDNA'])
+    self.assertEqual('INTERESTED', ps_1['enrollmentStatus'])
+    self.assertEqual('UNSET', ps_1['physicalMeasurementsStatus'])
     self.assertIsNone(ps_1.get('physicalMeasurementsTime'))
-    self.assertEquals('GenderIdentity_Man', ps_1['genderIdentity'])
-    self.assertEquals('NOT_WITHDRAWN', ps_1['withdrawalStatus'])
-    self.assertEquals('NOT_SUSPENDED', ps_1['suspensionStatus'])
-    self.assertEquals('email_code', ps_1['recontactMethod'])
+    self.assertEqual('GenderIdentity_Man', ps_1['genderIdentity'])
+    self.assertEqual('NOT_WITHDRAWN', ps_1['withdrawalStatus'])
+    self.assertEqual('NOT_SUSPENDED', ps_1['suspensionStatus'])
+    self.assertEqual('email_code', ps_1['recontactMethod'])
     self.assertIsNone(ps_1.get('withdrawalTime'))
     self.assertIsNone(ps_1.get('suspensionTime'))
-    self.assertEquals('UNSET', ps_1['physicalMeasurementsCreatedSite'])
-    self.assertEquals('UNSET', ps_1['physicalMeasurementsFinalizedSite'])
+    self.assertEqual('UNSET', ps_1['physicalMeasurementsCreatedSite'])
+    self.assertEqual('UNSET', ps_1['physicalMeasurementsFinalizedSite'])
     self.assertIsNone(ps_1.get('physicalMeasurementsTime'))
     self.assertIsNone(ps_1.get('physicalMeasurementsFinalizedTime'))
-    self.assertEquals('FINALIZED', ps_1['biospecimenStatus'])
-    self.assertEquals('2016-01-04T09:40:21', ps_1['biospecimenOrderTime'])
-    self.assertEquals('hpo-site-monroeville', ps_1['biospecimenSourceSite'])
-    self.assertEquals('hpo-site-monroeville', ps_1['biospecimenCollectedSite'])
-    self.assertEquals('hpo-site-monroeville', ps_1['biospecimenProcessedSite'])
-    self.assertEquals('hpo-site-bannerphoenix', ps_1['biospecimenFinalizedSite'])
-    self.assertEquals('UNSET', ps_1['sampleOrderStatus1ED04'])
-    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1ED10'])
-    self.assertEquals('2016-01-04T10:55:41', ps_1['sampleOrderStatus1ED10Time'])
-    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1PST8'])
-    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus2ED10'])
-    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1SST8'])
-    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1HEP4'])
-    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1UR10'])
-    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1SAL'])
-    self.assertEquals('215-222-2222', ps_1['loginPhoneNumber'])
+    self.assertEqual('FINALIZED', ps_1['biospecimenStatus'])
+    self.assertEqual('2016-01-04T09:40:21', ps_1['biospecimenOrderTime'])
+    self.assertEqual('hpo-site-monroeville', ps_1['biospecimenSourceSite'])
+    self.assertEqual('hpo-site-monroeville', ps_1['biospecimenCollectedSite'])
+    self.assertEqual('hpo-site-monroeville', ps_1['biospecimenProcessedSite'])
+    self.assertEqual('hpo-site-bannerphoenix', ps_1['biospecimenFinalizedSite'])
+    self.assertEqual('UNSET', ps_1['sampleOrderStatus1ED04'])
+    self.assertEqual('FINALIZED', ps_1['sampleOrderStatus1ED10'])
+    self.assertEqual('2016-01-04T10:55:41', ps_1['sampleOrderStatus1ED10Time'])
+    self.assertEqual('FINALIZED', ps_1['sampleOrderStatus1PST8'])
+    self.assertEqual('FINALIZED', ps_1['sampleOrderStatus2ED10'])
+    self.assertEqual('FINALIZED', ps_1['sampleOrderStatus1SST8'])
+    self.assertEqual('FINALIZED', ps_1['sampleOrderStatus1HEP4'])
+    self.assertEqual('FINALIZED', ps_1['sampleOrderStatus1UR10'])
+    self.assertEqual('FINALIZED', ps_1['sampleOrderStatus1SAL'])
+    self.assertEqual('215-222-2222', ps_1['loginPhoneNumber'])
 
     # One day after participant 2 withdraws, their fields are still all populated.
-    self.assertEquals(1, ps_2['numCompletedBaselinePPIModules'])
-    self.assertEquals(0, ps_2['numBaselineSamplesArrived'])
-    self.assertEquals('UNSET', ps_2['sampleStatus1ED10'])
-    self.assertEquals('UNSET', ps_2['sampleStatus1SAL'])
-    self.assertEquals('UNSET', ps_2['sampleStatus2ED10'])
-    self.assertEquals('UNSET', ps_2['samplesToIsolateDNA'])
-    self.assertEquals('MEMBER', ps_2['enrollmentStatus'])
-    self.assertEquals('COMPLETED', ps_2['physicalMeasurementsStatus'])
-    self.assertEquals(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
-    self.assertEquals('GenderIdentity_Woman', ps_2['genderIdentity'])
-    self.assertEquals('NO_USE', ps_2['withdrawalStatus'])
-    self.assertEquals('DUPLICATE', ps_2['withdrawalReason'])
-    self.assertEquals('NOT_SUSPENDED', ps_2['suspensionStatus'])
-    self.assertEquals('NO_CONTACT', ps_2['recontactMethod'])
+    self.assertEqual(1, ps_2['numCompletedBaselinePPIModules'])
+    self.assertEqual(0, ps_2['numBaselineSamplesArrived'])
+    self.assertEqual('UNSET', ps_2['sampleStatus1ED10'])
+    self.assertEqual('UNSET', ps_2['sampleStatus1SAL'])
+    self.assertEqual('UNSET', ps_2['sampleStatus2ED10'])
+    self.assertEqual('UNSET', ps_2['samplesToIsolateDNA'])
+    self.assertEqual('MEMBER', ps_2['enrollmentStatus'])
+    self.assertEqual('COMPLETED', ps_2['physicalMeasurementsStatus'])
+    self.assertEqual(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
+    self.assertEqual('GenderIdentity_Woman', ps_2['genderIdentity'])
+    self.assertEqual('NO_USE', ps_2['withdrawalStatus'])
+    self.assertEqual('DUPLICATE', ps_2['withdrawalReason'])
+    self.assertEqual('NOT_SUSPENDED', ps_2['suspensionStatus'])
+    self.assertEqual('NO_CONTACT', ps_2['recontactMethod'])
     self.assertIsNotNone(ps_2['withdrawalTime'])
-    self.assertEquals('hpo-site-monroeville', ps_2['physicalMeasurementsCreatedSite'])
-    self.assertEquals('hpo-site-bannerphoenix', ps_2['physicalMeasurementsFinalizedSite'])
-    self.assertEquals(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
-    self.assertEquals(TIME_1.isoformat(), ps_2['physicalMeasurementsFinalizedTime'])
-    self.assertEquals('UNSET', ps_2['biospecimenStatus'])
+    self.assertEqual('hpo-site-monroeville', ps_2['physicalMeasurementsCreatedSite'])
+    self.assertEqual('hpo-site-bannerphoenix', ps_2['physicalMeasurementsFinalizedSite'])
+    self.assertEqual(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
+    self.assertEqual(TIME_1.isoformat(), ps_2['physicalMeasurementsFinalizedTime'])
+    self.assertEqual('UNSET', ps_2['biospecimenStatus'])
     self.assertIsNone(ps_2.get('biospecimenOrderTime'))
-    self.assertEquals('UNSET', ps_2['biospecimenSourceSite'])
-    self.assertEquals('UNSET', ps_2['biospecimenCollectedSite'])
-    self.assertEquals('UNSET', ps_2['biospecimenProcessedSite'])
-    self.assertEquals('UNSET', ps_2['biospecimenFinalizedSite'])
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus1ED04'])
+    self.assertEqual('UNSET', ps_2['biospecimenSourceSite'])
+    self.assertEqual('UNSET', ps_2['biospecimenCollectedSite'])
+    self.assertEqual('UNSET', ps_2['biospecimenProcessedSite'])
+    self.assertEqual('UNSET', ps_2['biospecimenFinalizedSite'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus1ED04'])
     self.assertIsNone(ps_2.get('sampleOrderStatus1ED10Time'))
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus1ED10'])
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus1PST8'])
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus2ED10'])
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus1SST8'])
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus1HEP4'])
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus1UR10'])
-    self.assertEquals('UNSET', ps_2['sampleOrderStatus1SAL'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus1ED10'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus1PST8'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus2ED10'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus1SST8'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus1HEP4'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus1UR10'])
+    self.assertEqual('UNSET', ps_2['sampleOrderStatus1SAL'])
 
 
     self.assertIsNone(ps_2.get('suspensionTime'))
-    self.assertEquals(3, ps_3['numCompletedBaselinePPIModules'])
-    self.assertEquals(1, ps_3['numBaselineSamplesArrived'])
-    self.assertEquals('UNSET', ps_3['sampleStatus1ED10'])
-    self.assertEquals('RECEIVED', ps_3['sampleStatus1SAL'])
-    self.assertEquals(TIME_1.isoformat(), ps_3['sampleStatus1SALTime'])
-    self.assertEquals('RECEIVED', ps_3['sampleStatus2ED10'])
-    self.assertEquals(TIME_1.isoformat(), ps_3['sampleStatus2ED10Time'])
-    self.assertEquals('RECEIVED', ps_3['samplesToIsolateDNA'])
-    self.assertEquals('FULL_PARTICIPANT', ps_3['enrollmentStatus'])
-    self.assertEquals('COMPLETED', ps_3['physicalMeasurementsStatus'])
-    self.assertEquals(TIME_2.isoformat(), ps_3['physicalMeasurementsTime'])
-    self.assertEquals('GenderIdentity_Man', ps_3['genderIdentity'])
-    self.assertEquals('NOT_WITHDRAWN', ps_3['withdrawalStatus'])
-    self.assertEquals('NO_CONTACT', ps_3['suspensionStatus'])
-    self.assertEquals('NO_CONTACT', ps_3['recontactMethod'])
-    self.assertEquals('hpo-site-monroeville', ps_3['site'])
+    self.assertEqual(3, ps_3['numCompletedBaselinePPIModules'])
+    self.assertEqual(1, ps_3['numBaselineSamplesArrived'])
+    self.assertEqual('UNSET', ps_3['sampleStatus1ED10'])
+    self.assertEqual('RECEIVED', ps_3['sampleStatus1SAL'])
+    self.assertEqual(TIME_1.isoformat(), ps_3['sampleStatus1SALTime'])
+    self.assertEqual('RECEIVED', ps_3['sampleStatus2ED10'])
+    self.assertEqual(TIME_1.isoformat(), ps_3['sampleStatus2ED10Time'])
+    self.assertEqual('RECEIVED', ps_3['samplesToIsolateDNA'])
+    self.assertEqual('FULL_PARTICIPANT', ps_3['enrollmentStatus'])
+    self.assertEqual('COMPLETED', ps_3['physicalMeasurementsStatus'])
+    self.assertEqual(TIME_2.isoformat(), ps_3['physicalMeasurementsTime'])
+    self.assertEqual('GenderIdentity_Man', ps_3['genderIdentity'])
+    self.assertEqual('NOT_WITHDRAWN', ps_3['withdrawalStatus'])
+    self.assertEqual('NO_CONTACT', ps_3['suspensionStatus'])
+    self.assertEqual('NO_CONTACT', ps_3['recontactMethod'])
+    self.assertEqual('hpo-site-monroeville', ps_3['site'])
     self.assertIsNone(ps_3.get('withdrawalTime'))
     self.assertIsNotNone(ps_3['suspensionTime'])
 
@@ -2516,34 +2516,34 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       new_ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
       new_ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
       new_ps_3 = self.send_get('Participant/%s/Summary' % participant_id_3)
-    self.assertEquals(ps_1, new_ps_1)
-    self.assertEquals(ps_3, new_ps_3)
-    self.assertEquals('Mary', new_ps_2['firstName'])
-    self.assertEquals('Q', new_ps_2['middleName'])
-    self.assertEquals('Jones', new_ps_2['lastName'])
+    self.assertEqual(ps_1, new_ps_1)
+    self.assertEqual(ps_3, new_ps_3)
+    self.assertEqual('Mary', new_ps_2['firstName'])
+    self.assertEqual('Q', new_ps_2['middleName'])
+    self.assertEqual('Jones', new_ps_2['lastName'])
     self.assertIsNone(new_ps_2.get('numCompletedBaselinePPIModules'))
     self.assertIsNone(new_ps_2.get('numBaselineSamplesArrived'))
-    self.assertEquals('UNSET', new_ps_2['sampleStatus1ED10'])
-    self.assertEquals('UNSET', new_ps_2['sampleStatus1SAL'])
-    self.assertEquals('UNSET', new_ps_2['samplesToIsolateDNA'])
-    self.assertEquals('UNSET', new_ps_2['enrollmentStatus'])
-    self.assertEquals('UNSET', new_ps_2['physicalMeasurementsStatus'])
-    self.assertEquals('SUBMITTED', new_ps_2['consentForStudyEnrollment'])
+    self.assertEqual('UNSET', new_ps_2['sampleStatus1ED10'])
+    self.assertEqual('UNSET', new_ps_2['sampleStatus1SAL'])
+    self.assertEqual('UNSET', new_ps_2['samplesToIsolateDNA'])
+    self.assertEqual('UNSET', new_ps_2['enrollmentStatus'])
+    self.assertEqual('UNSET', new_ps_2['physicalMeasurementsStatus'])
+    self.assertEqual('SUBMITTED', new_ps_2['consentForStudyEnrollment'])
     self.assertIsNotNone(new_ps_2['consentForStudyEnrollmentTime'])
-    self.assertEquals('UNSET', new_ps_2['consentForElectronicHealthRecords'])
+    self.assertEqual('UNSET', new_ps_2['consentForElectronicHealthRecords'])
     self.assertIsNone(new_ps_2.get('consentForElectronicHealthRecordsTime'))
-    self.assertEquals('UNSET', new_ps_2['consentForDvElectronicHealthRecordsSharing'])
+    self.assertEqual('UNSET', new_ps_2['consentForDvElectronicHealthRecordsSharing'])
     self.assertIsNone(new_ps_2.get('consentForDvElectronicHealthRecordsSharingTime'))
     self.assertIsNone(new_ps_2.get('physicalMeasurementsTime'))
-    self.assertEquals('UNSET', new_ps_2['genderIdentity'])
-    self.assertEquals('NO_USE', new_ps_2['withdrawalStatus'])
-    self.assertEquals(ps_2['biobankId'], new_ps_2['biobankId'])
-    self.assertEquals('UNSET', new_ps_2['suspensionStatus'])
-    self.assertEquals('NO_CONTACT', new_ps_2['recontactMethod'])
-    self.assertEquals('PITT', new_ps_2['hpoId'])
-    self.assertEquals('UNSET', new_ps_2['organization'])
-    self.assertEquals('UNSET', new_ps_2['site'])
-    self.assertEquals(participant_id_2, new_ps_2['participantId'])
+    self.assertEqual('UNSET', new_ps_2['genderIdentity'])
+    self.assertEqual('NO_USE', new_ps_2['withdrawalStatus'])
+    self.assertEqual(ps_2['biobankId'], new_ps_2['biobankId'])
+    self.assertEqual('UNSET', new_ps_2['suspensionStatus'])
+    self.assertEqual('NO_CONTACT', new_ps_2['recontactMethod'])
+    self.assertEqual('PITT', new_ps_2['hpoId'])
+    self.assertEqual('UNSET', new_ps_2['organization'])
+    self.assertEqual('UNSET', new_ps_2['site'])
+    self.assertEqual(participant_id_2, new_ps_2['participantId'])
     self.assertIsNotNone(ps_2['withdrawalTime'])
     self.assertIsNone(new_ps_2.get('suspensionTime'))
     # Queries that filter on fields not returned for withdrawn participants no longer return
@@ -2625,7 +2625,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'Organization',
       status_org_name
     ])
-    self.send_post(status_post_url, patient_status_dict, expected_status=httplib.CREATED)
+    self.send_post(status_post_url, patient_status_dict, expected_status=http.client.CREATED)
 
     # set up patient status for participant 2
     patient_status_dict = {
@@ -2644,7 +2644,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'Organization',
       status_org_name
     ])
-    self.send_post(status_post_url, patient_status_dict, expected_status=httplib.CREATED)
+    self.send_post(status_post_url, patient_status_dict, expected_status=http.client.CREATED)
 
     # confirm queries
     summary_1 = self.send_get('Participant/{}/Summary'.format(participant_1_id))
@@ -2655,7 +2655,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     }
 
     self.assertBundle(
-      map(_make_entry, [summary_1, summary_2]),
+      list(map(_make_entry, [summary_1, summary_2])),
       self.send_get('ParticipantSummary?{}'.format(urlencode(default_query_params)))
     )
 
@@ -2664,7 +2664,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     })
     url = 'ParticipantSummary?{}'.format(urlencode(query_params))
     self.assertBundle(
-      map(_make_entry, [summary_1]),
+      list(map(_make_entry, [summary_1])),
       self.send_get(url)
     )
 
@@ -2673,11 +2673,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     })
     url = 'ParticipantSummary?{}'.format(urlencode(query_params))
     self.assertBundle(
-      map(_make_entry, [summary_2]),
+      list(map(_make_entry, [summary_2])),
       self.send_get(url)
     )
 
-    query_params = default_query_params.items() + [
+    query_params = list(default_query_params.items()) + [
       ('patientStatus', '{}:YES'.format(status_org_name)),
       ('patientStatus', '{}:NO_ACCESS'.format(status_org_name)),
     ]
@@ -2701,7 +2701,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     })
     url = 'ParticipantSummary?{}'.format(urlencode(query_params))
     self.assertBundle(
-      map(_make_entry, [summary_1, summary_2]),
+      list(map(_make_entry, [summary_1, summary_2])),
       self.send_get(url)
     )
 

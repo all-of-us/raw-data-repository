@@ -29,7 +29,7 @@ def upgrade_rdr():
     curr_date = datetime.date(2017, 1, 1)
     date_dicts = []
     # Insert 500 years of dates
-    for _ in xrange(0, 365 * 500):
+    for _ in range(0, 365 * 500):
       date_dicts.append({'day': curr_date})
       curr_date = curr_date + datetime.timedelta(days=1)
     op.bulk_insert(calendar_table, date_dicts)

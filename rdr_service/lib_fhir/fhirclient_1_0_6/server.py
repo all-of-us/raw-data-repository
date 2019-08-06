@@ -6,11 +6,11 @@ import logging
 import requests
 
 try:                                # Python 2.x
-    import urlparse
+    import urllib.parse
 except ImportError as e:            # Python 3
     import urllib.parse as urlparse
 
-from auth import FHIRAuth
+from .auth import FHIRAuth
 
 
 class FHIRUnauthorizedException(Exception):
@@ -75,7 +75,7 @@ class FHIRServer(object):
         """
         if self._conformance is None or force:
             logging.info('Fetching conformance statement from {0}'.format(self.base_uri))
-            from models import conformance
+            from .models import conformance
             conf = conformance.Conformance.read_from('metadata', self)
             self._conformance = conf
             
@@ -172,7 +172,7 @@ class FHIRServer(object):
         :returns: The response object
         """
         assert self.base_uri and path
-        url = urlparse.urljoin(self.base_uri, path)
+        url = urllib.parse.urljoin(self.base_uri, path)
         
         headers = {
             'Accept': 'application/json+fhir',
@@ -195,7 +195,7 @@ class FHIRServer(object):
         :throws: Exception on HTTP status >= 400
         :returns: The response object
         """
-        url = urlparse.urljoin(self.base_uri, path)
+        url = urllib.parse.urljoin(self.base_uri, path)
         headers = {
             'Content-type': 'application/json+fhir',
             'Accept': 'application/json+fhir',
@@ -213,7 +213,7 @@ class FHIRServer(object):
         :throws: Exception on HTTP status >= 400
         :returns: The response object
         """
-        url = urlparse.urljoin(self.base_uri, path)
+        url = urllib.parse.urljoin(self.base_uri, path)
         headers = {
             'Content-type': 'application/json+fhir',
             'Accept': 'application/json+fhir',
@@ -245,7 +245,7 @@ class FHIRServer(object):
         :param str url: The relative URL path to issue a DELETE against
         :returns: The response object
         """
-        url = urlparse.urljoin(self.base_uri, path)
+        url = urllib.parse.urljoin(self.base_uri, path)
         headers = {
             'Accept': 'application/json',
         }

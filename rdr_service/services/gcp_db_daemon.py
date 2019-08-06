@@ -15,9 +15,9 @@ import signal
 import sys
 import time
 
-from daemon import Daemon
-from gcp_utils import gcp_activate_account, gcp_activate_sql_proxy, gcp_format_sql_instance
-from system_utils import is_valid_email, setup_logging, setup_unicode, which
+from .daemon import Daemon
+from .gcp_utils import gcp_activate_account, gcp_activate_sql_proxy, gcp_format_sql_instance
+from .system_utils import is_valid_email, setup_logging, setup_unicode, which
 
 _logger = logging.getLogger('rdr_logger')
 
@@ -181,7 +181,7 @@ def run():
 
   # --nodaemon only valid with start action
   if args.nodaemon and args.action != 'start':
-    print('{0}: error: --nodaemon option not valid with stop or restart action'.format(progname))
+    print(('{0}: error: --nodaemon option not valid with stop or restart action'.format(progname)))
     sys.exit(1)
 
   _logger.info('account:          {0}'.format(args.account))

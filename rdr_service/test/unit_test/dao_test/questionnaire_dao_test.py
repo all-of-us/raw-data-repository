@@ -39,11 +39,11 @@ class QuestionnaireDaoTest(SqlTestBase):
     self.questionnaire_concept_dao = QuestionnaireConceptDao()
     self.questionnaire_question_dao = QuestionnaireQuestionDao()
     self.code_dao = CodeDao()
-    self.CODE_1 = Code(codeId=1, system='a', value='b', display=u'c', topic=u'd',
+    self.CODE_1 = Code(codeId=1, system='a', value='b', display='c', topic='d',
                        codeType=CodeType.MODULE, mapped=True)
-    self.CODE_2 = Code(codeId=2, system='a', value='x', display=u'y', codeType=CodeType.MODULE,
+    self.CODE_2 = Code(codeId=2, system='a', value='x', display='y', codeType=CodeType.MODULE,
                        mapped=False)
-    self.CODE_3 = Code(codeId=3, system='a', value='z', display=u'y', codeType=CodeType.MODULE,
+    self.CODE_3 = Code(codeId=3, system='a', value='z', display='y', codeType=CodeType.MODULE,
                        mapped=False)
     self.CODE_4 = Code(codeId=4, system='a', value='c', codeType=CodeType.QUESTION, mapped=True,
                        parentId=1)
@@ -78,7 +78,7 @@ class QuestionnaireDaoTest(SqlTestBase):
     expected_history = QuestionnaireHistory(questionnaireId=1, version=1, created=TIME,
                                             lastModified=TIME, resource=RESOURCE_1_WITH_ID)
     questionnaire_history = self.questionnaire_history_dao.get([1, 1])
-    self.assertEquals(expected_history.asdict(), questionnaire_history.asdict())
+    self.assertEqual(expected_history.asdict(), questionnaire_history.asdict())
 
     questionnaire_history = self.questionnaire_history_dao.get_with_children([1, 1])
     expected_history.concepts.append(EXPECTED_CONCEPT_1)
@@ -86,10 +86,10 @@ class QuestionnaireDaoTest(SqlTestBase):
     expected_history.questions.append(EXPECTED_QUESTION_1)
     expected_history.questions.append(EXPECTED_QUESTION_2)
 
-    self.assertEquals(EXPECTED_CONCEPT_1.asdict(), self.questionnaire_concept_dao.get(1).asdict())
-    self.assertEquals(EXPECTED_CONCEPT_2.asdict(), self.questionnaire_concept_dao.get(2).asdict())
-    self.assertEquals(EXPECTED_QUESTION_1.asdict(), self.questionnaire_question_dao.get(1).asdict())
-    self.assertEquals(EXPECTED_QUESTION_2.asdict(), self.questionnaire_question_dao.get(2).asdict())
+    self.assertEqual(EXPECTED_CONCEPT_1.asdict(), self.questionnaire_concept_dao.get(1).asdict())
+    self.assertEqual(EXPECTED_CONCEPT_2.asdict(), self.questionnaire_concept_dao.get(2).asdict())
+    self.assertEqual(EXPECTED_QUESTION_1.asdict(), self.questionnaire_question_dao.get(1).asdict())
+    self.assertEqual(EXPECTED_QUESTION_2.asdict(), self.questionnaire_question_dao.get(2).asdict())
 
   def test_insert(self):
     q = Questionnaire(resource=RESOURCE_1)
@@ -107,7 +107,7 @@ class QuestionnaireDaoTest(SqlTestBase):
     expected_questionnaire = Questionnaire(questionnaireId=1, version=1, created=TIME,
                                           lastModified=TIME, resource=RESOURCE_1_WITH_ID)
     questionnaire = self.dao.get(1)
-    self.assertEquals(expected_questionnaire.asdict(), questionnaire.asdict())
+    self.assertEqual(expected_questionnaire.asdict(), questionnaire.asdict())
 
     expected_questionnaire.concepts.append(EXPECTED_CONCEPT_1)
     expected_questionnaire.concepts.append(EXPECTED_CONCEPT_2)
@@ -116,9 +116,9 @@ class QuestionnaireDaoTest(SqlTestBase):
 
     questionnaire = self.dao.get_with_children(1)
 
-    self.assertEquals(sort_lists(expected_questionnaire.asdict_with_children()),
+    self.assertEqual(sort_lists(expected_questionnaire.asdict_with_children()),
                       sort_lists(questionnaire.asdict_with_children()))
-    self.assertEquals(questionnaire.asdict(),
+    self.assertEqual(questionnaire.asdict(),
                       self.dao.get_latest_questionnaire_with_concept(self.CODE_1.codeId).asdict())
 
   def test_insert_duplicate(self):
@@ -142,7 +142,7 @@ class QuestionnaireDaoTest(SqlTestBase):
     expected_questionnaire = Questionnaire(questionnaireId=1, version=2, created=TIME,
                                            lastModified=TIME_2, resource=RESOURCE_2_WITH_ID)
     questionnaire = self.dao.get(1)
-    self.assertEquals(expected_questionnaire.asdict(), questionnaire.asdict())
+    self.assertEqual(expected_questionnaire.asdict(), questionnaire.asdict())
 
   def test_update_wrong_expected_version(self):
     q = Questionnaire(resource=RESOURCE_1)
@@ -177,9 +177,9 @@ class QuestionnaireDaoTest(SqlTestBase):
     with FakeClock(TIME_2):
       self.dao.insert(q2)
 
-    self.assertEquals(2,
+    self.assertEqual(2,
                       self.dao.get_latest_questionnaire_with_concept(self.CODE_1.codeId)
                         .questionnaireId)
-    self.assertEquals(1,
+    self.assertEqual(1,
                       self.dao.get_latest_questionnaire_with_concept(self.CODE_2.codeId)
                         .questionnaireId)

@@ -133,7 +133,7 @@ def export_tables():
   instance_name = resource_json.get('instance_name')
   if not database:
     raise BadRequest("database is required")
-  if not tables or type(tables) is not list:
+  if not tables or not isinstance(tables, list):
     raise BadRequest("tables is required")
   directory = resource_json.get('directory')
   if not directory:
@@ -192,7 +192,7 @@ def genomic_pipeline():
 def bigquery_rebuild_cron():
   """ this should always be a manually run job, but we have to schedule it at least once a year. """
   now = datetime.utcnow()
-  if now.day == 01 and now.month == 01:
+  if now.day == 0o1 and now.month == 0o1:
     logging.info('skipping the scheduled run.')
     return '{"success": "true"}'
   rebuild_bigquery_handler()
@@ -210,7 +210,7 @@ def bigquery_sync():
 def patient_status_backfill():
   # this should always be a manually run job, but we have to schedule it.
   now = datetime.utcnow()
-  if now.day == 01 and now.month == 01:
+  if now.day == 0o1 and now.month == 0o1:
     logging.info('skipping the scheduled run.')
     return '{"success": "true"}'
   backfill_patient_status()

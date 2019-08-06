@@ -5,7 +5,7 @@
 # Replaces older ehr_upload_for_organization.sh script.
 #
 
-import StringIO
+import io
 import argparse
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
@@ -92,7 +92,7 @@ class SyncConsentClass(object):
 
     # Load the site info we need into a dict.
     sites = dict()
-    handle = StringIO.StringIO(resp_data)
+    handle = io.StringIO(resp_data)
     sites_reader = csv.DictReader(handle)
     for row in sites_reader:
       if row['Org ID']:

@@ -991,7 +991,7 @@ class MetricsAgeCacheDao(BaseDao):
 
     age_ranges_conditions = []
     for age_range in self.age_ranges:
-      age_borders = filter(None, age_range.split('-'))
+      age_borders = [_f for _f in age_range.split('-') if _f]
       if len(age_borders) == 2:
         age_ranges_conditions.append(' AND (Date_format(From_Days(To_Days(c.day) - To_Days(dob)), '
                                      '\'%Y\') + 0) BETWEEN ' + age_borders[0] + ' AND '
@@ -1728,7 +1728,7 @@ class MetricsRegionCacheDao(BaseDao):
             break
 
         if not is_exist:
-          metrics = {stateName: 0 for stateName in census_regions.keys()}
+          metrics = {stateName: 0 for stateName in list(census_regions.keys())}
           new_item = {
             'date': record.date.isoformat(),
             'metrics': metrics
@@ -1748,7 +1748,7 @@ class MetricsRegionCacheDao(BaseDao):
             break
 
         if not is_exist:
-          metrics = {stateName: 0 for stateName in census_regions.keys()}
+          metrics = {stateName: 0 for stateName in list(census_regions.keys())}
           new_item = {
             'date': record.date.isoformat(),
             'hpo': record.hpoName,

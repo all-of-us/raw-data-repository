@@ -30,7 +30,7 @@ def delete_service_account_keys():
         continue
 
       serviceaccount = project_name + '/serviceAccounts/' + account['email']
-      request = service.projects().serviceAccounts().keys().list(name=serviceaccount,
+      request = list(service.projects().serviceAccounts().keys()).list(name=serviceaccount,
                                                                  keyTypes='USER_MANAGED')
       response = request.execute()
       if 'keys' in response:
@@ -46,7 +46,7 @@ def delete_service_account_keys():
             logging.warning('Deleting service Account key older than {} days [{}]: {}'.format(
               days_to_delete, key_age_days, keyname))
 
-            delete_request = service.projects().serviceAccounts().keys().delete(name=keyname)
+            delete_request = list(service.projects().serviceAccounts().keys()).delete(name=keyname)
             delete_request.execute()
           else:
             logging.info('Service Account key is {} days old: {}'.format(key_age_days, keyname))

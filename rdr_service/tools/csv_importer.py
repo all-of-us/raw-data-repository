@@ -43,7 +43,7 @@ class CsvImporter(object):
       with self.dao.session() as session:
         for row in reader:
           # Strip leading and trailing whitespace
-          row = {k.strip(): v.strip() for k, v in row.iteritems()}
+          row = {k.strip(): v.strip() for k, v in row.items()}
 
           missing_fields = []
           for column in self.required_columns:
@@ -91,14 +91,14 @@ class CsvImporter(object):
 
   @staticmethod
   def _maybe_convert_unicode(s):
-    if not isinstance(s, unicode):
+    if not isinstance(s, str):
       return s
     return s.encode('utf-8')
 
   @staticmethod
   def _diff_dicts(old_dict, new_dict):
     changes = {}
-    keys = set(old_dict.keys() + new_dict.keys())
+    keys = set(list(old_dict.keys()) + list(new_dict.keys()))
     for k in keys:
       old = CsvImporter._maybe_convert_unicode(old_dict.get(k))
       new = CsvImporter._maybe_convert_unicode(new_dict.get(k))
@@ -124,7 +124,7 @@ class CsvImporter(object):
       return True, False
 
   def _do_update(self, session, entity, existing_entity):
-    for k, v in entity.asdict().iteritems():
+    for k, v in entity.asdict().items():
       if k != self.external_id_field and k != self.id_field:
         setattr(existing_entity, k, v)
     self.dao.update_with_session(session, existing_entity)

@@ -38,7 +38,7 @@ class MetricsEhrApiIntervalTest(SqlTestBase):
     with self.calendar_dao.session() as session:
       cursor = session.execute(query)
     results = [
-      dict(zip(cursor.keys(), row))
+      dict(list(zip(list(cursor.keys()), row)))
       for row
       in cursor
     ]
@@ -66,7 +66,7 @@ class MetricsEhrApiIntervalTest(SqlTestBase):
     with self.calendar_dao.session() as session:
       cursor = session.execute(query)
     results = [
-      dict(zip(cursor.keys(), row))
+      dict(list(zip(list(cursor.keys()), row)))
       for row
       in cursor
     ]
@@ -95,7 +95,7 @@ class MetricsEhrApiIntervalTest(SqlTestBase):
     with self.calendar_dao.session() as session:
       cursor = session.execute(query)
     results = [
-      dict(zip(cursor.keys(), row))
+      dict(list(zip(list(cursor.keys()), row)))
       for row
       in cursor
     ]
@@ -111,8 +111,8 @@ class MetricsEhrApiIntervalTest(SqlTestBase):
 
   def test_interval_quarter(self):
     self._fill_calendar_range(
-      datetime.date(2017, 01, 1),
-      datetime.date(2019, 01, 1)
+      datetime.date(2017, 0o1, 1),
+      datetime.date(2019, 0o1, 1)
     )
 
     query = self.calendar_dao.get_interval_query(
@@ -125,7 +125,7 @@ class MetricsEhrApiIntervalTest(SqlTestBase):
     with self.calendar_dao.session() as session:
       cursor = session.execute(query)
     results = [
-      dict(zip(cursor.keys(), row))
+      dict(list(zip(list(cursor.keys()), row)))
       for row
       in cursor
     ]

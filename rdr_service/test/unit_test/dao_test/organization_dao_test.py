@@ -26,7 +26,7 @@ class OrganizationDaoTest(SqlTestBase):
     new_organization = self.organization_dao.get(created_organization.organizationId)
     organization.organizationId = created_organization.organizationId
     organization.isObsolete = new_organization.isObsolete
-    self.assertEquals(organization.asdict(), new_organization.asdict())
+    self.assertEqual(organization.asdict(), new_organization.asdict())
 
   def test_participant_pairing_updates_onchange(self):
     provider_link = '[{"organization": {"reference": "Organization/AZ_TUCSON"}, "primary": true}]'
@@ -41,7 +41,7 @@ class OrganizationDaoTest(SqlTestBase):
       participant.organizationId = insert_org.organizationId
       self.participant_dao.update(participant)
 
-      self.assertEquals(participant.hpoId, insert_org.hpoId)
+      self.assertEqual(participant.hpoId, insert_org.hpoId)
       participant = self.participant_dao.get(1)
       p_summary = self.ps_dao.insert(self.participant_summary(participant))
 
@@ -54,14 +54,14 @@ class OrganizationDaoTest(SqlTestBase):
     ph = self.ps_history.get([participant.participantId, 2])
     participant = self.participant_dao.get(1)
 
-    self.assertEquals(ps.lastModified, TIME2)
-    self.assertEquals(ps.hpoId, new_org.hpoId)
-    self.assertEquals(ph.hpoId, insert_org.hpoId)
-    self.assertEquals(ph.organizationId, insert_org.organizationId)
-    self.assertEquals(new_org.hpoId, participant.hpoId)
-    self.assertEquals(new_org.organizationId, participant.organizationId)
+    self.assertEqual(ps.lastModified, TIME2)
+    self.assertEqual(ps.hpoId, new_org.hpoId)
+    self.assertEqual(ph.hpoId, insert_org.hpoId)
+    self.assertEqual(ph.organizationId, insert_org.organizationId)
+    self.assertEqual(new_org.hpoId, participant.hpoId)
+    self.assertEqual(new_org.organizationId, participant.organizationId)
     self.assertIsNone(participant.siteId)
-    self.assertEquals(participant.providerLink, provider_link)
+    self.assertEqual(participant.providerLink, provider_link)
 
   def test_participant_different_hpo_does_not_change(self):
     insert_org = self.organization_dao.insert(

@@ -20,7 +20,7 @@ class _FhirSite(FhirMixin, BackboneElement):
   resource_name = 'Site'
   _PROPERTIES = [
     FhirProperty('display_name', str, required=True),
-    FhirProperty('mayolink_client_number', long),
+    FhirProperty('mayolink_client_number', int),
     FhirProperty('site_status', str, required=True),
     FhirProperty('digital_scheduling_status', str),
     FhirProperty('scheduling_instructions', str),
@@ -67,7 +67,7 @@ class SiteDao(CacheAllDao):
     if model.scheduleInstructions_ES:
       resource.scheduling_instructions_es = model.scheduleInstructions_ES
     if model.mayolinkClientNumber:
-      resource.mayolink_client_number = long(model.mayolinkClientNumber)
+      resource.mayolink_client_number = int(model.mayolinkClientNumber)
     resource.site_status = str(model.siteStatus)
     if model.enrollingStatus:
       resource.enrolling_status = str(model.enrollingStatus)

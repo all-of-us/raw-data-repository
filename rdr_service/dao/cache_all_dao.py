@@ -1,6 +1,6 @@
 from sqlalchemy.orm.session import make_transient
 
-from base_dao import UpdatableDao
+from .base_dao import UpdatableDao
 from rdr_service import singletons
 
 
@@ -19,7 +19,7 @@ class EntityCache(object):
       self.id_to_entity[dao.get_id(entity)] = entity
       if index_field_keys:
         for index_field_key in index_field_keys:
-          if type(index_field_key) is tuple:
+          if isinstance(index_field_key, tuple):
             key = tuple(getattr(entity, index_field) for index_field in index_field_key)
           else:
             key = getattr(entity, index_field_key)
@@ -86,4 +86,4 @@ class CacheAllDao(UpdatableDao):
     return [self.get(id_) for id_ in ids]
 
   def get_all(self):
-    return self._get_cache().id_to_entity.values()
+    return list(self._get_cache().id_to_entity.values())

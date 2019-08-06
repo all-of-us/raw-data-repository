@@ -189,7 +189,7 @@ class MySqlReconciliationTest(FlaskTestBase):
       order.samples.append(BiobankOrderedSample(
           biobankOrderId=order.biobankOrderId,
           test=test_code,
-          description=u'test',
+          description='test',
           processingRequired=False,
           collected=order_time,
           processed=order_time,
@@ -237,7 +237,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     # Extra samples ordered now aren't considered missing or late.
     on_time_order = self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:4], order_time,
                                        finalized_tests=BIOBANK_TESTS[:3], kit_id='kit1',
-                                       tracking_number='t1', collected_note=u'\u2013foo',
+                                       tracking_number='t1', collected_note='\u2013foo',
                                        processed_note='bar', finalized_note='baz')
     # edited order with matching sample; show both in rx and modified
     self._modify_order('AMENDED', on_time_order)
@@ -248,7 +248,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     p_unconfirmed_samples = self._insert_participant()
     self._insert_order(p_unconfirmed_samples, 'not_confirmed_order', BIOBANK_TESTS[:4], order_time,
                        finalized_tests=BIOBANK_TESTS[:3], kit_id='kit3', tracking_number='t3',
-                       collected_note=u'\u2013foo', processed_note='bar', finalized_note='baz')
+                       collected_note='\u2013foo', processed_note='bar', finalized_note='baz')
     self._insert_samples(p_unconfirmed_samples, BIOBANK_TESTS[:3], ['Unconfirmed_sample',
                          'Unconfirmed_sample2'], 'Ounconfirmed_sample', None, within_24_hours)
 
@@ -256,7 +256,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     p_unconfirmed_missing = self._insert_participant()
     self._insert_order(p_unconfirmed_missing, 'unconfirmed_missing', BIOBANK_TESTS[:1],
                        two_days_ago, finalized_tests=BIOBANK_TESTS[:1], kit_id='kit4', tracking_number='t4',
-                       collected_note=u'\u2013foo', processed_note='baz', finalized_note='eggs')
+                       collected_note='\u2013foo', processed_note='baz', finalized_note='eggs')
     self._insert_samples(p_unconfirmed_missing, BIOBANK_TESTS[:1], ['Unconfirmed_missing',
                          'Unconfirmed_missing2'], 'Ounconfirmed_missing_sample', None, two_days_ago)
 
@@ -266,7 +266,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_order(p_unconfirmed_samples_3, 'not_confirmed_order_old', BIOBANK_TESTS[:4],
                        order_time,
                        finalized_tests=BIOBANK_TESTS[:3], kit_id='kit5', tracking_number='t5',
-                       collected_note=u'\u2013foo', processed_note='bar', finalized_note='baz')
+                       collected_note='\u2013foo', processed_note='bar', finalized_note='baz')
     self._insert_samples(p_unconfirmed_samples_3, BIOBANK_TESTS[:5], ['Unconfirmed_sample_2',
                          'Unconfirmed_sample_3'], 'Ounconfirmed_sample_2', None, old_order_time)
 
@@ -340,14 +340,14 @@ class MySqlReconciliationTest(FlaskTestBase):
     modified_order = self._insert_order(p_modified_on_time, 'CancelledOrder', BIOBANK_TESTS[:1],
                                         order_time, finalized_tests=BIOBANK_TESTS[:1],
                                         kit_id='kit6', tracking_number='t6',
-                                        collected_note=u'\u2013foo', processed_note='bar',
+                                        collected_note='\u2013foo', processed_note='bar',
                                         finalized_note='baz')
     self._modify_order('CANCELLED', modified_order)
 
     modified_order = self._insert_order(p_modified_on_time, 'RestoredOrder', BIOBANK_TESTS[:1],
                                         order_time, finalized_tests=BIOBANK_TESTS[:1],
                                         kit_id='kit7', tracking_number='t7',
-                                        collected_note=u'\u2013foo', processed_note='bar',
+                                        collected_note='\u2013foo', processed_note='bar',
                                         finalized_note='baz')
     self._modify_order('RESTORED', modified_order)
 
@@ -407,7 +407,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     # missing (we are missing one sample) and late (the two samples that were received were after
     # 24 hours.)
     p_repeated = self._insert_participant()
-    for repetition in xrange(3):
+    for repetition in range(3):
       self._insert_order(
           p_repeated,
           'RepeatedOrder%d' % repetition,
@@ -461,33 +461,33 @@ class MySqlReconciliationTest(FlaskTestBase):
         'sent_order_id': 'OUnfinalizedOrder'})
 
     # Also check the values of all remaining fields on one row.
-    self.assertEquals(row['source_site_name'], 'Monroeville Urgent Care Center')
-    self.assertEquals(row['source_site_mayolink_client_number'], '7035769')
-    self.assertEquals(row['source_site_hpo'], 'PITT')
-    self.assertEquals(row['source_site_hpo_type'], 'HPO')
-    self.assertEquals(row['finalized_site_name'], 'Phoenix Urgent Care Center')
-    self.assertEquals(row['finalized_site_mayolink_client_number'], '7035770')
-    self.assertEquals(row['finalized_site_hpo'], 'PITT')
-    self.assertEquals(row['finalized_site_hpo_type'], 'HPO')
-    self.assertEquals(row['finalized_username'], 'bob@pmi-ops.org')
-    self.assertEquals(row['sent_finalized_time'], database_utils.format_datetime(order_time))
-    self.assertEquals(row['sent_collection_time'], database_utils.format_datetime(order_time))
-    self.assertEquals(row['sent_processed_time'], database_utils.format_datetime(order_time))
-    self.assertEquals(row['received_time'], database_utils.format_datetime(within_24_hours))
-    self.assertEquals(row['Sample Family Create Date'],
+    self.assertEqual(row['source_site_name'], 'Monroeville Urgent Care Center')
+    self.assertEqual(row['source_site_mayolink_client_number'], '7035769')
+    self.assertEqual(row['source_site_hpo'], 'PITT')
+    self.assertEqual(row['source_site_hpo_type'], 'HPO')
+    self.assertEqual(row['finalized_site_name'], 'Phoenix Urgent Care Center')
+    self.assertEqual(row['finalized_site_mayolink_client_number'], '7035770')
+    self.assertEqual(row['finalized_site_hpo'], 'PITT')
+    self.assertEqual(row['finalized_site_hpo_type'], 'HPO')
+    self.assertEqual(row['finalized_username'], 'bob@pmi-ops.org')
+    self.assertEqual(row['sent_finalized_time'], database_utils.format_datetime(order_time))
+    self.assertEqual(row['sent_collection_time'], database_utils.format_datetime(order_time))
+    self.assertEqual(row['sent_processed_time'], database_utils.format_datetime(order_time))
+    self.assertEqual(row['received_time'], database_utils.format_datetime(within_24_hours))
+    self.assertEqual(row['Sample Family Create Date'],
                       database_utils.format_datetime(within_24_hours -
                                                      datetime.timedelta(hours=1)))
-    self.assertEquals(row['sent_count'], '1')
-    self.assertEquals(row['received_count'], '1')
-    self.assertEquals(row['sent_order_id'], 'OGoodOrder')
-    self.assertEquals(row['received_sample_id'], 'GoodSample1')
-    self.assertEquals(row['biospecimen_kit_id'], 'kit1')
-    self.assertEquals(row['fedex_tracking_number'], 't1')
-    self.assertEquals(row['is_native_american'], 'N')
-    self.assertEquals(row['notes_collected'], u'\u2013foo')
-    self.assertEquals(row['notes_processed'], 'bar')
-    self.assertEquals(row['notes_finalized'], 'baz')
-    self.assertEquals(row['sent_order_id'], 'OGoodOrder')
+    self.assertEqual(row['sent_count'], '1')
+    self.assertEqual(row['received_count'], '1')
+    self.assertEqual(row['sent_order_id'], 'OGoodOrder')
+    self.assertEqual(row['received_sample_id'], 'GoodSample1')
+    self.assertEqual(row['biospecimen_kit_id'], 'kit1')
+    self.assertEqual(row['fedex_tracking_number'], 't1')
+    self.assertEqual(row['is_native_american'], 'N')
+    self.assertEqual(row['notes_collected'], '\u2013foo')
+    self.assertEqual(row['notes_processed'], 'bar')
+    self.assertEqual(row['notes_finalized'], 'baz')
+    self.assertEqual(row['sent_order_id'], 'OGoodOrder')
     # the other sent-and-received rows
     exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_on_time.biobankId), 'sent_test': BIOBANK_TESTS[1]})
@@ -602,7 +602,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     # Extra samples ordered now aren't considered missing or late.
     on_time_order = self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:4], order_time,
                                        finalized_tests=BIOBANK_TESTS[:3], kit_id='kit1',
-                                       tracking_number='t1', collected_note=u'\u2013foo',
+                                       tracking_number='t1', collected_note='\u2013foo',
                                        processed_note='bar', finalized_note='baz')
     # edited order with matching sample; show both in rx and modified
     self._modify_order('AMENDED', on_time_order)
@@ -613,7 +613,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     p_edge_time = self._insert_participant()
     edge_order = self._insert_order(p_edge_time, 'EdgeOrder', BIOBANK_TESTS[:4], edge_order_time,
                                     finalized_tests=BIOBANK_TESTS[:3], kit_id='kit8',
-                                    tracking_number='t8', collected_note=u'\u2013foo',
+                                    tracking_number='t8', collected_note='\u2013foo',
                                     processed_note='bar', finalized_note='baz')
     # edited edge order with matching sample; show both in rx and modified
     self._modify_order('AMENDED', edge_order)
@@ -625,7 +625,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     p_unconfirmed_samples = self._insert_participant()
     self._insert_order(p_unconfirmed_samples, 'not_confirmed_order', BIOBANK_TESTS[:4], order_time,
                        finalized_tests=BIOBANK_TESTS[:3], kit_id='kit3', tracking_number='t3',
-                       collected_note=u'\u2013foo', processed_note='bar', finalized_note='baz')
+                       collected_note='\u2013foo', processed_note='bar', finalized_note='baz')
     self._insert_samples(p_unconfirmed_samples, BIOBANK_TESTS[:3], ['Unconfirmed_sample',
                          'Unconfirmed_sample2'], 'Ounconfirmed_sample', None, within_24_hours)
 
@@ -633,7 +633,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     p_unconfirmed_missing = self._insert_participant()
     self._insert_order(p_unconfirmed_missing, 'unconfirmed_missing', BIOBANK_TESTS[:1],
                        two_days_ago, finalized_tests=BIOBANK_TESTS[:1], kit_id='kit4', tracking_number='t4',
-                       collected_note=u'\u2013foo', processed_note='baz', finalized_note='eggs')
+                       collected_note='\u2013foo', processed_note='baz', finalized_note='eggs')
     self._insert_samples(p_unconfirmed_missing, BIOBANK_TESTS[:1], ['Unconfirmed_missing',
                          'Unconfirmed_missing2'], 'Ounconfirmed_missing_sample', None, two_days_ago)
 
@@ -643,7 +643,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_order(p_unconfirmed_samples_3, 'not_confirmed_order_old', BIOBANK_TESTS[:4],
                        order_time,
                        finalized_tests=BIOBANK_TESTS[:3], kit_id='kit5', tracking_number='t5',
-                       collected_note=u'\u2013foo', processed_note='bar', finalized_note='baz')
+                       collected_note='\u2013foo', processed_note='bar', finalized_note='baz')
     self._insert_samples(p_unconfirmed_samples_3, BIOBANK_TESTS[:5], ['Unconfirmed_sample_2',
                          'Unconfirmed_sample_3'], 'Ounconfirmed_sample_2', None, old_order_time)
 
@@ -717,14 +717,14 @@ class MySqlReconciliationTest(FlaskTestBase):
     modified_order = self._insert_order(p_modified_on_time, 'CancelledOrder', BIOBANK_TESTS[:1],
                                         order_time, finalized_tests=BIOBANK_TESTS[:1],
                                         kit_id='kit6', tracking_number='t6',
-                                        collected_note=u'\u2013foo', processed_note='bar',
+                                        collected_note='\u2013foo', processed_note='bar',
                                         finalized_note='baz')
     self._modify_order('CANCELLED', modified_order)
 
     modified_order = self._insert_order(p_modified_on_time, 'RestoredOrder', BIOBANK_TESTS[:1],
                                         order_time, finalized_tests=BIOBANK_TESTS[:1],
                                         kit_id='kit7', tracking_number='t7',
-                                        collected_note=u'\u2013foo', processed_note='bar',
+                                        collected_note='\u2013foo', processed_note='bar',
                                         finalized_note='baz')
     self._modify_order('RESTORED', modified_order)
 
@@ -784,7 +784,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     # missing (we are missing one sample) and late (the two samples that were received were after
     # 24 hours.)
     p_repeated = self._insert_participant()
-    for repetition in xrange(3):
+    for repetition in range(3):
       self._insert_order(
           p_repeated,
           'RepeatedOrder%d' % repetition,
@@ -839,33 +839,33 @@ class MySqlReconciliationTest(FlaskTestBase):
         'sent_order_id': 'OUnfinalizedOrder'})
 
     # Also check the values of all remaining fields on one row.
-    self.assertEquals(row['source_site_name'], 'Monroeville Urgent Care Center')
-    self.assertEquals(row['source_site_mayolink_client_number'], '7035769')
-    self.assertEquals(row['source_site_hpo'], 'PITT')
-    self.assertEquals(row['source_site_hpo_type'], 'HPO')
-    self.assertEquals(row['finalized_site_name'], 'Phoenix Urgent Care Center')
-    self.assertEquals(row['finalized_site_mayolink_client_number'], '7035770')
-    self.assertEquals(row['finalized_site_hpo'], 'PITT')
-    self.assertEquals(row['finalized_site_hpo_type'], 'HPO')
-    self.assertEquals(row['finalized_username'], 'bob@pmi-ops.org')
-    self.assertEquals(row['sent_finalized_time'], database_utils.format_datetime(order_time))
-    self.assertEquals(row['sent_collection_time'], database_utils.format_datetime(order_time))
-    self.assertEquals(row['sent_processed_time'], database_utils.format_datetime(order_time))
-    self.assertEquals(row['received_time'], database_utils.format_datetime(within_24_hours))
-    self.assertEquals(row['Sample Family Create Date'],
+    self.assertEqual(row['source_site_name'], 'Monroeville Urgent Care Center')
+    self.assertEqual(row['source_site_mayolink_client_number'], '7035769')
+    self.assertEqual(row['source_site_hpo'], 'PITT')
+    self.assertEqual(row['source_site_hpo_type'], 'HPO')
+    self.assertEqual(row['finalized_site_name'], 'Phoenix Urgent Care Center')
+    self.assertEqual(row['finalized_site_mayolink_client_number'], '7035770')
+    self.assertEqual(row['finalized_site_hpo'], 'PITT')
+    self.assertEqual(row['finalized_site_hpo_type'], 'HPO')
+    self.assertEqual(row['finalized_username'], 'bob@pmi-ops.org')
+    self.assertEqual(row['sent_finalized_time'], database_utils.format_datetime(order_time))
+    self.assertEqual(row['sent_collection_time'], database_utils.format_datetime(order_time))
+    self.assertEqual(row['sent_processed_time'], database_utils.format_datetime(order_time))
+    self.assertEqual(row['received_time'], database_utils.format_datetime(within_24_hours))
+    self.assertEqual(row['Sample Family Create Date'],
                       database_utils.format_datetime(within_24_hours -
                                                      datetime.timedelta(hours=1)))
-    self.assertEquals(row['sent_count'], '1')
-    self.assertEquals(row['received_count'], '1')
-    self.assertEquals(row['sent_order_id'], 'OGoodOrder')
-    self.assertEquals(row['received_sample_id'], 'GoodSample1')
-    self.assertEquals(row['biospecimen_kit_id'], 'kit1')
-    self.assertEquals(row['fedex_tracking_number'], 't1')
-    self.assertEquals(row['is_native_american'], 'N')
-    self.assertEquals(row['notes_collected'], u'\u2013foo')
-    self.assertEquals(row['notes_processed'], 'bar')
-    self.assertEquals(row['notes_finalized'], 'baz')
-    self.assertEquals(row['sent_order_id'], 'OGoodOrder')
+    self.assertEqual(row['sent_count'], '1')
+    self.assertEqual(row['received_count'], '1')
+    self.assertEqual(row['sent_order_id'], 'OGoodOrder')
+    self.assertEqual(row['received_sample_id'], 'GoodSample1')
+    self.assertEqual(row['biospecimen_kit_id'], 'kit1')
+    self.assertEqual(row['fedex_tracking_number'], 't1')
+    self.assertEqual(row['is_native_american'], 'N')
+    self.assertEqual(row['notes_collected'], '\u2013foo')
+    self.assertEqual(row['notes_processed'], 'bar')
+    self.assertEqual(row['notes_finalized'], 'baz')
+    self.assertEqual(row['sent_order_id'], 'OGoodOrder')
     # the other sent-and-received rows
     exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_on_time.biobankId), 'sent_test': BIOBANK_TESTS[1]})

@@ -1,6 +1,6 @@
 import argparse
 import copy
-import httplib
+import http.client
 import json
 import logging
 import pprint
@@ -108,7 +108,7 @@ class Client(object):
       url = '{}/{}/{}'.format(self.instance, self.base_path, path)
     if query_args:
       args_str = '&'.join(
-          '{}={}'.format(k, v) for k, v in query_args.iteritems())
+          '{}={}'.format(k, v) for k, v in query_args.items())
       url = '{}?{}'.format(url, args_str)
 
     headers = copy.deepcopy(headers or {})
@@ -136,7 +136,7 @@ class Client(object):
 
     client_log.info('%s for %s to %s', resp.status, method, url)
     details_level = (
-        logging.WARNING if (check_status and resp.status != httplib.OK)
+        logging.WARNING if (check_status and resp.status != http.client.OK)
         else logging.DEBUG)
     if client_log.isEnabledFor(details_level):
       try:
@@ -147,11 +147,11 @@ class Client(object):
           details_level,
           'Response headers: %s\nResponse content: %s', pprint.pformat(resp), formatted_content)
 
-    if resp.status == httplib.UNAUTHORIZED:
+    if resp.status == http.client.UNAUTHORIZED:
       client_log.warn(
           'Unauthorized. If you expect this request to be allowed, try'
           'tools/install_config.sh --config config/config_dev.json --update')
-    if check_status and resp.status != httplib.OK:
+    if check_status and resp.status != http.client.OK:
       raise HttpException(url, method, resp, content)
     if resp.get('etag'):
       self.last_etag = resp['etag']

@@ -7,7 +7,7 @@ import os
 import shutil
 import unittest
 
-import server
+from . import server
 
 
 class TestServer(unittest.TestCase):

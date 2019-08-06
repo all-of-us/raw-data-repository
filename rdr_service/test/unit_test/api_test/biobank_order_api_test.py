@@ -1,5 +1,5 @@
 import datetime
-import httplib
+import http.client
 
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (CONSENT_PERMISSION_YES_CODE, RACE_NONE_OF_THESE_CODE)
@@ -43,7 +43,7 @@ class BiobankOrderApiTest(FlaskTestBase):
                                               filename='biobank_order_1.json')
     _strip_fields(result)
     _strip_fields(full_order_json)
-    self.assertEquals(full_order_json, result)
+    self.assertEqual(full_order_json, result)
 
     biobank_order_id = result['identifier'][1]['value']
     path = self.path + '/' + biobank_order_id
@@ -131,7 +131,7 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.send_patch(path, request_data=request_data, headers={'If-Match': 'W/"1"'})
 
     self.send_patch(path, request_data=request_data, headers={'If-Match': 'W/"2"'},
-                    expected_status=httplib.BAD_REQUEST)
+                    expected_status=http.client.BAD_REQUEST)
 
   def test_you_can_not_restore_a_not_cancelled_order(self):
     self.summary_dao.insert(self.participant_summary(self.participant))
@@ -156,7 +156,7 @@ class BiobankOrderApiTest(FlaskTestBase):
       "status": "restored"
     }
     self.send_patch(path, request_data=request_data, headers={'If-Match': 'W/"1"'},
-                    expected_status=httplib.BAD_REQUEST)
+                    expected_status=http.client.BAD_REQUEST)
 
   def test_restore_an_order(self):
     self.summary_dao.insert(self.participant_summary(self.participant))
@@ -167,7 +167,7 @@ class BiobankOrderApiTest(FlaskTestBase):
                                               filename='biobank_order_1.json')
     _strip_fields(result)
     _strip_fields(full_order_json)
-    self.assertEquals(full_order_json, result)
+    self.assertEqual(full_order_json, result)
 
     biobank_order_id = result['identifier'][1]['value']
     path = self.path + '/' + biobank_order_id
@@ -383,7 +383,7 @@ class BiobankOrderApiTest(FlaskTestBase):
                                               filename='biobank_order_1.json')
     _strip_fields(result)
     _strip_fields(full_order_json)
-    self.assertEquals(full_order_json, result)
+    self.assertEqual(full_order_json, result)
 
   def test_biobank_history_on_insert(self):
     with self.bio_dao.session() as session:
@@ -457,27 +457,27 @@ class BiobankOrderApiTest(FlaskTestBase):
 
   def test_error_no_summary(self):
     order_json = load_biobank_order_json(self.participant.participantId)
-    self.send_post(self.path, order_json, expected_status=httplib.BAD_REQUEST)
+    self.send_post(self.path, order_json, expected_status=http.client.BAD_REQUEST)
 
   def test_error_missing_required_fields(self):
     order_json = load_biobank_order_json(self.participant.participantId)
     del order_json['identifier']
-    self.send_post(self.path, order_json, expected_status=httplib.BAD_REQUEST)
+    self.send_post(self.path, order_json, expected_status=http.client.BAD_REQUEST)
 
   def test_no_duplicate_test_within_order(self):
     order_json = load_biobank_order_json(self.participant.participantId)
     order_json['samples'].extend(list(order_json['samples']))
-    self.send_post(self.path, order_json, expected_status=httplib.BAD_REQUEST)
+    self.send_post(self.path, order_json, expected_status=http.client.BAD_REQUEST)
 
   def test_auto_pair_updates_participant_and_summary(self):
     self.summary_dao.insert(self.participant_summary(self.participant))
 
     # Sanity check: No HPO yet.
     p_unpaired = self.participant_dao.get(self.participant.participantId)
-    self.assertEquals(p_unpaired.hpoId, UNSET_HPO_ID)
+    self.assertEqual(p_unpaired.hpoId, UNSET_HPO_ID)
     self.assertIsNone(p_unpaired.providerLink)
     s_unpaired = self.summary_dao.get(self.participant.participantId)
-    self.assertEquals(s_unpaired.hpoId, UNSET_HPO_ID)
+    self.assertEqual(s_unpaired.hpoId, UNSET_HPO_ID)
 
     self.send_post(self.path, load_biobank_order_json(self.participant.participantId))
 
@@ -552,7 +552,7 @@ class BiobankOrderApiTest(FlaskTestBase):
     ps = self.send_get('ParticipantSummary?participantId=%s' % _id)
 
     self.assertTrue(ps['entry'][0]['resource']["physicalMeasurementsFinalizedTime"])
-    self.assertEquals(ps['entry'][0]['resource']["physicalMeasurementsFinalizedSite"],
+    self.assertEqual(ps['entry'][0]['resource']["physicalMeasurementsFinalizedSite"],
                       'hpo-site-bannerphoenix')
     self.assertIsNotNone('biobankId', ps['entry'][0]['resource'])
 

@@ -44,7 +44,7 @@ class SimpleFhirR4Reader(object):
 
   @staticmethod
   def is_reference(obj):
-    return isinstance(obj, dict) and obj.keys() == ['reference']
+    return isinstance(obj, dict) and list(obj.keys()) == ['reference']
 
   def _resolve_reference(self, obj):
     reference_parts = obj['reference'].split('/')
@@ -62,7 +62,7 @@ class SimpleFhirR4Reader(object):
   def _lookup_obj_key(obj, key):
     if isinstance(obj, dict):
       if callable(key):
-        return filter(key, obj.items())
+        return list(filter(key, list(obj.items())))
       return obj[key]
     if isinstance(obj, list):
       if isinstance(key, dict):  # dict key based lookup
@@ -72,12 +72,12 @@ class SimpleFhirR4Reader(object):
       if isinstance(key, int):
         return obj[key]
       if callable(key):
-        return filter(key, obj)
+        return list(filter(key, obj))
     raise ValueError("could not lookup '{!r}' from {!r}".format(key, obj))
 
 
 def _dict_has_values(obj, **queries):
-  for key, value in queries.items():
+  for key, value in list(queries.items()):
     try:
       if obj[key] != value:
         return False

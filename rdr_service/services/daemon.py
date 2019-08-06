@@ -144,11 +144,11 @@ class Daemon(object):
     """
     # if pid file exists, try to stop daemon.
     if os.path.exists(self.pidfile):
-      print('daemon pid exists, stopping daemon.'.format(self.pidfile))
+      print(('daemon pid exists, stopping daemon.'.format(self.pidfile)))
       self.stop()
 
     if os.path.exists(self.pidfile):
-      print('PID file already exists. daemon already running?'.format(self.pidfile))
+      print(('PID file already exists. daemon already running?'.format(self.pidfile)))
       return
 
     # Start the daemon
@@ -162,7 +162,7 @@ class Daemon(object):
 
     # abort if pid file does not exist
     if not os.path.exists(self.pidfile):
-      print('pidfile {0} does not exist. daemon not running?'.format(self.pidfile))
+      print(('pidfile {0} does not exist. daemon not running?'.format(self.pidfile)))
       return
 
     # Get the pid from the pidfile
@@ -181,7 +181,7 @@ class Daemon(object):
 
     # Try killing the daemon process
     try:
-      while 1:
+      while True:
         os.kill(pid, SIGTERM)
         time.sleep(0.2)
     except os.error as err:

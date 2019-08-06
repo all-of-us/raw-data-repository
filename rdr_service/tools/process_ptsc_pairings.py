@@ -40,7 +40,7 @@ def main(args):
     for row in reader:
       participant_id = strip(row.get('external_id'))
       if participant_id is None:
-        print "Skipping line with no participant_id, continuing."
+        print("Skipping line with no participant_id, continuing.")
         continue
       awardee_id = strip(row.get('awardee_code'))
       org_id = strip(row.get('org_code'))
@@ -50,7 +50,7 @@ def main(args):
         site_val = None
       site_id = strip(site_val)
       if awardee_id is None and org_id is None and site_id is None:
-        print "Skipping participant with no awardee, id = %s" % participant_id
+        print("Skipping participant with no awardee, id = %s" % participant_id)
         continue
       if site_id is not None:
         if check_prev_entry(p_map, 'site:', participant_id, site_id):

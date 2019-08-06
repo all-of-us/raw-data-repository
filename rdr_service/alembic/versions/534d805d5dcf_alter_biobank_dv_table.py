@@ -31,7 +31,7 @@ def upgrade_rdr():
     op.alter_column('biobank_dv_order', 'modified',
                existing_type=mysql.DATETIME(fsp=6),
                nullable=False,
-               existing_server_default=sa.text(u'CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)'))
+               existing_server_default=sa.text('CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)'))
     op.create_unique_constraint(None, 'biobank_dv_order', ['biobank_order_id'])
     op.drop_column('biobank_dv_order', 'biobank_reference')
     # ### end Alembic commands ###
@@ -44,7 +44,7 @@ def downgrade_rdr():
     op.alter_column('biobank_dv_order', 'modified',
                existing_type=mysql.DATETIME(fsp=6),
                nullable=True,
-               existing_server_default=sa.text(u'CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)'))
+               existing_server_default=sa.text('CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)'))
     op.drop_column('biobank_dv_order', 'version')
     # ### end Alembic commands ###
 

@@ -5,7 +5,7 @@ See "Config Updates" in the README for usage and permissions details.
 
 import copy
 import difflib
-import httplib
+import http.client
 import json
 import logging
 import re
@@ -38,7 +38,7 @@ def main(args):
     config_server = client.request_json(config_path, 'GET')
     formatted_server_config = _json_to_sorted_string(config_server)
   except HttpException as e:
-    if e.code == httplib.NOT_FOUND:
+    if e.code == http.client.NOT_FOUND:
       formatted_server_config = ''
     else:
       raise
@@ -76,7 +76,7 @@ def _compare_configs(comparable_file, comparable_server, diff_output_path):
 def _json_to_sorted_string(config):
   """Sort the values and pretty print so it will compare nicely."""
   config = copy.deepcopy(config)
-  for k, v in config.iteritems():
+  for k, v in config.items():
     if isinstance(v, list):
       config[k] = sorted(v)
 

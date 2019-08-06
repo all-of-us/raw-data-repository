@@ -1,4 +1,4 @@
-import httplib
+import http.client
 import json
 
 from rdr_service import main
@@ -39,7 +39,7 @@ class InProcessClient(object):
 
           response = app.make_response(rv)
           response = app.process_response(response)
-    if response.status_code != httplib.OK:
+    if response.status_code != http.client.OK:
       raise RuntimeError("Request failed: %s, %s, response = %s" % (local_path, body,
                                                                     response))
     return json.loads(response.data)

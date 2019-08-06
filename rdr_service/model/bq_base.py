@@ -108,7 +108,7 @@ class BQSchema(object):
     """
     if len(dir(o1)) != len(dir(o2)):
       return False
-    pairs = zip(o1.get_fields(), o2.get_fields())
+    pairs = list(zip(o1.get_fields(), o2.get_fields()))
     for l1, l2 in pairs:
       if isinstance(l1, BQRecordField):
         if not self._cmp_schema(l1.get_schema(), l2.get_schema()):
@@ -203,9 +203,9 @@ class BQField(object):
 
   def __init__(self, fld_name, fld_type, fld_mode=BQFieldModeEnum.REQUIRED, fld_enum=None, fld_descr=None):
     # https://stackoverflow.com/questions/350799/how-does-django-know-the-order-to-render-form-fields
-    self._count = BQField._counter.next()
+    self._count = next(BQField._counter)
 
-    if not isinstance(fld_name, basestring):
+    if not isinstance(fld_name, str):
       raise TypeError('field name must be a string')
     if not isinstance(fld_type, Enum):
       raise TypeError('field type must be a BQFieldTypeEnum value')
@@ -420,7 +420,7 @@ class BQRecord(object):
       :param schema: schema object
       :return: dict
       """
-      for key, val in src.iteritems():
+      for key, val in src.items():
         # validate key against schema if needed
         if schema and not getattr(schema, key, None):
           raise KeyError('{0} key not in schema'.format(key))

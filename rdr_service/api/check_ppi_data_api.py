@@ -53,7 +53,7 @@ def check_ppi_data():
   _sanity_check_codebook()
   ppi_results = {}
   ppi_data = request.get_json(force=True)['ppi_data']
-  for key, codes_to_answers in ppi_data.iteritems():
+  for key, codes_to_answers in list(ppi_data.items()):
     ppi_results[key] = _get_validation_result(key, codes_to_answers).to_json()
   return json.dumps({'ppi_results': ppi_results})
 
@@ -104,7 +104,7 @@ def _get_validation_result(key, codes_to_answers):
   code_dao = CodeDao()
   qra_dao = QuestionnaireResponseAnswerDao()
   with qra_dao.session() as session:
-    for code_string, answer_string in codes_to_answers.iteritems():
+    for code_string, answer_string in list(codes_to_answers.items()):
       result.tests_count += 1
 
       question_code = code_dao.get_code(PPI_SYSTEM, code_string)

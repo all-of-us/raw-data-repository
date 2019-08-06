@@ -190,10 +190,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
     measurement_map = self.get_distinct_measurements()
     measurements_json = []
     submeasurements = set()
-    for concept, measurement_data in measurement_map.iteritems():
+    for concept, measurement_data in list(measurement_map.items()):
       for submeasurement_concept in measurement_data['submeasurements']:
         submeasurements.add(submeasurement_concept)
-    for concept, measurement_data in measurement_map.iteritems():
+    for concept, measurement_data in list(measurement_map.items()):
       # Only include submeasurements under their parents.
       if concept not in submeasurements:
         measurements_json.append(PhysicalMeasurementsDao.get_measurements_json(concept,

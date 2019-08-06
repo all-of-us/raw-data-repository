@@ -1,5 +1,5 @@
 import datetime
-import httplib
+import http.client
 
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import PPI_SYSTEM, RACE_WHITE_CODE
@@ -47,11 +47,11 @@ class ParticipantApiTest(FlaskTestBase):
     response = self.send_post('Participant', self.participant)
     participant_id = response['participantId']
     get_response = self.send_get('Participant/%s' % participant_id)
-    self.assertEquals(response, get_response)
+    self.assertEqual(response, get_response)
     biobank_id = response['biobankId']
     self.assertTrue(biobank_id.startswith('Z'))
-    self.assertEquals(str(WithdrawalStatus.NOT_WITHDRAWN), response['withdrawalStatus'])
-    self.assertEquals(str(SuspensionStatus.NOT_SUSPENDED), response['suspensionStatus'])
+    self.assertEqual(str(WithdrawalStatus.NOT_WITHDRAWN), response['withdrawalStatus'])
+    self.assertEqual(str(SuspensionStatus.NOT_SUSPENDED), response['suspensionStatus'])
     for auto_generated in (
         'participantId',
         'externalId',
@@ -76,7 +76,7 @@ class ParticipantApiTest(FlaskTestBase):
     participant_id = response['participantId']
     get_response = self.send_get('Participant/%s' % participant_id)
     self.assertEqual(get_response['externalId'], self.participant_2['externalId'])
-    self.assertEquals(response, get_response)
+    self.assertEqual(response, get_response)
     response_2 = self.send_post('Participant', self.participant_2)
     self.assertEqual(response, response_2)
 
@@ -87,7 +87,7 @@ class ParticipantApiTest(FlaskTestBase):
     participant_id = response['participantId']
     response['providerLink'] = [ self.provider_link_2 ]
     path = 'Participant/%s' % participant_id
-    self.send_put(path, response, expected_status=httplib.BAD_REQUEST)
+    self.send_put(path, response, expected_status=http.client.BAD_REQUEST)
 
   def test_update_bad_ifmatch_specified(self):
     response = self.send_post('Participant', self.participant)
@@ -97,7 +97,7 @@ class ParticipantApiTest(FlaskTestBase):
     response['providerLink'] = [ self.provider_link_2 ]
     path = 'Participant/%s' % participant_id
     self.send_put(path, response, headers={ 'If-Match': 'Blah' },
-                  expected_status=httplib.BAD_REQUEST)
+                  expected_status=http.client.BAD_REQUEST)
 
   def test_update_wrong_ifmatch_specified(self):
     response = self.send_post('Participant', self.participant)
@@ -107,11 +107,11 @@ class ParticipantApiTest(FlaskTestBase):
     response['providerLink'] = [ self.provider_link_2 ]
     path = 'Participant/%s' % participant_id
     self.send_put(path, response, headers={ 'If-Match': 'W/"123"' },
-                  expected_status=httplib.PRECONDITION_FAILED)
+                  expected_status=http.client.PRECONDITION_FAILED)
 
   def test_update_right_ifmatch_specified(self):
     response = self.send_post('Participant', self.participant)
-    self.assertEquals('W/"1"', response['meta']['versionId'])
+    self.assertEqual('W/"1"', response['meta']['versionId'])
     # Change the provider link for the participant
     participant_id = response['participantId']
     response['providerLink'] = [ self.provider_link_2 ]
@@ -136,7 +136,7 @@ class ParticipantApiTest(FlaskTestBase):
     participant['site'] = 'hpo-site-monroeville'
     path = 'Participant/%s' % participant_id
     update_awardee = self.send_put(path, participant, headers={'If-Match': 'W/"1"'})
-    self.assertEquals(participant['awardee'], update_awardee['awardee'])
+    self.assertEqual(participant['awardee'], update_awardee['awardee'])
 
   def test_change_pairing_for_org_then_site(self):
     participant = self.send_post('Participant', self.participant)
@@ -261,13 +261,13 @@ class ParticipantApiTest(FlaskTestBase):
                                        datetime.date(1978, 10, 9), "signature.pdf")
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('215-222-2222', ps_1['loginPhoneNumber'])
-    self.assertEquals('PITT', ps_1['hpoId'])
+    self.assertEqual('215-222-2222', ps_1['loginPhoneNumber'])
+    self.assertEqual('PITT', ps_1['hpoId'])
 
     p_1 = self.send_get('Participant/%s' % participant_id_1)
-    self.assertEquals('PITT', p_1['hpoId'])
-    self.assertEquals(TIME_1.strftime('%Y''-''%m''-''%d''T''%X'), p_1['lastModified'])
-    self.assertEquals('W/"1"', p_1['meta']['versionId'])
+    self.assertEqual('PITT', p_1['hpoId'])
+    self.assertEqual(TIME_1.strftime('%Y''-''%m''-''%d''T''%X'), p_1['lastModified'])
+    self.assertEqual('W/"1"', p_1['meta']['versionId'])
 
     # change login phone number to 444-222-2222
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
@@ -279,15 +279,15 @@ class ParticipantApiTest(FlaskTestBase):
 
     ps_1_with_test_login_phone_number = self.send_get('Participant/%s/Summary' % participant_id_1)
 
-    self.assertEquals('444-222-2222', ps_1_with_test_login_phone_number['loginPhoneNumber'])
-    self.assertEquals('TEST', ps_1_with_test_login_phone_number['hpoId'])
-    self.assertEquals('1234 Main Street', ps_1_with_test_login_phone_number['streetAddress'])
-    self.assertEquals('APT C', ps_1_with_test_login_phone_number['streetAddress2'])
+    self.assertEqual('444-222-2222', ps_1_with_test_login_phone_number['loginPhoneNumber'])
+    self.assertEqual('TEST', ps_1_with_test_login_phone_number['hpoId'])
+    self.assertEqual('1234 Main Street', ps_1_with_test_login_phone_number['streetAddress'])
+    self.assertEqual('APT C', ps_1_with_test_login_phone_number['streetAddress2'])
 
     p_1 = self.send_get('Participant/%s' % participant_id_1)
-    self.assertEquals('TEST', p_1['hpoId'])
-    self.assertEquals(TIME_2.strftime('%Y''-''%m''-''%d''T''%X'), p_1['lastModified'])
-    self.assertEquals('W/"2"', p_1['meta']['versionId'])
+    self.assertEqual('TEST', p_1['hpoId'])
+    self.assertEqual(TIME_2.strftime('%Y''-''%m''-''%d''T''%X'), p_1['lastModified'])
+    self.assertEqual('W/"2"', p_1['meta']['versionId'])
 
 def _add_code_answer(code_answers, link_id, code):
   if code:

@@ -6,13 +6,13 @@ import logging
 import os.path
 import unittest
 
-import models.bundle as bundle
-import models.medication as medication
-import models.patient as patient
-import models.questionnaire as questionnaire
-import models.resource as resource
-import models.valueset as valueset
-import server
+from . import models.bundle as bundle
+from . import models.medication as medication
+from . import models.patient as patient
+from . import models.questionnaire as questionnaire
+from . import models.resource as resource
+from . import models.valueset as valueset
+from . import server
 
 logging.basicConfig(level=logging.CRITICAL)
 

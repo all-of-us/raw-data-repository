@@ -133,7 +133,7 @@ class TableExporter(object):
     if deidentify:
       if database not in _DEIDENTIFY_DB_TABLE_WHITELIST:
         raise BadRequest("deidentified exports are only supported for database: {}".format(
-            _DEIDENTIFY_DB_TABLE_WHITELIST.keys()))
+            list(_DEIDENTIFY_DB_TABLE_WHITELIST.keys())))
       tableset = set(tables)
       table_whitelist = _DEIDENTIFY_DB_TABLE_WHITELIST[database]
       if not tableset.issubset(table_whitelist):

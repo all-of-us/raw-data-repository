@@ -49,7 +49,7 @@ class FileNotFoundError(RuntimeError):
 def read_genomic_set_from_bucket():
   try:
     csv_file, csv_filename, timestamp = get_last_genomic_set_file_info()
-  except FileNotFoundError, e:
+  except FileNotFoundError as e:
     logging.info(e.message)
     return None
 
@@ -169,7 +169,7 @@ def _save_genomic_set_from_csv(csv_reader, csv_filename, timestamp):
     member_dao.update_biobank_id(genomic_set_id)
 
     return genomic_set_id
-  except ValueError, e:
+  except ValueError as e:
     raise DataError(e)
 
 def _insert_genomic_set_from_row(row, csv_filename, timestamp):
@@ -227,12 +227,12 @@ def create_genomic_set_status_result_file(genomic_set_id):
 
 
 def _transform_result_row_for_export(row):
-  Row = collections.namedtuple('Row', row.keys())
+  Row = collections.namedtuple('Row', list(row.keys()))
   original = Row(*row)
   status = GenomicSetMemberStatus(original.status)
   flags = GenomicSetMember.validationFlags.type.process_result_value(original.invalid_reason, None)
   kwargs = dict(
-    dict(row.items()),
+    dict(list(row.items())),
     status=str(status).lower(),
     invalid_reason=', '.join(map(str, flags)) if flags else ''
   )

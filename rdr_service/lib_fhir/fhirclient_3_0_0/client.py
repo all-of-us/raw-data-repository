@@ -2,7 +2,7 @@
 
 import logging
 
-from server import FHIRNotFoundException, FHIRServer, FHIRUnauthorizedException
+from .server import FHIRNotFoundException, FHIRServer, FHIRUnauthorizedException
 
 __version__ = '3.0.0'
 __author__ = 'SMART Platforms Team'
@@ -157,7 +157,7 @@ class FHIRClient(object):
     @property
     def patient(self):
         if self._patient is None and self.patient_id is not None and self.ready:
-            import models.patient
+            from . import models.patient
             try:
                 logger.debug("SMART: Attempting to read Patient {0}".format(self.patient_id))
                 self._patient = models.patient.Patient.read(self.patient_id, self.server)

@@ -45,7 +45,7 @@ class ParticipantGen(BaseGen):
     """
     data = dict()
 
-    for key, val in self.__dict__.items():
+    for key, val in list(self.__dict__.items()):
       if key.startswith('_'):
         continue
       data[key] = val

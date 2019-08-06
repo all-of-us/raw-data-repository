@@ -54,4 +54,4 @@ class TableExporterTest(CloudStorageSqlTestBase, FlaskTestBase):
     obf_ids = set([row[0] for row in rows])
     self.assertFalse(pmi_ids.intersection(obf_ids),
                      'should be no overlap between pmi_ids and obfuscated IDs')
-    self.assertEquals(2, len(obf_ids))
+    self.assertEqual(2, len(obf_ids))

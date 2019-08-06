@@ -1,5 +1,5 @@
 import copy
-import httplib
+import http.client
 import json
 import os
 
@@ -44,14 +44,14 @@ class DvOrderApiTestBase(FlaskTestBase):
 
     # insert patient status
     url = os.path.join('PatientStatus', 'P{0}'.format(self.participant.participantId), 'Organization', 'PITT_BANNER_HEALTH')
-    resp = self.send_post(url, data, expected_status=httplib.CREATED)
+    resp = self.send_post(url, data, expected_status=http.client.CREATED)
 
     # test that our test_data dict is in the resp.response dict.
     resp_data = json.loads(resp.response[0])
     self.assertDictContainsSubset(data, resp_data)
 
     # attempt to insert again, should fail with duplicate.
-    self.send_post(url, data, expected_status=httplib.CONFLICT)
+    self.send_post(url, data, expected_status=http.client.CONFLICT)
 
     # Get record and test that our test_data dict is in the resp.response dict.
     resp = self.send_get(url)
@@ -63,13 +63,13 @@ class DvOrderApiTestBase(FlaskTestBase):
     # insert patient status
     url = os.path.join('PatientStatus', 'P{0}'.format(self.participant.participantId), 'Organization',
                        'PITT_BANNER_HEALTH')
-    resp = self.send_post(url, data, expected_status=httplib.CREATED)
+    resp = self.send_post(url, data, expected_status=http.client.CREATED)
 
     data['authored'] = '2019-04-27T16:32:01'
     data['comment'] = 'saw patient at new site'
     data['site'] = 'hpo-site-bannerphoenix'
 
-    resp = self.send_put(url, data, expected_status=httplib.OK)
+    resp = self.send_put(url, data, expected_status=http.client.OK)
     self.assertDictContainsSubset(data, resp)
 
     # Get record and test that our test_data dict is in the resp.response dict.

@@ -1,5 +1,5 @@
 import datetime
-import httplib
+import http.client
 import json
 
 from rdr_service import main
@@ -34,7 +34,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
   def test_insert_before_consent_fails(self):
     measurements_1 = load_measurement_json(self.participant_id)
     path_1 = 'Participant/%s/PhysicalMeasurements' % self.participant_id
-    self.send_post(path_1, measurements_1, expected_status=httplib.BAD_REQUEST)
+    self.send_post(path_1, measurements_1, expected_status=http.client.BAD_REQUEST)
 
   def test_insert(self):
     self.send_consent(self.participant_id)
@@ -44,18 +44,18 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self._insert_measurements(now.isoformat())
 
     response = self.send_get('Participant/%s/PhysicalMeasurements' % self.participant_id)
-    self.assertEquals('Bundle', response['resourceType'])
-    self.assertEquals('searchset', response['type'])
+    self.assertEqual('Bundle', response['resourceType'])
+    self.assertEqual('searchset', response['type'])
     self.assertFalse(response.get('link'))
     self.assertTrue(response.get('entry'))
-    self.assertEquals(1, len(response['entry']))
+    self.assertEqual(1, len(response['entry']))
 
     physical_measurements_id = response['entry'][0]['resource']['id']
     pm_id = int(physical_measurements_id)
     physical_measurements = PhysicalMeasurementsDao().get_with_children(physical_measurements_id)
-    self.assertEquals(physical_measurements.createdSiteId, 1)
+    self.assertEqual(physical_measurements.createdSiteId, 1)
     self.assertIsNone(physical_measurements.createdUsername)
-    self.assertEquals(physical_measurements.finalizedSiteId, 2)
+    self.assertEqual(physical_measurements.finalizedSiteId, 2)
     self.assertIsNone(physical_measurements.finalizedUsername)
 
     em1 = Measurement(measurementId=pm_id * 1000,
@@ -82,17 +82,17 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
                       valueUnit="mm[Hg]",
                       parentId=em1.measurementId)
     m1 = physical_measurements.measurements[0]
-    self.assertEquals(em1.asdict(), m1.asdict())
-    self.assertEquals(2, len(m1.measurements))
-    self.assertEquals(bp1.asdict(), m1.measurements[0].asdict())
-    self.assertEquals(bp2.asdict(), m1.measurements[1].asdict())
+    self.assertEqual(em1.asdict(), m1.asdict())
+    self.assertEqual(2, len(m1.measurements))
+    self.assertEqual(bp1.asdict(), m1.measurements[0].asdict())
+    self.assertEqual(bp2.asdict(), m1.measurements[1].asdict())
 
     response = self.send_get('Participant/%s/PhysicalMeasurements' % self.participant_id_2)
-    self.assertEquals('Bundle', response['resourceType'])
-    self.assertEquals('searchset', response['type'])
+    self.assertEqual('Bundle', response['resourceType'])
+    self.assertEqual('searchset', response['type'])
     self.assertFalse(response.get('link'))
     self.assertTrue(response.get('entry'))
-    self.assertEquals(1, len(response['entry']))
+    self.assertEqual(1, len(response['entry']))
 
   def test_insert_and_amend(self):
     self.send_consent(self.participant_id)
@@ -103,8 +103,8 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.send_post(path_1, measurements_2)
 
     response = self.send_get('Participant/%s/PhysicalMeasurements' % self.participant_id)
-    self.assertEquals(2, len(response['entry']))
-    self.assertEquals("amended", response['entry'][0]['resource']['entry'][0]['resource']['status'])
+    self.assertEqual(2, len(response['entry']))
+    self.assertEqual("amended", response['entry'][0]['resource']['entry'][0]['resource']['status'])
 
   def test_insert_with_qualifiers(self):
     self.send_consent(self.participant_id)
@@ -120,20 +120,20 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.send_post(path_1, measurements_json)
 
     response = self.send_get('Participant/%s/PhysicalMeasurements' % self.participant_id)
-    self.assertEquals('Bundle', response['resourceType'])
-    self.assertEquals('searchset', response['type'])
+    self.assertEqual('Bundle', response['resourceType'])
+    self.assertEqual('searchset', response['type'])
     self.assertFalse(response.get('link'))
     self.assertTrue(response.get('entry'))
-    self.assertEquals(1, len(response['entry']))
+    self.assertEqual(1, len(response['entry']))
 
     physical_measurements_id = response['entry'][0]['resource']['id']
     pm_id = int(physical_measurements_id)
     physical_measurements = PhysicalMeasurementsDao().get_with_children(physical_measurements_id)
-    self.assertEquals(physical_measurements.finalizedSiteId, 1)
-    self.assertEquals('fred.smith@pmi-ops.org', physical_measurements.finalizedUsername)
+    self.assertEqual(physical_measurements.finalizedSiteId, 1)
+    self.assertEqual('fred.smith@pmi-ops.org', physical_measurements.finalizedUsername)
     # Site not present in DB, so we don't set it.
     self.assertIsNone(physical_measurements.createdSiteId)
-    self.assertEquals('bob.jones@pmi-ops.org', physical_measurements.createdUsername)
+    self.assertEqual('bob.jones@pmi-ops.org', physical_measurements.createdUsername)
 
     em1_id = pm_id * 1000
     bp1 = Measurement(measurementId=pm_id * 1000 + 1,
@@ -223,15 +223,15 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
          in physical_measurements.measurements}
 
     for em in [em1, bp1, bp2, bp3, q1, em2, q2, em3, em4, em5]:
-      self.assertEquals(em.asdict(follow = {'measurements': {},
+      self.assertEqual(em.asdict(follow = {'measurements': {},
                                             'qualifiers': {}}), m.get(em.measurementId))
 
   def test_physical_measurements_sync(self):
     self.send_consent(self.participant_id)
     self.send_consent(self.participant_id_2)
     sync_response = self.send_get('PhysicalMeasurements/_history')
-    self.assertEquals('Bundle', sync_response['resourceType'])
-    self.assertEquals('history', sync_response['type'])
+    self.assertEqual('Bundle', sync_response['resourceType'])
+    self.assertEqual('history', sync_response['type'])
     link = sync_response.get('link')
     self.assertIsNone(link)
     self.assertTrue(len(sync_response['entry']) == 0)
@@ -242,21 +242,21 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.assertTrue(sync_response.get('entry'))
     link = sync_response.get('link')
     self.assertTrue(link)
-    self.assertEquals("next", link[0]['relation'])
-    self.assertEquals(1, len(sync_response['entry']))
+    self.assertEqual("next", link[0]['relation'])
+    self.assertEqual(1, len(sync_response['entry']))
     prefix_index = link[0]['url'].index(main.PREFIX)
     relative_url = link[0]['url'][prefix_index + len(main.PREFIX):]
 
     sync_response_2 = self.send_get(relative_url)
-    self.assertEquals(1, len(sync_response_2['entry']))
-    self.assertNotEquals(sync_response['entry'][0], sync_response_2['entry'][0])
+    self.assertEqual(1, len(sync_response_2['entry']))
+    self.assertNotEqual(sync_response['entry'][0], sync_response_2['entry'][0])
 
   def test_auto_pair_called(self):
     pid_numeric = from_client_participant_id(self.participant_id)
     participant_dao = ParticipantDao()
     self.send_consent(self.participant_id)
     self.send_consent(self.participant_id_2)
-    self.assertEquals(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
+    self.assertEqual(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
     self._insert_measurements(datetime.datetime.utcnow().isoformat())
     self.assertNotEqual(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
 
@@ -347,7 +347,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsFinalizedSite'],
                      'hpo-site-bannerphoenix')
     self.assertIsNotNone(ps['entry'][0]['resource']['physicalMeasurementsTime'])
-    self.assertEquals(ps['entry'][0]['resource']['physicalMeasurementsTime'], self.time1.isoformat())
+    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsTime'], self.time1.isoformat())
 
   def test_cancel_single_pm_returns_cancelled_in_summary(self):
     _id = self.participant_id.strip('P')
@@ -395,7 +395,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     path = path + '/' + response['id']
     restored_info = get_restore_or_cancel_info(reason='need to restore', status='restored',
                                                author='me')
-    self.send_patch(path, restored_info, expected_status=httplib.BAD_REQUEST)
+    self.send_patch(path, restored_info, expected_status=http.client.BAD_REQUEST)
 
   def test_cannot_cancel_a_cancelled_pm(self):
     self.send_consent(self.participant_id)
@@ -404,7 +404,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     response = self.send_post(path, measurement)
     path = path + '/' + response['id']
     self.send_patch(path, get_restore_or_cancel_info())
-    self.send_patch(path, get_restore_or_cancel_info(), expected_status=httplib.BAD_REQUEST)
+    self.send_patch(path, get_restore_or_cancel_info(), expected_status=http.client.BAD_REQUEST)
 
   def test_cancel_an_ammended_order(self):
     self.send_consent(self.participant_id)

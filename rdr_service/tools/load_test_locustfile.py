@@ -25,8 +25,8 @@ import os
 import random
 import re
 import time
-import urlparse
-from urllib import urlencode
+import urllib.parse
+from urllib.parse import urlencode
 
 from locust import Locust, TaskSet, events, task
 
@@ -66,9 +66,9 @@ class _ReportingClient(Client):
       name = '/' + name
 
     # Replace query parameters with non-varying placeholders.
-    parsed = urlparse.urlparse(name)
-    query = urlparse.parse_qs(parsed.query)
-    for k in query.keys():
+    parsed = urllib.parse.urlparse(name)
+    query = urllib.parse.parse_qs(parsed.query)
+    for k in list(query.keys()):
       query[k] = 'X'
     name = parsed._replace(query=urlencode(query)).geturl()
 
@@ -150,7 +150,7 @@ class HealthProUser(_AuthenticatedLocust):
       """Fetches some participant data from the work queue API for subsequent tasks."""
       absolute_path = False
       summary_url = 'ParticipantSummary?hpoId=PITT'
-      for _ in xrange(3):  # Fetch a few pages of participants.
+      for _ in range(3):  # Fetch a few pages of participants.
         resp = self.client.request_json(summary_url, absolute_path=absolute_path)
         for summary in resp['entry']:
           resource = summary['resource']

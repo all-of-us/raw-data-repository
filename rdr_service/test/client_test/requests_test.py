@@ -1,4 +1,4 @@
-import httplib
+import http.client
 import unittest
 
 from rdr_service.test.client_test.base import BaseClientTest
@@ -13,7 +13,7 @@ class RequestsTest(BaseClientTest):
         body='{}',
         authenticated=False,
         check_status=False)
-    self.assertEquals(response.status, httplib.BAD_REQUEST)
+    self.assertEqual(response.status, http.client.BAD_REQUEST)
 
   def test_header_values(self):
     response, _ = self.client.request('Participant', method='POST', body='{}')
@@ -21,7 +21,7 @@ class RequestsTest(BaseClientTest):
         ('content-disposition', 'attachment; filename="f.txt"'),
         ('content-type', 'application/json; charset=utf-8'),
         ('x-content-type-options', 'nosniff')):
-      self.assertEquals(response.get(required_header), required_value,
+      self.assertEqual(response.get(required_header), required_value,
             'Response header %r was set to %r, expected %r.'
             % (required_header, response.get(required_header), required_value))
 

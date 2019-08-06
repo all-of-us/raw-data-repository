@@ -6,11 +6,11 @@ import logging
 import requests
 
 try:                                # Python 2.x
-    import urlparse
+    import urllib.parse
 except ImportError as e:            # Python 3
     import urllib.parse as urlparse
 
-from auth import FHIRAuth
+from .auth import FHIRAuth
 
 FHIRJSONMimeType = 'application/fhir+json'
 
@@ -79,7 +79,7 @@ class FHIRServer(object):
         """
         if self._capability is None or force:
             logger.info('Fetching CapabilityStatement from {0}'.format(self.base_uri))
-            from models import capabilitystatement
+            from .models import capabilitystatement
             conf = capabilitystatement.CapabilityStatement.read_from('metadata', self)
             self._capability = conf
 
@@ -176,7 +176,7 @@ class FHIRServer(object):
         :returns: The response object
         """
         assert self.base_uri and path
-        url = urlparse.urljoin(self.base_uri, path)
+        url = urllib.parse.urljoin(self.base_uri, path)
 
         headers = {
             'Accept': FHIRJSONMimeType,
@@ -200,7 +200,7 @@ class FHIRServer(object):
         :throws: Exception on HTTP status >= 400
         :returns: The response object
         """
-        url = urlparse.urljoin(self.base_uri, path)
+        url = urllib.parse.urljoin(self.base_uri, path)
         headers = {
             'Content-type': FHIRJSONMimeType,
             'Accept': FHIRJSONMimeType,
@@ -224,7 +224,7 @@ class FHIRServer(object):
         :throws: Exception on HTTP status >= 400
         :returns: The response object
         """
-        url = urlparse.urljoin(self.base_uri, path)
+        url = urllib.parse.urljoin(self.base_uri, path)
         headers = {
             'Content-type': FHIRJSONMimeType,
             'Accept': FHIRJSONMimeType,
@@ -262,7 +262,7 @@ class FHIRServer(object):
         :param bool nosign: If set to True, the request will not be signed
         :returns: The response object
         """
-        url = urlparse.urljoin(self.base_uri, path)
+        url = urllib.parse.urljoin(self.base_uri, path)
         headers = {
             'Accept': FHIRJSONMimeType,
             'Accept-Charset': 'UTF-8',

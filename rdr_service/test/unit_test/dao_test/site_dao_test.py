@@ -30,8 +30,8 @@ class SiteDaoTest(SqlTestBase):
     created_site = self.site_dao.insert(site)
     new_site = self.site_dao.get(created_site.siteId)
     site.siteId = created_site.siteId
-    self.assertEquals(site.asdict(), new_site.asdict())
-    self.assertEquals(site.asdict(),
+    self.assertEqual(site.asdict(), new_site.asdict())
+    self.assertEqual(site.asdict(),
                       self.site_dao.get_by_google_group('site@googlegroups.com').asdict())
 
   def test_update(self):
@@ -43,8 +43,8 @@ class SiteDaoTest(SqlTestBase):
                     mayolinkClientNumber=123456, hpoId=UNSET_HPO_ID)
     self.site_dao.update(new_site)
     fetched_site = self.site_dao.get(created_site.siteId)
-    self.assertEquals(new_site.asdict(), fetched_site.asdict())
-    self.assertEquals(new_site.asdict(),
+    self.assertEqual(new_site.asdict(), fetched_site.asdict())
+    self.assertEqual(new_site.asdict(),
                       self.site_dao.get_by_google_group('site2@googlegroups.com').asdict())
     self.assertIsNone(self.site_dao.get_by_google_group('site@googlegroups.com'))
 
@@ -74,13 +74,13 @@ class SiteDaoTest(SqlTestBase):
     ps = self.ps_dao.get(p_summary.participantId)
     ph = self.ps_history.get([updated_p.participantId, 1])
 
-    self.assertEquals(update_site_parent.hpoId, updated_p.hpoId)
-    self.assertEquals(update_site_parent.organizationId, updated_p.organizationId)
-    self.assertEquals(ps.organizationId, update_site_parent.organizationId)
-    self.assertEquals(ps.hpoId, update_site_parent.hpoId)
-    self.assertEquals(ps.organizationId, update_site_parent.organizationId)
-    self.assertEquals(ph.organizationId, update_site_parent.organizationId)
-    self.assertEquals(updated_p.providerLink, provider_link)
-    self.assertEquals(ps.lastModified, TIME2)
+    self.assertEqual(update_site_parent.hpoId, updated_p.hpoId)
+    self.assertEqual(update_site_parent.organizationId, updated_p.organizationId)
+    self.assertEqual(ps.organizationId, update_site_parent.organizationId)
+    self.assertEqual(ps.hpoId, update_site_parent.hpoId)
+    self.assertEqual(ps.organizationId, update_site_parent.organizationId)
+    self.assertEqual(ph.organizationId, update_site_parent.organizationId)
+    self.assertEqual(updated_p.providerLink, provider_link)
+    self.assertEqual(ps.lastModified, TIME2)
 
 

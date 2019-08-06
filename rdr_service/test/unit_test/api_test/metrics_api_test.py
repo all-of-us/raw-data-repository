@@ -25,14 +25,14 @@ class MetricsApiTest(FlaskTestBase):
   def test_get_metrics_no_data(self):
     response = self.send_post('Metrics', {'start_date': self.today.isoformat(),
                                           'end_date': self.tomorrow.isoformat()})
-    self.assertEquals([], response)
+    self.assertEqual([], response)
 
   def test_get_metrics_no_buckets(self):
     self.version_dao.set_pipeline_in_progress()
     self.version_dao.set_pipeline_finished(True)
     response = self.send_post('Metrics', {'start_date': self.today.isoformat(),
                                           'end_date': self.tomorrow.isoformat()})
-    self.assertEquals([], response)
+    self.assertEqual([], response)
 
   def setup_buckets(self):
     self.version_dao.set_pipeline_in_progress()
@@ -52,23 +52,23 @@ class MetricsApiTest(FlaskTestBase):
     self.setup_buckets()
     response = self.send_post('Metrics', {'start_date': self.today.isoformat(),
                                           'end_date': self.tomorrow.isoformat()})
-    self.assertEquals([self.expected_bucket_1, self.expected_bucket_2,
+    self.assertEqual([self.expected_bucket_1, self.expected_bucket_2,
                        self.expected_bucket_3], response)
 
   def test_get_metrics_with_buckets_and_today_start_end_date(self):
     self.setup_buckets()
     response = self.send_post('Metrics', {'start_date': self.today.isoformat(),
                                           'end_date': self.today.isoformat()})
-    self.assertEquals([self.expected_bucket_1, self.expected_bucket_2], response)
+    self.assertEqual([self.expected_bucket_1, self.expected_bucket_2], response)
 
   def test_get_metrics_with_buckets_and_tomorrow_start_end_date(self):
     self.setup_buckets()
     response = self.send_post('Metrics', {'start_date': self.tomorrow.isoformat(),
                                           'end_date': self.tomorrow.isoformat()})
-    self.assertEquals([self.expected_bucket_3], response)
+    self.assertEqual([self.expected_bucket_3], response)
 
   def test_get_metrics_with_no_buckets_and_tomorrow_start_date_today_end_date(self):
     self.setup_buckets()
     response = self.send_post('Metrics', {'start_date': self.tomorrow.isoformat(),
                                           'end_date': self.today.isoformat()})
-    self.assertEquals([], response)
+    self.assertEqual([], response)

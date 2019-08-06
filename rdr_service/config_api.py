@@ -114,5 +114,5 @@ class ConfigApi(Resource):
       if k not in config_obj:
         raise BadRequest('Missing required config key {}'.format(k))
       val = config_obj[k]
-      if not isinstance(val, list) or [v for v in val if not isinstance(v, basestring)]:
+      if not isinstance(val, list) or [v for v in val if not isinstance(v, str)]:
         raise BadRequest('Config for {} must be a list of strings'.format(k))

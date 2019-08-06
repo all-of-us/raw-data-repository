@@ -63,8 +63,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.questionnaire_response_answer_dao = QuestionnaireResponseAnswerDao()
     self.participant_summary_dao = ParticipantSummaryDao()
     self.CODE_1 = Code(codeId=1, system=PPI_SYSTEM, value=GENDER_IDENTITY_QUESTION_CODE,
-                       display=u'c', topic=u'd', codeType=CodeType.QUESTION, mapped=True)
-    self.CODE_2 = Code(codeId=2, system='a', value='x', display=u'y', codeType=CodeType.QUESTION,
+                       display='c', topic='d', codeType=CodeType.QUESTION, mapped=True)
+    self.CODE_2 = Code(codeId=2, system='a', value='x', display='y', codeType=CodeType.QUESTION,
                        mapped=False)
     self.CODE_3 = Code(codeId=3, system='a', value='c', codeType=CodeType.ANSWER, mapped=True,
                        parentId=1)
@@ -144,7 +144,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
   def check_response(self, expected_qr):
     qr = self.questionnaire_response_dao.get_with_children(expected_qr.questionnaireResponseId)
-    self.assertEquals(expected_qr.asdict(follow=ANSWERS), qr.asdict(follow=ANSWERS))
+    self.assertEqual(expected_qr.asdict(follow=ANSWERS), qr.asdict(follow=ANSWERS))
 
   def _names_and_email_answers(self):
     return [self.FN_ANSWER, self.LN_ANSWER, self.EMAIL_ANSWER]
@@ -306,7 +306,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                         authored=time)
     expected_qr.answers.extend(self._names_and_login_phone_number_answers())
     qr2 = self.questionnaire_response_dao.get(1)
-    self.assertEquals(expected_qr.asdict(), qr2.asdict())
+    self.assertEqual(expected_qr.asdict(), qr2.asdict())
     self.check_response(expected_qr)
 
   def test_insert_both_names_and_email(self):
@@ -329,7 +329,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                         authored=time)
     expected_qr.answers.extend(self._names_and_email_answers())
     qr2 = self.questionnaire_response_dao.get(1)
-    self.assertEquals(expected_qr.asdict(), qr2.asdict())
+    self.assertEqual(expected_qr.asdict(), qr2.asdict())
     self.check_response(expected_qr)
 
   def test_insert_both_names_and_email_and_login_phone_number(self):
@@ -358,7 +358,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     expected_qr.answers.append(self.EMAIL_ANSWER)
     expected_qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
     qr2 = self.questionnaire_response_dao.get(1)
-    self.assertEquals(expected_qr.asdict(), qr2.asdict())
+    self.assertEqual(expected_qr.asdict(), qr2.asdict())
     self.check_response(expected_qr)
 
   def test_insert_duplicate(self):
@@ -416,7 +416,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                         authored=TIME_2)
 
     qr2 = self.questionnaire_response_dao.get(1)
-    self.assertEquals(expected_qr.asdict(), qr2.asdict())
+    self.assertEqual(expected_qr.asdict(), qr2.asdict())
 
     expected_qr.answers.extend([answer_1, answer_2])
     expected_qr.answers.extend(self._names_and_email_answers())
@@ -437,7 +437,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
       lastModified=TIME_2,
       patientStatus=[],
     )
-    self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
+    self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
   def test_from_client_json_raises_BadRequest_for_excessively_long_value_string(self):
     self.insert_codes()
@@ -506,7 +506,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                         created=TIME_2,
                                         authored=TIME_2)
     qr2 = self.questionnaire_response_dao.get(1)
-    self.assertEquals(expected_qr.asdict(), qr2.asdict())
+    self.assertEqual(expected_qr.asdict(), qr2.asdict())
 
     expected_qr.answers.append(answer_1)
     expected_qr.answers.append(answer_2)
@@ -525,7 +525,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         lastModified=TIME_2,
         firstName=self.first_name, lastName=self.last_name, email=self.email,
         patientStatus=[])
-    self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
+    self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
   def test_insert_qr_three_times(self):
     """Adds three questionnaire responses for the same participant.
@@ -578,7 +578,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         lastModified=TIME_2,
         firstName=self.first_name, lastName=self.last_name, email=self.email,
         patientStatus=[])
-    self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
+    self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
     qr2 = QuestionnaireResponse(questionnaireResponseId=2, questionnaireId=2,
                                 questionnaireVersion=1, participantId=1,
@@ -629,7 +629,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         patientStatus=[])
     # The participant summary should be updated with the new gender identity, but nothing else
     # changes.
-    self.assertEquals(expected_ps2.asdict(), self.participant_summary_dao.get(1).asdict())
+    self.assertEqual(expected_ps2.asdict(), self.participant_summary_dao.get(1).asdict())
 
     qr3 = QuestionnaireResponse(questionnaireResponseId=3, questionnaireId=2,
                                 questionnaireVersion=1, participantId=1,
@@ -674,7 +674,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         patientStatus=[])
     # The participant summary should be updated with the new gender identity, but nothing else
     # changes.
-    self.assertEquals(expected_ps3.asdict(), self.participant_summary_dao.get(1).asdict())
+    self.assertEqual(expected_ps3.asdict(), self.participant_summary_dao.get(1).asdict())
 
   def _get_questionnaire_response_with_consents(self, *consent_paths):
     self.insert_codes()
@@ -729,7 +729,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     qr = self._get_questionnaire_response_with_consents(
         '/Participant/one.pdf', '/Participant/two.pdf')
     self.questionnaire_response_dao.insert(qr)
-    self.assertEquals(mock_gcloud_check.call_count, 2)
+    self.assertEqual(mock_gcloud_check.call_count, 2)
 
 
 class QuestionnaireResponseDaoCloudCheckTest(testutil.CloudStorageTestBase):

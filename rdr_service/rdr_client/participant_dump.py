@@ -3,7 +3,7 @@
 Usage: run_client.sh --account $USER@pmi-ops.org --project all-of-us-rdr-prod %(prog)s P12345
 """
 
-import httplib
+import http.client
 import json
 import logging
 import pprint
@@ -50,7 +50,7 @@ def _get_app_log_lines(participant_id, project):
     payload = msg['protoPayload']
     formatted_lines.append('%(startTime)s %(method)s %(status)d %(resource)s' % payload)
     # Only print messages logged on the server for errors (status != 200 or log severity != INFO).
-    if (payload['status'] != httplib.OK or
+    if (payload['status'] != http.client.OK or
         any([line['severity'] != 'INFO' for line in payload['line']])):
       for line in payload['line']:
         formatted_lines.append('\t%(time)s %(severity)s %(logMessage)s' % line)

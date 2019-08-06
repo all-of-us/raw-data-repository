@@ -27,10 +27,10 @@ class SchemaTest(SqlTestBase):
 
     engine = self.database.get_engine()
     result = engine.execute("select fn_get_code_id_from_key('WhatRaceEthnicity_AIAN')").fetchone()
-    self.assertEquals(3, result[0])
+    self.assertEqual(3, result[0])
 
     result = engine.execute("select fn_get_code_id_from_key('WhatRaceEthnicity_White')").fetchone()
-    self.assertEquals(4, result[0])
+    self.assertEqual(4, result[0])
 
   def test_fn_get_code_module(self):
 
@@ -44,16 +44,16 @@ class SchemaTest(SqlTestBase):
 
     engine = self.database.get_engine()
     result = engine.execute("select fn_get_code_module('ConsentPII')").fetchone()
-    self.assertEquals('ConsentPII', result[0])
+    self.assertEqual('ConsentPII', result[0])
 
     result = engine.execute("select fn_get_code_module('ConsentPII_PIIAddress')").fetchone()
-    self.assertEquals('ConsentPII', result[0])
+    self.assertEqual('ConsentPII', result[0])
 
     result = engine.execute("select fn_get_code_module('StateOfResidence')").fetchone()
-    self.assertEquals('ConsentPII', result[0])
+    self.assertEqual('ConsentPII', result[0])
 
     result = engine.execute("select fn_get_code_module('SOR_AK')").fetchone()
-    self.assertEquals('ConsentPII', result[0])
+    self.assertEqual('ConsentPII', result[0])
 
 
     result = engine.execute("select fn_get_code_module_id('ConsentPII')").fetchone()
@@ -62,11 +62,11 @@ class SchemaTest(SqlTestBase):
     self.assertGreater(code_id, 0)
 
     result = engine.execute("select fn_get_code_module_id('ConsentPII_PIIAddress')").fetchone()
-    self.assertEquals(code_id, result[0])
+    self.assertEqual(code_id, result[0])
 
     result = engine.execute("select fn_get_code_module_id('StateOfResidence')").fetchone()
-    self.assertEquals(code_id, result[0])
+    self.assertEqual(code_id, result[0])
 
     result = engine.execute("select fn_get_code_module_id('SOR_AK')").fetchone()
-    self.assertEquals(code_id, result[0])
+    self.assertEqual(code_id, result[0])
 

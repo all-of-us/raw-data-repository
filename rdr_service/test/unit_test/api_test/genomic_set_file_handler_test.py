@@ -50,24 +50,24 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     Kwargs pass through to BiobankOrder constructor, overriding defaults.
     """
     participant_id = kwargs['participantId']
-    modified = datetime.datetime(2019, 03, 25, 15, 59, 30)
+    modified = datetime.datetime(2019, 0o3, 25, 15, 59, 30)
 
     for k, default_value in (
-        ('biobankOrderId', u'1'),
+        ('biobankOrderId', '1'),
         ('created', clock.CLOCK.now()),
         ('sourceSiteId', 1),
-        ('sourceUsername', u'fred@pmi-ops.org'),
+        ('sourceUsername', 'fred@pmi-ops.org'),
         ('collectedSiteId', 1),
-        ('collectedUsername', u'joe@pmi-ops.org'),
+        ('collectedUsername', 'joe@pmi-ops.org'),
         ('processedSiteId', 1),
-        ('processedUsername', u'sue@pmi-ops.org'),
+        ('processedUsername', 'sue@pmi-ops.org'),
         ('finalizedSiteId', 2),
-        ('finalizedUsername', u'bob@pmi-ops.org'),
+        ('finalizedUsername', 'bob@pmi-ops.org'),
         ('version', 1),
-        ('identifiers', [BiobankOrderIdentifier(system=u'a', value=u'c')]),
+        ('identifiers', [BiobankOrderIdentifier(system='a', value='c')]),
         ('samples', [BiobankOrderedSample(
-            test=u'1SAL2',
-            description=u'description',
+            test='1SAL2',
+            description='description',
             processingRequired=True)]),
         ('dvOrders', [BiobankDVOrder(
           participantId=participant_id, modified=modified, version=1)])):
@@ -84,21 +84,21 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     self.summary_dao.insert(self.participant_summary(participant))
     bo = self._make_biobank_order(participantId=participant.participantId, biobankOrderId='123',
                                   identifiers=[BiobankOrderIdentifier(
-                                    system=u'https://www.pmi-ops.org', value=u'12345678')])
+                                    system='https://www.pmi-ops.org', value='12345678')])
     BiobankOrderDao().insert(bo)
 
     participant2 = self.participant_dao.insert(Participant(participantId=124, biobankId=1235))
     self.summary_dao.insert(self.participant_summary(participant2))
     bo2 = self._make_biobank_order(participantId=participant2.participantId, biobankOrderId='124',
                                    identifiers=[BiobankOrderIdentifier(
-                                     system=u'https://www.pmi-ops.org', value=u'12345679')])
+                                     system='https://www.pmi-ops.org', value='12345679')])
     BiobankOrderDao().insert(bo2)
 
     participant3 = self.participant_dao.insert(Participant(participantId=125, biobankId=1236))
     self.summary_dao.insert(self.participant_summary(participant3))
     bo3 = self._make_biobank_order(participantId=participant3.participantId, biobankOrderId='125',
                                    identifiers=[BiobankOrderIdentifier(
-                                     system=u'https://www.pmi-ops.org', value=u'12345680')])
+                                     system='https://www.pmi-ops.org', value='12345680')])
     BiobankOrderDao().insert(bo3)
 
     samples_file = test_data.open_genomic_set_file('Genomic-Test-Set-test-1.csv')
@@ -132,21 +132,21 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     self.summary_dao.insert(self.participant_summary(participant))
     bo = self._make_biobank_order(participantId=participant.participantId, biobankOrderId='123',
                                   identifiers=[BiobankOrderIdentifier(
-                                    system=u'https://www.pmi-ops.org', value=u'12345678')])
+                                    system='https://www.pmi-ops.org', value='12345678')])
     BiobankOrderDao().insert(bo)
 
     participant2 = self.participant_dao.insert(Participant(participantId=124, biobankId=124))
     self.summary_dao.insert(self.participant_summary(participant2))
     bo2 = self._make_biobank_order(participantId=participant2.participantId, biobankOrderId='124',
                                    identifiers=[BiobankOrderIdentifier(
-                                     system=u'https://www.pmi-ops.org', value=u'12345679')])
+                                     system='https://www.pmi-ops.org', value='12345679')])
     BiobankOrderDao().insert(bo2)
 
     participant3 = self.participant_dao.insert(Participant(participantId=125, biobankId=125))
     self.summary_dao.insert(self.participant_summary(participant3))
     bo3 = self._make_biobank_order(participantId=participant3.participantId, biobankOrderId='125',
                                    identifiers=[BiobankOrderIdentifier(
-                                     system=u'https://www.pmi-ops.org', value=u'12345680')])
+                                     system='https://www.pmi-ops.org', value='12345680')])
     BiobankOrderDao().insert(bo3)
 
     genomic_set = self._create_fake_genomic_set('fake_genomic_set_name',
@@ -231,21 +231,21 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     self.summary_dao.insert(self.participant_summary(participant))
     bo = self._make_biobank_order(participantId=participant.participantId, biobankOrderId='123',
                                   identifiers=[BiobankOrderIdentifier(
-                                    system=u'https://www.pmi-ops.org', value=u'12345678')])
+                                    system='https://www.pmi-ops.org', value='12345678')])
     BiobankOrderDao().insert(bo)
 
     participant2 = self.participant_dao.insert(Participant(participantId=124, biobankId=124))
     self.summary_dao.insert(self.participant_summary(participant2))
     bo2 = self._make_biobank_order(participantId=participant2.participantId, biobankOrderId='124',
                                    identifiers=[BiobankOrderIdentifier(
-                                     system=u'https://www.pmi-ops.org', value=u'12345679')])
+                                     system='https://www.pmi-ops.org', value='12345679')])
     BiobankOrderDao().insert(bo2)
 
     participant3 = self.participant_dao.insert(Participant(participantId=125, biobankId=125))
     self.summary_dao.insert(self.participant_summary(participant3))
     bo3 = self._make_biobank_order(participantId=participant3.participantId, biobankOrderId='125',
                                    identifiers=[BiobankOrderIdentifier(
-                                     system=u'https://www.pmi-ops.org', value=u'12345680')])
+                                     system='https://www.pmi-ops.org', value='12345680')])
     BiobankOrderDao().insert(bo3)
 
     genomic_set = self._create_fake_genomic_set('fake_genomic_set_name',

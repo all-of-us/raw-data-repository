@@ -56,7 +56,7 @@ class SqlExporter(object):
     # need to break the SQL up into pages, or (more likely) switch to cloud SQL export.
     cursor = session.execute(text(sql), params=query_params)
     try:
-      writer.write_header(cursor.keys())
+      writer.write_header(list(cursor.keys()))
       results = cursor.fetchmany(_BATCH_SIZE)
       while results:
         if transformf:

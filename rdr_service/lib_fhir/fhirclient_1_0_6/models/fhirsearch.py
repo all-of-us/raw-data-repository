@@ -5,7 +5,7 @@
 #  2014, SMART Health IT.
 
 try:
-    from urllib import quote_plus
+    from urllib.parse import quote_plus
 except Exception as e:
     from urllib.parse import quote_plus
 
@@ -25,10 +25,10 @@ class FHIRSearch(object):
         """ Used internally; whether or not `params` must be expanded first. """
         
         if struct is not None:
-            if dict != type(struct):
+            if not isinstance(struct, dict):
                 raise Exception("Must pass a Python dictionary, but got a {}".format(type(struct)))
             self.wants_expand = True
-            for key, val in struct.items():
+            for key, val in list(struct.items()):
                 self.params.append(FHIRSearchParam(key, val))
     
     
@@ -155,8 +155,8 @@ class FHIRSearchParamHandler(object):
     def prepare(self, parent=None):
         """ Creates sub-handlers as needed, then prepares the receiver.
         """
-        if dict == type(self.value):
-            for key, val in self.value.items():
+        if isinstance(self.value, dict):
+            for key, val in list(self.value.items()):
                 handler = FHIRSearchParamHandler.handler_for(key)(key, val)
                 handler.prepare(self)
         
@@ -202,7 +202,7 @@ class FHIRSearchParamModifierHandler(FHIRSearchParamHandler):
         '$null': ':missing',
         '$text': ':text',
     }
-    handles = modifiers.keys()
+    handles = list(modifiers.keys())
     
     def apply(self, param):
         if self.key not in self.__class__.modifiers:
@@ -218,7 +218,7 @@ class FHIRSearchParamOperatorHandler(FHIRSearchParamHandler):
         '$lte': '<=',
         '$gte': '>=',
     }
-    handles = operators.keys()
+    handles = list(operators.keys())
     
     def apply(self, param):
         if self.key not in self.__class__.operators:
@@ -230,13 +230,13 @@ class FHIRSearchParamMultiHandler(FHIRSearchParamHandler):
     handles = ['$and', '$or']
     
     def prepare(self, parent):
-        if list != type(self.value):
+        if not isinstance(self.value, list):
             raise Exception('Expecting a list argument for "{}" but got {}'.format(parent.key, self.value))
         
         handlers = []
         for val in self.value:
-            if dict == type(val):
-                for kkey, vval in val.items():
+            if isinstance(val, dict):
+                for kkey, vval in list(val.items()):
                     handlers.append(FHIRSearchParamHandler.handler_for(kkey)(kkey, vval))
             else:
                 handlers.append(FHIRSearchParamHandler.handler_for(parent.key)(None, val))

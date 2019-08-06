@@ -15,10 +15,10 @@ Usage: run_client.sh --account $USER@pmi-ops.org --project all-of-us-rdr-staging
 """
 
 import csv
-import httplib
+import http.client
 import logging
 import re
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 
 from rdr_service.code_constants import EMAIL_QUESTION_CODE as EQC, \
   LOGIN_PHONE_NUMBER_QUESTION_CODE as PNQC
@@ -78,8 +78,8 @@ def _fetch_csv_data(spreadsheet_id, spreadsheet_gid):
     'id': spreadsheet_id,
     'gid': spreadsheet_gid,
   }
-  response = urllib2.urlopen(url)
-  if response.code != httplib.OK:  # urllib2 already raises urllib2.HTTPError for some of these.
+  response = urllib.request.urlopen(url)
+  if response.code != http.client.OK:  # urllib2 already raises urllib2.HTTPError for some of these.
     raise RuntimeError('Error fetching %r: response %s.' % (url, response.status))
 
   # Convert csv file to a list of row data
@@ -115,7 +115,7 @@ def _log_ppi_results(results_json):
   """Formats and logs the validation results. See CheckPpiDataApi for response format details."""
   tests_total = 0
   errors_total = 0
-  for email, results in results_json.iteritems():
+  for email, results in results_json.items():
     tests_count, errors_count = results['tests_count'], results['errors_count']
     errors_total += errors_count
     tests_total += tests_count

@@ -65,7 +65,7 @@ def main(sdk_path, test_path, test_pattern, test_names=None):
     import appengine_config
     (appengine_config)
   except ImportError:
-    print 'Note: unable to import appengine_config.'
+    print('Note: unable to import appengine_config.')
 
   # Discover and run tests.
   if test_names:

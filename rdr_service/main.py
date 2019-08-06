@@ -11,9 +11,9 @@ from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import HTTPException
 
-import config_api
-import version_api
-from json_encoder import RdrJsonEncoder
+from . import config_api
+from . import version_api
+from .json_encoder import RdrJsonEncoder
 from rdr_service import app_util
 from rdr_service.api import metrics_ehr_api
 from rdr_service.api.awardee_api import AwardeeApi

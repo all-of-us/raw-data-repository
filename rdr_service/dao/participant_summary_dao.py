@@ -398,7 +398,7 @@ class ParticipantSummaryDao(UpdatableDao):
       raise BadRequest(
         (
           'Invalid patientStatus parameter: `{}`. `VALUE` must be one of {}'
-        ).format(value, PatientStatusFlag.to_dict().keys())
+        ).format(value, list(PatientStatusFlag.to_dict().keys()))
       )
     organization = self.organization_dao.get_by_external_id(organization_external_id)
     if not organization:
@@ -686,7 +686,7 @@ class ParticipantSummaryDao(UpdatableDao):
         model.suspensionStatus == SuspensionStatus.NO_CONTACT):
       result['recontactMethod'] = 'NO_CONTACT'
     # Strip None values.
-    result = {k: v for k, v in result.iteritems() if v is not None}
+    result = {k: v for k, v in list(result.items()) if v is not None}
 
     return result
 

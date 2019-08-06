@@ -1,4 +1,4 @@
-from __future__ import print_function
+
 
 import datetime
 import json
@@ -65,10 +65,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     HPODao().insert(HPO(hpoId=PITT_HPO_ID + 1, name='AZ_TUCSON_2'))
     HPODao().insert(HPO(hpoId=PITT_HPO_ID + 4, name='TEST'))
     SqlTestBase.setup_codes(
-        ANSWER_FIELD_TO_QUESTION_CODE.values() + [EHR_CONSENT_QUESTION_CODE],
+        list(ANSWER_FIELD_TO_QUESTION_CODE.values()) + [EHR_CONSENT_QUESTION_CODE],
         code_type=CodeType.QUESTION)
     SqlTestBase.setup_codes(
-        FIELD_TO_QUESTIONNAIRE_MODULE_CODE.values(), code_type=CodeType.MODULE)
+        list(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.values()), code_type=CodeType.MODULE)
 
     # Import codes for white and female, but not male or black.
     SqlTestBase.setup_codes([

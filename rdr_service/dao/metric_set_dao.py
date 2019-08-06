@@ -51,7 +51,7 @@ class AggregateMetricsDao(UpsertableDao):
       by_key[agg.metricsKey].append(agg)
 
     out = []
-    for (key, aggs) in by_key.iteritems():
+    for (key, aggs) in list(by_key.items()):
       out.append({
           'key': key.name,
           'values': [{

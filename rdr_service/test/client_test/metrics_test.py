@@ -5,7 +5,7 @@ As we don't know the state of the database, this is really just testing
 that metrics come back and that it doen't crash.
 """
 
-import httplib
+import http.client
 import pprint
 import unittest
 
@@ -23,8 +23,8 @@ class MetricsTest(BaseClientTest):
       response = self.client.request_json('Metrics', 'POST', request)
       pprint.pprint(response)
     except HttpException as ex:
-      if ex.code == httplib.NOT_FOUND:
-        print "No metrics loaded"
+      if ex.code == http.client.NOT_FOUND:
+        print("No metrics loaded")
       else:
         raise
 
@@ -35,7 +35,7 @@ class MetricsTest(BaseClientTest):
     }
     with self.assertRaises(HttpException) as cm:
       self.client.request_json('Metrics', 'POST', request)
-    self.assertEqual(cm.exception.code, httplib.BAD_REQUEST)
+    self.assertEqual(cm.exception.code, http.client.BAD_REQUEST)
 
   def test_metrics_empty_dates(self):
     request = {
@@ -44,11 +44,11 @@ class MetricsTest(BaseClientTest):
     }
     with self.assertRaises(HttpException) as cm:
       self.client.request_json('Metrics', 'POST', request)
-    self.assertEqual(cm.exception.code, httplib.BAD_REQUEST)
+    self.assertEqual(cm.exception.code, http.client.BAD_REQUEST)
 
   def test_metrics_fields(self):
     response = self.client.request_json('MetricsFields')
-    self.assertEquals('Participant.ageRange', response[0]['name'])
+    self.assertEqual('Participant.ageRange', response[0]['name'])
 
 
 if __name__ == '__main__':

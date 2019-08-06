@@ -9,6 +9,7 @@ from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import EhrStatus, QuestionnaireStatus, WithdrawalStatus
+from functools import reduce
 
 
 class MetricsEhrService(BaseDao):
@@ -136,7 +137,7 @@ class MetricsEhrService(BaseDao):
           **participant_ehr_metrics_by_date[date_key]
         )
       }
-      for date_key in active_organization_metrics_by_date.keys()
+      for date_key in list(active_organization_metrics_by_date.keys())
     ]
 
   def get_organizations_active_over_time_data(
@@ -188,7 +189,7 @@ class MetricsEhrService(BaseDao):
         }
       }
       for row_dict
-      in [dict(zip(ehr_cursor.keys(), row)) for row in ehr_cursor]
+      in [dict(list(zip(list(ehr_cursor.keys()), row))) for row in ehr_cursor]
     ]
 
   @staticmethod
@@ -243,7 +244,7 @@ class MetricsEhrService(BaseDao):
       row_dict['organization_id']: row_dict
       for row_dict
       in [
-        dict(zip(cursor.keys(), row))
+        dict(list(zip(list(cursor.keys()), row)))
         for row
         in cursor
       ]

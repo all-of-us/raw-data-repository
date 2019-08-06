@@ -15,8 +15,8 @@ import os
 import signal
 import sys
 
-from daemon import Daemon
-from system_utils import setup_logging, setup_unicode
+from .daemon import Daemon
+from .system_utils import setup_logging, setup_unicode
 
 _logger = logging.getLogger('rdr_logger')
 
@@ -79,7 +79,7 @@ def run():
 
   # --nodaemon only valid with start action
   if args.nodaemon and args.action != 'start':
-    print('{0}: error: --nodaemon option not valid with stop or restart action'.format(progname))
+    print(('{0}: error: --nodaemon option not valid with stop or restart action'.format(progname)))
     sys.exit(1)
 
   # Do not fork the daemon process for systemd service or debugging, run in foreground.

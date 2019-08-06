@@ -4,12 +4,12 @@ Syncs consent files to a new organization bucket by the same name in the Awardee
 i.e.aou179/hpo-site-xxx/Participant/<consent files>
 To run: tools/ehr_upload.sh --account <pmi ops account> --project all-of-us-rdr-prod
 """
-import StringIO
+import io
 import csv
 import logging
 import shlex
 import subprocess
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 
 from sqlalchemy import bindparam, text
 
@@ -47,15 +47,15 @@ def get_sql(organization):
 
 
 def _fetch_csv_data(file_url):
-  response = urllib2.urlopen(file_url)
-  return csv.DictReader(StringIO.StringIO(response.read()))
+  response = urllib.request.urlopen(file_url)
+  return csv.DictReader(io.StringIO(response.read()))
 
 
 def _ensure_buckets(hpo_data):
   """Some organizations aggregating org ID is responsible for consent verification. This is a
   parent/child relationship(not seen elsewhere in the RDR). If bucket name is blank it is safe to
   assume the parent org (aggregate org id) bucket is to be used."""
-  for _, _dict in hpo_data.items():
+  for _, _dict in list(hpo_data.items()):
     if _dict['bucket'] == '':
       parent = _dict['aggregate_id']
       _dict['bucket'] = hpo_data[parent]['bucket']
@@ -85,10 +85,10 @@ def sync_ehr_consents(spreadsheet_id):
                }
 
   csv_reader = _fetch_csv_data(file_url)
-  csv_reader.next()
+  next(csv_reader)
   hpo_data = read_hpo_report(csv_reader)
   logging.info('Reading data complete, beginning sync...')
-  for org, data in hpo_data.items():
+  for org, data in list(hpo_data.items()):
     site_paired_sql, no_paired_sql = get_sql(org)
     logging.info('syncing participants for {}'.format(org))
     run_sql(data['bucket'], site_paired_sql, no_paired_sql)

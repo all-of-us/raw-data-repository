@@ -13,8 +13,8 @@ import subprocess
 from collections import OrderedDict
 from random import choice
 
-from gcp_config import GCP_INSTANCES, GCP_PROJECTS, GCP_REPLICA_INSTANCES, GCP_SERVICE_KEY_STORE
-from system_utils import run_external_program, which
+from .gcp_config import GCP_INSTANCES, GCP_PROJECTS, GCP_REPLICA_INSTANCES, GCP_SERVICE_KEY_STORE
+from .system_utils import run_external_program, which
 
 _logger = logging.getLogger('rdr_logger')
 
@@ -147,7 +147,7 @@ def gcp_initialize(project, account=None, service_account=None):
     if not gcp_activate_iam_service_key(env['service_key_id']):
       return None
 
-  for key, value in env.items():
+  for key, value in list(env.items()):
     _logger.info('{0}: [{1}].'.format(key, value))
 
   return env
@@ -410,7 +410,7 @@ def gcp_create_iam_service_key(service_account, account=None):
 
   # make sure we never duplicate an existing key
   while True:
-    service_key_id = ''.join(choice('0123456789ABCDEF') for _ in xrange(12))
+    service_key_id = ''.join(choice('0123456789ABCDEF') for _ in range(12))
     service_key_file = '{0}.json'.format(service_key_id)
     service_key_path = os.path.join(GCP_SERVICE_KEY_STORE, service_key_file)
 

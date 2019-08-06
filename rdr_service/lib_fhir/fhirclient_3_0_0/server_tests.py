@@ -7,8 +7,8 @@ import os
 import shutil
 import unittest
 
-import models.fhirabstractbase as fabst
-import server
+from . import models.fhirabstractbase as fabst
+from . import server
 
 
 class TestServer(unittest.TestCase):

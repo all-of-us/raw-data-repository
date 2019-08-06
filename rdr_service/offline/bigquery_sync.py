@@ -1,4 +1,4 @@
-import httplib
+import http.client
 import json
 import logging
 import math
@@ -116,7 +116,7 @@ def insert_batch_into_bq(bq, dataset, table, batch, dryrun=False):
                                     tableId=table, body=body)
     resp = task.execute()
   else:
-    resp = {u'kind': u'bigquery#tableDataInsertAllResponse'}
+    resp = {'kind': 'bigquery#tableDataInsertAllResponse'}
   # success resp : {u'kind': u'bigquery#tableDataInsertAllResponse'}
   # error resp   : {u'kind': u'bigquery#tableDataInsertAllResponse', u'insertErrors': [
   #                  {u'index': 0, u'errors': [{u'debugInfo': u'', u'reason': u'invalid', u'message':
@@ -156,7 +156,7 @@ def sync_bigquery_handler(dryrun=False):
       try:
         max_created, max_modified = \
               _get_remote_max_timestamps(dataset, table) if dryrun is False else datetime.min
-      except httplib.HTTPException:
+      except http.client.HTTPException:
         logging.warning('Failed to retrieve max date values from bigquery, skipping this run.')
         return 0
 

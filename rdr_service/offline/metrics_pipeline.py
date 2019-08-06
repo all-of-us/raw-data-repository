@@ -63,7 +63,7 @@ import pipeline
 from cloudstorage import cloudstorage_api
 from dateutil.relativedelta import relativedelta
 
-from metrics_config import AGE_RANGE_METRIC, ANSWER_FIELDS, BIOSPECIMEN_METRIC, \
+from .metrics_config import AGE_RANGE_METRIC, ANSWER_FIELDS, BIOSPECIMEN_METRIC, \
   BIOSPECIMEN_SAMPLES_METRIC, \
   CENSUS_REGION_METRIC, EHR_CONSENT_ANSWER_METRIC, ENROLLMENT_STATUS_METRIC, FULL_PARTICIPANT_KIND, \
   HPO_ID_FIELDS, \
@@ -227,7 +227,7 @@ def map_csv_to_participant_and_date_metric(csv_buffer):
   """Takes a CSV file as input. Emits (participantId, date|metric) tuples.
   """
   reader = csv.reader(csv_buffer, delimiter=sql_exporter.DELIMITER)
-  headers = reader.next()
+  headers = next(reader)
 
   # It's not clear if we have access to the filename which would indicate what type of data
   # we're dealing with here. Rely on the column headers to detect data type.
@@ -466,7 +466,7 @@ def reduce_participant_data_to_hpo_metric_date_deltas(reducer_key, reducer_value
 
   # Emit 1 values for the initial state before any metrics change.
   initial_date = dates_and_metrics[0][0]
-  for k, v in initial_state.iteritems():
+  for k, v in initial_state.items():
     yield reduce_result_value(map_result_key(last_hpo_id, _REGISTERED_PARTICIPANT, k, v),
                               initial_date.date().isoformat(), '1')
 
@@ -483,7 +483,7 @@ def reduce_participant_data_to_hpo_metric_date_deltas(reducer_key, reducer_value
     hpo_change = last_hpo_id != hpo_id
 
     last_full_participant = full_participant
-    for k, v in new_state.iteritems():
+    for k, v in new_state.items():
       # Output a delta for this field if it is either the first value we have,
       # or if it has changed. In the case that one of the facets has changed,
       # we need deltas for all fields.
@@ -494,7 +494,7 @@ def reduce_participant_data_to_hpo_metric_date_deltas(reducer_key, reducer_value
             not full_participant):
           full_participant = True
           # Emit 1 values for the current state for all fields for the full participant type.
-          for k2, v2 in new_state.iteritems():
+          for k2, v2 in new_state.items():
             yield reduce_result_value(map_result_key(hpo_id, _FULL_PARTICIPANT, k2, v2),
                                       formatted_date, '1')
         yield reduce_result_value(map_result_key(hpo_id, _REGISTERED_PARTICIPANT, k, v),
@@ -541,7 +541,7 @@ def combine_hpo_metric_date_deltas(key, new_values, old_values):  # pylint: disa
     (date, delta) = parse_tuple(old_value)
     delta_map[date] = int(delta)
   sum_deltas(new_values, delta_map)
-  for date, delta in delta_map.iteritems():
+  for date, delta in delta_map.items():
     yield make_tuple(date, str(delta))
 
 def reduce_hpo_metric_date_deltas_to_all_date_counts(reducer_key, reducer_values, now=None):

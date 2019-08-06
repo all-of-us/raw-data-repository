@@ -62,7 +62,7 @@ class BaseGen(object):
     :param resp: request response dict object
     """
     if resp and isinstance(resp, dict):
-      for key, value in resp.items():
+      for key, value in list(resp.items()):
         self.__dict__[key] = value
       return resp
 

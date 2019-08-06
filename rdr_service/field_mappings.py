@@ -56,7 +56,7 @@ FIELD_TO_QUESTION_CODE = {
   "incomeId": (INCOME_QUESTION_CODE, FieldType.CODE),
   "dateOfBirth": (DATE_OF_BIRTH_QUESTION_CODE, FieldType.DATE)
 }
-QUESTION_CODE_TO_FIELD = {v[0]: (k, v[1]) for k, v in FIELD_TO_QUESTION_CODE.iteritems()}
+QUESTION_CODE_TO_FIELD = {v[0]: (k, v[1]) for k, v in list(FIELD_TO_QUESTION_CODE.items())}
 
 FIELD_TO_QUESTIONNAIRE_MODULE_CODE = {
   # TODO: fill this in when correct codes are defined
@@ -72,7 +72,7 @@ FIELD_TO_QUESTIONNAIRE_MODULE_CODE = {
   QUESTIONNAIRE_ON_DVEHR_SHARING_FIELD: CONSENT_FOR_DVEHR_MODULE
 }
 QUESTIONNAIRE_MODULE_CODE_TO_FIELD = {v: k for k, v in
-                                      FIELD_TO_QUESTIONNAIRE_MODULE_CODE.iteritems()}
+                                      list(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.items())}
 QUESTIONNAIRE_MODULE_FIELD_NAMES = sorted(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.keys())
 NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES = [field_name for field_name in
                                             QUESTIONNAIRE_MODULE_FIELD_NAMES

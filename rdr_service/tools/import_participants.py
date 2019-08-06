@@ -114,7 +114,7 @@ def _code_answer(code):
 def _submit_questionnaire_response(client, participant_id, questionnaire_id_and_version,
                                    questions, answer_map):
   questions_with_answers = []
-  for question_code, link_id in questions.iteritems():
+  for question_code, link_id in questions.items():
     answer = answer_map.get(question_code)
     if answer:
       questions_with_answers.append(_create_question_answer(link_id, answer))
@@ -174,7 +174,7 @@ def import_participant(row, client, consent_questionnaire_id_and_version,
 
   _submit_questionnaire_response(client, participant_id, consent_questionnaire_id_and_version,
                                  consent_questions, answer_map)
-  for questionnaire_id_and_version, questions in questionnaire_to_questions.iteritems():
+  for questionnaire_id_and_version, questions in questionnaire_to_questions.items():
     if questionnaire_id_and_version != consent_questionnaire_id_and_version:
       _submit_questionnaire_response(client, participant_id, questionnaire_id_and_version,
                                      questions, answer_map)

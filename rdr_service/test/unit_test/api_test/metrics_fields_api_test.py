@@ -7,6 +7,6 @@ class MetricsFieldsApiTest(FlaskTestBase):
     fields_dict = {item['name']: item['values'] for item in response}
     # Rather than asserting all the fields (replicating the config),
     # assert just a couple.
-    self.assertEquals(['UNSET', 'MIDWEST', 'NORTHEAST', 'SOUTH', 'WEST'],
+    self.assertEqual(['UNSET', 'MIDWEST', 'NORTHEAST', 'SOUTH', 'WEST'],
                       fields_dict.get('Participant.censusRegion'))
-    self.assertEquals(['UNSET', 'PITT', 'AZ_TUCSON'], fields_dict.get('Participant.hpoId'))
+    self.assertEqual(['UNSET', 'PITT', 'AZ_TUCSON'], fields_dict.get('Participant.hpoId'))

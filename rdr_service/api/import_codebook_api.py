@@ -1,7 +1,7 @@
 import json
 import logging
 import pprint
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 
 from rdr_service.api_util import PTC_AND_HEALTHPRO
 from rdr_service.app_util import auth_required
@@ -70,9 +70,9 @@ def import_codebook():
 
 def _fetch_codebook_json():
   """Returns (codebook_json, codebook_issues_json) for the latest published codebook on GitHub."""
-  codebook_response = urllib2.urlopen(_CODEBOOK_URL)
+  codebook_response = urllib.request.urlopen(_CODEBOOK_URL)
   codebook = json.loads(codebook_response.read())
-  issues_response = urllib2.urlopen(_CODEBOOK_ERRORS_URL)
+  issues_response = urllib.request.urlopen(_CODEBOOK_ERRORS_URL)
   issues = json.loads(issues_response.read())
   return codebook, issues
 

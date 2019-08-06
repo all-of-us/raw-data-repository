@@ -18,7 +18,7 @@ class GCPEnvConfigObject(object):
     """
     :param items: dict of config key value pairs
     """
-    for key, val in items.iteritems():
+    for key, val in items.items():
       self.__dict__[key] = val
 
 
@@ -93,6 +93,6 @@ class GCPProcessContext(object):
     remove_pidfile(self._command)
 
     if exc_type is not None:
-      print(traceback.format_exc())
+      print((traceback.format_exc()))
       _logger.error('program encountered an unexpected error, quitting.')
       exit(1)

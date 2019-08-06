@@ -391,7 +391,7 @@ class SiteImporter(CsvImporter):
     questionnaire_to_questions, consent_questionnaire_id_and_version = _setup_questionnaires(client)
     consent_questions = questionnaire_to_questions[consent_questionnaire_id_and_version]
     for site in entity:
-      for participant, v in enumerate(range(1, 21), 1):
+      for participant, v in enumerate(list(range(1, 21)), 1):
         num_participants += 1
         participant = participants
         participant.update({'last_name': site.googleGroup.split('-')[-1]})

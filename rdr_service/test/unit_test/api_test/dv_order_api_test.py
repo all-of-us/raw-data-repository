@@ -1,4 +1,4 @@
-import httplib
+import http.client
 
 import mock
 
@@ -58,7 +58,7 @@ class DvOrderApiTestPostSupplyRequest(DvOrderApiTestBase):
     response = self.send_post(
         'SupplyRequest',
         request_data=self.get_payload('dv_order_api_post_supply_request.json'),
-        expected_status=httplib.CREATED
+        expected_status=http.client.CREATED
     )
     self.assertTrue(response.location.endswith('/SupplyRequest/999999'))
     orders = self.get_orders()
@@ -85,7 +85,7 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
     post_response = self.send_post(
         'SupplyRequest',
         request_data=self.get_payload('dv_order_api_post_supply_request.json'),
-        expected_status=httplib.CREATED
+        expected_status=http.client.CREATED
     )
     location_id = post_response.location.rsplit('/', 1)[-1]
     self.send_put(
@@ -95,7 +95,7 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
     post_response = self.send_post(
         'SupplyDelivery',
         request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
-        expected_status=httplib.CREATED
+        expected_status=http.client.CREATED
     )
     location_id = post_response.location.rsplit('/', 1)[-1]
     self.send_put(
@@ -107,8 +107,8 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
     self.assertEqual(1, len(orders))
     for i in orders:
       self.assertEqual(i.barcode, 'SABR90160121INA')
-      self.assertEqual(i.id, long(1))
-      self.assertEqual(i.order_id, long(999999))
+      self.assertEqual(i.id, int(1))
+      self.assertEqual(i.order_id, int(999999))
       self.assertEqual(i.biobankOrderId, 'WEB1ABCD1234')
       self.assertEqual(i.biobankStatus, 'Delivered')
       self.assertEqual(i.biobankTrackingId, 'PAT-123-456')
@@ -128,11 +128,11 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
     post_response = self.send_post(
         'SupplyRequest',
         request_data=request,
-        expected_status=httplib.CREATED
+        expected_status=http.client.CREATED
     )
     order = self.get_orders()
-    self.assertEquals(1, len(order))
-    self.assertEquals(post_response._status_code, 201)
+    self.assertEqual(1, len(order))
+    self.assertEqual(post_response._status_code, 201)
 
 class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
   mayolink_response = {
@@ -153,20 +153,20 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
     self.send_post(
       'SupplyDelivery',
       request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
-      expected_status=httplib.CONFLICT
+      expected_status=http.client.CONFLICT
     )
 
   def test_delivery_pass_after_supply_request(self):
     self.send_post(
       'SupplyRequest',
       request_data=self.get_payload('dv_order_api_post_supply_request.json'),
-      expected_status=httplib.CREATED
+      expected_status=http.client.CREATED
     )
 
     self.send_post(
       'SupplyDelivery',
       request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
-      expected_status=httplib.CREATED
+      expected_status=http.client.CREATED
     )
 
     orders = self.get_orders()
@@ -175,19 +175,19 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
   def test_biobank_address_received(self, patched_code_id):
     patched_code_id.return_value = 1
 
-    code = Code(system="a", value="b", display=u"c", topic=u"d",
+    code = Code(system="a", value="b", display="c", topic="d",
                 codeType=CodeType.MODULE, mapped=True)
     self.code_dao.insert(code)
     self.send_post(
       'SupplyRequest',
       request_data=self.get_payload('dv_order_api_post_supply_request.json'),
-      expected_status=httplib.CREATED
+      expected_status=http.client.CREATED
     )
 
     response = self.send_post(
       'SupplyDelivery',
       request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
-      expected_status=httplib.CREATED
+      expected_status=http.client.CREATED
     )
 
     request = self.get_payload('dv_order_api_put_supply_delivery.json')
@@ -201,39 +201,39 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
     )
 
     order = self.get_orders()
-    self.assertEquals(order[0].biobankCity, 'Rochester')
-    self.assertEquals(order[0].city, 'Fairfax')
-    self.assertEquals(order[0].biobankStreetAddress1, '3050 Superior Drive NW')
-    self.assertEquals(order[0].streetAddress1, '4114 Legato Rd')
-    self.assertEquals(order[0].streetAddress2, 'test line 2')
-    self.assertEquals(order[0].biobankStateId, 1)
-    self.assertEquals(order[0].stateId, 1)
-    self.assertEquals(order[0].biobankZipCode, '55901')
-    self.assertEquals(order[0].zipCode, '22033')
+    self.assertEqual(order[0].biobankCity, 'Rochester')
+    self.assertEqual(order[0].city, 'Fairfax')
+    self.assertEqual(order[0].biobankStreetAddress1, '3050 Superior Drive NW')
+    self.assertEqual(order[0].streetAddress1, '4114 Legato Rd')
+    self.assertEqual(order[0].streetAddress2, 'test line 2')
+    self.assertEqual(order[0].biobankStateId, 1)
+    self.assertEqual(order[0].stateId, 1)
+    self.assertEqual(order[0].biobankZipCode, '55901')
+    self.assertEqual(order[0].zipCode, '22033')
 
     self.assertTrue(response.location.endswith('/SupplyDelivery/999999'))
     self.assertEqual(1, len(order))
     for i in order:
-      self.assertEqual(i.id, long(1))
-      self.assertEqual(i.order_id, long(999999))
+      self.assertEqual(i.id, int(1))
+      self.assertEqual(i.order_id, int(999999))
 
   @mock.patch('dao.dv_order_dao.get_code_id')
   def test_biobank_address_received_alt_json(self, patched_code_id):
     patched_code_id.return_value = 1
 
-    code = Code(system="a", value="b", display=u"c", topic=u"d",
+    code = Code(system="a", value="b", display="c", topic="d",
                 codeType=CodeType.MODULE, mapped=True)
     self.code_dao.insert(code)
     self.send_post(
       'SupplyRequest',
       request_data=self.get_payload('dv_order_api_post_supply_request.json'),
-      expected_status=httplib.CREATED
+      expected_status=http.client.CREATED
     )
 
     response = self.send_post(
       'SupplyDelivery',
       request_data=self.get_payload('dv_order_api_post_supply_delivery_alt.json'),
-      expected_status=httplib.CREATED
+      expected_status=http.client.CREATED
     )
 
     request = self.get_payload('dv_order_api_put_supply_delivery.json')
@@ -247,16 +247,16 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
     )
 
     order = self.get_orders()
-    self.assertEquals(order[0].biobankCity, 'Rochester')
-    self.assertEquals(order[0].biobankStreetAddress1, '3050 Superior Drive NW')
-    self.assertEquals(order[0].biobankStateId, 1)
-    self.assertEquals(order[0].biobankZipCode, '55901')
+    self.assertEqual(order[0].biobankCity, 'Rochester')
+    self.assertEqual(order[0].biobankStreetAddress1, '3050 Superior Drive NW')
+    self.assertEqual(order[0].biobankStateId, 1)
+    self.assertEqual(order[0].biobankZipCode, '55901')
 
     self.assertTrue(response.location.endswith('/SupplyDelivery/999999'))
     self.assertEqual(1, len(order))
     for i in order:
-      self.assertEqual(i.id, long(1))
-      self.assertEqual(i.order_id, long(999999))
+      self.assertEqual(i.id, int(1))
+      self.assertEqual(i.order_id, int(999999))
 
 class DvOrderApiTestPutSupplyDelivery(DvOrderApiTestBase):
   mayolink_response = {
@@ -276,13 +276,13 @@ class DvOrderApiTestPutSupplyDelivery(DvOrderApiTestBase):
     self.send_post(
       'SupplyRequest',
       request_data=self.get_payload('dv_order_api_post_supply_request.json'),
-      expected_status=httplib.CREATED
+      expected_status=http.client.CREATED
     )
 
     response = self.send_post(
       'SupplyDelivery',
       request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
-      expected_status=httplib.CREATED
+      expected_status=http.client.CREATED
     )
 
     location_id = response.location.rsplit('/', 1)[-1]

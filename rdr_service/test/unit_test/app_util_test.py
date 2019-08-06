@@ -51,7 +51,7 @@ class AppUtilNdbTest(NdbTestBase):
     with clock.FakeClock(datetime.datetime(1994, 11, 6, 8, 49, 37)):
       app_util.add_headers(response)
 
-    self.assertEquals(response.headers['Date'], 'Sun, 06 Nov 1994 08:49:37 GMT')
+    self.assertEqual(response.headers['Date'], 'Sun, 06 Nov 1994 08:49:37 GMT')
 
   def test_expiry_header(self):
     response = lambda: None  # dummy object
@@ -65,7 +65,7 @@ class AppUtilNdbTest(NdbTestBase):
     setattr(response, 'headers', {})
     app_util.add_headers(response)
 
-    self.assertItemsEqual(response.headers.keys(), (
+    self.assertItemsEqual(list(response.headers.keys()), (
         'Date',
         'Expires',
         'Pragma',
@@ -154,7 +154,7 @@ class AppUtilNdbTest(NdbTestBase):
       foo_bar_role(1)
 
     mock_lookup_user_info.return_value = {'roles': ['foo']}
-    self.assertEquals(2, foo_bar_role(1))
+    self.assertEqual(2, foo_bar_role(1))
 
 
   @patch('app_util.request')
@@ -190,7 +190,7 @@ class AppUtilNdbTest(NdbTestBase):
     mock_request.headers = {}
     mock_get_oauth_id.return_value = 'bob@example.com'
     mock_lookup_user_info.return_value = {'roles': ['bar']}
-    self.assertEquals(2, foo_bar_role(1))
+    self.assertEqual(2, foo_bar_role(1))
     mock_get_oauth_id.assert_called_with()
     mock_lookup_user_info.assert_called_with(mock_get_oauth_id())
 
@@ -214,7 +214,7 @@ class AppUtilNdbTest(NdbTestBase):
       foo_bar_role(1)
 
     mock_request.remote_addr = '10.0.0.2'
-    self.assertEquals(2, foo_bar_role(1))
+    self.assertEqual(2, foo_bar_role(1))
 
   @patch('app_util.request')
   @patch('app_util.app_identity.get_application_id')
@@ -233,7 +233,7 @@ class AppUtilNdbTest(NdbTestBase):
     }
 
     mock_request.remote_addr = '10.0.0.2'
-    self.assertEquals(2, foo_bar_role(1))
+    self.assertEqual(2, foo_bar_role(1))
 
 
   @patch('app_util.request')
@@ -260,7 +260,7 @@ class AppUtilNdbTest(NdbTestBase):
     mock_request.headers = {
         'X-Appengine-Inbound-Appid': 'must-be-this-id'
     }
-    self.assertEquals(2, foo_bar_role(1))
+    self.assertEqual(2, foo_bar_role(1))
 
   def test_no_roles_supplied_to_decorator(self):
     with self.assertRaises(TypeError):
@@ -276,7 +276,7 @@ class AppUtilNdbTest(NdbTestBase):
     mock_get_oauth_id.return_value = 'bob@example.com'
 
     mock_request.headers = {'X-Appengine-Cron': 'true'}
-    self.assertEquals(2, cron_required(1))
+    self.assertEqual(2, cron_required(1))
 
     mock_request.headers = {}
     with self.assertRaises(Forbidden):

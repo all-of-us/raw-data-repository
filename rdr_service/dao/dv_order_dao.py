@@ -115,7 +115,7 @@ class DvOrderDao(UpdatableDao):
       result['state'] = result['state'][-2:]  # Get the abbreviation
       del result['id']  # PK for model
 
-    result = {k: v for k, v in result.items() if v is not None}
+    result = {k: v for k, v in list(result.items()) if v is not None}
     if 'participantId' in result:
       result['participantId'] = to_client_participant_id(result['participantId'])
     return result
@@ -228,7 +228,7 @@ class DvOrderDao(UpdatableDao):
 
   def insert_biobank_order(self, pid, resource):
     obj = BiobankOrder()
-    obj.participantId = long(pid)
+    obj.participantId = int(pid)
     obj.created = clock.CLOCK.now()
     obj.created = datetime.datetime.now()
     obj.orderStatus = BiobankOrderStatus.UNSET
@@ -238,7 +238,7 @@ class DvOrderDao(UpdatableDao):
 
     bod = BiobankOrderDao()
     obj.samples = [BiobankOrderedSample(
-        test='1SAL2', processingRequired=False, description=u'salivary pilot kit')]
+        test='1SAL2', processingRequired=False, description='salivary pilot kit')]
     self._add_identifiers_and_main_id(obj, ObjectView(resource))
     bod.insert(obj)
 

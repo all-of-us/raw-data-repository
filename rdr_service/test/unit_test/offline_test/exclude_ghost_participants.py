@@ -95,7 +95,7 @@ class MarkGhostParticipantsTest(CloudStorageSqlTestBase, NdbTestBase):
 
     _, latest_filename = exclude_ghost_participants.get_latest_pid_file(
       _FAKE_BUCKET)
-    self.assertEquals(latest_filename, '/%s/%s' % (_FAKE_BUCKET, created_last))
+    self.assertEqual(latest_filename, '/%s/%s' % (_FAKE_BUCKET, created_last))
 
   def test_no_participant_to_mark(self):
     # make sure a csv with bad PIDS doesn't blow up.

@@ -41,7 +41,7 @@ def main():
 
 
 def sync(client, sync_url, index):
-  print '--------------      Getting next batch from sync...        -----------------', '\n'
+  print('--------------      Getting next batch from sync...        -----------------', '\n')
   sync_results = client.request_json(sync_url[index:], 'GET')
   logging.info(pprint.pformat(sync_results))
   return sync_results

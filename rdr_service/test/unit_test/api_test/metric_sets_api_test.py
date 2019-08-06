@@ -26,7 +26,7 @@ class MetricSetsApiTest(FlaskTestBase):
 
   def test_get_metric_sets_no_data(self):
     response = self.send_get('MetricSets')
-    self.assertEquals({'metricSets': []}, response)
+    self.assertEqual({'metricSets': []}, response)
 
   def test_get_metric_sets(self):
     self.create_metric_set('live1')
@@ -89,7 +89,7 @@ class MetricSetsApiTest(FlaskTestBase):
     )
     q = {'keys': keys} if keys else None
     got = self.send_get('MetricSets/{}/Metrics'.format(ms_id), query_string=q)['metrics']
-    self.assertEquals(len(want), len(got), 'got unexpected number of metrics:'
+    self.assertEqual(len(want), len(got), 'got unexpected number of metrics:'
                       '\nwant:  {}\ngot: {}'.format(want, got))
     for m in got:
       self.assertIn(m['key'], want)

@@ -1,5 +1,5 @@
 import datetime
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 from rdr_service.clock import FakeClock
 from rdr_service.dao.calendar_dao import CalendarDao
@@ -323,17 +323,17 @@ class MetricsEhrApiTest(MetricsEhrApiTestBase):
     self.assertEqual(response['metrics']['EHR_CONSENTED'], 2)
     self.assertEqual(
       response['metrics']['EHR_CONSENTED'],
-      sum([o['total_ehr_consented'] for o in response['organization_metrics'].values()])
+      sum([o['total_ehr_consented'] for o in list(response['organization_metrics'].values())])
     )
 
     # test with organization filtering
-    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
+    response = self.send_get('MetricsEHR', query_string=urllib.parse.urlencode({
       'organization': 'foo_a',
     }))
     self.assertEqual(response['metrics']['EHR_CONSENTED'], 1)
     self.assertEqual(
       response['metrics']['EHR_CONSENTED'],
-      sum([o['total_ehr_consented'] for o in response['organization_metrics'].values()])
+      sum([o['total_ehr_consented'] for o in list(response['organization_metrics'].values())])
     )
 
 
@@ -361,7 +361,7 @@ class MetricsEhrApiTest(MetricsEhrApiTestBase):
     self.assertEqual(response['metrics']['EHR_RECEIVED'], 1)
     self.assertEqual(
       response['metrics']['EHR_RECEIVED'],
-      sum([o['total_ehr_data_received'] for o in response['organization_metrics'].values()])
+      sum([o['total_ehr_data_received'] for o in list(response['organization_metrics'].values())])
     )
 
     # noinspection PyArgumentList
@@ -379,7 +379,7 @@ class MetricsEhrApiTest(MetricsEhrApiTestBase):
     self.assertEqual(response['metrics']['EHR_RECEIVED'], 2)
     self.assertEqual(
       response['metrics']['EHR_RECEIVED'],
-      sum([o['total_ehr_data_received'] for o in response['organization_metrics'].values()])
+      sum([o['total_ehr_data_received'] for o in list(response['organization_metrics'].values())])
     )
 
     # participant with EHR but no consent
@@ -395,17 +395,17 @@ class MetricsEhrApiTest(MetricsEhrApiTestBase):
     self.assertEqual(response['metrics']['EHR_RECEIVED'], 2)
     self.assertEqual(
       response['metrics']['EHR_RECEIVED'],
-      sum([o['total_ehr_data_received'] for o in response['organization_metrics'].values()])
+      sum([o['total_ehr_data_received'] for o in list(response['organization_metrics'].values())])
     )
 
     # test with organization filtering
-    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
+    response = self.send_get('MetricsEHR', query_string=urllib.parse.urlencode({
       'organization': 'FOO_A',
     }))
     self.assertEqual(response['metrics']['EHR_RECEIVED'], 1)
     self.assertEqual(
       response['metrics']['EHR_RECEIVED'],
-      sum([o['total_ehr_data_received'] for o in response['organization_metrics'].values()])
+      sum([o['total_ehr_data_received'] for o in list(response['organization_metrics'].values())])
     )
 
 
@@ -449,123 +449,123 @@ class MetricsEhrApiOrganizationTest(MetricsEhrApiTestBase):
       self._update_ehr(summary, update_time=datetime.datetime(2018, 1, 6))
 
     # Begin testing
-    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
+    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.parse.urlencode({
       'end_date': '2018-01-01',
       'interval': 'day'
     }))
     self.assertEqual(
       response[str(self.org_foo_a.externalId)],
       {
-        u'organization_id': self.org_foo_a.externalId,
-        u'organization_name': unicode(self.org_foo_a.displayName),
-        u'total_participants': 1,
-        u'total_primary_consented': 0,
-        u'total_ehr_consented': 0,
-        u'total_core_participants': 0,
-        u'total_ehr_data_received': 0,
-        u'last_ehr_submission_date': u'2018-01-06',
+        'organization_id': self.org_foo_a.externalId,
+        'organization_name': str(self.org_foo_a.displayName),
+        'total_participants': 1,
+        'total_primary_consented': 0,
+        'total_ehr_consented': 0,
+        'total_core_participants': 0,
+        'total_ehr_data_received': 0,
+        'last_ehr_submission_date': '2018-01-06',
       }
     )
     self.assertEqual(
       response[str(self.org_bar_a.externalId)],
       {
-        u'organization_id': self.org_bar_a.externalId,
-        u'organization_name': unicode(self.org_bar_a.displayName),
-        u'total_participants': 0,
-        u'total_primary_consented': 0,
-        u'total_ehr_consented': 0,
-        u'total_core_participants': 0,
-        u'total_ehr_data_received': 0,
-        u'last_ehr_submission_date': u'2018-01-06',
+        'organization_id': self.org_bar_a.externalId,
+        'organization_name': str(self.org_bar_a.displayName),
+        'total_participants': 0,
+        'total_primary_consented': 0,
+        'total_ehr_consented': 0,
+        'total_core_participants': 0,
+        'total_ehr_data_received': 0,
+        'last_ehr_submission_date': '2018-01-06',
       }
     )
 
-    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
+    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.parse.urlencode({
       'end_date': '2018-01-02',
       'interval': 'day'
     }))
     self.assertEqual(
       response[str(self.org_foo_a.externalId)],
       {
-        u'organization_id': self.org_foo_a.externalId,
-        u'organization_name': unicode(self.org_foo_a.displayName),
-        u'total_participants': 2,
-        u'total_primary_consented': 1,
-        u'total_ehr_consented': 0,
-        u'total_core_participants': 0,
-        u'total_ehr_data_received': 0,
-        u'last_ehr_submission_date': u'2018-01-06',
+        'organization_id': self.org_foo_a.externalId,
+        'organization_name': str(self.org_foo_a.displayName),
+        'total_participants': 2,
+        'total_primary_consented': 1,
+        'total_ehr_consented': 0,
+        'total_core_participants': 0,
+        'total_ehr_data_received': 0,
+        'last_ehr_submission_date': '2018-01-06',
       }
     )
 
-    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
+    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.parse.urlencode({
       'end_date': '2018-01-03',
       'interval': 'day'
     }))
     self.assertEqual(
       response[str(self.org_foo_a.externalId)],
       {
-        u'organization_id': self.org_foo_a.externalId,
-        u'organization_name': unicode(self.org_foo_a.displayName),
-        u'total_participants': 2,
-        u'total_primary_consented': 2,
-        u'total_ehr_consented': 1,
-        u'total_core_participants': 0,
-        u'total_ehr_data_received': 0,
-        u'last_ehr_submission_date': u'2018-01-06',
+        'organization_id': self.org_foo_a.externalId,
+        'organization_name': str(self.org_foo_a.displayName),
+        'total_participants': 2,
+        'total_primary_consented': 2,
+        'total_ehr_consented': 1,
+        'total_core_participants': 0,
+        'total_ehr_data_received': 0,
+        'last_ehr_submission_date': '2018-01-06',
       }
     )
 
-    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
+    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.parse.urlencode({
       'end_date': '2018-01-04',
       'interval': 'day'
     }))
     self.assertEqual(
       response[str(self.org_foo_a.externalId)],
       {
-        u'organization_id': self.org_foo_a.externalId,
-        u'organization_name': unicode(self.org_foo_a.displayName),
-        u'total_participants': 2,
-        u'total_primary_consented': 2,
-        u'total_ehr_consented': 2,
-        u'total_core_participants': 1,
-        u'total_ehr_data_received': 0,
-        u'last_ehr_submission_date': u'2018-01-06',
+        'organization_id': self.org_foo_a.externalId,
+        'organization_name': str(self.org_foo_a.displayName),
+        'total_participants': 2,
+        'total_primary_consented': 2,
+        'total_ehr_consented': 2,
+        'total_core_participants': 1,
+        'total_ehr_data_received': 0,
+        'last_ehr_submission_date': '2018-01-06',
       }
     )
 
-    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
+    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.parse.urlencode({
       'end_date': '2018-01-05',
       'interval': 'day'
     }))
     self.assertEqual(
       response[str(self.org_foo_a.externalId)],
       {
-        u'organization_id': self.org_foo_a.externalId,
-        u'organization_name': unicode(self.org_foo_a.displayName),
-        u'total_participants': 2,
-        u'total_primary_consented': 2,
-        u'total_ehr_consented': 2,
-        u'total_core_participants': 2,
-        u'total_ehr_data_received': 1,
-        u'last_ehr_submission_date': u'2018-01-06',
+        'organization_id': self.org_foo_a.externalId,
+        'organization_name': str(self.org_foo_a.displayName),
+        'total_participants': 2,
+        'total_primary_consented': 2,
+        'total_ehr_consented': 2,
+        'total_core_participants': 2,
+        'total_ehr_data_received': 1,
+        'last_ehr_submission_date': '2018-01-06',
       }
     )
 
-    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
+    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.parse.urlencode({
       'end_date': '2018-01-06',
       'interval': 'day'
     }))
     self.assertEqual(
       response[str(self.org_foo_a.externalId)],
       {
-        u'organization_id': self.org_foo_a.externalId,
-        u'organization_name': unicode(self.org_foo_a.displayName),
-        u'total_participants': 2,
-        u'total_primary_consented': 2,
-        u'total_ehr_consented': 2,
-        u'total_core_participants': 2,
-        u'total_ehr_data_received': 2,
-        u'last_ehr_submission_date': u'2018-01-06',
+        'organization_id': self.org_foo_a.externalId,
+        'organization_name': str(self.org_foo_a.displayName),
+        'total_participants': 2,
+        'total_primary_consented': 2,
+        'total_ehr_consented': 2,
+        'total_core_participants': 2,
+        'total_ehr_data_received': 2,
+        'last_ehr_submission_date': '2018-01-06',
       }
     )

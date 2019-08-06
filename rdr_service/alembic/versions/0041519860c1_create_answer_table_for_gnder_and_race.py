@@ -59,15 +59,15 @@ def upgrade_rdr():
     op.execute('ALTER TABLE metrics_race_cache ADD PRIMARY KEY (`date_inserted`,`type`,`registered_flag`,`consent_flag`,`core_flag`,`hpo_id`,`hpo_name`,`date`)')
 
     op.alter_column('participant_gender_answers', 'created', existing_type=mysql.DATETIME(fsp=6), nullable=True,
-                    existing_server_default=sa.text(u'current_timestamp(6)'))
+                    existing_server_default=sa.text('current_timestamp(6)'))
     op.alter_column('participant_gender_answers', 'modified', existing_type=mysql.DATETIME(fsp=6), nullable=True,
-                    existing_server_default=sa.text(u'current_timestamp(6) ON UPDATE current_timestamp(6)'))
+                    existing_server_default=sa.text('current_timestamp(6) ON UPDATE current_timestamp(6)'))
 
     op.alter_column('participant_race_answers', 'created', existing_type=mysql.DATETIME(fsp=6),
-                    nullable=True, existing_server_default=sa.text(u'current_timestamp(6)'))
+                    nullable=True, existing_server_default=sa.text('current_timestamp(6)'))
     op.alter_column('participant_race_answers', 'modified', existing_type=mysql.DATETIME(fsp=6),
                     nullable=True, existing_server_default=sa.text(
-        u'current_timestamp(6) ON UPDATE current_timestamp(6)'))
+        'current_timestamp(6) ON UPDATE current_timestamp(6)'))
 
     # ### end Alembic commands ###
 

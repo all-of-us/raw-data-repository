@@ -71,7 +71,7 @@ def copy_sanitized_csv(source, destination, overrides_iterable):
     with open(destination, 'w') as destination_file:
       writer = csv.DictWriter(destination_file, reader.fieldnames)
       writer.writeheader()
-      for row, overrides in itertools.izip(reader, overrides_iterable):
+      for row, overrides in zip(reader, overrides_iterable):
         writer.writerow(dict(row, **overrides))
 
 

@@ -226,7 +226,7 @@ class BaseDao(object):
     """
     filter_args = [
       getattr(self.model_type, key) == value
-      for key, value in properties.items()
+      for key, value in list(properties.items())
     ]
     existing_results = session.query(self.model_type).filter(*filter_args).limit(2).all()
     if len(existing_results) > 1:
@@ -257,8 +257,8 @@ class BaseDao(object):
       # If we're dealing with a comparable property type, look for a prefix that indicates an
       # operator other than EQUALS and strip it off
       if property_type in _COMPARABLE_PROPERTY_TYPES:
-        for prefix, op in _OPERATOR_PREFIX_MAP.iteritems():
-          if isinstance(value, (str, unicode)) and value.startswith(prefix):
+        for prefix, op in list(_OPERATOR_PREFIX_MAP.items()):
+          if isinstance(value, str) and value.startswith(prefix):
             operator = op
             value = value[len(prefix):]
             break
@@ -403,7 +403,7 @@ class BaseDao(object):
       decoded_vals = json.loads(urlsafe_b64decode(pagination_token.encode("ascii")))
     except:
       raise BadRequest('Invalid pagination token: %r.' % pagination_token)
-    if not type(decoded_vals) is list or len(decoded_vals) != len(fields):
+    if not isinstance(decoded_vals, list) or len(decoded_vals) != len(fields):
       raise BadRequest('Invalid pagination token: %r.' % pagination_token)
     for i in range(0, len(fields)):
       decoded_vals[i] = self._from_json_value(fields[i], decoded_vals[i])
@@ -669,7 +669,7 @@ class FhirMixin(object):
       setattr(self, proplist[0], None)
     try:
       super(FhirMixin, self).__init__(jsondict=jsondict, strict=True)
-    except FHIRValidationError, e:
+    except FHIRValidationError as e:
       if isinstance(self, DomainResource):
         # Only convert FHIR exceptions to BadError at the top level. For nested objects, FHIR
         # repackages exceptions itself.

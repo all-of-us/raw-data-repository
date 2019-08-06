@@ -1,4 +1,4 @@
-import StringIO
+import io
 import csv
 
 from google.appengine.api import urlfetch
@@ -15,7 +15,7 @@ class GoogleSheetCSVReader(csv.DictReader):
     self._gid = gid
     url = self._get_sheet_url(self._sheet_id, self._gid)
     response_body = self._get_response_body(url)
-    csv.DictReader.__init__(self, StringIO.StringIO(response_body), *args, **kwds)
+    csv.DictReader.__init__(self, io.StringIO(response_body), *args, **kwds)
 
   @staticmethod
   def _get_sheet_url(sheet_id, gid):
