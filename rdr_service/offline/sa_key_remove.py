@@ -1,8 +1,10 @@
-from rdr_service import config
-from google.appengine.api import app_identity
-from googleapiclient import discovery
 import logging
 from datetime import datetime
+
+from google.appengine.api import app_identity
+from googleapiclient import discovery
+
+from rdr_service import config
 
 """Deletes service account keys older than 3 days as required by NIH"""
 

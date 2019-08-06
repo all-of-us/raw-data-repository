@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import compartmentdefinition
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class CompartmentDefinitionTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("CompartmentDefinition", js["resourceType"])
         return compartmentdefinition.CompartmentDefinition(js)
-    
+
     def testCompartmentDefinition1(self):
         inst = self.instantiate_from("compartmentdefinition-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a CompartmentDefinition instance")
         self.implCompartmentDefinition1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CompartmentDefinition", js["resourceType"])
         inst2 = compartmentdefinition.CompartmentDefinition(js)
         self.implCompartmentDefinition1(inst2)
-    
+
     def implCompartmentDefinition1(self, inst):
         self.assertEqual(inst.code, "Device")
         self.assertEqual(inst.contact[0].name, "[string]")

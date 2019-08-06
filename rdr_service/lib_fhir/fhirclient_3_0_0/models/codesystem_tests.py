@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import codesystem
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class CodeSystemTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("CodeSystem", js["resourceType"])
         return codesystem.CodeSystem(js)
-    
+
     def testCodeSystem1(self):
         inst = self.instantiate_from("codesystem-example-summary.json")
         self.assertIsNotNone(inst, "Must have instantiated a CodeSystem instance")
         self.implCodeSystem1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CodeSystem", js["resourceType"])
         inst2 = codesystem.CodeSystem(js)
         self.implCodeSystem1(inst2)
-    
+
     def implCodeSystem1(self, inst):
         self.assertTrue(inst.caseSensitive)
         self.assertEqual(inst.contact[0].name, "FHIR project team")
@@ -53,17 +54,17 @@ class CodeSystemTests(unittest.TestCase):
         self.assertEqual(inst.useContext[0].valueCodeableConcept.coding[0].code, "337915000")
         self.assertEqual(inst.useContext[0].valueCodeableConcept.coding[0].display, "Homo sapiens (organism)")
         self.assertEqual(inst.useContext[0].valueCodeableConcept.coding[0].system, "http://snomed.info/sct")
-    
+
     def testCodeSystem2(self):
         inst = self.instantiate_from("codesystem-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a CodeSystem instance")
         self.implCodeSystem2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CodeSystem", js["resourceType"])
         inst2 = codesystem.CodeSystem(js)
         self.implCodeSystem2(inst2)
-    
+
     def implCodeSystem2(self, inst):
         self.assertTrue(inst.caseSensitive)
         self.assertEqual(inst.concept[0].code, "chol-mmol")
@@ -102,17 +103,17 @@ class CodeSystemTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.url, "http://hl7.org/fhir/CodeSystem/example")
         self.assertEqual(inst.version, "20160128")
-    
+
     def testCodeSystem3(self):
         inst = self.instantiate_from("codesystem-list-example-codes.json")
         self.assertIsNotNone(inst, "Must have instantiated a CodeSystem instance")
         self.implCodeSystem3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CodeSystem", js["resourceType"])
         inst2 = codesystem.CodeSystem(js)
         self.implCodeSystem3(inst2)
-    
+
     def implCodeSystem3(self, inst):
         self.assertTrue(inst.caseSensitive)
         self.assertEqual(inst.concept[0].code, "alerts")

@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import group
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class GroupTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Group", js["resourceType"])
         return group.Group(js)
-    
+
     def testGroup1(self):
         inst = self.instantiate_from("group-example-member.json")
         self.assertIsNotNone(inst, "Must have instantiated a Group instance")
         self.implGroup1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Group", js["resourceType"])
         inst2 = group.Group(js)
         self.implGroup1(inst2)
-    
+
     def implGroup1(self, inst):
         self.assertTrue(inst.actual)
         self.assertEqual(inst.id, "102")
@@ -45,17 +46,17 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(inst.member[3].period.start.as_json(), "2015-08-06")
         self.assertEqual(inst.text.status, "additional")
         self.assertEqual(inst.type, "person")
-    
+
     def testGroup2(self):
         inst = self.instantiate_from("group-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Group instance")
         self.implGroup2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Group", js["resourceType"])
         inst2 = group.Group(js)
         self.implGroup2(inst2)
-    
+
     def implGroup2(self, inst):
         self.assertTrue(inst.actual)
         self.assertEqual(inst.characteristic[0].code.text, "gender")

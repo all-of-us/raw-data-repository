@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import claim
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ClaimTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Claim", js["resourceType"])
         return claim.Claim(js)
-    
+
     def testClaim1(self):
         inst = self.instantiate_from("claim-example-institutional.json")
         self.assertIsNotNone(inst, "Must have instantiated a Claim instance")
         self.implClaim1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Claim", js["resourceType"])
         inst2 = claim.Claim(js)
         self.implClaim1(inst2)
-    
+
     def implClaim1(self, inst):
         self.assertTrue(inst.coverage[0].focal)
         self.assertEqual(inst.coverage[0].relationship.code, "self")
@@ -60,17 +61,17 @@ class ClaimTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.type, "institutional")
         self.assertEqual(inst.use, "complete")
-    
+
     def testClaim2(self):
         inst = self.instantiate_from("claim-example-oral-average.json")
         self.assertIsNotNone(inst, "Must have instantiated a Claim instance")
         self.implClaim2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Claim", js["resourceType"])
         inst2 = claim.Claim(js)
         self.implClaim2(inst2)
-    
+
     def implClaim2(self, inst):
         self.assertTrue(inst.coverage[0].focal)
         self.assertEqual(inst.coverage[0].relationship.code, "self")
@@ -150,17 +151,17 @@ class ClaimTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.type, "oral")
         self.assertEqual(inst.use, "complete")
-    
+
     def testClaim3(self):
         inst = self.instantiate_from("claim-example-oral-contained.json")
         self.assertIsNotNone(inst, "Must have instantiated a Claim instance")
         self.implClaim3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Claim", js["resourceType"])
         inst2 = claim.Claim(js)
         self.implClaim3(inst2)
-    
+
     def implClaim3(self, inst):
         self.assertEqual(inst.contained[0].id, "organization-1")
         self.assertEqual(inst.contained[1].id, "organization-2")
@@ -194,17 +195,17 @@ class ClaimTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.type, "oral")
         self.assertEqual(inst.use, "complete")
-    
+
     def testClaim4(self):
         inst = self.instantiate_from("claim-example-oral-orthoplan.json")
         self.assertIsNotNone(inst, "Must have instantiated a Claim instance")
         self.implClaim4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Claim", js["resourceType"])
         inst2 = claim.Claim(js)
         self.implClaim4(inst2)
-    
+
     def implClaim4(self, inst):
         self.assertTrue(inst.coverage[0].focal)
         self.assertEqual(inst.coverage[0].relationship.code, "self")
@@ -338,17 +339,17 @@ class ClaimTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.type, "oral")
         self.assertEqual(inst.use, "proposed")
-    
+
     def testClaim5(self):
         inst = self.instantiate_from("claim-example-pharmacy.json")
         self.assertIsNotNone(inst, "Must have instantiated a Claim instance")
         self.implClaim5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Claim", js["resourceType"])
         inst2 = claim.Claim(js)
         self.implClaim5(inst2)
-    
+
     def implClaim5(self, inst):
         self.assertTrue(inst.coverage[0].focal)
         self.assertEqual(inst.coverage[0].relationship.code, "self")
@@ -378,17 +379,17 @@ class ClaimTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.type, "pharmacy")
         self.assertEqual(inst.use, "complete")
-    
+
     def testClaim6(self):
         inst = self.instantiate_from("claim-example-professional.json")
         self.assertIsNotNone(inst, "Must have instantiated a Claim instance")
         self.implClaim6(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Claim", js["resourceType"])
         inst2 = claim.Claim(js)
         self.implClaim6(inst2)
-    
+
     def implClaim6(self, inst):
         self.assertTrue(inst.coverage[0].focal)
         self.assertEqual(inst.coverage[0].relationship.code, "self")
@@ -418,17 +419,17 @@ class ClaimTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.type, "professional")
         self.assertEqual(inst.use, "complete")
-    
+
     def testClaim7(self):
         inst = self.instantiate_from("claim-example-vision-glasses.json")
         self.assertIsNotNone(inst, "Must have instantiated a Claim instance")
         self.implClaim7(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Claim", js["resourceType"])
         inst2 = claim.Claim(js)
         self.implClaim7(inst2)
-    
+
     def implClaim7(self, inst):
         self.assertTrue(inst.coverage[0].focal)
         self.assertEqual(inst.coverage[0].relationship.code, "self")
@@ -490,17 +491,17 @@ class ClaimTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.type, "vision")
         self.assertEqual(inst.use, "complete")
-    
+
     def testClaim8(self):
         inst = self.instantiate_from("claim-example-vision.json")
         self.assertIsNotNone(inst, "Must have instantiated a Claim instance")
         self.implClaim8(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Claim", js["resourceType"])
         inst2 = claim.Claim(js)
         self.implClaim8(inst2)
-    
+
     def implClaim8(self, inst):
         self.assertTrue(inst.coverage[0].focal)
         self.assertEqual(inst.coverage[0].relationship.code, "self")
@@ -530,17 +531,17 @@ class ClaimTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.type, "vision")
         self.assertEqual(inst.use, "complete")
-    
+
     def testClaim9(self):
         inst = self.instantiate_from("claim-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Claim instance")
         self.implClaim9(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Claim", js["resourceType"])
         inst2 = claim.Claim(js)
         self.implClaim9(inst2)
-    
+
     def implClaim9(self, inst):
         self.assertTrue(inst.coverage[0].focal)
         self.assertEqual(inst.coverage[0].relationship.code, "self")

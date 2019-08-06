@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import operationdefinition
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class OperationDefinitionTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("OperationDefinition", js["resourceType"])
         return operationdefinition.OperationDefinition(js)
-    
+
     def testOperationDefinition1(self):
         inst = self.instantiate_from("operationdefinition-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a OperationDefinition instance")
         self.implOperationDefinition1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("OperationDefinition", js["resourceType"])
         inst2 = operationdefinition.OperationDefinition(js)
         self.implOperationDefinition1(inst2)
-    
+
     def implOperationDefinition1(self, inst):
         self.assertEqual(inst.code, "populate")
         self.assertEqual(inst.comment, "Only implemented for Labs and Medications so far")

@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import guidanceresponse
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class GuidanceResponseTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("GuidanceResponse", js["resourceType"])
         return guidanceresponse.GuidanceResponse(js)
-    
+
     def testGuidanceResponse1(self):
         inst = self.instantiate_from("guidanceresponse-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a GuidanceResponse instance")
         self.implGuidanceResponse1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("GuidanceResponse", js["resourceType"])
         inst2 = guidanceresponse.GuidanceResponse(js)
         self.implGuidanceResponse1(inst2)
-    
+
     def implGuidanceResponse1(self, inst):
         self.assertEqual(inst.contained[0].id, "outputParameters1")
         self.assertEqual(inst.id, "example")

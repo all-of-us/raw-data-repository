@@ -5,12 +5,12 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import procedurerequest
-from .fhirdate import FHIRDate
 
 
 class ProcedureRequestTests(unittest.TestCase):

@@ -2,9 +2,10 @@ import contextlib
 import csv
 import logging
 
-from rdr_service.dao import database_factory
 from cloudstorage import cloudstorage_api
 from sqlalchemy import text
+
+from rdr_service.dao import database_factory
 from rdr_service.unicode_csv import UnicodeWriter
 
 # Delimiter used in CSVs written (use this when reading them back out).

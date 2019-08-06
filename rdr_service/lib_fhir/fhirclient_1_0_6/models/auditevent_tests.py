@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import auditevent
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class AuditEventTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("AuditEvent", js["resourceType"])
         return auditevent.AuditEvent(js)
-    
+
     def testAuditEvent1(self):
         inst = self.instantiate_from("audit-event-example-login.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent1(inst2)
-    
+
     def implAuditEvent1(self, inst):
         self.assertEqual(inst.event.action, "E")
         self.assertEqual(inst.event.dateTime.date, FHIRDate("2013-06-20T23:41:23Z").date)
@@ -55,17 +56,17 @@ class AuditEventTests(unittest.TestCase):
         self.assertEqual(inst.source.type[0].display, "Web Server")
         self.assertEqual(inst.source.type[0].system, "http://hl7.org/fhir/security-source-type")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testAuditEvent2(self):
         inst = self.instantiate_from("audit-event-example-logout.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent2(inst2)
-    
+
     def implAuditEvent2(self, inst):
         self.assertEqual(inst.event.action, "E")
         self.assertEqual(inst.event.dateTime.date, FHIRDate("2013-06-20T23:46:41Z").date)
@@ -90,17 +91,17 @@ class AuditEventTests(unittest.TestCase):
         self.assertEqual(inst.source.type[0].display, "Web Server")
         self.assertEqual(inst.source.type[0].system, "http://hl7.org/fhir/security-source-type")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testAuditEvent3(self):
         inst = self.instantiate_from("audit-event-example-media.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent3(inst2)
-    
+
     def implAuditEvent3(self, inst):
         self.assertEqual(inst.event.action, "R")
         self.assertEqual(inst.event.dateTime.date, FHIRDate("2015-08-27T23:42:24Z").date)
@@ -149,17 +150,17 @@ class AuditEventTests(unittest.TestCase):
         self.assertFalse(inst.participant[2].requestor)
         self.assertEqual(inst.source.identifier.value, "hl7connect.healthintersections.com.au")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testAuditEvent4(self):
         inst = self.instantiate_from("audit-event-example-pixQuery.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent4(inst2)
-    
+
     def implAuditEvent4(self, inst):
         self.assertEqual(inst.event.action, "E")
         self.assertEqual(inst.event.dateTime.date, FHIRDate("2015-08-26T23:42:24Z").date)
@@ -201,17 +202,17 @@ class AuditEventTests(unittest.TestCase):
         self.assertEqual(inst.participant[1].userId.value, "95")
         self.assertEqual(inst.source.identifier.value, "hl7connect.healthintersections.com.au")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testAuditEvent5(self):
         inst = self.instantiate_from("audit-event-example-search.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent5(inst2)
-    
+
     def implAuditEvent5(self, inst):
         self.assertEqual(inst.event.action, "E")
         self.assertEqual(inst.event.dateTime.date, FHIRDate("2015-08-22T23:42:24Z").date)
@@ -241,17 +242,17 @@ class AuditEventTests(unittest.TestCase):
         self.assertEqual(inst.source.type[0].display, "Web Server")
         self.assertEqual(inst.source.type[0].system, "http://hl7.org/fhir/security-source-type")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testAuditEvent6(self):
         inst = self.instantiate_from("audit-event-example-vread.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent6(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent6(inst2)
-    
+
     def implAuditEvent6(self, inst):
         self.assertEqual(inst.event.action, "R")
         self.assertEqual(inst.event.dateTime.date, FHIRDate("2013-06-20T23:42:24Z").date)
@@ -280,17 +281,17 @@ class AuditEventTests(unittest.TestCase):
         self.assertEqual(inst.source.type[0].display, "Web Server")
         self.assertEqual(inst.source.type[0].system, "http://hl7.org/fhir/security-source-type")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testAuditEvent7(self):
         inst = self.instantiate_from("auditevent-example-disclosure.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent7(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent7(inst2)
-    
+
     def implAuditEvent7(self, inst):
         self.assertEqual(inst.event.action, "R")
         self.assertEqual(inst.event.dateTime.date, FHIRDate("2013-09-22T00:08:00Z").date)
@@ -360,17 +361,17 @@ class AuditEventTests(unittest.TestCase):
         self.assertEqual(inst.source.type[0].system, "http://hl7.org/fhir/security-source-type")
         self.assertEqual(inst.text.div, "<div>Disclosure by some idiot, for marketing reasons, to places unknown, of a Poor Sap, data about Everthing important.</div>")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testAuditEvent8(self):
         inst = self.instantiate_from("auditevent-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent8(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent8(inst2)
-    
+
     def implAuditEvent8(self, inst):
         self.assertEqual(inst.event.action, "E")
         self.assertEqual(inst.event.dateTime.date, FHIRDate("2012-10-25T22:04:27+11:00").date)

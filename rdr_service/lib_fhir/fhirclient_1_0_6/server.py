@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import json
-import requests
-import urllib
 import logging
+
+import requests
+
 try:                                # Python 2.x
     import urlparse
 except ImportError as e:            # Python 3

@@ -1,13 +1,12 @@
 import argparse
 import copy
 import httplib
-import httplib2
 import json
 import logging
 import pprint
 
+import httplib2
 from oauth2client.service_account import ServiceAccountCredentials
-
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 DEFAULT_INSTANCE = 'https://pmi-drc-api-test.appspot.com'

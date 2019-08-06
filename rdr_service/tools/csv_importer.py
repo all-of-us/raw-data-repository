@@ -1,8 +1,8 @@
 """Imports entities into the database based on a CSV file.
 """
-from rdr_service.unicode_csv import UnicodeDictReader
-
 import logging
+
+from rdr_service.unicode_csv import UnicodeDictReader
 
 
 class CsvImporter(object):

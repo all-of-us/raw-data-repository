@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import activitydefinition
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ActivityDefinitionTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("ActivityDefinition", js["resourceType"])
         return activitydefinition.ActivityDefinition(js)
-    
+
     def testActivityDefinition1(self):
         inst = self.instantiate_from("activitydefinition-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ActivityDefinition instance")
         self.implActivityDefinition1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ActivityDefinition", js["resourceType"])
         inst2 = activitydefinition.ActivityDefinition(js)
         self.implActivityDefinition1(inst2)
-    
+
     def implActivityDefinition1(self, inst):
         self.assertEqual(inst.approvalDate.date, FHIRDate("2017-03-01").date)
         self.assertEqual(inst.approvalDate.as_json(), "2017-03-01")
@@ -117,17 +118,17 @@ class ActivityDefinitionTests(unittest.TestCase):
         self.assertEqual(inst.useContext[6].valueCodeableConcept.coding[0].display, "Outpatient environment")
         self.assertEqual(inst.useContext[6].valueCodeableConcept.coding[0].system, "http://snomed.info/sct")
         self.assertEqual(inst.version, "1.1.0")
-    
+
     def testActivityDefinition2(self):
         inst = self.instantiate_from("activitydefinition-medicationorder-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ActivityDefinition instance")
         self.implActivityDefinition2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ActivityDefinition", js["resourceType"])
         inst2 = activitydefinition.ActivityDefinition(js)
         self.implActivityDefinition2(inst2)
-    
+
     def implActivityDefinition2(self, inst):
         self.assertEqual(inst.approvalDate.date, FHIRDate("2016-03-12").date)
         self.assertEqual(inst.approvalDate.as_json(), "2016-03-12")
@@ -231,17 +232,17 @@ class ActivityDefinitionTests(unittest.TestCase):
         self.assertEqual(inst.useContext[6].valueCodeableConcept.coding[0].display, "Outpatient environment")
         self.assertEqual(inst.useContext[6].valueCodeableConcept.coding[0].system, "http://snomed.info/sct")
         self.assertEqual(inst.version, "1.0.0")
-    
+
     def testActivityDefinition3(self):
         inst = self.instantiate_from("activitydefinition-predecessor-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ActivityDefinition instance")
         self.implActivityDefinition3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ActivityDefinition", js["resourceType"])
         inst2 = activitydefinition.ActivityDefinition(js)
         self.implActivityDefinition3(inst2)
-    
+
     def implActivityDefinition3(self, inst):
         self.assertEqual(inst.approvalDate.date, FHIRDate("2016-03-12").date)
         self.assertEqual(inst.approvalDate.as_json(), "2016-03-12")
@@ -328,17 +329,17 @@ class ActivityDefinitionTests(unittest.TestCase):
         self.assertEqual(inst.useContext[6].valueCodeableConcept.coding[0].display, "Outpatient environment")
         self.assertEqual(inst.useContext[6].valueCodeableConcept.coding[0].system, "http://snomed.info/sct")
         self.assertEqual(inst.version, "1.0.0")
-    
+
     def testActivityDefinition4(self):
         inst = self.instantiate_from("activitydefinition-procedurerequest-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ActivityDefinition instance")
         self.implActivityDefinition4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ActivityDefinition", js["resourceType"])
         inst2 = activitydefinition.ActivityDefinition(js)
         self.implActivityDefinition4(inst2)
-    
+
     def implActivityDefinition4(self, inst):
         self.assertEqual(inst.bodySite[0].coding[0].code, "17401000")
         self.assertEqual(inst.bodySite[0].coding[0].display, "Heart valve structure")
@@ -370,17 +371,17 @@ class ActivityDefinitionTests(unittest.TestCase):
         self.assertEqual(inst.useContext[1].valueCodeableConcept.coding[0].code, "309343006")
         self.assertEqual(inst.useContext[1].valueCodeableConcept.coding[0].display, "Physician")
         self.assertEqual(inst.useContext[1].valueCodeableConcept.coding[0].system, "http://snomed.info/sct")
-    
+
     def testActivityDefinition5(self):
         inst = self.instantiate_from("activitydefinition-supplyrequest-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ActivityDefinition instance")
         self.implActivityDefinition5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ActivityDefinition", js["resourceType"])
         inst2 = activitydefinition.ActivityDefinition(js)
         self.implActivityDefinition5(inst2)
-    
+
     def implActivityDefinition5(self, inst):
         self.assertEqual(inst.code.coding[0].code, "BlueTubes")
         self.assertEqual(inst.code.coding[0].display, "Blood collect tubes blue cap")

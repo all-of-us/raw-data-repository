@@ -5,12 +5,12 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import bodysite
-from .fhirdate import FHIRDate
 
 
 class BodySiteTests(unittest.TestCase):
@@ -20,17 +20,17 @@ class BodySiteTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("BodySite", js["resourceType"])
         return bodysite.BodySite(js)
-    
+
     def testBodySite1(self):
         inst = self.instantiate_from("bodysite-example-fetus.json")
         self.assertIsNotNone(inst, "Must have instantiated a BodySite instance")
         self.implBodySite1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("BodySite", js["resourceType"])
         inst2 = bodysite.BodySite(js)
         self.implBodySite1(inst2)
-    
+
     def implBodySite1(self, inst):
         self.assertEqual(inst.code.coding[0].code, "83418008")
         self.assertEqual(inst.code.coding[0].display, "Entire fetus (body structure)")
@@ -41,17 +41,17 @@ class BodySiteTests(unittest.TestCase):
         self.assertEqual(inst.identifier[0].system, "http://goodhealth.org/bodysite/identifiers")
         self.assertEqual(inst.identifier[0].value, "12345")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testBodySite2(self):
         inst = self.instantiate_from("bodysite-example-skin-patch.json")
         self.assertIsNotNone(inst, "Must have instantiated a BodySite instance")
         self.implBodySite2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("BodySite", js["resourceType"])
         inst2 = bodysite.BodySite(js)
         self.implBodySite2(inst2)
-    
+
     def implBodySite2(self, inst):
         self.assertFalse(inst.active)
         self.assertEqual(inst.code.coding[0].code, "39937001")
@@ -63,17 +63,17 @@ class BodySiteTests(unittest.TestCase):
         self.assertEqual(inst.identifier[0].system, "http://goodhealth.org/bodysite/identifiers")
         self.assertEqual(inst.identifier[0].value, "12345")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testBodySite3(self):
         inst = self.instantiate_from("bodysite-example-tumor.json")
         self.assertIsNotNone(inst, "Must have instantiated a BodySite instance")
         self.implBodySite3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("BodySite", js["resourceType"])
         inst2 = bodysite.BodySite(js)
         self.implBodySite3(inst2)
-    
+
     def implBodySite3(self, inst):
         self.assertEqual(inst.code.coding[0].code, "4147007")
         self.assertEqual(inst.code.coding[0].display, "Mass (morphologic abnormality)")

@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import claimresponse
 from .fhirdate import FHIRDate
 

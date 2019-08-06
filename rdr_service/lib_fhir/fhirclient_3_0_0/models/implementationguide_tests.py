@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import implementationguide
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ImplementationGuideTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("ImplementationGuide", js["resourceType"])
         return implementationguide.ImplementationGuide(js)
-    
+
     def testImplementationGuide1(self):
         inst = self.instantiate_from("implementationguide-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ImplementationGuide instance")
         self.implImplementationGuide1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ImplementationGuide", js["resourceType"])
         inst2 = implementationguide.ImplementationGuide(js)
         self.implImplementationGuide1(inst2)
-    
+
     def implImplementationGuide1(self, inst):
         self.assertEqual(inst.binary[0], "http://h7.org/fhir/fhir.css")
         self.assertEqual(inst.contact[0].name, "ONC")

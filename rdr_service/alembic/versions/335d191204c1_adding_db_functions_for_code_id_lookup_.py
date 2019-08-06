@@ -6,6 +6,7 @@ Create Date: 2019-01-10 13:05:48.899901
 
 """
 from alembic import op
+
 from rdr_service.dao.alembic_utils import ReplaceableObject
 
 # revision identifiers, used by Alembic.

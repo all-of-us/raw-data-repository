@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import messagedefinition
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class MessageDefinitionTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("MessageDefinition", js["resourceType"])
         return messagedefinition.MessageDefinition(js)
-    
+
     def testMessageDefinition1(self):
         inst = self.instantiate_from("messagedefinition-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a MessageDefinition instance")
         self.implMessageDefinition1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("MessageDefinition", js["resourceType"])
         inst2 = messagedefinition.MessageDefinition(js)
         self.implMessageDefinition1(inst2)
-    
+
     def implMessageDefinition1(self, inst):
         self.assertEqual(inst.category, "Notification")
         self.assertEqual(inst.contact[0].telecom[0].system, "url")

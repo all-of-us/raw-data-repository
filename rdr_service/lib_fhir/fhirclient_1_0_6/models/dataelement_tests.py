@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import dataelement
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class DataElementTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("DataElement", js["resourceType"])
         return dataelement.DataElement(js)
-    
+
     def testDataElement1(self):
         inst = self.instantiate_from("dataelement-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a DataElement instance")
         self.implDataElement1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DataElement", js["resourceType"])
         inst2 = dataelement.DataElement(js)
         self.implDataElement1(inst2)
-    
+
     def implDataElement1(self, inst):
         self.assertEqual(inst.contained[0].id, "2179414")
         self.assertEqual(inst.contained[1].id, "2179414-permitted")
@@ -71,17 +72,17 @@ class DataElementTests(unittest.TestCase):
         self.assertEqual(inst.useContext[0].coding[9].display, "CIAF")
         self.assertEqual(inst.useContext[0].coding[9].system, "http://example.org/Demonstration%20Applications")
         self.assertEqual(inst.version, "1.0")
-    
+
     def testDataElement2(self):
         inst = self.instantiate_from("dataelement-labtestmaster-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a DataElement instance")
         self.implDataElement2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DataElement", js["resourceType"])
         inst2 = dataelement.DataElement(js)
         self.implDataElement2(inst2)
-    
+
     def implDataElement2(self, inst):
         self.assertEqual(inst.element[0].alias[0], "Protime, PT")
         self.assertEqual(inst.element[0].comments, "Used to screen the integrity of the extrinsic and common pathways of coagulation and to monitor warfarin anticoagulation. ")

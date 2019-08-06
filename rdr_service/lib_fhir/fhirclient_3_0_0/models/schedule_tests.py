@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import schedule
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ScheduleTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Schedule", js["resourceType"])
         return schedule.Schedule(js)
-    
+
     def testSchedule1(self):
         inst = self.instantiate_from("schedule-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Schedule instance")
         self.implSchedule1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Schedule", js["resourceType"])
         inst2 = schedule.Schedule(js)
         self.implSchedule1(inst2)
-    
+
     def implSchedule1(self, inst):
         self.assertTrue(inst.active)
         self.assertEqual(inst.comment, "The slots attached to this schedule should be specialized to cover immunizations within the clinic")
@@ -49,17 +50,17 @@ class ScheduleTests(unittest.TestCase):
         self.assertEqual(inst.specialty[0].coding[0].code, "408480009")
         self.assertEqual(inst.specialty[0].coding[0].display, "Clinical immunology")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testSchedule2(self):
         inst = self.instantiate_from("schedule-provider-location1-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Schedule instance")
         self.implSchedule2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Schedule", js["resourceType"])
         inst2 = schedule.Schedule(js)
         self.implSchedule2(inst2)
-    
+
     def implSchedule2(self, inst):
         self.assertTrue(inst.active)
         self.assertEqual(inst.comment, "The slots attached to this schedule are for genetic counselling in the USS Enterprise-D Sickbay.")
@@ -78,17 +79,17 @@ class ScheduleTests(unittest.TestCase):
         self.assertEqual(inst.specialty[0].coding[0].code, "394580004")
         self.assertEqual(inst.specialty[0].coding[0].display, "Clinical genetics")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testSchedule3(self):
         inst = self.instantiate_from("schedule-provider-location2-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Schedule instance")
         self.implSchedule3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Schedule", js["resourceType"])
         inst2 = schedule.Schedule(js)
         self.implSchedule3(inst2)
-    
+
     def implSchedule3(self, inst):
         self.assertTrue(inst.active)
         self.assertEqual(inst.comment, "The slots attached to this schedule are for neurosurgery operations at Starfleet HQ only.")

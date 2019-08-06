@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import encounter
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class EncounterTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Encounter", js["resourceType"])
         return encounter.Encounter(js)
-    
+
     def testEncounter1(self):
         inst = self.instantiate_from("encounter-example-f001-heart.json")
         self.assertIsNotNone(inst, "Must have instantiated a Encounter instance")
         self.implEncounter1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Encounter", js["resourceType"])
         inst2 = encounter.Encounter(js)
         self.implEncounter1(inst2)
-    
+
     def implEncounter1(self, inst):
         self.assertEqual(inst.class_fhir, "outpatient")
         self.assertEqual(inst.hospitalization.admitSource.coding[0].code, "305956004")
@@ -61,17 +62,17 @@ class EncounterTests(unittest.TestCase):
         self.assertEqual(inst.type[0].coding[0].code, "270427003")
         self.assertEqual(inst.type[0].coding[0].display, "Patient-initiated encounter")
         self.assertEqual(inst.type[0].coding[0].system, "http://snomed.info/sct")
-    
+
     def testEncounter2(self):
         inst = self.instantiate_from("encounter-example-f002-lung.json")
         self.assertIsNotNone(inst, "Must have instantiated a Encounter instance")
         self.implEncounter2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Encounter", js["resourceType"])
         inst2 = encounter.Encounter(js)
         self.implEncounter2(inst2)
-    
+
     def implEncounter2(self, inst):
         self.assertEqual(inst.class_fhir, "outpatient")
         self.assertEqual(inst.hospitalization.admitSource.coding[0].code, "305997006")
@@ -102,17 +103,17 @@ class EncounterTests(unittest.TestCase):
         self.assertEqual(inst.type[0].coding[0].code, "270427003")
         self.assertEqual(inst.type[0].coding[0].display, "Patient-initiated encounter")
         self.assertEqual(inst.type[0].coding[0].system, "http://snomed.info/sct")
-    
+
     def testEncounter3(self):
         inst = self.instantiate_from("encounter-example-f003-abscess.json")
         self.assertIsNotNone(inst, "Must have instantiated a Encounter instance")
         self.implEncounter3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Encounter", js["resourceType"])
         inst2 = encounter.Encounter(js)
         self.implEncounter3(inst2)
-    
+
     def implEncounter3(self, inst):
         self.assertEqual(inst.class_fhir, "outpatient")
         self.assertEqual(inst.hospitalization.admitSource.coding[0].code, "305956004")
@@ -145,17 +146,17 @@ class EncounterTests(unittest.TestCase):
         self.assertEqual(inst.type[0].coding[0].code, "270427003")
         self.assertEqual(inst.type[0].coding[0].display, "Patient-initiated encounter")
         self.assertEqual(inst.type[0].coding[0].system, "http://snomed.info/sct")
-    
+
     def testEncounter4(self):
         inst = self.instantiate_from("encounter-example-f201-20130404.json")
         self.assertIsNotNone(inst, "Must have instantiated a Encounter instance")
         self.implEncounter4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Encounter", js["resourceType"])
         inst2 = encounter.Encounter(js)
         self.implEncounter4(inst2)
-    
+
     def implEncounter4(self, inst):
         self.assertEqual(inst.class_fhir, "outpatient")
         self.assertEqual(inst.id, "f201")
@@ -170,17 +171,17 @@ class EncounterTests(unittest.TestCase):
         self.assertEqual(inst.type[0].coding[0].code, "11429006")
         self.assertEqual(inst.type[0].coding[0].display, "Consultation")
         self.assertEqual(inst.type[0].coding[0].system, "http://snomed.info/sct")
-    
+
     def testEncounter5(self):
         inst = self.instantiate_from("encounter-example-f202-20130128.json")
         self.assertIsNotNone(inst, "Must have instantiated a Encounter instance")
         self.implEncounter5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Encounter", js["resourceType"])
         inst2 = encounter.Encounter(js)
         self.implEncounter5(inst2)
-    
+
     def implEncounter5(self, inst):
         self.assertEqual(inst.class_fhir, "outpatient")
         self.assertEqual(inst.id, "f202")
@@ -201,17 +202,17 @@ class EncounterTests(unittest.TestCase):
         self.assertEqual(inst.type[0].coding[0].code, "367336001")
         self.assertEqual(inst.type[0].coding[0].display, "Chemotherapy")
         self.assertEqual(inst.type[0].coding[0].system, "http://snomed.info/sct")
-    
+
     def testEncounter6(self):
         inst = self.instantiate_from("encounter-example-f203-20130311.json")
         self.assertIsNotNone(inst, "Must have instantiated a Encounter instance")
         self.implEncounter6(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Encounter", js["resourceType"])
         inst2 = encounter.Encounter(js)
         self.implEncounter6(inst2)
-    
+
     def implEncounter6(self, inst):
         self.assertEqual(inst.class_fhir, "inpatient")
         self.assertEqual(inst.hospitalization.admitSource.coding[0].code, "309902002")
@@ -237,17 +238,17 @@ class EncounterTests(unittest.TestCase):
         self.assertEqual(inst.type[0].coding[0].code, "183807002")
         self.assertEqual(inst.type[0].coding[0].display, "Inpatient stay for nine days")
         self.assertEqual(inst.type[0].coding[0].system, "http://snomed.info/sct")
-    
+
     def testEncounter7(self):
         inst = self.instantiate_from("encounter-example-home.json")
         self.assertIsNotNone(inst, "Must have instantiated a Encounter instance")
         self.implEncounter7(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Encounter", js["resourceType"])
         inst2 = encounter.Encounter(js)
         self.implEncounter7(inst2)
-    
+
     def implEncounter7(self, inst):
         self.assertEqual(inst.class_fhir, "virtual")
         self.assertEqual(inst.contained[0].id, "home")
@@ -268,17 +269,17 @@ class EncounterTests(unittest.TestCase):
         self.assertEqual(inst.status, "finished")
         self.assertEqual(inst.text.div, "<div>Encounter with patient @example who is at home</div>")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testEncounter8(self):
         inst = self.instantiate_from("encounter-example-xcda.json")
         self.assertIsNotNone(inst, "Must have instantiated a Encounter instance")
         self.implEncounter8(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Encounter", js["resourceType"])
         inst2 = encounter.Encounter(js)
         self.implEncounter8(inst2)
-    
+
     def implEncounter8(self, inst):
         self.assertEqual(inst.class_fhir, "outpatient")
         self.assertEqual(inst.id, "xcda")
@@ -290,17 +291,17 @@ class EncounterTests(unittest.TestCase):
         self.assertEqual(inst.reason[0].coding[0].system, "http://ihe.net/xds/connectathon/eventCodes")
         self.assertEqual(inst.status, "finished")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testEncounter9(self):
         inst = self.instantiate_from("encounter-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Encounter instance")
         self.implEncounter9(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Encounter", js["resourceType"])
         inst2 = encounter.Encounter(js)
         self.implEncounter9(inst2)
-    
+
     def implEncounter9(self, inst):
         self.assertEqual(inst.class_fhir, "inpatient")
         self.assertEqual(inst.id, "example")

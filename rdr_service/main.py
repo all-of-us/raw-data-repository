@@ -3,13 +3,18 @@
 This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
 import logging
-# pylint: disable=unused-import
-import requests
-import requests_toolbelt.adapters.appengine
 
-from rdr_service import app_util
+# pylint: disable=unused-import
+import requests_toolbelt.adapters.appengine
+from flask import Flask, got_request_exception
+from flask_restful import Api
+from sqlalchemy.exc import DBAPIError
+from werkzeug.exceptions import HTTPException
+
 import config_api
 import version_api
+from json_encoder import RdrJsonEncoder
+from rdr_service import app_util
 from rdr_service.api import metrics_ehr_api
 from rdr_service.api.awardee_api import AwardeeApi
 from rdr_service.api.bigquery_participant_summary_api import BQParticipantSummaryApi
@@ -24,20 +29,17 @@ from rdr_service.api.metrics_api import MetricsApi
 from rdr_service.api.metrics_fields_api import MetricsFieldsApi
 from rdr_service.api.participant_api import ParticipantApi
 from rdr_service.api.participant_counts_over_time_api import ParticipantCountsOverTimeApi
-from rdr_service.api.participant_summary_api import ParticipantSummaryApi, ParticipantSummaryModifiedApi
-from rdr_service.api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical_measurements
+from rdr_service.api.participant_summary_api import ParticipantSummaryApi, \
+  ParticipantSummaryModifiedApi
+from rdr_service.api.patient_status import PatientStatusApi, PatientStatusHistoryApi
+from rdr_service.api.physical_measurements_api import PhysicalMeasurementsApi, \
+  sync_physical_measurements
 from rdr_service.api.public_metrics_api import PublicMetricsApi
 from rdr_service.api.questionnaire_api import QuestionnaireApi
-from rdr_service.api.questionnaire_response_api import QuestionnaireResponseApi, ParticipantQuestionnaireAnswers
-from rdr_service.api.patient_status import PatientStatusApi, PatientStatusHistoryApi
+from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireAnswers, \
+  QuestionnaireResponseApi
 from rdr_service.config import get_config, get_db_config
-from flask import Flask, got_request_exception
-from flask_restful import Api
-from json_encoder import RdrJsonEncoder
 from rdr_service.model.utils import ParticipantIdConverter
-from sqlalchemy.exc import DBAPIError
-from werkzeug.exceptions import HTTPException
-
 
 # Use the App Engine Requests adapter. This makes sure that Requests uses URLFetch.
 requests_toolbelt.adapters.appengine.monkeypatch()

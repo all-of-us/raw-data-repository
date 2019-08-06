@@ -14,24 +14,25 @@ Usage:
 """
 # client needs to be top level import due to another client package in AppengineSDK
 
-from rdr_service.rdr_client.client import Client, client_log
-
-import os
 import logging
+import os
+
 import googlemaps
 from dateutil.parser import parse
-from rdr_service.tools.csv_importer import CsvImporter
+
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
+from rdr_service.main_util import configure_logging, get_parser
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
-from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
+from rdr_service.model.site_enums import DigitalSchedulingStatus, EnrollingStatus, ObsoleteStatus, \
+  SiteStatus
 from rdr_service.participant_enums import OrganizationType
-from rdr_service.main_util import get_parser, configure_logging
+from rdr_service.rdr_client.client import Client, client_log
+from rdr_service.tools.csv_importer import CsvImporter
 from rdr_service.tools.import_participants import _setup_questionnaires, import_participant
-
 
 # Environments
 ENV_TEST = 'pmi-drc-api-test'

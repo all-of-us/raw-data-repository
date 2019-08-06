@@ -54,43 +54,45 @@ metric is generated.  This is to record the total number of entities over time.
 
 import collections
 import copy
+import csv
 import json
 import logging
-import pipeline
-
-from rdr_service import config
-import csv
-from rdr_service.offline import metrics_config
-from rdr_service.offline import sql_exporter
-
-from cloudstorage import cloudstorage_api
 from datetime import datetime, timedelta
-#from mapreduce import base_handler
-#from mapreduce import mapreduce_pipeline
-#from mapreduce import context
 
-from rdr_service.dao.database_utils import parse_datetime
+import pipeline
+from cloudstorage import cloudstorage_api
 from dateutil.relativedelta import relativedelta
+
+from metrics_config import AGE_RANGE_METRIC, ANSWER_FIELDS, BIOSPECIMEN_METRIC, \
+  BIOSPECIMEN_SAMPLES_METRIC, \
+  CENSUS_REGION_METRIC, EHR_CONSENT_ANSWER_METRIC, ENROLLMENT_STATUS_METRIC, FULL_PARTICIPANT_KIND, \
+  HPO_ID_FIELDS, \
+  HPO_ID_METRIC, PARTICIPANT_KIND, PHYSICAL_MEASUREMENTS_METRIC, RACE_METRIC, SAMPLES_ARRIVED_VALUE, \
+  SAMPLES_TO_ISOLATE_DNA_METRIC, SPECIMEN_COLLECTED_VALUE, SUBMITTED_VALUE, get_fieldnames, \
+  get_participant_fields, \
+  transform_participant_summary_field
+from rdr_service import config
 from rdr_service.census_regions import census_regions
-from rdr_service.code_constants import UNSET, RACE_QUESTION_CODE, PPI_SYSTEM, EHR_CONSENT_QUESTION_CODE
-from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, PMI_SKIP_CODE
-from rdr_service.dao.metrics_dao import MetricsBucketDao, MetricsVersionDao
-from rdr_service.field_mappings import QUESTION_CODE_TO_FIELD, FieldType
-from rdr_service.field_mappings import NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES
-from rdr_service.field_mappings import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD
-from rdr_service.model.metrics import MetricsBucket
-#from mapreduce.lib.input_reader._gcs import GCSInputReader
-from rdr_service.offline.base_pipeline import BasePipeline
-from metrics_config import BIOSPECIMEN_METRIC, BIOSPECIMEN_SAMPLES_METRIC, HPO_ID_METRIC
-from metrics_config import PHYSICAL_MEASUREMENTS_METRIC, AGE_RANGE_METRIC, CENSUS_REGION_METRIC
-from metrics_config import SPECIMEN_COLLECTED_VALUE, RACE_METRIC, ENROLLMENT_STATUS_METRIC
-from metrics_config import SAMPLES_ARRIVED_VALUE, SUBMITTED_VALUE, PARTICIPANT_KIND
-from metrics_config import HPO_ID_FIELDS, ANSWER_FIELDS, get_participant_fields, get_fieldnames
-from metrics_config import transform_participant_summary_field, SAMPLES_TO_ISOLATE_DNA_METRIC
-from metrics_config import FULL_PARTICIPANT_KIND, EHR_CONSENT_ANSWER_METRIC
-from rdr_service.participant_enums import get_bucketed_age, get_race, PhysicalMeasurementsStatus, SampleStatus
-from rdr_service.participant_enums import EnrollmentStatus, QuestionnaireStatus
+from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, EHR_CONSENT_QUESTION_CODE, \
+  PMI_SKIP_CODE, \
+  PPI_SYSTEM, RACE_QUESTION_CODE, UNSET
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.database_utils import parse_datetime
+from rdr_service.dao.metrics_dao import MetricsBucketDao, MetricsVersionDao
+from rdr_service.field_mappings import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD, FieldType, \
+  NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES, QUESTION_CODE_TO_FIELD
+from rdr_service.model.metrics import MetricsBucket
+from rdr_service.offline import metrics_config, sql_exporter
+# from mapreduce.lib.input_reader._gcs import GCSInputReader
+from rdr_service.offline.base_pipeline import BasePipeline
+from rdr_service.participant_enums import EnrollmentStatus, PhysicalMeasurementsStatus, \
+  QuestionnaireStatus, \
+  SampleStatus, get_bucketed_age, get_race
+
+
+# from mapreduce import base_handler
+# from mapreduce import mapreduce_pipeline
+# from mapreduce import context
 
 class PipelineNotRunningException(BaseException):
   """Exception thrown when a pipeline is expected to be running but is not."""

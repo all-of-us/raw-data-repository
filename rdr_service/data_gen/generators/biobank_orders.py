@@ -1,11 +1,11 @@
 #
 # biobank order data generator.
 #
-from rdr_service import clock
 import datetime
 import logging
 import random
 
+from rdr_service import clock
 from rdr_service.data_gen.generators.base_gen import BaseGen
 from rdr_service.data_gen.generators.hpo import HPOGen
 

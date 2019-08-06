@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import measure
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class MeasureTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Measure", js["resourceType"])
         return measure.Measure(js)
-    
+
     def testMeasure1(self):
         inst = self.instantiate_from("measure-cms146-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Measure instance")
         self.implMeasure1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Measure", js["resourceType"])
         inst2 = measure.Measure(js)
         self.implMeasure1(inst2)
-    
+
     def implMeasure1(self, inst):
         self.assertEqual(inst.approvalDate.date, FHIRDate("2016-01-01").date)
         self.assertEqual(inst.approvalDate.as_json(), "2016-01-01")
@@ -101,17 +102,17 @@ class MeasureTests(unittest.TestCase):
         self.assertEqual(inst.useContext[0].code.code, "program")
         self.assertEqual(inst.useContext[0].valueCodeableConcept.text, "eligibile-provider")
         self.assertEqual(inst.version, "1.0.0")
-    
+
     def testMeasure2(self):
         inst = self.instantiate_from("measure-component-a-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Measure instance")
         self.implMeasure2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Measure", js["resourceType"])
         inst2 = measure.Measure(js)
         self.implMeasure2(inst2)
-    
+
     def implMeasure2(self, inst):
         self.assertEqual(inst.group[0].identifier.value, "Main")
         self.assertEqual(inst.group[0].population[0].code.coding[0].code, "initial-population")
@@ -125,17 +126,17 @@ class MeasureTests(unittest.TestCase):
         self.assertEqual(inst.status, "draft")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.title, "Screening for Alcohol Misuse")
-    
+
     def testMeasure3(self):
         inst = self.instantiate_from("measure-component-b-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Measure instance")
         self.implMeasure3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Measure", js["resourceType"])
         inst2 = measure.Measure(js)
         self.implMeasure3(inst2)
-    
+
     def implMeasure3(self, inst):
         self.assertEqual(inst.group[0].identifier.value, "Main")
         self.assertEqual(inst.group[0].population[0].code.coding[0].code, "initial-population")
@@ -149,17 +150,17 @@ class MeasureTests(unittest.TestCase):
         self.assertEqual(inst.status, "draft")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.title, "Screening for Depression")
-    
+
     def testMeasure4(self):
         inst = self.instantiate_from("measure-composite-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Measure instance")
         self.implMeasure4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Measure", js["resourceType"])
         inst2 = measure.Measure(js)
         self.implMeasure4(inst2)
-    
+
     def implMeasure4(self, inst):
         self.assertEqual(inst.compositeScoring.coding[0].code, "opportunity")
         self.assertEqual(inst.id, "composite-example")
@@ -169,17 +170,17 @@ class MeasureTests(unittest.TestCase):
         self.assertEqual(inst.status, "draft")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.title, "Behavioral Assessment Composite Measure")
-    
+
     def testMeasure5(self):
         inst = self.instantiate_from("measure-predecessor-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Measure instance")
         self.implMeasure5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Measure", js["resourceType"])
         inst2 = measure.Measure(js)
         self.implMeasure5(inst2)
-    
+
     def implMeasure5(self, inst):
         self.assertEqual(inst.date.date, FHIRDate("2014-03-08").date)
         self.assertEqual(inst.date.as_json(), "2014-03-08")

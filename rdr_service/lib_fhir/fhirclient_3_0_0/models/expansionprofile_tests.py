@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import expansionprofile
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ExpansionProfileTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("ExpansionProfile", js["resourceType"])
         return expansionprofile.ExpansionProfile(js)
-    
+
     def testExpansionProfile1(self):
         inst = self.instantiate_from("expansionprofile-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ExpansionProfile instance")
         self.implExpansionProfile1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ExpansionProfile", js["resourceType"])
         inst2 = expansionprofile.ExpansionProfile(js)
         self.implExpansionProfile1(inst2)
-    
+
     def implExpansionProfile1(self, inst):
         self.assertEqual(inst.contact[0].name, "FHIR project team")
         self.assertEqual(inst.contact[0].telecom[0].system, "url")

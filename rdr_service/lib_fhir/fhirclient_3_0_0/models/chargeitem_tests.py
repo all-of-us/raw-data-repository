@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import chargeitem
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ChargeItemTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("ChargeItem", js["resourceType"])
         return chargeitem.ChargeItem(js)
-    
+
     def testChargeItem1(self):
         inst = self.instantiate_from("chargeitem-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ChargeItem instance")
         self.implChargeItem1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ChargeItem", js["resourceType"])
         inst2 = chargeitem.ChargeItem(js)
         self.implChargeItem1(inst2)
-    
+
     def implChargeItem1(self, inst):
         self.assertEqual(inst.code.coding[0].code, "01510")
         self.assertEqual(inst.code.coding[0].display, "Zusatzpauschale für Beobachtung nach diagnostischer Koronarangiografie")

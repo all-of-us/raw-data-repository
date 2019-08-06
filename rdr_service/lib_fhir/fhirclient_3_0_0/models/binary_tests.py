@@ -5,12 +5,12 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import binary
-from .fhirdate import FHIRDate
 
 
 class BinaryTests(unittest.TestCase):

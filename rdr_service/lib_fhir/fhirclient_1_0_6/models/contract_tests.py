@@ -5,12 +5,12 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import contract
-from .fhirdate import FHIRDate
 
 
 class ContractTests(unittest.TestCase):
@@ -20,17 +20,17 @@ class ContractTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Contract", js["resourceType"])
         return contract.Contract(js)
-    
+
     def testContract1(self):
         inst = self.instantiate_from("contract-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Contract instance")
         self.implContract1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Contract", js["resourceType"])
         inst2 = contract.Contract(js)
         self.implContract1(inst2)
-    
+
     def implContract1(self, inst):
         self.assertEqual(inst.id, "C-123")
         self.assertEqual(inst.text.div, "<div>A human-readable rendering of the contract</div>")

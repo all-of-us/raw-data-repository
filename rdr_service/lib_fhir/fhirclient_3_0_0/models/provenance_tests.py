@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import provenance
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ProvenanceTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Provenance", js["resourceType"])
         return provenance.Provenance(js)
-    
+
     def testProvenance1(self):
         inst = self.instantiate_from("provenance-example-biocompute-object.json")
         self.assertIsNotNone(inst, "Must have instantiated a Provenance instance")
         self.implProvenance1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Provenance", js["resourceType"])
         inst2 = provenance.Provenance(js)
         self.implProvenance1(inst2)
-    
+
     def implProvenance1(self, inst):
         self.assertEqual(inst.agent[0].role[0].coding[0].code, "AUT")
         self.assertEqual(inst.agent[0].role[0].coding[0].system, "http://hl7.org/fhir/v3/ParticipationType")
@@ -46,17 +47,17 @@ class ProvenanceTests(unittest.TestCase):
         self.assertEqual(inst.recorded.date, FHIRDate("2016-06-09T08:12:14+10:00").date)
         self.assertEqual(inst.recorded.as_json(), "2016-06-09T08:12:14+10:00")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testProvenance2(self):
         inst = self.instantiate_from("provenance-example-cwl.json")
         self.assertIsNotNone(inst, "Must have instantiated a Provenance instance")
         self.implProvenance2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Provenance", js["resourceType"])
         inst2 = provenance.Provenance(js)
         self.implProvenance2(inst2)
-    
+
     def implProvenance2(self, inst):
         self.assertEqual(inst.agent[0].role[0].coding[0].code, "AUT")
         self.assertEqual(inst.agent[0].role[0].coding[0].system, "http://hl7.org/fhir/v3/ParticipationType")
@@ -72,17 +73,17 @@ class ProvenanceTests(unittest.TestCase):
         self.assertEqual(inst.recorded.date, FHIRDate("2016-12-01T08:12:14+10:00").date)
         self.assertEqual(inst.recorded.as_json(), "2016-12-01T08:12:14+10:00")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testProvenance3(self):
         inst = self.instantiate_from("provenance-example-sig.json")
         self.assertIsNotNone(inst, "Must have instantiated a Provenance instance")
         self.implProvenance3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Provenance", js["resourceType"])
         inst2 = provenance.Provenance(js)
         self.implProvenance3(inst2)
-    
+
     def implProvenance3(self, inst):
         self.assertEqual(inst.activity.code, "AU")
         self.assertEqual(inst.activity.display, "authenticated")
@@ -105,17 +106,17 @@ class ProvenanceTests(unittest.TestCase):
         self.assertEqual(inst.signature[0].when.as_json(), "2015-08-27T08:39:24+10:00")
         self.assertEqual(inst.text.div, "<div xmlns=\"http://www.w3.org/1999/xhtml\">procedure record authored on 27-June 2015 by Harold Hippocrates, MD Content extracted from Referral received 26-June</div>")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testProvenance4(self):
         inst = self.instantiate_from("provenance-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Provenance instance")
         self.implProvenance4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Provenance", js["resourceType"])
         inst2 = provenance.Provenance(js)
         self.implProvenance4(inst2)
-    
+
     def implProvenance4(self, inst):
         self.assertEqual(inst.agent[0].onBehalfOfUri, "#a1")
         self.assertEqual(inst.agent[0].relatedAgentType.text, "used")

@@ -8,7 +8,7 @@ import os
 from rdr_service import dao
 from rdr_service.dao import database_factory
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
-from rdr_service.main_util import get_parser, configure_logging
+from rdr_service.main_util import configure_logging, get_parser
 
 
 def main(args):

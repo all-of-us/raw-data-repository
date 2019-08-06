@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import auditevent
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class AuditEventTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("AuditEvent", js["resourceType"])
         return auditevent.AuditEvent(js)
-    
+
     def testAuditEvent1(self):
         inst = self.instantiate_from("audit-event-example-login.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent1(inst2)
-    
+
     def implAuditEvent1(self, inst):
         self.assertEqual(inst.action, "E")
         self.assertEqual(inst.agent[0].altId, "601847123")
@@ -63,17 +64,17 @@ class AuditEventTests(unittest.TestCase):
         self.assertEqual(inst.type.code, "110114")
         self.assertEqual(inst.type.display, "User Authentication")
         self.assertEqual(inst.type.system, "http://dicom.nema.org/resources/ontology/DCM")
-    
+
     def testAuditEvent2(self):
         inst = self.instantiate_from("audit-event-example-logout.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent2(inst2)
-    
+
     def implAuditEvent2(self, inst):
         self.assertEqual(inst.action, "E")
         self.assertEqual(inst.agent[0].altId, "601847123")
@@ -106,17 +107,17 @@ class AuditEventTests(unittest.TestCase):
         self.assertEqual(inst.type.code, "110114")
         self.assertEqual(inst.type.display, "User Authentication")
         self.assertEqual(inst.type.system, "http://dicom.nema.org/resources/ontology/DCM")
-    
+
     def testAuditEvent3(self):
         inst = self.instantiate_from("audit-event-example-media.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent3(inst2)
-    
+
     def implAuditEvent3(self, inst):
         self.assertEqual(inst.action, "R")
         self.assertFalse(inst.agent[0].requestor)
@@ -165,17 +166,17 @@ class AuditEventTests(unittest.TestCase):
         self.assertEqual(inst.type.code, "110106")
         self.assertEqual(inst.type.display, "Export")
         self.assertEqual(inst.type.system, "http://dicom.nema.org/resources/ontology/DCM")
-    
+
     def testAuditEvent4(self):
         inst = self.instantiate_from("audit-event-example-pixQuery.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent4(inst2)
-    
+
     def implAuditEvent4(self, inst):
         self.assertEqual(inst.action, "E")
         self.assertEqual(inst.agent[0].altId, "6580")
@@ -217,17 +218,17 @@ class AuditEventTests(unittest.TestCase):
         self.assertEqual(inst.type.code, "110112")
         self.assertEqual(inst.type.display, "Query")
         self.assertEqual(inst.type.system, "http://dicom.nema.org/resources/ontology/DCM")
-    
+
     def testAuditEvent5(self):
         inst = self.instantiate_from("audit-event-example-search.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent5(inst2)
-    
+
     def implAuditEvent5(self, inst):
         self.assertEqual(inst.action, "E")
         self.assertEqual(inst.agent[0].altId, "601847123")
@@ -265,17 +266,17 @@ class AuditEventTests(unittest.TestCase):
         self.assertEqual(inst.type.code, "rest")
         self.assertEqual(inst.type.display, "Restful Operation")
         self.assertEqual(inst.type.system, "http://hl7.org/fhir/audit-event-type")
-    
+
     def testAuditEvent6(self):
         inst = self.instantiate_from("audit-event-example-vread.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent6(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent6(inst2)
-    
+
     def implAuditEvent6(self, inst):
         self.assertEqual(inst.action, "R")
         self.assertEqual(inst.agent[0].altId, "601847123")
@@ -312,17 +313,17 @@ class AuditEventTests(unittest.TestCase):
         self.assertEqual(inst.type.code, "rest")
         self.assertEqual(inst.type.display, "Restful Operation")
         self.assertEqual(inst.type.system, "http://hl7.org/fhir/audit-event-type")
-    
+
     def testAuditEvent7(self):
         inst = self.instantiate_from("auditevent-example-disclosure.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent7(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent7(inst2)
-    
+
     def implAuditEvent7(self, inst):
         self.assertEqual(inst.action, "R")
         self.assertEqual(inst.agent[0].altId, "notMe")
@@ -392,17 +393,17 @@ class AuditEventTests(unittest.TestCase):
         self.assertEqual(inst.type.code, "110106")
         self.assertEqual(inst.type.display, "Export")
         self.assertEqual(inst.type.system, "http://dicom.nema.org/resources/ontology/DCM")
-    
+
     def testAuditEvent8(self):
         inst = self.instantiate_from("auditevent-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a AuditEvent instance")
         self.implAuditEvent8(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AuditEvent", js["resourceType"])
         inst2 = auditevent.AuditEvent(js)
         self.implAuditEvent8(inst2)
-    
+
     def implAuditEvent8(self, inst):
         self.assertEqual(inst.action, "E")
         self.assertEqual(inst.agent[0].network.address, "127.0.0.1")

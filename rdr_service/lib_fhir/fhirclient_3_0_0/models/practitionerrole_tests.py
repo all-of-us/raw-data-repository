@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import practitionerrole
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class PractitionerRoleTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("PractitionerRole", js["resourceType"])
         return practitionerrole.PractitionerRole(js)
-    
+
     def testPractitionerRole1(self):
         inst = self.instantiate_from("practitionerrole-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a PractitionerRole instance")
         self.implPractitionerRole1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("PractitionerRole", js["resourceType"])
         inst2 = practitionerrole.PractitionerRole(js)
         self.implPractitionerRole1(inst2)
-    
+
     def implPractitionerRole1(self, inst):
         self.assertTrue(inst.active)
         self.assertEqual(inst.availabilityExceptions, "Adam is generally unavailable on public holidays and during the Christmas/New Year break")

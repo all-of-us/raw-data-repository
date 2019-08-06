@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import conceptmap
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ConceptMapTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("ConceptMap", js["resourceType"])
         return conceptmap.ConceptMap(js)
-    
+
     def testConceptMap1(self):
         inst = self.instantiate_from("conceptmap-example-2.json")
         self.assertIsNotNone(inst, "Must have instantiated a ConceptMap instance")
         self.implConceptMap1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ConceptMap", js["resourceType"])
         inst2 = conceptmap.ConceptMap(js)
         self.implConceptMap1(inst2)
-    
+
     def implConceptMap1(self, inst):
         self.assertEqual(inst.contact[0].name, "FHIR project team (example)")
         self.assertEqual(inst.contact[0].telecom[0].system, "url")
@@ -62,17 +63,17 @@ class ConceptMapTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.title, "FHIR Example 2")
         self.assertEqual(inst.url, "http://hl7.org/fhir/ConceptMap/example2")
-    
+
     def testConceptMap2(self):
         inst = self.instantiate_from("conceptmap-example-specimen-type.json")
         self.assertIsNotNone(inst, "Must have instantiated a ConceptMap instance")
         self.implConceptMap2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ConceptMap", js["resourceType"])
         inst2 = conceptmap.ConceptMap(js)
         self.implConceptMap2(inst2)
-    
+
     def implConceptMap2(self, inst):
         self.assertEqual(inst.contact[0].telecom[0].system, "url")
         self.assertEqual(inst.contact[0].telecom[0].value, "http://hl7.org/fhir")
@@ -127,17 +128,17 @@ class ConceptMapTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.url, "http://hl7.org/fhir/ConceptMap/102")
         self.assertEqual(inst.version, "20130725")
-    
+
     def testConceptMap3(self):
         inst = self.instantiate_from("conceptmap-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ConceptMap instance")
         self.implConceptMap3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ConceptMap", js["resourceType"])
         inst2 = conceptmap.ConceptMap(js)
         self.implConceptMap3(inst2)
-    
+
     def implConceptMap3(self, inst):
         self.assertEqual(inst.contact[0].name, "FHIR project team (example)")
         self.assertEqual(inst.contact[0].telecom[0].system, "url")

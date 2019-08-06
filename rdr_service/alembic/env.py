@@ -1,19 +1,19 @@
-import os
 import logging
-# Importing this is what gets our model available for Alembic.
-from rdr_service.model import database, utils  # pylint: disable=unused-import
-import sqlalchemy as sa
+import os
 import re
+from logging.config import fileConfig
 
+import sqlalchemy as sa
+from alembic import context
+from sqlalchemy import engine_from_config, pool
+from sqlalchemy.dialects.mysql.types import SMALLINT, TINYINT
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.types import BLOB
-from sqlalchemy.dialects.mysql.types import TINYINT, SMALLINT
-from alembic import context
-from sqlalchemy import engine_from_config, pool
-from logging.config import fileConfig
-from rdr_service.model.base import Base, MetricsBase
 
+# Importing this is what gets our model available for Alembic.
+from rdr_service.model import utils  # pylint: disable=unused-import
+from rdr_service.model.base import Base, MetricsBase
 
 USE_TWOPHASE = False
 

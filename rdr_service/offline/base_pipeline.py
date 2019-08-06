@@ -2,10 +2,9 @@ import datetime
 import logging
 import os
 
-from google.appengine.api import app_identity
-from google.appengine.api import mail
-from google.appengine.ext import db
 import pipeline
+from google.appengine.api import app_identity, mail
+from google.appengine.ext import db
 
 from rdr_service import config
 

@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import parameters
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ParametersTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Parameters", js["resourceType"])
         return parameters.Parameters(js)
-    
+
     def testParameters1(self):
         inst = self.instantiate_from("parameters-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Parameters instance")
         self.implParameters1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Parameters", js["resourceType"])
         inst2 = parameters.Parameters(js)
         self.implParameters1(inst2)
-    
+
     def implParameters1(self, inst):
         self.assertEqual(inst.id, "example")
         self.assertEqual(inst.parameter[0].name, "start")

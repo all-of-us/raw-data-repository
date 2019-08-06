@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import allergyintolerance
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class AllergyIntoleranceTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("AllergyIntolerance", js["resourceType"])
         return allergyintolerance.AllergyIntolerance(js)
-    
+
     def testAllergyIntolerance1(self):
         inst = self.instantiate_from("allergyintolerance-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a AllergyIntolerance instance")
         self.implAllergyIntolerance1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AllergyIntolerance", js["resourceType"])
         inst2 = allergyintolerance.AllergyIntolerance(js)
         self.implAllergyIntolerance1(inst2)
-    
+
     def implAllergyIntolerance1(self, inst):
         self.assertEqual(inst.assertedDate.date, FHIRDate("2014-10-09T14:58:00+11:00").date)
         self.assertEqual(inst.assertedDate.as_json(), "2014-10-09T14:58:00+11:00")

@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import clinicalimpression
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ClinicalImpressionTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("ClinicalImpression", js["resourceType"])
         return clinicalimpression.ClinicalImpression(js)
-    
+
     def testClinicalImpression1(self):
         inst = self.instantiate_from("clinicalimpression-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ClinicalImpression instance")
         self.implClinicalImpression1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ClinicalImpression", js["resourceType"])
         inst2 = clinicalimpression.ClinicalImpression(js)
         self.implClinicalImpression1(inst2)
-    
+
     def implClinicalImpression1(self, inst):
         self.assertEqual(inst.date.date, FHIRDate("2014-12-06T22:33:00+11:00").date)
         self.assertEqual(inst.date.as_json(), "2014-12-06T22:33:00+11:00")

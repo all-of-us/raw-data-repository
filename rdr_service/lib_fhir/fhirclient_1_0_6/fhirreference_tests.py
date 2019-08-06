@@ -2,17 +2,17 @@
 
 import io
 import json
-import os.path
 import logging
+import os.path
 import unittest
-import models.questionnaire as questionnaire
+
+import models.bundle as bundle
 import models.medication as medication
+import models.patient as patient
+import models.questionnaire as questionnaire
 import models.resource as resource
 import models.valueset as valueset
-import models.patient as patient
-import models.bundle as bundle
 import server
-
 
 logging.basicConfig(level=logging.CRITICAL)
 

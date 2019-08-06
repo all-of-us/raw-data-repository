@@ -3,14 +3,13 @@ import email.utils
 import logging
 import time
 
-from rdr_service import clock
-from rdr_service import config
 import netaddr
 import pytz
 from flask import request
 from google.appengine.api import app_identity, oauth
 from werkzeug.exceptions import Forbidden, Unauthorized
 
+from rdr_service import clock, config
 
 _GMT = pytz.timezone('GMT')
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'

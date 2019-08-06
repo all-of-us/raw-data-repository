@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import searchparameter
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class SearchParameterTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("SearchParameter", js["resourceType"])
         return searchparameter.SearchParameter(js)
-    
+
     def testSearchParameter1(self):
         inst = self.instantiate_from("searchparameter-example-extension.json")
         self.assertIsNotNone(inst, "Must have instantiated a SearchParameter instance")
         self.implSearchParameter1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("SearchParameter", js["resourceType"])
         inst2 = searchparameter.SearchParameter(js)
         self.implSearchParameter1(inst2)
-    
+
     def implSearchParameter1(self, inst):
         self.assertEqual(inst.base[0], "Patient")
         self.assertEqual(inst.code, "part-agree")
@@ -49,17 +50,17 @@ class SearchParameterTests(unittest.TestCase):
         self.assertEqual(inst.url, "http://hl7.org/fhir/SearchParameter/example-extension")
         self.assertEqual(inst.xpath, "f:DocumentReference/f:extension[@url='http://example.org/fhir/StructureDefinition/participation-agreement']")
         self.assertEqual(inst.xpathUsage, "normal")
-    
+
     def testSearchParameter2(self):
         inst = self.instantiate_from("searchparameter-example-reference.json")
         self.assertIsNotNone(inst, "Must have instantiated a SearchParameter instance")
         self.implSearchParameter2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("SearchParameter", js["resourceType"])
         inst2 = searchparameter.SearchParameter(js)
         self.implSearchParameter2(inst2)
-    
+
     def implSearchParameter2(self, inst):
         self.assertEqual(inst.base[0], "Condition")
         self.assertEqual(inst.chain[0], "name")
@@ -84,17 +85,17 @@ class SearchParameterTests(unittest.TestCase):
         self.assertEqual(inst.type, "reference")
         self.assertEqual(inst.url, "http://hl7.org/fhir/SearchParameter/example")
         self.assertEqual(inst.xpathUsage, "normal")
-    
+
     def testSearchParameter3(self):
         inst = self.instantiate_from("searchparameter-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a SearchParameter instance")
         self.implSearchParameter3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("SearchParameter", js["resourceType"])
         inst2 = searchparameter.SearchParameter(js)
         self.implSearchParameter3(inst2)
-    
+
     def implSearchParameter3(self, inst):
         self.assertEqual(inst.base[0], "Resource")
         self.assertEqual(inst.code, "_id")

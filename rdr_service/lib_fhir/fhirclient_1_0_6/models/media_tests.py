@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import media
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class MediaTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Media", js["resourceType"])
         return media.Media(js)
-    
+
     def testMedia1(self):
         inst = self.instantiate_from("media-example-dicom.json")
         self.assertIsNotNone(inst, "Must have instantiated a Media instance")
         self.implMedia1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Media", js["resourceType"])
         inst2 = media.Media(js)
         self.implMedia1(inst2)
-    
+
     def implMedia1(self, inst):
         self.assertEqual(inst.content.contentType, "application/dicom")
         self.assertEqual(inst.deviceName, "G.E. Medical Systems")
@@ -59,17 +60,17 @@ class MediaTests(unittest.TestCase):
         self.assertEqual(inst.view.coding[0].display, "Lateral projection")
         self.assertEqual(inst.view.coding[0].system, "http://snomed.info/sct")
         self.assertEqual(inst.width, 640)
-    
+
     def testMedia2(self):
         inst = self.instantiate_from("media-example-sound.json")
         self.assertIsNotNone(inst, "Must have instantiated a Media instance")
         self.implMedia2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Media", js["resourceType"])
         inst2 = media.Media(js)
         self.implMedia2(inst2)
-    
+
     def implMedia2(self, inst):
         self.assertEqual(inst.content.contentType, "audio/mpeg")
         self.assertEqual(inst.content.data, "dG9vIGJpZyB0b28gaW5jbHVkZSB0aGUgd2hvbGU=")
@@ -79,17 +80,17 @@ class MediaTests(unittest.TestCase):
         self.assertEqual(inst.text.div, "<div>Sound recording of speech example for Patient Henry Levin (MRN 12345):<br/><img alt=\"diagram\" src=\"#11\"/></div>")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.type, "video")
-    
+
     def testMedia3(self):
         inst = self.instantiate_from("media-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Media instance")
         self.implMedia3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Media", js["resourceType"])
         inst2 = media.Media(js)
         self.implMedia3(inst2)
-    
+
     def implMedia3(self, inst):
         self.assertEqual(inst.content.contentType, "image/gif")
         self.assertEqual(inst.content.creation.date, FHIRDate("2009-09-03").date)

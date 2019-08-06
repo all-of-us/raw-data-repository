@@ -4,23 +4,20 @@ CONFIG contains all the fields that will appear in metrics, with functions
 returning their possible valid values. Summary fields are used to derive values
 from other field values.
 '''
-from rdr_service import config
-from rdr_service import participant_enums
-
+from rdr_service import config, participant_enums
 from rdr_service.census_regions import census_regions
-from rdr_service.code_constants import BASE_VALUES, UNSET
-from rdr_service.code_constants import PPI_SYSTEM
+from rdr_service.code_constants import BASE_VALUES, PPI_SYSTEM, UNSET
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.field_mappings import QUESTIONNAIRE_MODULE_FIELD_NAMES
-from rdr_service.field_mappings import NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES
-from rdr_service.field_mappings import CONSENT_FOR_STUDY_ENROLLMENT_FIELD, FIELD_TO_QUESTION_CODE
-from rdr_service.field_mappings import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD
+from rdr_service.field_mappings import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD, \
+  CONSENT_FOR_STUDY_ENROLLMENT_FIELD, \
+  FIELD_TO_QUESTION_CODE, NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES, QUESTIONNAIRE_MODULE_FIELD_NAMES
 from rdr_service.model.base import get_column_name
 from rdr_service.model.code import CodeType
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus
+from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, \
+  SampleStatus
 
 PARTICIPANT_KIND = 'Participant'
 FULL_PARTICIPANT_KIND = 'FullParticipant'

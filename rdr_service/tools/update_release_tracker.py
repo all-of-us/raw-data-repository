@@ -9,11 +9,11 @@ environment variables to be set, and flags for version and instance to be provid
 
 import logging
 import os
-import jira
 import sys
 
-from rdr_service.main_util import get_parser, configure_logging
+import jira
 
+from rdr_service.main_util import configure_logging, get_parser
 
 _JIRA_INSTANCE_URL = 'https://precisionmedicineinitiative.atlassian.net/'
 # Release tickets are moved from our usual project, DA, to the PD project

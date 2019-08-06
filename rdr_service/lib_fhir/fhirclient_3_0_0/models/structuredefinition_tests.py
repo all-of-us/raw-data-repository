@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import structuredefinition
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class StructureDefinitionTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("StructureDefinition", js["resourceType"])
         return structuredefinition.StructureDefinition(js)
-    
+
     def testStructureDefinition1(self):
         inst = self.instantiate_from("structuredefinition-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a StructureDefinition instance")
         self.implStructureDefinition1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("StructureDefinition", js["resourceType"])
         inst2 = structuredefinition.StructureDefinition(js)
         self.implStructureDefinition1(inst2)
-    
+
     def implStructureDefinition1(self, inst):
         self.assertFalse(inst.abstract)
         self.assertEqual(inst.baseDefinition, "http://hl7.org/fhir/StructureDefinition/DiagnosticReport")

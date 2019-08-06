@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import diagnosticreport
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class DiagnosticReportTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("DiagnosticReport", js["resourceType"])
         return diagnosticreport.DiagnosticReport(js)
-    
+
     def testDiagnosticReport1(self):
         inst = self.instantiate_from("diagnosticreport-example-dxa.json")
         self.assertIsNotNone(inst, "Must have instantiated a DiagnosticReport instance")
         self.implDiagnosticReport1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DiagnosticReport", js["resourceType"])
         inst2 = diagnosticreport.DiagnosticReport(js)
         self.implDiagnosticReport1(inst2)
-    
+
     def implDiagnosticReport1(self, inst):
         self.assertEqual(inst.code.coding[0].code, "38269-7")
         self.assertEqual(inst.code.coding[0].system, "http://loinc.org")
@@ -49,17 +50,17 @@ class DiagnosticReportTests(unittest.TestCase):
         self.assertEqual(inst.performer[0].role.text, "Radiologist")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testDiagnosticReport2(self):
         inst = self.instantiate_from("diagnosticreport-example-f001-bloodexam.json")
         self.assertIsNotNone(inst, "Must have instantiated a DiagnosticReport instance")
         self.implDiagnosticReport2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DiagnosticReport", js["resourceType"])
         inst2 = diagnosticreport.DiagnosticReport(js)
         self.implDiagnosticReport2(inst2)
-    
+
     def implDiagnosticReport2(self, inst):
         self.assertEqual(inst.category.coding[0].code, "252275004")
         self.assertEqual(inst.category.coding[0].display, "Haematology test")
@@ -79,17 +80,17 @@ class DiagnosticReportTests(unittest.TestCase):
         self.assertEqual(inst.issued.as_json(), "2013-05-15T19:32:52+01:00")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testDiagnosticReport3(self):
         inst = self.instantiate_from("diagnosticreport-example-f201-brainct.json")
         self.assertIsNotNone(inst, "Must have instantiated a DiagnosticReport instance")
         self.implDiagnosticReport3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DiagnosticReport", js["resourceType"])
         inst2 = diagnosticreport.DiagnosticReport(js)
         self.implDiagnosticReport3(inst2)
-    
+
     def implDiagnosticReport3(self, inst):
         self.assertEqual(inst.category.coding[0].code, "394914008")
         self.assertEqual(inst.category.coding[0].display, "Radiology")
@@ -111,17 +112,17 @@ class DiagnosticReportTests(unittest.TestCase):
         self.assertEqual(inst.issued.as_json(), "2012-12-01T12:00:00+01:00")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testDiagnosticReport4(self):
         inst = self.instantiate_from("diagnosticreport-example-f202-bloodculture.json")
         self.assertIsNotNone(inst, "Must have instantiated a DiagnosticReport instance")
         self.implDiagnosticReport4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DiagnosticReport", js["resourceType"])
         inst2 = diagnosticreport.DiagnosticReport(js)
         self.implDiagnosticReport4(inst2)
-    
+
     def implDiagnosticReport4(self, inst):
         self.assertEqual(inst.category.coding[0].code, "15220000")
         self.assertEqual(inst.category.coding[0].display, "Laboratory test")
@@ -141,17 +142,17 @@ class DiagnosticReportTests(unittest.TestCase):
         self.assertEqual(inst.issued.as_json(), "2013-03-11T10:28:00+01:00")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testDiagnosticReport5(self):
         inst = self.instantiate_from("diagnosticreport-example-ghp.json")
         self.assertIsNotNone(inst, "Must have instantiated a DiagnosticReport instance")
         self.implDiagnosticReport5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DiagnosticReport", js["resourceType"])
         inst2 = diagnosticreport.DiagnosticReport(js)
         self.implDiagnosticReport5(inst2)
-    
+
     def implDiagnosticReport5(self, inst):
         self.assertEqual(inst.code.coding[0].code, "GHP")
         self.assertEqual(inst.code.coding[0].display, "General Health Profile")
@@ -177,17 +178,17 @@ class DiagnosticReportTests(unittest.TestCase):
         self.assertEqual(inst.meta.lastUpdated.as_json(), "2015-08-16T10:35:23Z")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testDiagnosticReport6(self):
         inst = self.instantiate_from("diagnosticreport-example-gingival-mass.json")
         self.assertIsNotNone(inst, "Must have instantiated a DiagnosticReport instance")
         self.implDiagnosticReport6(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DiagnosticReport", js["resourceType"])
         inst2 = diagnosticreport.DiagnosticReport(js)
         self.implDiagnosticReport6(inst2)
-    
+
     def implDiagnosticReport6(self, inst):
         self.assertEqual(inst.category.coding[0].code, "PAT")
         self.assertEqual(inst.category.coding[0].display, "Pathology (gross & histopath, not surgical)")
@@ -209,17 +210,17 @@ class DiagnosticReportTests(unittest.TestCase):
         self.assertEqual(inst.presentedForm[0].title, "LAB ID: P73456090 MAX JONES Biopsy without Microscopic Description (1 Site/Lesion)-Standard")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testDiagnosticReport7(self):
         inst = self.instantiate_from("diagnosticreport-example-lipids.json")
         self.assertIsNotNone(inst, "Must have instantiated a DiagnosticReport instance")
         self.implDiagnosticReport7(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DiagnosticReport", js["resourceType"])
         inst2 = diagnosticreport.DiagnosticReport(js)
         self.implDiagnosticReport7(inst2)
-    
+
     def implDiagnosticReport7(self, inst):
         self.assertEqual(inst.category.coding[0].code, "HM")
         self.assertEqual(inst.category.coding[0].system, "http://hl7.org/fhir/v2/0074")
@@ -240,17 +241,17 @@ class DiagnosticReportTests(unittest.TestCase):
         self.assertEqual(inst.issued.as_json(), "2013-01-27T11:45:33+11:00")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testDiagnosticReport8(self):
         inst = self.instantiate_from("diagnosticreport-example-papsmear.json")
         self.assertIsNotNone(inst, "Must have instantiated a DiagnosticReport instance")
         self.implDiagnosticReport8(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DiagnosticReport", js["resourceType"])
         inst2 = diagnosticreport.DiagnosticReport(js)
         self.implDiagnosticReport8(inst2)
-    
+
     def implDiagnosticReport8(self, inst):
         self.assertEqual(inst.code.coding[0].code, "47527-7")
         self.assertEqual(inst.code.coding[0].system, "http://loinc.org")
@@ -261,17 +262,17 @@ class DiagnosticReportTests(unittest.TestCase):
         self.assertEqual(inst.issued.as_json(), "2013-02-13T11:45:33+11:00")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "additional")
-    
+
     def testDiagnosticReport9(self):
         inst = self.instantiate_from("diagnosticreport-example-pgx.json")
         self.assertIsNotNone(inst, "Must have instantiated a DiagnosticReport instance")
         self.implDiagnosticReport9(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DiagnosticReport", js["resourceType"])
         inst2 = diagnosticreport.DiagnosticReport(js)
         self.implDiagnosticReport9(inst2)
-    
+
     def implDiagnosticReport9(self, inst):
         self.assertEqual(inst.code.coding[0].code, "PGxReport")
         self.assertEqual(inst.code.coding[0].display, "Pharmacogenetics Report")
@@ -291,17 +292,17 @@ class DiagnosticReportTests(unittest.TestCase):
         self.assertEqual(inst.presentedForm[0].title, "Pharmacogenetics Report")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testDiagnosticReport10(self):
         inst = self.instantiate_from("diagnosticreport-example-ultrasound.json")
         self.assertIsNotNone(inst, "Must have instantiated a DiagnosticReport instance")
         self.implDiagnosticReport10(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DiagnosticReport", js["resourceType"])
         inst2 = diagnosticreport.DiagnosticReport(js)
         self.implDiagnosticReport10(inst2)
-    
+
     def implDiagnosticReport10(self, inst):
         self.assertEqual(inst.category.coding[0].code, "394914008")
         self.assertEqual(inst.category.coding[0].display, "Radiology")

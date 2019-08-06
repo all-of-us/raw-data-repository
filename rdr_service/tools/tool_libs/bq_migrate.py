@@ -3,6 +3,7 @@
 # Template for RDR tool python program.
 #
 
+import argparse
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
 import importlib
@@ -12,11 +13,10 @@ import os
 import sys
 import tempfile
 
-
-import argparse
 from rdr_service.model import BQ_SCHEMAS, BQ_VIEWS
-from rdr_service.model.bq_base import BQDuplicateFieldException, BQInvalidSchemaException, BQInvalidModeException, \
-                            BQSchemaStructureException, BQException, BQSchema
+from rdr_service.model.bq_base import BQDuplicateFieldException, BQException, \
+  BQInvalidModeException, \
+  BQInvalidSchemaException, BQSchema, BQSchemaStructureException
 from rdr_service.services.gcp_utils import gcp_bq_command
 from rdr_service.services.system_utils import setup_logging, setup_unicode
 from rdr_service.tools.tool_libs import GCPProcessContext

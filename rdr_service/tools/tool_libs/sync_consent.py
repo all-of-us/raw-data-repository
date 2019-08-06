@@ -5,22 +5,24 @@
 # Replaces older ehr_upload_for_organization.sh script.
 #
 
+import StringIO
+import argparse
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
 import csv
 import json
 import logging
-import MySQLdb
 import os
 import random
-import tempfile
-import StringIO
 import sys
+import tempfile
 
-import argparse
-from rdr_service.tools.tool_libs import GCPProcessContext
-from rdr_service.services.system_utils import setup_logging, setup_unicode, make_api_request, print_progress_bar
+import MySQLdb
+
 from rdr_service.services.gcp_utils import gcp_cp, gcp_format_sql_instance, gcp_make_auth_header
+from rdr_service.services.system_utils import make_api_request, print_progress_bar, setup_logging, \
+  setup_unicode
+from rdr_service.tools.tool_libs import GCPProcessContext
 
 _logger = logging.getLogger('rdr_logger')
 

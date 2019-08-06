@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import familymemberhistory
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class FamilyMemberHistoryTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("FamilyMemberHistory", js["resourceType"])
         return familymemberhistory.FamilyMemberHistory(js)
-    
+
     def testFamilyMemberHistory1(self):
         inst = self.instantiate_from("familymemberhistory-example-mother.json")
         self.assertIsNotNone(inst, "Must have instantiated a FamilyMemberHistory instance")
         self.implFamilyMemberHistory1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("FamilyMemberHistory", js["resourceType"])
         inst2 = familymemberhistory.FamilyMemberHistory(js)
         self.implFamilyMemberHistory1(inst2)
-    
+
     def implFamilyMemberHistory1(self, inst):
         self.assertEqual(inst.condition[0].code.coding[0].code, "371041009")
         self.assertEqual(inst.condition[0].code.coding[0].display, "Embolic Stroke")
@@ -47,17 +48,17 @@ class FamilyMemberHistoryTests(unittest.TestCase):
         self.assertEqual(inst.status, "completed")
         self.assertEqual(inst.text.div, "<div xmlns=\"http://www.w3.org/1999/xhtml\">Mother died of a stroke aged 56</div>")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testFamilyMemberHistory2(self):
         inst = self.instantiate_from("familymemberhistory-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a FamilyMemberHistory instance")
         self.implFamilyMemberHistory2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("FamilyMemberHistory", js["resourceType"])
         inst2 = familymemberhistory.FamilyMemberHistory(js)
         self.implFamilyMemberHistory2(inst2)
-    
+
     def implFamilyMemberHistory2(self, inst):
         self.assertEqual(inst.condition[0].code.coding[0].code, "315619001")
         self.assertEqual(inst.condition[0].code.coding[0].display, "Myocardial Infarction")

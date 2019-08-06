@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import imagingstudy
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ImagingStudyTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("ImagingStudy", js["resourceType"])
         return imagingstudy.ImagingStudy(js)
-    
+
     def testImagingStudy1(self):
         inst = self.instantiate_from("imagingstudy-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ImagingStudy instance")
         self.implImagingStudy1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ImagingStudy", js["resourceType"])
         inst2 = imagingstudy.ImagingStudy(js)
         self.implImagingStudy1(inst2)
-    
+
     def implImagingStudy1(self, inst):
         self.assertEqual(inst.id, "example")
         self.assertEqual(inst.numberOfInstances, 1)

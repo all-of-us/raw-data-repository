@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import condition
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ConditionTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Condition", js["resourceType"])
         return condition.Condition(js)
-    
+
     def testCondition1(self):
         inst = self.instantiate_from("condition-example-f001-heart.json")
         self.assertIsNotNone(inst, "Must have instantiated a Condition instance")
         self.implCondition1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Condition", js["resourceType"])
         inst2 = condition.Condition(js)
         self.implCondition1(inst2)
-    
+
     def implCondition1(self, inst):
         self.assertEqual(inst.bodySite[0].coding[0].code, "40768004")
         self.assertEqual(inst.bodySite[0].coding[0].display, "Left thorax")
@@ -56,17 +57,17 @@ class ConditionTests(unittest.TestCase):
         self.assertEqual(inst.severity.coding[0].system, "http://snomed.info/sct")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.verificationStatus, "confirmed")
-    
+
     def testCondition2(self):
         inst = self.instantiate_from("condition-example-f002-lung.json")
         self.assertIsNotNone(inst, "Must have instantiated a Condition instance")
         self.implCondition2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Condition", js["resourceType"])
         inst2 = condition.Condition(js)
         self.implCondition2(inst2)
-    
+
     def implCondition2(self, inst):
         self.assertEqual(inst.bodySite[0].coding[0].code, "51185008")
         self.assertEqual(inst.bodySite[0].coding[0].display, "Thorax")
@@ -94,17 +95,17 @@ class ConditionTests(unittest.TestCase):
         self.assertEqual(inst.stage.summary.coding[0].system, "http://snomed.info/sct")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.verificationStatus, "confirmed")
-    
+
     def testCondition3(self):
         inst = self.instantiate_from("condition-example-f003-abscess.json")
         self.assertIsNotNone(inst, "Must have instantiated a Condition instance")
         self.implCondition3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Condition", js["resourceType"])
         inst2 = condition.Condition(js)
         self.implCondition3(inst2)
-    
+
     def implCondition3(self, inst):
         self.assertEqual(inst.bodySite[0].coding[0].code, "280193007")
         self.assertEqual(inst.bodySite[0].coding[0].display, "Entire retropharyngeal area")
@@ -129,17 +130,17 @@ class ConditionTests(unittest.TestCase):
         self.assertEqual(inst.severity.coding[0].system, "http://snomed.info/sct")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.verificationStatus, "confirmed")
-    
+
     def testCondition4(self):
         inst = self.instantiate_from("condition-example-f201-fever.json")
         self.assertIsNotNone(inst, "Must have instantiated a Condition instance")
         self.implCondition4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Condition", js["resourceType"])
         inst2 = condition.Condition(js)
         self.implCondition4(inst2)
-    
+
     def implCondition4(self, inst):
         self.assertEqual(inst.bodySite[0].coding[0].code, "38266002")
         self.assertEqual(inst.bodySite[0].coding[0].display, "Entire body as a whole")
@@ -166,17 +167,17 @@ class ConditionTests(unittest.TestCase):
         self.assertEqual(inst.severity.coding[0].system, "http://snomed.info/sct")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.verificationStatus, "confirmed")
-    
+
     def testCondition5(self):
         inst = self.instantiate_from("condition-example-f202-malignancy.json")
         self.assertIsNotNone(inst, "Must have instantiated a Condition instance")
         self.implCondition5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Condition", js["resourceType"])
         inst2 = condition.Condition(js)
         self.implCondition5(inst2)
-    
+
     def implCondition5(self, inst):
         self.assertEqual(inst.bodySite[0].coding[0].code, "361355005")
         self.assertEqual(inst.bodySite[0].coding[0].display, "Entire head and neck")
@@ -199,17 +200,17 @@ class ConditionTests(unittest.TestCase):
         self.assertEqual(inst.severity.coding[0].system, "http://snomed.info/sct")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.verificationStatus, "confirmed")
-    
+
     def testCondition6(self):
         inst = self.instantiate_from("condition-example-f203-sepsis.json")
         self.assertIsNotNone(inst, "Must have instantiated a Condition instance")
         self.implCondition6(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Condition", js["resourceType"])
         inst2 = condition.Condition(js)
         self.implCondition6(inst2)
-    
+
     def implCondition6(self, inst):
         self.assertEqual(inst.bodySite[0].coding[0].code, "281158006")
         self.assertEqual(inst.bodySite[0].coding[0].display, "Pulmonary vascular structure")
@@ -233,17 +234,17 @@ class ConditionTests(unittest.TestCase):
         self.assertEqual(inst.severity.coding[0].system, "http://snomed.info/sct")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.verificationStatus, "confirmed")
-    
+
     def testCondition7(self):
         inst = self.instantiate_from("condition-example-f204-renal.json")
         self.assertIsNotNone(inst, "Must have instantiated a Condition instance")
         self.implCondition7(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Condition", js["resourceType"])
         inst2 = condition.Condition(js)
         self.implCondition7(inst2)
-    
+
     def implCondition7(self, inst):
         self.assertEqual(inst.abatementDateTime.date, FHIRDate("2013-03-20").date)
         self.assertEqual(inst.abatementDateTime.as_json(), "2013-03-20")
@@ -272,17 +273,17 @@ class ConditionTests(unittest.TestCase):
         self.assertEqual(inst.stage.summary.coding[0].system, "http://snomed.info/sct")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.verificationStatus, "differential")
-    
+
     def testCondition8(self):
         inst = self.instantiate_from("condition-example-f205-infection.json")
         self.assertIsNotNone(inst, "Must have instantiated a Condition instance")
         self.implCondition8(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Condition", js["resourceType"])
         inst2 = condition.Condition(js)
         self.implCondition8(inst2)
-    
+
     def implCondition8(self, inst):
         self.assertEqual(inst.clinicalStatus, "active")
         self.assertEqual(inst.code.coding[0].code, "87628006")
@@ -293,17 +294,17 @@ class ConditionTests(unittest.TestCase):
         self.assertEqual(inst.id, "f205")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.verificationStatus, "differential")
-    
+
     def testCondition9(self):
         inst = self.instantiate_from("condition-example-stroke.json")
         self.assertIsNotNone(inst, "Must have instantiated a Condition instance")
         self.implCondition9(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Condition", js["resourceType"])
         inst2 = condition.Condition(js)
         self.implCondition9(inst2)
-    
+
     def implCondition9(self, inst):
         self.assertEqual(inst.category.coding[0].code, "diagnosis")
         self.assertEqual(inst.category.coding[0].display, "Diagnosis")
@@ -319,17 +320,17 @@ class ConditionTests(unittest.TestCase):
         self.assertEqual(inst.text.div, "<div>Ischemic stroke, July 18, 2010</div>")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.verificationStatus, "confirmed")
-    
+
     def testCondition10(self):
         inst = self.instantiate_from("condition-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Condition instance")
         self.implCondition10(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Condition", js["resourceType"])
         inst2 = condition.Condition(js)
         self.implCondition10(inst2)
-    
+
     def implCondition10(self, inst):
         self.assertEqual(inst.bodySite[0].coding[0].code, "49521004")
         self.assertEqual(inst.bodySite[0].coding[0].display, "Left external ear structure")

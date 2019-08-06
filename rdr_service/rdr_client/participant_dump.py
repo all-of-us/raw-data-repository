@@ -9,9 +9,8 @@ import logging
 import pprint
 import subprocess
 
-from rdr_service.rdr_client.client import Client
 from rdr_service.main_util import configure_logging, get_parser
-
+from rdr_service.rdr_client.client import Client
 
 # Server logs are searchable for at most 30 days (see DA-247).
 _SERVER_LOG_FRESHNESS = '30d'

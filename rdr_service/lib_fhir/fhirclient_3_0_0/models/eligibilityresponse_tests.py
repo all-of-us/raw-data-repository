@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import eligibilityresponse
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class EligibilityResponseTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("EligibilityResponse", js["resourceType"])
         return eligibilityresponse.EligibilityResponse(js)
-    
+
     def testEligibilityResponse1(self):
         inst = self.instantiate_from("eligibilityresponse-example-benefits-2.json")
         self.assertIsNotNone(inst, "Must have instantiated a EligibilityResponse instance")
         self.implEligibilityResponse1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("EligibilityResponse", js["resourceType"])
         inst2 = eligibilityresponse.EligibilityResponse(js)
         self.implEligibilityResponse1(inst2)
-    
+
     def implEligibilityResponse1(self, inst):
         self.assertEqual(inst.contained[0].id, "patient-1")
         self.assertEqual(inst.contained[1].id, "coverage-1")
@@ -110,17 +111,17 @@ class EligibilityResponseTests(unittest.TestCase):
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.div, "<div xmlns=\"http://www.w3.org/1999/xhtml\">A human-readable rendering of the EligibilityResponse.</div>")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testEligibilityResponse2(self):
         inst = self.instantiate_from("eligibilityresponse-example-benefits.json")
         self.assertIsNotNone(inst, "Must have instantiated a EligibilityResponse instance")
         self.implEligibilityResponse2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("EligibilityResponse", js["resourceType"])
         inst2 = eligibilityresponse.EligibilityResponse(js)
         self.implEligibilityResponse2(inst2)
-    
+
     def implEligibilityResponse2(self, inst):
         self.assertEqual(inst.created.date, FHIRDate("2014-08-16").date)
         self.assertEqual(inst.created.as_json(), "2014-08-16")
@@ -217,17 +218,17 @@ class EligibilityResponseTests(unittest.TestCase):
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.div, "<div xmlns=\"http://www.w3.org/1999/xhtml\">A human-readable rendering of the EligibilityResponse.</div>")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testEligibilityResponse3(self):
         inst = self.instantiate_from("eligibilityresponse-example-error.json")
         self.assertIsNotNone(inst, "Must have instantiated a EligibilityResponse instance")
         self.implEligibilityResponse3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("EligibilityResponse", js["resourceType"])
         inst2 = eligibilityresponse.EligibilityResponse(js)
         self.implEligibilityResponse3(inst2)
-    
+
     def implEligibilityResponse3(self, inst):
         self.assertEqual(inst.created.date, FHIRDate("2014-09-16").date)
         self.assertEqual(inst.created.as_json(), "2014-09-16")
@@ -244,17 +245,17 @@ class EligibilityResponseTests(unittest.TestCase):
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.div, "<div xmlns=\"http://www.w3.org/1999/xhtml\">A human-readable rendering of the EligibilityResponse.</div>")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testEligibilityResponse4(self):
         inst = self.instantiate_from("eligibilityresponse-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a EligibilityResponse instance")
         self.implEligibilityResponse4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("EligibilityResponse", js["resourceType"])
         inst2 = eligibilityresponse.EligibilityResponse(js)
         self.implEligibilityResponse4(inst2)
-    
+
     def implEligibilityResponse4(self, inst):
         self.assertEqual(inst.created.date, FHIRDate("2014-08-16").date)
         self.assertEqual(inst.created.as_json(), "2014-08-16")

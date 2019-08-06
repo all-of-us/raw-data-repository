@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 
 
-import os
 import io
 import json
+import os
 import shutil
-import server
 import unittest
+
+import server
 
 
 class TestServer(unittest.TestCase):

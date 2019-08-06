@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import order
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class OrderTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Order", js["resourceType"])
         return order.Order(js)
-    
+
     def testOrder1(self):
         inst = self.instantiate_from("order-example-f201-physiotherapy.json")
         self.assertIsNotNone(inst, "Must have instantiated a Order instance")
         self.implOrder1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Order", js["resourceType"])
         inst2 = order.Order(js)
         self.implOrder1(inst2)
-    
+
     def implOrder1(self, inst):
         self.assertEqual(inst.date.date, FHIRDate("2013-03-05T12:00:00+01:00").date)
         self.assertEqual(inst.date.as_json(), "2013-03-05T12:00:00+01:00")
@@ -40,17 +41,17 @@ class OrderTests(unittest.TestCase):
         self.assertEqual(inst.when.code.coding[0].code, "394848005")
         self.assertEqual(inst.when.code.coding[0].display, "Normal priority")
         self.assertEqual(inst.when.code.coding[0].system, "http://snomed.info/sct")
-    
+
     def testOrder2(self):
         inst = self.instantiate_from("order-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Order instance")
         self.implOrder2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Order", js["resourceType"])
         inst2 = order.Order(js)
         self.implOrder2(inst2)
-    
+
     def implOrder2(self, inst):
         self.assertEqual(inst.date.date, FHIRDate("2012-12-28T09:03:04+11:00").date)
         self.assertEqual(inst.date.as_json(), "2012-12-28T09:03:04+11:00")

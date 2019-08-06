@@ -3,17 +3,17 @@
 # Template for RDR tool python program.
 #
 
+import argparse
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
 import logging
 import signal
-import time
 import sys
+import time
 
-import argparse
-from rdr_service.tools.tool_libs import GCPProcessContext
-from rdr_service.services.system_utils import setup_logging, setup_unicode
 from rdr_service.services.gcp_utils import gcp_get_app_access_token
+from rdr_service.services.system_utils import setup_logging, setup_unicode
+from rdr_service.tools.tool_libs import GCPProcessContext
 
 _logger = logging.getLogger('rdr_logger')
 

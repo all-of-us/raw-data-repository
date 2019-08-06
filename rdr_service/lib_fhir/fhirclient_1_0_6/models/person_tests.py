@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import person
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class PersonTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Person", js["resourceType"])
         return person.Person(js)
-    
+
     def testPerson1(self):
         inst = self.instantiate_from("person-example-f002-ariadne.json")
         self.assertIsNotNone(inst, "Must have instantiated a Person instance")
         self.implPerson1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Person", js["resourceType"])
         inst2 = person.Person(js)
         self.implPerson1(inst2)
-    
+
     def implPerson1(self, inst):
         self.assertTrue(inst.active)
         self.assertEqual(inst.birthDate.date, FHIRDate("1963").date)
@@ -44,17 +45,17 @@ class PersonTests(unittest.TestCase):
         self.assertEqual(inst.telecom[0].use, "home")
         self.assertEqual(inst.telecom[0].value, "+31201234567")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testPerson2(self):
         inst = self.instantiate_from("person-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Person instance")
         self.implPerson2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Person", js["resourceType"])
         inst2 = person.Person(js)
         self.implPerson2(inst2)
-    
+
     def implPerson2(self, inst):
         self.assertTrue(inst.active)
         self.assertEqual(inst.address[0].city, "PleasantVille")

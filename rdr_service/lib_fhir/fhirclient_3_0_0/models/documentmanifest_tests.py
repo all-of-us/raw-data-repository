@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import documentmanifest
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class DocumentManifestTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("DocumentManifest", js["resourceType"])
         return documentmanifest.DocumentManifest(js)
-    
+
     def testDocumentManifest1(self):
         inst = self.instantiate_from("documentmanifest-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a DocumentManifest instance")
         self.implDocumentManifest1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DocumentManifest", js["resourceType"])
         inst2 = documentmanifest.DocumentManifest(js)
         self.implDocumentManifest1(inst2)
-    
+
     def implDocumentManifest1(self, inst):
         self.assertEqual(inst.contained[0].id, "a1")
         self.assertEqual(inst.created.date, FHIRDate("2004-12-25T23:50:50-05:00").date)

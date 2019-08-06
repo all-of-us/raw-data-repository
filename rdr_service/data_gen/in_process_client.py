@@ -1,7 +1,7 @@
 import httplib
 import json
-from rdr_service import main
 
+from rdr_service import main
 from rdr_service.clock import FakeClock
 
 

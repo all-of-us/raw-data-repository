@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import bundle
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class BundleTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Bundle", js["resourceType"])
         return bundle.Bundle(js)
-    
+
     def testBundle1(self):
         inst = self.instantiate_from("bundle-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Bundle instance")
         self.implBundle1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Bundle", js["resourceType"])
         inst2 = bundle.Bundle(js)
         self.implBundle1(inst2)
-    
+
     def implBundle1(self, inst):
         self.assertEqual(inst.entry[0].fullUrl, "https://example.com/base/MedicationRequest/3123")
         self.assertEqual(inst.entry[0].resource.id, "3123")
@@ -48,17 +49,17 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(inst.meta.lastUpdated.as_json(), "2014-08-18T01:43:30Z")
         self.assertEqual(inst.total, 3)
         self.assertEqual(inst.type, "searchset")
-    
+
     def testBundle2(self):
         inst = self.instantiate_from("diagnosticreport-examples-general.json")
         self.assertIsNotNone(inst, "Must have instantiated a Bundle instance")
         self.implBundle2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Bundle", js["resourceType"])
         inst2 = bundle.Bundle(js)
         self.implBundle2(inst2)
-    
+
     def implBundle2(self, inst):
         self.assertEqual(inst.entry[0].fullUrl, "http://hl7.org/fhir/DiagnosticReport/3")
         self.assertEqual(inst.entry[0].resource.id, "3")
@@ -104,17 +105,17 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(inst.meta.lastUpdated.date, FHIRDate("2012-04-14T10:35:23Z").date)
         self.assertEqual(inst.meta.lastUpdated.as_json(), "2012-04-14T10:35:23Z")
         self.assertEqual(inst.type, "collection")
-    
+
     def testBundle3(self):
         inst = self.instantiate_from("diagnosticreport-hla-genetics-results-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Bundle instance")
         self.implBundle3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Bundle", js["resourceType"])
         inst2 = bundle.Bundle(js)
         self.implBundle3(inst2)
-    
+
     def implBundle3(self, inst):
         self.assertEqual(inst.entry[0].fullUrl, "urn:uuid:b0a4b18e-94e7-4b1b-8031-c7ae4bdd8db9")
         self.assertEqual(inst.entry[0].request.method, "POST")
@@ -148,17 +149,17 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(inst.entry[9].request.url, "Sequence")
         self.assertEqual(inst.id, "hla-1")
         self.assertEqual(inst.type, "transaction")
-    
+
     def testBundle4(self):
         inst = self.instantiate_from("document-example-dischargesummary.json")
         self.assertIsNotNone(inst, "Must have instantiated a Bundle instance")
         self.implBundle4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Bundle", js["resourceType"])
         inst2 = bundle.Bundle(js)
         self.implBundle4(inst2)
-    
+
     def implBundle4(self, inst):
         self.assertEqual(inst.entry[0].fullUrl, "http://fhir.healthintersections.com.au/open/Composition/180f219f-97a8-486d-99d9-ed631fe4fc57")
         self.assertEqual(inst.entry[0].resource.id, "180f219f-97a8-486d-99d9-ed631fe4fc57")
@@ -196,17 +197,17 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(inst.signature.when.date, FHIRDate("2015-08-31T07:42:33+10:00").date)
         self.assertEqual(inst.signature.when.as_json(), "2015-08-31T07:42:33+10:00")
         self.assertEqual(inst.type, "document")
-    
+
     def testBundle5(self):
         inst = self.instantiate_from("endpoint-examples-general-template.json")
         self.assertIsNotNone(inst, "Must have instantiated a Bundle instance")
         self.implBundle5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Bundle", js["resourceType"])
         inst2 = bundle.Bundle(js)
         self.implBundle5(inst2)
-    
+
     def implBundle5(self, inst):
         self.assertEqual(inst.entry[0].fullUrl, "http://hl7.org/fhir/Endpoint/71")
         self.assertEqual(inst.entry[0].resource.id, "71")
@@ -232,17 +233,17 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(inst.meta.lastUpdated.date, FHIRDate("2012-05-29T23:45:32Z").date)
         self.assertEqual(inst.meta.lastUpdated.as_json(), "2012-05-29T23:45:32Z")
         self.assertEqual(inst.type, "collection")
-    
+
     def testBundle6(self):
         inst = self.instantiate_from("location-examples-general.json")
         self.assertIsNotNone(inst, "Must have instantiated a Bundle instance")
         self.implBundle6(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Bundle", js["resourceType"])
         inst2 = bundle.Bundle(js)
         self.implBundle6(inst2)
-    
+
     def implBundle6(self, inst):
         self.assertEqual(inst.entry[0].fullUrl, "http://hl7.org/fhir/Location/2")
         self.assertEqual(inst.entry[0].resource.id, "2")
@@ -250,17 +251,17 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(inst.entry[1].resource.id, "3")
         self.assertEqual(inst.id, "3ad0687e-f477-468c-afd5-fcc2bf897819")
         self.assertEqual(inst.type, "collection")
-    
+
     def testBundle7(self):
         inst = self.instantiate_from("patient-examples-cypress-template.json")
         self.assertIsNotNone(inst, "Must have instantiated a Bundle instance")
         self.implBundle7(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Bundle", js["resourceType"])
         inst2 = bundle.Bundle(js)
         self.implBundle7(inst2)
-    
+
     def implBundle7(self, inst):
         self.assertEqual(inst.entry[0].fullUrl, "http://hl7.org/fhir/Patient/71")
         self.assertEqual(inst.entry[0].resource.id, "71")
@@ -306,17 +307,17 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(inst.meta.lastUpdated.date, FHIRDate("2012-05-29T23:45:32Z").date)
         self.assertEqual(inst.meta.lastUpdated.as_json(), "2012-05-29T23:45:32Z")
         self.assertEqual(inst.type, "collection")
-    
+
     def testBundle8(self):
         inst = self.instantiate_from("patient-examples-general.json")
         self.assertIsNotNone(inst, "Must have instantiated a Bundle instance")
         self.implBundle8(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Bundle", js["resourceType"])
         inst2 = bundle.Bundle(js)
         self.implBundle8(inst2)
-    
+
     def implBundle8(self, inst):
         self.assertEqual(inst.entry[0].fullUrl, "http://hl7.org/fhir/Patient/1")
         self.assertEqual(inst.entry[0].resource.id, "1")
@@ -362,17 +363,17 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(inst.meta.lastUpdated.date, FHIRDate("2012-05-29T23:45:32Z").date)
         self.assertEqual(inst.meta.lastUpdated.as_json(), "2012-05-29T23:45:32Z")
         self.assertEqual(inst.type, "collection")
-    
+
     def testBundle9(self):
         inst = self.instantiate_from("practitioner-examples-general.json")
         self.assertIsNotNone(inst, "Must have instantiated a Bundle instance")
         self.implBundle9(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Bundle", js["resourceType"])
         inst2 = bundle.Bundle(js)
         self.implBundle9(inst2)
-    
+
     def implBundle9(self, inst):
         self.assertEqual(inst.entry[0].fullUrl, "http://hl7.org/fhir/Practitioner/1")
         self.assertEqual(inst.entry[0].resource.id, "1")
@@ -416,17 +417,17 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(inst.meta.lastUpdated.date, FHIRDate("2012-05-29T23:45:32Z").date)
         self.assertEqual(inst.meta.lastUpdated.as_json(), "2012-05-29T23:45:32Z")
         self.assertEqual(inst.type, "collection")
-    
+
     def testBundle10(self):
         inst = self.instantiate_from("practitionerrole-examples-general.json")
         self.assertIsNotNone(inst, "Must have instantiated a Bundle instance")
         self.implBundle10(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Bundle", js["resourceType"])
         inst2 = bundle.Bundle(js)
         self.implBundle10(inst2)
-    
+
     def implBundle10(self, inst):
         self.assertEqual(inst.entry[0].fullUrl, "http://hl7.org/fhir/PractitionerRole/f003-0")
         self.assertEqual(inst.entry[0].resource.id, "f003-0")

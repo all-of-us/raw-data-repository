@@ -5,12 +5,12 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import devicemetric
-from .fhirdate import FHIRDate
 
 
 class DeviceMetricTests(unittest.TestCase):
@@ -20,17 +20,17 @@ class DeviceMetricTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("DeviceMetric", js["resourceType"])
         return devicemetric.DeviceMetric(js)
-    
+
     def testDeviceMetric1(self):
         inst = self.instantiate_from("devicemetric-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a DeviceMetric instance")
         self.implDeviceMetric1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DeviceMetric", js["resourceType"])
         inst2 = devicemetric.DeviceMetric(js)
         self.implDeviceMetric1(inst2)
-    
+
     def implDeviceMetric1(self, inst):
         self.assertEqual(inst.category, "measurement")
         self.assertEqual(inst.id, "example")

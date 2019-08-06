@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import visionprescription
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class VisionPrescriptionTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("VisionPrescription", js["resourceType"])
         return visionprescription.VisionPrescription(js)
-    
+
     def testVisionPrescription1(self):
         inst = self.instantiate_from("visionprescription-example-1.json")
         self.assertIsNotNone(inst, "Must have instantiated a VisionPrescription instance")
         self.implVisionPrescription1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("VisionPrescription", js["resourceType"])
         inst2 = visionprescription.VisionPrescription(js)
         self.implVisionPrescription1(inst2)
-    
+
     def implVisionPrescription1(self, inst):
         self.assertEqual(inst.dateWritten.date, FHIRDate("2014-06-15").date)
         self.assertEqual(inst.dateWritten.as_json(), "2014-06-15")
@@ -74,17 +75,17 @@ class VisionPrescriptionTests(unittest.TestCase):
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.div, "<div xmlns=\"http://www.w3.org/1999/xhtml\">Sample Contract Lens prescription</div>")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testVisionPrescription2(self):
         inst = self.instantiate_from("visionprescription-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a VisionPrescription instance")
         self.implVisionPrescription2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("VisionPrescription", js["resourceType"])
         inst2 = visionprescription.VisionPrescription(js)
         self.implVisionPrescription2(inst2)
-    
+
     def implVisionPrescription2(self, inst):
         self.assertEqual(inst.dateWritten.date, FHIRDate("2014-06-15").date)
         self.assertEqual(inst.dateWritten.as_json(), "2014-06-15")

@@ -4,7 +4,7 @@ import json
 import logging
 
 from rdr_service.dao.code_dao import CodeBookDao
-from rdr_service.main_util import get_parser, configure_logging
+from rdr_service.main_util import configure_logging, get_parser
 
 
 def main(args):

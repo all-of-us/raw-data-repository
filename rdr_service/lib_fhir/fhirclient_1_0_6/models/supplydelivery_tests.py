@@ -5,12 +5,12 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import supplydelivery
-from .fhirdate import FHIRDate
 
 
 class SupplyDeliveryTests(unittest.TestCase):

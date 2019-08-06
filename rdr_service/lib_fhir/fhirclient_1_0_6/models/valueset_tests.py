@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import valueset
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ValueSetTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("ValueSet", js["resourceType"])
         return valueset.ValueSet(js)
-    
+
     def testValueSet1(self):
         inst = self.instantiate_from("valueset-example-expansion.json")
         self.assertIsNotNone(inst, "Must have instantiated a ValueSet instance")
         self.implValueSet1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ValueSet", js["resourceType"])
         inst2 = valueset.ValueSet(js)
         self.implValueSet1(inst2)
-    
+
     def implValueSet1(self, inst):
         self.assertEqual(inst.compose.include[0].filter[0].op, "=")
         self.assertEqual(inst.compose.include[0].filter[0].property, "parent")
@@ -96,17 +97,17 @@ class ValueSetTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.url, "http://hl7.org/fhir/ValueSet/example-expansion")
         self.assertEqual(inst.version, "20150622")
-    
+
     def testValueSet2(self):
         inst = self.instantiate_from("valueset-example-inline.json")
         self.assertIsNotNone(inst, "Must have instantiated a ValueSet instance")
         self.implValueSet2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ValueSet", js["resourceType"])
         inst2 = valueset.ValueSet(js)
         self.implValueSet2(inst2)
-    
+
     def implValueSet2(self, inst):
         self.assertTrue(inst.codeSystem.caseSensitive)
         self.assertEqual(inst.codeSystem.concept[0].code, "chol-mmol")
@@ -146,17 +147,17 @@ class ValueSetTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.url, "http://hl7.org/fhir/ValueSet/example-inline")
         self.assertEqual(inst.version, "20150622")
-    
+
     def testValueSet3(self):
         inst = self.instantiate_from("valueset-example-intensional.json")
         self.assertIsNotNone(inst, "Must have instantiated a ValueSet instance")
         self.implValueSet3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ValueSet", js["resourceType"])
         inst2 = valueset.ValueSet(js)
         self.implValueSet3(inst2)
-    
+
     def implValueSet3(self, inst):
         self.assertEqual(inst.compose.exclude[0].concept[0].code, "5932-9")
         self.assertEqual(inst.compose.exclude[0].concept[0].display, "Cholesterol [Presence] in Blood by Test strip")
@@ -183,17 +184,17 @@ class ValueSetTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.url, "http://hl7.org/fhir/ValueSet/example-intensional")
         self.assertEqual(inst.version, "20150622")
-    
+
     def testValueSet4(self):
         inst = self.instantiate_from("valueset-example-yesnodontknow.json")
         self.assertIsNotNone(inst, "Must have instantiated a ValueSet instance")
         self.implValueSet4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ValueSet", js["resourceType"])
         inst2 = valueset.ValueSet(js)
         self.implValueSet4(inst2)
-    
+
     def implValueSet4(self, inst):
         self.assertEqual(inst.compose.import_fhir[0], "http://hl7.org/fhir/ValueSet/v2-0136")
         self.assertEqual(inst.compose.include[0].concept[0].code, "asked")
@@ -217,17 +218,17 @@ class ValueSetTests(unittest.TestCase):
         self.assertEqual(inst.status, "draft")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.url, "http://hl7.org/fhir/ValueSet/yesnodontknow")
-    
+
     def testValueSet5(self):
         inst = self.instantiate_from("valueset-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ValueSet instance")
         self.implValueSet5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ValueSet", js["resourceType"])
         inst2 = valueset.ValueSet(js)
         self.implValueSet5(inst2)
-    
+
     def implValueSet5(self, inst):
         self.assertEqual(inst.compose.include[0].concept[0].code, "14647-2")
         self.assertEqual(inst.compose.include[0].concept[0].display, "Cholesterol [Moles/Volume]")
@@ -259,17 +260,17 @@ class ValueSetTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.url, "http://hl7.org/fhir/ValueSet/example-extensional")
         self.assertEqual(inst.version, "20150622")
-    
+
     def testValueSet6(self):
         inst = self.instantiate_from("valueset-list-example-codes.json")
         self.assertIsNotNone(inst, "Must have instantiated a ValueSet instance")
         self.implValueSet6(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ValueSet", js["resourceType"])
         inst2 = valueset.ValueSet(js)
         self.implValueSet6(inst2)
-    
+
     def implValueSet6(self, inst):
         self.assertTrue(inst.codeSystem.caseSensitive)
         self.assertEqual(inst.codeSystem.concept[0].code, "alerts")

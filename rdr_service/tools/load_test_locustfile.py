@@ -25,13 +25,13 @@ import os
 import random
 import re
 import time
-from urllib import urlencode
 import urlparse
+from urllib import urlencode
 
 from locust import Locust, TaskSet, events, task
 
-from rdr_service.rdr_client.client import Client, HttpException
 from rdr_service.data_gen.fake_participant_generator import FakeParticipantGenerator
+from rdr_service.rdr_client.client import Client, HttpException
 
 
 class _ReportingClient(Client):

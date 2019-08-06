@@ -1,8 +1,9 @@
 import logging
 from csv import DictReader
 
-from rdr_service import config
 from cloudstorage import cloudstorage_api
+
+from rdr_service import config
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.offline.biobank_samples_pipeline import DataError
 

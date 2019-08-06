@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import device
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class DeviceTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Device", js["resourceType"])
         return device.Device(js)
-    
+
     def testDevice1(self):
         inst = self.instantiate_from("device-example-f001-feedingtube.json")
         self.assertIsNotNone(inst, "Must have instantiated a Device instance")
         self.implDevice1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Device", js["resourceType"])
         inst2 = device.Device(js)
         self.implDevice1(inst2)
-    
+
     def implDevice1(self, inst):
         self.assertEqual(inst.expiry.date, FHIRDate("2020-08-08").date)
         self.assertEqual(inst.expiry.as_json(), "2020-08-08")
@@ -45,17 +46,17 @@ class DeviceTests(unittest.TestCase):
         self.assertEqual(inst.type.coding[0].display, "Feeding tube, device")
         self.assertEqual(inst.type.coding[0].system, "http://snomed.info/sct")
         self.assertEqual(inst.udi, "(01)00000123000017(10)ABC123(17)120415")
-    
+
     def testDevice2(self):
         inst = self.instantiate_from("device-example-ihe-pcd.json")
         self.assertIsNotNone(inst, "Must have instantiated a Device instance")
         self.implDevice2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Device", js["resourceType"])
         inst2 = device.Device(js)
         self.implDevice2(inst2)
-    
+
     def implDevice2(self, inst):
         self.assertEqual(inst.id, "ihe-pcd")
         self.assertEqual(inst.identifier[0].type.coding[0].code, "SNO")
@@ -67,17 +68,17 @@ class DeviceTests(unittest.TestCase):
         self.assertEqual(inst.model, "A.1.1")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.type.text, "Vital Signs Monitor")
-    
+
     def testDevice3(self):
         inst = self.instantiate_from("device-example-pacemaker.json")
         self.assertIsNotNone(inst, "Must have instantiated a Device instance")
         self.implDevice3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Device", js["resourceType"])
         inst2 = device.Device(js)
         self.implDevice3(inst2)
-    
+
     def implDevice3(self, inst):
         self.assertEqual(inst.contact[0].system, "phone")
         self.assertEqual(inst.contact[0].value, "ext 4352")
@@ -91,17 +92,17 @@ class DeviceTests(unittest.TestCase):
         self.assertEqual(inst.type.coding[0].code, "octane2014")
         self.assertEqual(inst.type.coding[0].display, "Performance pace maker for high octane patients")
         self.assertEqual(inst.type.coding[0].system, "http://acme.com/devices")
-    
+
     def testDevice4(self):
         inst = self.instantiate_from("device-example-software.json")
         self.assertIsNotNone(inst, "Must have instantiated a Device instance")
         self.implDevice4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Device", js["resourceType"])
         inst2 = device.Device(js)
         self.implDevice4(inst2)
-    
+
     def implDevice4(self, inst):
         self.assertEqual(inst.contact[0].system, "other")
         self.assertEqual(inst.contact[0].value, "http://acme.com")
@@ -113,17 +114,17 @@ class DeviceTests(unittest.TestCase):
         self.assertEqual(inst.type.text, "EHR")
         self.assertEqual(inst.url, "http://acme.com/goodhealth/ehr/")
         self.assertEqual(inst.version, "10.23-23423")
-    
+
     def testDevice5(self):
         inst = self.instantiate_from("device-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Device instance")
         self.implDevice5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Device", js["resourceType"])
         inst2 = device.Device(js)
         self.implDevice5(inst2)
-    
+
     def implDevice5(self, inst):
         self.assertEqual(inst.contact[0].system, "phone")
         self.assertEqual(inst.contact[0].value, "ext 4352")

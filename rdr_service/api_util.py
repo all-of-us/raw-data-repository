@@ -1,10 +1,10 @@
 """Utilities used by the API definition, and authentication/authorization/roles."""
 import datetime
 
-from rdr_service.code_constants import UNSET, UNMAPPED
 from dateutil.parser import parse
 from werkzeug.exceptions import BadRequest
 
+from rdr_service.code_constants import UNMAPPED, UNSET
 
 # Role constants
 PTC = "ptc"

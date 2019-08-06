@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import eligibilityrequest
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class EligibilityRequestTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("EligibilityRequest", js["resourceType"])
         return eligibilityrequest.EligibilityRequest(js)
-    
+
     def testEligibilityRequest1(self):
         inst = self.instantiate_from("eligibilityrequest-example-2.json")
         self.assertIsNotNone(inst, "Must have instantiated a EligibilityRequest instance")
         self.implEligibilityRequest1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("EligibilityRequest", js["resourceType"])
         inst2 = eligibilityrequest.EligibilityRequest(js)
         self.implEligibilityRequest1(inst2)
-    
+
     def implEligibilityRequest1(self, inst):
         self.assertEqual(inst.benefitCategory.coding[0].code, "medical")
         self.assertEqual(inst.benefitCategory.coding[0].system, "http://hl7.org/fhir/benefit-category")
@@ -49,17 +50,17 @@ class EligibilityRequestTests(unittest.TestCase):
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.div, "<div xmlns=\"http://www.w3.org/1999/xhtml\">A human-readable rendering of the EligibilityRequest</div>")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testEligibilityRequest2(self):
         inst = self.instantiate_from("eligibilityrequest-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a EligibilityRequest instance")
         self.implEligibilityRequest2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("EligibilityRequest", js["resourceType"])
         inst2 = eligibilityrequest.EligibilityRequest(js)
         self.implEligibilityRequest2(inst2)
-    
+
     def implEligibilityRequest2(self, inst):
         self.assertEqual(inst.created.date, FHIRDate("2014-08-16").date)
         self.assertEqual(inst.created.as_json(), "2014-08-16")

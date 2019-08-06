@@ -5,12 +5,12 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import binary
-from .fhirdate import FHIRDate
 
 
 class BinaryTests(unittest.TestCase):
@@ -20,17 +20,17 @@ class BinaryTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Binary", js["resourceType"])
         return binary.Binary(js)
-    
+
     def testBinary1(self):
         inst = self.instantiate_from("binary-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Binary instance")
         self.implBinary1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Binary", js["resourceType"])
         inst2 = binary.Binary(js)
         self.implBinary1(inst2)
-    
+
     def implBinary1(self, inst):
         self.assertEqual(inst.contentType, "application/pdf")
         self.assertEqual(inst.id, "example")

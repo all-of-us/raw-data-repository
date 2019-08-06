@@ -1,15 +1,16 @@
 #
 # Physical Measurements Generator
 #
-from rdr_service import clock
 import logging
 import random
 import string
 
-from rdr_service.concepts import Concept
-from rdr_service.data_gen.generators.hpo import HPOGen
-from rdr_service.data_gen.generators.base_gen import BaseGen
 from werkzeug.exceptions import BadRequest
+
+from rdr_service import clock
+from rdr_service.concepts import Concept
+from rdr_service.data_gen.generators.base_gen import BaseGen
+from rdr_service.data_gen.generators.hpo import HPOGen
 
 _logger = logging.getLogger('rdr_logger')
 

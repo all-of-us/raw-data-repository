@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import specimen
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class SpecimenTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Specimen", js["resourceType"])
         return specimen.Specimen(js)
-    
+
     def testSpecimen1(self):
         inst = self.instantiate_from("specimen-example-isolate.json")
         self.assertIsNotNone(inst, "Must have instantiated a Specimen instance")
         self.implSpecimen1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Specimen", js["resourceType"])
         inst2 = specimen.Specimen(js)
         self.implSpecimen1(inst2)
-    
+
     def implSpecimen1(self, inst):
         self.assertEqual(inst.accessionIdentifier.system, "http://lab.acme.org/specimens/2011")
         self.assertEqual(inst.accessionIdentifier.value, "X352356-ISO1")
@@ -47,17 +48,17 @@ class SpecimenTests(unittest.TestCase):
         self.assertEqual(inst.type.coding[0].code, "429951000124103")
         self.assertEqual(inst.type.coding[0].display, "Bacterial isolate specimen")
         self.assertEqual(inst.type.coding[0].system, "http://snomed.info/sct")
-    
+
     def testSpecimen2(self):
         inst = self.instantiate_from("specimen-example-urine.json")
         self.assertIsNotNone(inst, "Must have instantiated a Specimen instance")
         self.implSpecimen2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Specimen", js["resourceType"])
         inst2 = specimen.Specimen(js)
         self.implSpecimen2(inst2)
-    
+
     def implSpecimen2(self, inst):
         self.assertEqual(inst.accessionIdentifier.system, "http://lab.acme.org/specimens/2015")
         self.assertEqual(inst.accessionIdentifier.value, "X352356")
@@ -79,17 +80,17 @@ class SpecimenTests(unittest.TestCase):
         self.assertEqual(inst.type.coding[0].code, "RANDU")
         self.assertEqual(inst.type.coding[0].display, "Urine, Random")
         self.assertEqual(inst.type.coding[0].system, "http://hl7.org/fhir/v2/0487")
-    
+
     def testSpecimen3(self):
         inst = self.instantiate_from("specimen-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Specimen instance")
         self.implSpecimen3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Specimen", js["resourceType"])
         inst2 = specimen.Specimen(js)
         self.implSpecimen3(inst2)
-    
+
     def implSpecimen3(self, inst):
         self.assertEqual(inst.accessionIdentifier.system, "http://lab.acme.org/specimens/2011")
         self.assertEqual(inst.accessionIdentifier.value, "X352356")

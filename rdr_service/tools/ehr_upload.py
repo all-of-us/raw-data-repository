@@ -11,10 +11,10 @@ import shlex
 import subprocess
 import urllib2
 
+from sqlalchemy import bindparam, text
+
 from rdr_service.dao import database_factory
 from rdr_service.main_util import configure_logging, get_parser
-from sqlalchemy import text, bindparam
-
 
 SOURCE_BUCKET = 'ptc-uploads-all-of-us-rdr-prod'
 BUCKET_NAME = 'Bucket Name'

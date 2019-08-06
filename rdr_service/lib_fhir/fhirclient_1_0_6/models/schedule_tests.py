@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import schedule
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ScheduleTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Schedule", js["resourceType"])
         return schedule.Schedule(js)
-    
+
     def testSchedule1(self):
         inst = self.instantiate_from("schedule-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Schedule instance")
         self.implSchedule1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Schedule", js["resourceType"])
         inst2 = schedule.Schedule(js)
         self.implSchedule1(inst2)
-    
+
     def implSchedule1(self, inst):
         self.assertEqual(inst.comment, "Assessments should be performed before requesting appointments in this slot.")
         self.assertEqual(inst.id, "example")

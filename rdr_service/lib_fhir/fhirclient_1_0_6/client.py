@@ -2,7 +2,7 @@
 
 import logging
 
-from server import FHIRServer, FHIRUnauthorizedException, FHIRNotFoundException
+from server import FHIRNotFoundException, FHIRServer, FHIRUnauthorizedException
 
 __version__ = '1.0.6'
 __author__ = 'SMART Platforms Team'

@@ -5,12 +5,12 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import location
-from .fhirdate import FHIRDate
 
 
 class LocationTests(unittest.TestCase):
@@ -20,17 +20,17 @@ class LocationTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Location", js["resourceType"])
         return location.Location(js)
-    
+
     def testLocation1(self):
         inst = self.instantiate_from("location-example-ambulance.json")
         self.assertIsNotNone(inst, "Must have instantiated a Location instance")
         self.implLocation1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Location", js["resourceType"])
         inst2 = location.Location(js)
         self.implLocation1(inst2)
-    
+
     def implLocation1(self, inst):
         self.assertEqual(inst.description, "Ambulance provided by Burgers University Medical Center")
         self.assertEqual(inst.id, "amb")
@@ -48,17 +48,17 @@ class LocationTests(unittest.TestCase):
         self.assertEqual(inst.type.coding[0].code, "AMB")
         self.assertEqual(inst.type.coding[0].display, "Ambulance")
         self.assertEqual(inst.type.coding[0].system, "http://hl7.org/fhir/v3/RoleCode")
-    
+
     def testLocation2(self):
         inst = self.instantiate_from("location-example-hl7hq.json")
         self.assertIsNotNone(inst, "Must have instantiated a Location instance")
         self.implLocation2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Location", js["resourceType"])
         inst2 = location.Location(js)
         self.implLocation2(inst2)
-    
+
     def implLocation2(self, inst):
         self.assertEqual(inst.address.city, "Ann Arbor")
         self.assertEqual(inst.address.country, "USA")
@@ -85,17 +85,17 @@ class LocationTests(unittest.TestCase):
         self.assertEqual(inst.type.coding[0].code, "SLEEP")
         self.assertEqual(inst.type.coding[0].display, "Sleep disorders unit")
         self.assertEqual(inst.type.coding[0].system, "http://hl7.org/fhir/v3/RoleCode")
-    
+
     def testLocation3(self):
         inst = self.instantiate_from("location-example-patients-home.json")
         self.assertIsNotNone(inst, "Must have instantiated a Location instance")
         self.implLocation3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Location", js["resourceType"])
         inst2 = location.Location(js)
         self.implLocation3(inst2)
-    
+
     def implLocation3(self, inst):
         self.assertEqual(inst.description, "Patient's Home")
         self.assertEqual(inst.id, "ph")
@@ -110,17 +110,17 @@ class LocationTests(unittest.TestCase):
         self.assertEqual(inst.type.coding[0].code, "PTRES")
         self.assertEqual(inst.type.coding[0].display, "Patient's Residence")
         self.assertEqual(inst.type.coding[0].system, "http://hl7.org/fhir/v3/RoleCode")
-    
+
     def testLocation4(self):
         inst = self.instantiate_from("location-example-room.json")
         self.assertIsNotNone(inst, "Must have instantiated a Location instance")
         self.implLocation4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Location", js["resourceType"])
         inst2 = location.Location(js)
         self.implLocation4(inst2)
-    
+
     def implLocation4(self, inst):
         self.assertEqual(inst.description, "Old South Wing, Neuro Radiology Operation Room 1 on second floor")
         self.assertEqual(inst.id, "2")
@@ -138,17 +138,17 @@ class LocationTests(unittest.TestCase):
         self.assertEqual(inst.type.coding[0].code, "RNEU")
         self.assertEqual(inst.type.coding[0].display, "Neuroradiology unit")
         self.assertEqual(inst.type.coding[0].system, "http://hl7.org/fhir/v3/RoleCode")
-    
+
     def testLocation5(self):
         inst = self.instantiate_from("location-example-ukpharmacy.json")
         self.assertIsNotNone(inst, "Must have instantiated a Location instance")
         self.implLocation5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Location", js["resourceType"])
         inst2 = location.Location(js)
         self.implLocation5(inst2)
-    
+
     def implLocation5(self, inst):
         self.assertEqual(inst.description, "All Pharmacies in the United Kingdom covered by the National Pharmacy Association")
         self.assertEqual(inst.id, "ukp")
@@ -163,17 +163,17 @@ class LocationTests(unittest.TestCase):
         self.assertEqual(inst.type.coding[0].code, "PHARM")
         self.assertEqual(inst.type.coding[0].display, "Pharmacy")
         self.assertEqual(inst.type.coding[0].system, "http://hl7.org/fhir/v3/RoleCode")
-    
+
     def testLocation6(self):
         inst = self.instantiate_from("location-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Location instance")
         self.implLocation6(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Location", js["resourceType"])
         inst2 = location.Location(js)
         self.implLocation6(inst2)
-    
+
     def implLocation6(self, inst):
         self.assertEqual(inst.address.city, "Den Burg")
         self.assertEqual(inst.address.country, "NLD")

@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import composition
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class CompositionTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Composition", js["resourceType"])
         return composition.Composition(js)
-    
+
     def testComposition1(self):
         inst = self.instantiate_from("composition-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Composition instance")
         self.implComposition1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Composition", js["resourceType"])
         inst2 = composition.Composition(js)
         self.implComposition1(inst2)
-    
+
     def implComposition1(self, inst):
         self.assertEqual(inst.attester[0].mode[0], "legal")
         self.assertEqual(inst.attester[0].time.date, FHIRDate("2012-01-04T09:10:14Z").date)

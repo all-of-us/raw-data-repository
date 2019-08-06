@@ -5,12 +5,12 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import goal
-from .fhirdate import FHIRDate
 
 
 class GoalTests(unittest.TestCase):
@@ -20,17 +20,17 @@ class GoalTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Goal", js["resourceType"])
         return goal.Goal(js)
-    
+
     def testGoal1(self):
         inst = self.instantiate_from("goal-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Goal instance")
         self.implGoal1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Goal", js["resourceType"])
         inst2 = goal.Goal(js)
         self.implGoal1(inst2)
-    
+
     def implGoal1(self, inst):
         self.assertEqual(inst.description, "Target weight is 160 to 180 lbs.")
         self.assertEqual(inst.extension[0].extension[0].url, "measure")

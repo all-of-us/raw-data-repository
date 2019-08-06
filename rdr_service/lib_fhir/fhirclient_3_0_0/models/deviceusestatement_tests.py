@@ -5,12 +5,12 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import deviceusestatement
-from .fhirdate import FHIRDate
 
 
 class DeviceUseStatementTests(unittest.TestCase):
@@ -20,17 +20,17 @@ class DeviceUseStatementTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("DeviceUseStatement", js["resourceType"])
         return deviceusestatement.DeviceUseStatement(js)
-    
+
     def testDeviceUseStatement1(self):
         inst = self.instantiate_from("deviceusestatement-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a DeviceUseStatement instance")
         self.implDeviceUseStatement1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DeviceUseStatement", js["resourceType"])
         inst2 = deviceusestatement.DeviceUseStatement(js)
         self.implDeviceUseStatement1(inst2)
-    
+
     def implDeviceUseStatement1(self, inst):
         self.assertEqual(inst.id, "example")
         self.assertEqual(inst.identifier[0].system, "http:goodhealth.org/identifiers")

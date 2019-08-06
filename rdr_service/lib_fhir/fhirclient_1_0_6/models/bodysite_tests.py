@@ -5,12 +5,12 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import bodysite
-from .fhirdate import FHIRDate
 
 
 class BodySiteTests(unittest.TestCase):
@@ -20,17 +20,17 @@ class BodySiteTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("BodySite", js["resourceType"])
         return bodysite.BodySite(js)
-    
+
     def testBodySite1(self):
         inst = self.instantiate_from("bodysite-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a BodySite instance")
         self.implBodySite1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("BodySite", js["resourceType"])
         inst2 = bodysite.BodySite(js)
         self.implBodySite1(inst2)
-    
+
     def implBodySite1(self, inst):
         self.assertEqual(inst.code.coding[0].code, "53120007")
         self.assertEqual(inst.code.coding[0].display, "Arm")

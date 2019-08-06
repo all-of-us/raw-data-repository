@@ -4,8 +4,8 @@
 import logging
 import pprint
 
-from rdr_service.rdr_client.client import Client
 from rdr_service.main_util import configure_logging
+from rdr_service.rdr_client.client import Client
 
 
 def main():

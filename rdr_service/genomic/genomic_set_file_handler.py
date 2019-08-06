@@ -6,13 +6,15 @@ import collections
 import csv
 import datetime
 import logging
+
 import pytz
 from cloudstorage import cloudstorage_api
-from rdr_service import clock
-from rdr_service import config
-from rdr_service.offline.sql_exporter import SqlExporter
+
+from rdr_service import clock, config
 from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
-from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicSetMemberStatus
+from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetMemberStatus, \
+  GenomicSetStatus
+from rdr_service.offline.sql_exporter import SqlExporter
 
 _US_CENTRAL = pytz.timezone('US/Central')
 _BATCH_SIZE = 1000

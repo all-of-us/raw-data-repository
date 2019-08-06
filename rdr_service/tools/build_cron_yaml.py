@@ -12,6 +12,7 @@ import os
 import sys
 
 import yaml
+
 try:
   from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:

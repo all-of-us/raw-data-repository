@@ -3,8 +3,8 @@ import datetime
 import re
 
 import pytz
-from googleapiclient.discovery import build
 from google.appengine.api import app_identity
+from googleapiclient.discovery import build
 
 
 class BigQueryJob(object):

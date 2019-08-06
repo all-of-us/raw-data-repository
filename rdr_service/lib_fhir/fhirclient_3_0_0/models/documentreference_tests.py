@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import documentreference
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class DocumentReferenceTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("DocumentReference", js["resourceType"])
         return documentreference.DocumentReference(js)
-    
+
     def testDocumentReference1(self):
         inst = self.instantiate_from("documentreference-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a DocumentReference instance")
         self.implDocumentReference1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("DocumentReference", js["resourceType"])
         inst2 = documentreference.DocumentReference(js)
         self.implDocumentReference1(inst2)
-    
+
     def implDocumentReference1(self, inst):
         self.assertEqual(inst.class_fhir.coding[0].code, "History and Physical")
         self.assertEqual(inst.class_fhir.coding[0].display, "History and Physical")

@@ -5,15 +5,6 @@ Revises: 9b70eae79af0
 Create Date: 2017-08-15 16:17:22.245919
 
 """
-from alembic import op
-import sqlalchemy as sa
-import model.utils
-
-
-from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
-from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus
-from rdr_service.participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType
-from rdr_service.model.code import CodeType
 
 # revision identifiers, used by Alembic.
 revision = 'ffcd82a35890'

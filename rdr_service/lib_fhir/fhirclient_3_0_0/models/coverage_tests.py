@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import coverage
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class CoverageTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Coverage", js["resourceType"])
         return coverage.Coverage(js)
-    
+
     def testCoverage1(self):
         inst = self.instantiate_from("coverage-example-2.json")
         self.assertIsNotNone(inst, "Must have instantiated a Coverage instance")
         self.implCoverage1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Coverage", js["resourceType"])
         inst2 = coverage.Coverage(js)
         self.implCoverage1(inst2)
-    
+
     def implCoverage1(self, inst):
         self.assertEqual(inst.dependent, "1")
         self.assertEqual(inst.grouping.group, "WESTAIR")
@@ -56,17 +57,17 @@ class CoverageTests(unittest.TestCase):
         self.assertEqual(inst.type.coding[0].code, "EHCPOL")
         self.assertEqual(inst.type.coding[0].display, "extended healthcare")
         self.assertEqual(inst.type.coding[0].system, "http://hl7.org/fhir/v3/ActCode")
-    
+
     def testCoverage2(self):
         inst = self.instantiate_from("coverage-example-ehic.json")
         self.assertIsNotNone(inst, "Must have instantiated a Coverage instance")
         self.implCoverage2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Coverage", js["resourceType"])
         inst2 = coverage.Coverage(js)
         self.implCoverage2(inst2)
-    
+
     def implCoverage2(self, inst):
         self.assertEqual(inst.id, "7547E")
         self.assertEqual(inst.identifier[0].system, "http://ehic.com/insurer/123456789/member")
@@ -80,17 +81,17 @@ class CoverageTests(unittest.TestCase):
         self.assertEqual(inst.type.coding[0].code, "EHCPOL")
         self.assertEqual(inst.type.coding[0].display, "extended healthcare")
         self.assertEqual(inst.type.coding[0].system, "http://hl7.org/fhir/v3/ActCode")
-    
+
     def testCoverage3(self):
         inst = self.instantiate_from("coverage-example-selfpay.json")
         self.assertIsNotNone(inst, "Must have instantiated a Coverage instance")
         self.implCoverage3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Coverage", js["resourceType"])
         inst2 = coverage.Coverage(js)
         self.implCoverage3(inst2)
-    
+
     def implCoverage3(self, inst):
         self.assertEqual(inst.id, "SP1234")
         self.assertEqual(inst.identifier[0].system, "http://hospitalx.com/selfpayagreement")
@@ -104,17 +105,17 @@ class CoverageTests(unittest.TestCase):
         self.assertEqual(inst.type.coding[0].code, "pay")
         self.assertEqual(inst.type.coding[0].display, "PAY")
         self.assertEqual(inst.type.coding[0].system, "http://hl7.org/fhir/coverage-selfpay")
-    
+
     def testCoverage4(self):
         inst = self.instantiate_from("coverage-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Coverage instance")
         self.implCoverage4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Coverage", js["resourceType"])
         inst2 = coverage.Coverage(js)
         self.implCoverage4(inst2)
-    
+
     def implCoverage4(self, inst):
         self.assertEqual(inst.dependent, "0")
         self.assertEqual(inst.grouping.classDisplay, "Silver: Family Plan spouse only")

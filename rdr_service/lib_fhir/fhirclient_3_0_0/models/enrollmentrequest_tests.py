@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import enrollmentrequest
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class EnrollmentRequestTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("EnrollmentRequest", js["resourceType"])
         return enrollmentrequest.EnrollmentRequest(js)
-    
+
     def testEnrollmentRequest1(self):
         inst = self.instantiate_from("enrollmentrequest-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a EnrollmentRequest instance")
         self.implEnrollmentRequest1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("EnrollmentRequest", js["resourceType"])
         inst2 = enrollmentrequest.EnrollmentRequest(js)
         self.implEnrollmentRequest1(inst2)
-    
+
     def implEnrollmentRequest1(self, inst):
         self.assertEqual(inst.created.date, FHIRDate("2014-08-16").date)
         self.assertEqual(inst.created.as_json(), "2014-08-16")

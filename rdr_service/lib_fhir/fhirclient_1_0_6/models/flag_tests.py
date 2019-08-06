@@ -5,12 +5,12 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import flag
-from .fhirdate import FHIRDate
 
 
 class FlagTests(unittest.TestCase):
@@ -20,17 +20,17 @@ class FlagTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Flag", js["resourceType"])
         return flag.Flag(js)
-    
+
     def testFlag1(self):
         inst = self.instantiate_from("flag-example-encounter.json")
         self.assertIsNotNone(inst, "Must have instantiated a Flag instance")
         self.implFlag1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Flag", js["resourceType"])
         inst2 = flag.Flag(js)
         self.implFlag1(inst2)
-    
+
     def implFlag1(self, inst):
         self.assertEqual(inst.category.coding[0].code, "infection")
         self.assertEqual(inst.category.coding[0].display, "Infection Control Level")
@@ -42,17 +42,17 @@ class FlagTests(unittest.TestCase):
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.div, "<div>Follow Infection Control Level 3 Protocol</div>")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testFlag2(self):
         inst = self.instantiate_from("flag-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Flag instance")
         self.implFlag2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Flag", js["resourceType"])
         inst2 = flag.Flag(js)
         self.implFlag2(inst2)
-    
+
     def implFlag2(self, inst):
         self.assertEqual(inst.category.coding[0].code, "admin")
         self.assertEqual(inst.category.coding[0].display, "Admin")

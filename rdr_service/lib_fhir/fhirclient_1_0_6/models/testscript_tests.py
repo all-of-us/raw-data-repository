@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import testscript
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class TestScriptTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("TestScript", js["resourceType"])
         return testscript.TestScript(js)
-    
+
     def testTestScript1(self):
         inst = self.instantiate_from("testscript-example-multiserver.json")
         self.assertIsNotNone(inst, "Must have instantiated a TestScript instance")
         self.implTestScript1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("TestScript", js["resourceType"])
         inst2 = testscript.TestScript(js)
         self.implTestScript1(inst2)
-    
+
     def implTestScript1(self, inst):
         self.assertEqual(inst.description, "Multiserver Test Script")
         self.assertEqual(inst.fixture[0].id, "F1")
@@ -115,17 +116,17 @@ class TestScriptTests(unittest.TestCase):
         self.assertEqual(inst.test[2].name, "Update Patient")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.url, "http://hl7.org/fhir/TestScript/multiserver")
-    
+
     def testTestScript2(self):
         inst = self.instantiate_from("testscript-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a TestScript instance")
         self.implTestScript2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("TestScript", js["resourceType"])
         inst2 = testscript.TestScript(js)
         self.implTestScript2(inst2)
-    
+
     def implTestScript2(self, inst):
         self.assertEqual(inst.contact[0].name, "Support")
         self.assertEqual(inst.contact[0].telecom[0].system, "email")

@@ -3,10 +3,10 @@ or (when run with --run_backfill) to update all existing physical measurements r
 all information that can be parsed from the original resources."""
 
 import logging
-
 from pprint import pprint
+
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
-from rdr_service.main_util import get_parser, configure_logging
+from rdr_service.main_util import configure_logging, get_parser
 
 
 def main(args):

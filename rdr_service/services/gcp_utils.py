@@ -13,7 +13,7 @@ import subprocess
 from collections import OrderedDict
 from random import choice
 
-from gcp_config import GCP_INSTANCES, GCP_REPLICA_INSTANCES, GCP_SERVICE_KEY_STORE, GCP_PROJECTS
+from gcp_config import GCP_INSTANCES, GCP_PROJECTS, GCP_REPLICA_INSTANCES, GCP_SERVICE_KEY_STORE
 from system_utils import run_external_program, which
 
 _logger = logging.getLogger('rdr_logger')

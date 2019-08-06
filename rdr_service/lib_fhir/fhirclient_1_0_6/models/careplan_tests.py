@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import careplan
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class CarePlanTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("CarePlan", js["resourceType"])
         return careplan.CarePlan(js)
-    
+
     def testCarePlan1(self):
         inst = self.instantiate_from("careplan-example-f001-heart.json")
         self.assertIsNotNone(inst, "Must have instantiated a CarePlan instance")
         self.implCarePlan1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CarePlan", js["resourceType"])
         inst2 = careplan.CarePlan(js)
         self.implCarePlan1(inst2)
-    
+
     def implCarePlan1(self, inst):
         self.assertEqual(inst.activity[0].detail.category.coding[0].code, "procedure")
         self.assertEqual(inst.activity[0].detail.category.coding[0].system, "http://hl7.org/fhir/care-plan-activity-category")
@@ -53,17 +54,17 @@ class CarePlanTests(unittest.TestCase):
         self.assertEqual(inst.period.start.as_json(), "2011-06-26")
         self.assertEqual(inst.status, "completed")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testCarePlan2(self):
         inst = self.instantiate_from("careplan-example-f002-lung.json")
         self.assertIsNotNone(inst, "Must have instantiated a CarePlan instance")
         self.implCarePlan2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CarePlan", js["resourceType"])
         inst2 = careplan.CarePlan(js)
         self.implCarePlan2(inst2)
-    
+
     def implCarePlan2(self, inst):
         self.assertEqual(inst.activity[0].detail.category.coding[0].code, "procedure")
         self.assertEqual(inst.activity[0].detail.category.coding[0].system, "http://hl7.org/fhir/care-plan-activity-category")
@@ -86,17 +87,17 @@ class CarePlanTests(unittest.TestCase):
         self.assertEqual(inst.period.start.as_json(), "2011-07-06")
         self.assertEqual(inst.status, "completed")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testCarePlan3(self):
         inst = self.instantiate_from("careplan-example-f003-pharynx.json")
         self.assertIsNotNone(inst, "Must have instantiated a CarePlan instance")
         self.implCarePlan3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CarePlan", js["resourceType"])
         inst2 = careplan.CarePlan(js)
         self.implCarePlan3(inst2)
-    
+
     def implCarePlan3(self, inst):
         self.assertEqual(inst.activity[0].detail.category.coding[0].code, "procedure")
         self.assertEqual(inst.activity[0].detail.category.coding[0].system, "http://hl7.org/fhir/care-plan-activity-category")
@@ -119,17 +120,17 @@ class CarePlanTests(unittest.TestCase):
         self.assertEqual(inst.period.start.as_json(), "2013-03-08T09:00:10+01:00")
         self.assertEqual(inst.status, "completed")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testCarePlan4(self):
         inst = self.instantiate_from("careplan-example-f201-renal.json")
         self.assertIsNotNone(inst, "Must have instantiated a CarePlan instance")
         self.implCarePlan4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CarePlan", js["resourceType"])
         inst2 = careplan.CarePlan(js)
         self.implCarePlan4(inst2)
-    
+
     def implCarePlan4(self, inst):
         self.assertEqual(inst.activity[0].detail.category.coding[0].code, "diet")
         self.assertEqual(inst.activity[0].detail.category.coding[0].system, "http://hl7.org/fhir/care-plan-activity-category")
@@ -166,17 +167,17 @@ class CarePlanTests(unittest.TestCase):
         self.assertEqual(inst.period.start.as_json(), "2013-03-11")
         self.assertEqual(inst.status, "draft")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testCarePlan5(self):
         inst = self.instantiate_from("careplan-example-f202-malignancy.json")
         self.assertIsNotNone(inst, "Must have instantiated a CarePlan instance")
         self.implCarePlan5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CarePlan", js["resourceType"])
         inst2 = careplan.CarePlan(js)
         self.implCarePlan5(inst2)
-    
+
     def implCarePlan5(self, inst):
         self.assertEqual(inst.activity[0].detail.category.coding[0].code, "procedure")
         self.assertEqual(inst.activity[0].detail.category.coding[0].system, "http://hl7.org/fhir/care-plan-activity-category")
@@ -196,17 +197,17 @@ class CarePlanTests(unittest.TestCase):
         self.assertEqual(inst.participant[0].role.coding[0].system, "http://snomed.info/sct")
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testCarePlan6(self):
         inst = self.instantiate_from("careplan-example-f203-sepsis.json")
         self.assertIsNotNone(inst, "Must have instantiated a CarePlan instance")
         self.implCarePlan6(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CarePlan", js["resourceType"])
         inst2 = careplan.CarePlan(js)
         self.implCarePlan6(inst2)
-    
+
     def implCarePlan6(self, inst):
         self.assertEqual(inst.activity[0].detail.category.coding[0].code, "observation")
         self.assertEqual(inst.activity[0].detail.category.coding[0].system, "http://hl7.org/fhir/care-plan-activity-category")
@@ -231,17 +232,17 @@ class CarePlanTests(unittest.TestCase):
         self.assertEqual(inst.period.start.as_json(), "2013-04-14")
         self.assertEqual(inst.status, "completed")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testCarePlan7(self):
         inst = self.instantiate_from("careplan-example-GPVisit.json")
         self.assertIsNotNone(inst, "Must have instantiated a CarePlan instance")
         self.implCarePlan7(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CarePlan", js["resourceType"])
         inst2 = careplan.CarePlan(js)
         self.implCarePlan7(inst2)
-    
+
     def implCarePlan7(self, inst):
         self.assertEqual(inst.activity[0].detail.category.coding[0].code, "encounter")
         self.assertEqual(inst.activity[0].detail.category.coding[0].system, "http://hl7.org/fhir/care-plan-activity-category")
@@ -276,17 +277,17 @@ class CarePlanTests(unittest.TestCase):
         self.assertEqual(inst.period.start.as_json(), "2013-01-01T10:30:00+00:00")
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.status, "additional")
-    
+
     def testCarePlan8(self):
         inst = self.instantiate_from("careplan-example-integrated.json")
         self.assertIsNotNone(inst, "Must have instantiated a CarePlan instance")
         self.implCarePlan8(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CarePlan", js["resourceType"])
         inst2 = careplan.CarePlan(js)
         self.implCarePlan8(inst2)
-    
+
     def implCarePlan8(self, inst):
         self.assertEqual(inst.activity[0].detail.category.coding[0].code, "other")
         self.assertEqual(inst.activity[0].detail.category.coding[0].system, "http://hl7.org/fhir/care-plan-activity-category")
@@ -435,17 +436,17 @@ class CarePlanTests(unittest.TestCase):
         self.assertEqual(inst.note.text, "Patient family is not ready to commit to goal setting at this time.  Goal setting will be addressed in the future")
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testCarePlan9(self):
         inst = self.instantiate_from("careplan-example-pregnancy.json")
         self.assertIsNotNone(inst, "Must have instantiated a CarePlan instance")
         self.implCarePlan9(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CarePlan", js["resourceType"])
         inst2 = careplan.CarePlan(js)
         self.implCarePlan9(inst2)
-    
+
     def implCarePlan9(self, inst):
         self.assertEqual(inst.activity[0].detail.category.coding[0].code, "encounter")
         self.assertEqual(inst.activity[0].detail.category.coding[0].system, "http://hl7.org/fhir/care-plan-activity-category")
@@ -505,17 +506,17 @@ class CarePlanTests(unittest.TestCase):
         self.assertEqual(inst.period.start.as_json(), "2013-01-01")
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.status, "additional")
-    
+
     def testCarePlan10(self):
         inst = self.instantiate_from("careplan-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a CarePlan instance")
         self.implCarePlan10(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CarePlan", js["resourceType"])
         inst2 = careplan.CarePlan(js)
         self.implCarePlan10(inst2)
-    
+
     def implCarePlan10(self, inst):
         self.assertEqual(inst.activity[0].detail.category.coding[0].code, "observation")
         self.assertEqual(inst.activity[0].detail.category.coding[0].system, "http://hl7.org/fhir/care-plan-activity-category")

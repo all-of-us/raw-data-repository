@@ -5,12 +5,12 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import researchsubject
-from .fhirdate import FHIRDate
 
 
 class ResearchSubjectTests(unittest.TestCase):
@@ -20,17 +20,17 @@ class ResearchSubjectTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("ResearchSubject", js["resourceType"])
         return researchsubject.ResearchSubject(js)
-    
+
     def testResearchSubject1(self):
         inst = self.instantiate_from("researchsubject-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ResearchSubject instance")
         self.implResearchSubject1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ResearchSubject", js["resourceType"])
         inst2 = researchsubject.ResearchSubject(js)
         self.implResearchSubject1(inst2)
-    
+
     def implResearchSubject1(self, inst):
         self.assertEqual(inst.id, "example")
         self.assertEqual(inst.identifier.system, "http://example.org/studysubjectids")

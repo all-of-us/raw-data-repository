@@ -10,9 +10,8 @@ import csv
 import logging
 from time import sleep
 
+from rdr_service.main_util import configure_logging, get_parser
 from rdr_service.rdr_client.client import Client, HttpException
-from rdr_service.main_util import get_parser, configure_logging
-
 
 MAX_PARTICIPANTS_PER_REQUEST = 25
 MAX_CONSECUTIVE_ERRORS = 5

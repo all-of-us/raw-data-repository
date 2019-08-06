@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import library
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class LibraryTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Library", js["resourceType"])
         return library.Library(js)
-    
+
     def testLibrary1(self):
         inst = self.instantiate_from("library-cms146-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Library instance")
         self.implLibrary1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Library", js["resourceType"])
         inst2 = library.Library(js)
         self.implLibrary1(inst2)
-    
+
     def implLibrary1(self, inst):
         self.assertEqual(inst.content[0].contentType, "text/cql")
         self.assertEqual(inst.content[0].url, "library-cms146-example-content.cql")
@@ -84,17 +85,17 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual(inst.title, "Appropriate Testing for Children with Pharyngitis")
         self.assertEqual(inst.type.coding[0].code, "logic-library")
         self.assertEqual(inst.version, "2.0.0")
-    
+
     def testLibrary2(self):
         inst = self.instantiate_from("library-composition-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Library instance")
         self.implLibrary2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Library", js["resourceType"])
         inst2 = library.Library(js)
         self.implLibrary2(inst2)
-    
+
     def implLibrary2(self, inst):
         self.assertEqual(inst.date.date, FHIRDate("2017-03-10").date)
         self.assertEqual(inst.date.as_json(), "2017-03-10")
@@ -117,17 +118,17 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual(inst.topic[0].text, "Zika Virus Management")
         self.assertEqual(inst.type.coding[0].code, "asset-collection")
         self.assertEqual(inst.version, "1.0.0")
-    
+
     def testLibrary3(self):
         inst = self.instantiate_from("library-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Library instance")
         self.implLibrary3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Library", js["resourceType"])
         inst2 = library.Library(js)
         self.implLibrary3(inst2)
-    
+
     def implLibrary3(self, inst):
         self.assertEqual(inst.content[0].contentType, "text/cql")
         self.assertEqual(inst.content[0].url, "library-example-content.cql")
@@ -147,17 +148,17 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual(inst.topic[0].text, "Chlamydia Screening")
         self.assertEqual(inst.type.coding[0].code, "logic-library")
         self.assertEqual(inst.version, "2.0.0")
-    
+
     def testLibrary4(self):
         inst = self.instantiate_from("library-predecessor-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Library instance")
         self.implLibrary4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Library", js["resourceType"])
         inst2 = library.Library(js)
         self.implLibrary4(inst2)
-    
+
     def implLibrary4(self, inst):
         self.assertEqual(inst.content[0].contentType, "text/cql")
         self.assertEqual(inst.content[0].title, "FHIR Helpers")

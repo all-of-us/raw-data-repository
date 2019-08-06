@@ -5,12 +5,12 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import linkage
-from .fhirdate import FHIRDate
 
 
 class LinkageTests(unittest.TestCase):
@@ -20,17 +20,17 @@ class LinkageTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Linkage", js["resourceType"])
         return linkage.Linkage(js)
-    
+
     def testLinkage1(self):
         inst = self.instantiate_from("linkage-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Linkage instance")
         self.implLinkage1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Linkage", js["resourceType"])
         inst2 = linkage.Linkage(js)
         self.implLinkage1(inst2)
-    
+
     def implLinkage1(self, inst):
         self.assertEqual(inst.id, "example")
         self.assertEqual(inst.item[0].type, "source")

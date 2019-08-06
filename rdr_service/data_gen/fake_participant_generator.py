@@ -7,32 +7,37 @@ import logging
 import random
 import string
 
-from rdr_service import clock
 from cloudstorage import cloudstorage_api
-from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, \
-  CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, OVERALL_HEALTH_PPI_MODULE, LIFESTYLE_PPI_MODULE, \
-  THE_BASICS_PPI_MODULE, RACE_QUESTION_CODE, GENDER_IDENTITY_QUESTION_CODE, \
-  FIRST_NAME_QUESTION_CODE, LAST_NAME_QUESTION_CODE, MIDDLE_NAME_QUESTION_CODE, \
-  ZIPCODE_QUESTION_CODE, STATE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE, EMAIL_QUESTION_CODE, \
-  STREET_ADDRESS_QUESTION_CODE, CITY_QUESTION_CODE, PHONE_NUMBER_QUESTION_CODE, \
-  RECONTACT_METHOD_QUESTION_CODE, LANGUAGE_QUESTION_CODE, SEX_QUESTION_CODE, \
-  SEXUAL_ORIENTATION_QUESTION_CODE, EDUCATION_QUESTION_CODE, INCOME_QUESTION_CODE, \
-  CABOR_SIGNATURE_QUESTION_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE, BIOBANK_TESTS, \
-  HEALTHPRO_USERNAME_SYSTEM, SITE_ID_SYSTEM, STREET_ADDRESS2_QUESTION_CODE
+from dateutil.parser import parse
+from google.appengine.api import app_identity
+from werkzeug.exceptions import BadRequest
+
+from rdr_service import clock
+from rdr_service.code_constants import BIOBANK_TESTS, CABOR_SIGNATURE_QUESTION_CODE, \
+  CITY_QUESTION_CODE, \
+  CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, \
+  DATE_OF_BIRTH_QUESTION_CODE, \
+  EDUCATION_QUESTION_CODE, EMAIL_QUESTION_CODE, FIRST_NAME_QUESTION_CODE, \
+  GENDER_IDENTITY_QUESTION_CODE, \
+  HEALTHPRO_USERNAME_SYSTEM, INCOME_QUESTION_CODE, LANGUAGE_QUESTION_CODE, LAST_NAME_QUESTION_CODE, \
+  LIFESTYLE_PPI_MODULE, MIDDLE_NAME_QUESTION_CODE, OVERALL_HEALTH_PPI_MODULE, \
+  PHONE_NUMBER_QUESTION_CODE, \
+  PMI_OTHER_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, PPI_SYSTEM, RACE_QUESTION_CODE, \
+  RECONTACT_METHOD_QUESTION_CODE, \
+  SEXUAL_ORIENTATION_QUESTION_CODE, SEX_QUESTION_CODE, SITE_ID_SYSTEM, STATE_QUESTION_CODE, \
+  STREET_ADDRESS2_QUESTION_CODE, STREET_ADDRESS_QUESTION_CODE, THE_BASICS_PPI_MODULE, \
+  ZIPCODE_QUESTION_CODE
 from rdr_service.concepts import Concept
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
-from rdr_service.dao.physical_measurements_dao import _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION, \
-  _LOCATION_PREFIX, _AUTHORING_STEP, _CREATED_STATUS, _FINALIZED_STATUS, _AUTHOR_PREFIX
+from rdr_service.dao.physical_measurements_dao import _AUTHORING_STEP, _AUTHOR_PREFIX, \
+  _CREATED_LOC_EXTENSION, \
+  _CREATED_STATUS, _FINALIZED_LOC_EXTENSION, _FINALIZED_STATUS, _LOCATION_PREFIX
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.site_dao import SiteDao
-from dateutil.parser import parse
 from rdr_service.field_mappings import QUESTION_CODE_TO_FIELD
-from google.appengine.api import app_identity
 from rdr_service.model.code import CodeType
-from rdr_service.participant_enums import make_primary_provider_link_for_hpo, UNSET_HPO_ID
-from werkzeug.exceptions import BadRequest
-
+from rdr_service.participant_enums import UNSET_HPO_ID, make_primary_provider_link_for_hpo
 
 _ANSWER_SPECS_BUCKET = "all-of-us-rdr-fake-data-spec"
 _ANSWER_SPECS_FILE = "answer_specs.csv"

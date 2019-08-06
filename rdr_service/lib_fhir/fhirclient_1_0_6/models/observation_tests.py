@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import observation
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ObservationTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Observation", js["resourceType"])
         return observation.Observation(js)
-    
+
     def testObservation1(self):
         inst = self.instantiate_from("obs-genetics-example1-somatic.json")
         self.assertIsNotNone(inst, "Must have instantiated a Observation instance")
         self.implObservation1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Observation", js["resourceType"])
         inst2 = observation.Observation(js)
         self.implObservation1(inst2)
-    
+
     def implObservation1(self, inst):
         self.assertEqual(inst.code.coding[0].code, "55233-1")
         self.assertEqual(inst.code.coding[0].system, "http://loinc.org")
@@ -67,17 +68,17 @@ class ObservationTests(unittest.TestCase):
         self.assertEqual(inst.interpretation.text, "positive")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testObservation2(self):
         inst = self.instantiate_from("obs-genetics-example2-germline.json")
         self.assertIsNotNone(inst, "Must have instantiated a Observation instance")
         self.implObservation2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Observation", js["resourceType"])
         inst2 = observation.Observation(js)
         self.implObservation2(inst2)
-    
+
     def implObservation2(self, inst):
         self.assertEqual(inst.code.coding[0].code, "21636-6")
         self.assertEqual(inst.code.coding[0].display, "BRCA1 gene mutation analysis")
@@ -111,17 +112,17 @@ class ObservationTests(unittest.TestCase):
         self.assertEqual(inst.id, "genetics-example2-germline")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testObservation3(self):
         inst = self.instantiate_from("obs-genetics-example3-mutationlist-1.json")
         self.assertIsNotNone(inst, "Must have instantiated a Observation instance")
         self.implObservation3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Observation", js["resourceType"])
         inst2 = observation.Observation(js)
         self.implObservation3(inst2)
-    
+
     def implObservation3(self, inst):
         self.assertEqual(inst.code.coding[0].code, "49874-1")
         self.assertEqual(inst.code.coding[0].display, "ABCB4 gene mutation analysis")
@@ -141,17 +142,17 @@ class ObservationTests(unittest.TestCase):
         self.assertEqual(inst.id, "genetics-example3-mutationlist-1")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testObservation4(self):
         inst = self.instantiate_from("obs-genetics-example3-mutationlist-2.json")
         self.assertIsNotNone(inst, "Must have instantiated a Observation instance")
         self.implObservation4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Observation", js["resourceType"])
         inst2 = observation.Observation(js)
         self.implObservation4(inst2)
-    
+
     def implObservation4(self, inst):
         self.assertEqual(inst.code.coding[0].code, "49874-1")
         self.assertEqual(inst.code.coding[0].display, "ABCB4 gene mutation analysis")
@@ -173,17 +174,17 @@ class ObservationTests(unittest.TestCase):
         self.assertEqual(inst.id, "genetics-example3-mutationlist-2")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testObservation5(self):
         inst = self.instantiate_from("obs-genetics-example3-mutationlist-3.json")
         self.assertIsNotNone(inst, "Must have instantiated a Observation instance")
         self.implObservation5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Observation", js["resourceType"])
         inst2 = observation.Observation(js)
         self.implObservation5(inst2)
-    
+
     def implObservation5(self, inst):
         self.assertEqual(inst.code.coding[0].code, "49874-1")
         self.assertEqual(inst.code.coding[0].display, "ABCB4 gene mutation analysis")
@@ -203,17 +204,17 @@ class ObservationTests(unittest.TestCase):
         self.assertEqual(inst.id, "genetics-example3-mutationlist-3")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testObservation6(self):
         inst = self.instantiate_from("obs-genetics-example3-mutationlist-4.json")
         self.assertIsNotNone(inst, "Must have instantiated a Observation instance")
         self.implObservation6(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Observation", js["resourceType"])
         inst2 = observation.Observation(js)
         self.implObservation6(inst2)
-    
+
     def implObservation6(self, inst):
         self.assertEqual(inst.code.coding[0].code, "49874-1")
         self.assertEqual(inst.code.coding[0].display, "ABCB4 gene mutation analysis")
@@ -233,17 +234,17 @@ class ObservationTests(unittest.TestCase):
         self.assertEqual(inst.id, "genetics-example3-mutationlist-4")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testObservation7(self):
         inst = self.instantiate_from("obs-genetics-example3-mutationlist.json")
         self.assertIsNotNone(inst, "Must have instantiated a Observation instance")
         self.implObservation7(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Observation", js["resourceType"])
         inst2 = observation.Observation(js)
         self.implObservation7(inst2)
-    
+
     def implObservation7(self, inst):
         self.assertEqual(inst.code.coding[0].code, "49874-1")
         self.assertEqual(inst.code.coding[0].display, "ABCB4 gene mutation analysis")
@@ -265,17 +266,17 @@ class ObservationTests(unittest.TestCase):
         self.assertEqual(inst.id, "genetics-example3-mutationlist")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testObservation8(self):
         inst = self.instantiate_from("observation-example-bloodpressure-cancel.json")
         self.assertIsNotNone(inst, "Must have instantiated a Observation instance")
         self.implObservation8(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Observation", js["resourceType"])
         inst2 = observation.Observation(js)
         self.implObservation8(inst2)
-    
+
     def implObservation8(self, inst):
         self.assertEqual(inst.bodySite.coding[0].code, "368209003")
         self.assertEqual(inst.bodySite.coding[0].display, "Right arm")
@@ -315,17 +316,17 @@ class ObservationTests(unittest.TestCase):
         self.assertEqual(inst.meta.lastUpdated.as_json(), "2014-01-30T22:35:23+11:00")
         self.assertEqual(inst.status, "cancelled")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testObservation9(self):
         inst = self.instantiate_from("observation-example-bloodpressure.json")
         self.assertIsNotNone(inst, "Must have instantiated a Observation instance")
         self.implObservation9(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Observation", js["resourceType"])
         inst2 = observation.Observation(js)
         self.implObservation9(inst2)
-    
+
     def implObservation9(self, inst):
         self.assertEqual(inst.bodySite.coding[0].code, "368209003")
         self.assertEqual(inst.bodySite.coding[0].display, "Right arm")
@@ -362,17 +363,17 @@ class ObservationTests(unittest.TestCase):
         self.assertEqual(inst.meta.lastUpdated.as_json(), "2014-01-30T22:35:23+11:00")
         self.assertEqual(inst.status, "final")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testObservation10(self):
         inst = self.instantiate_from("observation-example-f001-glucose.json")
         self.assertIsNotNone(inst, "Must have instantiated a Observation instance")
         self.implObservation10(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Observation", js["resourceType"])
         inst2 = observation.Observation(js)
         self.implObservation10(inst2)
-    
+
     def implObservation10(self, inst):
         self.assertEqual(inst.code.coding[0].code, "15074-8")
         self.assertEqual(inst.code.coding[0].display, "Glucose [Moles/volume] in Blood")

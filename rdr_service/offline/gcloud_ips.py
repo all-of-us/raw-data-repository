@@ -13,10 +13,11 @@ _cloud-netblocks5.googleusercontent.com. 3599 IN TXT "v=spf1 ip6:2600:1900::/35 
 """
 # pylint: enable=line-too-long
 
-import dns.resolver
 import json
 import re
-from  collections import namedtuple
+from collections import namedtuple
+
+import dns.resolver
 
 START = "_cloud-netblocks.googleusercontent.com"
 Response = namedtuple("Response", ["next_entries", "ip4", "ip6"])

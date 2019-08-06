@@ -2,8 +2,8 @@
 # Docs/example setup.py: https://github.com/pypa/sampleproject/blob/master/setup.py
 
 import os
-from setuptools import setup
 
+from setuptools import setup
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 rdr_common_dir = os.path.join(base_dir, 'rdr_common')

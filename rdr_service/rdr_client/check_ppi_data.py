@@ -17,12 +17,13 @@ Usage: run_client.sh --account $USER@pmi-ops.org --project all-of-us-rdr-staging
 import csv
 import httplib
 import logging
-import urllib2
 import re
+import urllib2
 
+from rdr_service.code_constants import EMAIL_QUESTION_CODE as EQC, \
+  LOGIN_PHONE_NUMBER_QUESTION_CODE as PNQC
+from rdr_service.main_util import configure_logging, get_parser
 from rdr_service.rdr_client.client import Client
-from rdr_service.code_constants import EMAIL_QUESTION_CODE as EQC, LOGIN_PHONE_NUMBER_QUESTION_CODE as PNQC
-from rdr_service.main_util import get_parser, configure_logging
 
 
 def check_ppi_data(client, args):

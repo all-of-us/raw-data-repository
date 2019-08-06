@@ -16,6 +16,7 @@ import csv
 import logging
 import shlex
 import subprocess
+
 from rdr_service.main_util import configure_logging, get_parser
 
 SOURCE_BUCKET = 'ptc-uploads-all-of-us-rdr-prod'

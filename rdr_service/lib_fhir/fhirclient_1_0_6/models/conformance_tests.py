@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import conformance
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ConformanceTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Conformance", js["resourceType"])
         return conformance.Conformance(js)
-    
+
     def testConformance1(self):
         inst = self.instantiate_from("conformance-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Conformance instance")
         self.implConformance1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Conformance", js["resourceType"])
         inst2 = conformance.Conformance(js)
         self.implConformance1(inst2)
-    
+
     def implConformance1(self, inst):
         self.assertEqual(inst.acceptUnknown, "both")
         self.assertEqual(inst.contact[0].name, "System Administrator")
@@ -111,17 +112,17 @@ class ConformanceTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.url, "68D043B5-9ECF-4559-A57A-396E0D452311")
         self.assertEqual(inst.version, "20130510")
-    
+
     def testConformance2(self):
         inst = self.instantiate_from("conformance-phr-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Conformance instance")
         self.implConformance2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Conformance", js["resourceType"])
         inst2 = conformance.Conformance(js)
         self.implConformance2(inst2)
-    
+
     def implConformance2(self, inst):
         self.assertEqual(inst.acceptUnknown, "no")
         self.assertEqual(inst.contact[0].telecom[0].system, "other")

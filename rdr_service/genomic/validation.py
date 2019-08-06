@@ -6,9 +6,9 @@ import operator
 
 from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicSetDao
-from rdr_service.model.genomics import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag
-from rdr_service.participant_enums import WithdrawalStatus, SampleStatus
-
+from rdr_service.model.genomics import GenomicSetMemberStatus, GenomicSetStatus, \
+  GenomicValidationFlag
+from rdr_service.participant_enums import SampleStatus, WithdrawalStatus
 
 GENOMIC_VALID_SEX_AT_BIRTH_VALUES = ['F', 'M']
 GENOMIC_VALID_AGE = 18

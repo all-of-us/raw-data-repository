@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import contract
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ContractTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Contract", js["resourceType"])
         return contract.Contract(js)
-    
+
     def testContract1(self):
         inst = self.instantiate_from("contract-example-42cfr-part2.json")
         self.assertIsNotNone(inst, "Must have instantiated a Contract instance")
         self.implContract1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Contract", js["resourceType"])
         inst2 = contract.Contract(js)
         self.implContract1(inst2)
-    
+
     def implContract1(self, inst):
         self.assertEqual(inst.agent[0].role[0].coding[0].code, "IR")
         self.assertEqual(inst.agent[0].role[0].coding[0].display, "Recipient")
@@ -89,34 +90,34 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(inst.type.coding[0].code, "OPTIN")
         self.assertEqual(inst.type.coding[0].system, "http://org.mdhhs.fhir.consentdirective-type")
         self.assertEqual(inst.type.text, "Opt-in consent directive")
-    
+
     def testContract2(self):
         inst = self.instantiate_from("contract-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Contract instance")
         self.implContract2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Contract", js["resourceType"])
         inst2 = contract.Contract(js)
         self.implContract2(inst2)
-    
+
     def implContract2(self, inst):
         self.assertEqual(inst.id, "C-123")
         self.assertEqual(inst.identifier.system, "http://happyvalley.com/contract")
         self.assertEqual(inst.identifier.value, "12347")
         self.assertEqual(inst.text.div, "<div xmlns=\"http://www.w3.org/1999/xhtml\">A human-readable rendering of the contract</div>")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testContract3(self):
         inst = self.instantiate_from("pcd-example-notAuthor.json")
         self.assertIsNotNone(inst, "Must have instantiated a Contract instance")
         self.implContract3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Contract", js["resourceType"])
         inst2 = contract.Contract(js)
         self.implContract3(inst2)
-    
+
     def implContract3(self, inst):
         self.assertEqual(inst.friendly[0].contentAttachment.title, "The terms of the consent in friendly consumer speak.")
         self.assertEqual(inst.id, "pcd-example-notAuthor")
@@ -133,17 +134,17 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.type.coding[0].code, "57016-8")
         self.assertEqual(inst.type.coding[0].system, "http://loinc.org")
-    
+
     def testContract4(self):
         inst = self.instantiate_from("pcd-example-notLabs.json")
         self.assertIsNotNone(inst, "Must have instantiated a Contract instance")
         self.implContract4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Contract", js["resourceType"])
         inst2 = contract.Contract(js)
         self.implContract4(inst2)
-    
+
     def implContract4(self, inst):
         self.assertEqual(inst.friendly[0].contentAttachment.title, "The terms of the consent in friendly consumer speak.")
         self.assertEqual(inst.id, "pcd-example-notLabs")
@@ -166,17 +167,17 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.type.coding[0].code, "57016-8")
         self.assertEqual(inst.type.coding[0].system, "http://loinc.org")
-    
+
     def testContract5(self):
         inst = self.instantiate_from("pcd-example-notOrg.json")
         self.assertIsNotNone(inst, "Must have instantiated a Contract instance")
         self.implContract5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Contract", js["resourceType"])
         inst2 = contract.Contract(js)
         self.implContract5(inst2)
-    
+
     def implContract5(self, inst):
         self.assertEqual(inst.friendly[0].contentAttachment.title, "The terms of the consent in friendly consumer speak.")
         self.assertEqual(inst.id, "pcd-example-notOrg")
@@ -193,17 +194,17 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.type.coding[0].code, "57016-8")
         self.assertEqual(inst.type.coding[0].system, "http://loinc.org")
-    
+
     def testContract6(self):
         inst = self.instantiate_from("pcd-example-notThem.json")
         self.assertIsNotNone(inst, "Must have instantiated a Contract instance")
         self.implContract6(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Contract", js["resourceType"])
         inst2 = contract.Contract(js)
         self.implContract6(inst2)
-    
+
     def implContract6(self, inst):
         self.assertEqual(inst.friendly[0].contentAttachment.title, "The terms of the consent in friendly consumer speak.")
         self.assertEqual(inst.id, "pcd-example-notThem")
@@ -226,17 +227,17 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.type.coding[0].code, "57016-8")
         self.assertEqual(inst.type.coding[0].system, "http://loinc.org")
-    
+
     def testContract7(self):
         inst = self.instantiate_from("pcd-example-notThis.json")
         self.assertIsNotNone(inst, "Must have instantiated a Contract instance")
         self.implContract7(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Contract", js["resourceType"])
         inst2 = contract.Contract(js)
         self.implContract7(inst2)
-    
+
     def implContract7(self, inst):
         self.assertEqual(inst.friendly[0].contentAttachment.title, "The terms of the consent in friendly consumer speak.")
         self.assertEqual(inst.id, "pcd-example-notThis")

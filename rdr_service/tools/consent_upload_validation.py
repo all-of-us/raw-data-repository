@@ -16,8 +16,7 @@ import re
 import shlex
 import subprocess
 
-from rdr_service.main_util import get_parser, configure_logging
-
+from rdr_service.main_util import configure_logging, get_parser
 
 base_bucket = 'ptc-uploads-all-of-us-rdr-prod'
 required_files = {'ConsentPII.pdf', 'EHRConsentPII.pdf', 'ConsentPII.png', 'EHRConsentPII.png'}

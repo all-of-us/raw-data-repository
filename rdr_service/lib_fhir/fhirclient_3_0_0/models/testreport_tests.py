@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import testreport
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class TestReportTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("TestReport", js["resourceType"])
         return testreport.TestReport(js)
-    
+
     def testTestReport1(self):
         inst = self.instantiate_from("testreport-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a TestReport instance")
         self.implTestReport1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("TestReport", js["resourceType"])
         inst2 = testreport.TestReport(js)
         self.implTestReport1(inst2)
-    
+
     def implTestReport1(self, inst):
         self.assertEqual(inst.id, "testreport-example")
         self.assertEqual(inst.identifier.system, "urn:ietf:rfc:3986")

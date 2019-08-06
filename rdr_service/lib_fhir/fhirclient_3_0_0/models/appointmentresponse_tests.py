@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import appointmentresponse
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class AppointmentResponseTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("AppointmentResponse", js["resourceType"])
         return appointmentresponse.AppointmentResponse(js)
-    
+
     def testAppointmentResponse1(self):
         inst = self.instantiate_from("appointmentresponse-example-req.json")
         self.assertIsNotNone(inst, "Must have instantiated a AppointmentResponse instance")
         self.implAppointmentResponse1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AppointmentResponse", js["resourceType"])
         inst2 = appointmentresponse.AppointmentResponse(js)
         self.implAppointmentResponse1(inst2)
-    
+
     def implAppointmentResponse1(self, inst):
         self.assertEqual(inst.comment, "can't we try for this time, can't do mornings")
         self.assertEqual(inst.end.date, FHIRDate("2013-12-25T13:30:00Z").date)
@@ -45,17 +46,17 @@ class AppointmentResponseTests(unittest.TestCase):
         self.assertEqual(inst.start.as_json(), "2013-12-25T13:15:00Z")
         self.assertEqual(inst.text.div, "<div xmlns=\"http://www.w3.org/1999/xhtml\">Accept Brian MRI results discussion</div>")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testAppointmentResponse2(self):
         inst = self.instantiate_from("appointmentresponse-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a AppointmentResponse instance")
         self.implAppointmentResponse2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("AppointmentResponse", js["resourceType"])
         inst2 = appointmentresponse.AppointmentResponse(js)
         self.implAppointmentResponse2(inst2)
-    
+
     def implAppointmentResponse2(self, inst):
         self.assertEqual(inst.id, "example")
         self.assertEqual(inst.participantStatus, "accepted")

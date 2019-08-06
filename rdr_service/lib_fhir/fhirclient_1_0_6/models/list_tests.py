@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import list
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ListTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("List", js["resourceType"])
         return list.List(js)
-    
+
     def testList1(self):
         inst = self.instantiate_from("list-example-allergies.json")
         self.assertIsNotNone(inst, "Must have instantiated a List instance")
         self.implList1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("List", js["resourceType"])
         inst2 = list.List(js)
         self.implList1(inst2)
-    
+
     def implList1(self, inst):
         self.assertEqual(inst.code.coding[0].code, "52472-8")
         self.assertEqual(inst.code.coding[0].display, "Allergies and Adverse Drug Reactions")
@@ -45,17 +46,17 @@ class ListTests(unittest.TestCase):
         self.assertEqual(inst.status, "current")
         self.assertEqual(inst.text.status, "generated")
         self.assertEqual(inst.title, "Current Allergy List")
-    
+
     def testList2(self):
         inst = self.instantiate_from("list-example-empty.json")
         self.assertIsNotNone(inst, "Must have instantiated a List instance")
         self.implList2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("List", js["resourceType"])
         inst2 = list.List(js)
         self.implList2(inst2)
-    
+
     def implList2(self, inst):
         self.assertEqual(inst.code.coding[0].code, "182836005")
         self.assertEqual(inst.code.coding[0].display, "Review of medication")
@@ -71,17 +72,17 @@ class ListTests(unittest.TestCase):
         self.assertEqual(inst.mode, "snapshot")
         self.assertEqual(inst.status, "current")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testList3(self):
         inst = self.instantiate_from("list-example-familyhistory-f201-roel.json")
         self.assertIsNotNone(inst, "Must have instantiated a List instance")
         self.implList3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("List", js["resourceType"])
         inst2 = list.List(js)
         self.implList3(inst2)
-    
+
     def implList3(self, inst):
         self.assertEqual(inst.code.coding[0].code, "8670-2")
         self.assertEqual(inst.code.coding[0].display, "History of family member diseases")
@@ -93,17 +94,17 @@ class ListTests(unittest.TestCase):
         self.assertEqual(inst.note, "Both parents, both brothers and both children (twin) are still alive.")
         self.assertEqual(inst.status, "current")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testList4(self):
         inst = self.instantiate_from("list-example-familyhistory-genetics-profile-annie.json")
         self.assertIsNotNone(inst, "Must have instantiated a List instance")
         self.implList4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("List", js["resourceType"])
         inst2 = list.List(js)
         self.implList4(inst2)
-    
+
     def implList4(self, inst):
         self.assertEqual(inst.code.coding[0].code, "8670-2")
         self.assertEqual(inst.code.coding[0].display, "History of family member diseases")
@@ -122,17 +123,17 @@ class ListTests(unittest.TestCase):
         self.assertEqual(inst.mode, "snapshot")
         self.assertEqual(inst.status, "current")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testList5(self):
         inst = self.instantiate_from("list-example-familyhistory-genetics-profile.json")
         self.assertIsNotNone(inst, "Must have instantiated a List instance")
         self.implList5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("List", js["resourceType"])
         inst2 = list.List(js)
         self.implList5(inst2)
-    
+
     def implList5(self, inst):
         self.assertEqual(inst.code.coding[0].code, "8670-2")
         self.assertEqual(inst.code.coding[0].display, "History of family member diseases")
@@ -150,17 +151,17 @@ class ListTests(unittest.TestCase):
         self.assertEqual(inst.status, "current")
         self.assertEqual(inst.text.div, "<div>To do</div>")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testList6(self):
         inst = self.instantiate_from("list-example-medlist.json")
         self.assertIsNotNone(inst, "Must have instantiated a List instance")
         self.implList6(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("List", js["resourceType"])
         inst2 = list.List(js)
         self.implList6(inst2)
-    
+
     def implList6(self, inst):
         self.assertEqual(inst.code.coding[0].code, "182836005")
         self.assertEqual(inst.code.coding[0].display, "Review of medication")
@@ -179,17 +180,17 @@ class ListTests(unittest.TestCase):
         self.assertEqual(inst.mode, "changes")
         self.assertEqual(inst.status, "current")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testList7(self):
         inst = self.instantiate_from("list-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a List instance")
         self.implList7(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("List", js["resourceType"])
         inst2 = list.List(js)
         self.implList7(inst2)
-    
+
     def implList7(self, inst):
         self.assertEqual(inst.date.date, FHIRDate("2012-11-25T22:17:00+11:00").date)
         self.assertEqual(inst.date.as_json(), "2012-11-25T22:17:00+11:00")

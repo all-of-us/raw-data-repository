@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import questionnaireresponse
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class QuestionnaireResponseTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("QuestionnaireResponse", js["resourceType"])
         return questionnaireresponse.QuestionnaireResponse(js)
-    
+
     def testQuestionnaireResponse1(self):
         inst = self.instantiate_from("questionnaireresponse-example-bluebook.json")
         self.assertIsNotNone(inst, "Must have instantiated a QuestionnaireResponse instance")
         self.implQuestionnaireResponse1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("QuestionnaireResponse", js["resourceType"])
         inst2 = questionnaireresponse.QuestionnaireResponse(js)
         self.implQuestionnaireResponse1(inst2)
-    
+
     def implQuestionnaireResponse1(self, inst):
         self.assertEqual(inst.authored.date, FHIRDate("2013-02-19T14:15:00+10:00").date)
         self.assertEqual(inst.authored.as_json(), "2013-02-19T14:15:00+10:00")
@@ -76,17 +77,17 @@ class QuestionnaireResponseTests(unittest.TestCase):
         self.assertEqual(inst.item[0].text, "Birth details - To be completed by health professional")
         self.assertEqual(inst.status, "completed")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testQuestionnaireResponse2(self):
         inst = self.instantiate_from("questionnaireresponse-example-f201-lifelines.json")
         self.assertIsNotNone(inst, "Must have instantiated a QuestionnaireResponse instance")
         self.implQuestionnaireResponse2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("QuestionnaireResponse", js["resourceType"])
         inst2 = questionnaireresponse.QuestionnaireResponse(js)
         self.implQuestionnaireResponse2(inst2)
-    
+
     def implQuestionnaireResponse2(self, inst):
         self.assertEqual(inst.authored.date, FHIRDate("2013-06-18T00:00:00+01:00").date)
         self.assertEqual(inst.authored.as_json(), "2013-06-18T00:00:00+01:00")
@@ -120,17 +121,17 @@ class QuestionnaireResponseTests(unittest.TestCase):
         self.assertEqual(inst.item[2].text, "Intoxications")
         self.assertEqual(inst.status, "completed")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testQuestionnaireResponse3(self):
         inst = self.instantiate_from("questionnaireresponse-example-gcs.json")
         self.assertIsNotNone(inst, "Must have instantiated a QuestionnaireResponse instance")
         self.implQuestionnaireResponse3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("QuestionnaireResponse", js["resourceType"])
         inst2 = questionnaireresponse.QuestionnaireResponse(js)
         self.implQuestionnaireResponse3(inst2)
-    
+
     def implQuestionnaireResponse3(self, inst):
         self.assertEqual(inst.authored.date, FHIRDate("2014-12-11T04:44:16Z").date)
         self.assertEqual(inst.authored.as_json(), "2014-12-11T04:44:16Z")
@@ -155,17 +156,17 @@ class QuestionnaireResponseTests(unittest.TestCase):
         self.assertEqual(inst.item[2].linkId, "1.3")
         self.assertEqual(inst.status, "completed")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testQuestionnaireResponse4(self):
         inst = self.instantiate_from("questionnaireresponse-example-ussg-fht-answers.json")
         self.assertIsNotNone(inst, "Must have instantiated a QuestionnaireResponse instance")
         self.implQuestionnaireResponse4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("QuestionnaireResponse", js["resourceType"])
         inst2 = questionnaireresponse.QuestionnaireResponse(js)
         self.implQuestionnaireResponse4(inst2)
-    
+
     def implQuestionnaireResponse4(self, inst):
         self.assertEqual(inst.authored.date, FHIRDate("2008-01-17").date)
         self.assertEqual(inst.authored.as_json(), "2008-01-17")
@@ -719,17 +720,17 @@ class QuestionnaireResponseTests(unittest.TestCase):
         self.assertEqual(inst.item[2].text, "Family member health information")
         self.assertEqual(inst.status, "in-progress")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testQuestionnaireResponse5(self):
         inst = self.instantiate_from("questionnaireresponse-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a QuestionnaireResponse instance")
         self.implQuestionnaireResponse5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("QuestionnaireResponse", js["resourceType"])
         inst2 = questionnaireresponse.QuestionnaireResponse(js)
         self.implQuestionnaireResponse5(inst2)
-    
+
     def implQuestionnaireResponse5(self, inst):
         self.assertEqual(inst.authored.date, FHIRDate("2013-02-19T14:15:00-05:00").date)
         self.assertEqual(inst.authored.as_json(), "2013-02-19T14:15:00-05:00")

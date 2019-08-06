@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import servicedefinition
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ServiceDefinitionTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("ServiceDefinition", js["resourceType"])
         return servicedefinition.ServiceDefinition(js)
-    
+
     def testServiceDefinition1(self):
         inst = self.instantiate_from("servicedefinition-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ServiceDefinition instance")
         self.implServiceDefinition1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ServiceDefinition", js["resourceType"])
         inst2 = servicedefinition.ServiceDefinition(js)
         self.implServiceDefinition1(inst2)
-    
+
     def implServiceDefinition1(self, inst):
         self.assertEqual(inst.date.date, FHIRDate("2015-07-22").date)
         self.assertEqual(inst.date.as_json(), "2015-07-22")

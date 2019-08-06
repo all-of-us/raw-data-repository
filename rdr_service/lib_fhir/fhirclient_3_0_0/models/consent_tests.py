@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import consent
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ConsentTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Consent", js["resourceType"])
         return consent.Consent(js)
-    
+
     def testConsent1(self):
         inst = self.instantiate_from("consent-example-Emergency.json")
         self.assertIsNotNone(inst, "Must have instantiated a Consent instance")
         self.implConsent1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Consent", js["resourceType"])
         inst2 = consent.Consent(js)
         self.implConsent1(inst2)
-    
+
     def implConsent1(self, inst):
         self.assertEqual(inst.dateTime.date, FHIRDate("2015-11-18").date)
         self.assertEqual(inst.dateTime.as_json(), "2015-11-18")
@@ -47,17 +48,17 @@ class ConsentTests(unittest.TestCase):
         self.assertEqual(inst.sourceAttachment.title, "The terms of the consent in lawyer speak.")
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testConsent2(self):
         inst = self.instantiate_from("consent-example-grantor.json")
         self.assertIsNotNone(inst, "Must have instantiated a Consent instance")
         self.implConsent2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Consent", js["resourceType"])
         inst2 = consent.Consent(js)
         self.implConsent2(inst2)
-    
+
     def implConsent2(self, inst):
         self.assertEqual(inst.dateTime.date, FHIRDate("2015-11-18").date)
         self.assertEqual(inst.dateTime.as_json(), "2015-11-18")
@@ -73,17 +74,17 @@ class ConsentTests(unittest.TestCase):
         self.assertEqual(inst.sourceAttachment.title, "The terms of the consent in lawyer speak.")
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testConsent3(self):
         inst = self.instantiate_from("consent-example-notAuthor.json")
         self.assertIsNotNone(inst, "Must have instantiated a Consent instance")
         self.implConsent3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Consent", js["resourceType"])
         inst2 = consent.Consent(js)
         self.implConsent3(inst2)
-    
+
     def implConsent3(self, inst):
         self.assertEqual(inst.dateTime.date, FHIRDate("2015-11-18").date)
         self.assertEqual(inst.dateTime.as_json(), "2015-11-18")
@@ -95,17 +96,17 @@ class ConsentTests(unittest.TestCase):
         self.assertEqual(inst.sourceAttachment.title, "The terms of the consent in lawyer speak.")
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testConsent4(self):
         inst = self.instantiate_from("consent-example-notOrg.json")
         self.assertIsNotNone(inst, "Must have instantiated a Consent instance")
         self.implConsent4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Consent", js["resourceType"])
         inst2 = consent.Consent(js)
         self.implConsent4(inst2)
-    
+
     def implConsent4(self, inst):
         self.assertEqual(inst.dateTime.date, FHIRDate("2015-11-18").date)
         self.assertEqual(inst.dateTime.as_json(), "2015-11-18")
@@ -121,17 +122,17 @@ class ConsentTests(unittest.TestCase):
         self.assertEqual(inst.sourceAttachment.title, "The terms of the consent in lawyer speak.")
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testConsent5(self):
         inst = self.instantiate_from("consent-example-notThem.json")
         self.assertIsNotNone(inst, "Must have instantiated a Consent instance")
         self.implConsent5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Consent", js["resourceType"])
         inst2 = consent.Consent(js)
         self.implConsent5(inst2)
-    
+
     def implConsent5(self, inst):
         self.assertEqual(inst.dateTime.date, FHIRDate("2015-11-18").date)
         self.assertEqual(inst.dateTime.as_json(), "2015-11-18")
@@ -147,17 +148,17 @@ class ConsentTests(unittest.TestCase):
         self.assertEqual(inst.sourceAttachment.title, "The terms of the consent in lawyer speak.")
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testConsent6(self):
         inst = self.instantiate_from("consent-example-notThis.json")
         self.assertIsNotNone(inst, "Must have instantiated a Consent instance")
         self.implConsent6(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Consent", js["resourceType"])
         inst2 = consent.Consent(js)
         self.implConsent6(inst2)
-    
+
     def implConsent6(self, inst):
         self.assertEqual(inst.dateTime.date, FHIRDate("2015-11-18").date)
         self.assertEqual(inst.dateTime.as_json(), "2015-11-18")
@@ -168,17 +169,17 @@ class ConsentTests(unittest.TestCase):
         self.assertEqual(inst.sourceAttachment.title, "The terms of the consent in lawyer speak.")
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testConsent7(self):
         inst = self.instantiate_from("consent-example-notTime.json")
         self.assertIsNotNone(inst, "Must have instantiated a Consent instance")
         self.implConsent7(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Consent", js["resourceType"])
         inst2 = consent.Consent(js)
         self.implConsent7(inst2)
-    
+
     def implConsent7(self, inst):
         self.assertEqual(inst.dateTime.date, FHIRDate("2015-11-18").date)
         self.assertEqual(inst.dateTime.as_json(), "2015-11-18")
@@ -192,17 +193,17 @@ class ConsentTests(unittest.TestCase):
         self.assertEqual(inst.sourceAttachment.title, "The terms of the consent in lawyer speak.")
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testConsent8(self):
         inst = self.instantiate_from("consent-example-Out.json")
         self.assertIsNotNone(inst, "Must have instantiated a Consent instance")
         self.implConsent8(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Consent", js["resourceType"])
         inst2 = consent.Consent(js)
         self.implConsent8(inst2)
-    
+
     def implConsent8(self, inst):
         self.assertEqual(inst.actor[0].role.coding[0].code, "CST")
         self.assertEqual(inst.actor[0].role.coding[0].system, "http://hl7.org/fhir/v3/ParticipationType")
@@ -213,17 +214,17 @@ class ConsentTests(unittest.TestCase):
         self.assertEqual(inst.sourceAttachment.title, "The terms of the consent in lawyer speak.")
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testConsent9(self):
         inst = self.instantiate_from("consent-example-pkb.json")
         self.assertIsNotNone(inst, "Must have instantiated a Consent instance")
         self.implConsent9(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Consent", js["resourceType"])
         inst2 = consent.Consent(js)
         self.implConsent9(inst2)
-    
+
     def implConsent9(self, inst):
         self.assertEqual(inst.dateTime.date, FHIRDate("2016-06-16").date)
         self.assertEqual(inst.dateTime.as_json(), "2016-06-16")
@@ -301,17 +302,17 @@ class ConsentTests(unittest.TestCase):
         self.assertEqual(inst.policyRule, "http://hl7.org/fhir/ConsentPolicy/opt-out")
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testConsent10(self):
         inst = self.instantiate_from("consent-example-signature.json")
         self.assertIsNotNone(inst, "Must have instantiated a Consent instance")
         self.implConsent10(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Consent", js["resourceType"])
         inst2 = consent.Consent(js)
         self.implConsent10(inst2)
-    
+
     def implConsent10(self, inst):
         self.assertEqual(inst.actor[0].role.coding[0].code, "PRCP")
         self.assertEqual(inst.actor[0].role.coding[0].system, "http://hl7.org/fhir/v3/ParticipationType")

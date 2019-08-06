@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import immunizationrecommendation
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ImmunizationRecommendationTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("ImmunizationRecommendation", js["resourceType"])
         return immunizationrecommendation.ImmunizationRecommendation(js)
-    
+
     def testImmunizationRecommendation1(self):
         inst = self.instantiate_from("immunizationrecommendation-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ImmunizationRecommendation instance")
         self.implImmunizationRecommendation1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ImmunizationRecommendation", js["resourceType"])
         inst2 = immunizationrecommendation.ImmunizationRecommendation(js)
         self.implImmunizationRecommendation1(inst2)
-    
+
     def implImmunizationRecommendation1(self, inst):
         self.assertEqual(inst.id, "example")
         self.assertEqual(inst.identifier[0].system, "urn:ietf:rfc:3986")
@@ -62,17 +63,17 @@ class ImmunizationRecommendationTests(unittest.TestCase):
         self.assertEqual(inst.recommendation[0].vaccineCode.coding[0].system, "http://snomed.info/sct")
         self.assertEqual(inst.text.div, "<div xmlns=\"http://www.w3.org/1999/xhtml\">Authored by Joginder Madra</div>")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testImmunizationRecommendation2(self):
         inst = self.instantiate_from("immunizationrecommendation-target-disease-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a ImmunizationRecommendation instance")
         self.implImmunizationRecommendation2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("ImmunizationRecommendation", js["resourceType"])
         inst2 = immunizationrecommendation.ImmunizationRecommendation(js)
         self.implImmunizationRecommendation2(inst2)
-    
+
     def implImmunizationRecommendation2(self, inst):
         self.assertEqual(inst.id, "example")
         self.assertEqual(inst.identifier[0].system, "urn:ietf:rfc:3986")

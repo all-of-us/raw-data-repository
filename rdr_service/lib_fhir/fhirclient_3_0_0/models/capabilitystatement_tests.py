@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import capabilitystatement
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class CapabilityStatementTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("CapabilityStatement", js["resourceType"])
         return capabilitystatement.CapabilityStatement(js)
-    
+
     def testCapabilityStatement1(self):
         inst = self.instantiate_from("capabilitystatement-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a CapabilityStatement instance")
         self.implCapabilityStatement1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CapabilityStatement", js["resourceType"])
         inst2 = capabilitystatement.CapabilityStatement(js)
         self.implCapabilityStatement1(inst2)
-    
+
     def implCapabilityStatement1(self, inst):
         self.assertEqual(inst.acceptUnknown, "both")
         self.assertEqual(inst.contact[0].name, "System Administrator")
@@ -120,17 +121,17 @@ class CapabilityStatementTests(unittest.TestCase):
         self.assertEqual(inst.useContext[0].valueCodeableConcept.coding[0].code, "positive")
         self.assertEqual(inst.useContext[0].valueCodeableConcept.coding[0].system, "http://hl7.org/fhir/variant-state")
         self.assertEqual(inst.version, "20130510")
-    
+
     def testCapabilityStatement2(self):
         inst = self.instantiate_from("capabilitystatement-phr-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a CapabilityStatement instance")
         self.implCapabilityStatement2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CapabilityStatement", js["resourceType"])
         inst2 = capabilitystatement.CapabilityStatement(js)
         self.implCapabilityStatement2(inst2)
-    
+
     def implCapabilityStatement2(self, inst):
         self.assertEqual(inst.acceptUnknown, "no")
         self.assertEqual(inst.contact[0].telecom[0].system, "url")

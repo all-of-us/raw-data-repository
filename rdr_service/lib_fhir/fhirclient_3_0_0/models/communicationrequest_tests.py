@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import communicationrequest
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class CommunicationRequestTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("CommunicationRequest", js["resourceType"])
         return communicationrequest.CommunicationRequest(js)
-    
+
     def testCommunicationRequest1(self):
         inst = self.instantiate_from("communicationrequest-example-fm-solicit-attachment.json")
         self.assertIsNotNone(inst, "Must have instantiated a CommunicationRequest instance")
         self.implCommunicationRequest1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CommunicationRequest", js["resourceType"])
         inst2 = communicationrequest.CommunicationRequest(js)
         self.implCommunicationRequest1(inst2)
-    
+
     def implCommunicationRequest1(self, inst):
         self.assertEqual(inst.authoredOn.date, FHIRDate("2016-06-10T11:01:10-08:00").date)
         self.assertEqual(inst.authoredOn.as_json(), "2016-06-10T11:01:10-08:00")
@@ -54,17 +55,17 @@ class CommunicationRequestTests(unittest.TestCase):
         self.assertEqual(inst.status, "active")
         self.assertEqual(inst.text.div, "<div xmlns=\"http://www.w3.org/1999/xhtml\">Request for Accident Report</div>")
         self.assertEqual(inst.text.status, "generated")
-    
+
     def testCommunicationRequest2(self):
         inst = self.instantiate_from("communicationrequest-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a CommunicationRequest instance")
         self.implCommunicationRequest2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CommunicationRequest", js["resourceType"])
         inst2 = communicationrequest.CommunicationRequest(js)
         self.implCommunicationRequest2(inst2)
-    
+
     def implCommunicationRequest2(self, inst):
         self.assertEqual(inst.id, "example")
         self.assertEqual(inst.status, "active")

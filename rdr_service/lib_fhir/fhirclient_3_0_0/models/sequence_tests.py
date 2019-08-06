@@ -5,12 +5,12 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import sequence
-from .fhirdate import FHIRDate
 
 
 class SequenceTests(unittest.TestCase):
@@ -20,17 +20,17 @@ class SequenceTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Sequence", js["resourceType"])
         return sequence.Sequence(js)
-    
+
     def testSequence1(self):
         inst = self.instantiate_from("coord-0base-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Sequence instance")
         self.implSequence1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Sequence", js["resourceType"])
         inst2 = sequence.Sequence(js)
         self.implSequence1(inst2)
-    
+
     def implSequence1(self, inst):
         self.assertEqual(inst.coordinateSystem, 0)
         self.assertEqual(inst.id, "coord-0-base")
@@ -56,17 +56,17 @@ class SequenceTests(unittest.TestCase):
         self.assertEqual(inst.variant[2].observedAllele, "-")
         self.assertEqual(inst.variant[2].referenceAllele, "T")
         self.assertEqual(inst.variant[2].start, 6)
-    
+
     def testSequence2(self):
         inst = self.instantiate_from("coord-1base-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Sequence instance")
         self.implSequence2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Sequence", js["resourceType"])
         inst2 = sequence.Sequence(js)
         self.implSequence2(inst2)
-    
+
     def implSequence2(self, inst):
         self.assertEqual(inst.coordinateSystem, 1)
         self.assertEqual(inst.id, "coord-1-base")
@@ -92,17 +92,17 @@ class SequenceTests(unittest.TestCase):
         self.assertEqual(inst.variant[2].observedAllele, "-")
         self.assertEqual(inst.variant[2].referenceAllele, "T")
         self.assertEqual(inst.variant[2].start, 7)
-    
+
     def testSequence3(self):
         inst = self.instantiate_from("sequence-example-fda-comparisons.json")
         self.assertIsNotNone(inst, "Must have instantiated a Sequence instance")
         self.implSequence3(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Sequence", js["resourceType"])
         inst2 = sequence.Sequence(js)
         self.implSequence3(inst2)
-    
+
     def implSequence3(self, inst):
         self.assertEqual(inst.coordinateSystem, 1)
         self.assertEqual(inst.id, "fda-vcf-comparison")
@@ -134,17 +134,17 @@ class SequenceTests(unittest.TestCase):
         self.assertEqual(inst.variant[0].observedAllele, "T")
         self.assertEqual(inst.variant[0].referenceAllele, "G")
         self.assertEqual(inst.variant[0].start, 13116)
-    
+
     def testSequence4(self):
         inst = self.instantiate_from("sequence-example-fda-vcfeval.json")
         self.assertIsNotNone(inst, "Must have instantiated a Sequence instance")
         self.implSequence4(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Sequence", js["resourceType"])
         inst2 = sequence.Sequence(js)
         self.implSequence4(inst2)
-    
+
     def implSequence4(self, inst):
         self.assertEqual(inst.coordinateSystem, 1)
         self.assertEqual(inst.id, "fda-vcfeval-comparison")
@@ -189,17 +189,17 @@ class SequenceTests(unittest.TestCase):
         self.assertEqual(inst.variant[0].observedAllele, "T")
         self.assertEqual(inst.variant[0].referenceAllele, "G")
         self.assertEqual(inst.variant[0].start, 13116)
-    
+
     def testSequence5(self):
         inst = self.instantiate_from("sequence-example-fda.json")
         self.assertIsNotNone(inst, "Must have instantiated a Sequence instance")
         self.implSequence5(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Sequence", js["resourceType"])
         inst2 = sequence.Sequence(js)
         self.implSequence5(inst2)
-    
+
     def implSequence5(self, inst):
         self.assertEqual(inst.coordinateSystem, 1)
         self.assertEqual(inst.id, "fda-example")
@@ -234,17 +234,17 @@ class SequenceTests(unittest.TestCase):
         self.assertEqual(inst.variant[0].observedAllele, "T")
         self.assertEqual(inst.variant[0].referenceAllele, "G")
         self.assertEqual(inst.variant[0].start, 13116)
-    
+
     def testSequence6(self):
         inst = self.instantiate_from("sequence-example-pgx-1.json")
         self.assertIsNotNone(inst, "Must have instantiated a Sequence instance")
         self.implSequence6(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Sequence", js["resourceType"])
         inst2 = sequence.Sequence(js)
         self.implSequence6(inst2)
-    
+
     def implSequence6(self, inst):
         self.assertEqual(inst.coordinateSystem, 0)
         self.assertEqual(inst.id, "example-pgx-1")
@@ -259,17 +259,17 @@ class SequenceTests(unittest.TestCase):
         self.assertEqual(inst.variant[0].observedAllele, "G")
         self.assertEqual(inst.variant[0].referenceAllele, "T")
         self.assertEqual(inst.variant[0].start, 55227976)
-    
+
     def testSequence7(self):
         inst = self.instantiate_from("sequence-example-pgx-2.json")
         self.assertIsNotNone(inst, "Must have instantiated a Sequence instance")
         self.implSequence7(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Sequence", js["resourceType"])
         inst2 = sequence.Sequence(js)
         self.implSequence7(inst2)
-    
+
     def implSequence7(self, inst):
         self.assertEqual(inst.coordinateSystem, 0)
         self.assertEqual(inst.id, "example-pgx-2")
@@ -284,17 +284,17 @@ class SequenceTests(unittest.TestCase):
         self.assertEqual(inst.variant[0].observedAllele, "G")
         self.assertEqual(inst.variant[0].referenceAllele, "T")
         self.assertEqual(inst.variant[0].start, 55227978)
-    
+
     def testSequence8(self):
         inst = self.instantiate_from("sequence-example-TPMT-one.json")
         self.assertIsNotNone(inst, "Must have instantiated a Sequence instance")
         self.implSequence8(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Sequence", js["resourceType"])
         inst2 = sequence.Sequence(js)
         self.implSequence8(inst2)
-    
+
     def implSequence8(self, inst):
         self.assertEqual(inst.coordinateSystem, 1)
         self.assertEqual(inst.id, "example-TPMT-one")
@@ -310,17 +310,17 @@ class SequenceTests(unittest.TestCase):
         self.assertEqual(inst.variant[0].observedAllele, "A")
         self.assertEqual(inst.variant[0].referenceAllele, "G")
         self.assertEqual(inst.variant[0].start, 18139214)
-    
+
     def testSequence9(self):
         inst = self.instantiate_from("sequence-example-TPMT-two.json")
         self.assertIsNotNone(inst, "Must have instantiated a Sequence instance")
         self.implSequence9(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Sequence", js["resourceType"])
         inst2 = sequence.Sequence(js)
         self.implSequence9(inst2)
-    
+
     def implSequence9(self, inst):
         self.assertEqual(inst.coordinateSystem, 1)
         self.assertEqual(inst.id, "example-TPMT-two")
@@ -336,17 +336,17 @@ class SequenceTests(unittest.TestCase):
         self.assertEqual(inst.variant[0].observedAllele, "T")
         self.assertEqual(inst.variant[0].referenceAllele, "C")
         self.assertEqual(inst.variant[0].start, 18131012)
-    
+
     def testSequence10(self):
         inst = self.instantiate_from("sequence-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Sequence instance")
         self.implSequence10(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Sequence", js["resourceType"])
         inst2 = sequence.Sequence(js)
         self.implSequence10(inst2)
-    
+
     def implSequence10(self, inst):
         self.assertEqual(inst.coordinateSystem, 0)
         self.assertEqual(inst.id, "example")

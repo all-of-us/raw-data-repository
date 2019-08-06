@@ -8,10 +8,10 @@ Create Date: 2019-03-07 08:41:20.962729
 import model.utils
 import sqlalchemy as sa
 from alembic import op
-from rdr_service.model.base import add_table_history_table, drop_table_history_table
-from rdr_service.participant_enums import OrderShipmentTrackingStatus, OrderShipmentStatus
 from sqlalchemy.dialects import mysql
 
+from rdr_service.model.base import add_table_history_table, drop_table_history_table
+from rdr_service.participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus
 
 # revision identifiers, used by Alembic.
 revision = '8b20451a84df'

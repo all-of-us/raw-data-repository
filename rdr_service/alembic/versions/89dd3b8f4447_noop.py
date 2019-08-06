@@ -5,7 +5,6 @@ Revises: 8b1281fb55ed
 Create Date: 2017-10-04 17:10:35.319343
 
 """
-from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '89dd3b8f4447'

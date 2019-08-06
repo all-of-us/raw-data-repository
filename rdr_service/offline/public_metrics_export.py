@@ -1,17 +1,16 @@
-from rdr_service import clock
 import collections
 
-from rdr_service.model.metric_set import AggregateMetrics, MetricSet
 from sqlalchemy import text
+
+from rdr_service import clock
 from rdr_service.dao import database_factory
 from rdr_service.dao.database_utils import replace_years_old
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao, MetricSetDao
-from rdr_service.participant_enums import MetricSetType, MetricsKey
-from rdr_service.participant_enums import EnrollmentStatus, OrderStatus, PhysicalMeasurementsStatus
-from rdr_service.participant_enums import Race, QuestionnaireStatus, WithdrawalStatus
-from rdr_service.participant_enums import TEST_EMAIL_PATTERN, TEST_HPO_NAME
-
+from rdr_service.model.metric_set import AggregateMetrics, MetricSet
+from rdr_service.participant_enums import EnrollmentStatus, MetricSetType, MetricsKey, OrderStatus, \
+  PhysicalMeasurementsStatus, QuestionnaireStatus, Race, TEST_EMAIL_PATTERN, TEST_HPO_NAME, \
+  WithdrawalStatus
 
 LIVE_METRIC_SET_ID = 'public-agg.live'
 

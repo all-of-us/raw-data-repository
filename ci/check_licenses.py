@@ -4,10 +4,12 @@ Goes through the list of installed packages, ensuring that each has a license
 that we have whitelisted.
 """
 
-import pkg_resources
 import argparse
 import email.parser
 import os
+
+import pkg_resources
+
 
 class InvalidLicenseException(BaseException):
   pass

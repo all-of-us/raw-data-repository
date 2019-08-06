@@ -10,18 +10,20 @@ import random
 import string
 import time
 
+from dateutil.parser import parse
+
 from rdr_service import clock
 from rdr_service.data_gen.generators.base_gen import BaseGen
-from dateutil.parser import parse
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.coding import Coding
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirdate import FHIRDate
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirreference import FHIRReference
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.questionnaire import Questionnaire
-from rdr_service.lib_fhir.fhirclient_1_0_6.models.questionnaireresponse import QuestionnaireResponse, \
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.questionnaireresponse import \
+  QuestionnaireResponse, \
   QuestionnaireResponseGroup, QuestionnaireResponseGroupQuestion, \
   QuestionnaireResponseGroupQuestionAnswer
-from rdr_service.services.system_utils import make_api_request
 from rdr_service.services.gcp_utils import gcp_make_auth_header
+from rdr_service.services.system_utils import make_api_request
 
 _logger = logging.getLogger('rdr_logger')
 

@@ -5,10 +5,11 @@
 #  2016, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import immunization
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class ImmunizationTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("Immunization", js["resourceType"])
         return immunization.Immunization(js)
-    
+
     def testImmunization1(self):
         inst = self.instantiate_from("immunization-example-refused.json")
         self.assertIsNotNone(inst, "Must have instantiated a Immunization instance")
         self.implImmunization1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Immunization", js["resourceType"])
         inst2 = immunization.Immunization(js)
         self.implImmunization1(inst2)
-    
+
     def implImmunization1(self, inst):
         self.assertEqual(inst.date.date, FHIRDate("2013-01-10").date)
         self.assertEqual(inst.date.as_json(), "2013-01-10")
@@ -45,17 +46,17 @@ class ImmunizationTests(unittest.TestCase):
         self.assertEqual(inst.vaccineCode.coding[0].display, "DTP")
         self.assertEqual(inst.vaccineCode.coding[0].system, "http://hl7.org/fhir/sid/cvx")
         self.assertTrue(inst.wasNotGiven)
-    
+
     def testImmunization2(self):
         inst = self.instantiate_from("immunization-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a Immunization instance")
         self.implImmunization2(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("Immunization", js["resourceType"])
         inst2 = immunization.Immunization(js)
         self.implImmunization2(inst2)
-    
+
     def implImmunization2(self, inst):
         self.assertEqual(inst.date.date, FHIRDate("2013-01-10").date)
         self.assertEqual(inst.date.as_json(), "2013-01-10")

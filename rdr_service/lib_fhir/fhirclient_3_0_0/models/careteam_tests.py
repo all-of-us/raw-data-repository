@@ -5,10 +5,11 @@
 #  2017, SMART Health IT.
 
 
-import os
 import io
-import unittest
 import json
+import os
+import unittest
+
 from . import careteam
 from .fhirdate import FHIRDate
 
@@ -20,17 +21,17 @@ class CareTeamTests(unittest.TestCase):
             js = json.load(handle)
             self.assertEqual("CareTeam", js["resourceType"])
         return careteam.CareTeam(js)
-    
+
     def testCareTeam1(self):
         inst = self.instantiate_from("careteam-example.json")
         self.assertIsNotNone(inst, "Must have instantiated a CareTeam instance")
         self.implCareTeam1(inst)
-        
+
         js = inst.as_json()
         self.assertEqual("CareTeam", js["resourceType"])
         inst2 = careteam.CareTeam(js)
         self.implCareTeam1(inst2)
-    
+
     def implCareTeam1(self, inst):
         self.assertEqual(inst.category[0].coding[0].code, "encounter")
         self.assertEqual(inst.category[0].coding[0].system, "http://hl7.org/fhir/care-team-category")

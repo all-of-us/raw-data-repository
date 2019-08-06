@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import uuid
 import logging
+import uuid
+
 try:                                # Python 2.x
     import urlparse
     from urllib import urlencode
