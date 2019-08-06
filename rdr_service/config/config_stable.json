@@ -93,7 +93,14 @@
       "roles": ["awardee_sa"],
       "awardee": "CAL_PMC",
       "whitelisted_ip_ranges" : {
-        "ip4": ["68.181.126.194", "104.129.198.138", "128.195.50.120"]
+        "ip4": ["68.181.126.194", "104.129.198.138", "128.195.50.120", "10.204.146.84"]
+      }
+    },
+    "awardee-chc@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "COMM_HEALTH",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["151.181.44.122"]
       }
     },
     "awardee-ucirvine@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
