@@ -112,7 +112,7 @@ def get_validated_user_info():
     # when using dev_appserver. When client tests are checking to ensure that an
     # unauthenticated requests gets rejected, they helpfully add this header.
     # The `application_id` check ensures this feature only works in dev_appserver.
-    if request.headers.get("unauthenticated") and GAE_PROJECT is None:
+    if request.headers.get("unauthenticated") and GAE_PROJECT == 'localhost':
         user_email = None
     if user_email is None:
         raise Unauthorized("No OAuth user found.")
@@ -226,7 +226,7 @@ def get_validated_user_info():
     # when using dev_appserver. When client tests are checking to ensure that an
     # unauthenticated requests gets rejected, they helpfully add this header.
     # The `application_id` check ensures this feature only works in dev_appserver.
-    if request.headers.get("unauthenticated") and GAE_PROJECT is None:
+    if request.headers.get("unauthenticated") and GAE_PROJECT == 'localhost':
         user_email = None
     if user_email is None:
         raise Unauthorized("No OAuth user found.")
