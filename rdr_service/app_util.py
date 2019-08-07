@@ -6,7 +6,7 @@ import time
 import netaddr
 import pytz
 from flask import request
-from google.appengine.api import app_identity, oauth
+from rdr_service.main import GAE_PROJECT
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from rdr_service import clock, config
@@ -73,12 +73,14 @@ def check_auth(role_whitelist):
 
 def get_oauth_id():
     """Returns user email ID if OAUTH token present, or None."""
-    try:
-        user_email = oauth.get_current_user(SCOPE).email()
-    except oauth.Error as e:
-        user_email = None
-        logging.error("OAuth failure: {}".format(e))
-    return user_email
+    # TODO: AUTH: Get user email from oauth2 token
+    return "test@test.com"
+    # try:
+    #     user_email = oauth.get_current_user(SCOPE).email()
+    # except oauth.Error as e:
+    #     user_email = None
+    #     logging.error("OAuth failure: {}".format(e))
+    # return user_email
 
 
 def check_cron():
@@ -110,7 +112,7 @@ def get_validated_user_info():
     # when using dev_appserver. When client tests are checking to ensure that an
     # unauthenticated requests gets rejected, they helpfully add this header.
     # The `application_id` check ensures this feature only works in dev_appserver.
-    if request.headers.get("unauthenticated") and app_identity.get_application_id() == "None":
+    if request.headers.get("unauthenticated") and GAE_PROJECT == 'localhost':
         user_email = None
     if user_email is None:
         raise Unauthorized("No OAuth user found.")
@@ -201,7 +203,7 @@ def auth_required(role_whitelist):
 
     def auth_required_wrapper(func):
         def wrapped(*args, **kwargs):
-            appid = app_identity.get_application_id()
+            appid = GAE_PROJECT
             # Only enforce HTTPS and auth for external requests; requests made for data generation
             # are allowed through (when enabled).
             if not _is_self_request():
@@ -224,7 +226,7 @@ def get_validated_user_info():
     # when using dev_appserver. When client tests are checking to ensure that an
     # unauthenticated requests gets rejected, they helpfully add this header.
     # The `application_id` check ensures this feature only works in dev_appserver.
-    if request.headers.get("unauthenticated") and app_identity.get_application_id() == "None":
+    if request.headers.get("unauthenticated") and GAE_PROJECT == 'localhost':
         user_email = None
     if user_email is None:
         raise Unauthorized("No OAuth user found.")

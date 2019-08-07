@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import Resource
+from flask_restplus import Resource
 from werkzeug import exceptions
 
 from rdr_service import app_util

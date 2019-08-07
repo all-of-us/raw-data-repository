@@ -4,7 +4,8 @@ import logging
 import math
 from datetime import datetime
 
-from google.appengine.api import app_identity, taskqueue
+from rdr_service.main import GAE_PROJECT
+from google.appengine.api import taskqueue
 from googleapiclient.discovery import build
 from sqlalchemy import func, or_
 
@@ -58,7 +59,7 @@ def rebuild_bigquery_data(timestamp, limit=0):
         timestamp = datetime.utcnow()
 
     try:
-        app_id = app_identity.get_application_id()
+        app_id = GAE_PROJECT
     except AttributeError:
         app_id = "localhost"
     dao = ParticipantDao()
@@ -127,7 +128,7 @@ def insert_batch_into_bq(bq, dataset, table, batch, dryrun=False):
 
     if dryrun is False:
         task = bq.tabledata().insertAll(
-            projectId=app_identity.get_application_id(), datasetId=dataset, tableId=table, body=body
+            projectId=GAE_PROJECT, datasetId=dataset, tableId=table, body=body
         )
         resp = task.execute()
     else:
@@ -236,7 +237,7 @@ def _get_remote_max_timestamps(dataset, table):
   """
     query = "select max(created) as max_created, max(modified) as max_modified from {0}.{1}".format(dataset, table)
 
-    job = BigQueryJob(query, project_id=app_identity.get_application_id(), default_dataset_id=dataset)
+    job = BigQueryJob(query, project_id=GAE_PROJECT, default_dataset_id=dataset)
     for page in job:
         for row in page:
             mc = row.max_created if row.max_created else datetime.min

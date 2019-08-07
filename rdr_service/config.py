@@ -4,7 +4,7 @@ Contains things such as the accounts allowed access to the system.
 """
 import logging
 
-from google.appengine.ext import ndb
+from google.cloud import firestore
 from werkzeug.exceptions import NotFound
 
 from rdr_service import clock, singletons
@@ -72,6 +72,7 @@ def override_setting(key, value):
 
 
 def store_current_config(config_json):
+    ndb = firestore.Client()
     conf_ndb_key = ndb.Key(Configuration, CONFIG_SINGLETON_KEY)
     conf = Configuration(key=conf_ndb_key, configuration=config_json)
     store(conf)
@@ -92,17 +93,20 @@ class InvalidConfigException(Exception):
     """Exception raised when the config setting is not in the expected form."""
 
 
-class Configuration(ndb.Model):
+class Configuration(firestore.Client().Model):
+    ndb = firestore.Client()
     configuration = ndb.JsonProperty()
 
 
 class ConfigurationHistory(ndb.Model):
+    ndb = firestore.Client()
     date = ndb.DateTimeProperty(auto_now_add=True)
     obj = ndb.StructuredProperty(Configuration, repeated=False)
     client_id = ndb.StringProperty()
 
 
 def load(_id=CONFIG_SINGLETON_KEY, date=None):
+    ndb = firestore.Client()
     key = ndb.Key(Configuration, _id)
     if date is not None:
         history = (

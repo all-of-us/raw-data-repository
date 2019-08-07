@@ -1,6 +1,6 @@
 import json
 
-from google.appengine.api import app_identity
+from rdr_service.main import GAE_PROJECT
 from werkzeug.exceptions import NotFound
 
 from rdr_service.api.base_api import BaseApi
@@ -20,7 +20,7 @@ class BQParticipantSummaryApi(BaseApi):
     def get(self, p_id):
 
         try:
-            project_id = app_identity.get_application_id()
+            project_id = GAE_PROJECT
         except AttributeError:
             project_id = None
 

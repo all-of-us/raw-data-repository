@@ -3,11 +3,11 @@
 This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
 import logging
+import os
 
 # pylint: disable=unused-import
-import requests_toolbelt.adapters.appengine
 from flask import Flask, got_request_exception
-from flask_restful import Api
+from flask_restplus import Api
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import HTTPException
 
@@ -38,15 +38,20 @@ from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireA
 from rdr_service.config import get_config, get_db_config
 from rdr_service.model.utils import ParticipantIdConverter
 
-# Use the App Engine Requests adapter. This makes sure that Requests uses URLFetch.
-requests_toolbelt.adapters.appengine.monkeypatch()
-
 PREFIX = "/rdr/v1/"
 
 app = Flask(__name__)
 app.url_map.converters["participant_id"] = ParticipantIdConverter
 app.config.setdefault("RESTFUL_JSON", {"cls": RdrJsonEncoder})
 
+# Get project name and credentials
+if os.getenv('GAE_ENV', '').startswith('standard'):
+    # Production in the standard environment
+    import google.auth
+    GAE_CREDENTIALS, GAE_PROJECT = google.auth.default()
+else:
+    GAE_CREDENTIALS = 'local@localhost.net'
+    GAE_PROJECT = 'localhost'
 
 def _warmup():
     # Load configurations into the cache.

@@ -3,8 +3,8 @@ import logging
 
 from dateutil.parser import parse
 from flask import request
-from flask_restful import Resource
-from google.appengine.ext import deferred
+from flask_restplus import Resource
+from rdr_service import deferred
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from rdr_service import app_util
