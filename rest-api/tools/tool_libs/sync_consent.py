@@ -45,7 +45,6 @@ from participant
          left join participant_summary summary
                    on participant.participant_id = summary.participant_id
 where organization.external_id = %s  
-  and summary.consent_for_electronic_health_records = 1
   and summary.consent_for_study_enrollment = 1
   and participant.is_ghost_id is not true
   and (
