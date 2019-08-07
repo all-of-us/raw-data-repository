@@ -4,10 +4,21 @@ Contains things such as the accounts allowed access to the system.
 """
 import logging
 
-from google.appengine.ext import ndb
+import json
+import os
+
+from abc import ABC, abstractmethod
+
+from google.cloud import datastore
 from werkzeug.exceptions import NotFound
 
 from rdr_service import clock, singletons
+from rdr_service.importer import import_from_string
+from rdr_service.provider import Provider
+
+
+_NO_DEFAULT = "_NO_DEFAULT"
+
 
 # Key that the main server configuration is stored under
 CONFIG_SINGLETON_KEY = "current_config"
@@ -92,54 +103,105 @@ class InvalidConfigException(Exception):
     """Exception raised when the config setting is not in the expected form."""
 
 
-class Configuration(ndb.Model):
-    configuration = ndb.JsonProperty()
+class ConfigProvider(Provider, ABC):
+    environment_variable_name = 'RDR_CONFIG_PROVIDER'
+
+    @abstractmethod
+    def load(self, name, date):
+        pass
+
+    @abstractmethod
+    def store(self, name, config_dict):
+        pass
 
 
-class ConfigurationHistory(ndb.Model):
-    date = ndb.DateTimeProperty(auto_now_add=True)
-    obj = ndb.StructuredProperty(Configuration, repeated=False)
-    client_id = ndb.StringProperty()
+class LocalFilesystemConfigProvider(ConfigProvider):
+    DEFAULT_CONFIG_ROOT = os.path.join(os.path.dirname(__file__), '.configs')
 
+    def __init__(self):
+        self._config_root = os.environ.get('RDR_CONFIG_ROOT', self.DEFAULT_CONFIG_ROOT)
+        if not os.path.exists(self._config_root):
+            os.mkdir(self._config_root)
+        elif not os.path.isdir(self._config_root):
+            raise NotADirectoryError('directory not found: {}'.format(self._config_root))
 
-def load(_id=CONFIG_SINGLETON_KEY, date=None):
-    key = ndb.Key(Configuration, _id)
-    if date is not None:
-        history = (
-            ConfigurationHistory.query(ancestor=ndb.Key("Configuration", _id))
-            .filter(ConfigurationHistory.date <= date)
-            .order(-ConfigurationHistory.date)
-            .fetch(limit=1)
-        )
-        if not history:
-            raise NotFound("No history object active at {}.".format(date))
-        return history[0].obj
-
-    model = key.get()
-    if model is None:
-        if _id == CONFIG_SINGLETON_KEY:
-            model = Configuration(key=key, configuration={})
-            model.put()
-            logging.info("Setting an empty configuration.")
+    def load(self, name=CONFIG_SINGLETON_KEY, date=None):
+        config_path = os.path.join(self._config_root, '{}.json'.format(name))
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as handle:
+                return json.load(handle)
         else:
-            raise NotFound("No config for %r." % _id)
-    return model
+            return {}
+
+    def store(self, name, config_dict, **kwargs):
+        config_path = os.path.join(self._config_root, '{}.json'.format(name))
+        with open(config_path, 'w') as handle:
+            json.dump(config_dict, handle)
 
 
-@ndb.transactional
-def store(model, date=None, client_id=None):
-    date = date or clock.CLOCK.now()
-    history = ConfigurationHistory(parent=model.key, obj=model, date=date)
-    if client_id:
-        history.populate(client_id=client_id)
-    history.put()
-    model.put()
+class GoogleCloudDatastoreConfigProvider(ConfigProvider):
+
+    def load(self, name=CONFIG_SINGLETON_KEY, date=None):
+        datastore_client = datastore.Client()
+        kind = 'Configuration'
+        key = datastore_client.key(kind, name)
+        if date is not None:
+            history_query = (
+                datastore_client.query(
+                    kind='ConfigurationHistory',
+                    order=['-date']
+                )
+                    .add_filter('ancestor', '=', key)
+                    .add_filter('date', '<=', date)
+                    .fetch(limit=1)
+            )
+            try:
+                return next(iter(history_query)).obj
+            except (StopIteration, AttributeError):
+                raise NotFound("No history object active at {}.".format(date))
+        entity = datastore_client.get(key=key)
+        if entity is None:
+            if name == CONFIG_SINGLETON_KEY:
+                entity = datastore.Entity(key=key)
+                entity['configuration'] = {}
+                datastore_client.put(entity)
+            else:
+                raise NotFound('No config for {}'.format(name))
+        return entity
+
+    def store(self, name, config_dict, **kwargs):
+        datastore_client = datastore.Client()
+        date = clock.CLOCK.now()
+        with datastore_client.transaction():
+            key = datastore_client.key('Configuration', name)
+            history_key = datastore_client.key('ConfigurationHistory', parent=key)
+            entity = datastore_client.get(key)
+            history_entity = datastore.Entity(key=history_key)
+            history_entity['obj'] = entity
+            history_entity['date'] = date
+            for k, v in kwargs.items():
+                history_entity[k] = v
+            datastore_client.put(entity=history_entity)
+            entity['configuration'] = config_dict
+            datastore_client.put(entity=entity)
+
+
+def get_config_provider():
+    provider_class = ConfigProvider.get_provider(default=LocalFilesystemConfigProvider)
+    return provider_class()
+
+
+def load(name=CONFIG_SINGLETON_KEY, date=None):
+    provider = get_config_provider()
+    return provider.load(name=name, date=date)
+
+
+def store(name, config_dict, **kwargs):
+    provider = get_config_provider()
+    provider.store(name, config_dict, **kwargs)
     singletons.invalidate(singletons.DB_CONFIG_INDEX)
     singletons.invalidate(singletons.MAIN_CONFIG_INDEX)
-    return model
-
-
-_NO_DEFAULT = "_NO_DEFAULT"
+    return config_dict
 
 
 def getSettingJson(key, default=_NO_DEFAULT):
@@ -187,7 +249,9 @@ def getSettingList(key, default=_NO_DEFAULT):
     if isinstance(config_json, list):
         return config_json
 
-    raise InvalidConfigException("Config key {} is a {} instead of a list".format(key, type(config_json)))
+    raise InvalidConfigException(
+        "Config key {} is a {} instead of a list".format(key, type(config_json))
+    )
 
 
 def getSetting(key, default=_NO_DEFAULT):
@@ -213,14 +277,14 @@ def getSetting(key, default=_NO_DEFAULT):
 
 
 def get_db_config():
-    model = singletons.get(
+    config = singletons.get(
         singletons.DB_CONFIG_INDEX, lambda: load(DB_CONFIG_KEY), cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS
     )
-    return model.configuration
+    return config
 
 
 def get_config():
-    model = singletons.get(
+    config = singletons.get(
         singletons.MAIN_CONFIG_INDEX, lambda: load(CONFIG_SINGLETON_KEY), cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS
     )
-    return model.configuration
+    return config
