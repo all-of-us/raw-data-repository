@@ -3,7 +3,8 @@ import logging
 import os
 
 import pipeline
-from google.appengine.api import app_identity, mail
+from rdr_service.main import GAE_PROJECT
+from google.appengine.api import mail
 from google.appengine.ext import db
 
 from rdr_service import config
@@ -12,7 +13,7 @@ from rdr_service import config
 # TODO(DA-448) For more reliable delivery, switch to creating tickets via the JIRA API.
 def send_failure_alert(job_name, message, log_exc_info=False, extra_recipients=None):
     """Sends an alert email for a failed job."""
-    subject = "%s failed in %s" % (job_name, app_identity.get_application_id())
+    subject = "%s failed in %s" % (job_name, GAE_PROJECT)
     # This sender needs to be authorized per-environment in Email Authorized Senders,
     # see https://cloud.google.com/appengine/docs/standard/python/mail/.
     sender = config.getSetting(config.INTERNAL_STATUS_MAIL_SENDER)

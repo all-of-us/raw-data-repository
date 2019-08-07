@@ -3,8 +3,8 @@ import random
 import re
 import struct
 
-from google.appengine.api import app_identity
-from google.appengine.ext import deferred
+from rdr_service.main import GAE_PROJECT
+from rdr_service import deferred
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.dao.database_factory import get_database
@@ -110,7 +110,7 @@ class TableExporter(object):
     HealthPro, PTC). Currently this ID obfuscation is not reversible and is not stable across
     separate exports (note: it is stable across multiple tables in a single export request).
     """
-        app_id = app_identity.get_application_id()
+        app_id = GAE_PROJECT
         # Determine what GCS bucket to write to based on the environment and database.
         if app_id == "None":
             bucket_name = app_identity.get_default_gcs_bucket_name()

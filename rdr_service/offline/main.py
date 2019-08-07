@@ -6,7 +6,7 @@ import traceback
 from datetime import datetime
 
 from flask import Flask, request
-from google.appengine.api import app_identity
+from rdr_service.main import GAE_PROJECT
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import BadRequest
 

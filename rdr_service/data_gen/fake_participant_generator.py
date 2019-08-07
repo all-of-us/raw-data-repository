@@ -9,7 +9,7 @@ import string
 
 from cloudstorage import cloudstorage_api
 from dateutil.parser import parse
-from google.appengine.api import app_identity
+from rdr_service.main import GAE_PROJECT
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import clock
@@ -244,7 +244,7 @@ class FakeParticipantGenerator(object):
         self._city_names = self._read_all_lines("city_names.txt")
         self._street_names = self._read_all_lines("street_names.txt")
         measurement_specs = self._read_json("measurement_specs.json")
-        if self._use_local_files or app_identity.get_application_id() == "None":
+        if self._use_local_files or GAE_PROJECT is None:
             # Read CSV from a local file when running dev_appserver.
             answer_specs = self._read_csv_from_file(_ANSWER_SPECS_FILE)
         else:

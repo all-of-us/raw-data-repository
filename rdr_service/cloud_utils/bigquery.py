@@ -3,7 +3,7 @@ import datetime
 import re
 
 import pytz
-from google.appengine.api import app_identity
+from rdr_service.main import GAE_PROJECT
 from googleapiclient.discovery import build
 
 
@@ -27,7 +27,7 @@ class BigQueryJob(object):
         page_size=1000,
     ):
         self.query = query
-        self.project_id = project_id or app_identity.get_application_id()
+        self.project_id = project_id or GAE_PROJECT
         self.default_dataset_id = default_dataset_id
         self.use_legacy_sql = use_legacy_sql
         self.retry_count = retry_count

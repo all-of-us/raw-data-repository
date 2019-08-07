@@ -1,0 +1,36 @@
+# cloudstorage_api docs are at
+# cloud.google.com/appengine/docs/standard/python/googlecloudstorageclient/read-write-to-cloud-storage
+# GoogleAppEngineCloudStorageClient>=1.9.21
+# GoogleAppEnginePipeline>=1.9.21
+# dictalchemy>=0.1.2.7
+google-cloud-storage==1.17.0
+Faker==0.7.3
+Werkzeug==0.15.2
+blinker>=1.4
+dnspython>=1.15.0
+fhirclient==1.0.6
+flask
+#flask-restful==0.3.5
+flask-restplus
+isodate==0.5.4
+mock>=1.0.1
+mox>=0.5.3
+netaddr>=0.7.18
+oauth2client>=4.0.0
+simplejson>=3.6.5
+sqlalchemy>=1.2
+alembic>=0.8.10
+protorpc>=0.12.0
+PyYAML==5.1
+parameterized>=0.6.1
+google-auth-httplib2
+googlemaps>=2.5.1
+google-api-python-client==1.6.6
+backoff
+xmltodict==0.12
+# https://cloud.google.com/appengine/docs/standard/python/issue-requests#issuing_an_http_request
+requests
+requests_toolbelt
+sqlparse
+enum34
+mysqlclient
