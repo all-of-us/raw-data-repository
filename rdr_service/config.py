@@ -13,7 +13,6 @@ from google.cloud import datastore
 from werkzeug.exceptions import NotFound
 
 from rdr_service import clock, singletons
-from rdr_service.importer import import_from_string
 from rdr_service.provider import Provider
 
 

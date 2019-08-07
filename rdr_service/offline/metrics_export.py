@@ -1,4 +1,4 @@
-from google.appengine.ext import deferred
+from rdr_service import deferred
 
 from rdr_service import clock, config
 from rdr_service.code_constants import EHR_CONSENT_QUESTION_CODE, PPI_SYSTEM, RACE_QUESTION_CODE, UNMAPPED

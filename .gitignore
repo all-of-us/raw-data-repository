@@ -11,6 +11,7 @@
 **/lib
 **/bin
 **/venv
+**/venv37
 
 **/.idea
 **/.project

@@ -4,7 +4,7 @@ import logging
 import os
 
 from flask import request
-from flask_restful import Resource
+from flask_restplus import Resource
 from google.appengine.api import app_identity
 from google.appengine.ext import ndb
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound

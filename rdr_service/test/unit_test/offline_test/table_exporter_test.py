@@ -2,7 +2,7 @@ import csv
 import os
 
 from cloudstorage import cloudstorage_api
-from google.appengine.ext import deferred
+from rdr_service import deferred
 
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.offline.table_exporter import TableExporter

@@ -8,7 +8,7 @@ import json
 
 import cloudstorage
 import sqlalchemy
-from google.appengine.ext import deferred
+from rdr_service import deferred
 
 from rdr_service.cloud_utils.google_sheets import GoogleSheetCSVReader
 from rdr_service.dao import database_factory

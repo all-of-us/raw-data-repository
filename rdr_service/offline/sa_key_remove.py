@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from google.appengine.api import app_identity
+from rdr_service.main import GAE_PROJECT
 from googleapiclient import discovery
 
 from rdr_service import config
@@ -14,7 +14,7 @@ def delete_service_account_keys():
     service_accounts_with_long_lived_keys = config.getSettingList(
         config.SERVICE_ACCOUNTS_WITH_LONG_LIVED_KEYS, default=[]
     )
-    app_id = app_identity.get_application_id()
+    app_id = GAE_PROJECT
     if app_id is None:
         return
 

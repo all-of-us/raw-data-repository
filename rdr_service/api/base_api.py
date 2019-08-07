@@ -1,8 +1,8 @@
 import logging
 
 from flask import jsonify, request, url_for
-from flask_restful import Resource
-from google.appengine.ext import deferred
+from flask_restplus import Resource
+from rdr_service import deferred
 from sqlalchemy import inspect
 from sqlalchemy.exc import NoInspectionAvailable
 from werkzeug.exceptions import BadRequest, NotFound

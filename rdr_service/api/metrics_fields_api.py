@@ -1,4 +1,4 @@
-from flask_restful import Resource
+from flask_restplus import Resource
 
 from rdr_service import app_util
 from rdr_service.api_util import HEALTHPRO

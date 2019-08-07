@@ -18,8 +18,9 @@ from glob import glob
 import config_api
 import faker
 import mock
-from google.appengine.api import app_identity
-from google.appengine.ext import deferred, ndb, testbed
+from rdr_service.main import GAE_PROJECT
+from rdr_service import deferred
+from google.appengine.ext import ndb, testbed
 from mock import patch
 from testlib import testutil
 
@@ -613,7 +614,7 @@ class FlaskTestBase(NdbTestBase):
         self._mock_get_oauth_id = mock_oauth.start()
         self._patchers.append(mock_oauth)
 
-        config_api.CONFIG_ADMIN_MAP[app_identity.get_application_id()] = self._AUTH_USER
+        config_api.CONFIG_ADMIN_MAP[GAE_PROJECT] = self._AUTH_USER
 
         self.set_auth_user(self._AUTH_USER)
         self._consent_questionnaire_id = None
