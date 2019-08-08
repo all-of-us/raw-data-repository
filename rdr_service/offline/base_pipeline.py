@@ -3,7 +3,7 @@ import logging
 import os
 
 import pipeline
-from rdr_service.main import GAE_PROJECT
+from rdr_service.config import GAE_PROJECT
 from google.appengine.api import mail
 from google.appengine.ext import db
 

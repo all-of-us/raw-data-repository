@@ -3,7 +3,7 @@ import random
 import re
 import struct
 
-from rdr_service.main import GAE_PROJECT
+from rdr_service.config import GAE_PROJECT
 from rdr_service import deferred
 from werkzeug.exceptions import BadRequest
 

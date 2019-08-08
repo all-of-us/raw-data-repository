@@ -9,7 +9,7 @@ import string
 
 from cloudstorage import cloudstorage_api
 from dateutil.parser import parse
-from rdr_service.main import GAE_PROJECT
+from rdr_service.config import GAE_PROJECT
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import clock

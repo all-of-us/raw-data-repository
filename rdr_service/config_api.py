@@ -5,12 +5,14 @@ import os
 
 from flask import request
 from flask_restplus import Resource
-from google.appengine.api import app_identity
-from google.appengine.ext import ndb
+from google.cloud import datastore as ndb
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from rdr_service import app_util, config
+from rdr_service.config import GAE_PROJECT
 from rdr_service.api_util import parse_date
+
+
 
 # Read bootstrap config admin service account configuration
 CONFIG_ADMIN_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config", "config_admins.json")
@@ -34,18 +36,16 @@ def auth_required_config_admin(func):
 
 
 def is_config_admin(user_email):
-    app_id = app_identity.get_application_id()
-
     # Allow clients to simulate an unauthentiated request (for testing)
     # becaues we haven't found another way to create an unauthenticated request
     # when using dev_appserver. When client tests are checking to ensure that an
     # unauthenticated requests gets rejected, they helpfully add this header.
     # The `application_id` check ensures this feature only works in dev_appserver.
-    if app_id == "None" and request.headers.get("unauthenticated"):
+    if GAE_PROJECT == "localhost" and request.headers.get("unauthenticated"):
         user_email = None
 
     if user_email:
-        config_admin = CONFIG_ADMIN_MAP.get(app_id, "configurator@{}.iam.gserviceaccount.com".format(app_id))
+        config_admin = CONFIG_ADMIN_MAP.get(GAE_PROJECT, "configurator@{}.iam.gserviceaccount.com".format(app_id))
         if user_email == config_admin:
             return True
     return False

@@ -6,7 +6,7 @@ import time
 import netaddr
 import pytz
 from flask import request
-from rdr_service.main import GAE_PROJECT
+from rdr_service.config import GAE_PROJECT
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from rdr_service import clock, config
