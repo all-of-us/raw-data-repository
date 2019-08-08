@@ -1,6 +1,6 @@
 import json
 
-from rdr_service.main import GAE_PROJECT
+from rdr_service.config import GAE_PROJECT
 from werkzeug.exceptions import NotFound
 
 from rdr_service.api.base_api import BaseApi

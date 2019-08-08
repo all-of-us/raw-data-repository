@@ -26,6 +26,7 @@ requests
 google-api-python-client
 google-cloud-storage
 google-cloud-bigquery
+google-cloud-datastore
 google-cloud-firestore
 
 ## database services
@@ -39,6 +40,7 @@ fhirclient
 dnspython
 xmltodict
 netaddr
+dictalchemy
 
 ## unit testing
 mock

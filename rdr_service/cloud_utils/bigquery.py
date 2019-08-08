@@ -3,7 +3,7 @@ import datetime
 import re
 
 import pytz
-from rdr_service.main import GAE_PROJECT
+from rdr_service.config import GAE_PROJECT
 from googleapiclient.discovery import build
 
 

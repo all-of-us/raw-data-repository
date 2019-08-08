@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from rdr_service.main import GAE_PROJECT
+from rdr_service.config import GAE_PROJECT
 from googleapiclient import discovery
 
 from rdr_service import config

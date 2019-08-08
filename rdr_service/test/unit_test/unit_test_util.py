@@ -18,7 +18,7 @@ from glob import glob
 import config_api
 import faker
 import mock
-from rdr_service.main import GAE_PROJECT
+from rdr_service.config import GAE_PROJECT
 from rdr_service import deferred
 from google.appengine.ext import ndb, testbed
 from mock import patch
