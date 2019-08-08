@@ -19,5 +19,5 @@ then
   set_local_db_connection_string alembic
 fi
 
-(source tools/set_path.sh; cd ${BASE_DIR};
+(source tools/set_path.sh; cd ${APP_DIR};
  alembic revision --autogenerate -m "$1")

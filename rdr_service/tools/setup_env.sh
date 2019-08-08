@@ -2,41 +2,47 @@
 # Sets up the local working environment. Run this on checkout or whenever
 # requirements.txt changes.
 
-BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
-cd ${BASE_DIR};
+PROJ_DIR=`git rev-parse --show-toplevel`
+APP_DIR=$PROJ_DIR/rdr_service
+cd ${APP_DIR};
 
-echo "Removing old libs..."
-rm -rf lib
+# Depreciated
+#echo "Removing old libs..."
+#rm -rf lib
 echo "Cleaning up artifacts (pyo, pyc, etc)..."
 find . -type f -name "*.py[co]" -delete
 find . -type d -name "__pycache__" -delete
 rm -f .coverage
 rm -rf htmlcov/
-export PYTHONDONTWRITEBYTECODE=True
+# Depreciated
+# export PYTHONDONTWRITEBYTECODE=True
 
-echo "Installing libs..."
-# If this fails due to missing mysql_config, try `sudo apt-get install libmysqlclient-dev`.
-pip install -r requirements.txt -t lib/
-
-# Needed to setup the local DB.
-pip install -r ../rdr_client/requirements.txt
-
-# MySQL-python must be installed outside the lib directory, or dev_appserver.py will fail with
-# "No module named _mysql".
-pip install MySQL-python
-
-echo "Installing Alembic..."
-pip install alembic
-echo "Installing JIRA..."
-pip install jira
-pip install requests[security]
-
-echo "Installing pylint for git hooks..."
-pip install pylint
-echo "Installing coverage.py..."
-pip install coverage
-
-git submodule update --init
+#
+# Depreciated : don't install python packages here.  Always use requirements.in.
+#
+#echo "Installing libs..."
+## If this fails due to missing mysql_config, try `sudo apt-get install libmysqlclient-dev`.
+## pip install -r requirements.txt -t lib/
+#
+## Needed to setup the local DB.
+#pip install -r ../rdr_client/requirements.txt
+#
+## MySQL-python must be installed outside the lib directory, or dev_appserver.py will fail with
+## "No module named _mysql".
+#pip install MySQL-python
+#
+#echo "Installing Alembic..."
+#pip install alembic
+#echo "Installing JIRA..."
+#pip install jira
+#pip install requests[security]
+#
+#echo "Installing pylint for git hooks..."
+#pip install pylint
+#echo "Installing coverage.py..."
+#pip install coverage
+#
+#git submodule update --init
 
 echo "Configuring Git hooks..."
 HOOKS_DIR=../.git/hooks
