@@ -247,4 +247,6 @@ def _add_codes_if_missing():
   # Only import "config" on demand, as it depends on Datastore packages (and
   # GAE). This code path may not be executed via CLI or test code.
   import config
-  return config.getSetting(config.ADD_QUESTIONNAIRE_CODES_IF_MISSING, False)
+  # set default to True as a workaround for ticket:
+  # https://joinallofus.atlassian.net/servicedesk/customer/portal/1/SD-307
+  return config.getSetting(config.ADD_QUESTIONNAIRE_CODES_IF_MISSING, True)
