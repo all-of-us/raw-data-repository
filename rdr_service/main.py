@@ -11,7 +11,7 @@ from flask_restplus import Api
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import HTTPException
 
-from . import config_api
+#from . import config_api  # note: temporarily disabled until decided
 from . import version_api
 from .json_encoder import RdrJsonEncoder
 from rdr_service import app_util
@@ -44,14 +44,6 @@ app = Flask(__name__)
 app.url_map.converters["participant_id"] = ParticipantIdConverter
 app.config.setdefault("RESTFUL_JSON", {"cls": RdrJsonEncoder})
 
-# Get project name and credentials
-if os.getenv('GAE_ENV', '').startswith('standard'):
-    # Production in the standard environment
-    import google.auth
-    GAE_CREDENTIALS, GAE_PROJECT = google.auth.default()
-else:
-    GAE_CREDENTIALS = 'local@localhost.net'
-    GAE_PROJECT = 'localhost'
 
 def _warmup():
     # Load configurations into the cache.
@@ -215,8 +207,8 @@ api.add_resource(
 
 api.add_resource(AwardeeApi, PREFIX + "Awardee", PREFIX + "Awardee/<string:a_id>", endpoint="awardee", methods=["GET"])
 
-# Configuration API for admin use.
-
+# Configuration API for admin use.  # note: temporarily disabled until decided
+'''
 api.add_resource(
     config_api.ConfigApi,
     PREFIX + "Config",
@@ -224,6 +216,7 @@ api.add_resource(
     endpoint="config",
     methods=["GET", "POST", "PUT"],
 )
+'''
 
 # Version API for prober and release management use.
 api.add_resource(version_api.VersionApi, "/", PREFIX, endpoint="version", methods=["GET"])  # Default behavior

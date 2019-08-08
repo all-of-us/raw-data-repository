@@ -15,19 +15,21 @@ cffi==1.12.3              # via cryptography
 chardet==3.0.4            # via requests
 click==7.0                # via flask, pip-tools
 cryptography==2.7
+dictalchemy==0.1.2.7
 dnspython==1.16.0
 faker==2.0.0
 fhirclient==3.2.0
 flask-restplus==0.12.1
 flask==1.1.1
-google-api-core[grpc]==1.14.2  # via google-cloud-core, google-cloud-firestore
+google-api-core[grpc]==1.14.2  # via google-cloud-core, google-cloud-datastore, google-cloud-firestore
 google-api-python-client==1.7.10
 google-auth-httplib2==0.0.3  # via google-api-python-client
 google-auth==1.6.3        # via google-api-core, google-api-python-client, google-auth-httplib2, google-cloud-storage
 google-cloud-bigquery==1.17.0
-google-cloud-core==1.0.3  # via google-cloud-bigquery, google-cloud-firestore, google-cloud-storage
+google-cloud-core==1.0.3  # via google-cloud-bigquery, google-cloud-datastore, google-cloud-firestore, google-cloud-storage
+google-cloud-datastore==1.9.0
 google-cloud-firestore==1.4.0
-google-cloud-storage==1.17.0
+google-cloud-storage==1.18.0
 google-resumable-media==0.3.2  # via google-cloud-bigquery, google-cloud-storage
 googleapis-common-protos==1.6.0  # via google-api-core
 grpcio==1.22.0            # via google-api-core

@@ -4,7 +4,7 @@ import logging
 import math
 from datetime import datetime
 
-from rdr_service.main import GAE_PROJECT
+from rdr_service.config import GAE_PROJECT
 from google.appengine.api import taskqueue
 from googleapiclient.discovery import build
 from sqlalchemy import func, or_
