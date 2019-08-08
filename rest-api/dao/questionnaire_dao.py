@@ -124,7 +124,13 @@ class QuestionnaireDao(UpdatableDao):
 
     from dao.code_dao import CodeDao
     # Get or insert codes, and retrieve their database IDs.
-    add_codes_if_missing = _add_codes_if_missing()
+
+    # set add_codes_if_missing to True as a workaround for ticket:
+    # https://joinallofus.atlassian.net/servicedesk/customer/portal/1/SD-307
+    # TODO - need to change this back when the ticket is resolved
+    # add_codes_if_missing = _add_codes_if_missing()
+    add_codes_if_missing = True
+
     code_id_map = CodeDao().get_or_add_codes(code_map, add_codes_if_missing=add_codes_if_missing)
 
     # Now add the child objects, using the IDs in code_id_map
