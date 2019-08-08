@@ -47,4 +47,4 @@ then
   EXTRA_ARGS+=" --key $KEY"
 fi
 
-(cd ${BASE_DIR}; python tools/install_config.py $EXTRA_ARGS)
+(cd ${APP_DIR}; python tools/install_config.py $EXTRA_ARGS)

@@ -71,4 +71,4 @@ export PYTHONPATH=/usr/local/lib/python2.7/dist-packages:$OLDPATH:$PYTHONPATH:${
 
 LOCUST_CREDS_FILE="$CREDS_FILE" \
 LOCUST_TARGET_INSTANCE="https://$PROJECT.appspot.com" \
-locust -f "$BASE_DIR"/tools/load_test_locustfile.py
+locust -f "$APP_DIR"/tools/load_test_locustfile.py

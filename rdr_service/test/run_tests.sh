@@ -57,8 +57,8 @@ then
    echo Excuting tests that match glob $substring
 fi
 
-BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
-. ${BASE_DIR}/tools/set_path.sh
+APP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
+. ${APP_DIR}/tools/set_path.sh
 
 if [[ "$subset" == "all" || "$subset" == "unit" ]];
 then
@@ -69,11 +69,11 @@ then
   if [[ -z $coverage ]]; then
     cmd="$cmd --no-coverage"
   fi
-  (cd ${BASE_DIR}; python $cmd)
+  (cd ${APP_DIR}; python $cmd)
 fi
 
 if [[ "$subset" == "all" || "$subset" == "client" ]];
 then
   # Run client tests against local dev_server.
-  ${BASE_DIR}/test/test_server.sh ${substring:+-r $substring}
+  ${APP_DIR}/test/test_server.sh ${substring:+-r $substring}
 fi

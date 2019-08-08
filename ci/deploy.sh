@@ -48,7 +48,7 @@ else
 fi
 echo "Deploying $VERSION to: $PROJECT_ID"
 
-cd rest-api
+cd rdr_service
 
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 

@@ -7,19 +7,25 @@
 alembic==1.0.11
 aniso8601==7.0.0          # via flask-restplus
 asn1crypto==0.24.0        # via cryptography
-attrs==19.1.0             # via jsonschema
+astroid==2.2.5            # via pylint
+attrs==19.1.0             # via jsonschema, packaging
 backoff==1.8.0
 cachetools==3.1.1         # via google-auth
 certifi==2019.6.16        # via requests
 cffi==1.12.3              # via cryptography
 chardet==3.0.4            # via requests
-click==7.0                # via flask, pip-tools
-cryptography==2.7
+click==7.0                # via flask, pip-tools, safety
+coverage==4.5.4
+cryptography==2.7         # via oauthlib, pyopenssl, requests
+defusedxml==0.6.0         # via jira
+dictalchemy==0.1.2.7
 dnspython==1.16.0
+dparse==0.4.1             # via safety
 faker==2.0.0
 fhirclient==3.2.0
 flask-restplus==0.12.1
 flask==1.1.1
+gevent==1.4.0             # via locustio
 google-api-core[grpc]==1.14.2  # via google-cloud-core, google-cloud-firestore
 google-api-python-client==1.7.10
 google-auth-httplib2==0.0.3  # via google-api-python-client
@@ -27,44 +33,66 @@ google-auth==1.6.3        # via google-api-core, google-api-python-client, googl
 google-cloud-bigquery==1.17.0
 google-cloud-core==1.0.3  # via google-cloud-bigquery, google-cloud-firestore, google-cloud-storage
 google-cloud-firestore==1.4.0
-google-cloud-storage==1.17.0
+google-cloud-storage==1.18.0
 google-resumable-media==0.3.2  # via google-cloud-bigquery, google-cloud-storage
 googleapis-common-protos==1.6.0  # via google-api-core
+googlemaps==3.0.2
+greenlet==0.4.15          # via gevent
 grpcio==1.22.0            # via google-api-core
 httplib2==0.13.1          # via google-api-python-client, google-auth-httplib2, oauth2client
 idna==2.8                 # via requests
 isodate==0.6.0            # via fhirclient
+isort==4.3.21             # via pylint
 itsdangerous==1.1.0       # via flask
 jinja2==2.10.1            # via flask
+jira==2.0.0
 jsonschema==3.0.2         # via flask-restplus
+lazy-object-proxy==1.4.1  # via astroid
+locust==0.0
+locustio==0.11.0          # via locust
 mako==1.1.0               # via alembic
 markupsafe==1.1.1         # via jinja2, mako
-marshmallow-sqlalchemy==0.17.0
-marshmallow==2.19.5       # via marshmallow-sqlalchemy
+mccabe==0.6.1             # via pylint
 mock==3.0.5
+msgpack==0.6.1            # via locustio
 mysqlclient==1.4.2.post1
 netaddr==0.7.19
 oauth2client==4.1.3
+oauthlib[signedtoken]==3.1.0  # via jira, requests-oauthlib
+packaging==19.1           # via dparse, safety
 parameterized==0.7.0
+pbr==5.4.2                # via jira
 pip-tools==4.0.0
 protobuf==3.9.1           # via google-api-core, google-cloud-bigquery, googleapis-common-protos
+protorpc==0.12.0
 pyasn1-modules==0.2.6     # via google-auth, oauth2client
 pyasn1==0.4.6             # via oauth2client, pyasn1-modules, rsa
 pycparser==2.19           # via cffi
+pyjwt==1.7.1              # via oauthlib
+pylint==2.3.1
+pyopenssl==19.0.0         # via requests
+pyparsing==2.4.2          # via packaging
 pyrsistent==0.15.4        # via jsonschema
 python-dateutil==2.8.0    # via alembic, faker
 python-editor==1.0.4      # via alembic
 pytz==2019.2              # via flask-restplus, google-api-core, google-cloud-firestore
-requests==2.22.0
+pyyaml==5.1.2             # via dparse
+pyzmq==18.1.0             # via locustio
+requests-oauthlib==1.2.0  # via jira
+requests-toolbelt==0.9.1  # via jira
+requests[security]==2.22.0
 rsa==4.0                  # via google-auth, oauth2client
+safety==1.8.5
 simplejson==3.16.0
-six==1.12.0               # via cryptography, faker, flask-restplus, google-api-core, google-api-python-client, google-auth, google-resumable-media, grpcio, isodate, jsonschema, mock, oauth2client, pip-tools, protobuf, pyrsistent, python-dateutil
+six==1.12.0               # via astroid, cryptography, dparse, faker, flask-restplus, google-api-core, google-api-python-client, google-auth, google-resumable-media, grpcio, isodate, jira, jsonschema, locustio, mock, oauth2client, packaging, pip-tools, protobuf, protorpc, pyopenssl, pyrsistent, python-dateutil
 sqlalchemy==1.3.6
 text-unidecode==1.2       # via faker
+typed-ast==1.4.0          # via astroid
 uritemplate==3.0.0        # via google-api-python-client
 urllib3==1.25.3           # via requests
 werkzeug==0.15.5          # via flask
+wrapt==1.11.2             # via astroid
 xmltodict==0.12.0
 
 # The following packages are considered to be unsafe in a requirements file:
-# setuptools==41.0.1        # via google-api-core, jsonschema, protobuf
+# setuptools==41.0.1        # via google-api-core, jira, jsonschema, protobuf, safety

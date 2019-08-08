@@ -33,4 +33,4 @@ then
   EXTRA_ARGS+=" --creds_file ${CREDS_FILE} --instance ${INSTANCE}"
 fi
 
-(cd ${BASE_DIR}; python tools/import_participants.py $EXTRA_ARGS)
+(cd ${APP_DIR}; python tools/import_participants.py $EXTRA_ARGS)
