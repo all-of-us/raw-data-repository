@@ -23,7 +23,7 @@ def _grep_prop(filename, prop_name):
   :return: property value or None.
   """
     fdata = open(filename, "r").read()
-    obj = re.search("^{0} = '(.+)'$".format(prop_name), fdata, re.MULTILINE)
+    obj = re.search("^{0} = ['|\"](.+)['|\"]$".format(prop_name), fdata, re.MULTILINE)
     if obj:
         return obj.group(1)
     return None
