@@ -36,6 +36,7 @@ alembic
 fhirclient
 protorpc
 dictalchemy
+sqlparse
 
 ## misc
 dnspython
