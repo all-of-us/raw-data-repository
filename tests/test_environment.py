@@ -24,8 +24,7 @@ class TestEnvironment(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(cwd, 'rdr_service')))
         self.assertTrue(os.path.exists(os.path.join(cwd, 'rdr_service/tools')))
         self.assertTrue(os.path.exists(os.path.join(cwd, 'rdr_service/main.py')))
-        print('crap')
-
+        
     # def test_flask_app(self):
     #     """ Test that we can import the flask app object """
     #     from rdr_service.main import app
