@@ -18,11 +18,7 @@ try:
 except ImportError:
   from yaml import Loader, Dumper
 
-if sys.version > '3':
-  imap = map
-else:
-  
-
+imap = map
 
 BASE_CRON_NAME = "default"
 

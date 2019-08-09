@@ -18,8 +18,7 @@ simplejson
 flask-restplus
 backoff
 oauth2client
-cryptography
-requests
+requests[security]
 
 ## google cloud services
 ## https://cloud.google.com/python/references/libraries
@@ -28,21 +27,27 @@ google-cloud-storage
 google-cloud-bigquery
 google-cloud-datastore
 google-cloud-firestore
+googlemaps   # Used in tools/import_organizations.py
 
 ## database services
 mysqlclient
 sqlalchemy
 alembic
-marshmallow-sqlalchemy
 fhirclient
+protorpc
+dictalchemy
 
 ## misc
 dnspython
 xmltodict
 netaddr
-dictalchemy
+jira
 
-## unit testing
+## testing
+coverage
+pylint
 mock
 faker
 parameterized
+safety
+locust   # Used in tools/load_test_locustfile.py

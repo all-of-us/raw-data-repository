@@ -59,8 +59,9 @@ else
   sleep 3
 fi
 
-REPO_ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
-source ${REPO_ROOT_DIR}/tools/setup_vars.sh
+PROJ_DIR=`git rev-parse --show-toplevel`
+APP_DIR=$PROJ_DIR/rdr_service
+source ${APP_DIR}/tools/setup_vars.sh
 TMP_DB_INFO_FILE=${TMP_DIR}/db_info.json
 PORT=3308
 CLOUD_PROXY_PID=

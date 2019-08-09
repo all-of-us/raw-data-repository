@@ -10,7 +10,7 @@ else tools/import_organizations.sh $@;
 fi
 
 echo "Importing codebook..."
-../rdr_client/run_client.sh $@ import_codebook.py
+rdr_client/run_client.sh $@ import_codebook.py
 echo "Importing questionnaires..."
 tools/import_questionnaires.sh $@
 echo "Importing participants..."

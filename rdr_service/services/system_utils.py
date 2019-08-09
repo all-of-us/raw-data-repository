@@ -135,6 +135,11 @@ def run_external_program(args, cwd=None, env=None, shell=False, debug=False):
     stdoutdata, stderrdata = p.communicate()
     p.wait()
 
+    if isinstance(stdoutdata, (bytes, bytearray)):
+        stdoutdata = stdoutdata.decode("utf-8")
+    if isinstance(stderrdata, (bytes, bytearray)):
+        stderrdata = stderrdata.decode("utf-8")
+
     return p.returncode, stdoutdata, stderrdata
 
 
