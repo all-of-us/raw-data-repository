@@ -2,9 +2,9 @@ import csv
 import datetime
 
 import pytz
-from google.cloud import storage  # stubbed by testbed
 
 from rdr_service import clock, config
+from rdr_service.api_util import open_cloud_file, list_blobs
 from rdr_service.code_constants import BIOBANK_TESTS
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
@@ -51,8 +51,8 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
             path = "/%s/%s" % (bucket, file_name)
         else:
             path = "/%s/%s/%s" % (bucket, folder, file_name)
-        with cloudstorage_api.open(path, mode="w") as cloud_file:
-            cloud_file.write(contents_str.encode("utf-8"))
+        cloud_file = open_cloud_file(path)
+        cloud_file.write(contents_str.encode("utf-8"))
 
     def _make_participant(self, **kwargs):
         """
@@ -168,7 +168,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
         # verify result file
         bucket_name = config.getSetting(config.GENOMIC_SET_BUCKET_NAME)
         path = self._find_latest_genomic_set_csv(bucket_name, "Validation-Result")
-        csv_file = cloudstorage_api.open(path)
+        csv_file = open_cloud_file(path)
         csv_reader = csv.DictReader(csv_file, delimiter=",")
 
         class ResultCsvColumns(object):
@@ -246,7 +246,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
         path = self._find_latest_genomic_set_csv(bucket_name, _FAKE_BUCKET_FOLDER)
 
-        csv_file = cloudstorage_api.open(path)
+        csv_file = open_cloud_file(path)
         csv_reader = csv.DictReader(csv_file, delimiter=",")
 
         missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
@@ -283,7 +283,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
             ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, REQUEST_ID, PACKAGE_ID)
 
         path = self._find_latest_genomic_set_csv(bucket_name, _FAKE_BUCKET_RESULT_FOLDER)
-        csv_file = cloudstorage_api.open(path)
+        csv_file = open_cloud_file(path)
         csv_reader = csv.DictReader(csv_file, delimiter=",")
 
         missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
@@ -410,7 +410,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
         # verify result file
         bucket_name = config.getSetting(config.GENOMIC_SET_BUCKET_NAME)
         path = self._find_latest_genomic_set_csv(bucket_name, "Validation-Result")
-        csv_file = cloudstorage_api.open(path)
+        csv_file = open_cloud_file(path)
         csv_reader = csv.DictReader(csv_file, delimiter=",")
 
         class ResultCsvColumns(object):
@@ -518,7 +518,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
         return central_date.replace(tzinfo=None)
 
     def _find_latest_genomic_set_csv(self, cloud_bucket_name, keyword=None):
-        bucket_stat_list = cloudstorage_api.listbucket("/" + cloud_bucket_name)
+        bucket_stat_list = list_blobs("/" + cloud_bucket_name)
         if not bucket_stat_list:
             raise RuntimeError("No files in cloud bucket %r." % cloud_bucket_name)
         bucket_stat_list = [s for s in bucket_stat_list if s.filename.lower().endswith(".csv")]

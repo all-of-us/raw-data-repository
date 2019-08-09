@@ -6,6 +6,7 @@ from io import BytesIO
 
 from dateutil.parser import parse
 from google.cloud import storage
+from google.cloud.storage import Blob
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.code_constants import UNMAPPED, UNSET
@@ -186,4 +187,17 @@ def list_blobs(path):
     client = storage.Client()
     return client.list_blobs(path)
 
-def upload_from_file
+
+def upload_from_file(file_name, bucket, contents):
+    client = storage.Client()
+    blob = Blob(contents, client.get_bucket(bucket))
+    with open(file_name, "rb") as f:
+        blob.upload_from_file(f)
+
+
+def delete_cloud_file(path):
+    client = storage.Client()
+    bucket = client.get_bucket(os.path.dirname(path))
+    obj = os.path.basename(path)
+    blob = storage.blob.Blob(obj, bucket)
+    blob.delete()

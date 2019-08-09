@@ -1,6 +1,7 @@
 import cloudstorage.common
 import mock
 
+from rdr_service.api_util import upload_from_file, open_cloud_file, list_blobs
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -136,20 +137,19 @@ class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
 
     @staticmethod
     def _write_cloud_object(cloud_filename, contents_str):
-        with cloudstorage.cloudstorage_api.open(cloud_filename, mode="w") as cloud_file:
-            cloud_file.write(contents_str.encode("utf-8"))
+        upload_from_file(cloud_filename, "rdr-fake-bucket", contents_str)
 
     def test_cloudstorage_copy_objects_actual(self):
         self._write_cloud_object("/fake_bucket1/prefix/x1/foo.txt", "foo")
         self._write_cloud_object("/fake_bucket1/prefix/x1/bar.txt", "bar")
         self._write_cloud_object("/fake_bucket1/prefix/x1/y1/foo.txt", "foo")
-        with cloudstorage.cloudstorage_api.open("/fake_bucket1/prefix/x1/foo.txt", mode="r") as f:
-            self.assertEqual(f.read(), "foo", "Wrote to cloud storage")
+        f = open_cloud_file("/fake_bucket1/prefix/x1/foo.txt")
+        self.assertEqual(f.read(), "foo", "Wrote to cloud storage")
         sync_consent_files.cloudstorage_copy_objects("/fake_bucket1/prefix/x1/", "/fake_bucket2/prefix/z/x1/")
         self.assertEqual(
             [
                 file_stat.filename
-                for file_stat in cloudstorage.cloudstorage_api.listbucket("/fake_bucket2/prefix/z/x1/")
+                for file_stat in list_blobs("/fake_bucket2/prefix/z/x1/")
             ],
             [
                 "/fake_bucket2/prefix/z/x1/bar.txt",
@@ -158,8 +158,8 @@ class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
             ],
             "copied all objects",
         )
-        with cloudstorage.cloudstorage_api.open("/fake_bucket2/prefix/z/x1/foo.txt", mode="r") as f:
-            self.assertEqual(f.read(), "foo", "copied contents")
+        f = open_cloud_file("/fake_bucket2/prefix/z/x1/foo.txt")
+        self.assertEqual(f.read(), "foo", "copied contents")
 
     @mock.patch("cloudstorage.copy2")
     def test_cloudstorage_copy_objects_only_new_and_changed(self, copy2):

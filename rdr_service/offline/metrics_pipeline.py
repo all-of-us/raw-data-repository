@@ -60,7 +60,6 @@ import logging
 from datetime import datetime, timedelta
 
 import pipeline
-from google.cloud import storage
 from dateutil.relativedelta import relativedelta
 
 from .metrics_config import (
@@ -86,6 +85,7 @@ from .metrics_config import (
     transform_participant_summary_field,
 )
 from rdr_service import config
+from rdr_service.api_util import delete_cloud_file
 from rdr_service.census_regions import census_regions
 from rdr_service.code_constants import (
     CONSENT_PERMISSION_YES_CODE,
@@ -199,7 +199,7 @@ class FinalizeMetrics(pipeline.Pipeline):
         # generate the metrics.
         metrics_version_dao.delete_old_versions()
         for input_file in input_files:
-            cloudstorage_api.delete("/" + bucket_name + "/" + input_file)
+            delete_cloud_file("/" + bucket_name + "/" + input_file)
 
 
 class SummaryPipeline(pipeline.Pipeline):
