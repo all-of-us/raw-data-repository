@@ -3,7 +3,7 @@ import logging
 
 from dateutil.parser import parse
 from flask import request
-from flask_restplus import Resource
+from flask_restful import Resource
 from rdr_service import deferred
 from werkzeug.exceptions import BadRequest, Forbidden
 

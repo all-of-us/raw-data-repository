@@ -7,7 +7,7 @@ import os
 
 # pylint: disable=unused-import
 from flask import Flask, got_request_exception
-from flask_restplus import Api
+from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import HTTPException
 

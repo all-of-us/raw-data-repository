@@ -1,7 +1,7 @@
 import datetime
 
 from flask import request
-from flask_restplus import Resource
+from flask_restful import Resource
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.api_util import STOREFRONT, convert_to_datetime, get_awardee_id_from_name

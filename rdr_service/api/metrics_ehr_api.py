@@ -1,5 +1,5 @@
 from flask import request
-from flask_restplus import Resource
+from flask_restful import Resource
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import app_util, clock

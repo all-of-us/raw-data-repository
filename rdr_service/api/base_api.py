@@ -1,7 +1,7 @@
 import logging
 
 from flask import jsonify, request, url_for
-from flask_restplus import Resource
+from flask_restful import Resource
 from rdr_service import deferred
 from sqlalchemy import inspect
 from sqlalchemy.exc import NoInspectionAvailable
