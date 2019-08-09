@@ -1,14 +1,13 @@
 import json
 import xml.etree.cElementTree as etree
 
-import cloudstorage
 import httplib2
 import xmltodict
 from werkzeug.exceptions import ServiceUnavailable
 
 from rdr_service import config
 from rdr_service.api.base_api import UpdatableApi
-from rdr_service.api_util import RDR_AND_PTC, format_json_enum
+from rdr_service.api_util import RDR_AND_PTC, format_json_enum, open_cloud_file
 from rdr_service.app_util import auth_required
 
 
@@ -61,13 +60,13 @@ class MayoLinkApi(UpdatableApi):
         self.config = config.getSetting(config.MAYOLINK_CREDS)
         self.path = "/" + self.config_bucket + "/" + self.config
         self.endpoint = config.getSetting(config.MAYOLINK_ENDPOINT)
-        # For now I can not figure out how to use cloudstorage on dev_appserver, comment out the
+        # For now I can not figure out how to use google cloud on dev_appserver, comment out the
         # below and manually add self.username, etc.
-        with cloudstorage.open(self.path, "r") as file_path:
-            self.creds = json.load(file_path)
-            self.username = self.creds.get("username")
-            self.pw = self.creds.get("password")
-            self.account = self.creds.get("account")
+        file_path = open_cloud_file(self.path)
+        self.creds = json.load(file_path)
+        self.username = self.creds.get("username")
+        self.pw = self.creds.get("password")
+        self.account = self.creds.get("account")
 
     @auth_required(RDR_AND_PTC)
     def post(self, order):

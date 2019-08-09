@@ -5,7 +5,7 @@ import math
 from datetime import datetime
 
 from rdr_service.config import GAE_PROJECT
-#from google.appengine.api import taskqueue @todo
+from google.appengine.api import taskqueue
 from googleapiclient.discovery import build
 from sqlalchemy import func, or_
 
@@ -32,15 +32,15 @@ def rebuild_bigquery_handler():
         )
 
         while count > 0:
-#            task = taskqueue.add(                             # @todo
-#                queue_name="bigquery-rebuild",
-#                url="/rdr/v1/BQRebuildTaskApi",
-#                method="GET",
-#                target="worker",
-#                params={"timestamp": timestamp, "limit": batch_size},
-#            )
+            task = taskqueue.add(
+                queue_name="bigquery-rebuild",
+                url="/rdr/v1/BQRebuildTaskApi",
+                method="GET",
+                target="worker",
+                params={"timestamp": timestamp, "limit": batch_size},
+            )
 
-            #logging.info("Task {} enqueued, ETA {}.".format(task.name, task.eta))
+            logging.info("Task {} enqueued, ETA {}.".format(task.name, task.eta))
             count -= 1
             pass
 
