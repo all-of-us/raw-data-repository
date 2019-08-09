@@ -5,7 +5,7 @@ No auth is required for this endpoint because it serves nothing sensitive.
 
 import os
 
-from flask_restplus import Resource
+from flask_restful import Resource
 
 
 class VersionApi(Resource):

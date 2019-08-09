@@ -1,4 +1,4 @@
-from flask_restplus import Resource, request
+from flask_restful import Resource, request
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import app_util

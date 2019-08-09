@@ -4,7 +4,7 @@ import logging
 import os
 
 from flask import request
-from flask_restplus import Resource
+from flask_restful import Resource
 from google.cloud import datastore as ndb
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
