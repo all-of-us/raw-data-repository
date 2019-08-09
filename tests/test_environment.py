@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import unittest
@@ -27,6 +28,16 @@ class TestEnvironment(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(cwd, 'rdr_service/main.py')))
 
     def test_flask_app(self):
-        """ Test that we can import the flask app object """
+        """
+        Test that we can import the flask app object and get the version id.
+        https://realpython.com/python-testing/#how-to-use-unittest-and-flask
+        """
         from rdr_service.main import app
         self.assertTrue(isinstance(app, object))
+
+        app.testing = True
+        client = app.test_client()
+
+        resp = client.get('/')
+        self.assertEqual(resp.json['version_id'], 'develop')
+
