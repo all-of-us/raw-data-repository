@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import unittest
@@ -11,7 +12,8 @@ class TestEnvironment(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        start_mysql_instance()
+        # start_mysql_instance()
+        pass
 
     def test_python_version(self):
         """ Make sure we are using Python 3.7 or higher """
@@ -24,9 +26,18 @@ class TestEnvironment(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(cwd, 'rdr_service')))
         self.assertTrue(os.path.exists(os.path.join(cwd, 'rdr_service/tools')))
         self.assertTrue(os.path.exists(os.path.join(cwd, 'rdr_service/main.py')))
-        print('crap')
 
-    # def test_flask_app(self):
-    #     """ Test that we can import the flask app object """
-    #     from rdr_service.main import app
-    #     self.assertTrue(isinstance(app, object))
+    def test_flask_app(self):
+        """
+        Test that we can import the flask app object and get the version id.
+        https://realpython.com/python-testing/#how-to-use-unittest-and-flask
+        """
+        from rdr_service.main import app
+        self.assertTrue(isinstance(app, object))
+
+        app.testing = True
+        client = app.test_client()
+
+        resp = client.get('/')
+        self.assertEqual(resp.json['version_id'], 'develop')
+

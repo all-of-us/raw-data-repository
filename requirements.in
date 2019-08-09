@@ -14,8 +14,9 @@ pip-tools
 
 ## web service
 flask
+blinker
 simplejson
-flask-restplus
+flask-restful
 backoff
 oauth2client
 requests[security]
