@@ -21,9 +21,11 @@ if os.getenv('GAE_ENV', '').startswith('standard'):
     # Production in the standard environment
     import google.auth
     GAE_CREDENTIALS, GAE_PROJECT = google.auth.default()
+    GAE_VERSION_ID = os.environ.get('CURRENT_VERSION_ID')
 else:
     GAE_CREDENTIALS = 'local@localhost.net'
     GAE_PROJECT = 'localhost'
+    GAE_VERSION_ID = 'develop'
 
 
 _NO_DEFAULT = "_NO_DEFAULT"
@@ -34,7 +36,6 @@ CONFIG_SINGLETON_KEY = "current_config"
 
 # Key that the database configuration is stored under
 DB_CONFIG_KEY = "db_config"
-
 LAST_MODIFIED_BUFFER_SECONDS = 60
 CONFIG_CACHE_TTL_SECONDS = 60
 BIOBANK_ID_PREFIX = "biobank_id_prefix"
