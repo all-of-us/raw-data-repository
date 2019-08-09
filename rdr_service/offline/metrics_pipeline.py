@@ -60,7 +60,7 @@ import logging
 from datetime import datetime, timedelta
 
 import pipeline
-from cloudstorage import cloudstorage_api
+from google.cloud import storage
 from dateutil.relativedelta import relativedelta
 
 from .metrics_config import (

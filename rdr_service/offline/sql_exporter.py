@@ -2,7 +2,7 @@ import contextlib
 import csv
 import logging
 
-from cloudstorage import cloudstorage_api
+from google.cloud import storage
 from sqlalchemy import text
 
 from rdr_service.dao import database_factory

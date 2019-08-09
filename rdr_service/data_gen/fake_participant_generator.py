@@ -7,7 +7,7 @@ import logging
 import random
 import string
 
-from cloudstorage import cloudstorage_api
+from google.cloud import storage
 from dateutil.parser import parse
 from rdr_service.config import GAE_PROJECT
 from werkzeug.exceptions import BadRequest

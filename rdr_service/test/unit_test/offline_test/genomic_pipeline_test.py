@@ -2,7 +2,7 @@ import csv
 import datetime
 
 import pytz
-from cloudstorage import cloudstorage_api  # stubbed by testbed
+from google.cloud import storage  # stubbed by testbed
 
 from rdr_service import clock, config
 from rdr_service.code_constants import BIOBANK_TESTS

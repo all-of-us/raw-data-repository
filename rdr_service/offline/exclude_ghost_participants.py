@@ -1,7 +1,7 @@
 import logging
 from csv import DictReader
 
-from cloudstorage import cloudstorage_api
+from google.cloud import storage
 
 from rdr_service import config
 from rdr_service.dao.participant_dao import ParticipantDao

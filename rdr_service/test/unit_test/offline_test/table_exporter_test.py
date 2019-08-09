@@ -1,7 +1,7 @@
 import csv
 import os
 
-from cloudstorage import cloudstorage_api
+from google.cloud import storage
 from rdr_service import deferred
 
 from rdr_service.dao.participant_dao import ParticipantDao

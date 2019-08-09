@@ -8,7 +8,7 @@ import datetime
 import logging
 
 import pytz
-from cloudstorage import cloudstorage_api
+from google.cloud import storage
 
 from rdr_service import clock, config
 from rdr_service.code_constants import PPI_SYSTEM, RACE_AIAN_CODE, RACE_QUESTION_CODE

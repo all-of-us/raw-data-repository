@@ -8,10 +8,10 @@ import datetime
 import logging
 
 import pytz
-from cloudstorage import cloudstorage_api
 
 from .genomic_set_file_handler import DataError, timestamp_from_filename
 from rdr_service import clock, config
+from rdr_service.api_util import list_blobs
 from rdr_service.config import GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME, GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao
 from rdr_service.offline.sql_exporter import SqlExporter
@@ -32,7 +32,7 @@ def process_genomic_manifest_result_file_from_bucket():
     bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
     result_folder_name = config.getSetting(GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME)
 
-    bucket_stat_list = cloudstorage_api.listbucket("/" + bucket_name)
+    bucket_stat_list = list_blobs("/" + bucket_name)
     if not bucket_stat_list:
         logging.info("No files in cloud bucket %r." % bucket_name)
         return None

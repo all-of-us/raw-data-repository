@@ -2,9 +2,11 @@ import csv
 import datetime
 
 import pytz
-from cloudstorage import cloudstorage_api  # stubbed by testbed
+from google.cloud import storage  # stubbed by testbed
+from google.cloud.storage import Blob
 
 from rdr_service import clock, config
+from rdr_service.api_util import open_cloud_file
 from rdr_service.code_constants import BIOBANK_TESTS
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
@@ -45,8 +47,11 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
         self.summary_dao = ParticipantSummaryDao()
 
     def _write_cloud_csv(self, file_name, contents_str):
-        with cloudstorage_api.open("/%s/%s" % (_FAKE_BUCKET, file_name), mode="w") as cloud_file:
-            cloud_file.write(contents_str.encode("utf-8"))
+        with open("/%s/%s" % (_FAKE_BUCKET, file_name), mode="w") as cloud_file:
+            client = storage.Client()
+            bucket = client.get_bucket(_FAKE_BUCKET)
+            blob = Blob(contents_str, bucket)
+            blob.upload_from_file(cloud_file)
 
     def _make_biobank_order(self, **kwargs):
         """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
@@ -209,7 +214,7 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
         expected_result_filename = "Genomic-Test-Set-v12019-04-05-00-30-10-Validation-Result.CSV"
         bucket_name = config.getSetting(config.GENOMIC_SET_BUCKET_NAME)
         path = "/" + bucket_name + "/" + expected_result_filename
-        csv_file = cloudstorage_api.open(path)
+        csv_file = open_cloud_file(path)
         csv_reader = csv.DictReader(csv_file, delimiter=",")
 
         class ResultCsvColumns(object):
@@ -360,7 +365,7 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
 
         expected_result_filename = "rdr_fake_sub_folder/Genomic-Manifest-AoU-1-v1" + now_cdt_str + ".CSV"
         path = "/" + bucket_name + "/" + expected_result_filename
-        csv_file = cloudstorage_api.open(path)
+        csv_file = open_cloud_file(path)
         csv_reader = csv.DictReader(csv_file, delimiter=",")
 
         missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)

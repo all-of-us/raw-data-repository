@@ -1,9 +1,9 @@
 import datetime
 import time
 
-from cloudstorage import cloudstorage_api  # stubbed by testbed
 
 from rdr_service import config
+from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
 from rdr_service.dao.participant_dao import ParticipantDao, ParticipantHistoryDao
 from rdr_service.model.participant import Participant
@@ -31,7 +31,7 @@ class MarkGhostParticipantsTest(CloudStorageSqlTestBase, NdbTestBase):
         self.p_history = ParticipantHistoryDao()
 
     def _write_cloud_csv(self, file_name, contents_str):
-        with cloudstorage_api.open("/%s/%s" % (_FAKE_BUCKET, file_name), mode="w") as cloud_file:
+        with open_cloud_file("/%s/%s" % (_FAKE_BUCKET, file_name)) as cloud_file:
             cloud_file.write(contents_str.encode("utf-8"))
 
     def _setup_participants(self):

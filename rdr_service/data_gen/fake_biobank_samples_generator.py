@@ -3,7 +3,7 @@ import datetime
 import logging
 import random
 
-from cloudstorage import cloudstorage_api
+from google.cloud import storage
 
 from rdr_service import clock, config
 from rdr_service.code_constants import BIOBANK_TESTS
