@@ -2,9 +2,9 @@ import contextlib
 import csv
 import logging
 
-from cloudstorage import cloudstorage_api
 from sqlalchemy import text
 
+from rdr_service.api_util import open_cloud_file
 from rdr_service.dao import database_factory
 from rdr_service.unicode_csv import UnicodeWriter
 
@@ -72,7 +72,7 @@ class SqlExporter(object):
     def open_writer(self, file_name, predicate=None):
         gcs_path = "/%s/%s" % (self._bucket_name, file_name)
         logging.info("Exporting data to %s...", gcs_path)
-        with cloudstorage_api.open(gcs_path, mode="w") as dest:
-            writer = SqlExportFileWriter(dest, predicate, use_unicode=self._use_unicode)
-            yield writer
+        dest = open_cloud_file(gcs_path)
+        writer = SqlExportFileWriter(dest, predicate, use_unicode=self._use_unicode)
+        yield writer
         logging.info("Export to %s complete.", gcs_path)

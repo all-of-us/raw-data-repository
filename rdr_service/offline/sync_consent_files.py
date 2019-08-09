@@ -6,10 +6,10 @@ Organize all consent files from PTSC source bucket into proper awardee buckets.
 import collections
 import json
 
-import cloudstorage
 import sqlalchemy
 from rdr_service import deferred
 
+from rdr_service.api_util import open_cloud_file, list_blobs, upload_from_file
 from rdr_service.cloud_utils.google_sheets import GoogleSheetCSVReader
 from rdr_service.dao import database_factory
 
@@ -53,8 +53,8 @@ def do_sync_consent_files():
 
 
 def _get_sheet_id():
-    with cloudstorage.open(HPO_REPORT_CONFIG_GCS_PATH, "r") as handle:
-        hpo_config = json.load(handle)
+    handle = open_cloud_file(HPO_REPORT_CONFIG_GCS_PATH)
+    hpo_config = json.load(handle)
     sheet_id = hpo_config.get("hpo_report_google_sheet_id")
     if sheet_id is None:
         raise ValueError("Missing config value: hpo_report_google_sheet_id")
@@ -120,15 +120,15 @@ def cloudstorage_copy_objects(source, destination):
 
   Both source and destination use the following format: /bucket/prefix/
   """
-    for source_file_stat in cloudstorage.listbucket(source):
+    for source_file_stat in list_blobs(source):
         destination_filename = destination + source_file_stat.filename[len(source) :]
         if _should_copy_object(source_file_stat, destination_filename):
-            cloudstorage.copy2(source_file_stat.filename, destination_filename)
+            # @todo: this is probably not the right function to call here
+            upload_from_file(source_file_stat.filename, destination_filename)
 
 
 def _should_copy_object(source_file_stat, destination):
-    try:
-        dest_file_stat = cloudstorage.stat(destination)
-    except cloudstorage.NotFoundError:
+    dest_file_stat = list_blobs(destination)
+    if not dest_file_stat:
         return True
     return source_file_stat.etag != dest_file_stat.etag

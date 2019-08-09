@@ -2,12 +2,12 @@ import datetime
 import json
 
 import mock
-from cloudstorage import cloudstorage_api  # stubbed by testbed
 from sqlalchemy.exc import IntegrityError
 from testlib import testutil
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from rdr_service import config
+from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import GENDER_IDENTITY_QUESTION_CODE, PMI_SKIP_CODE, PPI_SYSTEM, THE_BASICS_PPI_MODULE
 from rdr_service.dao.code_dao import CodeDao
@@ -939,6 +939,6 @@ class QuestionnaireResponseDaoCloudCheckTest(testutil.CloudStorageTestBase):
         consent_pdf_path = "/%s/Participant/somefile.pdf" % _FAKE_BUCKET
         with self.assertRaises(BadRequest):
             _raise_if_gcloud_file_missing(consent_pdf_path)
-        with cloudstorage_api.open(consent_pdf_path, mode="w") as cloud_file:
+        with open_cloud_file(consent_pdf_path) as cloud_file:
             cloud_file.write("I am a fake PDF in a fake Cloud.")
         _raise_if_gcloud_file_missing(consent_pdf_path)

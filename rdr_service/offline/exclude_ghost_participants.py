@@ -1,9 +1,9 @@
 import logging
 from csv import DictReader
 
-from cloudstorage import cloudstorage_api
 
 from rdr_service import config
+from rdr_service.api_util import open_cloud_file, list_blobs
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.offline.biobank_samples_pipeline import DataError
 
@@ -27,7 +27,7 @@ def mark_ghost_participants():
 def get_latest_pid_file(bucket):
     path = _find_most_recent_file(bucket)
     logging.info("Opening most recent ghost id exclusion list in %r: %r", path, bucket)
-    return cloudstorage_api.open(path), path
+    return open_cloud_file(path), path
 
 
 def _find_most_recent_file(bucket):
@@ -36,7 +36,7 @@ def _find_most_recent_file(bucket):
   Raises:
     RuntimeError: if no CSVs are found in the cloud storage bucket.
   """
-    files_list = cloudstorage_api.listbucket("/" + bucket)
+    files_list = list_blobs("/" + bucket)
     if not files_list:
         raise DataError("No files in cloud bucket %r." % bucket)
     files_list = [s for s in files_list if s.filename.lower().endswith(".csv")]

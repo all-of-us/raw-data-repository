@@ -3,9 +3,9 @@ import datetime
 import logging
 import random
 
-from cloudstorage import cloudstorage_api
 
 from rdr_service import clock, config
+from rdr_service.api_util import open_cloud_file
 from rdr_service.code_constants import BIOBANK_TESTS
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -47,7 +47,8 @@ def generate_samples(fraction_missing):
     num_rows = 0
     sample_id_start = random.randint(1000000, 10000000)
 
-    with cloudstorage_api.open(file_name, mode="w") as dest:
+    f = open_cloud_file(file_name)
+    with open(f) as dest:
         writer = csv.writer(dest, delimiter="\t")
         writer.writerow(CsvColumns.ALL)
 

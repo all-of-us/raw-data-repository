@@ -5,9 +5,9 @@ import random
 import time
 
 import pytz
-from cloudstorage import cloudstorage_api  # stubbed by testbed
 
 from rdr_service import clock, config
+from rdr_service.api_util import open_cloud_file
 from rdr_service.code_constants import BIOBANK_TESTS
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
@@ -39,7 +39,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
         self.summary_dao = ParticipantSummaryDao()
 
     def _write_cloud_csv(self, file_name, contents_str):
-        with cloudstorage_api.open("/%s/%s" % (_FAKE_BUCKET, file_name), mode="w") as cloud_file:
+        with open_cloud_file("/%s/%s" % (_FAKE_BUCKET, file_name)) as cloud_file:
             cloud_file.write(contents_str.encode("utf-8"))
 
     def _make_biobank_order(self, **kwargs):

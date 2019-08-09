@@ -8,9 +8,9 @@ import datetime
 import logging
 
 import pytz
-from cloudstorage import cloudstorage_api
 
 from rdr_service import clock, config
+from rdr_service.api_util import open_cloud_file, list_blobs
 from rdr_service.code_constants import PPI_SYSTEM, RACE_AIAN_CODE, RACE_QUESTION_CODE
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.code_dao import CodeDao
@@ -109,7 +109,7 @@ def _open_latest_samples_file(cloud_bucket_name):
     """Returns an open stream for the most recently created CSV in the given bucket."""
     path = _find_latest_samples_csv(cloud_bucket_name)
     logging.info("Opening latest samples CSV in %r: %r.", cloud_bucket_name, path)
-    return cloudstorage_api.open(path), path
+    return open_cloud_file(path), path
 
 
 def _find_latest_samples_csv(cloud_bucket_name):
@@ -118,7 +118,7 @@ def _find_latest_samples_csv(cloud_bucket_name):
   Raises:
     RuntimeError: if no CSVs are found in the cloud storage bucket.
   """
-    bucket_stat_list = cloudstorage_api.listbucket("/" + cloud_bucket_name)
+    bucket_stat_list = list_blobs("/" + cloud_bucket_name)
     if not bucket_stat_list:
         raise DataError("No files in cloud bucket %r." % cloud_bucket_name)
     # GCS does not really have the concept of directories (it's just a filename convention), so all

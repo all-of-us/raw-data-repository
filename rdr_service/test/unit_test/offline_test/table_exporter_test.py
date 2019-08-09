@@ -1,9 +1,9 @@
 import csv
 import os
 
-from cloudstorage import cloudstorage_api
 from rdr_service import deferred
 
+from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.offline.table_exporter import TableExporter
 from rdr_service.participant_enums import make_primary_provider_link_for_name
@@ -45,9 +45,9 @@ class TableExporterTest(CloudStorageSqlTestBase, FlaskTestBase):
         self.assertEqual(len(tasks), 1)
         csv_path = deferred.run(tasks[0].payload)
 
-        with cloudstorage_api.open("/" + csv_path, mode="r") as output:
-            reader = csv.reader(output)
-            rows = list(reader)[1:]
+        output = open_cloud_file("/" + csv_path)
+        reader = csv.reader(output)
+        rows = list(reader)[1:]
         self.assertEqual(2, len(rows))
 
         pmi_ids = set([p1.participantId, p2.participantId])

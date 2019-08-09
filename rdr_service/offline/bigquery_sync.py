@@ -42,6 +42,7 @@ def rebuild_bigquery_handler():
 
             logging.info("Task {} enqueued, ETA {}.".format(task.name, task.eta))
             count -= 1
+            pass
 
 
 def rebuild_bigquery_data(timestamp, limit=0):

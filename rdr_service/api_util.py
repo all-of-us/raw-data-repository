@@ -1,7 +1,12 @@
 """Utilities used by the API definition, and authentication/authorization/roles."""
+import csv
 import datetime
+import os
+from io import BytesIO
 
 from dateutil.parser import parse
+from google.cloud import storage
+from google.cloud.storage import Blob
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.code_constants import UNMAPPED, UNSET
@@ -162,3 +167,37 @@ def get_code_id(obj, code_dao, field, prefix):
             return code.codeId
     else:
         return UNSET
+
+
+def open_cloud_file(path):
+    client = storage.Client()
+    bucket = client.get_bucket(os.path.dirname(path))
+    obj = os.path.basename(path)
+    blob = storage.blob.Blob(obj, bucket)
+    return BytesIO(blob.download_as_string())
+
+
+def lookup_bucket(path):
+    """returns name of bucket or None"""
+    client = storage.Client()
+    return client.lookup_bucket(path)
+
+
+def list_blobs(path):
+    client = storage.Client()
+    return client.list_blobs(path)
+
+
+def upload_from_file(file_name, bucket, contents):
+    client = storage.Client()
+    blob = Blob(contents, client.get_bucket(bucket))
+    with open(file_name, "rb") as f:
+        blob.upload_from_file(f)
+
+
+def delete_cloud_file(path):
+    client = storage.Client()
+    bucket = client.get_bucket(os.path.dirname(path))
+    obj = os.path.basename(path)
+    blob = storage.blob.Blob(obj, bucket)
+    blob.delete()

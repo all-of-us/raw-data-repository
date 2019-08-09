@@ -5,7 +5,7 @@ from datetime import datetime
 
 import fhirclient.models.questionnaireresponse
 import pytz
-from cloudstorage import cloudstorage_api
+from google.cloud import storage
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
@@ -606,12 +606,15 @@ def _raise_if_gcloud_file_missing(path):
   Raises:
     BadRequest if the path does not reference a file.
   """
-    try:
-        gcs_stat = cloudstorage_api.stat(path)
-    except cloudstorage_api.errors.NotFoundError as e:
-        raise BadRequest("Google Cloud Storage file %r not found. %s." % (path, e))
-    if gcs_stat.is_dir:
-        raise BadRequest("Google Cloud Storage path %r references a directory, expected a file." % path)
+    bucket_path = os.sep(path)
+    bucket_name = bucket_path[0]
+    file_name = bucket_path[-1]
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    gcs_stat = storage.Blob(bucket=bucket, name=file_name).exists(storage_client)
+
+    if not gcs_stat:
+        raise BadRequest("Google Cloud Storage file %r not found in %s." % (file_name, bucket))
 
 
 class QuestionnaireResponseAnswerDao(BaseDao):

@@ -7,12 +7,12 @@ import logging
 import random
 import string
 
-from cloudstorage import cloudstorage_api
 from dateutil.parser import parse
 from rdr_service.config import GAE_PROJECT
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import clock
+from rdr_service.api_util import open_cloud_file
 from rdr_service.code_constants import (
     BIOBANK_TESTS,
     CABOR_SIGNATURE_QUESTION_CODE,
@@ -225,8 +225,8 @@ class FakeParticipantGenerator(object):
             return json.load(f)
 
     def _read_csv_from_gcs(self, bucket_name, file_name):
-        with cloudstorage_api.open("/%s/%s" % (bucket_name, file_name), mode="r") as infile:
-            return list(csv.DictReader(infile))
+        infile = open_cloud_file("/%s/%s" % (bucket_name, file_name))
+        return list(csv.DictReader(infile))
 
     def _read_csv_from_file(self, file_name):
         with open("app_data/%s" % file_name, mode="r") as infile:
