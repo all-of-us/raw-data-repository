@@ -121,11 +121,11 @@ class Client(object):
             # This adds a header that we can use to reject 'unauthenticated' requests.  What this
             # is really testing is that the auth_required annotation is in all the right places.
             headers["unauthenticated"] = "Yes"
-            http = httplib2.Http()
-            http.force_exception_to_status_code = True
+            http_ = httplib2.Http()
+            http_.force_exception_to_status_code = True
             # httplib2 requires an attempt at authentication, else returns MalformedHeader error.
-            http.add_credentials("no", "pw")
-            resp, content = http.request(url, method, headers=headers, body=body)
+            http_.add_credentials("no", "pw")
+            resp, content = http_.request(url, method, headers=headers, body=body)
 
         client_log.info("%s for %s to %s", resp.status, method, url)
         details_level = logging.WARNING if (check_status and resp.status != http.client.OK) else logging.DEBUG

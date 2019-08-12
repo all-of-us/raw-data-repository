@@ -1,0 +1,37 @@
+{
+  "allow_nonprod_requests": true,
+  "biobank_id_prefix": ["Z"],
+  "biobank_samples_shards": [
+    "2"
+  ],
+  "user_info": {
+    "example@example.com": {
+      "roles": ["ptc", "healthpro", "exporter", "storefront", "rdr"],
+      "whitelisted_ip_ranges": {
+	"ip6": ["::1/64"],
+	"ip4": ["127.0.0.1/32"]
+      }
+    },
+    "awardee-pitt@pmi-drc-api-test.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "PITT",
+      "whitelisted_ip_ranges" : {
+	"ip4": ["136.142.28.15", "136.142.28.122", "136.142.28.123", "136.142.28.76", "136.142.202.70", "136.142.202.71", "136.142.202.72", "136.142.202.73", "136.142.202.74", "136.142.202.75", "136.142.202.76", "136.142.202.77", "136.142.202.78"]
+      }
+    }
+  },
+  "biobank_samples_bucket_name": [
+    "app_default_bucket"
+  ],
+  "ghost_id_bucket": [
+    "all-of-us-rdr-test-ghost-accounts"
+  ],
+  "consent_pdf_bucket": [
+    "app_default_bucket"
+  ],
+  "metrics_shards": [
+    "10"
+  ],
+  "mayolink_creds": ["rdr-mayolink-creds-test.json"],
+  "mayolink_endpoint": ["https://test.orders.mayocliniclabs.com/orders/create.xml"]
+}

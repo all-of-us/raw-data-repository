@@ -1,9 +1,8 @@
-from fhirclient.models.backboneelement import BackboneElement
-
 from rdr_service import clock
 from rdr_service.dao.base_dao import FhirMixin, FhirProperty
 from rdr_service.dao.cache_all_dao import CacheAllDao
 from rdr_service.dao.site_dao import SiteDao, _FhirSite
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.backboneelement import BackboneElement
 from rdr_service.model.organization import Organization
 from rdr_service.participant_enums import make_primary_provider_link_for_id
 from rdr_service.singletons import ORGANIZATION_CACHE_INDEX

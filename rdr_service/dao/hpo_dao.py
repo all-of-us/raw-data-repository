@@ -1,10 +1,11 @@
-from fhirclient.models.domainresource import DomainResource
+
 from sqlalchemy.orm import subqueryload
 
 from rdr_service.code_constants import UNSET
 from rdr_service.dao.base_dao import FhirMixin, FhirProperty
 from rdr_service.dao.cache_all_dao import CacheAllDao
 from rdr_service.dao.organization_dao import OrganizationDao, _FhirOrganization
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainResource
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.singletons import HPO_CACHE_INDEX

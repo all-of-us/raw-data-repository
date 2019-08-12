@@ -74,7 +74,7 @@ def check_auth(role_whitelist):
 def get_oauth_id():
     """Returns user email ID if OAUTH token present, or None."""
     # TODO: AUTH: Get user email from oauth2 token
-    return "test@test.com"
+    return "example@example.com"
     # try:
     #     user_email = oauth.get_current_user(SCOPE).email()
     # except oauth.Error as e:
@@ -206,8 +206,9 @@ def auth_required(role_whitelist):
             appid = GAE_PROJECT
             # Only enforce HTTPS and auth for external requests; requests made for data generation
             # are allowed through (when enabled).
+            acceptable_hosts = ("None", "testbed-test", "testapp", "localhost", "127.0.0.1")
             if not _is_self_request():
-                if request.scheme.lower() != "https" and appid not in ("None", "testbed-test", "testapp"):
+                if request.scheme.lower() != "https" and appid not in acceptable_hosts:
                     raise Unauthorized("HTTPS is required for %r" % appid, www_authenticate='Bearer realm="rdr"')
                 check_auth(role_whitelist)
             return func(*args, **kwargs)
@@ -232,6 +233,10 @@ def get_validated_user_info():
         raise Unauthorized("No OAuth user found.")
 
     user_info = lookup_user_info(user_email)
+    print(user_email, '<<<< email')
+    print( '=======================================')
+    print(user_info, '<<<<<< info')
+    print ('=======================================')
     if user_info:
         enforce_ip_whitelisted(request.remote_addr, get_whitelisted_ips(user_info))
         enforce_appid_whitelisted(request.headers.get("X-Appengine-Inbound-Appid"), get_whitelisted_appids(user_info))

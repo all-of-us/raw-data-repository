@@ -14,7 +14,7 @@ Usage:
 import csv
 import logging
 
-import fhirclient.models.questionnaire
+from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaire as fhir_questionnaire
 
 from rdr_service.code_constants import (
     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
@@ -86,7 +86,7 @@ def _setup_questionnaires(client):
             consent_questionnaire_id_and_version = (questionnaire_id, version)
         if questionnaire_to_questions.get((questionnaire_id, version)):
             continue
-        fhir_q = fhirclient.models.questionnaire.Questionnaire(questionnaire)
+        fhir_q = fhir_questionnaire.Questionnaire(questionnaire)
         questionnaire_to_questions[(questionnaire_id, version)] = _get_questions(fhir_q.group)
     return questionnaire_to_questions, consent_questionnaire_id_and_version
 

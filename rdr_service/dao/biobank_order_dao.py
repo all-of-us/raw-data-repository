@@ -1,8 +1,8 @@
-from fhirclient.models import fhirdate
-from fhirclient.models.backboneelement import BackboneElement
-from fhirclient.models.domainresource import DomainResource
-from fhirclient.models.fhirdate import FHIRDate
-from fhirclient.models.identifier import Identifier
+from rdr_service.lib_fhir.fhirclient_1_0_6.models import fhirdate
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.backboneelement import BackboneElement
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainResource
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirdate import FHIRDate
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.identifier import Identifier
 from sqlalchemy import or_
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest, Conflict, PreconditionFailed

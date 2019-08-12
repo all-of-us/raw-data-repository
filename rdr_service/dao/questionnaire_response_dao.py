@@ -3,7 +3,7 @@ import logging
 import os
 from datetime import datetime
 
-import fhirclient.models.questionnaireresponse
+from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 import pytz
 from google.cloud import storage
 from sqlalchemy.orm import subqueryload
@@ -409,7 +409,7 @@ class QuestionnaireResponseDao(BaseDao):
     def from_client_json(self, resource_json, participant_id=None, client_id=None):
         # pylint: disable=unused-argument
         # Parse the questionnaire response, but preserve the original response when persisting
-        fhir_qr = fhirclient.models.questionnaireresponse.QuestionnaireResponse(resource_json)
+        fhir_qr = fhir_questionnaireresponse.QuestionnaireResponse(resource_json)
         patient_id = fhir_qr.subject.reference
         if patient_id != "Patient/P{}".format(participant_id):
             msg = "Questionnaire response subject reference does not match participant_id %r"

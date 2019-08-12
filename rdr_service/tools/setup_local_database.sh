@@ -53,7 +53,7 @@ echo '{"db_connection_string": "'$DB_CONNECTION_STRING'", ' \
      ' "db_password": "'$RDR_PASSWORD'", ' \
      ' "db_connection_name": "", '\
      ' "db_user": "'$RDR_DB_USER'", '\
-     ' "db_name": "'$DB_NAME'" }' > $DB_INFO_FILE
+     ' "db_name": "'$DB_NAME'" }' > .configs/db_config.json
 
 if [ -z "${UPGRADE}" ]
 then
@@ -80,8 +80,8 @@ echo "Updating schema to latest..."
 tools/upgrade_database.sh
 
 echo "Setting general configuration..."
-tools/install_config.sh --config config/config_dev.json --update
+#tools/install_config.sh --config config/config_dev.json --update
 
-tools/install_config.sh --key db_config --config ${DB_INFO_FILE} --update
+#tools/install_config.sh --key db_config --config ${DB_INFO_FILE} --update
 
 tools/import_data.sh $@
