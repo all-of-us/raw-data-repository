@@ -1,6 +1,6 @@
-from fhirclient.models import fhirdate
-from fhirclient.models.address import Address
-from fhirclient.models.backboneelement import BackboneElement
+from rdr_service.lib_fhir.fhirclient_1_0_6.models import fhirdate
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.address import Address
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.backboneelement import BackboneElement
 
 from rdr_service import clock
 from rdr_service.dao.base_dao import FhirMixin, FhirProperty

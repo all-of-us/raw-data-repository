@@ -1,8 +1,8 @@
 import json
 import logging
 
-import fhirclient.models.observation
-from fhirclient.models.fhirabstractbase import FHIRValidationError
+from rdr_service.lib_fhir.fhirclient_1_0_6.models import observation as fhir_observation
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirabstractbase import FHIRValidationError
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
@@ -622,7 +622,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
             if resource:
                 resource_type = resource.get("resourceType")
                 if resource_type == _OBSERVATION_RESOURCE_TYPE:
-                    observations.append((entry["fullUrl"], fhirclient.models.observation.Observation(resource)))
+                    observations.append((entry["fullUrl"], fhir_observation.Observation(resource)))
                 elif resource_type == _COMPOSITION_RESOURCE_TYPE:
                     extensions = resource.get("extension", [])
                     if not extensions:

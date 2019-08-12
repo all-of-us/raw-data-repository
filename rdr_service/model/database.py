@@ -9,6 +9,30 @@ from rdr_service.model.base import Base, MetricsBase
 
 # All tables in the schema should be imported below here.
 # pylint: disable=unused-import
+from rdr_service.model.participant import Participant, ParticipantHistory
+from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
+from rdr_service.model.biobank_dv_order import BiobankDVOrder
+from rdr_service.model.code import CodeBook, Code, CodeHistory
+from rdr_service.model.calendar import Calendar
+from rdr_service.model.ehr import EhrReceipt
+from rdr_service.model.hpo import HPO
+from rdr_service.model.log_position import LogPosition
+from rdr_service.model.measurements import PhysicalMeasurements, Measurement
+from rdr_service.model.metric_set import AggregateMetrics, MetricSet
+from rdr_service.model.metrics import MetricsVersion, MetricsBucket
+from rdr_service.model.metrics_cache import MetricsEnrollmentStatusCache, MetricsAgeCache, MetricsRaceCache, \
+  MetricsRegionCache, MetricsGenderCache, MetricsLanguageCache, MetricsLifecycleCache
+from rdr_service.model.organization import Organization
+from rdr_service.model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
+from rdr_service.model.questionnaire import QuestionnaireConcept
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.site import Site
+from rdr_service.model.genomics import GenomicSet, GenomicSetMember
+from rdr_service.model.patient_status import PatientStatus
+from rdr_service.model.bigquery_sync import BigQuerySync
+from rdr_service.model.requests_log import RequestsLog
 
 RETRY_CONNECTION_LIMIT = 10
 

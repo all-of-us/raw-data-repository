@@ -1,12 +1,12 @@
 import json
 
-import fhirclient.models.questionnaire
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import clock
 from rdr_service.code_constants import PPI_EXTRA_SYSTEM
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
+from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaire
 from rdr_service.model.code import CodeType
 from rdr_service.model.questionnaire import (
     Questionnaire,
@@ -110,7 +110,7 @@ class QuestionnaireDao(UpdatableDao):
         # pylint: disable=unused-argument
         # Parse the questionnaire to make sure it's valid, but preserve the original JSON
         # when saving.
-        fhir_q = fhirclient.models.questionnaire.Questionnaire(resource_json)
+        fhir_q = questionnaire.Questionnaire(resource_json)
         if not fhir_q.group:
             raise BadRequest("No top-level group found in questionnaire")
 

@@ -57,7 +57,7 @@ def get_db_connection_string(backup=False, instance_name=None):
     # Only import "config" on demand, as it depends on Datastore packages (and
     # GAE). When running via CLI or tests, we'll have this from the environment
     # instead (above).
-    import config
+    from rdr_service import config
 
     connection_string_key = "backup_db_connection_string" if backup else "db_connection_string"
     result = config.get_db_config()[connection_string_key]

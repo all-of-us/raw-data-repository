@@ -8,8 +8,8 @@ from collections import OrderedDict
 from contextlib import closing
 
 import sqlparse
-from fhirclient.models.domainresource import DomainResource
-from fhirclient.models.fhirabstractbase import FHIRValidationError
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainResource
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirabstractbase import FHIRValidationError
 from protorpc import messages
 from sqlalchemy import and_, inspect, or_
 from sqlalchemy.engine.result import ResultProxy
@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 
 from rdr_service import api_util
+from rdr_service.dao import database_factory
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import get_property_type
 from rdr_service.query import FieldFilter, Operator, PropertyType, Results
@@ -56,9 +57,9 @@ class BaseDao(object):
         self.model_type = model_type
         if not db:
             if backup:
-                db = dao.database_factory.get_backup_database()
+                db = database_factory.get_backup_database()
             else:
-                db = dao.database_factory.get_database()
+                db = database_factory.get_database()
         self._database = db
         self.order_by_ending = order_by_ending
 

@@ -172,7 +172,7 @@ class BaseApi(Resource):
         include_total = request.args.get("_includeTotal", False)
         offset = request.args.get("_offset", False)
 
-        for key, value in request.args.iteritems(multi=True):
+        for key, value in request.args.items(multi=True):
             if value in missing_id_list:
                 if "awardee" in value:
                     value = "hpoId"
