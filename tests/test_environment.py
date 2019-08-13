@@ -3,7 +3,7 @@ import os
 import sys
 import unittest
 
-from tests.helpers.mysql_helper import start_mysql_instance
+from tests.helpers.mysql_helper import reset_mysql_instance
 
 
 class TestEnvironment(unittest.TestCase):
@@ -12,7 +12,7 @@ class TestEnvironment(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        # start_mysql_instance()
+        reset_mysql_instance()
         pass
 
     def test_python_version(self):
@@ -34,10 +34,10 @@ class TestEnvironment(unittest.TestCase):
         """
         from rdr_service.main import app
         self.assertTrue(isinstance(app, object))
-
+        # Put flask in testing mode
         app.testing = True
-        client = app.test_client()
 
+        client = app.test_client()
         resp = client.get('/')
         self.assertEqual(resp.json['version_id'], 'develop')
 

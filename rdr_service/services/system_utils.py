@@ -188,21 +188,63 @@ def signal_process(name, signal_code=signal.SIGHUP):
     return False
 
 
-def pid_is_running(pid):
+def pid_is_running(pid: int):
     """
   Check For the existence of a unix pid.
   :param pid: integer ID of this process
   :return: True if process with this ID is running, otherwise False
   """
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        return False
+    # See if there is a currently running mysqld instance
+    args = ['ps', '-ef']
+    code, so, se = run_external_program(args=args)
+    if code == 0:
+        lines = so.split('\n')
+        for line in lines:
+            if str(pid) in line:
+                while '  ' in line:
+                    line = line.replace('  ', ' ')
+                if pid == int(line.split(' ')[1]) and '<defunct>' not in line:
+                    return True
+    return False
 
-    return True
+
+def get_process_pids(matches: list) -> list:
+    """
+    Get the pids of a currently running process.  May match more than one running process.
+    :param matches: parts of process command to match in process list
+    :return: List of PIDs
+    """
+    pids = list()
+
+    if not matches or len(matches) == 0:
+        raise ValueError('matches list may not be empty.')
+
+    for match in matches:
+        if not isinstance(match, str):
+            raise ValueError('invalid match value, must be string.')
+
+    # See if there is a currently running mysqld instance
+    args = ['ps', '-ef']
+    code, so, se = run_external_program(args=args)
+    if code == 0:
+        lines = so.split('\n')
+        for line in lines:
+            no_match = False
+            for match in matches:
+                if match not in line:
+                    no_match = True
+                    break
+
+            if no_match is True:
+                continue
+            while '  ' in line:
+                line = line.replace('  ', ' ')
+            pids.append(int(line.split(' ')[1]))
+
+    return pids
 
 
-def write_pidfile_or_die(progname, pid_file=None):
+def write_pidfile_or_die(progname: str, pid_file: str = None):
     """
   Attempt to write our PID to the given PID file or raise an exception.
   :param progname: Name of this program
@@ -234,11 +276,11 @@ def write_pidfile_or_die(progname, pid_file=None):
     return pid_file
 
 
-def remove_pidfile(progname, pid_file=None):
+def remove_pidfile(progname: str, pid_file: str = None):
     """
   Remove the PID file for the given program
   :param progname: Name of this program
-  :param pidfile: an alternate pid file to use
+  :param pid_file: an alternate pid file to use
   """
     if not pid_file:
         home = os.path.expanduser("~")
@@ -349,3 +391,53 @@ def print_progress_bar(iteration, total, prefix="", suffix="", decimals=1, bar_l
     if iteration == total:
         sys.stdout.write("\n")
     sys.stdout.flush()
+
+
+def find_mysqld_executable() -> str:
+    """
+    Find local mysql server executable
+    :return: Executable path or None
+    """
+    KNOWN_PATHS = [
+        '/usr/libexec/mysqld',
+        '/usr/local/opt/mysql@5.7/bin/mysqld',
+        '/usr/local/opt/mysql@8.0/bin/mysqld'
+    ]
+    # Try known paths
+    for path in KNOWN_PATHS:
+        if os.path.exists(path):
+            return path
+
+    # Try which()
+    path = which('mysqld')
+    if path:
+        return path
+
+    # See if there is a currently running mysqld instance
+    args = ['ps', '-ef']
+    code, so, se = run_external_program(args=args)
+    if code == 0:
+        lines = so.split('\n')
+        for line in lines:
+            if '/mysqld' in line and '--basedir=' in line:
+                path = line[line.find('/'):]
+                return path.split(' ')[0]
+
+    return ''
+
+def start_mysqld_instance(basedir: str) -> int:
+    """
+    Launch a new instance of mysqld, only if it is not already running.
+    https://dev.mysql.com/doc/refman/8.0/en/multiple-servers.html
+    :param basedir: Path to run the new instance in, must be unique.
+    :return: PID
+    """
+    # See if there is a currently running mysqld instance
+    args = ['ps', '-ef']
+    code, so, se = run_external_program(args=args)
+    if code == 0:
+        lines = so.split('\n')
+        for line in lines:
+            if '/mysqld' in line and '--basedir=' in line:
+                path = line[line.find('/'):]
+                return path.split(' ')[0]
