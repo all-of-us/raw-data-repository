@@ -362,7 +362,7 @@ class ParticipantDao(UpdatableDao):
             participantId=id_,
             externalId=resource_json.get("externalId"),
             version=expected_version,
-            providerLink=json.dumps(resource_json.get("providerLink")),
+            providerLink=bytes(json.dumps(resource_json.get("providerLink")), 'utf-8'),
             clientId=client_id,
             withdrawalStatus=resource_json.get("withdrawalStatus"),
             withdrawalReason=resource_json.get("withdrawalReason"),
@@ -390,7 +390,7 @@ class ParticipantDao(UpdatableDao):
         participant.hpoId = site.hpoId
         participant.organizationId = site.organizationId
         participant.siteId = site.siteId
-        participant.providerLink = make_primary_provider_link_for_id(site.hpoId)
+        participant.providerLink = bytes(make_primary_provider_link_for_id(site.hpoId), 'utf-8')
         if participant.participantSummary is None:
             raise RuntimeError("No ParticipantSummary available for P%d." % participant_id)
         participant.participantSummary.hpoId = site.hpoId
