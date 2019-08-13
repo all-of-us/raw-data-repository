@@ -13,6 +13,7 @@
 # generate_schema.sh, and then run this again to create that initial schema.
 
 source tools/setup_local_vars.sh
+source tools/set_path.sh
 DB_CONNECTION_NAME=
 DB_INFO_FILE=/tmp/db_info.json
 CREATE_DB_FILE=/tmp/create_db.sql
