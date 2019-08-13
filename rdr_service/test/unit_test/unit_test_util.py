@@ -27,6 +27,7 @@ from testlib import testutil
 from rdr_service import api_util, config, main, singletons
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
+from rdr_service.dao import database_factory
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
@@ -49,10 +50,7 @@ from rdr_service.participant_enums import (
 from rdr_service.test.test_data import data_path
 from rdr_service.unicode_csv import UnicodeDictReader
 
-PITT_HPO_ID = 2
-PITT_ORG_ID = 3
-AZ_HPO_ID = 4
-AZ_ORG_ID = 4
+
 
 
 class TestBase(unittest.TestCase):
@@ -188,12 +186,12 @@ class _TestDb(object):
                 # Match setup_local_database.sh which is run locally.
                 mysql_login = "root:" + password
 
-            dao.database_factory.DB_CONNECTION_STRING = "mysql+mysqldb://%s@%s/?charset=utf8" % (
+            database_factory.DB_CONNECTION_STRING = "mysql+mysqldb://%s@%s/?charset=utf8" % (
                 mysql_login,
                 mysql_host,
             )
-            db = dao.database_factory.get_database(db_name=None)
-            dao.database_factory.SCHEMA_TRANSLATE_MAP = {
+            db = database_factory.get_database(db_name=None)
+            database_factory.SCHEMA_TRANSLATE_MAP = {
                 "rdr": self.__temp_db_name,
                 "metrics": self.__temp_metrics_db_name,
             }
@@ -206,7 +204,7 @@ class _TestDb(object):
                 "CREATE DATABASE {0} CHARACTER SET utf8 COLLATE utf8_general_ci".format(self.__temp_metrics_db_name)
             )
 
-            dao.database_factory.DB_CONNECTION_STRING = "mysql+mysqldb://%s@%s/%s?charset=utf8" % (
+            database_factory.DB_CONNECTION_STRING = "mysql+mysqldb://%s@%s/%s?charset=utf8" % (
                 mysql_login,
                 mysql_host,
                 self.__temp_db_name,
@@ -214,11 +212,11 @@ class _TestDb(object):
 
             singletons.reset_for_tests()
 
-            dbf = dao.database_factory.get_database(db_name=self.__temp_db_name)
+            dbf = database_factory.get_database(db_name=self.__temp_db_name)
             dbf.create_schema()
             self._load_views_and_functions(dbf.get_engine())
 
-            dao.database_factory.get_generic_database().create_metrics_schema()
+            database_factory.get_generic_database().create_metrics_schema()
 
         else:
             dao.database_factory.DB_CONNECTION_STRING = "sqlite:///:memory:"

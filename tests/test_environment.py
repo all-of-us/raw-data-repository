@@ -3,7 +3,11 @@ import os
 import sys
 import unittest
 
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.model.hpo import HPO
+
 from tests.helpers.mysql_helper import reset_mysql_instance
+
 
 
 class TestEnvironment(unittest.TestCase):
@@ -41,3 +45,10 @@ class TestEnvironment(unittest.TestCase):
         resp = client.get('/')
         self.assertEqual(resp.json['version_id'], 'develop')
 
+    def test_basic_db_query(self):
+        """
+        Test that we are connected to the database and can complete a query.
+        """
+        with HPODao().session() as session:
+            count = session.query(HPO).count()
+            self.assertGreater(count, 0)
