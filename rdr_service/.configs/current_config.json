@@ -1,4 +1,5 @@
 {
+  "add_questionnaire_codes_if_missing": true,
   "allow_nonprod_requests": true,
   "biobank_id_prefix": ["Z"],
   "biobank_samples_shards": [

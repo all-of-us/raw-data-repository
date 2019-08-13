@@ -21,7 +21,7 @@ class AwardeeApi(BaseApi):
         return super(AwardeeApi, self)._query(id_field="id")
 
     def _make_resource_url(self, json, id_field, participant_id):  # pylint: disable=unused-argument
-        import main
+        from rdr_service import main
 
         return main.api.url_for(self.__class__, a_id=json[id_field], _external=True)
 
