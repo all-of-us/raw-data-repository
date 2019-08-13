@@ -123,7 +123,8 @@ class QuestionnaireDao(UpdatableDao):
         from rdr_service.dao.code_dao import CodeDao
 
         # Get or insert codes, and retrieve their database IDs.
-        add_codes_if_missing = _add_codes_if_missing()
+        #add_codes_if_missing = _add_codes_if_missing()
+        add_codes_if_missing = True  # @TODO: do not hard code this !!!!!!!!!!!!!!!!!!
         code_id_map = CodeDao().get_or_add_codes(code_map, add_codes_if_missing=add_codes_if_missing)
 
         # Now add the child objects, using the IDs in code_id_map
