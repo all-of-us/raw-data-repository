@@ -3,7 +3,11 @@ import os
 import sys
 import unittest
 
-from tests.helpers.mysql_helper import start_mysql_instance
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.model.hpo import HPO
+
+from tests.helpers.mysql_helper import reset_mysql_instance
+
 
 
 class TestEnvironment(unittest.TestCase):
@@ -12,7 +16,7 @@ class TestEnvironment(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        # start_mysql_instance()
+        reset_mysql_instance()
         pass
 
     def test_python_version(self):
@@ -34,10 +38,17 @@ class TestEnvironment(unittest.TestCase):
         """
         from rdr_service.main import app
         self.assertTrue(isinstance(app, object))
-
+        # Put flask in testing mode
         app.testing = True
-        client = app.test_client()
 
+        client = app.test_client()
         resp = client.get('/')
         self.assertEqual(resp.json['version_id'], 'develop')
 
+    def test_basic_db_query(self):
+        """
+        Test that we are connected to the database and can complete a query.
+        """
+        with HPODao().session() as session:
+            count = session.query(HPO).count()
+            self.assertGreater(count, 0)
