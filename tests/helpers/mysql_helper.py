@@ -58,9 +58,11 @@ def start_mysql_instance():
     os.mkdir(BASE_PATH)
 
     mysqld = find_mysqld_executable()
-    mariadb_install = which('mysql_install_db')
     if not mysqld:
         raise FileNotFoundError('mysqld executable not found')
+
+    code, so, se = run_external_program([which("mysql"), "-V"])
+    mariadb_install = (code == 0 and 'MariaDB' in so)
 
     data_dir = os.path.join(BASE_PATH, 'data')
     log_file = os.path.join(BASE_PATH, 'mysqld.log')
@@ -68,7 +70,7 @@ def start_mysql_instance():
     sock_file = os.path.join(BASE_PATH, 'mysqld.sock')
     os.mkdir(tmp_dir)
     if mariadb_install:
-        cmd = '{0} --datadir={1} --auth-root-authentication-method=normal'.format(mariadb_install, data_dir)
+        cmd = '{0} --datadir={1} --auth-root-authentication-method=normal'.format(which('mysql_install_db'), data_dir)
     else:
         cmd = '{0} --initialize-insecure --datadir={1}'.format(mysqld, data_dir)
 
