@@ -199,7 +199,7 @@ class BaseApi(Resource):
         )
 
     def _make_bundle(self, results, id_field, participant_id):
-        import main
+        from rdr_service import main
 
         bundle_dict = {"resourceType": "Bundle", "type": "searchset"}
         if results.pagination_token:
@@ -219,7 +219,7 @@ class BaseApi(Resource):
         return bundle_dict
 
     def _make_resource_url(self, json, id_field, participant_id):
-        import main
+        from rdr_service import main
 
         if participant_id:
             return main.api.url_for(
