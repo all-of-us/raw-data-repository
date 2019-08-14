@@ -233,10 +233,6 @@ def get_validated_user_info():
         raise Unauthorized("No OAuth user found.")
 
     user_info = lookup_user_info(user_email)
-    print(user_email, '<<<< email')
-    print( '=======================================')
-    print(user_info, '<<<<<< info')
-    print ('=======================================')
     if user_info:
         enforce_ip_whitelisted(request.remote_addr, get_whitelisted_ips(user_info))
         enforce_appid_whitelisted(request.headers.get("X-Appengine-Inbound-Appid"), get_whitelisted_appids(user_info))

@@ -45,7 +45,7 @@ def is_config_admin(user_email):
         user_email = None
 
     if user_email:
-        config_admin = CONFIG_ADMIN_MAP.get(GAE_PROJECT, "configurator@{}.iam.gserviceaccount.com".format(app_id))
+        config_admin = CONFIG_ADMIN_MAP.get(GAE_PROJECT, "configurator@{}.iam.gserviceaccount.com".format(GAE_PROJECT))
         if user_email == config_admin:
             return True
     return False

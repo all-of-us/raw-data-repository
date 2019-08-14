@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 from rdr_service.model.base import Base
 from rdr_service.model.utils import Enum, UTCDateTime
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus
+from rdr_service.model.field_types import BlobUTF8
 
 
 class QuestionnaireBase(object):
@@ -16,7 +17,7 @@ class QuestionnaireBase(object):
     lastModified = Column("last_modified", UTCDateTime, nullable=False)
     # The JSON representation of the questionnaire provided by the client.
     # Concepts and questions can be be parsed out of this for use in querying.
-    resource = Column("resource", BLOB, nullable=False)
+    resource = Column("resource", BlobUTF8, nullable=False)
     status = Column("status", Enum(QuestionnaireDefinitionStatus), default=QuestionnaireDefinitionStatus.VALID)
 
     def asdict_with_children(self):

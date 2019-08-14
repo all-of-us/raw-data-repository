@@ -81,7 +81,7 @@ class QuestionnaireDao(UpdatableDao):
         resource_json = json.loads(questionnaire.resource)
         resource_json["id"] = str(questionnaire.questionnaireId)
         resource_json["version"] = str(questionnaire.version)
-        questionnaire.resource = bytes(json.dumps(resource_json), 'utf-8')
+        questionnaire.resource = json.dumps(resource_json)
 
         history = self._make_history(questionnaire, concepts, questions)
         history.questionnaireId = questionnaire.questionnaireId
@@ -96,7 +96,7 @@ class QuestionnaireDao(UpdatableDao):
         resource_json = json.loads(obj.resource)
         resource_json["id"] = str(obj.questionnaireId)
         resource_json["version"] = str(obj.version)
-        obj.resource = bytes(json.dumps(resource_json), 'utf-8')
+        obj.resource = json.dumps(resource_json)
         super(QuestionnaireDao, self)._do_update(session, obj, existing_obj)
 
     def update_with_session(self, session, questionnaire):
@@ -114,7 +114,7 @@ class QuestionnaireDao(UpdatableDao):
         if not fhir_q.group:
             raise BadRequest("No top-level group found in questionnaire")
 
-        q = Questionnaire(resource=bytes(json.dumps(resource_json), 'utf-8'), questionnaireId=id_, version=expected_version)
+        q = Questionnaire(resource=json.dumps(resource_json), questionnaireId=id_, version=expected_version)
         # Assemble a map of (system, value) -> (display, code_type, parent_id) for passing into CodeDao.
         # Also assemble a list of (system, code) for concepts and (system, code, linkId) for questions,
         # which we'll use later when assembling the child objects.

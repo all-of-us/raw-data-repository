@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import Base
 from rdr_service.model.utils import UTCDateTime
+from rdr_service.model.field_types import BlobUTF8
 
 
 class QuestionnaireResponse(Base):
@@ -17,7 +18,7 @@ class QuestionnaireResponse(Base):
     created = Column("created", UTCDateTime, nullable=False)
     authored = Column("authored", UTCDateTime, nullable=True)
     language = Column("language", String(2), nullable=True)
-    resource = Column("resource", BLOB, nullable=False)
+    resource = Column("resource", BlobUTF8, nullable=False)
     answers = relationship("QuestionnaireResponseAnswer", cascade="all, delete-orphan")
     __table_args__ = (
         ForeignKeyConstraint(

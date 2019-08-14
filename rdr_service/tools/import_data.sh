@@ -3,6 +3,7 @@
 # Used after setting up a database.
 # Expected arguments are --account and --project, passed along to sub-scripts.
 
+source tools/set_path.sh
 echo "Importing organizations..."
 if [[ ${IS_AUTOMATED_TESTING_ENVIRONMENT} = true ]]
 then tools/import_organizations.sh --use_fixture_data $@;
