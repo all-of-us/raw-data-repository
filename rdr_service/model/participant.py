@@ -16,6 +16,7 @@ from sqlalchemy.orm import relationship
 from rdr_service.model.base import Base
 from rdr_service.model.utils import Enum, UTCDateTime, UTCDateTime6
 from rdr_service.participant_enums import SuspensionStatus, WithdrawalReason, WithdrawalStatus
+from rdr_service.model.field_types import BlobUTF8
 
 
 class ParticipantBase(object):
@@ -36,7 +37,7 @@ class ParticipantBase(object):
     signUpTime = Column("sign_up_time", UTCDateTime, nullable=False)
 
     # One or more HPO IDs in FHIR JSON. (The primary link is separately stored as hpoId.)
-    providerLink = Column("provider_link", BLOB)
+    providerLink = Column("provider_link", BlobUTF8)
 
     # Both HealthPro and PTC can mutate participants; we use clientId to track
     # which system did it. An client ID of example@example.com means we created fake data for this

@@ -8,10 +8,10 @@ class BlobUTF8(types.TypeDecorator):
     impl = types.BLOB
 
     def process_bind_param(self, value, dialect):
-	return bytes(value, 'utf-8')
+        return bytes(value, 'utf-8')
 
     def process_result_value(self, value, dialect):
-	return value.decode('utf-8')
+        return value.decode('utf-8')
 
 #    def copy(self, **kw):
-#	return BlobUTF8(self.impl.length)
+#       return BlobUTF8(self.impl.length)
