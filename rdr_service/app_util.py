@@ -98,12 +98,17 @@ def get_oauth_id():
         - could be cached
         - could be validated locally instead of with API
     '''
+    if GAE_PROJECT == 'localhost':  # NOTE: 2019-08-15 mimic devappserver.py behavior
+        return "example@example.com"
     try:
         token = get_auth_token()
     except ValueError as e:
         logging.info(f"Invalid Authorization Token: {e}")
         user_email = None
     else:
+        #if GAE_PROJECT == 'localhost' and token == 'localtesting':  # NOTE: this would give us more robust local
+                                                                     # testing: allowing for anonymous code paths
+        #    return 'example@example.com'
         response = get_token_info_response(token)
         data = response.json()
         if response.status_code == 200:
