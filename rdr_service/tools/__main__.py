@@ -11,8 +11,8 @@ import os
 import re
 import sys
 
-lib_paths = ["tools/tool_libs", "../tool_libs", "tool_libs"]
-import_path = "tools.tool_libs"
+lib_paths = ["rdr_service/tools/tool_libs", "../tool_libs", "tool_libs",  "../../tool_libs"]
+import_path = "rdr_service.tools.tool_libs"
 
 
 def _grep_prop(filename, prop_name):
