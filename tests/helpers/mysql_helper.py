@@ -90,11 +90,9 @@ def start_mysql_instance():
         raise OSError('new instance of mysqld service did not start.')
     # Register the stop method
     atexit.register(stop_mysql_instance)
-    # setup the initial database structure
-    _initialize_database()
 
 
-def _initialize_database():
+def _initialize_database(with_data=True, with_consent_codes=False):
     mysql_host = "127.0.0.1"  # Do not use 'localhost', this defaults to using a unix socket.
 
     if "CIRCLECI" in os.environ:
@@ -106,6 +104,14 @@ def _initialize_database():
     database_factory.DB_CONNECTION_STRING = "mysql+mysqldb://{0}@{1}:{2}".format(mysql_login, mysql_host, MYSQL_PORT)
     db = database_factory.get_database(db_name=None)
 
+    print(database_factory.DB_CONNECTION_STRING, '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+    print('\n')
+    print('\n')
+    print('\n')
+    print('\n')
+    print('\n')
+    db.get_engine().execute("DROP DATABASE IF EXISTS rdr")
+    db.get_engine().execute("DROP DATABASE IF EXISTS metrics")
     # Keep in sync with tools/setup_local_database.sh.
     db.get_engine().execute("CREATE DATABASE rdr CHARACTER SET utf8 COLLATE utf8_general_ci")
     db.get_engine().execute("CREATE DATABASE metrics CHARACTER SET utf8 COLLATE utf8_general_ci")
@@ -119,13 +125,18 @@ def _initialize_database():
     database_factory.get_generic_database().create_metrics_schema()
 
     # TODO: Setup database fixtures
-    # _load_views_and_functions(dbf.get_engine())  # TODO: get the db engine object.
-    _setup_hpos()
+    _load_views_and_functions(db.get_engine())  # TODO: get the db engine object.
+    if with_data:
+        _setup_hpos()
+
+    # TODO: add with_consent_code setup
 
 
-def reset_mysql_instance():
+def reset_mysql_instance(with_data=True, with_consent_codes=False):
 
     start_mysql_instance()
+    # setup the initial database structure
+    _initialize_database(with_data, with_consent_codes)
 
     # TODO: Decide how we are going to reset data in the database.
 
@@ -154,7 +165,10 @@ def _load_views_and_functions(engine):
         rev = module.split("_")[0]
         prev_rev = None
 
-        contents = open(migration).read()
+        #contents = open(migration).read()
+        with open(migration) as f:
+            contents = f.read()
+
         result = re.search("^down_revision = '(.*?)'", contents, re.MULTILINE)
         if result:
             prev_rev = result.group(1)
