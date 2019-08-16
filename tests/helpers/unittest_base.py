@@ -7,13 +7,10 @@ from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import (
     EnrollmentStatus,
-    OrganizationType,
     SuspensionStatus,
     UNSET_HPO_ID,
     WithdrawalStatus,
 )
-from rdr_service.test.test_data import data_path
-from rdr_service.unicode_csv import UnicodeDictReader
 from tests.helpers.mysql_helper import reset_mysql_instance
 
 class BaseTestCase(unittest.TestCase):

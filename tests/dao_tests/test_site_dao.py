@@ -29,12 +29,9 @@ class SiteDaoTest(BaseTestCase):
         site = Site(
             siteName="site", googleGroup="site@googlegroups.com", mayolinkClientNumber=12345, hpoId=PITT_HPO_ID
         )
-        from rdr_service.dao import database_factory
-        print(database_factory.DB_CONNECTION_STRING, '===========================')
-        print('\n')
         with self.site_dao.session() as session:
             x = session.query(Site.googleGroup).all()
-            # print(x)
+            print(x)
         created_site = self.site_dao.insert(site)
         new_site = self.site_dao.get(created_site.siteId)
         site.siteId = created_site.siteId
