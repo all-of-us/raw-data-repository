@@ -8,9 +8,13 @@ class BlobUTF8(types.TypeDecorator):
     impl = types.BLOB
 
     def process_bind_param(self, value, dialect):
+        if not value:
+            return None
         return bytes(value, 'utf-8')
 
     def process_result_value(self, value, dialect):
+        if not value:
+            return None
         return value.decode('utf-8')
 
 #    def copy(self, **kw):
