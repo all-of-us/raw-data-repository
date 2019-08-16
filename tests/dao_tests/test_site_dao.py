@@ -14,7 +14,9 @@ from tests.helpers.unittest_base import BaseTestCase
 
 
 class SiteDaoTest(BaseTestCase):
+
     def setUp(self):
+        super(SiteDaoTest, self).setUp()
 
         self.site_dao = SiteDao()
         self.participant_dao = ParticipantDao()
@@ -29,9 +31,6 @@ class SiteDaoTest(BaseTestCase):
         site = Site(
             siteName="site", googleGroup="site@googlegroups.com", mayolinkClientNumber=12345, hpoId=PITT_HPO_ID
         )
-        with self.site_dao.session() as session:
-            x = session.query(Site.googleGroup).all()
-            print(x)
         created_site = self.site_dao.insert(site)
         new_site = self.site_dao.get(created_site.siteId)
         site.siteId = created_site.siteId

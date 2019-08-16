@@ -53,6 +53,9 @@ def start_mysql_instance():
         if pid_is_running(pid):
             return
 
+    # Set this so the database factory knows to use the unittest connection string from the config.
+    os.environ["UNITTEST_FLAG"] = "True"
+
     if os.path.exists(BASE_PATH):
         shutil.rmtree(BASE_PATH)
     os.mkdir(BASE_PATH)
@@ -104,12 +107,6 @@ def _initialize_database(with_data=True, with_consent_codes=False):
     database_factory.DB_CONNECTION_STRING = "mysql+mysqldb://{0}@{1}:{2}".format(mysql_login, mysql_host, MYSQL_PORT)
     db = database_factory.get_database(db_name=None)
 
-    print(database_factory.DB_CONNECTION_STRING, '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
-    print('\n')
-    print('\n')
-    print('\n')
-    print('\n')
-    print('\n')
     db.get_engine().execute("DROP DATABASE IF EXISTS rdr")
     db.get_engine().execute("DROP DATABASE IF EXISTS metrics")
     # Keep in sync with tools/setup_local_database.sh.

@@ -1,8 +1,10 @@
+import faker
 import unittest
+
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
-from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao import questionnaire_dao, questionnaire_response_dao
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import (
@@ -13,11 +15,21 @@ from rdr_service.participant_enums import (
 )
 from tests.helpers.mysql_helper import reset_mysql_instance
 
+
 class BaseTestCase(unittest.TestCase):
     """ Base class for unit tests."""
 
-    def setUp(self):
+    def __init__(self, *args, **kwargs):
+        super(BaseTestCase, self).__init__(*args, **kwargs)
+        # make sure this gets called before anything else.
         reset_mysql_instance()
+        self.fake = faker.Faker()
+
+    def setUp(self) -> None:
+        super(BaseTestCase, self).setUp()
+
+        reset_mysql_instance()
+
         # Allow printing the full diff report on errors.
         self.maxDiff = None
         # Always add codes if missing when handling questionnaire responses.

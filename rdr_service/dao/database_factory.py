@@ -6,7 +6,6 @@ from sqlalchemy.engine.url import make_url
 from rdr_service import singletons
 from rdr_service.model.database import Database
 
-DB_CONNECTION_STRING = os.getenv("DB_CONNECTION_STRING")
 # Exposed for testing.
 SCHEMA_TRANSLATE_MAP = None
 
@@ -51,15 +50,18 @@ def get_generic_database():
 
 
 def get_db_connection_string(backup=False, instance_name=None):
-    if DB_CONNECTION_STRING:
-        return DB_CONNECTION_STRING
-
     # Only import "config" on demand, as it depends on Datastore packages (and
     # GAE). When running via CLI or tests, we'll have this from the environment
     # instead (above).
     from rdr_service import config
 
-    connection_string_key = "backup_db_connection_string" if backup else "db_connection_string"
+    if os.environ.get("UNITTEST_FLAG", None):
+        connection_string_key = "unittest_connection_string"
+    elif backup:
+        connection_string_key = "backup_db_connection_string"
+    else:
+        connection_string_key = "db_connection_string"
+
     result = config.get_db_config()[connection_string_key]
     if instance_name:
         if backup:

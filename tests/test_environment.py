@@ -1,24 +1,15 @@
-import json
 import os
 import sys
-import unittest
 
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.model.hpo import HPO
-
-from tests.helpers.mysql_helper import reset_mysql_instance
 from tests.helpers.unittest_base import BaseTestCase
-
 
 
 class TestEnvironment(BaseTestCase):
     """
     Test our python environment
     """
-
-    def setUp(self) -> None:
-        pass
-
     def test_python_version(self):
         """ Make sure we are using Python 3.7 or higher """
         self.assertEqual(sys.version_info[0], 3)
