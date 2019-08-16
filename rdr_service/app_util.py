@@ -2,9 +2,11 @@ import datetime
 import email.utils
 import logging
 import time
+import urllib.parse
 
 import netaddr
 import pytz
+import requests
 from flask import request
 from rdr_service.config import GAE_PROJECT
 from werkzeug.exceptions import Forbidden, Unauthorized
@@ -71,16 +73,51 @@ def check_auth(role_whitelist):
     raise Forbidden()
 
 
+def get_auth_token():
+    header = request.headers.get("Authorization", '')
+    try:
+        return header.split(' ', 1)[1]
+    except IndexError:
+        raise ValueError(f"Invalid Authorization Header: {header}")
+
+
+def get_token_info_response(token):
+    google_tokeninfo_url='https://www.googleapis.com/oauth2/v3/tokeninfo'
+    qargs = urllib.parse.urlencode({'access_token': token})
+    response = requests.get(f"{google_tokeninfo_url}?{qargs}")
+    return response
+
+
 def get_oauth_id():
     """Returns user email ID if OAUTH token present, or None."""
-    # TODO: AUTH: Get user email from oauth2 token
-    return "example@example.com"
-    # try:
-    #     user_email = oauth.get_current_user(SCOPE).email()
-    # except oauth.Error as e:
-    #     user_email = None
-    #     logging.error("OAuth failure: {}".format(e))
-    # return user_email
+    '''
+    NOTES: 2019-08-15 by tanner and mikey
+    
+    currently verifies that the provided token is legitimate via google API.
+    - perfomance
+        - could be cached
+        - could be validated locally instead of with API
+    '''
+    if GAE_PROJECT == 'localhost':  # NOTE: 2019-08-15 mimic devappserver.py behavior
+        return "example@example.com"
+    try:
+        token = get_auth_token()
+    except ValueError as e:
+        logging.info(f"Invalid Authorization Token: {e}")
+        user_email = None
+    else:
+        #if GAE_PROJECT == 'localhost' and token == 'localtesting':  # NOTE: this would give us more robust local
+                                                                     # testing: allowing for anonymous code paths
+        #    return 'example@example.com'
+        response = get_token_info_response(token)
+        data = response.json()
+        if response.status_code == 200:
+            user_email = data.get('email')
+        else:
+            user_email = None
+            message = data.get("error_description", response.content)
+            logging.info(f"Oauth failure: {message}")
+    return user_email
 
 
 def check_cron():
@@ -102,30 +139,6 @@ def _is_self_request():
         and config.getSettingJson(config.ALLOW_NONPROD_REQUESTS, False)
         and not request.headers.get("unauthenticated")
     )
-
-
-def get_validated_user_info():
-    """Returns a valid (user email, user info), or raises Unauthorized or Forbidden."""
-    user_email = get_oauth_id()
-    # Allow clients to simulate an unauthenticated request (for testing)
-    # becaues we haven't found another way to create an unauthenticated request
-    # when using dev_appserver. When client tests are checking to ensure that an
-    # unauthenticated requests gets rejected, they helpfully add this header.
-    # The `application_id` check ensures this feature only works in dev_appserver.
-    if request.headers.get("unauthenticated") and GAE_PROJECT == 'localhost':
-        user_email = None
-    if user_email is None:
-        raise Unauthorized("No OAuth user found.")
-
-    user_info = lookup_user_info(user_email)
-    if user_info:
-        enforce_ip_whitelisted(request.remote_addr, get_whitelisted_ips(user_info))
-        enforce_appid_whitelisted(request.headers.get("X-Appengine-Inbound-Appid"), get_whitelisted_appids(user_info))
-        logging.info("User %r ALLOWED", user_email)
-        return (user_email, user_info)
-
-    logging.info("User %r NOT ALLOWED" % user_email)
-    raise Forbidden()
 
 
 def get_whitelisted_ips(user_info):
