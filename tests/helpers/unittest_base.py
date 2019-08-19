@@ -107,3 +107,54 @@ class BaseTestCase(unittest.TestCase):
         summary.email = self.fake.email()
         return summary
 
+
+def make_questionnaire_response_json(
+    participant_id,
+    questionnaire_id,
+    code_answers=None,
+    string_answers=None,
+    date_answers=None,
+    uri_answers=None,
+    language=None,
+    authored=None,
+):
+    results = []
+    if code_answers:
+        for answer in code_answers:
+            results.append(
+                {
+                    "linkId": answer[0],
+                    "answer": [{"valueCoding": {"code": answer[1].code, "system": answer[1].system}}],
+                }
+            )
+    if string_answers:
+        for answer in string_answers:
+            results.append({"linkId": answer[0], "answer": [{"valueString": answer[1]}]})
+    if date_answers:
+        for answer in date_answers:
+            results.append({"linkId": answer[0], "answer": [{"valueDate": "%s" % answer[1].isoformat()}]})
+    if uri_answers:
+        for answer in uri_answers:
+            results.append({"linkId": answer[0], "answer": [{"valueUri": answer[1]}]})
+
+    response_json = {
+        "resourceType": "QuestionnaireResponse",
+        "status": "completed",
+        "subject": {"reference": "Patient/{}".format(participant_id)},
+        "questionnaire": {"reference": "Questionnaire/{}".format(questionnaire_id)},
+        "group": {"question": results},
+    }
+    if language is not None:
+        response_json.update(
+            {
+                "extension": [
+                    {
+                        "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
+                        "valueCode": "{}".format(language),
+                    }
+                ]
+            }
+        )
+    if authored is not None:
+        response_json.update({"authored": authored.isoformat()})
+    return response_json
