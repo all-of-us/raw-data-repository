@@ -6,6 +6,7 @@ from rdr_service.test.unit_test.unit_test_util import TestbedTestBase
 
 
 @unittest.skip("Only for local testing. do not include in automated test suite")
+# TODO: represent in new test suite
 class GoogleSheetCSVReaderTest(TestbedTestBase):
     EXAMPLE_SHEET_ID = (
         "1ZY6KMtnMZ_5-dv8cqRgVWHOH9j23GcMZTC61UMXisuE"

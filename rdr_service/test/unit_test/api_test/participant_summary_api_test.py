@@ -56,6 +56,7 @@ TIME_5 = datetime.datetime(2016, 1, 5, 0, 1)
 TIME_6 = datetime.datetime(2015, 1, 1)
 
 
+# TODO: represent in new test suite
 class ParticipantSummaryMySqlApiTest(FlaskTestBase):
     def setUp(self):
         super(ParticipantSummaryMySqlApiTest, self).setUp(use_mysql=True)
@@ -92,6 +93,7 @@ class ParticipantSummaryMySqlApiTest(FlaskTestBase):
         self.assertEqual("PITT", ps.get("hpoId"))
 
 
+# TODO: represent in new test suite
 class ParticipantSummaryApiTest(FlaskTestBase):
     provider_link = {"primary": True, "organization": {"display": None, "reference": "Organization/PITT"}}
     az_provider_link = {"primary": True, "organization": {"display": None, "reference": "Organization/AZ_TUCSON"}}

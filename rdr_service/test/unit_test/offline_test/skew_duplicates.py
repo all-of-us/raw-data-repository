@@ -18,6 +18,7 @@ def _add_code_answer(code_answers, link_id, code):
         code_answers.append((link_id, Concept(PPI_SYSTEM, code)))
 
 
+# TODO: represent in new test suite
 class SkewDuplicatesTest(FlaskTestBase):
     """Tests setting a flag on participants as a ghost account with date added.
   """

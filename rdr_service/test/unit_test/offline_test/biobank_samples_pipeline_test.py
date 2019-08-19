@@ -27,6 +27,7 @@ _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = "rdr_fake_bucket"
 
 
+# TODO: represent in new test suite
 class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     def setUp(self):
         super(BiobankSamplesPipelineTest, self).setUp(use_mysql=True)

@@ -34,6 +34,7 @@ _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
 
 
+# TODO: represent in new test suite
 class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     def setUp(self):
         super(GenomicSetFileHandlerTest, self).setUp(use_mysql=True)

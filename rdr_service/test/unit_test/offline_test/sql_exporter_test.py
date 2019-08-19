@@ -7,6 +7,7 @@ _BUCKET_NAME = "pmi-drc-biobank-test.appspot.com"
 _FILE_NAME = "hpo_ids.csv"
 
 
+# TODO: represent in new test suite
 class SqlExporterTest(CloudStorageSqlTestBase):
     def testHpoExport_withoutRows(self):
         SqlExporter(_BUCKET_NAME).run_export(_FILE_NAME, "SELECT hpo_id id, name name FROM hpo LIMIT 0")

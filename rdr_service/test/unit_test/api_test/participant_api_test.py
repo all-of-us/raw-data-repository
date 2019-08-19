@@ -19,6 +19,7 @@ TIME_1 = datetime.datetime(2018, 1, 1)
 TIME_2 = datetime.datetime(2018, 1, 3)
 
 
+# TODO: represent in new test suite
 class ParticipantApiTest(FlaskTestBase):
     def setUp(self):
         super(ParticipantApiTest, self).setUp()

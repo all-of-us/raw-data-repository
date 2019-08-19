@@ -10,6 +10,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 
+# TODO: represent in new test suite
 class DvOrderApiTestBase(FlaskTestBase):
     mayolink_response = None
 

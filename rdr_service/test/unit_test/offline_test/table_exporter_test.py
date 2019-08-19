@@ -11,6 +11,7 @@ from rdr_service.test.unit_test.offline_test.gcs_utils import assertCsvContents
 from rdr_service.test.unit_test.unit_test_util import CloudStorageSqlTestBase, FlaskTestBase
 
 
+# TODO: represent in new test suite
 class TableExporterTest(CloudStorageSqlTestBase, FlaskTestBase):
     def setUp(self):
         super(TableExporterTest, self).setUp(with_views=True)

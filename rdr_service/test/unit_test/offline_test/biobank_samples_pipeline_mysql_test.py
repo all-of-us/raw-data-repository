@@ -62,6 +62,7 @@ _CSV_COLUMN_NAMES = (
 )
 
 
+# TODO: represent in new test suite
 class MySqlReconciliationTest(FlaskTestBase):
     """Biobank samples pipeline tests requiring slower MySQL (not SQLite)."""
 

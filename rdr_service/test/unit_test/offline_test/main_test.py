@@ -5,6 +5,7 @@ from rdr_service.offline import main
 from rdr_service.test.unit_test.unit_test_util import TestBase
 
 
+# TODO: represent in new test suite
 class MainTest(TestBase):
     def setUp(self):
         super(MainTest, self).setUp()

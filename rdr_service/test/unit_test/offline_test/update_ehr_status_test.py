@@ -18,6 +18,7 @@ from rdr_service.participant_enums import EhrStatus
 from rdr_service.test.unit_test.unit_test_util import NdbTestBase, SqlTestBase
 
 
+# TODO: represent in new test suite
 class UpdateEhrStatusMakeJobsTestCase(NdbTestBase):
     def setUp(self, use_mysql=False, with_data=False, with_consent_codes=False):
         super(UpdateEhrStatusMakeJobsTestCase, self).setUp(
@@ -85,6 +86,7 @@ class UpdateEhrStatusMakeJobsTestCase(NdbTestBase):
         self.assertEqual(job, None)
 
 
+# TODO: represent in new test suite
 class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
     def setUp(self, **kwargs):
         super(UpdateEhrStatusUpdatesTestCase, self).setUp(use_mysql=True, **kwargs)

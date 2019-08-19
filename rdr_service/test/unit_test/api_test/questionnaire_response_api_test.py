@@ -26,6 +26,7 @@ def _questionnaire_response_url(participant_id):
     return "Participant/%s/QuestionnaireResponse" % participant_id
 
 
+# TODO: represent in new test suite
 class QuestionnaireResponseApiTest(FlaskTestBase):
     def test_duplicate_consent_submission(self):
         """

@@ -13,6 +13,7 @@ _DEFAULT_INSTANCE = "http://localhost:8080"
 _OFFLINE_BASE_PATH = "offline"
 
 
+# TODO: represent in new test suite
 class BaseClientTest(unittest.TestCase):
     def setUp(self):
         super(BaseClientTest, self).setUp()

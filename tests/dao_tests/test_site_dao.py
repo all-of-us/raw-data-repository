@@ -5,10 +5,8 @@ from rdr_service.clock import FakeClock
 from rdr_service.dao.participant_dao import ParticipantDao, ParticipantHistoryDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.site_dao import SiteDao
-from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
 from rdr_service.model.site import Site
-from tests.helpers.mysql_helper import reset_mysql_instance
 from tests.helpers.mysql_helper_data import *
 from tests.helpers.unittest_base import BaseTestCase
 

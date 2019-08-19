@@ -15,6 +15,7 @@ from rdr_service.test.test_data import load_test_data_json
 from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 
+# TODO: represent in new test suite
 class DvOrderApiTestBase(FlaskTestBase):
     mayolink_response = None
 
@@ -46,6 +47,7 @@ class DvOrderApiTestBase(FlaskTestBase):
             return list(session.query(BiobankDVOrder))
 
 
+# TODO: represent in new test suite
 class DvOrderApiTestPostSupplyRequest(DvOrderApiTestBase):
     def test_order_created(self):
         self.assertEqual(0, len(self.get_orders()))
@@ -59,6 +61,7 @@ class DvOrderApiTestPostSupplyRequest(DvOrderApiTestBase):
         self.assertEqual(1, len(orders))
 
 
+# TODO: represent in new test suite
 class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
     mayolink_response = {
         "orders": {
@@ -123,6 +126,7 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
         self.assertEqual(post_response._status_code, 201)
 
 
+# TODO: represent in new test suite
 class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
     mayolink_response = {
         "orders": {
@@ -239,6 +243,7 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
             self.assertEqual(i.order_id, int(999999))
 
 
+# TODO: represent in new test suite
 class DvOrderApiTestPutSupplyDelivery(DvOrderApiTestBase):
     mayolink_response = {
         "orders": {

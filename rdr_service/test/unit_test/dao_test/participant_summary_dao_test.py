@@ -51,6 +51,7 @@ TIME_11 = datetime.datetime(2019, 1, 2)
 TIME_12 = datetime.datetime(2019, 1, 3)
 
 
+# TODO: represent in new test suite
 class ParticipantSummaryDaoTest(NdbTestBase):
     def setUp(self):
         super(ParticipantSummaryDaoTest, self).setUp(use_mysql=True)

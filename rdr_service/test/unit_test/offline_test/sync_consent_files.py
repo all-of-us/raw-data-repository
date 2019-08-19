@@ -13,6 +13,7 @@ from rdr_service.participant_enums import UNSET_HPO_ID
 from rdr_service.test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
 
 
+# TODO: represent in new test suite
 class TransformationTests(TestBase):
     @staticmethod
     @mock.patch("sync_consent_files.GoogleSheetCSVReader")
@@ -47,6 +48,7 @@ class TransformationTests(TestBase):
         )
 
 
+# TODO: represent in new test suite
 class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
     """Tests behavior of sync_consent_files
   """

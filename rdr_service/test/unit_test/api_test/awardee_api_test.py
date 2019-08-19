@@ -35,6 +35,7 @@ def _make_organization_dict(organization_id, display_name, sites=None):
     return resource
 
 
+# TODO: represent in new test suite
 class AwardeeApiTest(FlaskTestBase):
     def setUp(self):
         super(AwardeeApiTest, self).setUp(with_data=False)

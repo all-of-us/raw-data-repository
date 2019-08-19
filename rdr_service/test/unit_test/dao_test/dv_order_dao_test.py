@@ -15,6 +15,7 @@ from rdr_service.test.test_data import load_test_data_json
 from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 
+# TODO: represent in new test suite
 class DvOrderDaoTestBase(FlaskTestBase):
     def setUp(self):
         super(DvOrderDaoTestBase, self).setUp(use_mysql=True)

@@ -16,6 +16,7 @@ TIME_5 = datetime.datetime(2016, 1, 4, 10, 1)
 PITT = "PITT"
 
 
+# TODO: represent in new test suite
 class MetricsDaoTest(SqlTestBase):
     def setUp(self):
         super(MetricsDaoTest, self).setUp()

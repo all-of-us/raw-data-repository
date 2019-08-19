@@ -13,6 +13,7 @@ from rdr_service.test.test_data import data_path, load_measurement_json, load_me
 from rdr_service.test.unit_test.unit_test_util import FlaskTestBase, get_restore_or_cancel_info
 
 
+# TODO: represent in new test suite
 class PhysicalMeasurementsApiTest(FlaskTestBase):
     def setUp(self):
         super(PhysicalMeasurementsApiTest, self).setUp(use_mysql=True)
