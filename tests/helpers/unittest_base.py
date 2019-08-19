@@ -1,8 +1,11 @@
+import os
+import faker
 import unittest
+
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
-from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao import questionnaire_dao, questionnaire_response_dao
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import (
@@ -13,11 +16,21 @@ from rdr_service.participant_enums import (
 )
 from tests.helpers.mysql_helper import reset_mysql_instance
 
+
 class BaseTestCase(unittest.TestCase):
     """ Base class for unit tests."""
 
-    def setUp(self):
+    def __init__(self, *args, **kwargs):
+        super(BaseTestCase, self).__init__(*args, **kwargs)
+        # Set this so the database factory knows to use the unittest connection string from the config.
+        os.environ["UNITTEST_FLAG"] = "True"
+        self.fake = faker.Faker()
+
+    def setUp(self) -> None:
+        super(BaseTestCase, self).setUp()
+
         reset_mysql_instance()
+
         # Allow printing the full diff report on errors.
         self.maxDiff = None
         # Always add codes if missing when handling questionnaire responses.
@@ -94,3 +107,54 @@ class BaseTestCase(unittest.TestCase):
         summary.email = self.fake.email()
         return summary
 
+
+def make_questionnaire_response_json(
+    participant_id,
+    questionnaire_id,
+    code_answers=None,
+    string_answers=None,
+    date_answers=None,
+    uri_answers=None,
+    language=None,
+    authored=None,
+):
+    results = []
+    if code_answers:
+        for answer in code_answers:
+            results.append(
+                {
+                    "linkId": answer[0],
+                    "answer": [{"valueCoding": {"code": answer[1].code, "system": answer[1].system}}],
+                }
+            )
+    if string_answers:
+        for answer in string_answers:
+            results.append({"linkId": answer[0], "answer": [{"valueString": answer[1]}]})
+    if date_answers:
+        for answer in date_answers:
+            results.append({"linkId": answer[0], "answer": [{"valueDate": "%s" % answer[1].isoformat()}]})
+    if uri_answers:
+        for answer in uri_answers:
+            results.append({"linkId": answer[0], "answer": [{"valueUri": answer[1]}]})
+
+    response_json = {
+        "resourceType": "QuestionnaireResponse",
+        "status": "completed",
+        "subject": {"reference": "Patient/{}".format(participant_id)},
+        "questionnaire": {"reference": "Questionnaire/{}".format(questionnaire_id)},
+        "group": {"question": results},
+    }
+    if language is not None:
+        response_json.update(
+            {
+                "extension": [
+                    {
+                        "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
+                        "valueCode": "{}".format(language),
+                    }
+                ]
+            }
+        )
+    if authored is not None:
+        response_json.update({"authored": authored.isoformat()})
+    return response_json
