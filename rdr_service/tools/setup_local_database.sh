@@ -51,6 +51,7 @@ trap finish EXIT
 echo "Setting database configuration..."
 echo '{"db_connection_string": "'$DB_CONNECTION_STRING'", ' \
      ' "backup_db_connection_string": "'$DB_CONNECTION_STRING'", ' \
+     ' "unittest_connection_string": "'mysql+mysqldb://root@127.0.0.1:9306'",' \
      ' "db_password": "'$RDR_PASSWORD'", ' \
      ' "db_connection_name": "", '\
      ' "db_user": "'$RDR_DB_USER'", '\
