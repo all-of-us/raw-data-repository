@@ -1,3 +1,4 @@
+import os
 import faker
 import unittest
 
@@ -21,8 +22,8 @@ class BaseTestCase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super(BaseTestCase, self).__init__(*args, **kwargs)
-        # make sure this gets called before anything else.
-        reset_mysql_instance()
+        # Set this so the database factory knows to use the unittest connection string from the config.
+        os.environ["UNITTEST_FLAG"] = "True"
         self.fake = faker.Faker()
 
     def setUp(self) -> None:

@@ -53,9 +53,6 @@ def start_mysql_instance():
         if pid_is_running(pid):
             return
 
-    # Set this so the database factory knows to use the unittest connection string from the config.
-    os.environ["UNITTEST_FLAG"] = "True"
-
     if os.path.exists(BASE_PATH):
         shutil.rmtree(BASE_PATH)
     os.mkdir(BASE_PATH)
