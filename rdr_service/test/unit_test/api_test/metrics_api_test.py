@@ -5,6 +5,7 @@ from rdr_service.model.metrics import MetricsBucket
 from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 
+# TODO: represent in new test suite
 class MetricsApiTest(FlaskTestBase):
     def setUp(self):
         super(MetricsApiTest, self).setUp()

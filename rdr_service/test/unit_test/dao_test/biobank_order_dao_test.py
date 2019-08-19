@@ -14,6 +14,7 @@ from rdr_service.test.test_data import load_biobank_order_json
 from rdr_service.test.unit_test.unit_test_util import SqlTestBase
 
 
+# TODO: represent in new test suite
 class BiobankOrderDaoTest(SqlTestBase):
     _A_TEST = BIOBANK_TESTS[0]
     _B_TEST = BIOBANK_TESTS[1]

@@ -19,6 +19,7 @@ from rdr_service.test.test_data import load_measurement_json
 from rdr_service.test.unit_test.unit_test_util import SqlTestBase
 
 
+# TODO: represent in new test suite
 class BigQuerySyncDaoTest(SqlTestBase):
 
     TIME_1 = datetime.datetime(2018, 9, 20, 5, 49, 11)

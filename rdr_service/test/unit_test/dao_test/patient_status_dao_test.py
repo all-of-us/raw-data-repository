@@ -9,6 +9,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 
+# TODO: represent in new test suite
 class PatientStatusTestBase(FlaskTestBase):
     def setUp(self, use_mysql=True, with_data=True, with_consent_codes=False):
         super(PatientStatusTestBase, self).setUp(

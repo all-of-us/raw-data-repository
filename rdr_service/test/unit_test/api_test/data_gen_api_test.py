@@ -17,6 +17,7 @@ def _callthrough(fn, *args, **kwargs):
     fn(*args, **kwargs)
 
 
+# TODO: represent in new test suite
 class DataGenApiTest(testutil.CloudStorageTestBase, FlaskTestBase):
     def setUp(self):
         # Neither CloudStorageTestBase nor our FlaskTestBase correctly calls through to

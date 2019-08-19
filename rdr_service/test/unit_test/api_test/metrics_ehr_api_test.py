@@ -43,6 +43,7 @@ def iter_dates(start, end):
         i += datetime.timedelta(days=1)
 
 
+# TODO: represent in new test suite
 class MetricsEhrApiTestBase(FlaskTestBase):
     def setUp(self, **kwargs):
         super(MetricsEhrApiTestBase, self).setUp(use_mysql=True, **kwargs)
@@ -195,6 +196,7 @@ class MetricsEhrApiTestBase(FlaskTestBase):
         self.ps_dao.update(participant_summary)
 
 
+# TODO: represent in new test suite
 class MetricsEhrMultiEndpointTest(MetricsEhrApiTestBase):
     """
   NOTE: as of 2019-03-19, This API's logic is tested through the `combined` endpoint.
@@ -309,6 +311,7 @@ class MetricsEhrMultiEndpointTest(MetricsEhrApiTestBase):
         self.assertEqual(combined_response["organization_metrics"], organizations_response)
 
 
+# TODO: represent in new test suite
 class MetricsEhrApiTest(MetricsEhrApiTestBase):
     def test_consented_counts(self):
         # Set up data
@@ -439,6 +442,7 @@ class MetricsEhrApiTest(MetricsEhrApiTestBase):
         )
 
 
+# TODO: represent in new test suite
 class MetricsEhrApiOrganizationTest(MetricsEhrApiTestBase):
     def test_cutoff_date_filtering(self):
         # noinspection PyArgumentList

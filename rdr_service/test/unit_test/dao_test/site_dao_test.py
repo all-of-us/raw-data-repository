@@ -16,6 +16,7 @@ from rdr_service.test.unit_test.unit_test_util import (
 )
 
 
+# TODO: represent in new test suite
 class SiteDaoTest(SqlTestBase):
     def setUp(self):
         super(SiteDaoTest, self).setUp()

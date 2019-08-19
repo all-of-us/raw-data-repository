@@ -5,6 +5,7 @@ from rdr_service.test.test_data import consent_code
 from rdr_service.test.unit_test.unit_test_util import SqlTestBase
 
 
+# TODO: represent in new test suite
 class SchemaTest(SqlTestBase):
     def setUp(self):
         super(SchemaTest, self).setUp(use_mysql=True)

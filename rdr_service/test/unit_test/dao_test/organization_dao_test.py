@@ -10,6 +10,7 @@ from rdr_service.participant_enums import UNSET_HPO_ID
 from rdr_service.test.unit_test.unit_test_util import AZ_HPO_ID, PITT_HPO_ID, SqlTestBase
 
 
+# TODO: represent in new test suite
 class OrganizationDaoTest(SqlTestBase):
     def setUp(self):
         super(OrganizationDaoTest, self).setUp()

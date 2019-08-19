@@ -21,6 +21,7 @@ from rdr_service.participant_enums import (
 from rdr_service.test.unit_test.unit_test_util import PITT_HPO_ID, PITT_ORG_ID, SqlTestBase, random_ids
 
 
+# TODO: represent in new test suite
 class ParticipantDaoTest(SqlTestBase):
     def setUp(self):
         super(ParticipantDaoTest, self).setUp()

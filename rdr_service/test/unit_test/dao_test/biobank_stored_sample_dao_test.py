@@ -6,6 +6,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.test.unit_test.unit_test_util import SqlTestBase
 
 
+# TODO: represent in new test suite
 class BiobankStoredSampleDaoTest(SqlTestBase):
     """Tests only that a sample can be written and read; see the reconciliation pipeline."""
 

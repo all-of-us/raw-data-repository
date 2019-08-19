@@ -25,4 +25,4 @@ htmlcov/
 .python-version
 
 # Local working cache files
-/rest-api/data/*
+/rdr_service/data/*

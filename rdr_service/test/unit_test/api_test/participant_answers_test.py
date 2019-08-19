@@ -5,6 +5,7 @@ from rdr_service.concepts import Concept
 from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 
+# TODO: represent in new test suite
 class QuestionnaireAnswersApiTest(FlaskTestBase):
     def setUp(self, use_mysql=True, with_data=True, with_consent_codes=True):
         super(QuestionnaireAnswersApiTest, self).setUp(

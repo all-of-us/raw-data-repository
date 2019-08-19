@@ -51,6 +51,7 @@ TIME_4 = datetime.datetime(2016, 1, 4)
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 
+# TODO: represent in new test suite
 class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     """Tests exporting of metrics AND the output of the metrics pipeline that runs when the
 

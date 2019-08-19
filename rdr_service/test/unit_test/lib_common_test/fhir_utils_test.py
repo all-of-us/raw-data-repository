@@ -45,6 +45,7 @@ EXAMPLE_SUPPLY_REQUEST = {
 }
 
 
+# TODO: represent in new test suite
 class SimpleFhirR4ReaderBasicTestCase(unittest.TestCase):
     def test_dict_lookup(self):
         fhir = SimpleFhirR4Reader({"a": "foo"})
@@ -123,6 +124,7 @@ class SimpleFhirR4ReaderBasicTestCase(unittest.TestCase):
         self.assertEqual(fhir.bar.foo.value, 123)
 
 
+# TODO: represent in new test suite
 class SimpleFhirR4ReaderSupplyRequestTestCase(unittest.TestCase):
     def setUp(self):
         self.fhir = SimpleFhirR4Reader(EXAMPLE_SUPPLY_REQUEST)

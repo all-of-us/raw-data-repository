@@ -55,6 +55,7 @@ def with_id(resource, id_):
     return json.dumps(resource_json)
 
 
+# TODO: represent in new test suite
 class QuestionnaireResponseDaoTest(FlaskTestBase):
     def setUp(self):
         super(QuestionnaireResponseDaoTest, self).setUp()
@@ -934,6 +935,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         self.assertEqual(mock_gcloud_check.call_count, 2)
 
 
+# TODO: represent in new test suite
 class QuestionnaireResponseDaoCloudCheckTest(testutil.CloudStorageTestBase):
     def test_file_exists(self):
         consent_pdf_path = "/%s/Participant/somefile.pdf" % _FAKE_BUCKET

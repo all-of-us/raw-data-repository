@@ -40,6 +40,7 @@ RESOURCE_2 = '{"x": "z", "version": "2"}'
 RESOURCE_2_WITH_ID = '{"x": "z", "version": "2", "id": "1"}'
 
 
+# TODO: represent in new test suite
 class QuestionnaireDaoTest(SqlTestBase):
     def setUp(self):
         super(QuestionnaireDaoTest, self).setUp(with_data=False)

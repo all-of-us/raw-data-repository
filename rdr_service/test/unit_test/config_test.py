@@ -8,6 +8,7 @@ from rdr_service.clock import FakeClock
 from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 
+# TODO: represent in new test suite
 class TestConfig(FlaskTestBase):
     def test_GET_main_config(self):
         from_api = self.send_get("Config")

@@ -18,6 +18,7 @@ TIME_3 = datetime.datetime(2019, 2, 1)
 _FAKE_BUCKET = "rdr_fake_bucket"
 
 
+# TODO: represent in new test suite
 class MarkGhostParticipantsTest(CloudStorageSqlTestBase, NdbTestBase):
     """Tests setting a flag on participants as a ghost account with date added.
   """

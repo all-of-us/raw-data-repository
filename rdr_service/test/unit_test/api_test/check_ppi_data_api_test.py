@@ -9,6 +9,7 @@ from rdr_service.test.test_data import email_code, first_name_code
 from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 
+# TODO: represent in new test suite
 class CheckPpiDataApiTest(FlaskTestBase):
     def setUp(self):
         super(CheckPpiDataApiTest, self).setUp()

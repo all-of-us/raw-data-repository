@@ -6,6 +6,7 @@ from rdr_service.offline import gcloud_ips
 from rdr_service.offline.gcloud_ips import START, get_ip_ranges
 
 
+# TODO: represent in new test suite
 class GcloudIpsTest(unittest.TestCase):
     DNS_RESPONSES = [
         '_cloud-netblocks.googleusercontent.com. 2677 IN TXT "v=spf1 include:_cloud-netblocks1.googleusercontent.com include:_cloud-netblocks2.googleusercontent.com include:_cloud-netblocks3.googleusercontent.com include:_cloud-netblocks4.googleusercontent.com include:_cloud-netblocks5.googleusercontent.com ?all"',

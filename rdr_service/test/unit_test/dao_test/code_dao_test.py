@@ -13,6 +13,7 @@ TIME_3 = datetime.datetime(2016, 1, 3, 10, 0)
 TIME_4 = datetime.datetime(2016, 1, 4, 10, 0)
 
 
+# TODO: represent in new test suite
 class CodeDaoTest(SqlTestBase):
     def setUp(self):
         super(CodeDaoTest, self).setUp()

@@ -19,6 +19,7 @@ from rdr_service.participant_enums import SampleStatus, WithdrawalStatus
 from rdr_service.test.unit_test.unit_test_util import SqlTestBase
 
 
+# TODO: represent in new test suite
 class GenomicSetValidationBaseTestCase(SqlTestBase):
     def setUp(self, with_data=True, use_mysql=False):
         super(GenomicSetValidationBaseTestCase, self).setUp(with_data=with_data, use_mysql=use_mysql)
@@ -100,6 +101,7 @@ class GenomicSetValidationBaseTestCase(SqlTestBase):
         return member
 
 
+# TODO: represent in new test suite
 class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
     def test_test_defaults_are_valid(self):
         participant = self.make_participant()
@@ -298,6 +300,7 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
         self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
 
 
+# TODO: represent in new test suite
 class GenomicSetValidationSafetyTestCase(GenomicSetValidationBaseTestCase):
     def test_transaction(self):
         participant = self.make_participant()

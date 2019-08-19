@@ -15,6 +15,7 @@ from rdr_service.test.unit_test.unit_test_util import SqlTestBase
 
 
 @unittest.skip("Not used currently")
+# TODO: represent in new test suite
 class EhrReceiptDaoTest(SqlTestBase):
     def setUp(self, with_data=True, use_mysql=True):
         super(EhrReceiptDaoTest, self).setUp(with_data=with_data, use_mysql=use_mysql)

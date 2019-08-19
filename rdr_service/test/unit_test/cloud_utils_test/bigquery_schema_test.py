@@ -15,12 +15,14 @@ from rdr_service.model.bq_base import (
 )
 
 
+# TODO: represent in new test suite
 class BQTestEnum(Enum):
     FIRST = 1
     SECOND = 2
     THIRD = 3
 
 
+# TODO: represent in new test suite
 class BQTestNestedSchema(BQSchema):
 
     int_field = BQField("int_field", BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
@@ -28,6 +30,7 @@ class BQTestNestedSchema(BQSchema):
     enum_field = BQField("enum_field", BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE, fld_enum=BQTestEnum)
 
 
+# TODO: represent in new test suite
 class BQTestSchema(BQSchema):
 
     descr = BQField("descr", BQFieldTypeEnum.STRING, BQFieldModeEnum.REQUIRED)
@@ -58,11 +61,13 @@ schemaFromBQ = [
 ]
 
 
+# TODO: represent in new test suite
 class BQTestTable(BQTable):
     __tablename__ = "test_table"
     __schema__ = BQTestSchema
 
 
+# TODO: represent in new test suite
 class BigQuerySchemaTest(unittest.TestCase):
     """ test BigQuery schema structures """
 
@@ -96,6 +101,7 @@ class BigQuerySchemaTest(unittest.TestCase):
         self.assertEqual(field, BQTestSchema.timestamp)
 
 
+# TODO: represent in new test suite
 class BigQueryRecordTest(unittest.TestCase):
     """ test BigQuery schema data """
 

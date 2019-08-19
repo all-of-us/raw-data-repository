@@ -30,6 +30,7 @@ TIME_5 = datetime.datetime(2016, 1, 5, 0, 1)
 TIME_6 = datetime.datetime(2015, 1, 1)
 
 
+# TODO: represent in new test suite
 class BiobankOrderApiTest(FlaskTestBase):
     def setUp(self):
         super(BiobankOrderApiTest, self).setUp(use_mysql=True)

@@ -24,6 +24,7 @@ from rdr_service.participant_enums import OrganizationType, QuestionnaireStatus
 from rdr_service.test.unit_test.unit_test_util import SqlTestBase
 
 
+# TODO: represent in new test suite
 class DatabaseTest(SqlTestBase):
     def setUp(self):
         super(DatabaseTest, self).setUp(with_data=False)

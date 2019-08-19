@@ -6,6 +6,7 @@ from rdr_service.participant_enums import MetricSetType, MetricsKey
 from rdr_service.test.unit_test.unit_test_util import SqlTestBase
 
 
+# TODO: represent in new test suite
 class MetricSetDaoTest(SqlTestBase):
     def setUp(self):
         super(MetricSetDaoTest, self).setUp()

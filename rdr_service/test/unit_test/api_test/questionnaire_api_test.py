@@ -7,6 +7,7 @@ from rdr_service.test.test_data import data_path
 from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
 
 
+# TODO: represent in new test suite
 class QuestionnaireApiTest(FlaskTestBase):
     def test_insert(self):
         questionnaire_files = ("questionnaire1.json", "questionnaire2.json", "questionnaire_demographics.json")

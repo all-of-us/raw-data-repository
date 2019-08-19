@@ -6,6 +6,7 @@ import pytz
 from rdr_service.cloud_utils import bigquery
 
 
+# TODO: represent in new test suite
 class BigQueryJobTest(unittest.TestCase):
     """
   This test suite tests querying against real BigQuery datasets.
@@ -28,6 +29,7 @@ class BigQueryJobTest(unittest.TestCase):
         self.assertTrue(isinstance(row.created, datetime.datetime))
 
 
+# TODO: represent in new test suite
 class BigQueryJobTransformationTest(unittest.TestCase):
     def test_response_transformation(self):
         """

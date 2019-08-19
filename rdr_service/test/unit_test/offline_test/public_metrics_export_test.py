@@ -35,6 +35,7 @@ TIME = datetime.datetime(2016, 1, 1)
 TIME2 = datetime.datetime(2016, 2, 2)
 
 
+# TODO: represent in new test suite
 class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     """Test the public metrics recalculation."""
 

@@ -20,6 +20,7 @@ TIME_2 = datetime.datetime(2016, 1, 2)
 TIME_3 = datetime.datetime(2016, 1, 3)
 
 
+# TODO: represent in new test suite
 class PhysicalMeasurementsDaoTest(SqlTestBase):
     def setUp(self):
         super(PhysicalMeasurementsDaoTest, self).setUp(use_mysql=True)
