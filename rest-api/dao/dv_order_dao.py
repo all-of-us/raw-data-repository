@@ -217,8 +217,11 @@ class DvOrderDao(UpdatableDao):
 
         order.id = existing_obj.id
         order.version = expected_version
-        order.biobankStatus = fhir_resource.status
-        order.barcode = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).valueString
+        order.biobankStatus = fhir_resource.status if hasattr(fhir_resource, 'status') else None
+        try:
+          order.barcode = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).valueString
+        except ValueError:
+          order.barcode = None
 
     return order
 

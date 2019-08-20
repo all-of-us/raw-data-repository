@@ -207,14 +207,10 @@ class BQParticipantSummaryGenerator(object):
       'middle_name': qnan.PIIName_Middle,
       'last_name': qnan.PIIName_Last,
       'date_of_birth': qnan.PIIBirthInformation_BirthDate,
-      'language': self._lookup_code_value(qnan.Language_SpokenWrittenLanguage, session),
-      'language_id': qnan.Language_SpokenWrittenLanguage,
       'primary_language': qnan.language,
       'email': qnan.ConsentPII_EmailAddress,
       'phone_number': qnan.PIIContactInformation_Phone,
       'login_phone_number': qnan.ConsentPII_VerifiedPrimaryPhoneNumber,
-      'contact_method': self._lookup_code_value(qnan.PIIContactInformation_RecontactMethod, session),
-      'contact_method_id': qnan.PIIContactInformation_RecontactMethod,
       'addresses': [
         {
           'addr_type': BQStreetAddressTypeEnum.RESIDENCE.name,
@@ -235,13 +231,6 @@ class BQParticipantSummaryGenerator(object):
           'consent_date': parser.parse(qnan.authored).date() if qnan.authored else None,
           'consent_value': 'ConsentPermission_Yes',
           'consent_value_id': self._lookup_code_id('ConsentPermission_Yes', session),
-        },
-        {
-          'consent': 'ExtraConsent_CABoRSignature',
-          'consent_id': self._lookup_code_id('ExtraConsent_CABoRSignature', session),
-          'consent_date': parser.parse(qnan.authored).date() if qnan.authored else None,
-          'consent_value': qnan.ExtraConsent_CABoRSignature,
-          'consent_value_id': self._lookup_code_id(qnan.ExtraConsent_CABoRSignature, session),
         }
       ]
     }
