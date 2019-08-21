@@ -50,7 +50,7 @@
   "extension": [
     {
       "url": "http://joinallofus.org/fhir/tracking-status",
-      "valueString": "enroute"
+      "valueString": "in_transit"
     },
     {
       "url": "http://joinallofus.org/fhir/order-type",

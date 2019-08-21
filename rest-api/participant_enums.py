@@ -147,7 +147,7 @@ class OrderShipmentStatus(messages.Enum):
 class OrderShipmentTrackingStatus(messages.Enum):
   """ Shipment tracking status of biobank order for mail-in orders"""
   UNSET = 0
-  ENROUTE = 1
+  IN_TRANSIT = 1
   DELIVERED = 2
 
 class BiobankOrderStatus(messages.Enum):
