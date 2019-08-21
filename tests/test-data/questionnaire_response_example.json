@@ -1,0 +1,52 @@
+{
+  "resourceType": "QuestionnaireResponse",
+  "status": "completed",
+  "subject": {
+    "reference": "Patient/$participant_id"
+  },
+  "questionnaire": {
+    "reference": "Questionnaire/$questionnaire_id"
+  },
+  "authored": "$authored",
+  "group": {
+    "question": [
+      {
+        "linkId": "race",
+        "text": "What is your race?",
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "$race_code",
+              "system": "$race_system",
+              "display": "$race_display"
+            }
+          }
+        ]
+      }, {
+      "linkId": "ethnicity",
+      "text": "What is your ethnicity?",
+      "answer": [
+        {
+          "valueCoding": {
+             "code": "$ethnicity_code",
+             "system": "$ethnicity_system",
+             "display": "$ethnicity_display"
+          }
+        }
+      ]
+      }, {
+      "linkId": "stateOfResidence",
+      "text": "What is your state of residence?",
+      "answer": [
+        {
+          "valueCoding": {
+             "code": "$state_of_residence_code",
+             "system": "$state_of_residence_system",
+             "display": "$state_of_residence_display"
+          }
+        }
+      ]
+      }
+    ]
+  }
+}

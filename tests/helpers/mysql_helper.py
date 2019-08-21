@@ -31,6 +31,7 @@ from rdr_service.participant_enums import UNSET_HPO_ID, OrganizationType
 from rdr_service.services.system_utils import find_mysqld_executable, pid_is_running, which, \
     run_external_program
 
+from tests.helpers import temporary_sys_path
 from tests.helpers.mysql_helper_data import PITT_HPO_ID, PITT_ORG_ID, AZ_HPO_ID, AZ_ORG_ID
 
 # TODO: In the future, setup a memory disk and set the base path there for faster testing.
@@ -119,16 +120,19 @@ def _initialize_database(with_data=True, with_consent_codes=False):
     database_factory.get_generic_database().create_metrics_schema()
 
     # TODO: Setup database fixtures
-    _load_views_and_functions(db.get_engine())  # TODO: get the db engine object.
+    _load_views_and_functions(dbf.get_engine())
     if with_data:
         _setup_hpos()
 
-    # TODO: add with_consent_code setup
+    if with_consent_codes:
+        _setup_consent_codes()
 
 
 def reset_mysql_instance(with_data=True, with_consent_codes=False):
 
-    start_mysql_instance()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", ResourceWarning)
+        start_mysql_instance()
     # setup the initial database structure
     _initialize_database(with_data, with_consent_codes)
 
@@ -152,6 +156,7 @@ def _load_views_and_functions(engine):
     steps = list()
     initial = None
 
+
     # Load all the migration step files into a unsorted list of tuples.
     # ( current_step, prev_step, has unittest func )
     for migration in migrations:
@@ -163,7 +168,7 @@ def _load_views_and_functions(engine):
         with open(migration) as f:
             contents = f.read()
 
-        result = re.search("^down_revision = '(.*?)'", contents, re.MULTILINE)
+        result = re.search("^down_revision = ['|\"](.*?)['|\"]", contents, re.MULTILINE)
         if result:
             prev_rev = result.group(1)
         else:
@@ -201,13 +206,75 @@ def _load_views_and_functions(engine):
                 continue
 
             # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
-            filename = os.path.join(os.getcwd(), "alembic", "versions", step[0])
-            mod = importlib.import_module(step[0].replace(".py", ""), filename)
-            # mod = imp.load_source(step[0].replace(".py", ""), filename)
+            with temporary_sys_path(alembic_path):
+                mod = importlib.import_module(step[0].replace(".py", ""))
+            
             items = mod.unittest_schemas()
 
             for item in items:
                 engine.execute(item)
+
+def _setup_consent_codes():
+    """
+    Proactively setup Codebook entries in the Code table so parent/child relationship is
+    created. Matches 'test_data/study_consent.json`.
+    """
+    from rdr_service.model.code import Code, CodeType
+    from rdr_service.code_constants import PPI_SYSTEM
+    from rdr_service.dao.code_dao import CodeDao
+    import datetime
+
+    def create_code(topic, name, code_type, parent):
+        code = Code(
+            system=PPI_SYSTEM,
+            topic=topic,
+            value=name,
+            display=name,
+            codeType=code_type,
+            mapped=True,
+            shortValue=name,
+            created=datetime.datetime.utcnow(),
+        )
+        if parent:
+            parent.children.append(code)
+
+        return code
+
+    with CodeDao(silent=True).session() as session:
+        module = create_code("Module Name", "ConsentPII", CodeType.MODULE, None)
+        session.add(module)
+
+        topic = create_code("Language", "ConsentPII_Language", CodeType.TOPIC, module)
+        session.add(topic)
+
+        qn = create_code("Language", "Language_SpokenWrittenLanguage", CodeType.QUESTION, topic)
+        session.add(qn)
+        session.add(create_code("Language", "SpokenWrittenLanguage_English", CodeType.ANSWER, qn))
+        session.add(create_code("Language", "SpokenWrittenLanguage_ChineseChina", CodeType.ANSWER, qn))
+        session.add(create_code("Language", "SpokenWrittenLanguage_French", CodeType.ANSWER, qn))
+
+        topic = create_code("Address", "ConsentPII_PIIAddress", CodeType.TOPIC, module)
+        session.add(topic)
+
+        session.add(create_code("Address", "PIIAddress_StreetAddress", CodeType.QUESTION, topic))
+        session.add(create_code("Address", "PIIAddress_StreetAddress2", CodeType.QUESTION, topic))
+
+        topic = create_code("Name", "ConsentPII_PIIName", CodeType.TOPIC, module)
+        session.add(topic)
+
+        session.add(create_code("Name", "PIIName_First", CodeType.QUESTION, topic))
+        session.add(create_code("Name", "PIIName_Middle", CodeType.QUESTION, topic))
+        session.add(create_code("Name", "PIIName_Last", CodeType.QUESTION, topic))
+
+        session.add(create_code("Email Address", "ConsentPII_EmailAddress", CodeType.QUESTION, module))
+
+        topic = create_code("Extra Consent Items", "ConsentPII_ExtraConsent", CodeType.TOPIC, module)
+        session.add(create_code("Extra Consent Items", "ExtraConsent_CABoRSignature", CodeType.QUESTION, topic))
+
+        module = create_code("Module Name", "OverallHealth", CodeType.MODULE, None)
+        session.add(module)
+
+        session.commit()
 
 
 def _setup_hpos():
@@ -288,3 +355,5 @@ def stop_mysql_instance():
             pid = int(handle.read())
         if pid_is_running(pid):
             os.kill(pid, signal.SIGTERM)
+
+

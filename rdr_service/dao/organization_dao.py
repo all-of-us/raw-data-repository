@@ -80,6 +80,8 @@ class OrganizationDao(CacheAllDao):
             resource.sites = [SiteDao._to_json(site) for site in model.sites]
         else:
             resource.sites = [
-                SiteDao._to_json(site) for site in model.sites if site.siteStatus == site.siteStatus.ACTIVE
+                SiteDao._to_json(site)
+                for site in model.sites
+                if site.siteStatus and site.siteStatus == site.siteStatus.ACTIVE
             ]
         return resource

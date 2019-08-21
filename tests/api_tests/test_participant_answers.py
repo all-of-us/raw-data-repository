@@ -2,14 +2,13 @@ import http.client
 
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
-from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
+from tests.helpers.unittest_base import BaseTestCase
 
 
-class QuestionnaireAnswersApiTest(FlaskTestBase):
-    def setUp(self, use_mysql=True, with_data=True, with_consent_codes=True):
-        super(QuestionnaireAnswersApiTest, self).setUp(
-            use_mysql=use_mysql, with_data=with_data, with_consent_codes=with_consent_codes
-        )
+class QuestionnaireAnswersApiTest(BaseTestCase):
+
+    def setUp(self, with_data=True, with_consent_codes=True):
+        super().setUp(with_data, with_consent_codes)
 
     def _answers_url(self, p_id, module):
         return "Participant/{0}/QuestionnaireAnswers/{1}".format(p_id, module)
@@ -42,7 +41,7 @@ class QuestionnaireAnswersApiTest(FlaskTestBase):
     Test an existing module, but no questionnaire response has been submitted.
     """
         p_id = self.create_participant()
-
+        
         email = "answers@test.com"
         code_answers = [
             ("language", Concept(PPI_SYSTEM, "SpokenWrittenLanguage_English")),
@@ -56,8 +55,8 @@ class QuestionnaireAnswersApiTest(FlaskTestBase):
 
     def test_invalid_module(self):
         """
-    Test an invalid module name.
-    """
+        Test an invalid module name.
+        """
         p_id = self.create_participant()
 
         email = "answers@test.com"

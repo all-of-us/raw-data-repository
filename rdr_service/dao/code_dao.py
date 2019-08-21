@@ -112,10 +112,11 @@ SYSTEM_AND_VALUE = ("system", "value")
 
 
 class CodeDao(CacheAllDao):
-    def __init__(self):
+    def __init__(self, silent=False):
         super(CodeDao, self).__init__(
             Code, cache_index=CODE_CACHE_INDEX, cache_ttl_seconds=600, index_field_keys=[SYSTEM_AND_VALUE]
         )
+        self.silent = silent
 
     def _load_cache(self):
         result = super(CodeDao, self)._load_cache()
@@ -205,13 +206,15 @@ class CodeDao(CacheAllDao):
                         mapped=False,
                         parentId=parent_id,
                     )
-                    # Log the traceback so that stackdriver error reporting reports on it.
-                    logging.error(
-                        "Adding unmapped code: system = %s, value = %s: %s",
-                        code.system,
-                        code.value,
-                        traceback.format_exc(),
-                    )
+                    if self.silent:
+                        # Log the traceback so that stackdriver error reporting reports on it.
+                        logging.error(
+                            "Adding unmapped code: system = %s, value = %s: %s",
+                            code.system,
+                            code.value,
+                            traceback.format_exc(),
+                        )
+
                     self.insert_with_session(session, code)
                     session.flush()
                     result_map[(system, value)] = code.codeId

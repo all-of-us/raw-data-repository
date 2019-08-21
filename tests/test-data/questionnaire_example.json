@@ -1,0 +1,64 @@
+{
+  "resourceType": "Questionnaire",
+  "status":"published",
+  "date":"2015-01-01T00:00:00-00:00",
+  "publisher":"fake",
+  "group": {
+    "concept": [{
+      "system": "http://terminology.pmi-ops.org/CodeSystem/questionnaire",
+      "code": "intake-demographics"
+    },{
+      "system": "http://terminology.pmi-ops.org/CodeSystem/questionnaire",
+      "code": "basic-consent"
+    },{
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi-module",
+        "code": "TheBasics"
+    }],
+    "question": [
+      {
+        "linkId": "race",
+        "text": "What is your race?",
+        "concept": [{
+          "system": "http://loinc.org",
+          "code": "72826-1",
+          "display": "Race OMB"
+        }]
+      }, {
+        "linkId": "ethnicity",
+        "text": "What is your ethnicity?",
+        "concept": [{
+          "system": "http://loinc.org",
+          "code": "69490-1",
+          "display":"Ethnicity OMB"
+        }]
+      }, {
+        "linkId":"stateOfResidence",
+        "text":"Please provide your state of residence.",
+        "type":"choice",
+        "concept": [{
+          "system": "http://loinc.org",
+          "code": "46499-0",
+          "display": "State of residence"
+        }]
+      }, {
+        "linkId":"membershipTier",
+        "text":"Please provide your membership tier.",
+        "type":"choice",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/",
+          "code": "membership-tier",
+          "display": "Membership tier"
+        }]
+      }, {
+        "linkId":"hpoId",
+        "text":"Please provide your HPO ID.",
+        "type":"choice",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/",
+          "code": "hpo-id",
+          "display": "HPO ID"
+        }]
+      }
+    ]
+  }
+}
