@@ -176,10 +176,11 @@ class DvOrderApi(UpdatableApi):
 
     _id = self.dao.get_id(ObjDict({'participantId': p_id, 'order_id': int(bo_id)}))
     ex_obj = self.dao.get(_id)
-    if tracking_status.lower() == 'shipped':
-      raise BadRequest("Tracking status received as 'shipped', did you mean to use 'enroute'?")
-    if (tracking_status.lower() == 'enroute' and ex_obj.trackingId != tracking_id) or \
-        (tracking_status.lower() == 'delivered' and ex_obj.shipmentStatus.lower() != 'enroute' and
+    if tracking_status.lower() not in ['in_transit', 'delivered', 'error', 'tracking_cancelled']:
+      raise BadRequest("Unknown tracking status [{0}], did you mean to use 'in_transit' or 'delivered'?".
+                       format(tracking_status))
+    if (tracking_status.lower() == 'in_transit' and ex_obj.trackingId != tracking_id) or \
+        (tracking_status.lower() == 'delivered' and ex_obj.shipmentStatus.lower() != 'in_transit' and
           ex_obj.tracking_id != tracking_id):
       # Send to mayolink and create internal biobank order
       response = self.dao.send_order(resource, p_id)

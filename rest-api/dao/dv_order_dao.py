@@ -301,8 +301,8 @@ class DvOrderDao(UpdatableDao):
       return OrderShipmentStatus.UNSET
 
   def _enumerate_order_tracking_status(self, value):
-    if value.lower() == 'enroute':
-      return OrderShipmentTrackingStatus.ENROUTE
+    if value.lower() == 'in_transit':
+      return OrderShipmentTrackingStatus.IN_TRANSIT
     elif value.lower() == 'delivered':
       return OrderShipmentTrackingStatus.DELIVERED
     else:

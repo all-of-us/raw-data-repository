@@ -77,7 +77,7 @@ class DvOrderDaoTestBase(FlaskTestBase):
   def test_enumerate_tracking_status(self):
     fhir_resource = SimpleFhirR4Reader(self.post_delivery)
     status = self.dao._enumerate_order_tracking_status(fhir_resource.extension.get(url=VIBRENT_FHIR_URL + 'tracking-status').valueString)
-    self.assertEquals(status, OrderShipmentTrackingStatus.ENROUTE)
+    self.assertEquals(status, OrderShipmentTrackingStatus.IN_TRANSIT)
 
   @mock.patch('dao.dv_order_dao.MayoLinkApi')
   def test_service_unavailable(self, mocked_api):
