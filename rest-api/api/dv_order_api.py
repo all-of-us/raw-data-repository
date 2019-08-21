@@ -176,6 +176,8 @@ class DvOrderApi(UpdatableApi):
 
     _id = self.dao.get_id(ObjDict({'participantId': p_id, 'order_id': int(bo_id)}))
     ex_obj = self.dao.get(_id)
+    if tracking_status.lower() == 'in_transit':
+      tracking_status = 'enroute'
     if tracking_status.lower() == 'shipped':
       raise BadRequest("Tracking status received as 'shipped', did you mean to use 'enroute'?")
     if (tracking_status.lower() == 'enroute' and ex_obj.trackingId != tracking_id) or \
