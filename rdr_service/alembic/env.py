@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from logging.config import fileConfig
-
+from rdr_service.model import database # pylint: disable=unused-import
 import sqlalchemy as sa
 from alembic import context
 from sqlalchemy import engine_from_config, pool
