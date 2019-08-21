@@ -1,0 +1,8 @@
+{
+  "extension": [{
+    "url": "http://terminology.pmi-ops.org/StructureDefinition/amends",
+    "valueReference": {
+      "reference": "PhysicalMeasurements/%(physical_measurement_id)s"
+    }
+  }]
+}

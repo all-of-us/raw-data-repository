@@ -1,0 +1,177 @@
+{
+  "resourceType": "Questionnaire",
+  "status":"published",
+  "date":"2015-01-01T00:00:00-00:00",
+  "publisher":"fake",
+  "extension": [{"url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language", "valueCode": "en"}],
+  "group": {
+    "concept": [
+      {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+        "code": "TheBasics"
+      }],
+    "question": [
+      {
+        "linkId": "firstName",
+        "text": "First name",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIName_First",
+          "display": "First name"
+        }]
+      },{
+        "linkId": "middleName",
+        "text": "Middle name",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIName_Middle",
+          "display": "Middle name"
+        }]
+      },{
+        "linkId": "lastName",
+        "text": "Last name",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIName_Last",
+          "display": "Last name"
+        }]
+      },{
+        "linkId": "zipCode",
+        "text": "Zip code",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "StreetAddress_PIIZIP",
+          "display": "Zip code"
+        }]
+      },{
+        "linkId": "race",
+        "text": "What is your race?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "Race_WhatRaceEthnicity",
+          "display": "Race"
+        }]
+      }, {
+        "linkId":"genderIdentity",
+        "text":"What is your gender identity?",
+        "type":"choice",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "Gender_GenderIdentity",
+          "display": "Gender identity"
+        }]
+      }, {
+        "linkId":"dateOfBirth",
+        "text":"What is your date of birth?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIBirthInformation_BirthDate",
+          "display": "Birth date"
+        }]
+      }, {
+        "linkId":"streetAddress",
+        "text":"What is your street address?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIAddress_StreetAddress",
+          "display": "Street address"
+        }]
+      }, {
+        "linkId":"streetAddress2",
+        "text":"What is your street address2?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIAddress_StreetAddress2",
+          "display": "Street address2"
+        }]
+      }, {
+        "linkId":"city",
+        "text":"What is your city?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "StreetAddress_PIICity",
+          "display": "City"
+        }]
+      }, {
+        "linkId": "loginPhoneNumber",
+        "text": "What is your primary Phone Number",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "ConsentPII_VerifiedPrimaryPhoneNumber",
+          "display": "Login Phone Number"
+        }]
+      }, {
+        "linkId":"phoneNumber",
+        "text":"What is your phone number?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIContactInformation_Phone",
+          "display": "Phone number"
+        }]
+      }, {
+        "linkId":"recontactMethod",
+        "text":"What is your recontact method?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIContactInformation_RecontactMethod",
+          "display": "Recontact method"
+        }]
+      }, {
+        "linkId":"sex",
+        "text":"What is your sex?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "BiologicalSexAtBirth_SexAtBirth",
+          "display": "Sex"
+        }]
+      }, {
+        "linkId":"sexualOrientation",
+        "text":"What is your sexual orientation?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "TheBasics_SexualOrientation",
+          "display": "Sexual orientation"
+        }]
+      }, {
+        "linkId":"education",
+        "text":"What is your education level?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "EducationLevel_HighestGrade",
+          "display": "Education level"
+        }]
+      }, {
+        "linkId":"income",
+        "text":"What is your income?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "Income_AnnualIncome",
+          "display": "Income"
+        }]
+      }, {
+        "linkId": "language",
+        "text": "Language",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "Language_SpokenWrittenLanguage",
+          "display": "Language"
+        }]
+      }, {
+        "linkId": "state",
+        "text": "State",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "StreetAddress_PIIState",
+          "display": "State"
+        }]
+      }, {
+        "linkId": "CABoRSignature",
+        "text": "CABoR Signature",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "ExtraConsent_CABoRSignature",
+          "display": "CABoR Signature"
+        }]
+      }]
+  }
+}
