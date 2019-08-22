@@ -415,7 +415,7 @@ class ParticipantDao(UpdatableDao):
         self._do_update(session, participant, participant)
 
     def handle_integrity_error(self, tried_ids, e, obj):
-        if "external_id" in e.message:
+        if "external_id" in str(e.orig):
             existing_participant = self._check_if_external_id_exists(obj)
             if existing_participant:
                 return existing_participant
