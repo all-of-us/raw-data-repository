@@ -45,18 +45,52 @@ class DvOrderApi(UpdatableApi):
     )
     return method(resource)
 
+  def _to_mayo(self, fhir):
+    """
+    Test to see if this Supply Delivery object is going to Mayo or not
+    :param fhir: fhir supply delivery object
+    :return: True if destination address is Mayo, otherwise False
+    """
+    if not fhir or fhir.resourceType != 'SupplyDelivery':
+      raise ValueError('Argument must be a Supply Delivery FHIR object')
+
+    for item in fhir.contained:
+      if item.resourceType == 'Location' and item.address.city == 'Rochester' and item.address.state == 'MN' and \
+                '55901' in item.address.postalCode and item.address.line[0] == '3050 Superior Drive NW':
+        return True
+    return False
+
   def _post_supply_delivery(self, resource):
-    fhir_resource = SimpleFhirR4Reader(resource)
-    patient = fhir_resource.patient
-    pid = patient.identifier
-    p_id = from_client_participant_id(pid.value)
-    bo_id = fhir_resource.basedOn[0].identifier.value
-    pk = {'participantId': p_id, 'order_id': bo_id}
-    obj = ObjDict(pk)
-    if not self.dao.get_id(obj):
+    try:
+      fhir = SimpleFhirR4Reader(resource)
+      patient = fhir.patient
+      pid = patient.identifier
+      p_id = from_client_participant_id(pid.value)
+      bo_id = fhir.basedOn[0].identifier.value
+      _id = self.dao.get_id(ObjDict({'participantId': p_id, 'order_id': int(bo_id)}))
+      tracking_status = fhir.extension.get(url=VIBRENT_FHIR_URL + 'tracking-status').valueString.lower()
+    except AttributeError as e:
+      raise BadRequest(e.message)
+    except Exception as e:
+      raise BadRequest(e.message)
+
+    if not _id:
+      raise Conflict('Existing SupplyRequest for order required for SupplyDelivery')
+    dvo = self.dao.get(_id)
+    if not dvo:
       raise Conflict('Existing SupplyRequest for order required for SupplyDelivery')
 
-    response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
+    merged_resource = None
+    # Note: POST tracking status should be either 'enroute/in_transit'. PUT should only be 'delivered'.
+    if tracking_status in ['in_transit', 'enroute', 'delivered'] and self._to_mayo(fhir) and not dvo.biobankOrderId:
+      # Send to mayolink and create internal biobank order
+      response = self.dao.send_order(resource, p_id)
+      merged_resource = merge_dicts(response, resource)
+      merged_resource['id'] = _id
+      logging.info('Sending salivary order to biobank for participant: %s', p_id)
+      self.dao.insert_biobank_order(p_id, merged_resource)
+
+    response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True, resource=merged_resource)
     response[2]['Location'] = '/rdr/v1/SupplyDelivery/{}'.format(bo_id)
     if response[1] == 200:
       created_response = list(response)
@@ -132,8 +166,6 @@ class DvOrderApi(UpdatableApi):
     return response
 
   def _put_supply_delivery(self, resource, bo_id):
-
-    merged_resource = None
     # handle invalid FHIR documents
     try:
       fhir = SimpleFhirR4Reader(resource)
@@ -146,42 +178,35 @@ class DvOrderApi(UpdatableApi):
       if hasattr(fhir['extension'], VIBRENT_FHIR_URL + 'expected-delivery-date'):
         eta = dateutil.parser.parse(fhir.extension.get(url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime)
 
-      tracking_status = fhir.extension.get(
-        url=VIBRENT_FHIR_URL + 'tracking-status').valueString
-      tracking_id = fhir.identifier.get(
-        system=VIBRENT_FHIR_URL + 'trackingId').value
+      tracking_status = fhir.extension.get(url=VIBRENT_FHIR_URL + 'tracking-status').valueString
+      if tracking_status:
+        tracking_status = tracking_status.lower()
     except AttributeError as e:
       raise BadRequest(e.message)
     except Exception as e:
       raise BadRequest(e.message)
 
-    tracking_status_enum = getattr(
-      OrderShipmentTrackingStatus,
-      tracking_status.upper(),
-      OrderShipmentTrackingStatus.UNSET
-    )
+    _id = self.dao.get_id(ObjDict({'participantId': p_id, 'order_id': int(bo_id)}))
+    if not _id:
+      raise Conflict('Existing SupplyRequest for order required for SupplyDelivery')
+    dvo = self.dao.get(_id)
+    if not dvo:
+      raise Conflict('Existing SupplyRequest for order required for SupplyDelivery')
 
-    biobank_dv_order_id = self.dao.get_id(ObjDict({
-      'participantId': p_id,
-      'order_id': int(bo_id)
-    }))
-    order = self.dao.get(biobank_dv_order_id)
-    order.shipmentLastUpdate = update_time.date()
-    order.shipmentCarrier = carrier_name
+    tracking_status_enum = \
+      getattr(OrderShipmentTrackingStatus, tracking_status.upper(), OrderShipmentTrackingStatus.UNSET)
+
+    dvo.shipmentLastUpdate = update_time.date()
+    dvo.shipmentCarrier = carrier_name
     if eta:
-      order.shipmentEstArrival = eta.date()
-    order.shipmentStatus = tracking_status_enum
+      dvo.shipmentEstArrival = eta.date()
+    dvo.shipmentStatus = tracking_status_enum
     if not p_id:
       raise BadRequest('Request must include participant id')
 
-    _id = self.dao.get_id(ObjDict({'participantId': p_id, 'order_id': int(bo_id)}))
-    ex_obj = self.dao.get(_id)
-    if tracking_status.lower() not in ['in_transit', 'delivered', 'error', 'tracking_cancelled']:
-      raise BadRequest("Unknown tracking status [{0}], did you mean to use 'in_transit' or 'delivered'?".
-                       format(tracking_status))
-    if (tracking_status.lower() == 'in_transit' and ex_obj.trackingId != tracking_id) or \
-        (tracking_status.lower() == 'delivered' and ex_obj.shipmentStatus.lower() != 'in_transit' and
-          ex_obj.tracking_id != tracking_id):
+    merged_resource = None
+    # Note: PUT tracking status should only be 'delivered'. POST should be either 'enroute/in_transit'.
+    if tracking_status in ['in_transit', 'enroute', 'delivered'] and self._to_mayo(fhir) and not dvo.biobankOrderId:
       # Send to mayolink and create internal biobank order
       response = self.dao.send_order(resource, p_id)
       merged_resource = merge_dicts(response, resource)
@@ -189,12 +214,7 @@ class DvOrderApi(UpdatableApi):
       logging.info('Sending salivary order to biobank for participant: %s', p_id)
       self.dao.insert_biobank_order(p_id, merged_resource)
 
-    if merged_resource:
-      response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True,
-                                             resource=merged_resource)
-    else:
-      response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
-
+    response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True, resource=merged_resource)
     return response
 
 
