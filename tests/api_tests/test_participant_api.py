@@ -13,14 +13,13 @@ from rdr_service.participant_enums import (
     TEST_HPO_NAME,
     WithdrawalStatus,
 )
-from rdr_service.test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json
+from tests.helpers.unittest_base import BaseTestCase
 
 TIME_1 = datetime.datetime(2018, 1, 1)
 TIME_2 = datetime.datetime(2018, 1, 3)
 
 
-# TODO: represent in new test suite
-class ParticipantApiTest(FlaskTestBase):
+class ParticipantApiTest(BaseTestCase):
     def setUp(self):
         super(ParticipantApiTest, self).setUp()
         provider_link = {"primary": False, "organization": {"reference": "columbia"}}
@@ -63,7 +62,7 @@ class ParticipantApiTest(FlaskTestBase):
 
         self.assertJsonResponseMatches(self.participant, response)
 
-    def test_insert_with_same_external_id_fails(self):
+    def test_insert_with_same_external_id_returns_existing_participant(self):
         response = self.send_post("Participant", self.participant_2)
         participant_id = response["participantId"]
         get_response = self.send_get("Participant/%s" % participant_id)
@@ -181,7 +180,7 @@ class ParticipantApiTest(FlaskTestBase):
             response["withdrawalStatus"] = "NO_USE"
             response["suspensionStatus"] = "NO_CONTACT"
             response["withdrawalReason"] = "TEST"
-            response["withdrawalTimeStamp"] = 1563907344169
+            response["withdrawalTimeStamp"] = 1563907344000
             response["withdrawalReasonJustification"] = "This was a test account."
 
             path = "Participant/%s" % participant_id
@@ -240,7 +239,7 @@ class ParticipantApiTest(FlaskTestBase):
         _add_code_answer(code_answers, "education", education_code)
         _add_code_answer(code_answers, "income", income_code)
 
-        qr = make_questionnaire_response_json(
+        qr = self.make_questionnaire_response_json(
             participant_id,
             questionnaire_id,
             code_answers=code_answers,
