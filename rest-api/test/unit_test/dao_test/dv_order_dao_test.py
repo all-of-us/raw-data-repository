@@ -31,9 +31,6 @@ class DvOrderDaoTestBase(FlaskTestBase):
     self.post_request = load_test_data_json('dv_order_api_post_supply_request.json')
     self.put_request = load_test_data_json('dv_order_api_put_supply_request.json')
 
-    self.dao = DvOrderDao()
-
-
     self.mayolink_response = {'orders': {'order': {
       'status': 'finished',
       'reference_number': 'barcode',
@@ -51,6 +48,8 @@ class DvOrderDaoTestBase(FlaskTestBase):
 
   def setUp(self):
     super(DvOrderDaoTestBase, self).setUp(use_mysql=True)
+
+    self.dao = DvOrderDao()
 
     self.participant_dao = ParticipantDao()
     self.summary_dao = ParticipantSummaryDao()
