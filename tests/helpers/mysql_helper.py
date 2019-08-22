@@ -81,8 +81,9 @@ def start_mysql_instance():
         raise SystemError(se)
 
     # Start mysqld service
-    cmd = '{0} --port={1} --datadir={2} --tmpdir={3} --pid-file={4} --log-error={5} --socket={6}'. \
-                        format(mysqld, MYSQL_PORT, data_dir, tmp_dir, pid_file, log_file, sock_file)
+    cmd = '{0} --port={1} --datadir={2} --tmpdir={3} --pid-file={4} --log-error={5} --socket={6} ' \
+          '--log-bin-trust-function-creators=1'.format(mysqld, MYSQL_PORT, data_dir, tmp_dir, pid_file, log_file,
+                                                       sock_file)
     proc = subprocess.Popen(shlex.split(cmd), stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                             stdout=subprocess.DEVNULL, start_new_session=True)
 
