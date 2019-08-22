@@ -72,7 +72,12 @@ class DvOrderDaoTestBase(FlaskTestBase):
       if item['resourceType'] == 'Location':
         item['address'] = {'city': "Rochester", 'state': "MN",
                             'postalCode': "55901", 'line': ["3050 Superior Drive NW"], 'type': 'postal', 'use': 'work'}
-    req['identifier'][0]['value'] = '98765432109876543210'
+    # Mayo tracking ID
+    req['identifier'] = \
+        [{"system": "http://joinallofus.org/fhir/trackingId", "value": "98765432109876543210"}]
+    # Participant Tracking ID
+    req['partOf'] = \
+        [{'identifier': {"system": "http://joinallofus.org/fhir/trackingId", "value": "P12435464423"}}]
     return req
 
   def test_insert_biobank_order(self):

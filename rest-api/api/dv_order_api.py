@@ -54,10 +54,28 @@ class DvOrderApi(UpdatableApi):
     if not fhir or fhir.resourceType != 'SupplyDelivery':
       raise ValueError('Argument must be a Supply Delivery FHIR object')
 
-    for item in fhir.contained:
-      if item.resourceType == 'Location' and item.address.city == 'Rochester' and item.address.state == 'MN' and \
-                '55901' in item.address.postalCode and item.address.line[0] == '3050 Superior Drive NW':
-        return True
+    # check shipping address is Mayo's address
+    # for item in fhir.contained:
+    #   if item.resourceType == 'Location' and item.address.city == 'Rochester' and item.address.state == 'MN' and \
+    #             '55901' in item.address.postalCode and item.address.line[0] == '3050 Superior Drive NW':
+    #     return True
+
+    # check for two tracking numbers, one for the patient and one for mayo.
+    tid_to_patient = None
+    tid_to_mayo = None
+    if hasattr(fhir, 'partOf'):
+      for item in fhir.partOf:
+        if hasattr(item, 'identifier') and 'trackingId' in item.identifier.system:
+          tid_to_patient = item.identifier.value
+
+    if tid_to_patient and hasattr(fhir, 'identifier'):
+      for item in fhir.identifier:
+        if 'trackingId' in item.system:
+          tid_to_mayo = item.value
+
+    if tid_to_patient and tid_to_mayo:
+      return True
+
     return False
 
   def _post_supply_delivery(self, resource):
