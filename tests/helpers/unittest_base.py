@@ -273,7 +273,6 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin):
     def assertJsonResponseMatches(self, obj_a, obj_b):
         self.assertMultiLineEqual(self._clean_and_format_response_json(obj_a), self._clean_and_format_response_json(obj_b))
 
-
     @staticmethod
     def pretty(obj):
         return json.dumps(obj, sort_keys=True, indent=4, separators=(",", ": "))
@@ -295,6 +294,31 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin):
             if isinstance(val, list):
                 obj[key] = sorted(val)
         return obj
+
+    @staticmethod
+    def get_restore_or_cancel_info(reason=None, author=None, site=None, status=None):
+        """get a patch request to cancel or restore a PM order,
+      if called with no params it defaults to a cancel order."""
+        if reason is None:
+            reason = "a mistake was made."
+        if author is None:
+            author = "mike@pmi-ops.org"
+        if site is None:
+            site = "hpo-site-monroeville"
+        if status is None:
+            status = "cancelled"
+            info = "cancelledInfo"
+        elif status == "restored":
+            info = "restoredInfo"
+
+        return {
+            "reason": reason,
+            info: {
+                "author": {"system": "https://www.pmi-ops.org/healthpro-username", "value": author},
+                "site": {"system": "https://www.pmi-ops.org/site-id", "value": site},
+            },
+            "status": status,
+        }
 
 
 def read_dev_config(*files):

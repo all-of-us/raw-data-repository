@@ -1,5 +1,4 @@
 import datetime
-import unittest
 
 from rdr_service.clock import FakeClock
 from rdr_service.dao.participant_dao import ParticipantDao, ParticipantHistoryDao

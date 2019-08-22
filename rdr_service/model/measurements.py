@@ -1,9 +1,10 @@
-from sqlalchemy import BIGINT, BLOB, Boolean, Column, Float, ForeignKey, Integer, String, Table, Text, UnicodeText
+from sqlalchemy import BIGINT, Boolean, Column, Float, ForeignKey, Integer, String, Table, Text, UnicodeText
 from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import Base
 from rdr_service.model.utils import Enum, UTCDateTime
 from rdr_service.participant_enums import PhysicalMeasurementsStatus
+from rdr_service.model.field_types import BlobUTF8
 
 measurement_to_qualifier = Table(
     "measurement_to_qualifier",
@@ -18,7 +19,7 @@ class PhysicalMeasurements(Base):
     physicalMeasurementsId = Column("physical_measurements_id", Integer, primary_key=True, autoincrement=False)
     participantId = Column("participant_id", Integer, ForeignKey("participant.participant_id"), nullable=False)
     created = Column("created", UTCDateTime, nullable=False)
-    resource = Column("resource", BLOB, nullable=False)
+    resource = Column("resource", BlobUTF8, nullable=False)
     final = Column("final", Boolean, nullable=False)
     # The ID that these measurements are an amendment of (points from new to old)
     amendedMeasurementsId = Column(
