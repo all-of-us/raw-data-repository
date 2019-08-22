@@ -23,11 +23,6 @@ from rdr_service.participant_enums import (
 )
 from tests.helpers.mysql_helper import reset_mysql_instance
 
-PITT_HPO_ID = 2
-PITT_ORG_ID = 3
-AZ_HPO_ID = 4
-AZ_ORG_ID = 4
-
 
 class QuestionnaireTestMixin:
 

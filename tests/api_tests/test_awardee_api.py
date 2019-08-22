@@ -8,7 +8,8 @@ from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
 from rdr_service.model.site_enums import EnrollingStatus, SiteStatus
 from rdr_service.participant_enums import OrganizationType, UNSET_HPO_ID
-from tests.helpers.unittest_base import BaseTestCase, AZ_HPO_ID, PITT_HPO_ID
+from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.mysql_helper_data import AZ_HPO_ID, PITT_HPO_ID
 
 
 def _make_awardee_resource(awardee_id, display_name, org_type, organizations=None):

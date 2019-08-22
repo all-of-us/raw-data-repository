@@ -7,7 +7,8 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import UNSET_HPO_ID
-from tests.helpers.unittest_base import BaseTestCase, AZ_HPO_ID, PITT_HPO_ID
+from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.mysql_helper_data import AZ_HPO_ID, PITT_HPO_ID
 
 
 class OrganizationDaoTest(BaseTestCase):
