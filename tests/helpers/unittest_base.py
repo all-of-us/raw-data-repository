@@ -5,7 +5,6 @@ import os
 import faker
 import unittest
 import http.client
-import importlib
 
 from rdr_service import config
 from tests.test_data import data_path
