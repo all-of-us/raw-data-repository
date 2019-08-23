@@ -3,10 +3,7 @@ import http.client
 import threading
 import unittest
 
-try:  # Python 2.x
-    from urllib.parse import urlencode
-except ImportError:  # Python 3
-    from urllib.parse import urlencode
+from urllib.parse import urlencode
 
 from rdr_service import main
 from rdr_service.clock import FakeClock
@@ -40,12 +37,7 @@ from rdr_service.participant_enums import (
     ANSWER_CODE_TO_GENDER,
 )
 from rdr_service.test.test_data import load_measurement_json, load_biobank_order_json, to_client_participant_id
-from rdr_service.test.unit_test.unit_test_util import (
-    FlaskTestBase,
-    make_questionnaire_response_json,
-    SqlTestBase,
-    get_restore_or_cancel_info,
-)
+from tests.helpers.unittest_base import BaseTestCase
 
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -56,10 +48,9 @@ TIME_5 = datetime.datetime(2016, 1, 5, 0, 1)
 TIME_6 = datetime.datetime(2015, 1, 1)
 
 
-# TODO: represent in new test suite
-class ParticipantSummaryMySqlApiTest(FlaskTestBase):
+class ParticipantSummaryMySqlApiTest(BaseTestCase):
     def setUp(self):
-        super(ParticipantSummaryMySqlApiTest, self).setUp(use_mysql=True)
+        super().setUp()
         self.provider_link = {
             "primary": True,
             "organization": {"display": None, "reference": "Organization/PITT"},
@@ -94,7 +85,7 @@ class ParticipantSummaryMySqlApiTest(FlaskTestBase):
 
 
 # TODO: represent in new test suite
-class ParticipantSummaryApiTest(FlaskTestBase):
+class ParticipantSummaryApiTest(BaseTestCase):
     provider_link = {"primary": True, "organization": {"display": None, "reference": "Organization/PITT"}}
     az_provider_link = {"primary": True, "organization": {"display": None, "reference": "Organization/AZ_TUCSON"}}
     # Some link ids relevant to the demographics questionnaire
@@ -112,7 +103,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     string_link_ids = ("firstName", "middleName", "lastName", "streetAddress", "city", "phoneNumber", "zipCode")
 
     def setUp(self):
-        super(ParticipantSummaryApiTest, self).setUp(use_mysql=True)
+        super().setUp()
         self.hpo_dao = HPODao()
 
         # Needed by test_switch_to_test_account
@@ -259,7 +250,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
             code = kwargs.get(link_id)
             answers["string_answers"].append((link_id, code))
 
-        response_data = make_questionnaire_response_json(participant_id, questionnaire_id, **answers)
+        response_data = self.make_questionnaire_response_json(participant_id, questionnaire_id, **answers)
 
         with FakeClock(time):
             url = "Participant/%s/QuestionnaireResponse" % participant_id
@@ -326,7 +317,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     def test_admin_withdrawal_returns_right_info(self):
         with FakeClock(TIME_1):
-            SqlTestBase.setup_codes(
+            self.setup_codes(
                 ["PIIState_VA", "male_sex", "male", "straight", "email_code", "en", "highschool", "lotsofmoney"],
                 code_type=CodeType.ANSWER,
             )
@@ -385,7 +376,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     def test_suspension_status_returns_right_info(self):
         with FakeClock(TIME_1):
-            SqlTestBase.setup_codes(
+            self.setup_codes(
                 ["PIIState_VA", "male_sex", "male", "straight", "email_code", "en", "highschool", "lotsofmoney"],
                 code_type=CodeType.ANSWER,
             )
@@ -441,7 +432,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     def test_no_justification_fails(self):
         with FakeClock(TIME_1):
-            SqlTestBase.setup_codes(
+            self.setup_codes(
                 ["PIIState_VA", "male_sex", "male", "straight", "email_code", "en", "highschool", "lotsofmoney"],
                 code_type=CodeType.ANSWER,
             )
@@ -524,7 +515,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         _add_code_answer(code_answers, "education", education_code)
         _add_code_answer(code_answers, "income", income_code)
 
-        qr = make_questionnaire_response_json(
+        qr = self.make_questionnaire_response_json(
             participant_id,
             questionnaire_id,
             code_answers=code_answers,
@@ -553,7 +544,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         self.assertBundle([], response)
 
     def test_last_modified_sync(self):
-        SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+        self.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
         questionnaire_id = self.create_demographics_questionnaire()
         t1 = TIME_1
         t2 = TIME_1 + datetime.timedelta(seconds=200)
@@ -745,7 +736,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     def test_get_summary_list_returns_total(self):
         page_size = 10
         num_participants = 20
-        SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+        self.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
         questionnaire_id = self.create_demographics_questionnaire()
 
         # Prove that no results means a total of zero (if requested)
@@ -812,7 +803,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     def test_get_summary_list_returns_offset_results(self):
         num_participants = 10
-        SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+        self.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
         questionnaire_id = self.create_demographics_questionnaire()
 
         # generate participants to count
@@ -869,7 +860,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     def test_get_summary_with_skip_codes(self):
         # Set up the codes so they are mapped later.
-        SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+        self.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
 
         # Set up participant, questionnaire, and consent
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
@@ -918,7 +909,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     def test_get_summary_with_skip_code_for_race(self):
         # Set up the codes so they are mapped later.
-        SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+        self.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
 
         # Set up participant, questionnaire, and consent
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
@@ -967,7 +958,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     def test_get_summary_with_primary_language(self):
         # Set up the codes so they are mapped later.
-        SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+        self.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
 
         # Set up participant, questionnaire, and consent
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
@@ -1016,7 +1007,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     def test_get_summary_with_patient_status(self):
         # Set up the codes so they are mapped later.
-        SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+        self.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
 
         # Set up participant, questionnaire, and consent
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
@@ -1083,7 +1074,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     def testQuery_oneParticipant(self):
         # Set up the codes so they are mapped later.
-        SqlTestBase.setup_codes(
+        self.setup_codes(
             ["PIIState_VA", "male_sex", "male", "straight", "email_code", "en", "highschool", "lotsofmoney"],
             code_type=CodeType.ANSWER,
         )
@@ -1129,7 +1120,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     def testQuery_oneParticipantStringConsent(self):
         # Set up the codes so they are mapped later.
-        SqlTestBase.setup_codes(
+        self.setup_codes(
             ["PIIState_VA", "male_sex", "male", "straight", "email_code", "en", "highschool", "lotsofmoney"],
             code_type=CodeType.ANSWER,
         )
@@ -1194,12 +1185,12 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     ):
         code_answers = []
         _add_code_answer(code_answers, "ehrConsent", ehr_consent_answer)
-        qr = make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=code_answers)
+        qr = self.make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=code_answers)
         with FakeClock(time):
             self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
 
     def _submit_empty_questionnaire_response(self, participant_id, questionnaire_id, time=TIME_1):
-        qr = make_questionnaire_response_json(participant_id, questionnaire_id)
+        qr = self.make_questionnaire_response_json(participant_id, questionnaire_id)
         with FakeClock(time):
             self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
 
@@ -1242,7 +1233,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     ):
         code_answers = []
         _add_code_answer(code_answers, "DVEHRSharing_AreYouInterested", dvehr_consent_answer)
-        qr = make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=code_answers)
+        qr = self.make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=code_answers)
         with FakeClock(time):
             self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
 
@@ -1790,7 +1781,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         # cancel a physical measurement
         path = "Participant/%s/PhysicalMeasurements" % participant_id_1
         path = path + "/" + pm_response["id"]
-        cancel_info = get_restore_or_cancel_info()
+        cancel_info = self.get_restore_or_cancel_info()
         self.send_patch(path, cancel_info)
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("CANCELLED", ps_1.get("physicalMeasurementsStatus"))
@@ -1824,7 +1815,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         # cancel a physical measurement
         path = "Participant/%s/PhysicalMeasurements" % participant_id_1
         path = path + "/" + pm_response2["id"]
-        cancel_info = get_restore_or_cancel_info()
+        cancel_info = self.get_restore_or_cancel_info()
         self.send_patch(path, cancel_info)
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
@@ -1862,7 +1853,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         self.assertEqual(participant_summary["physicalMeasurementsCreatedSite"], "hpo-site-bannerphoenix")
 
     def test_switch_to_test_account(self):
-        SqlTestBase.setup_codes(
+        self.setup_codes(
             ["PIIState_VA", "male_sex", "male", "straight", "email_code", "en", "highschool", "lotsofmoney"],
             code_type=CodeType.ANSWER,
         )
@@ -1934,7 +1925,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         self.assertEqual("TEST", ps_1_with_test_login_phone_number["hpoId"])
 
     def testQuery_manyParticipants(self):
-        SqlTestBase.setup_codes(
+        self.setup_codes(
             ["PIIState_VA", "male_sex", "male", "straight", "email_code", "en", "highschool", "lotsofmoney"],
             code_type=CodeType.ANSWER,
         )
@@ -2336,7 +2327,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
             self.assertResponses("ParticipantSummary?_count=2&lastModified=lt2016-01-04", [[ps_3]])
 
     def testQuery_manyParticipants_dv_consent_only(self):
-        SqlTestBase.setup_codes(
+        self.setup_codes(
             ["PIIState_VA", "male_sex", "male", "straight", "email_code", "en", "highschool", "lotsofmoney"],
             code_type=CodeType.ANSWER,
         )
@@ -2828,7 +2819,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         self.assertBundle(list(map(_make_entry, [summary_1, summary_2])), self.send_get(url))
 
     def test_gender_identity_pmi_skip(self):
-        SqlTestBase.setup_codes(
+        self.setup_codes(
             ["PIIState_VA", "male_sex", PMI_SKIP_CODE, "straight", "email_code", "en", "highschool", "lotsofmoney"],
             code_type=CodeType.ANSWER,
         )
