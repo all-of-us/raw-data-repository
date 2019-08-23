@@ -1787,7 +1787,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         # cancel a physical measurement
         path = "Participant/%s/PhysicalMeasurements" % participant_id_1
         path = path + "/" + pm_response["id"]
-        cancel_info = get_restore_or_cancel_info()
+        cancel_info = self.get_restore_or_cancel_info()
         self.send_patch(path, cancel_info)
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("CANCELLED", ps_1.get("physicalMeasurementsStatus"))
@@ -1821,7 +1821,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         # cancel a physical measurement
         path = "Participant/%s/PhysicalMeasurements" % participant_id_1
         path = path + "/" + pm_response2["id"]
-        cancel_info = get_restore_or_cancel_info()
+        cancel_info = self.get_restore_or_cancel_info()
         self.send_patch(path, cancel_info)
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
