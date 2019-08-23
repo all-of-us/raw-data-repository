@@ -396,7 +396,7 @@ class BaseDao(object):
     def _decode_token(self, query_def, fields):
         pagination_token = query_def.pagination_token
         try:
-            decoded_vals = json.loads(urlsafe_b64decode(pagination_token.encode("ascii")))
+            decoded_vals = json.loads(urlsafe_b64decode(pagination_token))
         except:
             raise BadRequest("Invalid pagination token: %r." % pagination_token)
         if not isinstance(decoded_vals, list) or len(decoded_vals) != len(fields):
@@ -464,8 +464,8 @@ class BaseDao(object):
     def handle_integrity_error(self, tried_ids, e, obj):
         # pylint: disable=unused-argument
         # SQLite and MySQL variants of the error message, respectively.
-        if "UNIQUE constraint failed" in e.message or "Duplicate entry" in e.message:
-            logging.warning("Failed insert with %s: %s", tried_ids, e.message)
+        if "UNIQUE constraint failed" in str(e) or "Duplicate entry" in str(e):
+            logging.warning("Failed insert with %s: %s", tried_ids, str(e))
             return None
 
     def count(self):

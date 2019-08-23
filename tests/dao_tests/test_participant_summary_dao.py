@@ -25,12 +25,8 @@ from rdr_service.participant_enums import (
 )
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from rdr_service.test.test_data import load_measurement_json
-from rdr_service.test.unit_test.unit_test_util import (
-    NdbTestBase,
-    PITT_HPO_ID,
-    cancel_biobank_order,
-    get_restore_or_cancel_info,
-)
+from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.mysql_helper_data import PITT_HPO_ID
 
 NUM_BASELINE_PPI_MODULES = 3
 
@@ -51,10 +47,9 @@ TIME_11 = datetime.datetime(2019, 1, 2)
 TIME_12 = datetime.datetime(2019, 1, 3)
 
 
-# TODO: represent in new test suite
-class ParticipantSummaryDaoTest(NdbTestBase):
+class ParticipantSummaryDaoTest(BaseTestCase):
     def setUp(self):
-        super(ParticipantSummaryDaoTest, self).setUp(use_mysql=True)
+        super().setUp()
         self.dao = ParticipantSummaryDao()
         self.order_dao = BiobankOrderDao()
         self.measurement_dao = PhysicalMeasurementsDao()
@@ -128,8 +123,6 @@ class ParticipantSummaryDaoTest(NdbTestBase):
 
     def testUnicodeNameRoundTrip(self):
         name = self.fake.first_name()
-        with self.assertRaises(UnicodeEncodeError):
-            str(name)  # sanity check that the name contains non-ASCII
         participant = self._insert(Participant(participantId=1, biobankId=2))
         summary = self.dao.get(participant.participantId)
         summary.firstName = name
@@ -503,7 +496,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
         order = self.order_dao.insert(self._make_biobank_order())
         summary = self.dao.get(self.participant.participantId)
         self.assertEqual(summary.numberDistinctVisits, 1)
-        cancel_request = cancel_biobank_order()
+        cancel_request = self.cancel_biobank_order()
         # cancel biobank order
         self.order_dao.update_with_patch(order.biobankOrderId, cancel_request, order.version)
         summary = self.dao.get(self.participant.participantId)
@@ -518,7 +511,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
         self.assertEqual(summary.numberDistinctVisits, 1)
 
         # cancel the measurement
-        cancel_measurement = get_restore_or_cancel_info()
+        cancel_measurement = self.get_restore_or_cancel_info()
         with self.measurement_dao.session() as session:
             self.measurement_dao.update_with_patch(measurement.physicalMeasurementsId, session, cancel_measurement)
 
@@ -788,7 +781,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
             summary = self.dao.get(self.participant.participantId)
             # distinct count should be 3
             self.assertEqual(summary.numberDistinctVisits, 3)
-            cancel_request = cancel_biobank_order()
+            cancel_request = self.cancel_biobank_order()
             # cancel biobank order with PM on same day
             self.order_dao.update_with_patch(order.biobankOrderId, cancel_request, order.version)
             summary = self.dao.get(self.participant.participantId)
@@ -840,7 +833,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
             self.assertEqual(summary.numberDistinctVisits, 2)
 
             # cancel the measurement
-            cancel_measurement = get_restore_or_cancel_info()
+            cancel_measurement = self.get_restore_or_cancel_info()
             with self.measurement_dao.session() as session:
                 self.measurement_dao.update_with_patch(measurement.physicalMeasurementsId, session, cancel_measurement)
 
@@ -848,7 +841,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
             self.assertEqual(summary.numberDistinctVisits, 1)
 
         with clock.FakeClock(TIME_7):
-            restore_measurement = get_restore_or_cancel_info(status="restored")
+            restore_measurement = self.get_restore_or_cancel_info(status="restored")
             with self.measurement_dao.session() as session:
                 self.measurement_dao.update_with_patch(
                     measurement.physicalMeasurementsId, session, restore_measurement
@@ -857,13 +850,13 @@ class ParticipantSummaryDaoTest(NdbTestBase):
             summary = self.dao.get(self.participant.participantId)
             self.assertEqual(summary.numberDistinctVisits, 2)
 
-            cancel_request = cancel_biobank_order()
+            cancel_request = self.cancel_biobank_order()
             order = self.order_dao.update_with_patch(order.biobankOrderId, cancel_request, order.version)
 
             summary = self.dao.get(self.participant.participantId)
             self.assertEqual(summary.numberDistinctVisits, 1)
 
-            restore_order = get_restore_or_cancel_info(status="restored")
+            restore_order = self.get_restore_or_cancel_info(status="restored")
             restore_order["amendedReason"] = "some reason"
             self.order_dao.update_with_patch(order.biobankOrderId, restore_order, order.version)
             summary = self.dao.get(self.participant.participantId)
@@ -901,7 +894,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
             self.assertEqual(summary.numberDistinctVisits, 1)
 
         with clock.FakeClock(TIME_7_5):
-            cancel_request = cancel_biobank_order()
+            cancel_request = self.cancel_biobank_order()
             order = self.order_dao.update_with_patch(order.biobankOrderId, cancel_request, order.version)
 
         # A cancelled order (even after amending) should reduce count (unless some other valid order on same day)
@@ -981,7 +974,7 @@ def _with_token(query, token):
 
 def _make_pagination_token(vals):
     vals_json = json.dumps(vals, default=json_serial)
-    return urlsafe_b64encode(vals_json)
+    return urlsafe_b64encode(str.encode(vals_json))
 
 
 def _decode_token(token):
