@@ -18,13 +18,13 @@ from rdr_service.participant_enums import (
     make_primary_provider_link_for_id,
     make_primary_provider_link_for_name,
 )
-from rdr_service.test.unit_test.unit_test_util import PITT_HPO_ID, PITT_ORG_ID, SqlTestBase, random_ids
+from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.mysql_helper_data import PITT_HPO_ID, PITT_ORG_ID, PITT_SITE_ID, random_ids
 
 
-# TODO: represent in new test suite
-class ParticipantDaoTest(SqlTestBase):
+class ParticipantDaoTest(BaseTestCase):
     def setUp(self):
-        super(ParticipantDaoTest, self).setUp()
+        super().setUp()
         self.dao = ParticipantDao()
         self.participant_summary_dao = ParticipantSummaryDao()
         self.participant_history_dao = ParticipantHistoryDao()
@@ -443,14 +443,14 @@ class ParticipantDaoTest(SqlTestBase):
         self.participant_summary_dao.insert(self.participant_summary(refetched))
 
         with self.dao.session() as session:
-            self.dao.add_missing_hpo_from_site(session, participant_id, self._test_db.site_id)
+            self.dao.add_missing_hpo_from_site(session, participant_id, PITT_SITE_ID)
 
         paired = self.dao.get(participant_id)
-        self.assertEqual(paired.hpoId, self._test_db.hpo_id)
-        self.assertEqual(paired.providerLink, make_primary_provider_link_for_id(self._test_db.hpo_id))
-        self.assertEqual(self.participant_summary_dao.get(participant_id).hpoId, self._test_db.hpo_id)
-        self.assertEqual(paired.organizationId, self._test_db.organization_id)
-        self.assertEqual(paired.siteId, self._test_db.site_id)
+        self.assertEqual(paired.hpoId, PITT_HPO_ID)
+        self.assertEqual(paired.providerLink, make_primary_provider_link_for_id(PITT_HPO_ID))
+        self.assertEqual(self.participant_summary_dao.get(participant_id).hpoId, PITT_HPO_ID)
+        self.assertEqual(paired.organizationId, PITT_ORG_ID)
+        self.assertEqual(paired.siteId, PITT_SITE_ID)
 
     def test_overwrite_existing_pairing(self):
         participant_id = 99
@@ -458,12 +458,12 @@ class ParticipantDaoTest(SqlTestBase):
             Participant(
                 participantId=participant_id,
                 biobankId=2,
-                hpoId=self._test_db.hpo_id,
-                providerLink=make_primary_provider_link_for_id(self._test_db.hpo_id),
+                hpoId=PITT_HPO_ID,
+                providerLink=make_primary_provider_link_for_id(PITT_HPO_ID),
             )
         )
         self.participant_summary_dao.insert(self.participant_summary(created))
-        self.assertEqual(created.hpoId, self._test_db.hpo_id)  # sanity check
+        self.assertEqual(created.hpoId, PITT_HPO_ID)  # sanity check
 
         other_hpo = HPODao().insert(HPO(hpoId=PITT_HPO_ID + 1, name="DIFFERENT_HPO"))
         other_site = SiteDao().insert(

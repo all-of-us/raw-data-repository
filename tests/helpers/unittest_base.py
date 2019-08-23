@@ -321,6 +321,15 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             self.assertIsNone(response.get("link"))
             return None
 
+    def assertListAsDictEquals(self, list_a, list_b):
+        if len(list_a) != len(list_b):
+            self.fail(
+                "List lengths don't match: %d != %d; %s, %s"
+                % (len(list_a), len(list_b), list_as_dict(list_a), list_as_dict(list_b))
+            )
+        for i in range(0, len(list_a)):
+            self.assertEqual(list_a[i].asdict(), list_b[i].asdict())
+
     @staticmethod
     def get_restore_or_cancel_info(reason=None, author=None, site=None, status=None):
         """get a patch request to cancel or restore a PM order,
@@ -346,6 +355,17 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             "status": status,
         }
 
+
+    @staticmethod
+    def cancel_biobank_order():
+        return {
+            "amendedReason": "messed up",
+            "cancelledInfo": {
+                "author": {"system": "https://www.pmi-ops.org/healthpro-username", "value": "mike@pmi-ops.org"},
+                "site": {"system": "https://www.pmi-ops.org/site-id", "value": "hpo-site-monroeville"},
+            },
+            "status": "cancelled",
+        }
 
 def read_dev_config(*files):
     data = {}
