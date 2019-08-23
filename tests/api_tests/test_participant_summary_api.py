@@ -37,12 +37,6 @@ from rdr_service.participant_enums import (
     ANSWER_CODE_TO_GENDER,
 )
 from rdr_service.test.test_data import load_measurement_json, load_biobank_order_json, to_client_participant_id
-#from rdr_service.test.unit_test.unit_test_util import (
-#    FlaskTestBase,
-#    make_questionnaire_response_json,
-#    SqlTestBase,
-#    get_restore_or_cancel_info,
-#)
 from tests.helpers.unittest_base import BaseTestCase
 
 
