@@ -12,7 +12,9 @@ from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
 from rdr_service.dao import questionnaire_dao, questionnaire_response_dao
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.code_dao import CodeDao
 from rdr_service import main
+from rdr_service.model.code import Code
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import (
@@ -22,6 +24,14 @@ from rdr_service.participant_enums import (
     WithdrawalStatus,
 )
 from tests.helpers.mysql_helper import reset_mysql_instance
+class CodebookTestMixin:
+
+    @staticmethod
+    def setup_codes(values, code_type):
+        code_dao = CodeDao()
+        for value in values:
+            code_dao.insert(Code(system=PPI_SYSTEM, value=value, codeType=code_type, mapped=True))
+
 
 class QuestionnaireTestMixin:
 
@@ -88,7 +98,7 @@ class QuestionnaireTestMixin:
         return response_json
 
 
-class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin):
+class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin):
     """ Base class for unit tests."""
 
     def __init__(self, *args, **kwargs):
@@ -283,3 +293,18 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin):
                 obj[key] = sorted(val)
         return obj
 
+    def assertBundle(self, expected_entries, response, has_next=False):
+        self.assertEqual("Bundle", response["resourceType"])
+        self.assertEqual("searchset", response["type"])
+        if len(expected_entries) != len(response["entry"]):
+            self.fail(
+                "Expected %d entries, got %d: %s" % (len(expected_entries), len(response["entry"]), response["entry"])
+            )
+        for i in range(0, len(expected_entries)):
+            self.assertJsonResponseMatches(expected_entries[i], response["entry"][i])
+        if has_next:
+            self.assertEqual("next", response["link"][0]["relation"])
+            return response["link"][0]["url"]
+        else:
+            self.assertIsNone(response.get("link"))
+            return None
