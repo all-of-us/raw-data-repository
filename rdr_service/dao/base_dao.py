@@ -316,7 +316,7 @@ class BaseDao(object):
     def _make_pagination_token(self, item_dict, field_names):
         vals = [item_dict.get(field_name) for field_name in field_names]
         vals_json = json.dumps(vals, default=json_serial)
-        return urlsafe_b64encode(vals_json)
+        return urlsafe_b64encode(str.encode(vals_json))
 
     def _initialize_query(self, session, query_def):
         """Creates the initial query, before the filters, order by, and limit portions are added

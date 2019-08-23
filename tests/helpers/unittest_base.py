@@ -5,8 +5,8 @@ import os
 import faker
 import unittest
 import http.client
-import importlib
 
+from rdr_service import config
 from tests.test_data import data_path
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
@@ -31,6 +31,7 @@ class CodebookTestMixin:
         code_dao = CodeDao()
         for value in values:
             code_dao.insert(Code(system=PPI_SYSTEM, value=value, codeType=code_type, mapped=True))
+
 
 
 class QuestionnaireTestMixin:
@@ -110,6 +111,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
     def setUp(self, with_data=True, with_consent_codes=False) -> None:
         super(BaseTestCase, self).setUp()
+        self.setup_config()
         self.app = main.app.test_client()
 
         reset_mysql_instance(with_data, with_consent_codes)
@@ -120,6 +122,17 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         questionnaire_dao._add_codes_if_missing = lambda: True
         questionnaire_response_dao._add_codes_if_missing = lambda email: True
         self._consent_questionnaire_id = None
+
+    @staticmethod
+    def setup_config():
+        if os.environ.get('UNITTEST_CONFIG_FLAG'):
+            return
+        data = read_dev_config(os.path.join(os.path.dirname(__file__), "../../rdr_service/config/base_config.json"),
+                               os.path.join(os.path.dirname(__file__), "../../rdr_service/config/config_dev.json"))
+        test_configs_dir = os.path.join(os.path.dirname(__file__), "../.test_configs")
+        os.environ['RDR_CONFIG_ROOT'] = test_configs_dir
+        config.store_current_config(data)
+        os.environ['UNITTEST_CONFIG_FLAG'] = 'True'
 
     @staticmethod
     def _participant_with_defaults(**kwargs):
@@ -174,14 +187,14 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             date_answers.append(("dateOfBirth", date_of_birth))
         if state:
             code_answers.append(("state", Concept(PPI_SYSTEM, state)))
-        qr = make_questionnaire_response_json(
+        qr = self.make_questionnaire_response_json(
             participant_id, questionnaire_id, code_answers=code_answers, date_answers=date_answers
         )
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
 
     def submit_consent_questionnaire_response(self, participant_id, questionnaire_id, ehr_consent_answer):
         code_answers = [("ehrConsent", Concept(PPI_SYSTEM, ehr_consent_answer))]
-        qr = make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=code_answers)
+        qr = self.make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=code_answers)
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
 
     def participant_summary(self, participant):
@@ -270,7 +283,6 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
     def assertJsonResponseMatches(self, obj_a, obj_b):
         self.assertMultiLineEqual(self._clean_and_format_response_json(obj_a), self._clean_and_format_response_json(obj_b))
 
-
     @staticmethod
     def pretty(obj):
         return json.dumps(obj, sort_keys=True, indent=4, separators=(",", ": "))
@@ -308,3 +320,37 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         else:
             self.assertIsNone(response.get("link"))
             return None
+
+    @staticmethod
+    def get_restore_or_cancel_info(reason=None, author=None, site=None, status=None):
+        """get a patch request to cancel or restore a PM order,
+      if called with no params it defaults to a cancel order."""
+        if reason is None:
+            reason = "a mistake was made."
+        if author is None:
+            author = "mike@pmi-ops.org"
+        if site is None:
+            site = "hpo-site-monroeville"
+        if status is None:
+            status = "cancelled"
+            info = "cancelledInfo"
+        elif status == "restored":
+            info = "restoredInfo"
+
+        return {
+            "reason": reason,
+            info: {
+                "author": {"system": "https://www.pmi-ops.org/healthpro-username", "value": author},
+                "site": {"system": "https://www.pmi-ops.org/site-id", "value": site},
+            },
+            "status": status,
+        }
+
+
+def read_dev_config(*files):
+    data = {}
+    for filename in files:
+        with open(filename) as file:
+            data.update(json.load(file))
+    return data
+

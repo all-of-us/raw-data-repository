@@ -93,9 +93,7 @@ def override_setting(key, value):
 
 
 def store_current_config(config_json):
-    conf_ndb_key = ndb.Key(Configuration, CONFIG_SINGLETON_KEY)
-    conf = Configuration(key=conf_ndb_key, configuration=config_json)
-    store(conf)
+    store(CONFIG_SINGLETON_KEY, config_json)
 
 
 def insert_config(key, value_list):
