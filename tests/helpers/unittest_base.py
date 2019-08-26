@@ -302,7 +302,10 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
     def sort_lists(obj):
         for key, val in obj.items():
             if isinstance(val, list):
-                obj[key] = sorted(val)
+                try:
+                    obj[key] = sorted(val)
+                except TypeError:
+                    obj[key] = val
         return obj
 
     def assertBundle(self, expected_entries, response, has_next=False):
