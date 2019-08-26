@@ -43,7 +43,8 @@ class QuestionnaireResponseAnswer(Base):
 
     # This is the maximum # bytes that can be stored in a MySQL TEXT field, which
     # our field valueString should resolve to.
-    VALUE_STRING_MAXLEN = 65535
+    # technicall the number is 65535 but now we need a little room for utf-8
+    VALUE_STRING_MAXLEN = 65000
 
     __tablename__ = "questionnaire_response_answer"
     questionnaireResponseAnswerId = Column("questionnaire_response_answer_id", Integer, primary_key=True)

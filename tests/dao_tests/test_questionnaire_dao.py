@@ -84,7 +84,7 @@ class QuestionnaireDaoTest(BaseTestCase):
             questionnaireId=1, version=1, created=TIME, lastModified=TIME, resource=RESOURCE_1_WITH_ID
         )
         questionnaire_history = self.questionnaire_history_dao.get([1, 1])
-        self.assertEqual(sorted(expected_history.asdict()), sorted(questionnaire_history.asdict()))
+        self.assertEqual(expected_history.asdict(), questionnaire_history.asdict())
 
         questionnaire_history = self.questionnaire_history_dao.get_with_children([1, 1])
         expected_history.concepts.append(EXPECTED_CONCEPT_1)
