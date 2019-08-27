@@ -3,6 +3,7 @@ import datetime
 import isodate
 from dateutil.tz import tzutc
 
+from rdr_service import dao
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.calendar import Calendar
@@ -21,13 +22,13 @@ from rdr_service.model.questionnaire import (
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.model.site import Site
 from rdr_service.participant_enums import OrganizationType, QuestionnaireStatus
-from rdr_service.test.unit_test.unit_test_util import SqlTestBase
+from tests.helpers.unittest_base import BaseTestCase
 
 
-# TODO: represent in new test suite
-class DatabaseTest(SqlTestBase):
+class DatabaseTest(BaseTestCase):
     def setUp(self):
-        super(DatabaseTest, self).setUp(with_data=False)
+        super().setUp(with_data=False)
+        self.database = dao.database_factory.get_database()
 
     def test_schema(self):
         session = self.database.make_session()

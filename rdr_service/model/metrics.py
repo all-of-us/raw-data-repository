@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 from rdr_service import clock
 from rdr_service.model.base import Base
 from rdr_service.model.utils import UTCDateTime
+from rdr_service.model.field_types import BlobUTF8
 
 BUCKETS = {"buckets": {}}
 
@@ -36,4 +37,4 @@ class MetricsBucket(Base):
     )
     date = Column("date", Date, primary_key=True)
     hpoId = Column("hpo_id", String(20), primary_key=True)  # Set to '' for cross-HPO metrics
-    metrics = Column("metrics", BLOB, nullable=False)
+    metrics = Column("metrics", BlobUTF8, nullable=False)
