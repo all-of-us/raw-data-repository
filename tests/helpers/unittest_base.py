@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import faker
+import sys
 import unittest
 import http.client
 
@@ -107,10 +108,15 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         # Set this so the database factory knows to use the unittest connection string from the config.
         os.environ["UNITTEST_FLAG"] = "True"
         self.fake = faker.Faker()
-        logging.getLogger().setLevel(logging.CRITICAL)
 
     def setUp(self, with_data=True, with_consent_codes=False) -> None:
         super(BaseTestCase, self).setUp()
+        logger = logging.getLogger()
+        stream_handler = logging.StreamHandler(sys.stdout)
+        logger.addHandler(stream_handler)
+
+        logger.setLevel(logging.ERROR)
+
         self.setup_config()
         self.app = main.app.test_client()
 

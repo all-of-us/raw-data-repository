@@ -16,7 +16,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus
 from rdr_service.test.test_data import data_path
-from rdr_service.test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json as gen_response
+from tests.helpers.unittest_base import BaseTestCase
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
@@ -26,8 +26,7 @@ def _questionnaire_response_url(participant_id):
     return "Participant/%s/QuestionnaireResponse" % participant_id
 
 
-# TODO: represent in new test suite
-class QuestionnaireResponseApiTest(FlaskTestBase):
+class QuestionnaireResponseApiTest(BaseTestCase):
     def test_duplicate_consent_submission(self):
         """
     Submit duplicate study enrollment questionnaires, so we can make sure
@@ -66,7 +65,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
         # This one should be exactly long enough to pass
         string = "a" * QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN
         string_answers = [["nameOfChild", string]]
-        resource = gen_response(participant_id, questionnaire_id, string_answers=string_answers)
+        resource = self.make_questionnaire_response_json(participant_id, questionnaire_id, string_answers=string_answers)
         response = self.send_post(url, resource)
         self.assertEqual(response["group"]["question"][0]["answer"][0]["valueString"], string)
 
@@ -74,7 +73,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
         # This one should evaluate to a string that is one char too long; i.e. exactly 64KiB
         string = "a" * (QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN + 1)
         string_answers = [["nameOfChild", string]]
-        resource = gen_response(participant_id, questionnaire_id, string_answers=string_answers)
+        resource = self.make_questionnaire_response_json(participant_id, questionnaire_id, string_answers=string_answers)
         self.send_post(url, resource, expected_status=http.client.BAD_REQUEST)
 
     def test_insert(self):
@@ -592,7 +591,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
         answers = participant_gender_answers_dao.get_all()
         self.assertEqual(len(answers), 2)
         for answer in answers:
-            self.assertIn(answer.codeId, [90, 95])
+            self.assertIn(answer.codeId, [91, 92])
 
         # resubmit the answers, old value should be removed
         with open(data_path("questionnaire_the_basics_resp_multiple_gender_2.json")) as f:
@@ -610,7 +609,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
         answers = participant_gender_answers_dao.get_all()
         self.assertEqual(len(answers), 2)
         for answer in answers:
-            self.assertIn(answer.codeId, [100, 95])
+            self.assertIn(answer.codeId, [91, 100])
 
     def test_participant_race_answers(self):
         with FakeClock(TIME_1):

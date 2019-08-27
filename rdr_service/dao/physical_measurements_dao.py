@@ -589,7 +589,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
         google_group = location_value[len(_LOCATION_PREFIX) :]
         site = SiteDao().get_by_google_group(google_group)
         if not site:
-            logging.warn("Unknown site: %s" % google_group)
+            logging.warning("Unknown site: %s" % google_group)
             return None
         return site.siteId
 

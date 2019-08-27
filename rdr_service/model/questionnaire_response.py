@@ -43,8 +43,8 @@ class QuestionnaireResponseAnswer(Base):
 
     # This is the maximum # bytes that can be stored in a MySQL TEXT field, which
     # our field valueString should resolve to.
-    # technicall the number is 65535 but now we need a little room for utf-8
-    VALUE_STRING_MAXLEN = 65000
+    # This value has no real affect, under the hood we're changing it to LONGBLOB in alembic/env.py which is 4GB
+    VALUE_STRING_MAXLEN = 65535
 
     __tablename__ = "questionnaire_response_answer"
     questionnaireResponseAnswerId = Column("questionnaire_response_answer_id", Integer, primary_key=True)
