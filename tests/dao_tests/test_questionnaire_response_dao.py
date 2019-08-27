@@ -1,9 +1,8 @@
 import datetime
 import json
-
 import mock
+import unittest
 from sqlalchemy.exc import IntegrityError
-from testlib import testutil
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from rdr_service import config
@@ -24,7 +23,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus
-from rdr_service.test import test_data
+from tests import test_data
 from rdr_service.test.test_data import (
     consent_code,
     email_code,
@@ -32,7 +31,7 @@ from rdr_service.test.test_data import (
     last_name_code,
     login_phone_number_code,
 )
-from rdr_service.test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json
+from tests.helpers.unittest_base import BaseTestCase
 
 TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
@@ -55,10 +54,9 @@ def with_id(resource, id_):
     return json.dumps(resource_json)
 
 
-# TODO: represent in new test suite
-class QuestionnaireResponseDaoTest(FlaskTestBase):
+class QuestionnaireResponseDaoTest(BaseTestCase):
     def setUp(self):
-        super(QuestionnaireResponseDaoTest, self).setUp()
+        super().setUp()
         self.code_dao = CodeDao()
         self.participant_dao = ParticipantDao()
         self.questionnaire_dao = QuestionnaireDao()
@@ -565,7 +563,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         # First check that the normal case actually writes out correctly
         string = "a" * QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN
         string_answers = [["nameOfChild", string]]
-        resource = make_questionnaire_response_json(p_id, q_id, string_answers=string_answers)
+        resource = self.make_questionnaire_response_json(p_id, q_id, string_answers=string_answers)
         qr = self.questionnaire_response_dao.from_client_json(resource, participant_id=int(p_id[1:]))
         with self.questionnaire_response_answer_dao.session() as session:
             self.questionnaire_response_dao.insert(qr)
@@ -576,7 +574,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         # Now check that the incorrect case throws
         string = "a" * (QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN + 1)
         string_answers = [["nameOfChild", string]]
-        resource = make_questionnaire_response_json(p_id, q_id, string_answers=string_answers)
+        resource = self.make_questionnaire_response_json(p_id, q_id, string_answers=string_answers)
         with self.assertRaises(BadRequest):
             qr = self.questionnaire_response_dao.from_client_json(resource, participant_id=int(p_id[1:]))
 
@@ -905,7 +903,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
         return questionnaire_response
 
-    @mock.patch("dao.questionnaire_response_dao._raise_if_gcloud_file_missing")
+    @mock.patch("rdr_service.dao.questionnaire_response_dao._raise_if_gcloud_file_missing")
     def test_consent_pdf_valid_leading_slash(self, mock_gcloud_check):
         consent_pdf_path = "/Participant/xyz/consent.pdf"
         questionnaire_response = self._get_questionnaire_response_with_consents(consent_pdf_path)
@@ -913,7 +911,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         self.questionnaire_response_dao.insert(questionnaire_response)
         mock_gcloud_check.assert_called_with("/%s%s" % (_FAKE_BUCKET, consent_pdf_path))
 
-    @mock.patch("dao.questionnaire_response_dao._raise_if_gcloud_file_missing")
+    @mock.patch("rdr_service.dao.questionnaire_response_dao._raise_if_gcloud_file_missing")
     def test_consent_pdf_valid_no_leading_slash(self, mock_gcloud_check):
         consent_pdf_path = "Participant/xyz/consent.pdf"
         questionnaire_response = self._get_questionnaire_response_with_consents(consent_pdf_path)
@@ -921,22 +919,22 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         self.questionnaire_response_dao.insert(questionnaire_response)
         mock_gcloud_check.assert_called_with("/%s/%s" % (_FAKE_BUCKET, consent_pdf_path))
 
-    @mock.patch("dao.questionnaire_response_dao._raise_if_gcloud_file_missing")
+    @mock.patch("rdr_service.dao.questionnaire_response_dao._raise_if_gcloud_file_missing")
     def test_consent_pdf_file_invalid(self, mock_gcloud_check):
         mock_gcloud_check.side_effect = BadRequest("Test should raise this.")
         qr = self._get_questionnaire_response_with_consents("/nobucket/no/file.pdf")
         with self.assertRaises(BadRequest):
             self.questionnaire_response_dao.insert(qr)
 
-    @mock.patch("dao.questionnaire_response_dao._raise_if_gcloud_file_missing")
+    @mock.patch("rdr_service.dao.questionnaire_response_dao._raise_if_gcloud_file_missing")
     def test_consent_pdf_checks_multiple_extensions(self, mock_gcloud_check):
         qr = self._get_questionnaire_response_with_consents("/Participant/one.pdf", "/Participant/two.pdf")
         self.questionnaire_response_dao.insert(qr)
         self.assertEqual(mock_gcloud_check.call_count, 2)
 
 
-# TODO: represent in new test suite
-class QuestionnaireResponseDaoCloudCheckTest(testutil.CloudStorageTestBase):
+class QuestionnaireResponseDaoCloudCheckTest(BaseTestCase):
+    @unittest.skip("waiting on storage provider for gcloud files.")
     def test_file_exists(self):
         consent_pdf_path = "/%s/Participant/somefile.pdf" % _FAKE_BUCKET
         with self.assertRaises(BadRequest):

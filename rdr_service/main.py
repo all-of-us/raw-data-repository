@@ -55,9 +55,9 @@ def _warmup():
 def _log_request_exception(sender, exception, **extra):  # pylint: disable=unused-argument
     """Logs HTTPExceptions.
 
-  flask_restful automatically returns exception messages for JSON endpoints, but forgoes logs
-  for HTTPExceptions.
-  """
+    flask_restful automatically returns exception messages for JSON endpoints, but forgoes logs
+    for HTTPExceptions.
+    """
     if isinstance(exception, HTTPException):
         # Log everything at error. This handles 400s which, since we have few/predefined clients,
         # we want to notice (and we don't see client-side logs); Stackdriver error reporting only

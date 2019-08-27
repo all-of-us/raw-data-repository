@@ -18,7 +18,7 @@ from rdr_service.model.questionnaire import (
     QuestionnaireHistory,
     QuestionnaireQuestion,
 )
-from rdr_service.test.unit_test.unit_test_util import SqlTestBase, sort_lists
+from tests.helpers.unittest_base import BaseTestCase
 
 EXPECTED_CONCEPT_1 = QuestionnaireConcept(
     questionnaireConceptId=1, questionnaireId=1, questionnaireVersion=1, codeId=1
@@ -35,13 +35,12 @@ EXPECTED_QUESTION_2 = QuestionnaireQuestion(
 TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
 RESOURCE_1 = '{"x": "y"}'
-RESOURCE_1_WITH_ID = '{"x": "y", "version": "1", "id": "1"}'
+RESOURCE_1_WITH_ID = '{"x": "y", "id": "1", "version": "1"}'
 RESOURCE_2 = '{"x": "z", "version": "2"}'
 RESOURCE_2_WITH_ID = '{"x": "z", "version": "2", "id": "1"}'
 
 
-# TODO: represent in new test suite
-class QuestionnaireDaoTest(SqlTestBase):
+class QuestionnaireDaoTest(BaseTestCase):
     def setUp(self):
         super(QuestionnaireDaoTest, self).setUp(with_data=False)
         self.dao = QuestionnaireDao()
@@ -125,7 +124,7 @@ class QuestionnaireDaoTest(SqlTestBase):
         questionnaire = self.dao.get_with_children(1)
 
         self.assertEqual(
-            sort_lists(expected_questionnaire.asdict_with_children()), sort_lists(questionnaire.asdict_with_children())
+            self.sort_lists(expected_questionnaire.asdict_with_children()), self.sort_lists(questionnaire.asdict_with_children())
         )
         self.assertEqual(
             questionnaire.asdict(), self.dao.get_latest_questionnaire_with_concept(self.CODE_1.codeId).asdict()
