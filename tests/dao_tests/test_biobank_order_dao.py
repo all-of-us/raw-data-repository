@@ -10,19 +10,18 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import BiobankOrderStatus, OrderStatus, WithdrawalStatus
-from rdr_service.test.test_data import load_biobank_order_json
-from rdr_service.test.unit_test.unit_test_util import SqlTestBase
+from tests.test_data import load_biobank_order_json
+from tests.helpers.unittest_base import BaseTestCase
 
 
-# TODO: represent in new test suite
-class BiobankOrderDaoTest(SqlTestBase):
+class BiobankOrderDaoTest(BaseTestCase):
     _A_TEST = BIOBANK_TESTS[0]
     _B_TEST = BIOBANK_TESTS[1]
     TIME_1 = datetime.datetime(2018, 9, 20, 5, 49, 11)
     TIME_2 = datetime.datetime(2018, 9, 21, 8, 49, 37)
 
     def setUp(self):
-        super(BiobankOrderDaoTest, self).setUp(use_mysql=True)
+        super().setUp()
         self.participant = Participant(participantId=123, biobankId=555)
         ParticipantDao().insert(self.participant)
         self.dao = BiobankOrderDao()

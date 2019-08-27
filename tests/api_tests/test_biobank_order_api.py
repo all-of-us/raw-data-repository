@@ -14,13 +14,10 @@ from rdr_service.model.biobank_order import (
 from rdr_service.model.participant import Participant
 from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
 from rdr_service.participant_enums import OrderStatus, UNSET_HPO_ID
-from rdr_service.test.test_data import load_biobank_order_json, load_measurement_json
-from rdr_service.test.unit_test.api_test.participant_summary_api_test import _add_code_answer
-from rdr_service.test.unit_test.unit_test_util import (
-    FlaskTestBase,
-    get_restore_or_cancel_info,
-    make_questionnaire_response_json,
-)
+
+from tests.test_data import load_measurement_json, load_biobank_order_json
+from tests.api_tests.test_participant_summary_api import _add_code_answer
+from tests.helpers.unittest_base import BaseTestCase
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
@@ -30,10 +27,9 @@ TIME_5 = datetime.datetime(2016, 1, 5, 0, 1)
 TIME_6 = datetime.datetime(2015, 1, 1)
 
 
-# TODO: represent in new test suite
-class BiobankOrderApiTest(FlaskTestBase):
+class BiobankOrderApiTest(BaseTestCase):
     def setUp(self):
-        super(BiobankOrderApiTest, self).setUp(use_mysql=True)
+        super().setUp()
         self.participant = Participant(participantId=123, biobankId=555)
         self.participant_dao = ParticipantDao()
         self.participant_dao.insert(self.participant)
@@ -449,7 +445,7 @@ class BiobankOrderApiTest(FlaskTestBase):
 
         # cancel the 1st PM
         pm_path = pm_path + "/" + response["id"]
-        cancel_info = get_restore_or_cancel_info()
+        cancel_info = self.get_restore_or_cancel_info()
         self.send_patch(pm_path, cancel_info)
 
         # set up questionnaires to hit the calculate_max_core_sample_time in participant summary
@@ -489,12 +485,12 @@ class BiobankOrderApiTest(FlaskTestBase):
     ):
         code_answers = []
         _add_code_answer(code_answers, "ehrConsent", ehr_consent_answer)
-        qr = make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=code_answers)
+        qr = self.make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=code_answers)
         with FakeClock(time):
             self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
 
     def _submit_empty_questionnaire_response(self, participant_id, questionnaire_id, time=TIME_1):
-        qr = make_questionnaire_response_json(participant_id, questionnaire_id)
+        qr = self.make_questionnaire_response_json(participant_id, questionnaire_id)
         with FakeClock(time):
             self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
 
