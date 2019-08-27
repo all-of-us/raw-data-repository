@@ -5,7 +5,7 @@ from mock import patch
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from rdr_service import app_util, clock, config
-from rdr_service.test.unit_test.unit_test_util import NdbTestBase
+from tests.helpers.unittest_base import BaseTestCase
 
 
 @app_util.auth_required("foo")
@@ -27,10 +27,10 @@ def cron_required(x):
 def not_in_prod():
     pass
 
-
-class AppUtilNdbTest(NdbTestBase):
+@unittest.skip("replace ndb")
+class AppUtilTest(BaseTestCase):
     def setUp(self):
-        super(AppUtilNdbTest, self).setUp()
+        super().setUp()
 
         self.user_info = {
             "example@example.com": {

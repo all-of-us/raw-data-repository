@@ -3,15 +3,14 @@ from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.participant import Participant
-from rdr_service.test.unit_test.unit_test_util import SqlTestBase
+from tests.helpers.unittest_base import BaseTestCase
 
 
-# TODO: represent in new test suite
-class BiobankStoredSampleDaoTest(SqlTestBase):
+class BiobankStoredSampleDaoTest(BaseTestCase):
     """Tests only that a sample can be written and read; see the reconciliation pipeline."""
 
     def setUp(self):
-        super(BiobankStoredSampleDaoTest, self).setUp()
+        super().setUp()
         self.participant = Participant(participantId=123, biobankId=555)
         ParticipantDao().insert(self.participant)
         self.dao = BiobankStoredSampleDao()
