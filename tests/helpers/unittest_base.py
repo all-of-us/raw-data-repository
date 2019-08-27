@@ -311,7 +311,10 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
                 try:
                     obj[key] = sorted(val)
                 except TypeError:
-                    obj[key] = val
+                    if isinstance(val[0], dict):
+                        obj[key] = sorted(val, key=lambda x: tuple(x.values()))
+                    else:
+                        obj[key] = val
         return obj
 
     def assertBundle(self, expected_entries, response, has_next=False):
@@ -375,6 +378,16 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             },
             "status": "cancelled",
         }
+
+    def create_and_verify_created_obj(self, path, resource):
+        response = self.send_post(path, resource)
+        resource_id = response["id"]
+        del response["id"]
+        self.assertJsonResponseMatches(resource, response)
+
+        response = self.send_get("{}/{}".format(path, resource_id))
+        del response["id"]
+        self.assertJsonResponseMatches(resource, response)
 
 def read_dev_config(*files):
     data = {}

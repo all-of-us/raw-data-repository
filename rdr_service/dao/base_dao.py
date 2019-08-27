@@ -364,7 +364,7 @@ class BaseDao(object):
         try:
             return field_filter.add_to_sqlalchemy_query(query, f)
         except ValueError as e:
-            raise BadRequest(e.message)
+            raise BadRequest(str(e))
 
     def _add_pagination_filter(self, query, query_def, fields, first_descending):
         """Adds a pagination filter for the decoded values in the pagination token based on
@@ -671,7 +671,7 @@ class FhirMixin(object):
             if isinstance(self, DomainResource):
                 # Only convert FHIR exceptions to BadError at the top level. For nested objects, FHIR
                 # repackages exceptions itself.
-                raise BadRequest(e.message)
+                raise BadRequest(str(e))
             else:
                 raise
 
