@@ -1,7 +1,7 @@
 import unittest
 
 import mock
-from testlib import testutil
+#from testlib import testutil
 
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
@@ -9,21 +9,20 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.offline.biobank_samples_pipeline import upsert_from_latest_csv
 from rdr_service.participant_enums import SampleStatus
-from rdr_service.test.test_data import load_biobank_order_json
-from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
+from tests.test_data import load_biobank_order_json
+from tests.helpers.unittest_base import BaseTestCase
 
 
 def _callthrough(fn, *args, **kwargs):
     fn(*args, **kwargs)
 
 
-# TODO: represent in new test suite
-class DataGenApiTest(testutil.CloudStorageTestBase, FlaskTestBase):
+class DataGenApiTest(BaseTestCase):
     def setUp(self):
         # Neither CloudStorageTestBase nor our FlaskTestBase correctly calls through to
         # setup(..).setup(..), so explicitly call both here.
-        testutil.CloudStorageTestBase.setUp(self)
-        FlaskTestBase.setUp(self)
+        #testutil.CloudStorageTestBase.setUp(self)
+        BaseTestCase.setUp(self)
 
     @unittest.skip("DA-471")
     @mock.patch("google.appengine.ext.deferred.defer", new=_callthrough)
