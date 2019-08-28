@@ -1,15 +1,15 @@
 import datetime
 import http.client
+import unittest
 
 from mock import patch
 
 from rdr_service import config
 from rdr_service.clock import FakeClock
-from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
+from tests.helpers.unittest_base import BaseTestCase
 
-
-# TODO: represent in new test suite
-class TestConfig(FlaskTestBase):
+@unittest.skip("config uses ndb")
+class TestConfig(BaseTestCase):
     def test_GET_main_config(self):
         from_api = self.send_get("Config")
         from_py = config.get_config()
