@@ -11,7 +11,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 from rdr_service import app_util, config
 from rdr_service.config import GAE_PROJECT
 from rdr_service.api_util import parse_date
-
+from rdr_service.app_util import get_oauth_id
 
 
 # Read bootstrap config admin service account configuration
@@ -46,7 +46,6 @@ def is_config_admin(user_email):
 
     if user_email:
         config_admin = CONFIG_ADMIN_MAP.get(GAE_PROJECT, "configurator@{}.iam.gserviceaccount.com".format(GAE_PROJECT))
-        import ipdb; ipdb.set_trace()
         if user_email == config_admin or user_email == 'example@example.com':
             return True
     return False
@@ -71,28 +70,26 @@ class ConfigApi(Resource):
         date = request.args.get("date")
         if date is not None:
             date = parse_date(date)
-        model = config.load(key, date=date)
-        return model.configuration
+        config_obj = config.load(key, date=date)
+        if config_obj:
+            return config_obj
+        elif key == config.CONFIG_SINGLETON_KEY:
+            return {}
+        else:
+            raise NotFound(f'config not found: {key}')
 
     def post(self, key=config.CONFIG_SINGLETON_KEY):
-        model = config.Configuration(
-            key=ndb.Key(config.Configuration, key), configuration=request.get_json(force=True)
-        )
-        self.validate(model)
-        config.store(model)
-        return model.configuration
+        config_obj = request.get_json(force=True)
+        self.validate(key, config_obj)
+        config.store(key, config_obj)
+        return config_obj
 
     def put(self, key=config.CONFIG_SINGLETON_KEY):
-        model_key = ndb.Key(config.Configuration, key)
-        old_model = model_key.get()
-        if not old_model:
-            raise NotFound("{} with key {} does not exist".format("Configuration", key))
-        # the history mechanism doesn't work unless we make a copy.  So a put is always a clone, never
-        # an actual update.
-        model = config.Configuration(**old_model.to_dict())
-        model.key = model_key
-        model.configuration = request.get_json(force=True)
-        self.validate(model)
+        old_config = config.load(key)
+        if old_config is None:
+            raise NotFound(f'config not found: {key}')
+        
+        config_obj = request.get_json(force=True)
 
         date = None
         if config.getSettingJson(config.ALLOW_NONPROD_REQUESTS, False):
@@ -100,20 +97,17 @@ class ConfigApi(Resource):
         if date is not None:
             date = parse_date(date)
 
-        client_id = app_util.get_oauth_id()
+        client_id = get_oauth_id()
 
-        config.store(model, date=date, client_id=client_id)
-        return model.configuration
+        config.store(key, config_obj, date=date, client_id=client_id)
+        return config_obj
 
-    def validate(self, model):
-        if model.key.id() != config.CONFIG_SINGLETON_KEY:
-            return
-
-        config_obj = model.configuration
-        # make sure all required keys are present and that the values are the right type.
-        for k in config.REQUIRED_CONFIG_KEYS:
-            if k not in config_obj:
-                raise BadRequest("Missing required config key {}".format(k))
-            val = config_obj[k]
-            if not isinstance(val, list) or [v for v in val if not isinstance(v, str)]:
-                raise BadRequest("Config for {} must be a list of strings".format(k))
+    def validate(self, name, config_obj):
+        if name == config.CONFIG_SINGLETON_KEY:
+            # make sure all required keys are present and that the values are the right type.
+            for k in config.REQUIRED_CONFIG_KEYS:
+                if k not in config_obj:
+                    raise BadRequest("Missing required config key {}".format(k))
+                val = config_obj[k]
+                if not isinstance(val, list) or [v for v in val if not isinstance(v, str)]:
+                    raise BadRequest("Config for {} must be a list of strings".format(k))

@@ -28,7 +28,7 @@ htmlcov/
 /rdr_service/data/*
 
 # Unit test configration
-/tests/.test_configs/current_config.json
+/tests/.test_configs/*
 
 # ignore old rest-api
 /rest-api
