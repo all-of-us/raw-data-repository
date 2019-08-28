@@ -11,16 +11,15 @@ from rdr_service.model.biobank_dv_order import BiobankDVOrder
 from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
-from rdr_service.test.test_data import load_test_data_json
-from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
+from tests.test_data import load_test_data_json
+from tests.helpers.unittest_base import BaseTestCase
 
 
-# TODO: represent in new test suite
-class DvOrderApiTestBase(FlaskTestBase):
+class DvOrderApiTestBase(BaseTestCase):
     mayolink_response = None
 
-    def setUp(self, use_mysql=True, with_data=True):
-        super(DvOrderApiTestBase, self).setUp(use_mysql=use_mysql, with_data=with_data)
+    def setUp(self, with_data=True):
+        super().setUp(with_data=with_data)
         self.dv_order_dao = DvOrderDao()
         self.hpo_dao = HPODao()
         self.participant_dao = ParticipantDao()
@@ -34,7 +33,7 @@ class DvOrderApiTestBase(FlaskTestBase):
         self.summary_dao.insert(self.summary)
 
         mayolinkapi_patcher = mock.patch(
-            "dao.dv_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
+            "rdr_service.dao.dv_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
         )
         mayolinkapi_patcher.start()
         self.addCleanup(mayolinkapi_patcher.stop)
@@ -47,7 +46,6 @@ class DvOrderApiTestBase(FlaskTestBase):
             return list(session.query(BiobankDVOrder))
 
 
-# TODO: represent in new test suite
 class DvOrderApiTestPostSupplyRequest(DvOrderApiTestBase):
     def test_order_created(self):
         self.assertEqual(0, len(self.get_orders()))
@@ -61,7 +59,6 @@ class DvOrderApiTestPostSupplyRequest(DvOrderApiTestBase):
         self.assertEqual(1, len(orders))
 
 
-# TODO: represent in new test suite
 class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
     mayolink_response = {
         "orders": {
@@ -126,7 +123,6 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
         self.assertEqual(post_response._status_code, 201)
 
 
-# TODO: represent in new test suite
 class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
     mayolink_response = {
         "orders": {
@@ -163,7 +159,7 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
         orders = self.get_orders()
         self.assertEqual(1, len(orders))
 
-    @mock.patch("dao.dv_order_dao.get_code_id")
+    @mock.patch("rdr_service.dao.dv_order_dao.get_code_id")
     def test_biobank_address_received(self, patched_code_id):
         patched_code_id.return_value = 1
 
@@ -205,7 +201,7 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
             self.assertEqual(i.id, int(1))
             self.assertEqual(i.order_id, int(999999))
 
-    @mock.patch("dao.dv_order_dao.get_code_id")
+    @mock.patch("rdr_service.dao.dv_order_dao.get_code_id")
     def test_biobank_address_received_alt_json(self, patched_code_id):
         patched_code_id.return_value = 1
 
@@ -243,7 +239,6 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
             self.assertEqual(i.order_id, int(999999))
 
 
-# TODO: represent in new test suite
 class DvOrderApiTestPutSupplyDelivery(DvOrderApiTestBase):
     mayolink_response = {
         "orders": {

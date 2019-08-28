@@ -24,7 +24,7 @@ class DataGenApiTest(BaseTestCase):
         #testutil.CloudStorageTestBase.setUp(self)
         BaseTestCase.setUp(self)
 
-    @unittest.skip("DA-471")
+    @unittest.skip("DA-471, switch to new cloud storage provider")
     @mock.patch("google.appengine.ext.deferred.defer", new=_callthrough)
     def test_generate_samples(self):
         participant_id = self.send_post("Participant", {})["participantId"]
