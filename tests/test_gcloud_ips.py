@@ -23,8 +23,8 @@ class GcloudIpsTest(unittest.TestCase):
         self.assertEqual(6, gcloud_ips.lookup_txt.call_count)
         self.assertEqual(response.next_entries, [])
         self.assertEqual(
-            response.ip4,
-            [
+            sorted(response.ip4),
+            sorted([
                 "107.167.160.0/19",
                 "107.178.192.0/18",
                 "146.148.2.0/23",
@@ -62,6 +62,6 @@ class GcloudIpsTest(unittest.TestCase):
                 "108.170.216.0/22",
                 "108.170.220.0/23",
                 "108.170.222.0/24",
-            ],
+            ]),
         )
         self.assertEqual(response.ip6, ["2600:1900::/35"])
