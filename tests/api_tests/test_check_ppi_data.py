@@ -6,13 +6,12 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant import Participant
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.test.test_data import email_code, first_name_code
-from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
+from tests.helpers.unittest_base import BaseTestCase
 
 
-# TODO: represent in new test suite
-class CheckPpiDataApiTest(FlaskTestBase):
+class CheckPpiDataApiTest(BaseTestCase):
     def setUp(self):
-        super(CheckPpiDataApiTest, self).setUp()
+        super().setUp()
         CodeDao().insert(email_code())
         CodeDao().insert(first_name_code())
 
