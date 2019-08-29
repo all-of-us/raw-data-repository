@@ -45,7 +45,6 @@ EXAMPLE_SUPPLY_REQUEST = {
 }
 
 
-# TODO: represent in new test suite
 class SimpleFhirR4ReaderBasicTestCase(unittest.TestCase):
     def test_dict_lookup(self):
         fhir = SimpleFhirR4Reader({"a": "foo"})
