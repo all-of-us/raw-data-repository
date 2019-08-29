@@ -11,15 +11,12 @@ from rdr_service.model.calendar import Calendar
 from rdr_service.model.ehr import EhrReceipt
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
-from rdr_service.test.unit_test.unit_test_util import SqlTestBase
+from tests.helpers.unittest_base import BaseTestCase
 
 
-@unittest.skip("Not used currently")
-# TODO: represent in new test suite
-class EhrReceiptDaoTest(SqlTestBase):
-    def setUp(self, with_data=True, use_mysql=True):
-        super(EhrReceiptDaoTest, self).setUp(with_data=with_data, use_mysql=use_mysql)
-        self.setup_fake()
+class EhrReceiptDaoTest(BaseTestCase):
+    def setUp(self):
+        super().setUp()
         self.calendar_dao = CalendarDao()
         self.org_dao = OrganizationDao()
         self.hpo_dao = HPODao()
