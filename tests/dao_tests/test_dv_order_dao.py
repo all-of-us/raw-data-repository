@@ -11,14 +11,13 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
 from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus
-from rdr_service.test.test_data import load_test_data_json
-from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
+from tests.test_data import load_test_data_json
+from tests.helpers.unittest_base import BaseTestCase
 
 
-# TODO: represent in new test suite
-class DvOrderDaoTestBase(FlaskTestBase):
+class DvOrderDaoTestBase(BaseTestCase):
     def setUp(self):
-        super(DvOrderDaoTestBase, self).setUp(use_mysql=True)
+        super().setUp()
 
         self.post_delivery = load_test_data_json("dv_order_api_post_supply_delivery.json")
         self.put_delivery = load_test_data_json("dv_order_api_put_supply_delivery.json")
@@ -46,7 +45,7 @@ class DvOrderDaoTestBase(FlaskTestBase):
         }
 
         mayolinkapi_patcher = mock.patch(
-            "dao.dv_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
+            "rdr_service.dao.dv_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
         )
         mayolinkapi_patcher.start()
         self.addCleanup(mayolinkapi_patcher.stop)
@@ -84,7 +83,7 @@ class DvOrderDaoTestBase(FlaskTestBase):
         )
         self.assertEqual(status, OrderShipmentTrackingStatus.ENROUTE)
 
-    @mock.patch("dao.dv_order_dao.MayoLinkApi")
+    @mock.patch("rdr_service.dao.dv_order_dao.MayoLinkApi")
     def test_service_unavailable(self, mocked_api):
         # pylint: disable=unused-argument
         def raises(*args):
