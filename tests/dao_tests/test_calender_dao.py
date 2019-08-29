@@ -2,13 +2,12 @@ import datetime
 
 from rdr_service.dao.calendar_dao import CalendarDao, INTERVAL_DAY, INTERVAL_MONTH, INTERVAL_QUARTER, INTERVAL_WEEK
 from rdr_service.model.calendar import Calendar
-from rdr_service.test.unit_test.unit_test_util import SqlTestBase
+from tests.helpers.unittest_base import BaseTestCase
 
 
-# TODO: represent in new test suite
-class MetricsEhrApiIntervalTest(SqlTestBase):
-    def setUp(self, with_data=False, use_mysql=True):
-        super(MetricsEhrApiIntervalTest, self).setUp(with_data=with_data, use_mysql=use_mysql)
+class MetricsEhrApiIntervalTest(BaseTestCase):
+    def setUp(self, with_data=False):
+        super().setUp(with_data=with_data)
         self.calendar_dao = CalendarDao()
 
     def _iter_dates_in_range(self, start, end):
