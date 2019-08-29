@@ -6,6 +6,7 @@ import faker
 import unittest
 import http.client
 
+from tempfile import mkdtemp
 from rdr_service.storage import LocalFilesystemStorageProvider
 from rdr_service import config
 from tests.test_data import data_path
@@ -113,7 +114,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
     def setUp(self, with_data=True, with_consent_codes=False) -> None:
         super(BaseTestCase, self).setUp()
         self.setup_config()
-        self.setup_cloud_storage()
+        self.setup_storage()
         self.app = main.app.test_client()
 
         reset_mysql_instance(with_data, with_consent_codes)
@@ -126,10 +127,9 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         self._consent_questionnaire_id = None
 
     @staticmethod
-    def setup_cloud_storage():
-        root_path = LocalFilesystemStorageProvider.DEFAULT_STORAGE_ROOT
-        if not os.path.exists(root_path):
-            os.mkdir(root_path)
+    def setup_storage():
+        temp_folder_path = mkdtemp()
+        os.environ['RDR_STORAGE_ROOT'] = temp_folder_path
 
     @staticmethod
     def setup_config():

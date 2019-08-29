@@ -33,7 +33,6 @@ _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
 
 
-# TODO: represent in new test suite
 class GenomicPipelineTest(BaseTestCase):
     def setUp(self):
         super(GenomicPipelineTest, self).setUp()
@@ -48,7 +47,8 @@ class GenomicPipelineTest(BaseTestCase):
         self._participant_i = 1
 
     def _clear_default_storage(self):
-        root_path = LocalFilesystemStorageProvider.DEFAULT_STORAGE_ROOT
+        local_storage_provider = LocalFilesystemStorageProvider()
+        root_path = local_storage_provider.get_storage_root()
         for the_file in os.listdir(root_path):
             file_path = os.path.join(root_path, the_file)
             try:
@@ -60,7 +60,8 @@ class GenomicPipelineTest(BaseTestCase):
                 print(e)
 
     def _create_mock_buckets(self):
-        root_path = LocalFilesystemStorageProvider.DEFAULT_STORAGE_ROOT
+        local_storage_provider = LocalFilesystemStorageProvider()
+        root_path = local_storage_provider.get_storage_root()
         try:
             os.mkdir(root_path + os.sep + _FAKE_BUCKET)
             os.mkdir(root_path + os.sep + _FAKE_BIOBANK_SAMPLE_BUCKET)

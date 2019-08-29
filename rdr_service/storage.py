@@ -44,16 +44,16 @@ class StorageProvider(Provider, ABC):
 class LocalFilesystemStorageProvider(StorageProvider):
     DEFAULT_STORAGE_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'tests', '.test_storage'))
 
-    def _get_storage_root(self):
+    def get_storage_root(self):
         root = os.environ.get("RDR_STORAGE_ROOT", self.DEFAULT_STORAGE_ROOT)
         return root if root[-1:] == os.sep else root + os.sep
 
     def _get_local_path(self, path):
         path = path if path[0:1] != os.sep else path[1:]
-        return os.path.join(self._get_storage_root(), path)
+        return os.path.join(self.get_storage_root(), path)
 
     def _get_blob_name_from_local_path(self, local_path):
-        cloud_path = local_path.replace(self._get_storage_root(), '')
+        cloud_path = local_path.replace(self.get_storage_root(), '')
         path = cloud_path if cloud_path[0:1] != '/' else cloud_path[1:]
         bucket_name, _, blob_name = path.partition('/')
         return blob_name
