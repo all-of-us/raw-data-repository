@@ -5,7 +5,7 @@ from werkzeug.exceptions import BadRequest
 from rdr_service.clock import FakeClock
 from rdr_service.dao.code_dao import CodeBookDao, CodeDao, CodeHistoryDao
 from rdr_service.model.code import Code, CodeBook, CodeHistory, CodeType
-from rdr_service.test.unit_test.unit_test_util import SqlTestBase
+from tests.helpers.unittest_base import BaseTestCase
 
 TIME = datetime.datetime(2016, 1, 1, 10, 0)
 TIME_2 = datetime.datetime(2016, 1, 2, 10, 0)
@@ -13,10 +13,9 @@ TIME_3 = datetime.datetime(2016, 1, 3, 10, 0)
 TIME_4 = datetime.datetime(2016, 1, 4, 10, 0)
 
 
-# TODO: represent in new test suite
-class CodeDaoTest(SqlTestBase):
+class CodeDaoTest(BaseTestCase):
     def setUp(self):
-        super(CodeDaoTest, self).setUp()
+        super().setUp()
         self.code_book_dao = CodeBookDao()
         self.code_dao = CodeDao()
         self.code_history_dao = CodeHistoryDao()
