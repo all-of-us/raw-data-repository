@@ -126,8 +126,12 @@ class ConfigProvider(Provider, ABC):
 class LocalFilesystemConfigProvider(ConfigProvider):
     DEFAULT_CONFIG_ROOT = os.path.join(os.path.dirname(__file__), '.configs')
 
+    @classmethod
+    def get_config_root(cls):
+        return os.environ.get('RDR_CONFIG_ROOT', cls.DEFAULT_CONFIG_ROOT)
+
     def __init__(self):
-        self._config_root = os.environ.get('RDR_CONFIG_ROOT', self.DEFAULT_CONFIG_ROOT)
+        self._config_root = self.get_config_root() 
         if not os.path.exists(self._config_root):
             os.mkdir(self._config_root)
         elif not os.path.isdir(self._config_root):
@@ -138,8 +142,7 @@ class LocalFilesystemConfigProvider(ConfigProvider):
         if os.path.exists(config_path):
             with open(config_path, 'r') as handle:
                 return json.load(handle)
-        else:
-            return {}
+        return None
 
     def store(self, name, config_dict, **kwargs):
         config_path = os.path.join(self._config_root, '{}.json'.format(name))
@@ -166,7 +169,7 @@ class GoogleCloudDatastoreConfigProvider(ConfigProvider):
             try:
                 return next(iter(history_query)).obj
             except (StopIteration, AttributeError):
-                raise NotFound("No history object active at {}.".format(date))
+                return None
         entity = datastore_client.get(key=key)
         if entity is None:
             if name == CONFIG_SINGLETON_KEY:
@@ -174,7 +177,7 @@ class GoogleCloudDatastoreConfigProvider(ConfigProvider):
                 entity['configuration'] = {}
                 datastore_client.put(entity)
             else:
-                raise NotFound('No config for {}'.format(name))
+                return None
         return entity
 
     def store(self, name, config_dict, **kwargs):
@@ -295,4 +298,4 @@ def get_config():
     config = singletons.get(
         singletons.MAIN_CONFIG_INDEX, lambda: load(CONFIG_SINGLETON_KEY), cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS
     )
-    return config
+    return config or {}
