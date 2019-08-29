@@ -1,14 +1,9 @@
 """Utilities used by the API definition, and authentication/authorization/roles."""
-import csv
 import datetime
-import os
-from io import BytesIO
 
 from dateutil.parser import parse
-from google.cloud import storage
-from google.cloud.storage import Blob
 from werkzeug.exceptions import BadRequest
-
+from rdr_service.storage import get_storage_provider
 from rdr_service.code_constants import UNMAPPED, UNSET
 
 # Role constants
@@ -169,35 +164,31 @@ def get_code_id(obj, code_dao, field, prefix):
         return UNSET
 
 
-def open_cloud_file(path):
-    client = storage.Client()
-    bucket = client.get_bucket(os.path.dirname(path))
-    obj = os.path.basename(path)
-    blob = storage.blob.Blob(obj, bucket)
-    return BytesIO(blob.download_as_string())
+def open_cloud_file(cloud_file_path, mode=None):
+    provider = get_storage_provider()
+    return provider.open(cloud_file_path, mode or 'rt')
 
 
-def lookup_bucket(path):
-    """returns name of bucket or None"""
-    client = storage.Client()
-    return client.lookup_bucket(path)
+def lookup_bucket(bucket_name):
+    provider = get_storage_provider()
+    return provider.lookup(bucket_name)
 
 
-def list_blobs(path):
-    client = storage.Client()
-    return client.list_blobs(path)
+def list_blobs(bucket_name):
+    provider = get_storage_provider()
+    return provider.list(bucket_name)
 
 
-def upload_from_file(file_name, bucket, contents):
-    client = storage.Client()
-    blob = Blob(contents, client.get_bucket(bucket))
-    with open(file_name, "rb") as f:
-        blob.upload_from_file(f)
+def upload_from_file(source_file_name, cloud_file_path):
+    provider = get_storage_provider()
+    return provider.upload_from_file(source_file_name, cloud_file_path)
+
+
+def upload_from_string(contents, cloud_file_path):
+    provider = get_storage_provider()
+    return provider.upload_from_string(contents, cloud_file_path)
 
 
 def delete_cloud_file(path):
-    client = storage.Client()
-    bucket = client.get_bucket(os.path.dirname(path))
-    obj = os.path.basename(path)
-    blob = storage.blob.Blob(obj, bucket)
-    blob.delete()
+    provider = get_storage_provider()
+    return provider.delete(path)

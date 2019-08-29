@@ -7,6 +7,8 @@ import sys
 import unittest
 import http.client
 
+from tempfile import mkdtemp
+from rdr_service.storage import LocalFilesystemStorageProvider
 from rdr_service import config
 from tests.test_data import data_path
 from rdr_service.code_constants import PPI_SYSTEM
@@ -118,6 +120,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         logger.setLevel(logging.ERROR)
 
         self.setup_config()
+        self.setup_storage()
         self.app = main.app.test_client()
 
         reset_mysql_instance(with_data, with_consent_codes)
@@ -128,6 +131,11 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         questionnaire_dao._add_codes_if_missing = lambda: True
         questionnaire_response_dao._add_codes_if_missing = lambda email: True
         self._consent_questionnaire_id = None
+
+    @staticmethod
+    def setup_storage():
+        temp_folder_path = mkdtemp()
+        os.environ['RDR_STORAGE_ROOT'] = temp_folder_path
 
     @staticmethod
     def setup_config():

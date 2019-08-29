@@ -6,7 +6,7 @@ import collections
 import csv
 import datetime
 import logging
-
+import os
 import pytz
 
 from .genomic_set_file_handler import DataError, timestamp_from_filename
@@ -32,12 +32,12 @@ def process_genomic_manifest_result_file_from_bucket():
     bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
     result_folder_name = config.getSetting(GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME)
 
-    bucket_stat_list = list_blobs("/" + bucket_name)
+    bucket_stat_list = list_blobs(bucket_name)
     if not bucket_stat_list:
         logging.info("No files in cloud bucket %r." % bucket_name)
         return None
     bucket_stat_list = [
-        s for s in bucket_stat_list if s.filename.lower().endswith(".csv") and "%s" % result_folder_name in s.filename
+        s for s in bucket_stat_list if s.name.lower().endswith(".csv") and "%s" % result_folder_name in s.name
     ]
     if not bucket_stat_list:
         logging.info(
@@ -46,10 +46,9 @@ def process_genomic_manifest_result_file_from_bucket():
         )
         return None
 
-    bucket_stat_list.sort(key=lambda s: s.st_ctime)
-    path = bucket_stat_list[-1].filename
-    csv_file = open_cloud_file(path)
-    filename = path.replace("/" + bucket_name + "/" + result_folder_name + "/", "")
+    bucket_stat_list.sort(key=lambda s: s.updated)
+    path = os.path.normpath(bucket_name + '/' + bucket_stat_list[-1].name)
+    filename = os.path.basename(path)
     logging.info("Opening latest genomic manifest result CSV in %r: %r.", bucket_name + "/" + result_folder_name, path)
     timestamp = timestamp_from_filename(filename)
     now = clock.CLOCK.now()
@@ -67,7 +66,8 @@ def process_genomic_manifest_result_file_from_bucket():
         return None
 
     genomic_set_id = _get_genomic_set_id_from_filename(filename)
-    update_package_id_from_manifest_result_file(genomic_set_id, csv_file)
+    with open_cloud_file(path) as csv_file:
+        update_package_id_from_manifest_result_file(genomic_set_id, csv_file)
 
 
 def _get_genomic_set_id_from_filename(csv_filename):

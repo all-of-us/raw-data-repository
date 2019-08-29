@@ -1,6 +1,6 @@
 import mock
 
-from rdr_service.api_util import upload_from_file, open_cloud_file, list_blobs
+from rdr_service.api_util import upload_from_string, open_cloud_file, list_blobs
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -138,7 +138,7 @@ class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
 
     @staticmethod
     def _write_cloud_object(cloud_filename, contents_str):
-        upload_from_file(cloud_filename, "rdr-fake-bucket", contents_str)
+        upload_from_string(contents_str, "/rdr-fake-bucket/" + cloud_filename)
 
     def test_cloudstorage_copy_objects_actual(self):
         self._write_cloud_object("/fake_bucket1/prefix/x1/foo.txt", "foo")

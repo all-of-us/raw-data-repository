@@ -6,7 +6,7 @@ import collections
 import csv
 import datetime
 import logging
-
+import os
 import pytz
 
 from rdr_service import clock, config
@@ -51,11 +51,10 @@ class FileNotFoundError(RuntimeError):
 
 def read_genomic_set_from_bucket():
     try:
-        csv_file, csv_filename, timestamp = get_last_genomic_set_file_info()
+        csv_file_cloud_path, csv_filename, timestamp = get_last_genomic_set_file_info()
     except FileNotFoundError as e:
         logging.info(e.message)
         return None
-
     now = clock.CLOCK.now()
     if now - timestamp > _MAX_INPUT_AGE:
         logging.info(
@@ -63,23 +62,22 @@ def read_genomic_set_from_bucket():
             % (csv_filename, timestamp, now)
         )
         return None
-
     if _is_filename_exist(csv_filename):
         raise DataError("This file %s has already been processed" % csv_filename, external=True)
-
-    csv_reader = csv.DictReader(csv_file, delimiter=",")
-    genomic_set_id = _save_genomic_set_from_csv(csv_reader, csv_filename, timestamp)
-
-    return genomic_set_id
+    with open_cloud_file(csv_file_cloud_path) as csv_file:
+        csv_reader = csv.DictReader(csv_file, delimiter=",")
+        genomic_set_id = _save_genomic_set_from_csv(csv_reader, csv_filename, timestamp)
+        return genomic_set_id
 
 
 def get_last_genomic_set_file_info():
     """Finds the latest CSV & updates/inserts relevant genomic tables from its rows."""
     bucket_name = config.getSetting(config.GENOMIC_SET_BUCKET_NAME)  # raises if missing
-    csv_file, csv_filename = _open_latest_genomic_set_file(bucket_name)
+    csv_file_cloud_path, csv_filename = _open_latest_genomic_set_file(bucket_name)
+
     timestamp = timestamp_from_filename(csv_filename)
 
-    return csv_file, csv_filename, timestamp
+    return csv_file_cloud_path, csv_filename, timestamp
 
 
 def timestamp_from_filename(csv_filename):
@@ -101,10 +99,11 @@ def timestamp_from_filename(csv_filename):
 
 def _open_latest_genomic_set_file(cloud_bucket_name):
     """Returns an open stream for the most recently created CSV in the given bucket."""
-    path = _find_latest_genomic_set_csv(cloud_bucket_name)
-    filename = path.replace("/" + cloud_bucket_name + "/", "")
-    logging.info("Opening latest samples CSV in %r: %r.", cloud_bucket_name, path)
-    return open_cloud_file(path), filename
+    blob_name = _find_latest_genomic_set_csv(cloud_bucket_name)
+    file_name = os.path.basename(blob_name)
+    cloud_path = cloud_bucket_name + '/' + blob_name
+    logging.info("Opening latest samples CSV in %r: %r.", cloud_bucket_name, cloud_path)
+    return cloud_path, file_name
 
 
 def _find_latest_genomic_set_csv(cloud_bucket_name):
@@ -116,17 +115,18 @@ def _find_latest_genomic_set_csv(cloud_bucket_name):
     bucket_stat_list = list_blobs("/" + cloud_bucket_name)
     if not bucket_stat_list:
         raise FileNotFoundError("No files in cloud bucket %r." % cloud_bucket_name)
+
     # GCS does not really have the concept of directories (it's just a filename convention), so all
     # directory listings are recursive and we must filter out subdirectory contents.
     bucket_stat_list = [
         s
         for s in bucket_stat_list
-        if s.filename.lower().endswith(".csv") and "%s" % _RESULT_FILE_SUFFIX not in s.filename
+        if s.name.lower().endswith(".csv") and "%s" % _RESULT_FILE_SUFFIX not in s.name
     ]
     if not bucket_stat_list:
         raise FileNotFoundError("No CSVs in cloud bucket %r (all files: %s)." % (cloud_bucket_name, bucket_stat_list))
-    bucket_stat_list.sort(key=lambda s: s.st_ctime)
-    return bucket_stat_list[-1].filename
+    bucket_stat_list.sort(key=lambda s: s.updated)
+    return bucket_stat_list[-1].name
 
 
 class CsvColumns(object):

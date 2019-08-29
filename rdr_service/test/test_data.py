@@ -111,13 +111,13 @@ def open_genomic_set_file(test_filename):
   Returns a string representing the genomic set CSV file.
   :return: StringIO object
   """
+    with open(data_path(test_filename)) as f:
+        lines = f.readlines()
+        csv_str = ""
+        for line in lines:
+            csv_str += line
 
-    lines = open(data_path(test_filename)).readlines()
-    csv_str = ""
-    for line in lines:
-        csv_str += line
-
-    return csv_str
+        return csv_str
 
 
 def load_questionnaire_response_with_consents(
