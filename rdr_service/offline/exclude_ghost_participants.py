@@ -1,7 +1,7 @@
 import logging
+import os
+
 from csv import DictReader
-
-
 from rdr_service import config
 from rdr_service.api_util import open_cloud_file, list_blobs
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -25,9 +25,11 @@ def mark_ghost_participants():
 
 
 def get_latest_pid_file(bucket):
-    path = _find_most_recent_file(bucket)
-    logging.info("Opening most recent ghost id exclusion list in %r: %r", path, bucket)
-    return open_cloud_file(path), path
+    blob_name = _find_most_recent_file(bucket)
+    file_name = os.path.basename(blob_name)
+    path = bucket + '/' + blob_name
+    logging.info("Opening most recent ghost id exclusion list in %r: %r", blob_name, bucket)
+    return open_cloud_file(path), file_name
 
 
 def _find_most_recent_file(bucket):
@@ -36,11 +38,11 @@ def _find_most_recent_file(bucket):
   Raises:
     RuntimeError: if no CSVs are found in the cloud storage bucket.
   """
-    files_list = list_blobs("/" + bucket)
+    files_list = list_blobs(bucket)
     if not files_list:
         raise DataError("No files in cloud bucket %r." % bucket)
-    files_list = [s for s in files_list if s.filename.lower().endswith(".csv")]
+    files_list = [s for s in files_list if s.name.lower().endswith(".csv")]
     if not files_list:
         raise DataError("No CSVs in cloud bucket %r (all files: %s)." % (bucket, files_list))
-    files_list.sort(key=lambda s: s.st_ctime)
-    return files_list[-1].filename
+    files_list.sort(key=lambda s: s.updated)
+    return files_list[-1].name

@@ -6,6 +6,7 @@ import faker
 import unittest
 import http.client
 
+from rdr_service.storage import LocalFilesystemStorageProvider
 from rdr_service import config
 from tests.test_data import data_path
 from rdr_service.code_constants import PPI_SYSTEM
@@ -112,6 +113,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
     def setUp(self, with_data=True, with_consent_codes=False) -> None:
         super(BaseTestCase, self).setUp()
         self.setup_config()
+        self.setup_cloud_storage()
         self.app = main.app.test_client()
 
         reset_mysql_instance(with_data, with_consent_codes)
@@ -122,6 +124,12 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         questionnaire_dao._add_codes_if_missing = lambda: True
         questionnaire_response_dao._add_codes_if_missing = lambda email: True
         self._consent_questionnaire_id = None
+
+    @staticmethod
+    def setup_cloud_storage():
+        root_path = LocalFilesystemStorageProvider.DEFAULT_STORAGE_ROOT
+        if not os.path.exists(root_path):
+            os.mkdir(root_path)
 
     @staticmethod
     def setup_config():

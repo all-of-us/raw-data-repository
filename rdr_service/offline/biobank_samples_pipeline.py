@@ -6,7 +6,7 @@ Also updates ParticipantSummary data related to samples.
 import csv
 import datetime
 import logging
-
+import os
 import pytz
 
 from rdr_service import clock, config
@@ -107,9 +107,11 @@ def _timestamp_from_filename(csv_filename):
 
 def _open_latest_samples_file(cloud_bucket_name):
     """Returns an open stream for the most recently created CSV in the given bucket."""
-    path = _find_latest_samples_csv(cloud_bucket_name)
-    logging.info("Opening latest samples CSV in %r: %r.", cloud_bucket_name, path)
-    return open_cloud_file(path), path
+    blob_name = _find_latest_samples_csv(cloud_bucket_name)
+    file_name = os.path.basename(blob_name)
+    path = cloud_bucket_name + '/' + blob_name
+    logging.info("Opening latest samples CSV in %r: %r.", cloud_bucket_name, file_name)
+    return open_cloud_file(path), file_name
 
 
 def _find_latest_samples_csv(cloud_bucket_name):
@@ -118,7 +120,7 @@ def _find_latest_samples_csv(cloud_bucket_name):
   Raises:
     RuntimeError: if no CSVs are found in the cloud storage bucket.
   """
-    bucket_stat_list = list_blobs("/" + cloud_bucket_name)
+    bucket_stat_list = list_blobs(cloud_bucket_name)
     if not bucket_stat_list:
         raise DataError("No files in cloud bucket %r." % cloud_bucket_name)
     # GCS does not really have the concept of directories (it's just a filename convention), so all
@@ -126,14 +128,14 @@ def _find_latest_samples_csv(cloud_bucket_name):
     bucket_stat_list = [
         s
         for s in bucket_stat_list
-        if s.filename.lower().endswith(".csv")
-        and "/%s/" % _REPORT_SUBDIR not in s.filename
-        and "/%s" % _GENOMIC_SUBDIR_PREFIX not in s.filename
+        if s.name.lower().endswith(".csv")
+        and "/%s/" % _REPORT_SUBDIR not in s.name
+        and "/%s" % _GENOMIC_SUBDIR_PREFIX not in s.name
     ]
     if not bucket_stat_list:
         raise DataError("No CSVs in cloud bucket %r (all files: %s)." % (cloud_bucket_name, bucket_stat_list))
-    bucket_stat_list.sort(key=lambda s: s.st_ctime)
-    return bucket_stat_list[-1].filename
+    bucket_stat_list.sort(key=lambda s: s.updated)
+    return bucket_stat_list[-1].name
 
 
 class CsvColumns(object):

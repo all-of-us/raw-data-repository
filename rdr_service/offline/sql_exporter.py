@@ -72,7 +72,7 @@ class SqlExporter(object):
     def open_writer(self, file_name, predicate=None):
         gcs_path = "/%s/%s" % (self._bucket_name, file_name)
         logging.info("Exporting data to %s...", gcs_path)
-        dest = open_cloud_file(gcs_path)
-        writer = SqlExportFileWriter(dest, predicate, use_unicode=self._use_unicode)
-        yield writer
-        logging.info("Export to %s complete.", gcs_path)
+        with open_cloud_file(gcs_path, mode='w') as dest:
+            writer = SqlExportFileWriter(dest, predicate, use_unicode=self._use_unicode)
+            yield writer
+            logging.info("Export to %s complete.", gcs_path)

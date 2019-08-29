@@ -15,9 +15,9 @@ import signal
 import sys
 import time
 
-from .daemon import Daemon
-from .gcp_utils import gcp_activate_account, gcp_activate_sql_proxy, gcp_format_sql_instance
-from .system_utils import is_valid_email, setup_logging, setup_unicode, which
+from rdr_service.services.daemon import Daemon
+from rdr_service.services.gcp_utils import gcp_activate_account, gcp_activate_sql_proxy, gcp_format_sql_instance
+from rdr_service.services.system_utils import is_valid_email, setup_logging, setup_unicode, which
 
 _logger = logging.getLogger("rdr_logger")
 

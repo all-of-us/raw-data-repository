@@ -32,3 +32,6 @@ htmlcov/
 
 # ignore old rest-api
 /rest-api
+
+# ignore things in .test_storage
+/tests/.test_storage/*
