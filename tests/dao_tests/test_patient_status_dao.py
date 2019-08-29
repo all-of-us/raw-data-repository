@@ -6,15 +6,12 @@ from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.patient_status_dao import PatientStatusDao
 from rdr_service.model.participant import Participant
-from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
+from tests.helpers.unittest_base import BaseTestCase
 
 
-# TODO: represent in new test suite
-class PatientStatusTestBase(FlaskTestBase):
-    def setUp(self, use_mysql=True, with_data=True, with_consent_codes=False):
-        super(PatientStatusTestBase, self).setUp(
-            use_mysql=use_mysql, with_data=with_data, with_consent_codes=with_consent_codes
-        )
+class PatientStatusTestBase(BaseTestCase):
+    def setUp(self, with_consent_codes=False):
+        super().setUp(with_consent_codes=with_consent_codes)
 
         self.test_data = {
             "subject": "Patient/P123456789",
