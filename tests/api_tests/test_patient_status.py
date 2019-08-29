@@ -7,15 +7,14 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant import Participant
-from rdr_service.test.unit_test.unit_test_util import FlaskTestBase
+from tests.helpers.unittest_base import BaseTestCase
 
 
-# TODO: represent in new test suite
-class DvOrderApiTestBase(FlaskTestBase):
+class DvOrderApiTestBase(BaseTestCase):
     mayolink_response = None
 
-    def setUp(self, use_mysql=True, with_data=True):
-        super(DvOrderApiTestBase, self).setUp(use_mysql=use_mysql, with_data=with_data)
+    def setUp(self):
+        super().setUp()
 
         self.test_data = {
             "subject": "Patient/P123456789",
@@ -68,11 +67,12 @@ class DvOrderApiTestBase(FlaskTestBase):
         )
         resp = self.send_post(url, data, expected_status=http.client.CREATED)
 
-        data["authored"] = "2019-04-27T16:32:01"
+        data["authored"] = "2019-04-27T16:32:01Z"
         data["comment"] = "saw patient at new site"
         data["site"] = "hpo-site-bannerphoenix"
 
         resp = self.send_put(url, data, expected_status=http.client.OK)
+        data["authored"] = data["authored"].strip("Z")
         self.assertDictContainsSubset(data, resp)
 
         # Get record and test that our test_data dict is in the resp.response dict.
