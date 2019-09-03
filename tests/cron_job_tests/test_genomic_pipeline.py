@@ -2,7 +2,6 @@ import csv
 import datetime
 import os
 import pytz
-import shutil
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file, list_blobs
@@ -19,9 +18,8 @@ from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetM
 from rdr_service.model.participant import Participant
 from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import SampleStatus
-from rdr_service.test import test_data
+from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
-from rdr_service.storage import LocalFilesystemStorageProvider
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = "rdr_fake_bucket"
@@ -46,29 +44,11 @@ class GenomicPipelineTest(BaseTestCase):
         self.summary_dao = ParticipantSummaryDao()
         self._participant_i = 1
 
-    def _clear_default_storage(self):
-        local_storage_provider = LocalFilesystemStorageProvider()
-        root_path = local_storage_provider.get_storage_root()
-        for the_file in os.listdir(root_path):
-            file_path = os.path.join(root_path, the_file)
-            try:
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
-            except Exception as e:
-                print(e)
-
-    def _create_mock_buckets(self):
-        local_storage_provider = LocalFilesystemStorageProvider()
-        root_path = local_storage_provider.get_storage_root()
-        try:
-            os.mkdir(root_path + os.sep + _FAKE_BUCKET)
-            os.mkdir(root_path + os.sep + _FAKE_BIOBANK_SAMPLE_BUCKET)
-            os.mkdir(root_path + os.sep + _FAKE_BIOBANK_SAMPLE_BUCKET + os.sep + _FAKE_BUCKET_FOLDER)
-            os.mkdir(root_path + os.sep + _FAKE_BIOBANK_SAMPLE_BUCKET + os.sep + _FAKE_BUCKET_RESULT_FOLDER)
-        except OSError:
-            print("Creation mock buckets failed")
+    mock_bucket_paths = [_FAKE_BUCKET,
+                         _FAKE_BIOBANK_SAMPLE_BUCKET,
+                         _FAKE_BIOBANK_SAMPLE_BUCKET + os.sep + _FAKE_BUCKET_FOLDER,
+                         _FAKE_BIOBANK_SAMPLE_BUCKET + os.sep + _FAKE_BUCKET_RESULT_FOLDER
+                         ]
 
     def _write_cloud_csv(self, file_name, contents_str, bucket=None, folder=None):
         bucket = _FAKE_BUCKET if bucket is None else bucket
@@ -143,8 +123,8 @@ class GenomicPipelineTest(BaseTestCase):
         return summary
 
     def test_end_to_end_valid_case(self):
-        self._clear_default_storage()
-        self._create_mock_buckets()
+        self.clear_default_storage()
+        self.create_mock_buckets(self.mock_bucket_paths)
         participant = self._make_participant()
         self._make_summary(participant)
         self._make_biobank_order(
@@ -344,8 +324,8 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertIn(member.biobankOrderClientId, ["12345678", "12345679", "12345680"])
 
     def test_wrong_file_name_case(self):
-        self._clear_default_storage()
-        self._create_mock_buckets()
+        self.clear_default_storage()
+        self.create_mock_buckets(self.mock_bucket_paths)
         samples_file = test_data.open_genomic_set_file("Genomic-Test-Set-test-3.csv")
 
         input_filename = "Genomic-Test-Set-v1%swrong-name.csv" % self._naive_utc_to_naive_central(
@@ -376,8 +356,8 @@ class GenomicPipelineTest(BaseTestCase):
             genomic_pipeline.process_genomic_water_line()
 
     def test_over_24hours_genomic_set_file_case(self):
-        self._clear_default_storage()
-        self._create_mock_buckets()
+        self.clear_default_storage()
+        self.create_mock_buckets(self.mock_bucket_paths)
         samples_file = test_data.open_genomic_set_file("Genomic-Test-Set-test-3.csv")
 
         over_24hours_time = clock.CLOCK.now() - datetime.timedelta(hours=25)
@@ -395,8 +375,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(len(members), 0)
 
     def test_end_to_end_invalid_case(self):
-        self._clear_default_storage()
-        self._create_mock_buckets()
+        self.clear_default_storage()
+        self.create_mock_buckets(self.mock_bucket_paths)
         participant = self._make_participant()
         self._make_summary(participant, dateOfBirth="2018-02-14", zipCode="")
         self._make_biobank_order(

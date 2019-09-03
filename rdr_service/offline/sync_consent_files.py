@@ -53,12 +53,12 @@ def do_sync_consent_files():
 
 
 def _get_sheet_id():
-    handle = open_cloud_file(HPO_REPORT_CONFIG_GCS_PATH)
-    hpo_config = json.load(handle)
-    sheet_id = hpo_config.get("hpo_report_google_sheet_id")
-    if sheet_id is None:
-        raise ValueError("Missing config value: hpo_report_google_sheet_id")
-    return sheet_id
+    with open_cloud_file(HPO_REPORT_CONFIG_GCS_PATH) as handle:
+        hpo_config = json.load(handle)
+        sheet_id = hpo_config.get("hpo_report_google_sheet_id")
+        if sheet_id is None:
+            raise ValueError("Missing config value: hpo_report_google_sheet_id")
+        return sheet_id
 
 
 def _load_org_data_map(sheet_id):
