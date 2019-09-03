@@ -22,7 +22,7 @@ from rdr_service.model.genomics import (
     GenomicValidationFlag,
 )
 from rdr_service.model.participant import Participant
-from rdr_service.test import test_data
+from tests import test_data
 from rdr_service.storage import LocalFilesystemStorageProvider
 from tests.helpers.unittest_base import BaseTestCase
 
