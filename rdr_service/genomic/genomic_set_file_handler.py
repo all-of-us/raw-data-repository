@@ -52,8 +52,8 @@ class FileNotFoundError(RuntimeError):
 def read_genomic_set_from_bucket():
     try:
         csv_file_cloud_path, csv_filename, timestamp = get_last_genomic_set_file_info()
-    except FileNotFoundError as e:
-        logging.info(e.message)
+    except FileNotFoundError:
+        logging.info("File not found")
         return None
     now = clock.CLOCK.now()
     if now - timestamp > _MAX_INPUT_AGE:
