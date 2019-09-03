@@ -139,7 +139,7 @@ class Client(object):
             )
 
         if resp.status == http.client.UNAUTHORIZED:
-            client_log.warn(
+            client_log.warning(
                 "Unauthorized. If you expect this request to be allowed, try"
                 "tools/install_config.sh --config config/config_dev.json --update"
             )

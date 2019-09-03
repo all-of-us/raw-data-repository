@@ -118,7 +118,7 @@ def open_genomic_set_file(test_filename):
         for line in lines:
             csv_str += line
 
-    return csv_str
+        return csv_str
 
 
 def load_questionnaire_response_with_consents(

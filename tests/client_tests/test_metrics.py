@@ -10,10 +10,9 @@ import pprint
 import unittest
 
 from rdr_service.rdr_client.client import HttpException
-from rdr_service.test.client_test.base import BaseClientTest
+from tests.client_tests.base import BaseClientTest
 
 
-# TODO: represent in new test suite
 class MetricsTest(BaseClientTest):
     def test_metrics(self):
         request = {"start_date": "2017-01-21", "end_date": "2017-01-22"}
