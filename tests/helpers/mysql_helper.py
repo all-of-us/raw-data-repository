@@ -121,6 +121,7 @@ def _initialize_database(with_data=True, with_consent_codes=False):
     dbf.create_schema()
     database_factory.get_generic_database().create_metrics_schema()
 
+
     # TODO: Setup database fixtures
     _load_views_and_functions(dbf.get_engine())
     if with_data:

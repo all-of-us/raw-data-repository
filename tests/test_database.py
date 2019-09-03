@@ -1,6 +1,7 @@
 import datetime
-
 import isodate
+import unittest
+
 from dateutil.tz import tzutc
 
 from rdr_service import dao
@@ -29,6 +30,7 @@ class DatabaseTest(BaseTestCase):
     def setUp(self):
         super().setUp(with_data=False)
         self.database = dao.database_factory.get_database()
+        print(dao.database_factory.DB_CONNECTION_STRING)
 
     def test_schema(self):
         session = self.database.make_session()
@@ -356,47 +358,49 @@ class DatabaseTest(BaseTestCase):
         bo_id = 1
         now = isodate.parse_datetime("2016-01-04T10:28:50-04:00")
 
-        write_session = self.database.make_session()
+        with self.database.session() as write_session:
+            #write_session = self.database.make_session()
 
-        p = self._create_participant(write_session)
-        site = Site(
-            siteId=1, siteName="site", googleGroup="site@googlegroups.com", mayolinkClientNumber=12345, hpoId=1
-        )
-        write_session.add(site)
-        write_session.commit()
-
-        bo = BiobankOrder(
-            biobankOrderId=bo_id,
-            participantId=p.participantId,
-            created=now,
-            sourceSiteId=1,
-            version=1,
-            sourceUsername="bob@pmi-ops.org",
-            collectedSiteId=1,
-            collectedUsername="fred@pmi-ops.org",
-            processedSiteId=1,
-            processedUsername="alice@pmi-ops.org",
-            finalizedSiteId=1,
-            finalizedUsername="elvis@pmi-ops.org",
-            collectedNote=r"written by " + self.fake.last_name(),
-            processedNote="d",
-            finalizedNote="e",
-            logPosition=LogPosition(),
-        )
-        bo.identifiers.append(BiobankOrderIdentifier(system="a", value="b"))
-        bo.samples.append(
-            BiobankOrderedSample(
-                test="a",
-                description="a test invented by " + self.fake.first_name(),
-                processingRequired=True,
-                collected=now,
-                processed=now,
-                finalized=now,
+            p = self._create_participant(write_session)
+            site = Site(
+                siteId=1, siteName="site", googleGroup="site@googlegroups.com", mayolinkClientNumber=12345, hpoId=1
             )
-        )
-        write_session.add(bo)
-        write_session.commit()
+            write_session.add(site)
+            write_session.commit()
 
-        read_session = self.database.make_session()
-        bo = read_session.query(BiobankOrder).get(bo_id)
-        self.assertEqual(bo.created.isoformat(), now.astimezone(tzutc()).replace(tzinfo=None).isoformat())
+            bo = BiobankOrder(
+                biobankOrderId=bo_id,
+                participantId=p.participantId,
+                created=now,
+                sourceSiteId=1,
+                version=1,
+                sourceUsername="bob@pmi-ops.org",
+                collectedSiteId=1,
+                collectedUsername="fred@pmi-ops.org",
+                processedSiteId=1,
+                processedUsername="alice@pmi-ops.org",
+                finalizedSiteId=1,
+                finalizedUsername="elvis@pmi-ops.org",
+                collectedNote=r"written by " + self.fake.last_name(),
+                processedNote="d",
+                finalizedNote="e",
+                logPosition=LogPosition(),
+            )
+            bo.identifiers.append(BiobankOrderIdentifier(system="a", value="b"))
+            bo.samples.append(
+                BiobankOrderedSample(
+                    test="a",
+                    description="a test invented by " + self.fake.first_name(),
+                    processingRequired=True,
+                    collected=now,
+                    processed=now,
+                    finalized=now,
+                )
+            )
+            write_session.add(bo)
+            write_session.commit()
+
+        with self.database.session() as read_session:
+            #read_session = self.database.make_session()
+            bo = read_session.query(BiobankOrder).get(bo_id)
+            self.assertEqual(bo.created.isoformat(), now.astimezone(tzutc()).replace(tzinfo=None).isoformat())
