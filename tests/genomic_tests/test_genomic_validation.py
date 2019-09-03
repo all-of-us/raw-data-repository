@@ -16,13 +16,12 @@ from rdr_service.model.genomics import (
 )
 from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import SampleStatus, WithdrawalStatus
-from rdr_service.test.unit_test.unit_test_util import SqlTestBase
+from tests.helpers.unittest_base import BaseTestCase
 
 
-# TODO: represent in new test suite
-class GenomicSetValidationBaseTestCase(SqlTestBase):
-    def setUp(self, with_data=True, use_mysql=False):
-        super(GenomicSetValidationBaseTestCase, self).setUp(with_data=with_data, use_mysql=use_mysql)
+class GenomicSetValidationBaseTestCase(BaseTestCase):
+    def setUp(self, with_data=True):
+        super().setUp(with_data=with_data)
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
         self.genomic_set_dao = GenomicSetDao()
@@ -300,14 +299,13 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
         self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
 
 
-# TODO: represent in new test suite
 class GenomicSetValidationSafetyTestCase(GenomicSetValidationBaseTestCase):
     def test_transaction(self):
         participant = self.make_participant()
         self.make_summary(participant)
         genomic_set = self.make_genomic_set()
         member = self.make_genomic_member(genomic_set, participant)
-        with mock.patch("genomic.validation.GenomicSetDao.update_with_session") as mocked_set_update:
+        with mock.patch("rdr_service.genomic.validation.GenomicSetDao.update_with_session") as mocked_set_update:
             mocked_set_update.side_effect = Exception("baz")
             with clock.FakeClock(datetime.datetime(2019, 1, 1)):
                 with self.assertRaises(Exception):
