@@ -5,6 +5,7 @@ import unittest
 
 from rdr_service.main_util import configure_logging
 from rdr_service.rdr_client.client import Client
+from tests.helpers.unittest_base import BaseTestCase
 
 # To run the tests against the test instance instead,
 # set environment variable PMI_DRC_RDR_INSTANCE.
@@ -13,10 +14,9 @@ _DEFAULT_INSTANCE = "http://localhost:8080"
 _OFFLINE_BASE_PATH = "offline"
 
 
-# TODO: represent in new test suite
-class BaseClientTest(unittest.TestCase):
+class BaseClientTest(BaseTestCase):
     def setUp(self):
-        super(BaseClientTest, self).setUp()
+        super().setUp()
         configure_logging()
         self.maxDiff = None
         instance = os.environ.get("PMI_DRC_RDR_INSTANCE") or _DEFAULT_INSTANCE

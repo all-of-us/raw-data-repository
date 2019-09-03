@@ -1,10 +1,9 @@
 import http.client
 import unittest
 
-from rdr_service.test.client_test.base import BaseClientTest
+from tests.client_tests.base import BaseClientTest
 
 
-# TODO: represent in new test suite
 class RequestsTest(BaseClientTest):
     """Tests basic mechanics of requests: authorization and headers."""
 
@@ -12,7 +11,7 @@ class RequestsTest(BaseClientTest):
         response, _ = self.client.request(
             "Participant", method="POST", body="{}", authenticated=False, check_status=False
         )
-        self.assertEqual(response.status, http.client.BAD_REQUEST)
+        self.assertEqual(response.status, http.client.UNAUTHORIZED)
 
     def test_header_values(self):
         response, _ = self.client.request("Participant", method="POST", body="{}")
