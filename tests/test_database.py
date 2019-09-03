@@ -30,7 +30,6 @@ class DatabaseTest(BaseTestCase):
     def setUp(self):
         super().setUp(with_data=False)
         self.database = dao.database_factory.get_database()
-        print(dao.database_factory.DB_CONNECTION_STRING)
 
     def test_schema(self):
         session = self.database.make_session()
