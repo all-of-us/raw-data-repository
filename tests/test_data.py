@@ -112,12 +112,13 @@ def open_genomic_set_file(test_filename):
   :return: StringIO object
   """
 
-    lines = open(data_path(test_filename)).readlines()
-    csv_str = ""
-    for line in lines:
-        csv_str += line
+    #lines = open(data_path(test_filename)).readlines()
+    with open(data_path(test_filename)) as lines:
+        csv_str = ""
+        for line in lines:
+            csv_str += line
 
-    return csv_str
+        return csv_str
 
 
 def load_questionnaire_response_with_consents(
