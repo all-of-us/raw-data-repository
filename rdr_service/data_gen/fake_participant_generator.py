@@ -225,8 +225,8 @@ class FakeParticipantGenerator(object):
             return json.load(f)
 
     def _read_csv_from_gcs(self, bucket_name, file_name):
-        infile = open_cloud_file("/%s/%s" % (bucket_name, file_name))
-        return list(csv.DictReader(infile))
+        with open_cloud_file("/%s/%s" % (bucket_name, file_name)) as infile:
+            return list(csv.DictReader(infile))
 
     def _read_csv_from_file(self, file_name):
         with open("app_data/%s" % file_name, mode="r") as infile:

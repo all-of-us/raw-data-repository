@@ -33,7 +33,7 @@ def main(args):
     with open(args.file, "r") as input_file, open("hpos.csv", "w") as hpos_file, open(
         "orgs.csv", "w"
     ) as orgs_file, open("sites.csv", "w") as sites_file:
-        reader = UnicodeDictReader(input_file)
+        reader = csv.DictReader(input_file)
         hpo_writer = csv.writer(hpos_file)
         orgs_writer = csv.writer(orgs_file)
         sites_writer = csv.writer(sites_file)

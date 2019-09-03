@@ -91,8 +91,9 @@ def open_biobank_samples(biobank_ids, tests):
   """
     nids = len(biobank_ids)
     # get the same number of sample lines as biobank_ids, plus header line.
-    lines = open(data_path("biobank_samples_1.csv")).readlines()[: nids + 1]
-    csv_str = lines[0]  # include header line every time.
+    with open(data_path("biobank_samples_1.csv")) as f:
+        lines = f.readlines()[: nids + 1]
+        csv_str = lines[0]  # include header line every time.
 
     for x in range(0, nids):
         # if we don't have a test code for this index, use a random one.
@@ -111,9 +112,8 @@ def open_genomic_set_file(test_filename):
   Returns a string representing the genomic set CSV file.
   :return: StringIO object
   """
-
-    #lines = open(data_path(test_filename)).readlines()
-    with open(data_path(test_filename)) as lines:
+    with open(data_path(test_filename)) as f:
+        lines = f.readlines()
         csv_str = ""
         for line in lines:
             csv_str += line

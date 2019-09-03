@@ -60,7 +60,7 @@ class DataError(RuntimeError):
 
 
 def upsert_from_latest_csv():
-    csv_file, csv_filename, timestamp = get_last_biobank_sample_file_info()
+    csv_file_path, csv_filename, timestamp = get_last_biobank_sample_file_info()
 
     now = clock.CLOCK.now()
     if now - timestamp > _MAX_INPUT_AGE:
@@ -69,9 +69,9 @@ def upsert_from_latest_csv():
             % (csv_filename, timestamp, now),
             external=True,
         )
-
-    csv_reader = csv.DictReader(csv_file, delimiter="\t")
-    written = _upsert_samples_from_csv(csv_reader)
+    with open_cloud_file(csv_file_path) as csv_file:
+        csv_reader = csv.DictReader(csv_file, delimiter="\t")
+        written = _upsert_samples_from_csv(csv_reader)
     ParticipantSummaryDao().update_from_biobank_stored_samples()
     return written, timestamp
 
@@ -82,10 +82,10 @@ def get_last_biobank_sample_file_info(monthly=False):
     if monthly:
         bucket_name = bucket_name + "/60_day_manifests"
 
-    csv_file, csv_filename = _open_latest_samples_file(bucket_name)
+    csv_file_path, csv_filename = _open_latest_samples_file(bucket_name)
     timestamp = _timestamp_from_filename(csv_filename)
 
-    return csv_file, csv_filename, timestamp
+    return csv_file_path, csv_filename, timestamp
 
 
 def _timestamp_from_filename(csv_filename):
@@ -111,7 +111,7 @@ def _open_latest_samples_file(cloud_bucket_name):
     file_name = os.path.basename(blob_name)
     path = cloud_bucket_name + '/' + blob_name
     logging.info("Opening latest samples CSV in %r: %r.", cloud_bucket_name, file_name)
-    return open_cloud_file(path), file_name
+    return path, file_name
 
 
 def _find_latest_samples_csv(cloud_bucket_name):
@@ -129,8 +129,8 @@ def _find_latest_samples_csv(cloud_bucket_name):
         s
         for s in bucket_stat_list
         if s.name.lower().endswith(".csv")
-        and "/%s/" % _REPORT_SUBDIR not in s.name
-        and "/%s" % _GENOMIC_SUBDIR_PREFIX not in s.name
+        and "%s/" % _REPORT_SUBDIR not in s.name
+        and "%s" % _GENOMIC_SUBDIR_PREFIX not in s.name
     ]
     if not bucket_stat_list:
         raise DataError("No CSVs in cloud bucket %r (all files: %s)." % (cloud_bucket_name, bucket_stat_list))
@@ -198,8 +198,8 @@ def _upsert_samples_from_csv(csv_reader):
                 written += samples_dao.upsert_all(samples)
 
         return written
-    except ValueError as e:
-        raise DataError("Error upserting samples from CSV: %s" % e.message)
+    except ValueError:
+        raise DataError("Error upserting samples from CSV")
 
 
 def _parse_timestamp(row, key, sample):
@@ -207,10 +207,10 @@ def _parse_timestamp(row, key, sample):
     if str_val:
         try:
             naive = datetime.datetime.strptime(str_val, _INPUT_TIMESTAMP_FORMAT)
-        except ValueError as e:
+        except ValueError:
             raise DataError(
-                "Sample %r for %r has bad timestamp %r: %s"
-                % (sample.biobankStoredSampleId, sample.biobankId, str_val, e.message)
+                "Sample %r for %r has bad timestamp %r"
+                % (sample.biobankStoredSampleId, sample.biobankId, str_val)
             )
         # Assume incoming times are in Central time (CST or CDT). Convert to UTC for storage, but drop
         # tzinfo since storage is naive anyway (to make stored/fetched values consistent).
@@ -256,7 +256,7 @@ def write_reconciliation_report(now, report_type="daily"):
     """Writes order/sample reconciliation reports to GCS."""
     bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
     _query_and_write_reports(
-        SqlExporter(bucket_name, use_unicode=True), now, report_type, *_get_report_paths(now, report_type)
+        SqlExporter(bucket_name), now, report_type, *_get_report_paths(now, report_type)
     )
 
 

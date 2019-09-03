@@ -92,7 +92,7 @@ class TableExporter(object):
         if get_database().db_type == "sqlite":
             # No schemas in SQLite.
             sql_table = table_name
-        SqlExporter(bucket_name, use_unicode=True).run_export(
+        SqlExporter(bucket_name).run_export(
             output_path, "SELECT * FROM {}".format(sql_table), transformf=transformf, instance_name=instance_name
         )
         return "%s/%s" % (bucket_name, output_path)

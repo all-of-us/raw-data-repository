@@ -44,27 +44,7 @@ class GenomicSetFileHandlerTest(BaseTestCase):
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
 
-    def _clear_default_storage(self):
-        local_storage_provider = LocalFilesystemStorageProvider()
-        root_path = local_storage_provider.get_storage_root()
-        for the_file in os.listdir(root_path):
-            file_path = os.path.join(root_path, the_file)
-            try:
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
-            except Exception as e:
-                print(e)
-
-    def _create_mock_buckets(self):
-        local_storage_provider = LocalFilesystemStorageProvider()
-        root_path = local_storage_provider.get_storage_root()
-        try:
-            os.mkdir(root_path + os.sep + _FAKE_BUCKET)
-            os.mkdir(root_path + os.sep + _FAKE_BUCKET + os.sep + _FAKE_BUCKET_FOLDER)
-        except OSError:
-            print("Creation mock buckets failed")
+    mock_bucket_paths = [_FAKE_BUCKET, _FAKE_BUCKET + os.sep + _FAKE_BUCKET_FOLDER]
 
     def _write_cloud_csv(self, file_name, contents_str, bucket=None, folder=None):
         bucket = _FAKE_BUCKET if bucket is None else bucket
@@ -104,14 +84,14 @@ class GenomicSetFileHandlerTest(BaseTestCase):
         return BiobankOrder(**kwargs)
 
     def test_no_file_found(self):
-        self._clear_default_storage()
-        self._create_mock_buckets()
+        self.clear_default_storage()
+        self.create_mock_buckets(self.mock_bucket_paths)
         # If no file found, it will not raise any error
         self.assertIsNone(genomic_set_file_handler.read_genomic_set_from_bucket())
 
     def test_read_from_csv_file(self):
-        self._clear_default_storage()
-        self._create_mock_buckets()
+        self.clear_default_storage()
+        self.create_mock_buckets(self.mock_bucket_paths)
         participant = self.participant_dao.insert(Participant(participantId=123, biobankId=1234))
         self.summary_dao.insert(self.participant_summary(participant))
         bo = self._make_biobank_order(
@@ -167,8 +147,8 @@ class GenomicSetFileHandlerTest(BaseTestCase):
             self.assertIn(item.sexAtBirth, ["F", "M"])
 
     def test_create_genomic_set_result_file(self):
-        self._clear_default_storage()
-        self._create_mock_buckets()
+        self.clear_default_storage()
+        self.create_mock_buckets(self.mock_bucket_paths)
         participant = self.participant_dao.insert(Participant(participantId=123, biobankId=123))
         self.summary_dao.insert(self.participant_summary(participant))
         bo = self._make_biobank_order(
@@ -305,8 +285,8 @@ class GenomicSetFileHandlerTest(BaseTestCase):
             self.assertEqual(rows[2][ResultCsvColumns.SEX_AT_BIRTH], "F")
 
     def test_create_and_upload_biobank_manifest_file(self):
-        self._clear_default_storage()
-        self._create_mock_buckets()
+        self.clear_default_storage()
+        self.create_mock_buckets(self.mock_bucket_paths)
         participant = self.participant_dao.insert(Participant(participantId=123, biobankId=123))
         self.summary_dao.insert(self.participant_summary(participant))
         bo = self._make_biobank_order(

@@ -6,6 +6,11 @@ import faker
 import sys
 import unittest
 import http.client
+import shutil
+import io
+import collections
+import contextlib
+import csv
 
 from tempfile import mkdtemp
 from rdr_service.storage import LocalFilesystemStorageProvider
@@ -27,6 +32,9 @@ from rdr_service.participant_enums import (
     WithdrawalStatus,
 )
 from tests.helpers.mysql_helper import reset_mysql_instance
+from rdr_service.offline import sql_exporter
+
+
 class CodebookTestMixin:
 
     @staticmethod
@@ -34,7 +42,6 @@ class CodebookTestMixin:
         code_dao = CodeDao()
         for value in values:
             code_dao.insert(Code(system=PPI_SYSTEM, value=value, codeType=code_type, mapped=True))
-
 
 
 class QuestionnaireTestMixin:
@@ -396,6 +403,85 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         response = self.send_get("{}/{}".format(path, resource_id))
         del response["id"]
         self.assertJsonResponseMatches(resource, response)
+
+    @staticmethod
+    def clear_default_storage():
+        local_storage_provider = LocalFilesystemStorageProvider()
+        root_path = local_storage_provider.get_storage_root()
+        for the_file in os.listdir(root_path):
+            file_path = os.path.join(root_path, the_file)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print(e)
+
+    @staticmethod
+    def create_mock_buckets(paths):
+        local_storage_provider = LocalFilesystemStorageProvider()
+        root_path = local_storage_provider.get_storage_root()
+        try:
+            for path in paths:
+                os.mkdir(root_path + os.sep + path)
+        except OSError:
+            print("Creation mock buckets failed")
+
+
+class InMemorySqlExporter(sql_exporter.SqlExporter):
+    """Store rows that would be written to GCS CSV in a StringIO instead.
+
+  Provide some assertion helpers related to CSV contents.
+  """
+
+    def __init__(self, test):
+        super(InMemorySqlExporter, self).__init__("inmemory")  # fake bucket name
+        self._test = test
+        self._path_to_buffer = collections.defaultdict(io.StringIO)
+
+    @contextlib.contextmanager
+    def open_writer(self, file_name, predicate=None):
+        yield sql_exporter.SqlExportFileWriter(self._path_to_buffer[file_name], predicate)
+
+    def assertFilesEqual(self, paths):
+        self._test.assertCountEqual(paths, list(self._path_to_buffer.keys()))
+
+    def _get_dict_reader(self, file_name):
+        return csv.DictReader(
+            io.StringIO(self._path_to_buffer[file_name].getvalue()), delimiter=sql_exporter.DELIMITER
+        )
+
+    def assertColumnNamesEqual(self, file_name, col_names):
+        self._test.assertCountEqual(col_names, self._get_dict_reader(file_name).fieldnames)
+
+    def assertRowCount(self, file_name, n):
+        rows = list(self._get_dict_reader(file_name))
+        self._test.assertEqual(
+            n, len(rows), "Expected %d rows in %r but found %d: %s." % (n, file_name, len(rows), rows)
+        )
+
+    def assertHasRow(self, file_name, expected_row):
+        """Asserts that the writer got a row that has all the values specified in the given row.
+
+    Args:
+      file_name: The bucket-relative path of the file that should have the row.
+      expected_row: A dict like {'biobank_id': 557741928, sent_test: None} specifying a subset of
+          the fields in a row that should have been written.
+    Returns:
+      The matched row.
+    """
+        rows = list(self._get_dict_reader(file_name))
+        for row in rows:
+            found_all = True
+            for required_k, required_v in expected_row.items():
+                if required_k not in row or row[required_k] != required_v:
+                    found_all = False
+                    break
+            if found_all:
+                return row
+        self._test.fail("No match found for expected row %s among %d rows: %s" % (expected_row, len(rows), rows))
+
 
 def read_dev_config(*files):
     data = {}

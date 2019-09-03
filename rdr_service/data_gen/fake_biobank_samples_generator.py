@@ -47,8 +47,7 @@ def generate_samples(fraction_missing):
     num_rows = 0
     sample_id_start = random.randint(1000000, 10000000)
 
-    f = open_cloud_file(file_name)
-    with open(f) as dest:
+    with open_cloud_file(file_name) as dest:
         writer = csv.writer(dest, delimiter="\t")
         writer.writerow(CsvColumns.ALL)
 

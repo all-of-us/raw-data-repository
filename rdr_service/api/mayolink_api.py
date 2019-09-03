@@ -62,8 +62,8 @@ class MayoLinkApi(UpdatableApi):
         self.endpoint = config.getSetting(config.MAYOLINK_ENDPOINT)
         # For now I can not figure out how to use google cloud on dev_appserver, comment out the
         # below and manually add self.username, etc.
-        file_path = open_cloud_file(self.path)
-        self.creds = json.load(file_path)
+        with open_cloud_file(self.path) as file_path:
+            self.creds = json.load(file_path)
         self.username = self.creds.get("username")
         self.pw = self.creds.get("password")
         self.account = self.creds.get("account")
