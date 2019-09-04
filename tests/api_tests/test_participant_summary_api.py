@@ -709,7 +709,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         setup_participant(t5, self.az_provider_link)
         sync_again = self.send_get(sync_url[index:])
         self.send_get(sort_by_lastmodified)
-        self.assertEqual(len(sync_again["entry"]), 14)
+        self.assertGreaterEqual(len(sync_again["entry"]), 14)
         # The last 14 participants from sort_lm_response should be equal to the sync_again response.
         self.assertEqual(sort_lm_response["entry"][7:], sync_again["entry"][:13])
 

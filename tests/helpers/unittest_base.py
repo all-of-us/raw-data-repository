@@ -416,7 +416,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
                 elif os.path.isdir(file_path):
                     shutil.rmtree(file_path)
             except Exception as e:
-                print(e)
+                print(str(e))
 
     @staticmethod
     def create_mock_buckets(paths):

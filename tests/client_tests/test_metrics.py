@@ -6,7 +6,6 @@ that metrics come back and that it doen't crash.
 """
 
 import http.client
-import pprint
 import unittest
 
 from rdr_service.rdr_client.client import HttpException
@@ -18,7 +17,6 @@ class MetricsTest(BaseClientTest):
         request = {"start_date": "2017-01-21", "end_date": "2017-01-22"}
         try:
             response = self.client.request_json("Metrics", "POST", request)
-            pprint.pprint(response)
         except HttpException as ex:
             if ex.code == http.client.NOT_FOUND:
                 print("No metrics loaded")
