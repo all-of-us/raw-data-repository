@@ -186,8 +186,6 @@ class BQParticipantSummarySchema(BQSchema):
   date_of_birth = BQField('date_of_birth', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
   primary_language = BQField('primary_language', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
-  contact_method = BQField('contact_method', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  contact_method_id = BQField('contact_method_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
   phone_number = BQField('phone_number', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
   login_phone_number = BQField('login_phone_number', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
   email = BQField('email', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
