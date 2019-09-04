@@ -8,8 +8,11 @@ from model.site import Site
 
 class BigQuerySyncDao(UpsertableDao):
 
-  def __init__(self):
-    super(BigQuerySyncDao, self).__init__(BigQuerySync)
+  def __init__(self, backup=False):
+    """
+    :param backup: Use backup readonly database connection.
+    """
+    super(BigQuerySyncDao, self).__init__(BigQuerySync, backup=backup)
 
 
 class BigQueryGenerator(object):
@@ -60,7 +63,7 @@ class BigQueryGenerator(object):
 
   def _merge_schema_dicts(self, dict1, dict2):
     """
-    Safely merge dict2 schema into to dict1 schema
+    Safely merge dict2 schema into dict1 schema
     :param dict1: dict object
     :param dict2: dict object
     :return: dict

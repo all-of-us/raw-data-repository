@@ -6,7 +6,7 @@ from unit_test_util import SqlTestBase
 
 import clock
 from code_constants import BIOBANK_TESTS
-from dao.bigquery_sync_dao import BQParticipantSummaryGenerator
+from dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
 from dao.biobank_order_dao import BiobankOrderDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao

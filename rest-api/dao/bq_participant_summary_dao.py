@@ -34,7 +34,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
     :return: BQRecord object
     """
     if not self.dao:
-      self.dao = BigQuerySyncDao()
+      self.dao = BigQuerySyncDao(backup=True)
 
     with self.dao.session() as session:
       # prep participant info from Participant record

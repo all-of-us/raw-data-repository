@@ -24,7 +24,7 @@ class _BQModuleSchema(BQSchema):
 
   def get_fields(self):
     """
-    Look up a participant id who has submitted this module and then get the module response answers to usea
+    Look up a participant id who has submitted this module and then get the module response answers to use
     for creating the schema.
     :return: list of fields
     """
@@ -42,18 +42,6 @@ class _BQModuleSchema(BQSchema):
                    'mode': BQFieldModeEnum.REQUIRED.name})
 
     dao = BigQuerySyncDao()
-
-    # SQL to find a participant that has submitted the given module.
-    # pylint: disable=unused-variable
-    _sql_pid = text("""
-        select qr.participant_id as p_id
-        from questionnaire_response qr inner join questionnaire_concept qc on 
-                    qr.questionnaire_id = qc.questionnaire_id
-           inner join code c on qc.code_id = c.code_id
-        where c.value = :mod
-        order by qr.questionnaire_response_id desc
-        limit 1;
-      """)
 
     _sql_term = text("""
         select convert(qh.resource using utf8) as resource 
@@ -262,6 +250,8 @@ class BQPDREHRConsentPIISchema(_BQModuleSchema):
   _module = 'EHRConsentPII'
   _excluded_fields = (
     'EHRConsentPII_Signature',
+    'EHRConsentPII_ILHIPPAWitnessSignature',
+    'EHRConsentPII_HelpWithConsentSignature'
   )
 
 
