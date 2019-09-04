@@ -1,3 +1,4 @@
+import copy
 import httplib
 
 import mock
@@ -79,6 +80,22 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
     }
   }
 
+  def _set_mayo_address(self, data):
+    """ set the address of a Supply Delivery json to the Mayo address """
+    req = copy.deepcopy(data)
+
+    for item in req['contained']:
+      if item['resourceType'] == 'Location':
+        item['address'] = {'city': "Rochester", 'state': "MN",
+                            'postalCode': "55901", 'line': ["3050 Superior Drive NW"], 'type': 'postal', 'use': 'work'}
+    # Mayo tracking ID
+    req['identifier'] = \
+      [{"system": "http://joinallofus.org/fhir/trackingId", "value": "98765432109876543210"}]
+    # Participant Tracking ID
+    req['partOf'] = \
+      [{'identifier': {"system": "http://joinallofus.org/fhir/trackingId", "value": "P12435464423"}}]
+    return req
+
   def test_order_updated(self):
     self.assertEqual(0, len(self.get_orders()))
     post_response = self.send_post(
@@ -93,13 +110,13 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
     )
     post_response = self.send_post(
         'SupplyDelivery',
-        request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
+        request_data=self._set_mayo_address(self.get_payload('dv_order_api_post_supply_delivery.json')),
         expected_status=httplib.CREATED
     )
     location_id = post_response.location.rsplit('/', 1)[-1]
     self.send_put(
         'SupplyDelivery/{}'.format(location_id),
-        request_data=self.get_payload('dv_order_api_put_supply_delivery.json'),
+        request_data=self._set_mayo_address(self.get_payload('dv_order_api_put_supply_delivery.json')),
     )
 
     orders = self.get_orders()
