@@ -23,7 +23,7 @@ def make_update_participant_summaries_job():
     try:
         bigquery_view = config.getSetting(config_param, None)
     except config.InvalidConfigException as e:
-        LOG.warn("Config lookup exception for {}: {}".format(config_param, e))
+        LOG.warning("Config lookup exception for {}: {}".format(config_param, e))
         bigquery_view = None
     if bigquery_view:
         query = "SELECT person_id FROM `{}`".format(bigquery_view)
@@ -42,7 +42,7 @@ def update_particiant_summaries():
     if job is not None:
         update_participant_summaries_from_job(job)
     else:
-        LOG.warn("Skipping update_participant_summaries because of invalid config")
+        LOG.warning("Skipping update_participant_summaries because of invalid config")
 
 
 def update_participant_summaries_from_job(job):
@@ -60,11 +60,11 @@ def make_update_organizations_job():
     try:
         bigquery_view = config.getSetting(config_param, None)
     except config.InvalidConfigException as e:
-        LOG.warn("Config lookup exception for {}: {}".format(config_param, e))
+        LOG.warning("Config lookup exception for {}: {}".format(config_param, e))
         bigquery_view = None
     if bigquery_view:
         query = "SELECT org_id, person_upload_time FROM `{}`".format(bigquery_view)
-        return cloud_utils.bigquery.BigQueryJob(query, default_dataset_id="operations_analytics", page_size=1000)
+        return bigquery.BigQueryJob(query, default_dataset_id="operations_analytics", page_size=1000)
     else:
         return None
 
@@ -79,7 +79,7 @@ def update_organizations():
     if job is not None:
         update_organizations_from_job(job)
     else:
-        LOG.warn("Skipping update_organizations because of invalid config")
+        LOG.warning("Skipping update_organizations because of invalid config")
 
 
 def update_organizations_from_job(job):

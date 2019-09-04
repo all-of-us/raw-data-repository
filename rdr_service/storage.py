@@ -2,6 +2,7 @@ import os
 import glob
 import shutil
 import datetime
+import hashlib
 
 from contextlib import ContextDecorator
 from tempfile import mkstemp
@@ -25,7 +26,11 @@ class StorageProvider(Provider, ABC):
         pass
 
     @abstractmethod
-    def list(self, bucket_name):
+    def list(self, bucket_name, prefix):
+        pass
+
+    @abstractmethod
+    def get_blob(self, bucket_name, blob_name):
         pass
 
     @abstractmethod
@@ -38,6 +43,10 @@ class StorageProvider(Provider, ABC):
 
     @abstractmethod
     def delete(self, path):
+        pass
+
+    @abstractmethod
+    def copy_blob(self, source_path, destination_path):
         pass
 
 
@@ -68,9 +77,25 @@ class LocalFilesystemStorageProvider(StorageProvider):
         else:
             return None
 
-    def list(self, bucket_name):
-        path = self._get_local_path(bucket_name)
+    def get_blob(self, bucket_name, blob_name):
+        file_path = os.path.normpath(self._get_local_path(bucket_name) + os.sep + blob_name)
+        if not os.path.exists(file_path):
+            return None
 
+        updated = datetime.datetime.utcfromtimestamp(os.path.getmtime(file_path)).replace(tzinfo=UTC)
+        updated = updated.strftime(_RFC3339_MICROS)
+        properties = {
+            'updated': updated,
+            'etag': self.md5_checksum(file_path)
+        }
+        blob = self._make_blob(blob_name, bucket=None, properties=properties)
+        return blob
+
+    def list(self, bucket_name, prefix):
+        path = self._get_local_path(bucket_name)
+        if prefix is not None:
+            prefix = prefix[:-1] if prefix[-1:] == '/' else prefix
+            path = os.path.normpath(path + os.sep + prefix)
         files = filter(os.path.isfile, glob.glob(path + os.sep + '**' + os.sep + '*', recursive=True))
 
         blob_list = []
@@ -98,12 +123,29 @@ class LocalFilesystemStorageProvider(StorageProvider):
         path = self._get_local_path(path)
         os.remove(path)
 
+    def copy_blob(self, source_path, destination_path):
+        source_path = self._get_local_path(source_path)
+        destination_path = self._get_local_path(destination_path)
+        os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+        shutil.copy(source_path, destination_path)
+
     @staticmethod
     def _make_blob(*args, **kw):
         properties = kw.pop("properties", {})
         blob = Blob(*args, **kw)
         blob._properties.update(properties)
         return blob
+
+    @staticmethod
+    def md5_checksum(file_path):
+        with open(file_path, 'rb') as fh:
+            m = hashlib.md5()
+            while True:
+                data = fh.read(8192)
+                if not data:
+                    break
+                m.update(data)
+            return m.hexdigest()
 
 
 class GoogleCloudStorageFile(ContextDecorator):
@@ -168,9 +210,14 @@ class GoogleCloudStorageProvider(StorageProvider):
         client = storage.Client()
         return client.lookup_bucket(bucket_name)
 
-    def list(self, bucket_name):
+    def list(self, bucket_name, prefix):
         client = storage.Client()
-        return client.list_blobs(bucket_name)
+        return client.list_blobs(bucket_name, prefix=prefix)
+
+    def get_blob(self, bucket_name, blob_name):
+        client = storage.Client()
+        bucket = client.get_bucket(bucket_name)
+        return bucket.get_blob(blob_name)
 
     def upload_from_file(self, source_file, path):
         client = storage.Client()
@@ -192,6 +239,16 @@ class GoogleCloudStorageProvider(StorageProvider):
         bucket = client.get_bucket(bucket_name)
         blob = storage.blob.Blob(blob_name, bucket)
         blob.delete()
+
+    def copy_blob(self, source_path, destination_path):
+        source_bucket_name, source_blob_name = self._parse_path(source_path)
+        destination_bucket_name, destination_blob_name = self._parse_path(destination_path)
+        storage_client = storage.Client()
+        source_bucket = storage_client.get_bucket(source_bucket_name)
+        source_blob = source_bucket.blob(source_blob_name)
+        destination_bucket = storage_client.get_bucket(destination_bucket_name)
+
+        source_bucket.copy_blob(source_blob, destination_bucket, destination_blob_name)
 
     @staticmethod
     def _parse_path(path):
