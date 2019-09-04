@@ -107,7 +107,7 @@ class BigQuerySyncDaoTest(SqlTestBase):
   def test_participant_summary_gen(self):
 
     gen = BQParticipantSummaryGenerator()
-    ps_json = gen.make_participant_summary(self.participant.participantId)
+    ps_json = gen.make_bqrecord(self.participant.participantId)
 
     self.assertIsNotNone(ps_json)
     self.assertEqual(ps_json.sign_up_time, self.TIME_1)

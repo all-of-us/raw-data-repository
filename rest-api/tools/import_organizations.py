@@ -20,6 +20,10 @@ import os
 import logging
 import googlemaps
 from dateutil.parser import parse
+
+from dao.bq_hpo_dao import bq_hpo_update
+from dao.bq_organization_dao import bq_organization_update
+from dao.bq_site_dao import bq_site_update
 from tools.csv_importer import CsvImporter
 from dao.hpo_dao import HPODao
 from dao.organization_dao import OrganizationDao
@@ -588,6 +592,12 @@ def main(args):
   OrganizationImporter().run(args.organization_file, args.dry_run)
   OrganizationDao()._invalidate_cache()
   SiteImporter().run(args.site_file, args.dry_run)
+
+  # Update Organization BigQuery records
+  if not args.dry_run:
+    bq_hpo_update()
+    bq_organization_update()
+    bq_site_update()
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 from enum import Enum
 
-from model.bq_base import BQTable, BQSchema, BQField, BQFieldTypeEnum, BQFieldModeEnum, BQRecordField
+from model.bq_base import BQTable, BQSchema, BQView, BQField, BQFieldTypeEnum, BQFieldModeEnum, BQRecordField
 
 
 class BQStreetAddressTypeEnum(Enum):
@@ -8,9 +8,12 @@ class BQStreetAddressTypeEnum(Enum):
   MAILING = 2
   EMPLOYMENT = 3
 
-
+# TODO: Revert to using in participant_enum.py when they have been updated to Python 3.7 Enum classes.
 class BQModuleStatusEnum(Enum):
-  """The status of a given questionnaire for this participant"""
+  """
+  The status of a given questionnaire for this participant.
+  Previously named QuestionnaireStatus in participant_enum.py.
+  """
   UNSET = 0
   SUBMITTED = 1
   SUBMITTED_NO_CONSENT = 2
@@ -41,7 +44,7 @@ class BQModuleStatusSchema(BQSchema):
   Store information about modules submitted
   """
   mod_module = BQField('mod_module', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  mod_baseline_module = BQField('mod_baseline_module', BQFieldTypeEnum.BOOLEAN, BQFieldModeEnum.NULLABLE)
+  mod_baseline_module = BQField('mod_baseline_module', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
   mod_authored = BQField('mod_authored', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
   mod_created = BQField('mod_created', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
   mod_language = BQField('mod_language', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
@@ -95,8 +98,8 @@ class BQBiobankSampleSchema(BQSchema):
   Biobank sample information
   """
   bbs_test = BQField('bbs_test', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  bbs_baseline_test = BQField('bbs_baseline_test', BQFieldTypeEnum.BOOLEAN, BQFieldModeEnum.NULLABLE)
-  bbs_dna_test = BQField('bbs_dna_test', BQFieldTypeEnum.BOOLEAN, BQFieldModeEnum.NULLABLE)
+  bbs_baseline_test = BQField('bbs_baseline_test', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+  bbs_dna_test = BQField('bbs_dna_test', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
   bbs_collected = BQField('bbs_collected', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
   bbs_processed = BQField('bbs_processed', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
   bbs_finalized = BQField('bbs_finalized', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
@@ -117,7 +120,7 @@ class BQBiobankOrderSchema(BQSchema):
   bbo_created = BQField('bbo_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
   bbo_status = BQField('bbo_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
   bbo_status_id = BQField('bbo_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-  bbo_dv_order = BQField('bbo_dv_order', BQFieldTypeEnum.BOOLEAN, BQFieldModeEnum.NULLABLE)
+  bbo_dv_order = BQField('bbo_dv_order', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
   bbo_collected_site = BQField('bbo_collected_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
   bbo_collected_site_id = BQField('bbo_collected_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
   bbo_processed_site = BQField('bbo_processed_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
@@ -150,6 +153,14 @@ class BQParticipantSummarySchema(BQSchema):
   sign_up_time = BQField('sign_up_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
   enrollment_status = BQField('enrollment_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
   enrollment_status_id = BQField('enrollment_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+  enrollment_member = BQField('enrollment_member', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+  enrollment_core_ordered = BQField('enrollment_core_ordered', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+  enrollment_core_stored = BQField('enrollment_core_stored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+
+  ehr_status = BQField('ehr_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+  ehr_status_id = BQField('ehr_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+  ehr_receipt = BQField('ehr_receipt', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+  ehr_update = BQField('ehr_update', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
 
   withdrawal_status = BQField('withdrawal_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
   withdrawal_status_id = BQField('withdrawal_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
@@ -173,8 +184,6 @@ class BQParticipantSummarySchema(BQSchema):
   distinct_visits = BQField('distinct_visits', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
   date_of_birth = BQField('date_of_birth', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
-  language = BQField('language', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-  language_id = BQField('language_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
   primary_language = BQField('primary_language', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
   contact_method = BQField('contact_method', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
@@ -209,34 +218,13 @@ class BQParticipantSummary(BQTable):
   """ Participant Summary BigQuery Table """
   __tablename__ = 'participant_summary'
   __schema__ = BQParticipantSummarySchema
+  __project_map__ = [
+    ('all-of-us-rdr-prod', ('all-of-us-rdr-prod', None)),  # Block participant summary from production project.
+  ]
 
-""" Analytics Team view of the Participant Summary """
-BQAnalyticsTeamParticipantSummary = """
-SELECT 
-    genders,
-    sex,
-    sex_id,
-    sexual_orientation,
-    sexual_orientation_id,
-    education,
-    education_id,    
-    (select count(1) 
-      from `{project}`.rdr_ops_data_view.participant_summary as ps_1 
-        cross join UNNEST(biobank_orders) as orders 
-        cross join UNNEST(orders.bbo_samples) as samples
-      where ps.participant_id = ps_1.participant_id and
-        samples.bbs_baseline_test is true) as baseline_test_count,
-    (select count(1) 
-      from `{project}`.rdr_ops_data_view.participant_summary as ps_1 
-        cross join UNNEST(biobank_orders) as orders 
-        cross join UNNEST(orders.bbo_samples) as samples
-      where ps.participant_id = ps_1.participant_id and
-        samples.bbs_dna_test is true) as dna_test_count,
-    races,
-    pm,    
-    modules,
-    biobank_orders
-  FROM `{project}`.rdr_ops_data_view.participant_summary ps
-"""
-
-
+class BQParticipantSummaryView(BQView):
+  __viewname__ = 'v_participant_summary'
+  __viewdescr__ = 'Participant Summary View'
+  __table__ = BQParticipantSummary
+  _show_created = True
+  _show_modified = True

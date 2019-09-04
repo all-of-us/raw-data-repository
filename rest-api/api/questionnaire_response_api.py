@@ -2,8 +2,10 @@ import app_util
 
 from api.base_api import BaseApi
 from api_util import PTC, PTC_AND_HEALTHPRO
+from dao.bq_questionaire_dao import deferred_bq_questionnaire_update
 from dao.code_dao import CodeDao
 from dao.questionnaire_response_dao import QuestionnaireResponseDao
+from google.appengine.ext import deferred
 from flask_restful import Resource, request
 from model.code import Code, CodeType
 from model.participant import Participant
@@ -23,7 +25,10 @@ class QuestionnaireResponseApi(BaseApi):
 
   @app_util.auth_required(PTC)
   def post(self, p_id):
-    return super(QuestionnaireResponseApi, self).post(participant_id=p_id)
+    resp = super(QuestionnaireResponseApi, self).post(participant_id=p_id)
+    if resp and 'id' in resp:
+      deferred.defer(deferred_bq_questionnaire_update, p_id, int(resp['id']))
+    return resp
 
 
 class ParticipantQuestionnaireAnswers(Resource):

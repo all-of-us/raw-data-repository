@@ -1,5 +1,5 @@
 from model.base import Base, model_insert_listener, model_update_listener
-from sqlalchemy import Column, DateTime, Integer, String, Index, event, ForeignKey
+from sqlalchemy import Column, DateTime, Integer, String, Index, event
 from sqlalchemy.dialects.mysql import JSON
 
 
@@ -15,16 +15,19 @@ class BigQuerySync(Base):
   created = Column('created', DateTime, nullable=True, index=True)
   # have mysql always update the modified data when the record is changed
   modified = Column('modified', DateTime, nullable=True, index=True)
+  projectId = Column('project_id', String(80), nullable=True)
   # BigQuery dataset name
-  dataSet = Column('dataset', String(80), nullable=False)
+  datasetId = Column('dataset_id', String(80), nullable=False)
   # BigQuery table name
-  table = Column('table', String(80), nullable=False)
-  participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
-                         nullable=False)
+  tableId = Column('table_id', String(80), nullable=False)
+  # primary key from data source table.
+  pk_id = Column('pk_id', Integer, nullable=False)
   # data resource hold the data to be transferred to BigQuery
   resource = Column('resource', JSON, nullable=False)
 
-Index('ix_participant_ds_table', BigQuerySync.participantId, BigQuerySync.dataSet, BigQuerySync.table)
+Index('ix_participant_ds_table', BigQuerySync.pk_id, BigQuerySync.projectId, BigQuerySync.datasetId,
+                            BigQuerySync.tableId)
 
 event.listen(BigQuerySync, 'before_insert', model_insert_listener)
 event.listen(BigQuerySync, 'before_update', model_update_listener)
+

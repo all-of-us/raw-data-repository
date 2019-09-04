@@ -3,8 +3,11 @@ import logging
 import pprint
 import urllib2
 
+from google.appengine.ext import deferred
+
 from api_util import PTC_AND_HEALTHPRO
 from app_util import auth_required
+from dao.bq_code_dao import deferrered_bq_codebook_update
 from dao.code_dao import CodeBookDao
 
 
@@ -66,6 +69,9 @@ def import_codebook():
   new_codebook, code_count = CodeBookDao().import_codebook(codebook_json)
   response['active_version'] = new_codebook.version
   response['status_messages'] = ['Imported %d codes.' % code_count]
+
+  deferred.defer(deferrered_bq_codebook_update)
+
   return _log_and_return_json(response)
 
 
