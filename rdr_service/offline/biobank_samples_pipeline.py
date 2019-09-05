@@ -109,7 +109,7 @@ def _open_latest_samples_file(cloud_bucket_name):
     """Returns an open stream for the most recently created CSV in the given bucket."""
     blob_name = _find_latest_samples_csv(cloud_bucket_name)
     file_name = os.path.basename(blob_name)
-    path = cloud_bucket_name + '/' + blob_name
+    path = os.path.normpath(cloud_bucket_name + '/' + blob_name)
     logging.info("Opening latest samples CSV in %r: %r.", cloud_bucket_name, file_name)
     return path, file_name
 

@@ -5,11 +5,11 @@ Organize all consent files from PTSC source bucket into proper awardee buckets.
 """
 import collections
 import json
-
+import os
 import sqlalchemy
 from rdr_service import deferred
 
-from rdr_service.api_util import open_cloud_file, list_blobs, upload_from_file
+from rdr_service.api_util import open_cloud_file, list_blobs, copy_cloud_file, get_blob
 from rdr_service.cloud_utils.google_sheets import GoogleSheetCSVReader
 from rdr_service.dao import database_factory
 
@@ -116,19 +116,29 @@ def _iter_participants_data():
 
 
 def cloudstorage_copy_objects(source, destination):
-    """Copies all objects matching the source to the destination
+    """
+       Copies all objects matching the source to the destination
+       Both source and destination use the following format: /bucket/prefix/
+    """
 
-  Both source and destination use the following format: /bucket/prefix/
-  """
-    for source_file_stat in list_blobs(source):
-        destination_filename = destination + source_file_stat.filename[len(source) :]
-        if _should_copy_object(source_file_stat, destination_filename):
-            # @todo: this is probably not the right function to call here
-            upload_from_file(source_file_stat.filename, destination_filename)
+    path = source if source[0:1] != '/' else source[1:]
+    bucket_name, _, prefix = path.partition('/')
+    prefix = None if prefix == '' else '/' + prefix
+    for source_blob in list_blobs(bucket_name, prefix):
+        source_file_path = os.path.normpath('/' + bucket_name + '/' + source_blob.name)
+        destination_file_path = destination + source_file_path[len(source):]
+        if _should_copy_object(source_file_path, destination_file_path):
+            copy_cloud_file(source_file_path, destination_file_path)
 
 
-def _should_copy_object(source_file_stat, destination):
-    dest_file_stat = list_blobs(destination)
-    if not dest_file_stat:
+def _should_copy_object(source_file_path, destination_file_path):
+    destination_file_path = destination_file_path if destination_file_path[0:1] != '/' else destination_file_path[1:]
+    destination_bucket_name, _, destination_blob_name = destination_file_path.partition('/')
+    destination_blob = get_blob(destination_bucket_name, destination_blob_name)
+    if destination_blob is None:
         return True
-    return source_file_stat.etag != dest_file_stat.etag
+
+    source_file_path = source_file_path if source_file_path[0:1] != '/' else source_file_path[1:]
+    source_bucket_name, _, source_blob_name = source_file_path.partition('/')
+    source_blob = get_blob(source_bucket_name, source_blob_name)
+    return source_blob.etag != destination_blob.etag

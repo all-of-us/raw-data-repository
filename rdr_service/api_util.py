@@ -174,9 +174,14 @@ def lookup_bucket(bucket_name):
     return provider.lookup(bucket_name)
 
 
-def list_blobs(bucket_name):
+def list_blobs(bucket_name, prefix=None):
     provider = get_storage_provider()
-    return provider.list(bucket_name)
+    return provider.list(bucket_name, prefix)
+
+
+def get_blob(bucket_name, blob_name):
+    provider = get_storage_provider()
+    return provider.get_blob(bucket_name, blob_name)
 
 
 def upload_from_file(source_file_name, cloud_file_path):
@@ -192,3 +197,8 @@ def upload_from_string(contents, cloud_file_path):
 def delete_cloud_file(path):
     provider = get_storage_provider()
     return provider.delete(path)
+
+
+def copy_cloud_file(source_path, destination_path):
+    provider = get_storage_provider()
+    return provider.copy_blob(source_path, destination_path)

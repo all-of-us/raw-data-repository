@@ -289,7 +289,7 @@ class GenomicPipelineTest(BaseTestCase):
             ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, REQUEST_ID, PACKAGE_ID)
 
         blob_name = self._find_latest_genomic_set_csv(bucket_name, _FAKE_BUCKET_RESULT_FOLDER)
-        with open_cloud_file(bucket_name + '/' + blob_name) as csv_file:
+        with open_cloud_file(os.path.normpath(bucket_name + '/' + blob_name)) as csv_file:
             csv_reader = csv.DictReader(csv_file, delimiter=",")
 
             missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
@@ -422,7 +422,7 @@ class GenomicPipelineTest(BaseTestCase):
         # verify result file
         bucket_name = config.getSetting(config.GENOMIC_SET_BUCKET_NAME)
         blob_name = self._find_latest_genomic_set_csv(bucket_name, "Validation-Result")
-        with open_cloud_file(bucket_name + '/' + blob_name) as csv_file:
+        with open_cloud_file(os.path.normpath(bucket_name + '/' + blob_name)) as csv_file:
             csv_reader = csv.DictReader(csv_file, delimiter=",")
 
             class ResultCsvColumns(object):
