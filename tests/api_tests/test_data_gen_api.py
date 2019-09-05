@@ -17,15 +17,12 @@ def _callthrough(fn, *args, **kwargs):
     fn(*args, **kwargs)
 
 
+#@unittest.skip("Wating on defer")
 class DataGenApiTest(BaseTestCase):
     def setUp(self):
-        # Neither CloudStorageTestBase nor our FlaskTestBase correctly calls through to
-        # setup(..).setup(..), so explicitly call both here.
-        #testutil.CloudStorageTestBase.setUp(self)
         BaseTestCase.setUp(self)
 
-    @unittest.skip("DA-471, switch to new cloud storage provider")
-    @mock.patch("google.appengine.ext.deferred.defer", new=_callthrough)
+#    @mock.patch("google.appengine.ext.deferred.defer", new=_callthrough)
     def test_generate_samples(self):
         participant_id = self.send_post("Participant", {})["participantId"]
         self.send_consent(participant_id)
