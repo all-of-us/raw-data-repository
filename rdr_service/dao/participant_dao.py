@@ -97,7 +97,7 @@ class ParticipantDao(UpdatableDao):
 
         participant = self.get_for_update(session, pid)
         if participant is None:
-            logging.warn(
+            logging.warning(
                 "Tried to mark participant with id: [%r] as ghost but participant does not"
                 "exist. Wrong environment?" % pid
             )
