@@ -98,9 +98,9 @@ def store_current_config(config_json):
 
 def insert_config(key, value_list):
     """Updates a config key.  Used for tests"""
-    model = load(CONFIG_SINGLETON_KEY)
-    model.configuration[key] = value_list
-    store(model)
+    config_data = load(CONFIG_SINGLETON_KEY)
+    config_data[key] = value_list
+    store(CONFIG_SINGLETON_KEY, config_data)
 
 
 class MissingConfigException(Exception):

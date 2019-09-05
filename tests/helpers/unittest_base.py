@@ -139,21 +139,20 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         questionnaire_response_dao._add_codes_if_missing = lambda email: True
         self._consent_questionnaire_id = None
 
-    @staticmethod
-    def setup_storage():
+    def setup_storage(self):
         temp_folder_path = mkdtemp()
+        self.addCleanup(shutil.rmtree, temp_folder_path)
         os.environ['RDR_STORAGE_ROOT'] = temp_folder_path
 
-    @staticmethod
-    def setup_config():
-        if os.environ.get('UNITTEST_CONFIG_FLAG'):
-            return
-        data = read_dev_config(os.path.join(os.path.dirname(__file__), "../../rdr_service/config/base_config.json"),
-                               os.path.join(os.path.dirname(__file__), "../../rdr_service/config/config_dev.json"))
-        test_configs_dir = os.path.join(os.path.dirname(__file__), "../.test_configs")
+    def setup_config(self):
+        data = read_dev_config(os.path.join(os.path.dirname(__file__), "..", "..", "rdr_service", "config", "base_config.json"),
+                               os.path.join(os.path.dirname(__file__), "..", "..", "rdr_service", "config", "config_dev.json"))
+
+        test_configs_dir = mkdtemp()
+        shutil.copy(os.path.join(os.path.dirname(__file__), "..", ".test_configs", "db_config.json"), test_configs_dir)
+        self.addCleanup(shutil.rmtree, test_configs_dir)
         os.environ['RDR_CONFIG_ROOT'] = test_configs_dir
         config.store_current_config(data)
-        os.environ['UNITTEST_CONFIG_FLAG'] = 'True'
 
     @staticmethod
     def _participant_with_defaults(**kwargs):
