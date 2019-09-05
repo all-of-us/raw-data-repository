@@ -3,6 +3,7 @@
 # API Docs: https://cloud.google.com/bigquery/docs/reference/rest/
 #
 import collections
+import datetime
 import importlib
 import inspect
 import itertools
@@ -63,7 +64,7 @@ class BQFieldTypeEnum(Enum):
   BYTES = 2
   INTEGER = 3
   FLOAT = 4
-  BOOLEAN = 5
+  # BOOLEAN = 5  # Use INTEGER instead.
   TIMESTAMP = 6
   DATE = 7
   TIME = 8
@@ -322,16 +323,99 @@ class BQTable(object):
   class __schema__(BQSchema):
     pass
 
+  __dataset__ = 'rdr_ops_data_view'
+  # GCP project and dataset mapping. Allows redirecting table data into other GCP projects and/or datasets.
+  # The value for this would be a list of tuples with source project id and one or more
+  # destination project id and dataset names.
+  # Format: [ ( src project_id, (dest project_id, dataset), (dest project_id, dataset), ...)), ]
+  # IE: [
+  #       ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view'), ('all-of-us-prod', 'rdr_other_ds')),
+  #     ]
+  # To prevent data from going to a project, set the destination dataset id to None. This will disable
+  # creating a table/view in the destination project.
+  # IE: [
+  #       ('all-of-us-rdr-prod', ('aou-pdr-data-prod', None)),
+  #     ]
+  __project_map__ = None
+
   def get_name(self):
     return self.__tablename__
 
   def get_schema(self):
     return self.__schema__()
 
-class BQView(object):
-  __viewname__ = None
-  sql = None
+  @classmethod
+  def get_project_map(cls, project_id):
+    """
+    Return a list of mapped project ids, datasets and table names.
+    :param project_id: source project id
+    :return: list of tuples containing (project id, dataset name, table name)
+    """
+    if not project_id:
+      raise ValueError('Invalid project id.')
+    results = list()
 
+    if isinstance(cls.__project_map__, list):
+      for project in cls.__project_map__:
+        if project_id == project[0]:
+          for x in range(1, len(project)):
+            results.append((project[x][0], project[x][1], cls.__tablename__))
+
+    # if there was no mapping found, just return the project_id with default values.
+    if len(results) == 0:
+      results.append((project_id, cls.__dataset__, cls.__tablename__))
+
+    return results
+
+class BQView(object):
+  __viewname__ = None  # type: str
+  __viewdescr__ = None  # type: str
+  __table__ = None  # type: BQTable
+  __sql__ = None  # type: str
+  _show_created = False
+  _show_modified = False
+
+  def __init__(self):
+
+    if not self.__sql__ and self.__table__:
+      tbl = self.__table__()
+      fields = tbl.get_schema().get_fields()
+
+      fld_list = list()
+      for field in fields:
+
+        fld_name = field['name']
+        if fld_name == 'id':  # as a good policy, we don't usually ever show 'id' to users.
+          continue
+        if fld_name == 'created' and not self._show_created:
+          continue
+        if fld_name == 'modified' and not self._show_modified:
+          continue
+        fld_list.append(field['name'])
+
+      self.__sql__ = """
+        SELECT {fields} 
+      """.format(fields=', '.join(fld_list))
+
+      self.__sql__ += """
+        FROM (
+          SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+            FROM `{project}`.{dataset}.%%table%% 
+        ) c
+        WHERE c.modified = c.max_timestamp 
+      """.replace('%%table%%', tbl.get_name())
+
+  def get_table(self):
+    return self.__table__
+
+  def get_name(self):
+    return self.__viewname__
+
+  def get_descr(self):
+    return self.__viewdescr__
+
+  def get_sql(self):
+    return self.__sql__
 
 # class BQSession(object):
 #
@@ -422,7 +506,8 @@ class BQRecord(object):
       for key, val in src.iteritems():
         # validate key against schema if needed
         if schema and not getattr(schema, key, None):
-          raise KeyError('{0} key not in schema'.format(key))
+          # raise KeyError('{0} key not in schema'.format(key))
+          continue  # just ignore keys not in schema.
         # TODO: Future: Validate value against schema BQField type and constraints here.
         # check for Enum32 object, if it is set the value to the enum value
         if self._convert_to_enum and schema and schema[key]['description'] and schema[key]['enum'] is True:
@@ -451,7 +536,6 @@ class BQRecord(object):
       return dest
 
     update(self.__dict__, data, self.__schema__)
-    pass
 
   def get_fields(self):
     return self.__fields__
@@ -459,9 +543,27 @@ class BQRecord(object):
   def get_schema(self):
     return self.__schema__
 
-  def to_dict(self, full_schema=False):  # pylint: disable=unused-argument
+  def _serialize_dict(self, data):
+    """
+    Recursively loop through dict and encode dates to string
+    :param data: dict object
+    :return: dict object
+    """
+    for key, value in data.items():
+      if isinstance(value, list):
+        for x in range(len(value)):
+          value[x] = self._serialize_dict(value[x])
+      if isinstance(value, dict):
+        data[key] = self._serialize_dict(value)
+      if isinstance(value, (datetime.datetime, datetime.date)):
+        data[key] = value.isoformat()
+
+    return data
+
+  def to_dict(self, serialize=False, full_schema=False):  # pylint: disable=unused-argument
     """
     convert properties to a dict
+    :param serialize: If True, convert dates to string.
     :param full_schema: If True, add missing schema properties.
     """
     data = collections.OrderedDict()
@@ -473,6 +575,8 @@ class BQRecord(object):
         continue
       data[key] = value
 
+    if serialize:
+      data = self._serialize_dict(data)
     # TODO: future (maybe), add in missing data keys found in schema and exclude non-schema properties.
     return data
 

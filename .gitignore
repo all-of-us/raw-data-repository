@@ -10,7 +10,7 @@
 
 **/lib
 **/bin
-**/venv
+**/venv*
 
 **/.idea
 **/.project
