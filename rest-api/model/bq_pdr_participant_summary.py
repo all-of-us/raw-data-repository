@@ -165,7 +165,7 @@ class BQPDRParticipantSummaryView(BQView):
         SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
           FROM `{project}`.{dataset}.pdr_participant 
       ) ps
-      WHERE ps.modified = ps.max_timestamp and ps.withdrawal_status_id != 1
+      WHERE ps.modified = ps.max_timestamp and ps.withdrawal_status_id = 1
   """
 
 
@@ -173,7 +173,7 @@ class BQPDRParticipantSummaryWithdrawnView(BQView):
   __viewname__ = 'v_pdr_participant_withdrawn'
   __viewdescr__ = 'PRD Participant Summary Withdrawn View'
   __table__ = BQPDRParticipantSummary
-  __sql__ = BQPDRParticipantSummaryView.__sql__.replace('ps.withdrawal_status_id != 1', 'ps.withdrawal_status_id = 1')
+  __sql__ = BQPDRParticipantSummaryView.__sql__.replace('ps.withdrawal_status_id = 1', 'ps.withdrawal_status_id != 1')
 
 
 class BQPDRPMView(BQView):
