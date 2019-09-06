@@ -3,8 +3,7 @@ import random
 import re
 import struct
 
-from rdr_service.config import GAE_PROJECT
-from rdr_service import deferred
+from rdr_service.config import GAE_PROJECT, LOCALHOST_DEFAULT_BUCKET_NAME
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.dao.database_factory import get_database
@@ -112,8 +111,8 @@ class TableExporter(object):
     """
         app_id = GAE_PROJECT
         # Determine what GCS bucket to write to based on the environment and database.
-        if app_id == "None":
-            bucket_name = app_identity.get_default_gcs_bucket_name()
+        if app_id == 'localhost':
+            bucket_name = LOCALHOST_DEFAULT_BUCKET_NAME
         elif deidentify:
             bucket_name = "%s-deidentified-export" % app_id
         elif database == "rdr":
@@ -149,7 +148,12 @@ class TableExporter(object):
             deidentify_salt = str(random.getrandbits(256)).encode("utf-8")
 
         for table_name in tables:
-            deferred.defer(
-                TableExporter._export_csv, bucket_name, database, directory, deidentify_salt, table_name, instance_name
-            )
-        return {"destination": "gs://%s/%s" % (bucket_name, directory)}
+            TableExporter._export_csv(bucket_name, database, directory, deidentify_salt, table_name, instance_name)
+
+        # comment out the defer mechanism(from google.appengine.ext import deferred)
+        # which not available any more, may need to put it back when we have a replacement
+        #
+        # for table_name in tables:
+        #     deferred.defer(TableExporter._export_csv, bucket_name,
+        #                    database, directory, deidentify_salt, table_name, instance_name)
+        # return {'destination': 'gs://%s/%s' % (bucket_name, directory)}
