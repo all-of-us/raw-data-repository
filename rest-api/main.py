@@ -13,7 +13,7 @@ import version_api
 from api import metrics_ehr_api
 from api.awardee_api import AwardeeApi
 from api.bigquery_participant_summary_api import BQParticipantSummaryApi
-from api.bigquery_task_queue_api import BQRebuildTaskApi
+from api.bigquery_task_queue_api import BQRebuildTaskApi, rebuild_bigquery_core
 from api.biobank_order_api import BiobankOrderApi
 from api.check_ppi_data_api import check_ppi_data
 from api.data_gen_api import DataGenApi, SpecDataGenApi
@@ -246,6 +246,12 @@ app.add_url_rule(PREFIX + 'ImportCodebook',
                  endpoint='import_codebook',
                  view_func=import_codebook,
                  methods=['POST'])
+
+app.add_url_rule(PREFIX + 'RebuildBigQueryCore',
+                 endpoint='rebuildbigquerycore',
+                 view_func=rebuild_bigquery_core,
+                 methods=['POST'])
+
 
 app.add_url_rule('/_ah/warmup',
                  endpoint='warmup',
