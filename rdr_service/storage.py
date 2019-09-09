@@ -9,7 +9,6 @@ from contextlib import ContextDecorator
 from tempfile import mkstemp
 from abc import ABC, abstractmethod
 from google.cloud import storage
-from google.cloud import storage
 from google.cloud.storage import Blob
 from google.cloud._helpers import UTC
 from google.cloud._helpers import _RFC3339_MICROS
