@@ -302,7 +302,8 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         self.send_post(self.questionnaire_response_url(participant_id), qr_json)
 
     def assertJsonResponseMatches(self, obj_a, obj_b):
-        self.assertMultiLineEqual(self._clean_and_format_response_json(obj_a), self._clean_and_format_response_json(obj_b))
+        self.assertMultiLineEqual(self._clean_and_format_response_json(obj_a),
+                                  self._clean_and_format_response_json(obj_b))
 
     @staticmethod
     def pretty(obj):
@@ -349,6 +350,10 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             return None
 
     def assertListAsDictEquals(self, list_a, list_b):
+
+        def list_as_dict(items):
+            return [item.asdict() for item in items]
+
         if len(list_a) != len(list_b):
             self.fail(
                 "List lengths don't match: %d != %d; %s, %s"
@@ -415,7 +420,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
                     os.unlink(file_path)
                 elif os.path.isdir(file_path):
                     shutil.rmtree(file_path)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 print(str(e))
 
     @staticmethod

@@ -43,6 +43,8 @@ class QuestionnaireDao(UpdatableDao):
             )
 
     def _make_history(self, questionnaire, concepts, questions):
+        # pylint: disable=redefined-outer-name
+        # TODO: refactor variable 'questionnaire' as it is defined in outer scope (line 9)
         history = QuestionnaireHistory()
         history.fromdict(questionnaire.asdict(), allow_pk=True)
         for concept in concepts:
@@ -61,6 +63,8 @@ class QuestionnaireDao(UpdatableDao):
         return history
 
     def insert_with_session(self, session, questionnaire):
+        # pylint: disable=redefined-outer-name
+        # TODO: refactor variable 'questionnaire' as it is defined in outer scope (line 9)
         questionnaire.created = clock.CLOCK.now()
         questionnaire.lastModified = clock.CLOCK.now()
         questionnaire.version = 1
@@ -100,6 +104,8 @@ class QuestionnaireDao(UpdatableDao):
         super(QuestionnaireDao, self)._do_update(session, obj, existing_obj)
 
     def update_with_session(self, session, questionnaire):
+        # pylint: disable=redefined-outer-name
+        # TODO: refactor variable 'questionnaire' as it is defined in outer scope (line 9)
         super(QuestionnaireDao, self).update_with_session(session, questionnaire)
         QuestionnaireHistoryDao().insert_with_session(
             session, self._make_history(questionnaire, questionnaire.concepts, questionnaire.questions)

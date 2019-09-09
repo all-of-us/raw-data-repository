@@ -123,6 +123,7 @@ from rdr_service.participant_enums import (
 # from mapreduce import mapreduce_pipeline
 # from mapreduce import context
 
+# pylint: disable=undefined-variable
 
 class PipelineNotRunningException(BaseException):
     """Exception thrown when a pipeline is expected to be running but is not."""

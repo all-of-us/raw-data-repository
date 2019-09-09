@@ -6,7 +6,7 @@ import logging
 import os
 
 from rdr_service import dao
-from rdr_service.dao import database_factory
+from rdr_service.dao import database_factory  # pylint: disable=unused-import
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.main_util import configure_logging, get_parser
 

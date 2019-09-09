@@ -1,6 +1,6 @@
 import datetime
 import isodate
-import unittest
+import unittest  # pylint: disable=unused-import
 
 from dateutil.tz import tzutc
 

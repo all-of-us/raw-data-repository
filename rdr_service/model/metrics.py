@@ -1,4 +1,4 @@
-from sqlalchemy import BLOB, Boolean, Column, Date, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from rdr_service import clock

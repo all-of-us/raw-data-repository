@@ -1,4 +1,14 @@
-from sqlalchemy import BLOB, Boolean, Column, Date, Float, ForeignKey, ForeignKeyConstraint, Integer, String, Text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    Float,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Integer,
+    String,
+    Text
+)
 from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import Base

@@ -68,7 +68,8 @@ class HPOGen(BaseGen):
 
                         if site["Anticipated Launch Date"]:
                             try:
-                                # _logger.debug('--- {0} {1}'.format(site['Site ID / Google Group'], site['Anticipated Launch Date']))
+                                # _logger.debug('--- {0} {1}'.format(site['Site ID / Google Group'], \
+                                # site['Anticipated Launch Date']))
                                 val = parse(site["Anticipated Launch Date"]).date()  # pylint: disable=unused-variable
                             except ValueError:
                                 _logger.debug(

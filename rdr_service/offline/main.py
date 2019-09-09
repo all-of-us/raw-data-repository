@@ -6,7 +6,7 @@ import traceback
 from datetime import datetime
 
 from flask import Flask, request
-from rdr_service.config import GAE_PROJECT
+from rdr_service.config import GAE_PROJECT  # pylint: disable=unused-import
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import BadRequest
 
@@ -66,12 +66,13 @@ def _alert_on_exceptions(func):
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def recalculate_metrics():
+    # TODO: This should be refactored or removed.
     in_progress = MetricsVersionDao().get_version_in_progress()
     if in_progress:
         logging.info("=========== Metrics pipeline already running ============")
         return '{"metrics-pipeline-status": "running"}'
     else:
-        bucket_name = app_identity.get_default_gcs_bucket_name()
+        bucket_name = app_identity.get_default_gcs_bucket_name()  # pylint: disable=undefined-variable
         logging.info("=========== Starting metrics export ============")
         MetricsExport.start_export_tasks(bucket_name, int(config.getSetting(config.METRICS_SHARDS, 1)))
         return '{"metrics-pipeline-status": "started"}'

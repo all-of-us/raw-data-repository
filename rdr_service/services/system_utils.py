@@ -96,7 +96,7 @@ def which(program):
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
-    # pylint: disable=W0612
+    # pylint: disable=unused-variable
     fpath, fname = os.path.split(program)
     if fpath:
         if is_exe(program):
@@ -195,6 +195,7 @@ def pid_is_running(pid: int):
   :return: True if process with this ID is running, otherwise False
   """
     # See if there is a currently running mysqld instance
+    # pylint: disable=unused-variable
     args = ['ps', '-ef']
     code, so, se = run_external_program(args=args)
     if code == 0:
@@ -224,6 +225,7 @@ def get_process_pids(matches: list) -> list:
             raise ValueError('invalid match value, must be string.')
 
     # See if there is a currently running mysqld instance
+    # pylint: disable=unused-variable
     args = ['ps', '-ef']
     code, so, se = run_external_program(args=args)
     if code == 0:
@@ -414,6 +416,7 @@ def find_mysqld_executable() -> str:
         return path
 
     # See if there is a currently running mysqld instance
+    # pylint: disable=unused-variable
     args = ['ps', '-ef']
     code, so, se = run_external_program(args=args)
     if code == 0:
@@ -425,6 +428,7 @@ def find_mysqld_executable() -> str:
 
     return ''
 
+
 def start_mysqld_instance(basedir: str) -> int:
     """
     Launch a new instance of mysqld, only if it is not already running.
@@ -433,6 +437,8 @@ def start_mysqld_instance(basedir: str) -> int:
     :return: PID
     """
     # See if there is a currently running mysqld instance
+    # pylint: disable=unused-argument
+    # pylint: disable=unused-variable
     args = ['ps', '-ef']
     code, so, se = run_external_program(args=args)
     if code == 0:

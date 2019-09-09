@@ -205,7 +205,8 @@ class BQMigration(object):
                     rs_obj = BQSchema(json.loads(rs_json))
                 except ValueError:
                     # Something is there in BigQuery for this schema, but it is bad.
-                    # If this happens, the table can be reset by deleting it and then creating again it using this tool.
+                    # If this happens, the table can be reset by deleting it
+                    # and then creating again it using this tool.
                     _logger.info("  {0:21}: {1}".format(schema_name, "!!! corrupt, needs reset !!!"))
                     continue
 

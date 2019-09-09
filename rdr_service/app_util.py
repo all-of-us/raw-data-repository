@@ -82,7 +82,7 @@ def get_auth_token():
 
 
 def get_token_info_response(token):
-    google_tokeninfo_url='https://www.googleapis.com/oauth2/v3/tokeninfo'
+    google_tokeninfo_url = 'https://www.googleapis.com/oauth2/v3/tokeninfo'
     qargs = urllib.parse.urlencode({'access_token': token})
     response = requests.get(f"{google_tokeninfo_url}?{qargs}")
     return response
@@ -92,8 +92,8 @@ def get_oauth_id():
     """Returns user email ID if OAUTH token present, or None."""
     '''
     NOTES: 2019-08-15 by tanner and mikey
-    
-    currently verifies that the provided token is legitimate via google API.
+    currently verifies that the provided token
+    is legitimate via google API.
     - perfomance
         - could be cached
         - could be validated locally instead of with API

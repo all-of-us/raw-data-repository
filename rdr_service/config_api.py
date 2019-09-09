@@ -5,7 +5,7 @@ import os
 
 from flask import request
 from flask_restful import Resource
-from google.cloud import datastore as ndb
+from google.cloud import datastore as ndb  # pylint: disable=unused-import
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from rdr_service import app_util, config
@@ -88,7 +88,7 @@ class ConfigApi(Resource):
         old_config = config.load(key)
         if old_config is None:
             raise NotFound(f'config not found: {key}')
-        
+
         config_obj = request.get_json(force=True)
 
         date = None

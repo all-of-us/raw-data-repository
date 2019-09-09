@@ -1,5 +1,4 @@
 from sqlalchemy import (
-    BLOB,
     BigInteger,
     Boolean,
     Column,

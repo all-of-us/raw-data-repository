@@ -24,7 +24,7 @@ from rdr_service.dao import database_factory
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
-from rdr_service.model import compiler
+from rdr_service.model import compiler  # pylint: disable=unused-import
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
@@ -211,7 +211,7 @@ def _load_views_and_functions(engine):
             # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
             with temporary_sys_path(alembic_path):
                 mod = importlib.import_module(step[0].replace(".py", ""))
-            
+
             items = mod.unittest_schemas()
 
             for item in items:
@@ -284,6 +284,7 @@ def _setup_hpos():
     """
     Insert a basic set of Organizational data into the database.
     """
+    # pylint: disable=unused-variable
     hpo_dao = HPODao()
     hpo_dao.insert(
         HPO(hpoId=UNSET_HPO_ID, name="UNSET", displayName="Unset", organizationType=OrganizationType.UNSET)
