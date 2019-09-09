@@ -31,6 +31,6 @@ echo "`date -u` Linting application files..."
 FILES_NON_TEST=`git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' -e '_test' -e 'lib_fhir'`
 pylint $PYLINT_OPTS $ENABLE_FOR_ALL $FILES_NON_TEST
 echo "`date -u` Linting test files..."
-FILES_TEST=`git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' -e 'lib_fhir'`
+FILES_TEST=`git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' -e 'lib_fhir' -e 'rdr_service/test/'`
 pylint $PYLINT_OPTS $ENABLE_FOR_TESTS $FILES_TEST
 echo "`date -u` No lint errors!"
