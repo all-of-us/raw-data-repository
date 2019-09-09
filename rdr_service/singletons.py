@@ -19,6 +19,9 @@ BACKUP_SQL_DATABASE_INDEX = 8
 
 def reset_for_tests():
     with singletons_lock:
+        current_db = _get(SQL_DATABASE_INDEX)
+        if current_db is not None:
+            current_db.get_engine().connect().close()
         singletons_map.clear()
 
 
