@@ -62,6 +62,7 @@ CONFIG_BUCKET = "all-of-us-rdr-sequestered-config-test"
 EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT = "ehr_status_bigquery_view_participant"
 EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION = "ehr_status_bigquery_view_organization"
 HPO_REPORT_CONFIG_MIXIN_PATH = "hpo_report_config_mixin_path"
+LOCALHOST_DEFAULT_BUCKET_NAME = 'local_bucket'
 
 # Allow requests which are never permitted in production. These include fake
 # timestamps for reuqests, unauthenticated requests to create fake data, etc.

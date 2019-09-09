@@ -28,7 +28,7 @@ def mark_ghost_participants():
 def get_latest_pid_file(bucket):
     blob_name = _find_most_recent_file(bucket)
     file_name = os.path.basename(blob_name)
-    path = bucket + '/' + blob_name
+    path = os.path.normpath(bucket + '/' + blob_name)
     logging.info("Opening most recent ghost id exclusion list in %r: %r", blob_name, bucket)
     return path, file_name
 
