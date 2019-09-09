@@ -20,10 +20,9 @@ def _log_need_to_fix(name):
 # TODO: Decide if these are the best places for these.
 
 # Simple non-working replacement for google.appengine.ext.deferred
-class deferred():
-
-  def defer(self, *args):
-    pass
+class deferred:
+    def defer(self, *args):
+        pass
 
 
 class taskqueue:
