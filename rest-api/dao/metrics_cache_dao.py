@@ -2207,8 +2207,6 @@ class MetricsLifecycleCacheDao(BaseDao):
                   SUM(CASE
                     WHEN
                       DATE(ps.questionnaire_on_healthcare_access_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_overall_health_time) <= calendar.day AND
                       DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
                       DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
                     THEN 1 ELSE 0
@@ -2216,8 +2214,6 @@ class MetricsLifecycleCacheDao(BaseDao):
                   SUM(CASE
                     WHEN
                       DATE(ps.questionnaire_on_medical_history_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_overall_health_time) <= calendar.day AND
                       DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
                       DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
                     THEN 1 ELSE 0
@@ -2231,8 +2227,6 @@ class MetricsLifecycleCacheDao(BaseDao):
                   SUM(CASE
                     WHEN
                       DATE(ps.questionnaire_on_family_health_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_overall_health_time) <= calendar.day AND
                       DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
                       DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
                     THEN 1 ELSE 0
@@ -2247,16 +2241,12 @@ class MetricsLifecycleCacheDao(BaseDao):
                   END) AS ppi_complete,
                   SUM(CASE
                     WHEN
-                      DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_overall_health_time) <= calendar.day AND
                       DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
                       DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
                     THEN 1 ELSE 0
                   END) AS retention_modules_eligible,
                   SUM(CASE
                     WHEN
-                      DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_overall_health_time) <= calendar.day AND
                       DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
                       DATE(ps.questionnaire_on_healthcare_access_time) <= calendar.day AND
                       DATE(ps.questionnaire_on_family_health_time) <= calendar.day AND
