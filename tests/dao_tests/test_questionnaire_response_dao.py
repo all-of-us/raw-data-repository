@@ -934,7 +934,12 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
 
 class QuestionnaireResponseDaoCloudCheckTest(BaseTestCase):
-    @unittest.skip("waiting on storage provider for gcloud files.")
+
+    def setUp(self):
+        pass
+        #something = self.load_test_storage_fixture('somefile.pdf', _FAKE_BUCKET)
+
+    @unittest.skip("Need to finish setup for cloud file and bypass storage client")
     def test_file_exists(self):
         consent_pdf_path = "/%s/Participant/somefile.pdf" % _FAKE_BUCKET
         with self.assertRaises(BadRequest):

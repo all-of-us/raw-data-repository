@@ -606,7 +606,8 @@ def _raise_if_gcloud_file_missing(path):
   Raises:
     BadRequest if the path does not reference a file.
   """
-    bucket_path = os.sep(path)
+    #bucket_path = os.sep(path)
+    bucket_path = path.split(os.sep)
     bucket_name = bucket_path[0]
     file_name = bucket_path[-1]
     storage_client = storage.Client()

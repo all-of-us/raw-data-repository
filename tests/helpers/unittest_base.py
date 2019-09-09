@@ -154,6 +154,12 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         os.environ['RDR_CONFIG_ROOT'] = test_configs_dir
         config.store_current_config(data)
 
+    def load_test_storage_fixture(self, test_file_name, bucket_name):
+        bucket_dir = os.path.join(os.environ.get("RDR_STORAGE_ROOT"), bucket_name)
+        if not os.path.exists(bucket_dir):
+            os.mkdir(bucket_dir)
+        shutil.copy(os.path.join(os.path.dirname(__file__), "..", "test-data", test_file_name), bucket_dir)
+
     @staticmethod
     def _participant_with_defaults(**kwargs):
         """Creates a new Participant model, filling in some default constructor args.
