@@ -16,7 +16,7 @@ class MetricsTest(BaseClientTest):
     def test_metrics(self):
         request = {"start_date": "2017-01-21", "end_date": "2017-01-22"}
         try:
-            response = self.client.request_json("Metrics", "POST", request)
+            response = self.client.request_json("Metrics", "POST", request)  # pylint: disable=unused-variable
         except HttpException as ex:
             if ex.code == http.client.NOT_FOUND:
                 print("No metrics loaded")

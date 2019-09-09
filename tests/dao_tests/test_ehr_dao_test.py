@@ -1,5 +1,5 @@
 import datetime
-import unittest
+import unittest  # pylint: disable=unused-import
 
 from rdr_service.dao.calendar_dao import CalendarDao, INTERVAL_DAY, INTERVAL_MONTH, INTERVAL_QUARTER, INTERVAL_WEEK
 from rdr_service.dao.ehr_dao import EhrReceiptDao
