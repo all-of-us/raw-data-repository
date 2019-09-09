@@ -5,10 +5,10 @@ from datetime import datetime
 
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 import pytz
-from google.cloud import storage
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
+from rdr_service import storage
 from rdr_service import clock, config
 from rdr_service.code_constants import (
     CABOR_SIGNATURE_QUESTION_CODE,
@@ -606,16 +606,9 @@ def _raise_if_gcloud_file_missing(path):
   Raises:
     BadRequest if the path does not reference a file.
   """
-    #bucket_path = os.sep(path)
-    bucket_path = path.split(os.sep)
-    bucket_name = bucket_path[0]
-    file_name = bucket_path[-1]
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    gcs_stat = storage.Blob(bucket=bucket, name=file_name).exists(storage_client)
-
-    if not gcs_stat:
-        raise BadRequest("Google Cloud Storage file %r not found in %s." % (file_name, bucket))
+    storage_provier = storage.get_storage_provider()
+    if not storage_provier.exists(path):
+        raise BadRequest("Google Cloud Storage file not found in %s." % (path))
 
 
 class QuestionnaireResponseAnswerDao(BaseDao):

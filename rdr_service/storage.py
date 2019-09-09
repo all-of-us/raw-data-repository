@@ -3,10 +3,12 @@ import glob
 import shutil
 import datetime
 import hashlib
+import pathlib
 
 from contextlib import ContextDecorator
 from tempfile import mkstemp
 from abc import ABC, abstractmethod
+from google.cloud import storage
 from google.cloud import storage
 from google.cloud.storage import Blob
 from google.cloud._helpers import UTC
@@ -49,6 +51,10 @@ class StorageProvider(Provider, ABC):
     def copy_blob(self, source_path, destination_path):
         pass
 
+    @abstractmethod
+    def exists(self, path):
+        pass
+
 
 class LocalFilesystemStorageProvider(StorageProvider):
     DEFAULT_STORAGE_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'tests', '.test_storage'))
@@ -68,7 +74,12 @@ class LocalFilesystemStorageProvider(StorageProvider):
         return blob_name
 
     def open(self, path, mode):
-        return open(self._get_local_path(path), mode)
+        local_path = self._get_local_path(path)
+        directory = os.path.dirname(local_path)
+        if directory:
+            pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
+
+        return open(local_path, mode)
 
     def lookup(self, bucket_name):
         path = self._get_local_path(bucket_name)
@@ -76,6 +87,8 @@ class LocalFilesystemStorageProvider(StorageProvider):
             return bucket_name
         else:
             return None
+
+    exists = lookup
 
     def get_blob(self, bucket_name, blob_name):
         file_path = os.path.normpath(self._get_local_path(bucket_name) + os.sep + blob_name)
@@ -188,6 +201,7 @@ class GoogleCloudStorageFile(ContextDecorator):
             self.blob.upload_from_filename(self.temp_file_path)
             self.temp_file.close()
 
+
     def __enter__(self):
         return self
 
@@ -249,6 +263,15 @@ class GoogleCloudStorageProvider(StorageProvider):
         destination_bucket = storage_client.get_bucket(destination_bucket_name)
 
         source_bucket.copy_blob(source_blob, destination_bucket, destination_blob_name)
+
+    def exists(self, path):
+        bucket_path = path.split(os.sep)
+        bucket_name = bucket_path[0]
+        file_name = bucket_path[-1]
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+        gcs_stat = storage.Blob(bucket=bucket, name=file_name).exists(storage_client)
+        return gcs_stat is not None
 
     @staticmethod
     def _parse_path(path):
