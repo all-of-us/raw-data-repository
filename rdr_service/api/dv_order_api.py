@@ -183,9 +183,9 @@ class DvOrderApi(UpdatableApi):
             )
             p_id = from_client_participant_id(pid.value)
         except AttributeError as e:
-            raise BadRequest(e)
+            raise BadRequest(str(e))
         except Exception as e:
-            raise BadRequest(e)
+            raise BadRequest(str(e))
 
         if not p_id:
             raise BadRequest("Request must include participant id")
@@ -218,9 +218,9 @@ class DvOrderApi(UpdatableApi):
             if tracking_status:
                 tracking_status = tracking_status.lower()
         except AttributeError as e:
-            raise BadRequest(e)
+            raise BadRequest(str(e))
         except Exception as e:
-            raise BadRequest(e)
+            raise BadRequest(str(e))
 
         _id = self.dao.get_id(ObjDict({"participantId": p_id, "order_id": int(bo_id)}))
         if not _id:
