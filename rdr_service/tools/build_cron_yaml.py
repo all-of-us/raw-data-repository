@@ -9,7 +9,6 @@ see `_compile_job_list` comments for details on merging process.
 import argparse
 import collections
 import os
-import sys  # pylint: disable=unused-import
 
 import yaml
 

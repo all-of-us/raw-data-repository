@@ -23,7 +23,6 @@ from rdr_service.model.genomics import (
 )
 from rdr_service.model.participant import Participant
 from tests import test_data
-from rdr_service.storage import LocalFilesystemStorageProvider  # pylint: disable=unused-import
 from tests.helpers.unittest_base import BaseTestCase
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)

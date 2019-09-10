@@ -1,4 +1,5 @@
 from sqlalchemy import (
+    BLOB,
     Boolean,
     Column,
     Date,

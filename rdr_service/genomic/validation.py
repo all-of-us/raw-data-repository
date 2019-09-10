@@ -1,7 +1,6 @@
 import collections
 import datetime
 import functools
-import itertools  # pylint: disable=unused-import
 import operator
 
 from rdr_service import clock

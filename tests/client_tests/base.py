@@ -1,7 +1,6 @@
 import copy
 import json
 import os
-import unittest  # pylint: disable=unused-import
 
 from rdr_service.main_util import configure_logging
 from rdr_service.rdr_client.client import Client
