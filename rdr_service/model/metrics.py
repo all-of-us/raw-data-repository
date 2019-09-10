@@ -1,4 +1,3 @@
-# pylint: disable=unused-import
 from sqlalchemy import (
     BLOB,  # pylint: disable=unused-import
     Boolean,
