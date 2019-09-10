@@ -1,8 +1,10 @@
 import unittest
-
+import os
+import shutil
 import mock
 #from testlib import testutil
 
+from rdr_service import config
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -19,13 +21,10 @@ def _callthrough(fn, *args, **kwargs):
 
 class DataGenApiTest(BaseTestCase):
     def setUp(self):
-        # Neither CloudStorageTestBase nor our FlaskTestBase correctly calls through to
-        # setup(..).setup(..), so explicitly call both here.
-        #testutil.CloudStorageTestBase.setUp(self)
         BaseTestCase.setUp(self)
 
-    @unittest.skip("DA-471, switch to new cloud storage provider")
-    @mock.patch("google.appengine.ext.deferred.defer", new=_callthrough)
+    @unittest.skip("DA-471, Only tests fake data generator, test is flaky.")
+    #@mock.patch("google.appengine.ext.deferred.defer", new=_callthrough)
     def test_generate_samples(self):
         participant_id = self.send_post("Participant", {})["participantId"]
         self.send_consent(participant_id)

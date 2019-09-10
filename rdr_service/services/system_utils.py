@@ -195,7 +195,7 @@ def pid_is_running(pid: int):
   :return: True if process with this ID is running, otherwise False
   """
     # See if there is a currently running mysqld instance
-    args = ['ps', '-ef']
+    args = ['ps', '-eo ruid, pid, ppid, args']
     code, so, se = run_external_program(args=args)
     if code == 0:
         lines = so.split('\n')
