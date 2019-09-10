@@ -1,5 +1,4 @@
 from sqlalchemy import (
-    BLOB,
     Boolean,
     Column,
     ForeignKey,
@@ -7,7 +6,8 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
-)  # pylint: disable=unused-import
+)
+from sqlalchemy import BLOB  # pylint: disable=unused-import
 from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import Base
