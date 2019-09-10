@@ -145,8 +145,10 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         os.environ['RDR_STORAGE_ROOT'] = temp_folder_path
 
     def setup_config(self):
-        data = read_dev_config(os.path.join(os.path.dirname(__file__), "..", "..", "rdr_service", "config", "base_config.json"),
-                               os.path.join(os.path.dirname(__file__), "..", "..", "rdr_service", "config", "config_dev.json"))
+        data = read_dev_config(os.path.join(os.path.dirname(__file__), "..", "..",
+                                            "rdr_service", "config", "base_config.json"),
+                               os.path.join(os.path.dirname(__file__), "..", "..",
+                                            "rdr_service", "config", "config_dev.json"))
 
         test_configs_dir = mkdtemp()
         shutil.copy(os.path.join(os.path.dirname(__file__), "..", ".test_configs", "db_config.json"), test_configs_dir)
