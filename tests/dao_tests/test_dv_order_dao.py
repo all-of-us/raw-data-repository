@@ -81,7 +81,7 @@ class DvOrderDaoTestBase(BaseTestCase):
         status = self.dao._enumerate_order_tracking_status(
             fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "tracking-status").valueString
         )
-        self.assertEqual(status, OrderShipmentTrackingStatus.ENROUTE)
+        self.assertEqual(status, OrderShipmentTrackingStatus.IN_TRANSIT)
 
     @mock.patch("rdr_service.dao.dv_order_dao.MayoLinkApi")
     def test_service_unavailable(self, mocked_api):
