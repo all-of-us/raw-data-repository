@@ -3,12 +3,12 @@
 # API Docs: https://cloud.google.com/bigquery/docs/reference/rest/
 #
 import collections
+import datetime
 import importlib
 import inspect
 import itertools
 import json
 import operator
-
 from enum import Enum, EnumMeta
 
 from rdr_service.dao.base_dao import json_serial
@@ -17,66 +17,59 @@ from rdr_service.dao.base_dao import json_serial
 # BigQuery exceptions
 class BQException(Exception):
     """ Base class for BQ exceptions """
-
     pass
 
 
 class BQInvalidModeException(BQException):
     """
-  BigQuery error in update operation: Provided Schema does not match Table
-    - Cannot add required columns to an existing schema
-  """
-
+    BigQuery error in update operation: Provided Schema does not match Table
+      - Cannot add required columns to an existing schema
+    """
     pass
 
 
 class BQModeChangedException(BQException):
     """
-  BigQuery error in update operation: Provided Schema does not match Table
-    - Field [FIELD] has changed mode from REPEATED to NULLABLE
-  """
-
+    BigQuery error in update operation: Provided Schema does not match Table
+      - Field [FIELD] has changed mode from REPEATED to NULLABLE
+    """
     pass
 
 
 class BQSchemaStructureException(BQException):
     """
-  BigQuery error in update operation
-    - Precondition Failed
-  Note: This occurs if new fields are not added to the end of the schema.
-  """
-
+    BigQuery error in update operation
+      - Precondition Failed
+    Note: This occurs if new fields are not added to the end of the schema.
+    """
     pass
 
 
 class BQInvalidSchemaException(BQException):
     """
-  Error while reading data, error message
-    - parsing error in row starting at position [INT] - No such field: [FIELD]
-  """
-
+    Error while reading data, error message
+      - parsing error in row starting at position [INT] - No such field: [FIELD]
+    """
     pass
 
 
 class BQDuplicateFieldException(BQException):
     """
-  BigQuery error in update operation
-    - Field new_field already exists in schema
-  """
-
+    BigQuery error in update operation
+      - Field new_field already exists in schema
+    """
     pass
 
 
 class BQFieldTypeEnum(Enum):
     """
-  BigQuery column types
-  """
-
+    BigQuery column types
+    """
     STRING = 1
     BYTES = 2
     INTEGER = 3
     FLOAT = 4
-    BOOLEAN = 5
+    # BOOLEAN = 5  # Use INTEGER instead.
     TIMESTAMP = 6
     DATE = 7
     TIME = 8
@@ -87,9 +80,8 @@ class BQFieldTypeEnum(Enum):
 
 class BQFieldModeEnum(Enum):
     """
-  BigQuery mode types
-  """
-
+    BigQuery mode types
+    """
     NULLABLE = 1
     REQUIRED = 2
     REPEATED = 3
@@ -97,10 +89,10 @@ class BQFieldModeEnum(Enum):
 
 class BQSchema(object):
     """
-  A BigQuery dataset object schema.
-  Note: Field properties of python object derived from this should the underscore naming
-        convention. Property names must exactly match BigQuery field names.
-  """
+    A BigQuery dataset object schema.
+    Note: Field properties of python object derived from this should the underscore naming
+          convention. Property names must exactly match BigQuery field names.
+    """
 
     def __init__(self, *args):
 
@@ -112,17 +104,17 @@ class BQSchema(object):
 
     def _cmp_schema(self, o1, o2):
         """
-    Recursively compare schemas. This is normally used to compare a local schema with
-    a remote BQ schema.  For this to succeed, schema property names for field object
-    must exactly match BQ field names.
-    # TODO: Future: exclude 'enum' and 'description' dict values. We really want to only compare the core field info.
-    :param o1: BQSchema object
-    :param o2: BQSchema object
-    :return:
-    """
+        Recursively compare schemas. This is normally used to compare a local schema with
+        a remote BQ schema.  For this to succeed, schema property names for field object
+        must exactly match BQ field names.
+        # TODO: Future: exclude 'enum' and 'description' dict values. We really want to only compare the core field info.
+        :param o1: BQSchema object
+        :param o2: BQSchema object
+        :return:
+        """
         if len(dir(o1)) != len(dir(o2)):
             return False
-        pairs = list(zip(o1.get_fields(), o2.get_fields()))
+        pairs = zip(o1.get_fields(), o2.get_fields())
         for l1, l2 in pairs:
             if isinstance(l1, BQRecordField):
                 if not self._cmp_schema(l1.get_schema(), l2.get_schema()):
@@ -143,21 +135,21 @@ class BQSchema(object):
 
     def _add_fields(self, obj, fields):
         """
-    Recursively add fields to object
-    :param obj: object to add fields to.
-    :param fields: list of field dicts
-    :return: object
-    """
+        Recursively add fields to object
+        :param obj: object to add fields to.
+        :param fields: list of field dicts
+        :return: object
+        """
         for field in fields:
-            fld_name = field["name"]
-            fld_type = BQFieldTypeEnum[field["type"]]
-            fld_mode = BQFieldModeEnum[field["mode"]]
-            fld_descr = field["description"] if "description" in field else None
+            fld_name = field['name']
+            fld_type = BQFieldTypeEnum[field['type']]
+            fld_mode = BQFieldModeEnum[field['mode']]
+            fld_descr = field['description'] if 'description' in field else None
             fld_enum = None
 
             if fld_descr and fld_type != BQFieldTypeEnum.RECORD:
                 try:
-                    mod_path, mod_name = fld_descr.rsplit(".", 1)
+                    mod_path, mod_name = fld_descr.rsplit('.', 1)
                     fld_enum = getattr(importlib.import_module(mod_path, mod_name), mod_name)
                     fld_descr = None
                 except AttributeError:
@@ -170,7 +162,7 @@ class BQSchema(object):
                 #       comparisons to fail.  This is because the instantiated subclass
                 #       will always have any new fields as properties, regardless to
                 #       what fields the remote BQ server has.
-                schema = self._add_fields(BQSchema(), field["fields"])
+                schema = self._add_fields(BQSchema(), field['fields'])
                 rec_obj = BQRecordField(fld_name, schema, fld_descr=fld_descr)
                 self.__dict__[fld_name] = rec_obj
             else:
@@ -180,9 +172,9 @@ class BQSchema(object):
 
     def get_fields(self):
         """
-    Return a list of schema fields
-    :return: list
-    """
+        Return a list of schema fields
+        :return: list
+        """
         fields = list()
         for key in dir(self):
             field = getattr(self, key)
@@ -190,14 +182,14 @@ class BQSchema(object):
                 fields.append(field)
 
         # sort the BQField objects in the original order they are defined.
-        fields.sort(key=operator.attrgetter("_count"))
+        fields.sort(key=operator.attrgetter('_count'))
         return fields
 
     def to_json(self):
         """
-    Return the json representation of the schema.
-    :return: json string
-    """
+        Return the json representation of the schema.
+        :return: json string
+        """
         return json.dumps(self.get_fields(), indent=2, default=BQField.serialize)
 
     # def __repr__(self):
@@ -206,9 +198,8 @@ class BQSchema(object):
 
 class BQField(object):
     """
-  A BigQuery table schema field
-  """
-
+    A BigQuery table schema field
+    """
     _fld_name = None
     _fld_type = None
     _fld_mode = None
@@ -221,14 +212,14 @@ class BQField(object):
         self._count = next(BQField._counter)
 
         if not isinstance(fld_name, str):
-            raise TypeError("field name must be a string")
+            raise TypeError('field name must be a string')
         if not isinstance(fld_type, Enum):
-            raise TypeError("field type must be a BQFieldTypeEnum value")
+            raise TypeError('field type must be a BQFieldTypeEnum value')
         if not isinstance(fld_mode, Enum):
-            raise TypeError("field mode must be a BQFieldModeEnum value")
+            raise TypeError('field mode must be a BQFieldModeEnum value')
         if fld_enum:
             if not isinstance(fld_enum, EnumMeta):
-                raise TypeError("field enum must be an instance of Enum")
+                raise TypeError('field enum must be an instance of Enum')
             pass
         self._fld_name = fld_name
         self._fld_type = fld_type
@@ -241,28 +232,28 @@ class BQField(object):
 
     def to_dict(self):
         """
-    Return a dictionary of the field information.
-    :return: dict
-    """
+        Return a dictionary of the field information.
+        :return: dict
+        """
         data = collections.OrderedDict()
-        data["name"] = self._fld_name
-        data["type"] = getattr(self._fld_type, "name")
-        data["mode"] = getattr(self._fld_mode, "name")
+        data['name'] = self._fld_name
+        data['type'] = getattr(self._fld_type, 'name')
+        data['mode'] = getattr(self._fld_mode, 'name')
         if self._fld_enum:
-            data["enum"] = True
-            data["description"] = "{0}.{1}".format(self._fld_enum.__module__, self._fld_enum.__name__)
+            data['enum'] = True
+            data['description'] = '{0}.{1}'.format(self._fld_enum.__module__, self._fld_enum.__name__)
         elif self._fld_descr:
-            data["enum"] = False
-            data["description"] = self._fld_descr
+            data['enum'] = False
+            data['description'] = self._fld_descr
         return data
 
     @staticmethod
     def serialize(o):
         """
-    serialize object for converting to json
-    :param o: object
-    :return: dict
-    """
+        serialize object for converting to json
+        :param o: object
+        :return: dict
+        """
         return o.to_dict()
 
     def __repr__(self):
@@ -272,26 +263,25 @@ class BQField(object):
 
 class BQRecordField(BQField):
     """
-  A BigQuery Record field which holds a set of BQFields.
-  """
+    A BigQuery Record field which holds a set of BQFields.
+    """
 
     class __schema__(BQSchema):
         pass
 
     def __init__(self, fld_name, schema, fld_descr=None):
         """
-    :param fld_name: field name
-    :param schema: BQSchema object
-    """
-        super(BQRecordField, self).__init__(
-            fld_name, BQFieldTypeEnum.RECORD, BQFieldModeEnum.REPEATED, fld_descr=fld_descr
-        )
+        :param fld_name: field name
+        :param schema: BQSchema object
+        """
+        super(BQRecordField, self). \
+            __init__(fld_name, BQFieldTypeEnum.RECORD, BQFieldModeEnum.REPEATED, fld_descr=fld_descr)
         self.__schema__ = schema
 
     def get_schema(self):
         """
-    If self.__schema__ is a class then try to instantiate it, otherwise return the schema object.
-    """
+        If self.__schema__ is a class then try to instantiate it, otherwise return the schema object.
+        """
         try:
             return self.__schema__()
         except TypeError:
@@ -305,41 +295,55 @@ class BQRecordField(BQField):
 
     def to_dict(self):
         """
-    Return a dictionary of the field information.
-    :return: dict
-    """
+        Return a dictionary of the field information.
+        :return: dict
+        """
         # get our field information
         data = super(BQRecordField, self).to_dict()
         schema = self.get_schema()
-        data["description"] = "{0}.{1}".format(schema.__module__, schema.__class__.__name__)
+        data['description'] = '{0}.{1}'.format(schema.__module__, schema.__class__.__name__)
         # get list of BQField objects in correct order.
         fields = self.get_schema().get_fields()
         if len(fields) > 0:
-            data["fields"] = fields
+            data['fields'] = fields
 
         return data
 
     def get_fields(self):
         """
-    Return a list of field object for this record object
-    :return: list
-    """
+        Return a list of field object for this record object
+        :return: list
+        """
         return self.get_schema().get_fields()
 
 
 class BQTable(object):
     """
-  https://cloud.google.com/bigquery/docs/managing-table-schemas
-  Rules for changing the table structure:
-    1) New fields added to an existing table must be set to "NULLABLE".
-    2) New fields may only be added to the bottom of the field list.
-    3) Existing fields can not be removed.
-  """
-
+    https://cloud.google.com/bigquery/docs/managing-table-schemas
+    Rules for changing the table structure:
+      1) New fields added to an existing table must be set to "NULLABLE".
+      2) New fields may only be added to the bottom of the field list.
+      3) Existing fields can not be removed.
+    """
     __tablename__ = None
 
     class __schema__(BQSchema):
         pass
+
+    __dataset__ = 'rdr_ops_data_view'
+    # GCP project and dataset mapping. Allows redirecting table data into other GCP projects and/or datasets.
+    # The value for this would be a list of tuples with source project id and one or more
+    # destination project id and dataset names.
+    # Format: [ ( src project_id, (dest project_id, dataset), (dest project_id, dataset), ...)), ]
+    # IE: [
+    #       ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view'), ('all-of-us-prod', 'rdr_other_ds')),
+    #     ]
+    # To prevent data from going to a project, set the destination dataset id to None. This will disable
+    # creating a table/view in the destination project.
+    # IE: [
+    #       ('all-of-us-rdr-prod', ('aou-pdr-data-prod', None)),
+    #     ]
+    __project_map__ = None
 
     def get_name(self):
         return self.__tablename__
@@ -347,10 +351,79 @@ class BQTable(object):
     def get_schema(self):
         return self.__schema__()
 
+    @classmethod
+    def get_project_map(cls, project_id):
+        """
+        Return a list of mapped project ids, datasets and table names.
+        :param project_id: source project id
+        :return: list of tuples containing (project id, dataset name, table name)
+        """
+        if not project_id:
+            raise ValueError('Invalid project id.')
+        results = list()
+
+        if isinstance(cls.__project_map__, list):
+            for project in cls.__project_map__:
+                if project_id == project[0]:
+                    for x in range(1, len(project)):
+                        results.append((project[x][0], project[x][1], cls.__tablename__))
+
+        # if there was no mapping found, just return the project_id with default values.
+        if len(results) == 0:
+            results.append((project_id, cls.__dataset__, cls.__tablename__))
+
+        return results
+
 
 class BQView(object):
-    __viewname__ = None
-    sql = None
+    __viewname__ = None  # type: str
+    __viewdescr__ = None  # type: str
+    __table__ = None  # type: BQTable
+    __sql__ = None  # type: str
+    _show_created = False
+    _show_modified = False
+
+    def __init__(self):
+
+        if not self.__sql__ and self.__table__:
+            tbl = self.__table__()
+            fields = tbl.get_schema().get_fields()
+
+            fld_list = list()
+            for field in fields:
+
+                fld_name = field['name']
+                if fld_name == 'id':  # as a good policy, we don't usually ever show 'id' to users.
+                    continue
+                if fld_name == 'created' and not self._show_created:
+                    continue
+                if fld_name == 'modified' and not self._show_modified:
+                    continue
+                fld_list.append(field['name'])
+
+            self.__sql__ = """
+        SELECT {fields} 
+      """.format(fields=', '.join(fld_list))
+
+            self.__sql__ += """
+        FROM (
+          SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+            FROM `{project}`.{dataset}.%%table%% 
+        ) c
+        WHERE c.modified = c.max_timestamp 
+      """.replace('%%table%%', tbl.get_name())
+
+    def get_table(self):
+        return self.__table__
+
+    def get_name(self):
+        return self.__viewname__
+
+    def get_descr(self):
+        return self.__viewdescr__
+
+    def get_sql(self):
+        return self.__sql__
 
 
 # class BQSession(object):
@@ -373,34 +446,33 @@ class BQView(object):
 
 class BQRecordSet(object):
     """
-  Represents a BigQuery data set.
-  """
+    Represents a BigQuery data set.
+    """
 
     _bq_job = None
 
     def __int__(self, bigquery_job):
         """
-    :param bigquery_job: A BigQueryJob object.
-    """
+        :param bigquery_job: A BigQueryJob object.
+        """
         self._bq_job = bigquery_job
         pass
 
 
 class BQRecord(object):
     """
-  Represents a single BigQuery data record.
-  """
-
+    Represents a single BigQuery data record.
+    """
     __schema__ = None
     __fields__ = None
     _convert_to_enum = True
 
     def __init__(self, schema=None, data=None, convert_to_enum=True):
         """
-    :param schema: BQSchema type, BQSchema instance or schema json string.
-    :param data: initial dict of data for object
-    :param convert_to_enums: If schema field description includes Enum class info, convert value to Enum.
-    """
+        :param schema: BQSchema type, BQSchema instance or schema json string.
+        :param data: initial dict of data for object
+        :param convert_to_enums: If schema field description includes Enum class info, convert value to Enum.
+        """
         self._convert_to_enum = convert_to_enum
 
         if schema:
@@ -421,35 +493,36 @@ class BQRecord(object):
 
     def __getitem__(self, item):
         """
-    Lookup item data value
-    :param item: string
-    :return: value
-    """
+        Lookup item data value
+        :param item: string
+        :return: value
+        """
         return getattr(self, item)
 
     def update_values(self, data):
         """
-    Update this object with the given dict values, validate against BQSchema if available.
-    :param data: dict of data values to add/update.
-    """
+        Update this object with the given dict values, validate against BQSchema if available.
+        :param data: dict of data values to add/update.
+        """
 
         def update(dest, src, schema):
             """
-      recursive function to add values from one dict to another and validate keys against schema
-      :param dest: destination dict object
-      :param src: source dict object
-      :param schema: schema object
-      :return: dict
-      """
+            recursive function to add values from one dict to another and validate keys against schema
+            :param dest: destination dict object
+            :param src: source dict object
+            :param schema: schema object
+            :return: dict
+            """
             for key, val in src.items():
                 # validate key against schema if needed
                 if schema and not getattr(schema, key, None):
-                    raise KeyError("{0} key not in schema".format(key))
+                    # raise KeyError('{0} key not in schema'.format(key))
+                    continue  # just ignore keys not in schema.
                 # TODO: Future: Validate value against schema BQField type and constraints here.
                 # check for Enum32 object, if it is set the value to the enum value
-                if self._convert_to_enum and schema and schema[key]["description"] and schema[key]["enum"] is True:
+                if self._convert_to_enum and schema and schema[key]['description'] and schema[key]['enum'] is True:
                     try:
-                        mod_path, mod_name = schema[key]["description"].rsplit(".", 1)
+                        mod_path, mod_name = schema[key]['description'].rsplit('.', 1)
                         fld_enum = getattr(importlib.import_module(mod_path, mod_name), mod_name)
                         if isinstance(val, int):
                             dest[key] = fld_enum(val)
@@ -459,7 +532,7 @@ class BQRecord(object):
                         dest[key] = val
                     except ValueError:
                         dest[key] = val
-                elif isinstance(val, collections.abc.Mapping):
+                elif isinstance(val, collections.Mapping):
                     dest[key] = update(dest.get(key, {}), val, schema.__dict__[key] if schema else None)
                 elif isinstance(val, list):
                     # TODO: Future: Do we want to instantiate a new BQRecord for nested data here, instead of
@@ -473,7 +546,6 @@ class BQRecord(object):
             return dest
 
         update(self.__dict__, data, self.__schema__)
-        pass
 
     def get_fields(self):
         return self.__fields__
@@ -481,20 +553,40 @@ class BQRecord(object):
     def get_schema(self):
         return self.__schema__
 
-    def to_dict(self, full_schema=False):  # pylint: disable=unused-argument
+    def _serialize_dict(self, data):
         """
-    convert properties to a dict
-    :param full_schema: If True, add missing schema properties.
-    """
+        Recursively loop through dict and encode dates to string
+        :param data: dict object
+        :return: dict object
+        """
+        for key, value in data.items():
+            if isinstance(value, list):
+                for x in range(len(value)):
+                    value[x] = self._serialize_dict(value[x])
+            if isinstance(value, dict):
+                data[key] = self._serialize_dict(value)
+            if isinstance(value, (datetime.datetime, datetime.date)):
+                data[key] = value.isoformat()
+
+        return data
+
+    def to_dict(self, serialize=False, full_schema=False):  # pylint: disable=unused-argument
+        """
+        convert properties to a dict
+        :param serialize: If True, convert dates to string.
+        :param full_schema: If True, add missing schema properties.
+        """
         data = collections.OrderedDict()
         for key in dir(self):
-            if key.startswith("_"):
+            if key.startswith('_'):
                 continue
             value = getattr(self, key)
             if inspect.ismethod(value):
                 continue
             data[key] = value
 
+        if serialize:
+            data = self._serialize_dict(data)
         # TODO: future (maybe), add in missing data keys found in schema and exclude non-schema properties.
         return data
 

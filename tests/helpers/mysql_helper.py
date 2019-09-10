@@ -19,12 +19,16 @@ import warnings
 from glob import glob
 from time import sleep
 
+from sqlalchemy.exc import OperationalError
+
 from rdr_service import singletons
+from rdr_service import config
 from rdr_service.dao import database_factory
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model import compiler
+from rdr_service.model.database import Database
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
@@ -36,7 +40,7 @@ from tests.helpers import temporary_sys_path
 from tests.helpers.mysql_helper_data import PITT_HPO_ID, PITT_ORG_ID, AZ_HPO_ID, AZ_ORG_ID
 
 # TODO: In the future, setup a memory disk and set the base path there for faster testing.
-BASE_PATH = '{0}/rdr-mysqld'.format(tempfile.gettempdir())
+BASE_PATH = '{0}/rdr-mysqld'.format('/dev/shm')
 MYSQL_PORT = 9306
 
 
@@ -96,7 +100,14 @@ def start_mysql_instance():
 
 
 def _initialize_database(with_data=True, with_consent_codes=False):
-    mysql_host = "127.0.0.1"  # Do not use 'localhost', this defaults to using a unix socket.
+    """
+    Initialize a clean RDR database for unit tests.
+    :param with_data: Populate with basic data
+    :param with_consent_codes: Populate with consent codes.
+    """
+    # Set this so the database factory knows to use the unittest connection string from the config.
+    os.environ["UNITTEST_FLAG"] = "True"
+    mysql_host = "127.0.0.1"  # Do not use 'localhost', we want to force using an IP socket.
 
     if "CIRCLECI" in os.environ:
         # Default no-pw login, according to https://circleci.com/docs/1.0/manually/#databases .
@@ -104,26 +115,30 @@ def _initialize_database(with_data=True, with_consent_codes=False):
     else:
         mysql_login = "root"
 
-    database_factory.DB_CONNECTION_STRING = "mysql+mysqldb://{0}@{1}:{2}".format(mysql_login, mysql_host, MYSQL_PORT)
-    db = database_factory.get_database(db_name=None)
+    database = database_factory.get_database(db_name=None)
+    engine = database.get_engine()
 
-    db.get_engine().execute("DROP DATABASE IF EXISTS rdr")
-    db.get_engine().execute("DROP DATABASE IF EXISTS metrics")
-    # Keep in sync with tools/setup_local_database.sh.
-    db.get_engine().execute("CREATE DATABASE rdr CHARACTER SET utf8 COLLATE utf8_general_ci")
-    db.get_engine().execute("CREATE DATABASE metrics CHARACTER SET utf8 COLLATE utf8_general_ci")
+    with engine.begin():
+        engine.execute("DROP DATABASE IF EXISTS rdr")
+        engine.execute("DROP DATABASE IF EXISTS metrics")
+        # Keep in sync with tools/setup_local_database.sh.
+        engine.execute("CREATE DATABASE rdr CHARACTER SET utf8 COLLATE utf8_general_ci")
+        engine.execute("CREATE DATABASE metrics CHARACTER SET utf8 COLLATE utf8_general_ci")
 
-    database_factory.DB_CONNECTION_STRING = \
-                    "mysql+mysqldb://{0}@{1}:{2}/rdr".format(mysql_login, mysql_host, MYSQL_PORT)
+        engine.execute("USE metrics")
+        database.create_metrics_schema()
+
+        engine.execute("USE rdr")
+        database.create_schema()
+        _load_views_and_functions(engine)
+
+    engine.dispose()
+    database = None
     singletons.reset_for_tests()
 
-    dbf = database_factory.get_database(db_name='rdr')
-    dbf.create_schema()
-    database_factory.get_generic_database().create_metrics_schema()
+    conn_str = "mysql+mysqldb://{0}@{1}:{2}/rdr?charset=utf8".format(mysql_login, mysql_host, MYSQL_PORT)
+    config.override_setting('unittest_connection_string', conn_str)
 
-
-    # TODO: Setup database fixtures
-    _load_views_and_functions(dbf.get_engine())
     if with_data:
         _setup_hpos()
 

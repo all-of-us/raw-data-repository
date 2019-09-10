@@ -9,7 +9,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import app_util
 from rdr_service.dao.base_dao import deferred_save_raw_request
-from rdr_service.dao.bigquery_sync_dao import deferred_bq_participant_summary_update
+from rdr_service.dao.bq_participant_summary_dao import deferred_bq_participant_summary_update
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.query import OrderBy, Query

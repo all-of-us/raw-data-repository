@@ -2,8 +2,10 @@ from flask_restful import Resource, request
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import app_util
+from rdr_service.dao.bq_questionaire_dao import deferred_bq_questionnaire_update
 from rdr_service.api.base_api import BaseApi
 from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO
+# from google.appengine.ext import deferred
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.model.code import Code, CodeType
@@ -23,7 +25,11 @@ class QuestionnaireResponseApi(BaseApi):
 
     @app_util.auth_required(PTC)
     def post(self, p_id):
-        return super(QuestionnaireResponseApi, self).post(participant_id=p_id)
+        resp = super(QuestionnaireResponseApi, self).post(participant_id=p_id)
+        if resp and 'id' in resp:
+            # deferred.defer(deferred_bq_questionnaire_update, p_id, int(resp['id']))
+            pass
+        return resp
 
 
 class ParticipantQuestionnaireAnswers(Resource):

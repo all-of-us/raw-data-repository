@@ -68,7 +68,8 @@ class DvOrderDao(UpdatableDao):
 
         order_id = int(fhir_resource.basedOn[0].identifier.value)
         with self.session() as session:
-            barcode = session.query(BiobankDVOrder.barcode).filter(BiobankDVOrder.order_id == order_id).first()
+            result = session.query(BiobankDVOrder.barcode).filter(BiobankDVOrder.order_id == order_id).first()
+            barcode = None if not result else result if isinstance(result, str) else result.barcode
 
         # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
         order = {
@@ -312,8 +313,8 @@ class DvOrderDao(UpdatableDao):
             return OrderShipmentStatus.UNSET
 
     def _enumerate_order_tracking_status(self, value):
-        if value.lower() == "enroute":
-            return OrderShipmentTrackingStatus.ENROUTE
+        if value.lower() == "in_transit":
+            return OrderShipmentTrackingStatus.IN_TRANSIT
         elif value.lower() == "delivered":
             return OrderShipmentTrackingStatus.DELIVERED
         else:

@@ -67,7 +67,7 @@ class DvOrderDaoTestBase(BaseTestCase):
         self.assertEqual(put_response["version"], 4)
         self.assertEqual(put_response["meta"]["versionId"].strip("W/"), '"4"')
         self.assertEqual(put_response["barcode"], "SABR90160121INA")
-        self.assertEqual(put_response["biobankOrderId"], "12345")
+        # self.assertEqual(put_response["biobankOrderId"], "12345")
         self.assertEqual(put_response["biobankStatus"], "Delivered")
         self.assertEqual(put_response["order_id"], 999999)
 
@@ -81,7 +81,7 @@ class DvOrderDaoTestBase(BaseTestCase):
         status = self.dao._enumerate_order_tracking_status(
             fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "tracking-status").valueString
         )
-        self.assertEqual(status, OrderShipmentTrackingStatus.ENROUTE)
+        self.assertEqual(status, OrderShipmentTrackingStatus.IN_TRANSIT)
 
     @mock.patch("rdr_service.dao.dv_order_dao.MayoLinkApi")
     def test_service_unavailable(self, mocked_api):

@@ -114,8 +114,6 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
     def __init__(self, *args, **kwargs):
         super(BaseTestCase, self).__init__(*args, **kwargs)
-        # Set this so the database factory knows to use the unittest connection string from the config.
-        os.environ["UNITTEST_FLAG"] = "True"
         self.fake = faker.Faker()
 
     def setUp(self, with_data=True, with_consent_codes=False) -> None:

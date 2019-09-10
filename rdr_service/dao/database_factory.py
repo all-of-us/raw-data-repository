@@ -23,17 +23,17 @@ class _BackupSqlDatabase(_SqlDatabase):
         super(_BackupSqlDatabase, self).__init__(db_name, backup=True, **kwargs)
 
 
-def get_database(db_name="rdr"):
+def get_database(db_name="rdr") -> Database:
     """Returns a singleton _SqlDatabase which USEs the rdr DB."""
     return singletons.get(singletons.SQL_DATABASE_INDEX, _SqlDatabase, db_name=db_name)
 
 
-def get_backup_database():
+def get_backup_database() -> Database:
     """Returns a singleton _BackupSqlDatabase which USEs the rdr failover DB."""
     return singletons.get(singletons.BACKUP_SQL_DATABASE_INDEX, _BackupSqlDatabase, db_name="rdr")
 
 
-def get_generic_database():
+def get_generic_database() -> Database:
     """Returns a singleton generic _SqlDatabase (no database USE).
 
   This should be used to access any tables outside of the primary 'rdr' schema,
