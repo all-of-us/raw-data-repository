@@ -1,4 +1,13 @@
-from sqlalchemy import BLOB, Boolean, Column, Date, ForeignKey, Integer, String
+# pylint: disable=unused-import
+from sqlalchemy import (
+    BLOB,  # pylint: disable=unused-import
+    Boolean,
+    Column,
+    Date,
+    ForeignKey,
+    Integer,
+    String
+)
 from sqlalchemy.orm import relationship
 
 from rdr_service import clock

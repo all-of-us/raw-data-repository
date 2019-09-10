@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    BLOB,
+    BLOB,  # pylint: disable=unused-import
     Boolean,
     Column,
     ForeignKey,

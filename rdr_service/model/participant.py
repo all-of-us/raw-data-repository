@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    BLOB,
+    BLOB,  # pylint: disable=unused-import
     BigInteger,
     Boolean,
     Column,
