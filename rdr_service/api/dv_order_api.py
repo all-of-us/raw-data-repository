@@ -183,7 +183,7 @@ class DvOrderApi(UpdatableApi):
             )
             p_id = from_client_participant_id(pid.value)
         except AttributeError as e:
-            raise BadRequest(e)
+            raise BadRequest(str(e))
         except Exception as e:
             raise BadRequest(e)
 
