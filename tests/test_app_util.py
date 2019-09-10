@@ -27,7 +27,6 @@ def cron_required(x):
 def not_in_prod():
     pass
 
-@unittest.skip("replace ndb")
 class AppUtilTest(BaseTestCase):
     def setUp(self):
         super().setUp()
@@ -40,7 +39,11 @@ class AppUtilTest(BaseTestCase):
         }
 
         # Note that there is a ttl cache on this config value, so it can't be changed during the test.
-        config.insert_config(config.USER_INFO, self.user_info)
+
+        from rdr_service.config import LocalFilesystemConfigProvider
+        fs = LocalFilesystemConfigProvider()
+        fs.store(config.USER_INFO, self.user_info)
+        #config.insert_config(config.USER_INFO, self.user_info)
 
     def test_date_header(self):
         response = lambda: None  # Dummy object; functions can have arbitrary attrs set on them.
@@ -49,7 +52,7 @@ class AppUtilTest(BaseTestCase):
         with clock.FakeClock(datetime.datetime(1994, 11, 6, 8, 49, 37)):
             app_util.add_headers(response)
 
-        self.assertEqual(response.headers["Date"], "Sun, 06 Nov 1994 08:49:37 GMT")
+        self.assertEqual(response.headers["Date"], "Sun, 06 Nov 1994 14:49:37 GMT")
 
     def test_expiry_header(self):
         response = lambda: None  # dummy object
@@ -63,9 +66,9 @@ class AppUtilTest(BaseTestCase):
         setattr(response, "headers", {})
         app_util.add_headers(response)
 
-        self.assertItemsEqual(
-            list(response.headers.keys()),
-            (
+        self.assertEqual(
+            set(response.headers.keys()),
+            {
                 "Date",
                 "Expires",
                 "Pragma",
@@ -73,7 +76,7 @@ class AppUtilTest(BaseTestCase):
                 "Content-Disposition",
                 "Content-Type",
                 "X-Content-Type-Options",
-            ),
+            },
         )
 
     def test_valid_ip(self):
@@ -92,22 +95,18 @@ class AppUtilTest(BaseTestCase):
         with self.assertRaises(Forbidden):
             app_util.enforce_ip_whitelisted("5555::", allowed_ips)
 
-    @patch("app_util.request")
-    @patch("app_util.app_identity.get_application_id")
-    def test_auth_required_http_identity_set(self, mock_get_application_id, mock_request):
-        mock_get_application_id.return_value = "app_id"
+    @patch("rdr_service.app_util.request")
+    def test_auth_required_http_identity_set(self, mock_request):
         mock_request.return_value.scheme = "http"
         with self.assertRaises(Unauthorized):
             foo_role(1)
 
-    @patch("app_util.request", spec=app_util.request)
-    @patch("app_util.app_identity.get_application_id")
-    @patch("app_util.get_oauth_id")
-    @patch("app_util.lookup_user_info")
+    @patch("rdr_service.app_util.request", spec=app_util.request)
+    @patch("rdr_service.app_util.get_oauth_id")
+    @patch("rdr_service.app_util.lookup_user_info")
     def test_auth_required_https_identity_set_role_not_matched(
-        self, mock_lookup_user_info, mock_get_oauth_id, mock_get_application_id, mock_request
+        self, mock_lookup_user_info, mock_get_oauth_id, mock_request
     ):
-        mock_get_application_id.return_value = "None"
         mock_request.scheme = "http"
         mock_request.remote_addr = "ip"
         mock_request.headers = {}
@@ -118,14 +117,12 @@ class AppUtilTest(BaseTestCase):
         mock_get_oauth_id.assert_called_with()
         mock_lookup_user_info.assert_called_with(mock_get_oauth_id())
 
-    @patch("app_util.request")
-    @patch("app_util.app_identity.get_application_id")
-    @patch("app_util.get_oauth_id")
-    @patch("app_util.lookup_user_info")
+    @patch("rdr_service.app_util.request")
+    @patch("rdr_service.app_util.get_oauth_id")
+    @patch("rdr_service.app_util.lookup_user_info")
     def test_auth_required_https_identity_set_role_wrong_match(
-        self, mock_lookup_user_info, mock_get_oauth_id, mock_get_application_id, mock_request
+        self, mock_lookup_user_info, mock_get_oauth_id, mock_request
     ):
-        mock_get_application_id.return_value = "appid"
         mock_request.scheme = "https"
         mock_request.remote_addr = "ip"
         mock_request.headers = {}
@@ -135,14 +132,12 @@ class AppUtilTest(BaseTestCase):
             foo_role(1)
         mock_get_oauth_id.assert_called_with()
 
-    @patch("app_util.request")
-    @patch("app_util.app_identity.get_application_id")
-    @patch("app_util.get_oauth_id")
-    @patch("app_util.lookup_user_info")
+    @patch("rdr_service.app_util.request")
+    @patch("rdr_service.app_util.get_oauth_id")
+    @patch("rdr_service.app_util.lookup_user_info")
     def test_auth_required_https_identity_set_multi_role_not_matched(
-        self, mock_lookup_user_info, mock_get_oauth_id, mock_get_application_id, mock_request
+        self, mock_lookup_user_info, mock_get_oauth_id, mock_request
     ):
-        mock_get_application_id.return_value = "appid"
         mock_request.scheme = "https"
         mock_request.remote_addr = "ip"
         mock_request.headers = {}
@@ -155,14 +150,12 @@ class AppUtilTest(BaseTestCase):
         mock_lookup_user_info.return_value = {"roles": ["foo"]}
         self.assertEqual(2, foo_bar_role(1))
 
-    @patch("app_util.request")
-    @patch("app_util.app_identity.get_application_id")
-    @patch("app_util.get_oauth_id")
-    @patch("app_util.lookup_user_info")
+    @patch("rdr_service.app_util.request")
+    @patch("rdr_service.app_util.get_oauth_id")
+    @patch("rdr_service.app_util.lookup_user_info")
     def test_auth_required_https_identity_set_role_wrong_match(
-        self, mock_lookup_user_info, mock_get_oauth_id, mock_get_application_id, mock_request
+        self, mock_lookup_user_info, mock_get_oauth_id, mock_request
     ):
-        mock_get_application_id.return_value = "None"
         mock_request.scheme = "https"
         mock_request.remote_addr = "ip"
         mock_request.headers = {}
@@ -175,14 +168,12 @@ class AppUtilTest(BaseTestCase):
         mock_get_oauth_id.assert_called_with()
         mock_lookup_user_info.assert_called_with(mock_get_oauth_id())
 
-    @patch("app_util.request")
-    @patch("app_util.app_identity.get_application_id")
-    @patch("app_util.get_oauth_id")
-    @patch("app_util.lookup_user_info")
+    @patch("rdr_service.app_util.request")
+    @patch("rdr_service.app_util.get_oauth_id")
+    @patch("rdr_service.app_util.lookup_user_info")
     def test_auth_required_https_identity_set_role_match(
-        self, mock_lookup_user_info, mock_get_oauth_id, mock_get_application_id, mock_request
+        self, mock_lookup_user_info, mock_get_oauth_id, mock_request
     ):
-        mock_get_application_id.return_value = "None"
         mock_request.scheme = "http"
         mock_request.remote_addr = "ip"
         mock_request.headers = {}
@@ -192,14 +183,12 @@ class AppUtilTest(BaseTestCase):
         mock_get_oauth_id.assert_called_with()
         mock_lookup_user_info.assert_called_with(mock_get_oauth_id())
 
-    @patch("app_util.request")
-    @patch("app_util.app_identity.get_application_id")
-    @patch("app_util.get_oauth_id")
-    @patch("app_util.lookup_user_info")
+    @patch("rdr_service.app_util.request")
+    @patch("rdr_service.app_util.get_oauth_id")
+    @patch("rdr_service.app_util.lookup_user_info")
     def test_auth_required_ip_ranges(
-        self, mock_lookup_user_info, mock_get_oauth_id, mock_get_application_id, mock_request
+        self, mock_lookup_user_info, mock_get_oauth_id, mock_request
     ):
-        mock_get_application_id.return_value = "appid"
         mock_request.scheme = "https"
         mock_request.remote_addr = "10.0.0.1"
         mock_request.headers = {}
@@ -215,12 +204,10 @@ class AppUtilTest(BaseTestCase):
         mock_request.remote_addr = "10.0.0.2"
         self.assertEqual(2, foo_bar_role(1))
 
-    @patch("app_util.request")
-    @patch("app_util.app_identity.get_application_id")
-    @patch("app_util.get_oauth_id")
-    @patch("app_util.lookup_user_info")
-    def test_no_ip6_required(self, mock_lookup_user_info, mock_get_oauth_id, mock_get_application_id, mock_request):
-        mock_get_application_id.return_value = "appid"
+    @patch("rdr_service.app_util.request")
+    @patch("rdr_service.app_util.get_oauth_id")
+    @patch("rdr_service.app_util.lookup_user_info")
+    def test_no_ip6_required(self, mock_lookup_user_info, mock_get_oauth_id, mock_request):
         mock_request.scheme = "https"
         mock_request.remote_addr = "10.0.0.1"
         mock_request.headers = {}
@@ -230,14 +217,12 @@ class AppUtilTest(BaseTestCase):
         mock_request.remote_addr = "10.0.0.2"
         self.assertEqual(2, foo_bar_role(1))
 
-    @patch("app_util.request")
-    @patch("app_util.app_identity.get_application_id")
-    @patch("app_util.get_oauth_id")
-    @patch("app_util.lookup_user_info")
+    @patch("rdr_service.app_util.request")
+    @patch("rdr_service.app_util.get_oauth_id")
+    @patch("rdr_service.app_util.lookup_user_info")
     def test_auth_required_appid(
-        self, mock_lookup_user_info, mock_get_oauth_id, mock_get_application_id, mock_request
+        self, mock_lookup_user_info, mock_get_oauth_id, mock_request
     ):
-        mock_get_application_id.return_value = "appid"
         mock_request.scheme = "https"
         mock_request.remote_addr = "10.0.0.1"
         mock_request.headers = {}
@@ -264,8 +249,8 @@ class AppUtilTest(BaseTestCase):
             def _():
                 pass
 
-    @patch("app_util.request", spec=app_util.request)
-    @patch("app_util.get_oauth_id")
+    @patch("rdr_service.app_util.request", spec=app_util.request)
+    @patch("rdr_service.app_util.get_oauth_id")
     def test_check_auth_required_cron(self, mock_get_oauth_id, mock_request):
         mock_get_oauth_id.return_value = "bob@example.com"
 
