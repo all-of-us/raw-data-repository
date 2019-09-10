@@ -218,7 +218,7 @@ class DvOrderApi(UpdatableApi):
             if tracking_status:
                 tracking_status = tracking_status.lower()
         except AttributeError as e:
-            raise BadRequest(e)
+            raise BadRequest(str(e))
         except Exception as e:
             raise BadRequest(e)
 
