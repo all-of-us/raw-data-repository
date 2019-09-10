@@ -12,7 +12,6 @@ from rdr_service import config
 from rdr_service.clock import FakeClock
 from tests.helpers.unittest_base import BaseTestCase
 
-#@unittest.skip("config uses ndb")
 class TestConfig(BaseTestCase):
 
     def setUp(self):

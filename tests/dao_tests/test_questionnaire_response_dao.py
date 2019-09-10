@@ -934,11 +934,11 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
 
 class QuestionnaireResponseDaoCloudCheckTest(BaseTestCase):
-    @unittest.skip("waiting on storage provider for gcloud files.")
+
     def test_file_exists(self):
         consent_pdf_path = "/%s/Participant/somefile.pdf" % _FAKE_BUCKET
         with self.assertRaises(BadRequest):
             _raise_if_gcloud_file_missing(consent_pdf_path)
-        with open_cloud_file(consent_pdf_path) as cloud_file:
+        with open_cloud_file(consent_pdf_path, 'w') as cloud_file:
             cloud_file.write("I am a fake PDF in a fake Cloud.")
         _raise_if_gcloud_file_missing(consent_pdf_path)

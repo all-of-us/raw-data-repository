@@ -13,7 +13,6 @@ from rdr_service.model.organization import Organization
 from tests.helpers.unittest_base import BaseTestCase
 
 
-#@unittest.skip("Not used currently")
 class EhrReceiptDaoTest(BaseTestCase):
     def setUp(self):
         super().setUp()

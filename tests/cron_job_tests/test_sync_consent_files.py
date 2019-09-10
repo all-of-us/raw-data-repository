@@ -161,15 +161,15 @@ class SyncConsentFilesTest(BaseTestCase):
             self.assertEqual(f.read(), "foo", "Wrote to cloud storage")
         sync_consent_files.cloudstorage_copy_objects("/fake_bucket1/prefix/x1/", "/fake_bucket2/prefix/z/x1/")
         self.assertEqual(
-            [
+            sorted([
                 file_stat.name
                 for file_stat in list_blobs("fake_bucket2", "/prefix/z/x1")
-            ],
-            [
+            ]),
+            sorted([
                 "prefix/z/x1/bar.txt",
                 "prefix/z/x1/foo.txt",
                 "prefix/z/x1/y1/foo.txt",
-            ],
+            ]),
             "copied all objects",
         )
         with open_cloud_file("/fake_bucket2/prefix/z/x1/foo.txt") as f:
