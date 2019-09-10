@@ -525,12 +525,17 @@ class BaseDao(object):
                 columns.append(column[0])
         elif hasattr(obj, "_fields"):  # This is a custom query result object.
             columns = obj._fields
+        elif hasattr(obj, '_keymap'):  # RowProxy
+            columns = obj._keymap
         else:
             mapper = inspect(obj)  # Simple model object
             columns = mapper.attrs
 
         for column in columns:
             key = str(column.key) if hasattr(column, "key") else column
+            if not isinstance(key, str):
+                # logging.warning('bad column key value [{0}], unable to lookup result column value.'.format(column))
+                continue
             value = getattr(obj, key)
 
             if isinstance(value, (datetime.datetime, datetime.date)):
