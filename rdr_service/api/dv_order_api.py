@@ -185,7 +185,7 @@ class DvOrderApi(UpdatableApi):
         except AttributeError as e:
             raise BadRequest(str(e))
         except Exception as e:
-            raise BadRequest(e)
+            raise BadRequest(str(e))
 
         if not p_id:
             raise BadRequest("Request must include participant id")
