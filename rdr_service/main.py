@@ -18,7 +18,7 @@ from rdr_service import app_util
 from rdr_service.api import metrics_ehr_api
 from rdr_service.api.awardee_api import AwardeeApi
 from rdr_service.api.bigquery_participant_summary_api import BQParticipantSummaryApi
-from rdr_service.api.bigquery_task_queue_api import BQRebuildTaskApi
+from rdr_service.api.bigquery_task_queue_api import BQRebuildTaskApi, rebuild_bigquery_core
 from rdr_service.api.biobank_order_api import BiobankOrderApi
 from rdr_service.api.check_ppi_data_api import check_ppi_data
 from rdr_service.api.data_gen_api import DataGenApi, SpecDataGenApi
@@ -242,6 +242,11 @@ app.add_url_rule(
 app.add_url_rule(PREFIX + "CheckPpiData", endpoint="check_ppi_data", view_func=check_ppi_data, methods=["POST"])
 
 app.add_url_rule(PREFIX + "ImportCodebook", endpoint="import_codebook", view_func=import_codebook, methods=["POST"])
+
+app.add_url_rule(PREFIX + 'RebuildBigQueryCore',
+                 endpoint='rebuildbigquerycore',
+                 view_func=rebuild_bigquery_core,
+                 methods=['POST'])
 
 app.add_url_rule("/_ah/warmup", endpoint="warmup", view_func=_warmup, methods=["GET"])
 
