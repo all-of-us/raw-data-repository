@@ -33,7 +33,8 @@ class _BQModuleSchema(BQSchema):
         self._fields = list()
         # Standard fields that must be in every BigQuery table.
         fields.append({'name': 'id', 'type': BQFieldTypeEnum.INTEGER.name, 'mode': BQFieldModeEnum.REQUIRED.name})
-        fields.append({'name': 'created', 'type': BQFieldTypeEnum.DATETIME.name, 'mode': BQFieldModeEnum.REQUIRED.name})
+        fields.append({'name': 'created', 'type': BQFieldTypeEnum.DATETIME.name,
+                       'mode': BQFieldModeEnum.REQUIRED.name})
         fields.append(
             {'name': 'modified', 'type': BQFieldTypeEnum.DATETIME.name, 'mode': BQFieldModeEnum.REQUIRED.name})
         fields.append(
@@ -67,7 +68,9 @@ class _BQModuleSchema(BQSchema):
                 return fields
 
             for qn in qn_mod['group']['question']:
-                # To support 1) The user supplied answer, 2) question skipped or 3) user was not given this question. We
+                # To support 1) The user supplied answer,
+                # 2) question skipped or
+                # 3) user was not given this question. We
                 # have to store all question responses as Strings in BigQuery.
                 field = qn['concept'][0].get('code', None)
                 if not field:

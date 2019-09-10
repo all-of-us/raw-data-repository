@@ -1,5 +1,4 @@
 from sqlalchemy import (
-    BLOB,
     BigInteger,
     Boolean,
     Column,
@@ -10,6 +9,7 @@ from sqlalchemy import (
     UnicodeText,
     UniqueConstraint,
 )
+from sqlalchemy import BLOB  # pylint: disable=unused-import
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 

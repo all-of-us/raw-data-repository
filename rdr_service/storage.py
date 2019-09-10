@@ -67,6 +67,7 @@ class LocalFilesystemStorageProvider(StorageProvider):
         return os.path.join(self.get_storage_root(), path)
 
     def _get_blob_name_from_local_path(self, local_path):
+        # pylint: disable=unused-variable
         cloud_path = local_path.replace(self.get_storage_root(), '')
         path = cloud_path if cloud_path[0:1] != '/' else cloud_path[1:]
         bucket_name, _, blob_name = path.partition('/')

@@ -221,7 +221,7 @@ def _load_views_and_functions(engine):
             # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
             with temporary_sys_path(alembic_path):
                 mod = importlib.import_module(step[0].replace(".py", ""))
-            
+
             items = mod.unittest_schemas()
 
             for item in items:
@@ -316,26 +316,10 @@ def _setup_hpos():
         )
     )
 
-    created_org = org_dao.insert(
-        Organization(
-            organizationId=PITT_ORG_ID,
-            externalId="PITT_BANNER_HEALTH",
-            displayName="PITT display Banner Health",
-            hpoId=PITT_HPO_ID,
-        )
-    )
     # self.organization_id = created_org.organizationId
 
     site_dao = SiteDao()
-    created_site = site_dao.insert(
-        Site(
-            siteName="Monroeville Urgent Care Center",
-            googleGroup="hpo-site-monroeville",
-            mayolinkClientNumber=7035769,
-            organizationId=PITT_ORG_ID,
-            hpoId=PITT_HPO_ID,
-        )
-    )
+
     # self.site_id = created_site.siteId
     site_dao.insert(
         Site(

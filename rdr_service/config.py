@@ -2,7 +2,7 @@
 
 Contains things such as the accounts allowed access to the system.
 """
-import logging
+import logging  # pylint: disable=unused-import
 
 import json
 import os
@@ -10,7 +10,7 @@ import os
 from abc import ABC, abstractmethod
 
 from google.cloud import datastore
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import NotFound  # pylint: disable=unused-import
 
 from rdr_service import clock, singletons
 from rdr_service.provider import Provider
@@ -132,7 +132,7 @@ class LocalFilesystemConfigProvider(ConfigProvider):
         return os.environ.get('RDR_CONFIG_ROOT', cls.DEFAULT_CONFIG_ROOT)
 
     def __init__(self):
-        self._config_root = self.get_config_root() 
+        self._config_root = self.get_config_root()
         if not os.path.exists(self._config_root):
             os.mkdir(self._config_root)
         elif not os.path.isdir(self._config_root):
@@ -145,7 +145,7 @@ class LocalFilesystemConfigProvider(ConfigProvider):
                 return json.load(handle)
         return None
 
-    def store(self, name, config_dict, **kwargs):
+    def store(self, name, config_dict, **kwargs):  # pylint: disable=unused-argument
         config_path = os.path.join(self._config_root, '{}.json'.format(name))
         with open(config_path, 'w') as handle:
             json.dump(config_dict, handle)
@@ -293,6 +293,7 @@ def get_db_config():
         singletons.DB_CONFIG_INDEX, lambda: load(DB_CONFIG_KEY), cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS
     )
     # allow overrides for unit testing.
+    # pylint: disable=unused-variable
     for k, v in config.items():
         if k in CONFIG_OVERRIDES:
             config[k] = CONFIG_OVERRIDES[k]

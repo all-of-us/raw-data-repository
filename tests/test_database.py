@@ -1,6 +1,5 @@
 import datetime
 import isodate
-import unittest
 
 from dateutil.tz import tzutc
 

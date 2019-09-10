@@ -3,7 +3,6 @@
 import csv
 import logging
 
-from rdr_service.unicode_csv import UnicodeDictReader
 
 
 class CsvImporter(object):

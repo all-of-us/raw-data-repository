@@ -3,7 +3,6 @@
 No auth is required for this endpoint because it serves nothing sensitive.
 """
 
-import os
 from rdr_service.config import GAE_VERSION_ID
 
 

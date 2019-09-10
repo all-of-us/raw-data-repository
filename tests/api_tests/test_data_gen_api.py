@@ -1,10 +1,7 @@
 import unittest
-import os
-import shutil
-import mock
-#from testlib import testutil
+# from testlib import testutil
 
-from rdr_service import config
+from rdr_service import config  # pylint: disable=unused-import
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao

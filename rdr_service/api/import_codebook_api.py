@@ -7,7 +7,7 @@ import urllib.request, urllib.error, urllib.parse
 
 from rdr_service.api_util import PTC_AND_HEALTHPRO
 from rdr_service.app_util import auth_required
-from rdr_service.dao.bq_code_dao import deferrered_bq_codebook_update
+from rdr_service.dao.bq_code_dao import deferrered_bq_codebook_update  # pylint: disable=unused-import
 from rdr_service.dao.code_dao import CodeBookDao
 
 _CODEBOOK_URL_BASE = "https://raw.githubusercontent.com/all-of-us-terminology/codebook-to-fhir/"

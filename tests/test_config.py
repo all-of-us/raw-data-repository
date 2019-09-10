@@ -20,7 +20,8 @@ class TestConfig(BaseTestCase):
         self.addCleanup(shutil.rmtree, _test_config_dir)
         _old_config_root = os.environ.get('RDR_CONFIG_ROOT', None)
 
-        current_config_path = os.path.abspath(os.path.join(config.LocalFilesystemConfigProvider.get_config_root(), 'current_config.json'))
+        current_config_path = os.path.abspath(os.path.join(config.LocalFilesystemConfigProvider.get_config_root(),
+                                                           'current_config.json'))
         shutil.copyfile(
             current_config_path,
             os.path.abspath(os.path.join(_test_config_dir, 'current_config.json'))

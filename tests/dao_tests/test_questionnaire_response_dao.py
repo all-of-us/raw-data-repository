@@ -1,7 +1,6 @@
 import datetime
 import json
 import mock
-import unittest
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest, Forbidden
 

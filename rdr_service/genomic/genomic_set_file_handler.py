@@ -45,6 +45,8 @@ class FileNotFoundError(RuntimeError):
     msg: Passed through to superclass.
   """
 
+    # pylint: disable=redefined-builtin
+    # TODO: Redefines the built-in FileNotFoundError
     def __init__(self, msg):
         super(FileNotFoundError, self).__init__(msg)
 

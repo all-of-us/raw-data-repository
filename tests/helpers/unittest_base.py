@@ -143,8 +143,10 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         os.environ['RDR_STORAGE_ROOT'] = temp_folder_path
 
     def setup_config(self):
-        data = read_dev_config(os.path.join(os.path.dirname(__file__), "..", "..", "rdr_service", "config", "base_config.json"),
-                               os.path.join(os.path.dirname(__file__), "..", "..", "rdr_service", "config", "config_dev.json"))
+        data = read_dev_config(os.path.join(os.path.dirname(__file__), "..", "..",
+                                            "rdr_service", "config", "base_config.json"),
+                               os.path.join(os.path.dirname(__file__), "..", "..",
+                                            "rdr_service", "config", "config_dev.json"))
 
         test_configs_dir = mkdtemp()
         shutil.copy(os.path.join(os.path.dirname(__file__), "..", ".test_configs", "db_config.json"), test_configs_dir)
@@ -305,7 +307,8 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         self.send_post(self.questionnaire_response_url(participant_id), qr_json)
 
     def assertJsonResponseMatches(self, obj_a, obj_b):
-        self.assertMultiLineEqual(self._clean_and_format_response_json(obj_a), self._clean_and_format_response_json(obj_b))
+        self.assertMultiLineEqual(self._clean_and_format_response_json(obj_a),
+                                  self._clean_and_format_response_json(obj_b))
 
     @staticmethod
     def pretty(obj):
@@ -352,6 +355,10 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             return None
 
     def assertListAsDictEquals(self, list_a, list_b):
+
+        def list_as_dict(items):
+            return [item.asdict() for item in items]
+
         if len(list_a) != len(list_b):
             self.fail(
                 "List lengths don't match: %d != %d; %s, %s"
@@ -418,7 +425,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
                     os.unlink(file_path)
                 elif os.path.isdir(file_path):
                     shutil.rmtree(file_path)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 print(str(e))
 
     @staticmethod

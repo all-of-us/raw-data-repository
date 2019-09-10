@@ -19,6 +19,7 @@ from tests.helpers.unittest_base import BaseTestCase
 
 
 class UpdateEhrStatusMakeJobsTestCase(BaseTestCase):
+    # pylint: disable=unused-argument
     def setUp(self, use_mysql=False, with_data=False, with_consent_codes=False):
         super(UpdateEhrStatusMakeJobsTestCase, self).setUp()
 
@@ -85,6 +86,7 @@ class UpdateEhrStatusMakeJobsTestCase(BaseTestCase):
 
 class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
     def setUp(self, **kwargs):
+        # pylint: disable=unused-argument
         super(UpdateEhrStatusUpdatesTestCase, self).setUp()
         self.hpo_dao = HPODao()
         self.org_dao = OrganizationDao()

@@ -2,16 +2,16 @@ import logging
 import os
 import re
 from logging.config import fileConfig
-from rdr_service.model import database # pylint: disable=unused-import
+from rdr_service.model import database  # pylint: disable=unused-import
 import sqlalchemy as sa
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlalchemy.dialects.mysql.types import SMALLINT, TINYINT
 from sqlalchemy.engine.url import make_url
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.types import BLOB
-from rdr_service.model.field_types import BlobUTF8
-from rdr_service.model import compiler
+from sqlalchemy.ext.compiler import compiles  # pylint: disable=unused-import
+from sqlalchemy.types import BLOB  # pylint: disable=unused-import
+from rdr_service.model.field_types import BlobUTF8  # pylint: disable=unused-import
+from rdr_service.model import compiler  # pylint: disable=unused-import
 
 # Importing this is what gets our model available for Alembic.
 from rdr_service.model import utils  # pylint: disable=unused-import
