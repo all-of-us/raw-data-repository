@@ -4,7 +4,12 @@
 #
 from rdr_service.model.bq_base import BQTable, BQSchema, BQView, BQField, BQFieldTypeEnum, BQFieldModeEnum, \
     BQRecordField
-from rdr_service.model.bq_participant_summary import BQRaceSchema, BQGenderSchema, BQModuleStatusSchema, BQConsentSchema
+from rdr_service.model.bq_participant_summary import (
+    BQRaceSchema,
+    BQGenderSchema,
+    BQModuleStatusSchema,
+    BQConsentSchema
+)
 
 
 class BQPDRPhysicalMeasurements(BQSchema):
@@ -178,7 +183,8 @@ class BQPDRParticipantSummaryWithdrawnView(BQView):
     __viewname__ = 'v_pdr_participant_withdrawn'
     __viewdescr__ = 'PRD Participant Summary Withdrawn View'
     __table__ = BQPDRParticipantSummary
-    __sql__ = BQPDRParticipantSummaryView.__sql__.replace('ps.withdrawal_status_id = 1', 'ps.withdrawal_status_id != 1')
+    __sql__ = BQPDRParticipantSummaryView.__sql__.replace('ps.withdrawal_status_id = 1',
+                                                          'ps.withdrawal_status_id != 1')
 
 
 class BQPDRPMView(BQView):

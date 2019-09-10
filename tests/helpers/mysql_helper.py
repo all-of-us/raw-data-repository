@@ -14,7 +14,6 @@ import shlex
 import shutil
 import signal
 import subprocess
-import tempfile
 import warnings
 from glob import glob
 from time import sleep

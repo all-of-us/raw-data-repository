@@ -56,7 +56,14 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             for field in fields:
                 fld_name = field['name']
                 if fld_name in (
-                    'id', 'created', 'modified', 'authored', 'language', 'participant_id', 'questionnaire_response_id'):
+                    'id',
+                    'created',
+                    'modified',
+                    'authored',
+                    'language',
+                    'participant_id',
+                    'questionnaire_response_id'
+                ):
                     continue
 
                 fld_value = getattr(bqr, fld_name, None)

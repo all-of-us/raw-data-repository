@@ -53,7 +53,8 @@ class DvOrderApi(UpdatableApi):
 
         # check shipping address is Mayo's address
         # for item in fhir.contained:
-        #   if item.resourceType == 'Location' and item.address.city == 'Rochester' and item.address.state == 'MN' and \
+        #   if item.resourceType == 'Location' and item.address.city == 'Rochester' \
+        #             and item.address.state == 'MN' and \
         #             '55901' in item.address.postalCode and item.address.line[0] == '3050 Superior Drive NW':
         #     return True
 

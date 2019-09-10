@@ -293,6 +293,7 @@ def get_db_config():
         singletons.DB_CONFIG_INDEX, lambda: load(DB_CONFIG_KEY), cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS
     )
     # allow overrides for unit testing.
+    # pylint: disable=unused-variable
     for k, v in config.items():
         if k in CONFIG_OVERRIDES:
             config[k] = CONFIG_OVERRIDES[k]

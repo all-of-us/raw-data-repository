@@ -107,7 +107,8 @@ class BQSchema(object):
         Recursively compare schemas. This is normally used to compare a local schema with
         a remote BQ schema.  For this to succeed, schema property names for field object
         must exactly match BQ field names.
-        # TODO: Future: exclude 'enum' and 'description' dict values. We really want to only compare the core field info.
+        # TODO: Future: exclude 'enum' and 'description' dict values.
+        # We really want to only compare the core field info.
         :param o1: BQSchema object
         :param o2: BQSchema object
         :return:

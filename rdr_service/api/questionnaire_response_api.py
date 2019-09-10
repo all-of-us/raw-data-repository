@@ -2,7 +2,7 @@ from flask_restful import Resource, request
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import app_util
-from rdr_service.dao.bq_questionaire_dao import deferred_bq_questionnaire_update
+from rdr_service.dao.bq_questionaire_dao import deferred_bq_questionnaire_update  # pylint: disable=unused-import
 from rdr_service.api.base_api import BaseApi
 from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO
 # from google.appengine.ext import deferred

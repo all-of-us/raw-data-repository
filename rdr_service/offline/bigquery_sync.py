@@ -24,6 +24,9 @@ from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics,
 from rdr_service.model.participant import Participant
 
 
+# disable pylint warning for 'Exception':
+# pylint: disable=redefined-builtin
+# pylint: disable=unused-argument
 def BigQueryJobError(Exception):
     """ BigQuery Job Exception """
 
@@ -36,6 +39,7 @@ def rebuild_bigquery_handler():
     #       characters, so we probably would have to create a temp MySQL table to store
     #       batches of participant ids and then we could pass a batch id in the GET request.
     """
+    # pylint: disable=unused-variable
     timestamp = datetime.utcnow()
     batch_size = 10000
 
