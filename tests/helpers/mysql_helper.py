@@ -14,32 +14,28 @@ import shlex
 import shutil
 import signal
 import subprocess
+import tempfile
 import warnings
 from glob import glob
 from time import sleep
 
-from sqlalchemy.exc import OperationalError  # pylint: disable=unused-import
-
-from rdr_service import singletons
 from rdr_service import config
+from rdr_service import singletons
 from rdr_service.dao import database_factory
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
-from rdr_service.model import compiler  # pylint: disable=unused-import
-from rdr_service.model.database import Database  # pylint: disable=unused-import
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
 from rdr_service.participant_enums import UNSET_HPO_ID, OrganizationType
 from rdr_service.services.system_utils import find_mysqld_executable, pid_is_running, which, \
     run_external_program
-
 from tests.helpers import temporary_sys_path
 from tests.helpers.mysql_helper_data import PITT_HPO_ID, PITT_ORG_ID, AZ_HPO_ID, AZ_ORG_ID
 
 # TODO: In the future, setup a memory disk and set the base path there for faster testing.
-BASE_PATH = '{0}/rdr-mysqld'.format('/dev/shm')
+BASE_PATH = '{0}/rdr-mysqld'.format(tempfile.gettempdir())
 MYSQL_PORT = 9306
 
 
@@ -298,7 +294,6 @@ def _setup_hpos():
     """
     Insert a basic set of Organizational data into the database.
     """
-    # pylint: disable=unused-variable
     hpo_dao = HPODao()
     hpo_dao.insert(
         HPO(hpoId=UNSET_HPO_ID, name="UNSET", displayName="Unset", organizationType=OrganizationType.UNSET)
@@ -321,26 +316,10 @@ def _setup_hpos():
         )
     )
 
-    created_org = org_dao.insert(
-        Organization(
-            organizationId=PITT_ORG_ID,
-            externalId="PITT_BANNER_HEALTH",
-            displayName="PITT display Banner Health",
-            hpoId=PITT_HPO_ID,
-        )
-    )
     # self.organization_id = created_org.organizationId
 
     site_dao = SiteDao()
-    created_site = site_dao.insert(
-        Site(
-            siteName="Monroeville Urgent Care Center",
-            googleGroup="hpo-site-monroeville",
-            mayolinkClientNumber=7035769,
-            organizationId=PITT_ORG_ID,
-            hpoId=PITT_HPO_ID,
-        )
-    )
+
     # self.site_id = created_site.siteId
     site_dao.insert(
         Site(
