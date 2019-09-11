@@ -266,8 +266,6 @@ class QuestionnaireResponseDao(BaseDao):
                                                      summary_field[1], answer)
           elif code.value == RACE_QUESTION_CODE:
             race_code_ids.append(answer.valueCodeId)
-
-
           elif code.value == DVEHR_SHARING_QUESTION_CODE:
             code = code_dao.get(answer.valueCodeId)
             if code and code.value == DVEHRSHARING_CONSENT_CODE_YES:
@@ -311,7 +309,6 @@ class QuestionnaireResponseDao(BaseDao):
         summary_field = QUESTIONNAIRE_MODULE_CODE_TO_FIELD.get(code.value)
         if summary_field:
           new_status = QuestionnaireStatus.SUBMITTED
-          setattr(participant_summary, summary_field + 'Authored', authored)
           if code.value == CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE and not ehr_consent:
             new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
           elif code.value == CONSENT_FOR_DVEHR_MODULE:
@@ -331,6 +328,7 @@ class QuestionnaireResponseDao(BaseDao):
           if getattr(participant_summary, summary_field) != new_status:
             setattr(participant_summary, summary_field, new_status)
             setattr(participant_summary, summary_field + 'Time', questionnaire_response.created)
+            setattr(participant_summary, summary_field + 'Authored', authored)
             something_changed = True
             module_changed = True
 
