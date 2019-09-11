@@ -52,7 +52,7 @@ class BQMigration(object):
         """
         bq_schema = bq_table.get_schema()
         tf = tempfile.NamedTemporaryFile(delete=False)
-        tf.write(bq_schema.to_json())
+        tf.write(str.encode(bq_schema.to_json()))
         tf.close()
 
         # bq mk --table --expiration [INTEGER] --description [DESCRIPTION]
@@ -147,7 +147,7 @@ class BQMigration(object):
         """
         bq_schema = bq_table.get_schema()
         tf = tempfile.NamedTemporaryFile(delete=False)
-        tf.write(bq_schema.to_json())
+        tf.write(str.encode(bq_schema.to_json()))
         tf.close()
 
         # bq update [PROJECT_ID]:[DATASET].[TABLE] [SCHEMA]
