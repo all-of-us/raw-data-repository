@@ -39,6 +39,9 @@ protorpc
 dictalchemy
 sqlparse
 
+## Background Tasks
+celery
+
 ## misc
 dnspython
 xmltodict
