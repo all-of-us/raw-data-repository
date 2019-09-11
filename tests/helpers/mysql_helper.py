@@ -34,7 +34,6 @@ from rdr_service.services.system_utils import find_mysqld_executable, pid_is_run
 from tests.helpers import temporary_sys_path
 from tests.helpers.mysql_helper_data import PITT_HPO_ID, PITT_ORG_ID, AZ_HPO_ID, AZ_ORG_ID
 
-# TODO: In the future, setup a memory disk and set the base path there for faster testing.
 BASE_PATH = '{0}/rdr-mysqld'.format(tempfile.gettempdir())
 MYSQL_PORT = 9306
 
@@ -304,7 +303,6 @@ def _setup_hpos():
     hpo_dao.insert(
         HPO(hpoId=AZ_HPO_ID, name="AZ_TUCSON", displayName="Arizona", organizationType=OrganizationType.HPO)
     )
-    # self.hpo_id = PITT_HPO_ID
 
     org_dao = OrganizationDao()
     org_dao.insert(
@@ -315,12 +313,25 @@ def _setup_hpos():
             hpoId=AZ_HPO_ID,
         )
     )
-
-    # self.organization_id = created_org.organizationId
+    org_dao.insert(
+        Organization(
+            organizationId=PITT_ORG_ID,
+            externalId="PITT_BANNER_HEALTH",
+            displayName="PITT display Banner Health",
+            hpoId=PITT_HPO_ID,
+        )
+    )
 
     site_dao = SiteDao()
-
-    # self.site_id = created_site.siteId
+    site_dao.insert(
+        Site(
+            siteName="Monroeville Urgent Care Center",
+            googleGroup="hpo-site-monroeville",
+            mayolinkClientNumber=7035769,
+            organizationId=PITT_ORG_ID,
+            hpoId=PITT_HPO_ID,
+        )
+    )
     site_dao.insert(
         Site(
             siteName="Phoenix Urgent Care Center",
@@ -330,7 +341,6 @@ def _setup_hpos():
             hpoId=PITT_HPO_ID,
         )
     )
-
     site_dao.insert(
         Site(
             siteName="Phoenix clinic",
