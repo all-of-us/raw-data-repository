@@ -5,10 +5,10 @@
 from rdr_service.main import app
 
 try:
-  import googleclouddebugger
-  googleclouddebugger.enable()
+    import googleclouddebugger
+    googleclouddebugger.enable()
 except ImportError:
-  pass
+    pass
 
 if __name__ == '__main__':
     # This is used when running locally only. When deploying to Google App
