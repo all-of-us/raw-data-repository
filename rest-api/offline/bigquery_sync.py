@@ -33,7 +33,7 @@ def rebuild_bigquery_handler():
   #       batches of participant ids and then we could pass a batch id in the GET request.
   """
   timestamp = datetime.utcnow()
-  batch_size = 10000
+  batch_size = 100
 
   dao = BigQuerySyncDao()
   with dao.session() as session:
