@@ -158,8 +158,8 @@ then
             ;;
     esac
   fi
-  python -m tools migrate-bq --project ${PROJECT} --service-account ${SERVICE_ACCOUNT} --dataset rdr_ops_data_view
-  $UPDATE_TRACKER --version $VERSION --comment "BigQuery dataset rdr_ops_data_view for ${PROJECT} upgraded."
+  # python -m tools migrate-bq --project ${PROJECT} --service-account ${SERVICE_ACCOUNT} --dataset rdr_ops_data_view
+  # $UPDATE_TRACKER --version $VERSION --comment "BigQuery dataset rdr_ops_data_view for ${PROJECT} upgraded."
 fi
 
 if [ "$TARGET" == "all" ] || [ "$TARGET" == "config" ]
