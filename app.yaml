@@ -3,4 +3,5 @@
 # using an "includes" since "includes" only imports some directives).
 
 runtime: python37
-
+env_variables:
+        RDR_CONFIG_PROVIDER: "rdr_service.config.GoogleCloudDatastoreConfigProvider"
