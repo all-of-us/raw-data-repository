@@ -78,6 +78,6 @@ def make_server_cursor_database(backup=False, instance_name=None):
     return get_database()
   else:
     if backup:
-      return _BackupSqlDatabase('rdr', connect_args={'cursorclass': SSCursor})
+      return _BackupSqlDatabase('rdr', connect_args={'cursorclass': SSCursor}, pool_size=30, max_overflow=20)
     return _SqlDatabase('rdr', instance_name=instance_name,
-                        connect_args={'cursorclass': SSCursor})
+                        connect_args={'cursorclass': SSCursor}, pool_size=30, max_overflow=20)
