@@ -5,19 +5,3 @@ env_variables:
 
 instance_class: F2
 
-handlers:
-- url: /_ah/queue/deferred
-  script: auto
-  secure: always
-- url: /.*
-  script: auto
-  secure: always
-# App data directory used to load static files in AppEngine; not used for actual serving.
-- url: /app_data/.*
-  login: admin
-  static_dir: app_data
-  secure: always
-- url: /_ah/warmup
-  script: auto
-- url: /_ah/stats.*
-  script: main.app
