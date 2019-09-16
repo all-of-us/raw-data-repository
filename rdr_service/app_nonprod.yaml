@@ -10,7 +10,7 @@ handlers:
   script: auto
   secure: always
 - url: /.*
-  script: main.app
+  script: auto
   secure: always
 # App data directory used to load static files in AppEngine; not used for actual serving.
 - url: /app_data/.*
@@ -18,7 +18,6 @@ handlers:
   static_dir: app_data
   secure: always
 - url: /_ah/warmup
-  script: main.app
-  login: admin
+  script: auto
 - url: /_ah/stats.*
   script: main.app
