@@ -33,7 +33,7 @@ def rebuild_bigquery_handler():
   #       batches of participant ids and then we could pass a batch id in the GET request.
   """
   timestamp = datetime.utcnow()
-  batch_size = 100
+  batch_size = 300
 
   dao = BigQuerySyncDao()
   with dao.session() as session:
@@ -94,8 +94,8 @@ def rebuild_bq_participant_task(timestamp, limit=0):
     # Collect all participants who do not have a PS generated yet or the modified date is less than the timestamp.
     sq = session.query(Participant.participantId, BigQuerySync.id, BigQuerySync.modified).\
             outerjoin(BigQuerySync, and_(
-      BigQuerySync.pk_id == Participant.participantId, BigQuerySync.tableId == 'participant_summary')).\
-          subquery()
+      BigQuerySync.pk_id == Participant.participantId,
+          or_(BigQuerySync.tableId == 'participant_summary', BigQuerySync.tableId == 'prd_participant'))).subquery()
     query = session.query(sq.c.participant_id.label('participantId')).\
                           filter(or_(sq.c.id == None, sq.c.modified < timestamp))
     if limit:
@@ -108,9 +108,6 @@ def rebuild_bq_participant_task(timestamp, limit=0):
     # put a log entry in every 2,500 records. Should be approximately every 10 minutes.
     for row in results:
       count += 1
-      if count % 2500 == 0:
-        logging.info('Processed {0} participants.'.format(count))
-
       # All logic for generating a participant summary is here.
       rebuild_bq_participant(row.participantId, dao=dao, session=session, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen)
 

@@ -1,5 +1,3 @@
-import logging
-
 from dao.base_dao import UpsertableDao
 from model.bigquery_sync import BigQuerySync
 from model.code import Code
@@ -44,7 +42,7 @@ class BigQueryGenerator(object):
     for project_id, dataset_id, table_id in mappings:
       # If project_id is None, we shouldn't save records for this project.
       if dataset_id is None:
-        logging.warning('{0} is mapped to none in {1} project.'.format(project_id, cur_id))
+        # logging.warning('{0} is mapped to none in {1} project.'.format(project_id, cur_id))
         continue
       bqs_rec = session.query(BigQuerySync.id).\
                   filter(BigQuerySync.pk_id == pk_id, BigQuerySync.projectId == project_id,

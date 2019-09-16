@@ -52,7 +52,7 @@ cron:
 - description: BigQuery Sync
   url: /offline/BigQuerySync
   timezone: America/New_York
-  schedule: every 60 minutes
+  schedule: every 2 minutes
   target: offline
 - description: Backfill Patient Status (Manual)
   url: /offline/PatientStatusBackfill
