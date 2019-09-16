@@ -208,10 +208,11 @@ then
 
   echo "${BOLD}Deploying application...${NONE}"
   $UPDATE_TRACKER --version $VERSION --comment "${before_comment}"
-  gcloud app deploy "${yamls[@]}" \
+  cd ..
+  gcloud app deploy "${rdr_service/yamls[@]}" \
       --quiet --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
   $UPDATE_TRACKER --version $VERSION --comment "${after_comment}"
-  rm "${tmp_files[@]}"
+  rm "${rdr_service/tmp_files[@]}"
 fi
 
 test_request=$(curl -s https://${PROJECT}.appspot.com/rdr/v1/ | grep version_id)
