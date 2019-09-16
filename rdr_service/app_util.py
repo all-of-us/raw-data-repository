@@ -64,23 +64,17 @@ def nonprod(func):
 
 def check_auth(role_whitelist):
     """Raises Unauthorized or Forbidden if the current user is not allowed."""
-    print("check auth")
     user_email, user_info = get_validated_user_info()
-    print("user email", user_email)
-    print("user info", user_info)
 
     if set(user_info.get("roles", [])) & set(role_whitelist):
         return
 
-    logging.info("User {} has roles {}, but {} is required".format(user_email, user_info.get("roles"), role_whitelist))
     print(f"User {user_email} has roles {user_info.get('roles')}, but {role_whitelist} is required")
     raise Forbidden()
 
 
 def get_auth_token():
-    print("get auth token")
     header = request.headers.get("Authorization", '')
-    print(f"header from auth token: {header}")
     try:
         return header.split(' ', 1)[1]
     except IndexError:
@@ -104,8 +98,6 @@ def get_oauth_id():
         - could be cached
         - could be validated locally instead of with API
     '''
-    print("get oauth id")
-    print(f"gae project: {GAE_PROJECT}")
     if GAE_PROJECT == 'localhost':  # NOTE: 2019-08-15 mimic devappserver.py behavior
         return "example@example.com"
     try:
@@ -114,23 +106,18 @@ def get_oauth_id():
         logging.info(f"Invalid Authorization Token: {e}")
         user_email = None
     else:
-        print("in else statemetn get oauth id")
         #if GAE_PROJECT == 'localhost' and token == 'localtesting':  # NOTE: this would give us more robust local
                                                                      # testing: allowing for anonymous code paths
         #    return 'example@example.com'
         response = get_token_info_response(token)
-        print(f"response: {response}")
         data = response.json()
-        print(f"data: {data}")
         if response.status_code == 200:
             user_email = data.get('email')
-            print(f"user email status code == 200: {user_email}")
         else:
             user_email = None
             message = data.get("error_description", response.content)
             logging.info(f"Oauth failure: {message}")
 
-    print(f"user email in get oauth id: {user_email}")
     return user_email
 
 
@@ -247,9 +234,7 @@ def auth_required(role_whitelist):
 
 def get_validated_user_info():
     """Returns a valid (user email, user info), or raises Unauthorized or Forbidden."""
-    print("get validated user info")
     user_email = get_oauth_id()
-    print(f"user email: {user_email}")
 
     # Allow clients to simulate an unauthentiated request (for testing)
     # becaues we haven't found another way to create an unauthenticated request

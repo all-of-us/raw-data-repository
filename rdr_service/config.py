@@ -298,7 +298,6 @@ def get_db_config():
     )
     # allow overrides for unit testing.
     # pylint: disable=unused-variable
-    print("********** config ******", config, '\n', '\n')
     for k, v in config.items():
         if k in CONFIG_OVERRIDES:
             config[k] = CONFIG_OVERRIDES[k]
