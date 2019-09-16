@@ -93,10 +93,12 @@
             "150.198.1.0/24",
             "150.198.64.0/24",
             "150.198.124.0/24",
-            "150.198.204.0/24"
+            "150.198.204.0/24",
+            "216.70.11.254",
+            "208.72.48.248/22"
           ]
       },
-      "description": "Using subnet mask range to cover 161.249.241.64-127 and 161.249.150.128-191"
+      "description": "Using subnet mask range to cover 161.249.241.64-127 and 161.249.150.128-191, 208.72.48.248/22 covers from 208.72.48.0 - 208.72.51.255"
     },
     "awardee-pitt@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
       "roles": [
