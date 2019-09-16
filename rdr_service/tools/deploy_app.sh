@@ -184,7 +184,7 @@ then
 
   # Deploy cron/queue in all cases.
   tools/build_cron_yaml.py --project ${PROJECT} > cron.yaml
-  yamls+=( cron.yaml queue.yaml )
+  yamls+=( rdr_service/cron.yaml rdr_service/queue.yaml )
   tmp_files+=( cron.yaml )
   before_comment="Updating cron/queue configuration in ${PROJECT}."
   after_comment="cron/queue configuration updated in ${PROJECT}."
@@ -200,8 +200,8 @@ then
     fi
     cat app_base.yaml $APP_YAML > app.yaml
 
-    yamls+=( app.yaml index.yaml offline.yaml )
-    tmp_files+=( app.yaml )
+    yamls+=( rdr_service/app.yaml rdr_service/index.yaml rdr_service/offline.yaml )
+    tmp_files+=( rdr_service/app.yaml )
     before_comment="Deploying app to ${PROJECT}."
     after_comment="App deployed to ${PROJECT}."
   fi
@@ -209,13 +209,10 @@ then
   echo "${BOLD}Deploying application...${NONE}"
   $UPDATE_TRACKER --version $VERSION --comment "${before_comment}"
   cd ..
-  echo "TESTING................."
-  echo ls rdr_service/"${yamls[@]}"
-  echo "..................end testing."
-  gcloud app deploy rdr_service/"${yamls[@]}" \
+  gcloud app deploy "${yamls[@]}" \
       --quiet --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
   $UPDATE_TRACKER --version $VERSION --comment "${after_comment}"
-  rm rdr_service/"${tmp_files[@]}"
+  rm "${tmp_files[@]}"
 fi
 
 test_request=$(curl -s https://${PROJECT}.appspot.com/rdr/v1/ | grep version_id)
