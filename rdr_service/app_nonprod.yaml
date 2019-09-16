@@ -8,7 +8,6 @@ instance_class: F2
 handlers:
 - url: /_ah/queue/deferred
   script: auto
-  login: admin
   secure: always
 - url: /.*
   script: main.app

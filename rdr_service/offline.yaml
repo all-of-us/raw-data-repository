@@ -18,7 +18,6 @@ handlers:
   secure: always
 - url: /_ah/queue/deferred
   script: auto
-  login: admin
   secure: always
 - url: /offline/.*
   script: offline.main.app
