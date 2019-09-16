@@ -1,5 +1,7 @@
 # app_base.yaml is concatenated to the beginning of this file for deployment.
 
+env_variables:
+  RDR_CONFIG_PROVIDER: "rdr_service.config.GoogleCloudDatastoreConfigProvider"
 builtins:
 - deferred: on
 - appstats: on
@@ -8,7 +10,7 @@ instance_class: F2
 
 handlers:
 - url: /_ah/queue/deferred
-  script: google.appengine.ext.deferred.deferred.application
+  script: auto
   login: admin
   secure: always
 - url: /.*
@@ -18,7 +20,6 @@ handlers:
 - url: /app_data/.*
   login: admin
   static_dir: app_data
-  application_readable: true
   secure: always
 - url: /_ah/warmup
   script: main.app
