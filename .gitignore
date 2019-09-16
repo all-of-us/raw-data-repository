@@ -34,3 +34,5 @@ htmlcov/
 # ignore old rest-api
 /rest-api
 
+# ignore temp folders
+*/temp/

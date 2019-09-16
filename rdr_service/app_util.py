@@ -69,7 +69,7 @@ def check_auth(role_whitelist):
     if set(user_info.get("roles", [])) & set(role_whitelist):
         return
 
-    logging.info("User {} has roles {}, but {} is required".format(user_email, user_info.get("roles"), role_whitelist))
+    print(f"User {user_email} has roles {user_info.get('roles')}, but {role_whitelist} is required")
     raise Forbidden()
 
 
@@ -117,6 +117,7 @@ def get_oauth_id():
             user_email = None
             message = data.get("error_description", response.content)
             logging.info(f"Oauth failure: {message}")
+
     return user_email
 
 
