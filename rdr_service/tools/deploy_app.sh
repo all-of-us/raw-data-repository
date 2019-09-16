@@ -209,6 +209,9 @@ then
   echo "${BOLD}Deploying application...${NONE}"
   $UPDATE_TRACKER --version $VERSION --comment "${before_comment}"
   cd ..
+  echo "TESTING................."
+  echo ls rdr_service/"${yamls[@]}"
+  echo "..................end testing."
   gcloud app deploy rdr_service/"${yamls[@]}" \
       --quiet --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
   $UPDATE_TRACKER --version $VERSION --comment "${after_comment}"
