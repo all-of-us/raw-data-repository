@@ -2,9 +2,6 @@
 
 env_variables:
   RDR_CONFIG_PROVIDER: "rdr_service.config.GoogleCloudDatastoreConfigProvider"
-builtins:
-- deferred: on
-- appstats: on
 
 instance_class: F2
 
