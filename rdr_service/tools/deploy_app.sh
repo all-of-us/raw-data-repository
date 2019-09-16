@@ -185,7 +185,7 @@ then
   # Deploy cron/queue in all cases.
   tools/build_cron_yaml.py --project ${PROJECT} > cron.yaml
   yamls+=( rdr_service/cron.yaml rdr_service/queue.yaml )
-  tmp_files+=( cron.yaml )
+  tmp_files+=( rdr_service/cron.yaml )
   before_comment="Updating cron/queue configuration in ${PROJECT}."
   after_comment="cron/queue configuration updated in ${PROJECT}."
 

@@ -11,7 +11,7 @@ basic_scaling:
   idle_timeout: 10m
 
 builtins:
-- deferred: auto
+- deferred: on
 
 handlers:
 - url: /_ah/pipeline.*
