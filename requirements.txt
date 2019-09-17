@@ -5,7 +5,7 @@
 #    pip-compile
 #
 alembic==1.0.11
-amqp==2.5.1               # via kombu
+amqp==2.5.1               # via kombu, librabbitmq
 aniso8601==7.0.0          # via flask-restful
 asn1crypto==0.24.0        # via cryptography
 astroid==2.2.5            # via pylint
@@ -44,6 +44,7 @@ googleapis-common-protos==1.6.0  # via google-api-core
 googlemaps==3.0.2
 greenlet==0.4.15          # via gevent
 grpcio==1.22.0            # via google-api-core
+gunicorn==19.9.0
 httplib2==0.13.1          # via google-api-python-client, google-auth-httplib2, oauth2client
 idna==2.8                 # via requests
 importlib-metadata==0.21  # via kombu
@@ -54,11 +55,13 @@ jinja2==2.10.1            # via flask
 jira==2.0.0
 kombu==4.6.4              # via celery
 lazy-object-proxy==1.4.1  # via astroid
+librabbitmq==2.0.0
 locust==0.0
 locustio==0.11.0          # via locust
 mako==1.1.0               # via alembic
 markupsafe==1.1.1         # via jinja2, mako
 mccabe==0.6.1             # via pylint
+meld3==2.0.0              # via supervisor
 mock==3.0.5
 more-itertools==7.2.0     # via zipp
 msgpack==0.6.1            # via locustio
@@ -90,9 +93,10 @@ requests[security]==2.22.0
 rsa==4.0                  # via google-auth, oauth2client
 safety==1.8.5
 simplejson==3.16.0
-six==1.12.0               # via astroid, cryptography, dparse, faker, flask-restful, google-api-core, google-api-python-client, google-auth, google-resumable-media, grpcio, isodate, jira, locustio, mock, oauth2client, packaging, pip-tools, protobuf, protorpc, pyopenssl, python-dateutil
+six==1.12.0               # via astroid, cryptography, dparse, faker, flask-restful, google-api-core, google-api-python-client, google-auth, google-resumable-media, grpcio, isodate, jira, librabbitmq, locustio, mock, oauth2client, packaging, pip-tools, protobuf, protorpc, pyopenssl, python-dateutil
 sqlalchemy==1.3.6
 sqlparse==0.3.0
+supervisor==4.0.4
 text-unidecode==1.2       # via faker
 typed-ast==1.4.0          # via astroid
 uritemplate==3.0.0        # via google-api-python-client

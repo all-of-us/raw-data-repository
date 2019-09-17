@@ -5,14 +5,13 @@ This defines the APIs and the handlers for the APIs. All responses are JSON.
 import logging
 
 # pylint: disable=unused-import
-from flask import Flask, got_request_exception
+from flask import got_request_exception
 from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import HTTPException
 
-from . import config_api
-from . import version_api
-from .json_encoder import RdrJsonEncoder
+from rdr_service import config_api
+from rdr_service import version_api
 from rdr_service import app_util
 from rdr_service.api import metrics_ehr_api
 from rdr_service.api.awardee_api import AwardeeApi
@@ -35,13 +34,7 @@ from rdr_service.api.public_metrics_api import PublicMetricsApi
 from rdr_service.api.questionnaire_api import QuestionnaireApi
 from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireAnswers, QuestionnaireResponseApi
 from rdr_service.config import get_config, get_db_config
-from rdr_service.model.utils import ParticipantIdConverter
-
-PREFIX = "/rdr/v1/"
-
-app = Flask(__name__)
-app.url_map.converters["participant_id"] = ParticipantIdConverter
-app.config.setdefault("RESTFUL_JSON", {"cls": RdrJsonEncoder})
+from rdr_service.services.flask import app, API_PREFIX
 
 
 def _warmup():
@@ -75,16 +68,16 @@ api = Api(app)
 
 api.add_resource(
     ParticipantApi,
-    PREFIX + "Participant/<participant_id:p_id>",
-    PREFIX + "Participant",
+    API_PREFIX + "Participant/<participant_id:p_id>",
+    API_PREFIX + "Participant",
     endpoint="participant",
     methods=["GET", "POST", "PUT"],
 )
 
 api.add_resource(
     ParticipantSummaryApi,
-    PREFIX + "Participant/<participant_id:p_id>/Summary",
-    PREFIX + "ParticipantSummary",
+    API_PREFIX + "Participant/<participant_id:p_id>/Summary",
+    API_PREFIX + "ParticipantSummary",
     endpoint="participant.summary",
     methods=["GET"],
 )
@@ -92,157 +85,157 @@ api.add_resource(
 # BigQuery version of Participant Summary API
 api.add_resource(
     BQParticipantSummaryApi,
-    PREFIX + "Participant/<participant_id:p_id>/TestSummary",
+    API_PREFIX + "Participant/<participant_id:p_id>/TestSummary",
     endpoint="bq_participant.summary",
     methods=["GET"],
 )
 
 api.add_resource(
     ParticipantSummaryModifiedApi,
-    PREFIX + "ParticipantSummary/Modified",
+    API_PREFIX + "ParticipantSummary/Modified",
     endpoint="participant.summary.modified",
     methods=["GET"],
 )
 
 api.add_resource(
     PatientStatusApi,
-    PREFIX + "PatientStatus/<participant_id:p_id>/Organization/<string:org_id>",
+    API_PREFIX + "PatientStatus/<participant_id:p_id>/Organization/<string:org_id>",
     endpoint="patient.status",
     methods=["GET", "POST", "PUT"],
 )
 
 api.add_resource(
     PatientStatusHistoryApi,
-    PREFIX + "PatientStatus/<participant_id:p_id>/Organization/<string:org_id>/History",
+    API_PREFIX + "PatientStatus/<participant_id:p_id>/Organization/<string:org_id>/History",
     endpoint="patient.status.history",
     methods=["GET"],
 )
 
 api.add_resource(
     PhysicalMeasurementsApi,
-    PREFIX + "Participant/<participant_id:p_id>/PhysicalMeasurements",
-    PREFIX + "Participant/<participant_id:p_id>/PhysicalMeasurements/<string:id_>",
+    API_PREFIX + "Participant/<participant_id:p_id>/PhysicalMeasurements",
+    API_PREFIX + "Participant/<participant_id:p_id>/PhysicalMeasurements/<string:id_>",
     endpoint="participant.physicalMeasurements",
     methods=["GET", "POST", "PATCH"],
 )
 
-api.add_resource(MetricsApi, PREFIX + "Metrics", endpoint="metrics", methods=["POST"])
+api.add_resource(MetricsApi, API_PREFIX + "Metrics", endpoint="metrics", methods=["POST"])
 
 api.add_resource(
     ParticipantCountsOverTimeApi,
-    PREFIX + "ParticipantCountsOverTime",
+    API_PREFIX + "ParticipantCountsOverTime",
     endpoint="participant_counts_over_time",
     methods=["GET"],
 )
 
-api.add_resource(MetricsFieldsApi, PREFIX + "MetricsFields", endpoint="metrics_fields", methods=["GET"])
+api.add_resource(MetricsFieldsApi, API_PREFIX + "MetricsFields", endpoint="metrics_fields", methods=["GET"])
 
 api.add_resource(
     MetricSetsApi,
-    PREFIX + "MetricSets",
-    PREFIX + "MetricSets/<string:ms_id>/Metrics",
+    API_PREFIX + "MetricSets",
+    API_PREFIX + "MetricSets/<string:ms_id>/Metrics",
     endpoint="metric_sets",
     methods=["GET"],
 )
 
-api.add_resource(metrics_ehr_api.MetricsEhrApi, PREFIX + "MetricsEHR", endpoint="metrics_ehr", methods=["GET"])
+api.add_resource(metrics_ehr_api.MetricsEhrApi, API_PREFIX + "MetricsEHR", endpoint="metrics_ehr", methods=["GET"])
 
 api.add_resource(
     metrics_ehr_api.ParticipantEhrMetricsOverTimeApi,
-    PREFIX + "MetricsEHR/ParticipantsOverTime",
+    API_PREFIX + "MetricsEHR/ParticipantsOverTime",
     endpoint="metrics_ehr.participants_over_time",
     methods=["GET"],
 )
 
 api.add_resource(
     metrics_ehr_api.OrganizationMetricsApi,
-    PREFIX + "MetricsEHR/Organizations",
+    API_PREFIX + "MetricsEHR/Organizations",
     endpoint="metrics_ehr.sites",
     methods=["GET"],
 )
 
-api.add_resource(PublicMetricsApi, PREFIX + "PublicMetrics", endpoint="public_metrics", methods=["GET"])
+api.add_resource(PublicMetricsApi, API_PREFIX + "PublicMetrics", endpoint="public_metrics", methods=["GET"])
 
 api.add_resource(
     QuestionnaireApi,
-    PREFIX + "Questionnaire",
-    PREFIX + "Questionnaire/<string:id_>",
+    API_PREFIX + "Questionnaire",
+    API_PREFIX + "Questionnaire/<string:id_>",
     endpoint="questionnaire",
     methods=["POST", "GET", "PUT"],
 )
 
 api.add_resource(
     QuestionnaireResponseApi,
-    PREFIX + "Participant/<participant_id:p_id>/QuestionnaireResponse/<string:id_>",
-    PREFIX + "Participant/<participant_id:p_id>/QuestionnaireResponse",
+    API_PREFIX + "Participant/<participant_id:p_id>/QuestionnaireResponse/<string:id_>",
+    API_PREFIX + "Participant/<participant_id:p_id>/QuestionnaireResponse",
     endpoint="participant.questionnaire_response",
     methods=["POST", "GET"],
 )
 
 api.add_resource(
     ParticipantQuestionnaireAnswers,
-    PREFIX + "Participant/<participant_id:p_id>/QuestionnaireAnswers/<string:module>",
+    API_PREFIX + "Participant/<participant_id:p_id>/QuestionnaireAnswers/<string:module>",
     endpoint="participant.questionnaire_answers",
     methods=["GET"],
 )
 
 api.add_resource(
     BiobankOrderApi,
-    PREFIX + "Participant/<participant_id:p_id>/BiobankOrder/<string:bo_id>",
-    PREFIX + "Participant/<participant_id:p_id>/BiobankOrder",
+    API_PREFIX + "Participant/<participant_id:p_id>/BiobankOrder/<string:bo_id>",
+    API_PREFIX + "Participant/<participant_id:p_id>/BiobankOrder",
     endpoint="participant.biobank_order",
     methods=["POST", "GET", "PUT", "PATCH"],
 )
 
 api.add_resource(
     DvOrderApi,
-    PREFIX + "SupplyRequest/<string:bo_id>",
-    PREFIX + "SupplyRequest",
-    PREFIX + "SupplyDelivery",
-    PREFIX + "SupplyDelivery/<string:bo_id>",
+    API_PREFIX + "SupplyRequest/<string:bo_id>",
+    API_PREFIX + "SupplyRequest",
+    API_PREFIX + "SupplyDelivery",
+    API_PREFIX + "SupplyDelivery/<string:bo_id>",
     endpoint="participant.dv_order",
     methods=["POST", "GET", "PUT"],
 )
 
-api.add_resource(AwardeeApi, PREFIX + "Awardee", PREFIX + "Awardee/<string:a_id>", endpoint="awardee", methods=["GET"])
+api.add_resource(AwardeeApi, API_PREFIX + "Awardee", API_PREFIX + "Awardee/<string:a_id>", endpoint="awardee", methods=["GET"])
 
 # Configuration API for admin use.  # note: temporarily disabled until decided
 api.add_resource(
     config_api.ConfigApi,
-    PREFIX + "Config",
-    PREFIX + "Config/<string:key>",
+    API_PREFIX + "Config",
+    API_PREFIX + "Config/<string:key>",
     endpoint="config",
     methods=["GET", "POST", "PUT"],
 )
 
 # Version API for prober and release management use.
-api.add_resource(version_api.VersionApi, "/", PREFIX, endpoint="version", methods=["GET"])  # Default behavior
+api.add_resource(version_api.VersionApi, "/", API_PREFIX, endpoint="version", methods=["GET"])  # Default behavior
 
 # Data generator API used to load fake data into the database.
-api.add_resource(DataGenApi, PREFIX + "DataGen", endpoint="datagen", methods=["POST", "PUT"])
+api.add_resource(DataGenApi, API_PREFIX + "DataGen", endpoint="datagen", methods=["POST", "PUT"])
 
 
 # Task Queue API endpoing to rebuild BQ participant summary records.
-api.add_resource(BQRebuildTaskApi, PREFIX + "BQRebuildTaskApi", endpoint="bq_rebuilt_task", methods=["GET"])
+api.add_resource(BQRebuildTaskApi, API_PREFIX + "BQRebuildTaskApi", endpoint="bq_rebuilt_task", methods=["GET"])
 
 #
 # Non-resource endpoints
 #
 
-api.add_resource(SpecDataGenApi, PREFIX + "SpecDataGen", endpoint="specdatagen", methods=["POST"])
+api.add_resource(SpecDataGenApi, API_PREFIX + "SpecDataGen", endpoint="specdatagen", methods=["POST"])
 
 app.add_url_rule(
-    PREFIX + "PhysicalMeasurements/_history",
+    API_PREFIX + "PhysicalMeasurements/_history",
     endpoint="physicalMeasurementsSync",
     view_func=sync_physical_measurements,
     methods=["GET"],
 )
 
-app.add_url_rule(PREFIX + "CheckPpiData", endpoint="check_ppi_data", view_func=check_ppi_data, methods=["POST"])
+app.add_url_rule(API_PREFIX + "CheckPpiData", endpoint="check_ppi_data", view_func=check_ppi_data, methods=["POST"])
 
-app.add_url_rule(PREFIX + "ImportCodebook", endpoint="import_codebook", view_func=import_codebook, methods=["POST"])
+app.add_url_rule(API_PREFIX + "ImportCodebook", endpoint="import_codebook", view_func=import_codebook, methods=["POST"])
 
-app.add_url_rule(PREFIX + 'RebuildBigQueryCore',
+app.add_url_rule(API_PREFIX + 'RebuildBigQueryCore',
                  endpoint='rebuildbigquerycore',
                  view_func=rebuild_bigquery_core,
                  methods=['POST'])
