@@ -57,6 +57,7 @@ fi
 if [ "${PROJECT}" -o "${INSTANCE}" ]
 then
   source tools/auth_setup.sh
+  echo ${BOLD} "out of auth setup ...."${NONE}
   run_cloud_sql_proxy
   set_db_connection_string alembic
 else
