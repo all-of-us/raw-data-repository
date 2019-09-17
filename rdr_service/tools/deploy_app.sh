@@ -213,7 +213,7 @@ then
   gcloud app deploy "${yamls[@]}" \
       --quiet --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
   $UPDATE_TRACKER --version $VERSION --comment "${after_comment}"
-  rm "${tmp_files[@]}"
+  #rm "${tmp_files[@]}"
   echo "${tmp_files[@]}" 
   pwd
   echo "*********************************************************************"

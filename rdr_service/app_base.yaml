@@ -2,4 +2,7 @@
 # This file is concatenated at the beginning of app_(non)?prod.yaml (instead of
 # using an "includes" since "includes" only imports some directives).
 
+env_variables:
+  RDR_CONFIG_PROVIDER: "rdr_service.config.GoogleCloudDatastoreConfigProvider"
+
 runtime: python37
