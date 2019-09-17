@@ -4,6 +4,7 @@ from dateutil import parser, tz
 from sqlalchemy import func, desc
 
 from rdr_service import config
+from rdr_service.config import InvalidConfigException, MissingConfigException
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummary
@@ -17,6 +18,7 @@ from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatus, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus
+from rdr_service.services.flask import celery
 
 
 class BQParticipantSummaryGenerator(BigQueryGenerator):
@@ -115,6 +117,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             # return the minimum data required when we don't have the questionnaire data.
             return {'email': None, 'is_ghost_id': 0}
         qnan = BQRecord(schema=None, data=qnans[0])  # use only most recent response.
+        if not hasattr(qnan, 'PIIBirthInformation_BirthDate'):
+            qnan.update_values({'PIIBirthInformation_BirthDate': None })
 
         # TODO: We may need to use the first response to set consent dates,
         #  unless the consent value changed across response records.
@@ -175,14 +179,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         data = dict()
         modules = list()
         consents = list()
-        baseline_modules = ['TheBasics', 'OverallHealth', 'Lifestyle']
-        try:
-            baseline_modules = config.getSettingList('baseline_ppi_questionnaire_fields')
-        except ValueError:
-            pass
-        except AssertionError:  # unittest errors because of GCP SDK
-            pass
-
+        baseline_modules = config.getSettingList('baseline_ppi_questionnaire_fields',
+                                                     ['TheBasics', 'OverallHealth', 'Lifestyle'])
         consent_modules = {
             # module: question code string
             'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
@@ -314,22 +312,10 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         """
         data = {}
         orders = list()
-        baseline_tests = ["1ED04", "1ED10", "1HEP4", "1PST8", "2PST8", "1SST8", "2SST8",
-                          "1PS08", "1SS08", "1UR10", "1CFD9", "1PXR2", "1UR90", "2ED10"]
-        try:
-            baseline_tests = config.getSettingList('baseline_sample_test_codes')
-        except ValueError:
-            pass
-        except AssertionError:  # unittest errors because of GCP SDK
-            pass
-
-        dna_tests = ["1ED10", "2ED10", "1ED04", "1SAL", "1SAL2"]
-        try:
-            dna_tests = config.getSettingList('dna_sample_test_codes')
-        except ValueError:
-            pass
-        except AssertionError:  # unittest errors because of GCP SDK
-            pass
+        baseline_tests = config.getSettingList('baseline_sample_test_codes',
+                                           ["1ED04", "1ED10", "1HEP4", "1PST8", "2PST8", "1SST8", "2SST8",
+                                            "1PS08", "1SS08", "1UR10", "1CFD9", "1PXR2", "1UR90", "2ED10"])
+        dna_tests = config.getSettingList('dna_sample_test_codes', ["1ED10", "2ED10", "1ED04", "1SAL", "1SAL2"])
 
         sql = """
       select bo.biobank_order_id, bo.created, bo.collected_site_id, bo.processed_site_id, bo.finalized_site_id, 
@@ -369,7 +355,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         # loop through results again and add each sample to it's order.
         for row in results:
             # get the order list index for this sample record
-            idx = orders.index(filter(lambda order: order['bbo_biobank_order_id'] == row.biobank_order_id, orders)[0])
+            idx = orders.index(
+                    list(filter(lambda order: order['bbo_biobank_order_id'] == row.biobank_order_id, orders))[0])
             # if we haven't added any samples to this order, create an empty list.
             if 'samples' not in orders[idx]:
                 orders[idx]['bbo_samples'] = list()
@@ -402,10 +389,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         """
         if 'consents' not in summary:
             return {}
-        try:
-            baseline_modules = config.getSettingList('baseline_ppi_questionnaire_fields')
-        except ValueError:
-            baseline_modules = ['TheBasics', 'OverallHealth', 'Lifestyle']
+        baseline_modules = config.getSettingList('baseline_ppi_questionnaire_fields',
+                                                     ['TheBasics', 'OverallHealth', 'Lifestyle'])
 
         study_consent = ehr_consent = dvehr_consent = pm_complete = False
         status = None
@@ -427,11 +412,12 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         baseline_module_count = dna_sample_count = 0
         if 'modules' in summary:
             baseline_module_count = len(
-                filter(lambda module: module['mod_baseline_module'] == 'true', summary['modules']))
+                list(filter(lambda module: module['mod_baseline_module'] == 'true', summary['modules'])))
         if 'biobank_orders' in summary:
             for order in summary['biobank_orders']:
                 if 'samples' in order:
-                    dna_sample_count += len(filter(lambda sample: sample['bbs_dna_test'] == 'true', order['samples']))
+                    dna_sample_count += len(list(
+                        filter(lambda sample: sample['bbs_dna_test'] == 'true', order['samples'])))
 
         if study_consent:
             status = EnrollmentStatus.INTERESTED
@@ -501,7 +487,7 @@ def rebuild_bq_participant(p_id, dao, session, ps_bqgen=None, pdr_bqgen=None):
     if not ps_bqgen:
         ps_bqgen = BQParticipantSummaryGenerator()
     if not pdr_bqgen:
-        from dao.bq_pdr_participant_summary_dao import BQPDRParticipantSummaryGenerator
+        from rdr_service.dao.bq_pdr_participant_summary_dao import BQPDRParticipantSummaryGenerator
         pdr_bqgen = BQPDRParticipantSummaryGenerator()
 
     try:
@@ -526,8 +512,8 @@ def rebuild_bq_participant(p_id, dao, session, ps_bqgen=None, pdr_bqgen=None):
 
     return ps_bqr
 
-
-def deferred_bq_participant_summary_update(p_id):
+@celery.task()
+def bq_participant_summary_update_task(p_id):
     """
     Deferred task to update the Participant Summary record for the given participant.
     :param p_id: Participant ID

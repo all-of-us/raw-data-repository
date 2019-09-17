@@ -11,12 +11,12 @@ from sqlalchemy import or_, func, and_
 from rdr_service import config
 from rdr_service.cloud_utils.bigquery import BigQueryJob
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
-from rdr_service.dao.bq_code_dao import deferrered_bq_codebook_update
+from rdr_service.dao.bq_code_dao import bq_codebook_update_task
 from rdr_service.dao.bq_hpo_dao import bq_hpo_update
 from rdr_service.dao.bq_organization_dao import bq_organization_update
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator, rebuild_bq_participant
 from rdr_service.dao.bq_pdr_participant_summary_dao import BQPDRParticipantSummaryGenerator
-from rdr_service.dao.bq_questionaire_dao import BQPDRQuestionnaireResponseGenerator
+from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.dao.bq_site_dao import bq_site_update
 from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
@@ -41,7 +41,7 @@ def rebuild_bigquery_handler():
     """
     # pylint: disable=unused-variable
     timestamp = datetime.utcnow()
-    batch_size = 10000
+    batch_size = 100
 
     dao = BigQuerySyncDao()
     with dao.session() as session:
@@ -65,7 +65,7 @@ def rebuild_bigquery_handler():
     # Process tables that don't need to be broken up into smaller tasks.
     #
     # Code Table
-    deferrered_bq_codebook_update()
+    bq_codebook_update_task()
     # HPO Table
     bq_hpo_update()
     # Organization Table
@@ -101,8 +101,8 @@ def rebuild_bq_participant_task(timestamp, limit=0):
         # Collect all participants who do not have a PS generated yet or the modified date is less than the timestamp.
         sq = session.query(Participant.participantId, BigQuerySync.id, BigQuerySync.modified). \
             outerjoin(BigQuerySync, and_(
-            BigQuerySync.pk_id == Participant.participantId, BigQuerySync.tableId == 'participant_summary')). \
-            subquery()
+            BigQuerySync.pk_id == Participant.participantId,
+            or_(BigQuerySync.tableId == 'participant_summary', BigQuerySync.tableId == 'prd_participant'))).subquery()
         query = session.query(sq.c.participant_id.label('participantId')). \
             filter(or_(sq.c.id == None, sq.c.modified < timestamp))
         if limit:
@@ -115,9 +115,6 @@ def rebuild_bq_participant_task(timestamp, limit=0):
         # put a log entry in every 2,500 records. Should be approximately every 10 minutes.
         for row in results:
             count += 1
-            if count % 2500 == 0:
-                logging.info('Processed {0} participants.'.format(count))
-
             # All logic for generating a participant summary is here.
             rebuild_bq_participant(row.participantId, dao=dao, session=session, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen)
 

@@ -24,6 +24,8 @@ from rdr_service.query import FieldFilter, Operator, PropertyType, Results
 
 # Maximum number of times we will attempt to insert an entity with a random ID before
 # giving up.
+from rdr_service.services.flask import celery
+
 MAX_INSERT_ATTEMPTS = 20
 
 # Range of possible values for random IDs.
@@ -689,9 +691,19 @@ class FhirMixin(object):
         js.extend(self._PROPERTIES)
         return js
 
+def save_raw_request_record(log: RequestsLog):
+    """
+    Save the request payload and possibly link it to a table record
+    :param log: RequestsLog dao object
+    """
+    log.resource = str(log.resource)
+    try:
+        log.resource = json.loads(log.resource)
+    except json.decoder.JSONDecodeError:
+        pass
+    except ValueError:
+        pass
 
-def deferred_save_raw_request(log):
-    """ Deferred task to save the request payload and possibly link it to a table record """
     _dao = BaseDao(RequestsLog)
     with _dao.session() as session:
         session.add(log)

@@ -2,7 +2,7 @@
 # bash completion for rdr tools
 # See: https://debian-administration.org/article/317/An_introduction_to_bash_completion_part_2
 #
-# Usage: From the `rest_api` directory run `. tools/tool_libs/tools.bash` or add to bash profile.
+# Usage: run `. rdr_service/tools/tool_libs/tools.bash` or add to bash profile.
 #
 _python()
 {
@@ -12,7 +12,7 @@ _python()
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # These are the specific tools we support
-    tools="--help migrate-bq verify oauth-token"
+    tools="--help migrate-bq verify oauth-token mysql rabbitmq"
     # These are the standard options all tools support.
     stdopts="--help --debug --log-file --project --account --service-account"
 
@@ -42,6 +42,18 @@ _python()
             COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
             return 0
             ;;
+        mysql)
+            # These are options specific to this tool.
+            local toolopts="--create-cloud-instance --change-passwords"
+            COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
+            return 0
+            ;;
+        rabbitmq)
+            # These are options specific to this tool.
+            local toolopts="--create-cloud-instance --create-user --delete-user"
+            COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
+            return 0
+            ;;
         *)
         ;;
     esac
@@ -50,3 +62,4 @@ _python()
    return 0
 }
 complete -F _python python
+

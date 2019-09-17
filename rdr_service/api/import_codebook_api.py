@@ -3,11 +3,9 @@ import logging
 import pprint
 import urllib.request, urllib.error, urllib.parse
 
-# from google.appengine.ext import deferred
-
 from rdr_service.api_util import PTC_AND_HEALTHPRO
 from rdr_service.app_util import auth_required
-from rdr_service.dao.bq_code_dao import deferrered_bq_codebook_update  # pylint: disable=unused-import
+from rdr_service.dao.bq_code_dao import bq_codebook_update_task
 from rdr_service.dao.code_dao import CodeBookDao
 
 _CODEBOOK_URL_BASE = "https://raw.githubusercontent.com/all-of-us-terminology/codebook-to-fhir/"
@@ -68,7 +66,8 @@ def import_codebook():
     response["active_version"] = new_codebook.version
     response["status_messages"] = ["Imported %d codes." % code_count]
 
-    # deferred.defer(deferrered_bq_codebook_update)
+    task = bq_codebook_update_task.delay()
+    task.forget()
 
     return _log_and_return_json(response)
 

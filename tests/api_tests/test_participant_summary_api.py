@@ -1165,8 +1165,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertBundle([_make_entry(actual)], response)
 
     def _send_next(self, next_link):
-        prefix_index = next_link.index(main.PREFIX)
-        return self.send_get(next_link[prefix_index + len(main.PREFIX) :])
+        prefix_index = next_link.index(main.API_PREFIX)
+        return self.send_get(next_link[prefix_index + len(main.API_PREFIX):])
 
     def assertResponses(self, initial_query, summaries_list):
         response = self.send_get(initial_query)
