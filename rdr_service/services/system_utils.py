@@ -69,9 +69,9 @@ def setup_logging(logger, progname, debug=False, logfile=None):
         logger.addHandler(handler)
 
 
-def setup_unicode():
+def setup_i18n():
     """
-  Enable unicode support for python programs
+  Enable i18n internationalization support for python programs
   """
     # Setup i18n - Good for 2.x and 3.x python.
     kwargs = {}

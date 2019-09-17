@@ -11,7 +11,7 @@ import logging
 import sys
 
 from rdr_service.service_libs import GCPProcessContext
-from rdr_service.services.system_utils import setup_logging, setup_unicode
+from rdr_service.services.system_utils import setup_logging, setup_i18n
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -38,7 +38,7 @@ def run():
     setup_logging(
         _logger, mod_cmd, "--debug" in sys.argv, "{0}.log".format(mod_cmd) if "--log-file" in sys.argv else None
     )
-    setup_unicode()
+    setup_i18n()
 
     # Setup program arguments.
     parser = argparse.ArgumentParser(prog=mod_cmd, description=mod_desc)
