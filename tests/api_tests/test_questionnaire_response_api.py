@@ -30,28 +30,28 @@ class QuestionnaireResponseApiTest(BaseTestCase):
     def test_duplicate_consent_submission(self):
         """
     Submit duplicate study enrollment questionnaires, so we can make sure
-    a duplicate submission doesn't error out and the authored timestamp is
-    updated.
+    a duplicate submission doesn't error out and the authored timestamp will
+    not be updated if the answer is not changed.
     """
         participant_id = self.create_participant()
-        authored = datetime.datetime(2019, 3, 16, 1, 39, 33, tzinfo=pytz.utc)
+        authored_1 = datetime.datetime(2019, 3, 16, 1, 39, 33, tzinfo=pytz.utc)
         created = datetime.datetime(2019, 3, 16, 1, 51, 22)
         with FakeClock(created):
-            self.send_consent(participant_id, authored=authored)
+            self.send_consent(participant_id, authored=authored_1)
 
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(parse(summary["consentForStudyEnrollmentTime"]), created.replace(tzinfo=None))
-        self.assertEqual(parse(summary["consentForStudyEnrollmentAuthored"]), authored.replace(tzinfo=None))
+        self.assertEqual(parse(summary["consentForStudyEnrollmentAuthored"]), authored_1.replace(tzinfo=None))
 
         # submit consent questionnaire again with new timestamps.
-        authored = datetime.datetime(2019, 3, 17, 1, 24, 16, tzinfo=pytz.utc)
+        authored_2 = datetime.datetime(2019, 3, 17, 1, 24, 16, tzinfo=pytz.utc)
         with FakeClock(datetime.datetime(2019, 3, 17, 1, 25, 58)):
-            self.send_consent(participant_id, authored=authored)
+            self.send_consent(participant_id, authored=authored_2)
 
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         # created should remain the same as the first submission.
         self.assertEqual(parse(summary["consentForStudyEnrollmentTime"]), created.replace(tzinfo=None))
-        self.assertEqual(parse(summary["consentForStudyEnrollmentAuthored"]), authored.replace(tzinfo=None))
+        self.assertEqual(parse(summary["consentForStudyEnrollmentAuthored"]), authored_1.replace(tzinfo=None))
 
     def test_insert_raises_400_for_excessively_long_valueString(self):
         participant_id = self.create_participant()

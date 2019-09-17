@@ -154,7 +154,7 @@ class LocalFilesystemConfigProvider(ConfigProvider):
 class GoogleCloudDatastoreConfigProvider(ConfigProvider):
 
     def load(self, name=CONFIG_SINGLETON_KEY, date=None):
-        datastore_client = datastore.Client()
+        datastore_client = datastore.Client(project=GAE_PROJECT)
         kind = 'Configuration'
         key = datastore_client.key(kind, name)
         if date is not None:
@@ -172,17 +172,21 @@ class GoogleCloudDatastoreConfigProvider(ConfigProvider):
             except (StopIteration, AttributeError):
                 return None
         entity = datastore_client.get(key=key)
-        if entity is None:
+        if entity:
+            config_data = json.loads(entity['configuration'].decode('utf-8'))
+        else:
             if name == CONFIG_SINGLETON_KEY:
                 entity = datastore.Entity(key=key)
                 entity['configuration'] = {}
                 datastore_client.put(entity)
+                config_data = entity['configuration']
             else:
                 return None
-        return entity
+
+        return config_data
 
     def store(self, name, config_dict, **kwargs):
-        datastore_client = datastore.Client()
+        datastore_client = datastore.Client(project=GAE_PROJECT)
         date = clock.CLOCK.now()
         with datastore_client.transaction():
             key = datastore_client.key('Configuration', name)
@@ -219,17 +223,17 @@ def store(name, config_dict, **kwargs):
 def getSettingJson(key, default=_NO_DEFAULT):
     """Gets a config setting as an arbitrary JSON structure
 
-  Args:
-    key: The config key to retrieve entries for.
-    default: What to return if the key does not exist in the datastore.
+    Args:
+      key: The config key to retrieve entries for.
+      default: What to return if the key does not exist in the datastore.
 
-  Returns:
-    The value from the Config store, or the default if not present
+    Returns:
+      The value from the Config store, or the default if not present
 
-  Raises:
-    MissingConfigException: If the config key does not exist in the datastore,
-      and a default is not provided.
-  """
+    Raises:
+      MissingConfigException: If the config key does not exist in the datastore,
+        and a default is not provided.
+    """
     config_values = CONFIG_OVERRIDES.get(key)
     if config_values is not None:
         return config_values

@@ -31,6 +31,7 @@ flask-restful==0.3.7
 flask==1.1.1
 gevent==1.4.0             # via locustio
 google-api-core[grpc]==1.14.2  # via google-cloud-core, google-cloud-datastore, google-cloud-firestore
+google-python-cloud-debugger # stackdriver debugger
 google-api-python-client==1.7.10
 google-auth-httplib2==0.0.3  # via google-api-python-client
 google-auth==1.6.3        # via google-api-core, google-api-python-client, google-auth-httplib2, google-cloud-storage

@@ -10,6 +10,11 @@ import os
 from rdr_service.services.system_utils import setup_i18n
 from rdr_service.main import app
 
+try:
+    import googleclouddebugger
+    googleclouddebugger.enable()
+except ImportError:
+    pass
 
 if __name__ == '__main__':
     setup_i18n()
