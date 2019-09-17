@@ -24,7 +24,6 @@ from rdr_service.query import FieldFilter, Operator, PropertyType, Results
 
 # Maximum number of times we will attempt to insert an entity with a random ID before
 # giving up.
-from rdr_service.services.flask import celery
 
 MAX_INSERT_ATTEMPTS = 20
 

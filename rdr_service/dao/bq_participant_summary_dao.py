@@ -4,7 +4,6 @@ from dateutil import parser, tz
 from sqlalchemy import func, desc
 
 from rdr_service import config
-from rdr_service.config import InvalidConfigException, MissingConfigException
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummary
@@ -118,7 +117,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             return {'email': None, 'is_ghost_id': 0}
         qnan = BQRecord(schema=None, data=qnans[0])  # use only most recent response.
         if not hasattr(qnan, 'PIIBirthInformation_BirthDate'):
-            qnan.update_values({'PIIBirthInformation_BirthDate': None })
+            qnan.update_values({'PIIBirthInformation_BirthDate': None})
 
         # TODO: We may need to use the first response to set consent dates,
         #  unless the consent value changed across response records.

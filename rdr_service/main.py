@@ -197,7 +197,8 @@ api.add_resource(
     methods=["POST", "GET", "PUT"],
 )
 
-api.add_resource(AwardeeApi, API_PREFIX + "Awardee", API_PREFIX + "Awardee/<string:a_id>", endpoint="awardee", methods=["GET"])
+api.add_resource(AwardeeApi, API_PREFIX + "Awardee", API_PREFIX + "Awardee/<string:a_id>",
+                        endpoint="awardee", methods=["GET"])
 
 # Configuration API for admin use.  # note: temporarily disabled until decided
 api.add_resource(
@@ -233,7 +234,8 @@ app.add_url_rule(
 
 app.add_url_rule(API_PREFIX + "CheckPpiData", endpoint="check_ppi_data", view_func=check_ppi_data, methods=["POST"])
 
-app.add_url_rule(API_PREFIX + "ImportCodebook", endpoint="import_codebook", view_func=import_codebook, methods=["POST"])
+app.add_url_rule(API_PREFIX + "ImportCodebook", endpoint="import_codebook", view_func=import_codebook,
+                 methods=["POST"])
 
 app.add_url_rule(API_PREFIX + 'RebuildBigQueryCore',
                  endpoint='rebuildbigquerycore',
