@@ -173,7 +173,10 @@ class GoogleCloudDatastoreConfigProvider(ConfigProvider):
                 return None
         entity = datastore_client.get(key=key)
         if entity:
-            config_data = json.loads(entity['configuration'])
+            print("***** entity **** >>>> ", entity)
+            #config_data = json.loads(entity['configuration'])
+            config_data = entity.configuration
+            print("***** config data **** >>>> ", config_data)
         else:
             if name == CONFIG_SINGLETON_KEY:
                 entity = datastore.Entity(key=key)

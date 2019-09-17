@@ -67,13 +67,16 @@ class ConfigApi(Resource):
     method_decorators = [auth_required_config_admin]
 
     def get(self, key=config.CONFIG_SINGLETON_KEY):
+        print("I AM IN THE GET METHOD !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         date = request.args.get("date")
         if date is not None:
             date = parse_date(date)
         config_obj = config.load(key, date=date)
+        print('>>>> config obj: ',config_obj)
         if config_obj:
             return config_obj
         elif key == config.CONFIG_SINGLETON_KEY:
+            print(" >>>>>> no config obj? <<<<<<< ")
             return {}
         else:
             raise NotFound(f'config not found: {key}')
