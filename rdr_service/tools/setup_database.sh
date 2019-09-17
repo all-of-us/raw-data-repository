@@ -16,6 +16,8 @@
 # Example usage for changing root and rdr/alembic/readonly passwords:
 # tools/setup_database.sh --account dan.rodney@pmi-ops.org --project all-of-us-rdr-staging --update_passwords
 
+echo "\n!!! Depreciated Tool !!!  use new style database tool. IE: python -m tools mysql."
+
 CREATE_INSTANCE=
 UPDATE_PASSWORDS=
 CONTINUE_CREATING_INSTANCE=
@@ -123,7 +125,8 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ] || [ "${CON
   BACKUP_CONNECTION_STRING="mysql+mysqldb://${RDR_DB_USER}:${RDR_PASSWORD}@/$DB_NAME?unix_socket=/cloudsql/$BACKUP_INSTANCE_NAME&charset=utf8"
 
 	echo '{"db_connection_string": "'$CONNECTION_STRING'", ' \
-	     ' "backup_db_connection_string": "'$BACKUP_CONNECTION_STRING'", '\
+	     ' "backup_db_connection_string": "'$BACKUP_CONNECTION_STRING'", ' \
+	     ' "celery_broker_url": "pyamqp://guest:@localhost//", ' \
 	     ' "rdr_db_password": "'$RDR_PASSWORD'", ' \
 	     ' "root_db_password": "'$ROOT_PASSWORD'", ' \
 	     ' "read_only_db_password": "'$READONLY_PASSWORD'", ' \
@@ -138,7 +141,7 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ] || [ "${CON
 	if [ "${CREATE_INSTANCE}" = "Y" ] || [ "${CONTINUE_CREATING_INSTANCE}" = "Y" ]
     then
 		echo "Queueing database creation commands"
-		for db_name in "rdr" "metrics"; do
+		for db_name in "rdr" "metrics" "rdr_tasks"; do
 		   cat tools/create_db.sql | envsubst >> $UPDATE_DB_FILE
 		   cat tools/grant_permissions.sql | envsubst >> $UPDATE_DB_FILE
 		done
@@ -153,7 +156,7 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ] || [ "${CON
 	tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
 else
 	echo "Setting permissions for database"
-	for db_name in "rdr" "metrics"; do
+	for db_name in "rdr" "metrics" "rdr_tasks"; do
 	   cat tools/grant_permissions.sql | envsubst >> $UPDATE_DB_FILE
 	done
 	get_db_password $ROOT_DB_USER
