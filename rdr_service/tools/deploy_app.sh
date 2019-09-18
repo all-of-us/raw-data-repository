@@ -39,8 +39,7 @@ fi
 if [[ $(git status --porcelain) ]]; then
   # Changes
   echo "git status must be clean"
-  echo "DONT FORGET TO UNDO THIS COMMENT"
-#  EXIT 1
+  EXIT 1
 fi
 
 UPDATE_TRACKER=tools/update_release_tracker.py
@@ -137,8 +136,7 @@ git checkout $VERSION
 if [[ $(git status --porcelain) ]]; then
   # Changes
   echo "git status must be clean"
-  echo "DONT FORGET TO UNDO THIS COMMENT"
-  #EXIT 1
+  EXIT 1
 fi
 
 if [ "$TARGET" == "all" ] || [ "$TARGET" == "db" ]
@@ -178,8 +176,7 @@ then
   if [[ $(git status --porcelain) ]]; then
     # Changes
     echo "git status must be clean"
-    echo "DONT FORGET TO UNDO THIS COMMENT"
-    #EXIT 1
+    EXIT 1
   fi
 
   declare -a yamls
@@ -208,7 +205,7 @@ then
     cat rdr_service/app_base.yaml $APP_YAML > app.yaml
 
     yamls+=( app.yaml index.yaml offline.yaml )
-    tmp_files+=( app.yaml )
+    tmp_files+=( app.yaml cron.yaml)
     before_comment="Deploying app to ${PROJECT}."
     after_comment="App deployed to ${PROJECT}."
   fi
