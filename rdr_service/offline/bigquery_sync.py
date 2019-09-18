@@ -102,7 +102,7 @@ def rebuild_bq_participant_task(timestamp, limit=0):
         sq = session.query(Participant.participantId, BigQuerySync.id, BigQuerySync.modified). \
             outerjoin(BigQuerySync, and_(
             BigQuerySync.pk_id == Participant.participantId,
-            or_(BigQuerySync.tableId == 'participant_summary', BigQuerySync.tableId == 'prd_participant'))).subquery()
+            or_(BigQuerySync.tableId == 'participant_summary', BigQuerySync.tableId == 'pdr_participant'))).subquery()
         query = session.query(sq.c.participant_id.label('participantId')). \
             filter(or_(sq.c.id == None, sq.c.modified < timestamp))
         if limit:
