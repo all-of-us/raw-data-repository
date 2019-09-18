@@ -39,7 +39,8 @@ fi
 if [[ $(git status --porcelain) ]]; then
   # Changes
   echo "git status must be clean"
-  EXIT 1
+  echo "DONT FORGET TO UNDO THIS COMMENT"
+#  EXIT 1
 fi
 
 UPDATE_TRACKER=tools/update_release_tracker.py
@@ -136,7 +137,8 @@ git checkout $VERSION
 if [[ $(git status --porcelain) ]]; then
   # Changes
   echo "git status must be clean"
-  EXIT 1
+  echo "DONT FORGET TO UNDO THIS COMMENT"
+  #EXIT 1
 fi
 
 if [ "$TARGET" == "all" ] || [ "$TARGET" == "db" ]
@@ -176,16 +178,21 @@ then
   if [[ $(git status --porcelain) ]]; then
     # Changes
     echo "git status must be clean"
-    EXIT 1
+    echo "DONT FORGET TO UNDO THIS COMMENT"
+    #EXIT 1
   fi
 
   declare -a yamls
   declare -a tmp_files
 
   # Deploy cron/queue in all cases.
-  tools/build_cron_yaml.py --project ${PROJECT} > cron.yaml
-  yamls+=( rdr_service/cron.yaml rdr_service/queue.yaml )
-  tmp_files+=( rdr_service/cron.yaml )
+  tools/build_cron_yaml.py --project ${PROJECT} > ../cron.yaml
+  cd ..
+  cp rdr_service/queue.yaml .
+  cp rdr_service/offline.yaml .
+  cp rdr_service/index.yaml .
+  yamls+=( cron.yaml queue.yaml )
+  tmp_files+=( cron.yaml queue.yaml offline.yaml index.yaml)
   before_comment="Updating cron/queue configuration in ${PROJECT}."
   after_comment="cron/queue configuration updated in ${PROJECT}."
 
@@ -194,21 +201,22 @@ then
     if [ "${PROJECT}" = "all-of-us-rdr-prod" ] || [ "${USE_PROD_YAML}" = "true" ]
     then
       echo "Using ${BOLD}prod${NONE} app.yaml for project $PROJECT."
-      APP_YAML=app_prod.yaml
+      APP_YAML=rdr_service/app_prod.yaml
     else
-      APP_YAML=app_nonprod.yaml
+      APP_YAML=rdr_service/app_nonprod.yaml
     fi
-    cat app_base.yaml $APP_YAML > app.yaml
+    cat rdr_service/app_base.yaml $APP_YAML > app.yaml
 
-    yamls+=( rdr_service/app.yaml rdr_service/index.yaml rdr_service/offline.yaml )
-    tmp_files+=( rdr_service/app.yaml )
+    yamls+=( app.yaml index.yaml offline.yaml )
+    tmp_files+=( app.yaml )
     before_comment="Deploying app to ${PROJECT}."
     after_comment="App deployed to ${PROJECT}."
   fi
 
   echo "${BOLD}Deploying application...${NONE}"
   $UPDATE_TRACKER --version $VERSION --comment "${before_comment}"
-  cd ..
+  echo "${yamls[@]}"
+  cat app.yaml
   gcloud app deploy "${yamls[@]}" \
       --quiet --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
   $UPDATE_TRACKER --version $VERSION --comment "${after_comment}"
