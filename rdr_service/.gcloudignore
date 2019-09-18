@@ -6,25 +6,25 @@
 .gitignore
 #!include:.gitignore
 
-**/alembic/.*
-**/client_cli/.*
-**/etl/.*
-**/etl_test/.*
-**/bin/
-**/data/
-**/tests/
-**/test/
-**/tools/.*
-**/services/.*
-**/services_libs/.*
-**/venv/.*$
+/alembic/.*
+/client_cli/.*
+/etl/.*
+/etl_test/.*
+/bin/
+/data/
+/tests/
+/test/
+/tools/.*
+/services/.*
+/services_libs/.*
+/venv/.*$
 
 *.bak
 *.pyc
 
-rest-api/**
-ptc-uploads-unit-testing/**
-git-hooks/**
+rest-api/
+ptc-uploads-unit-testing/
+git-hooks/
 
 # dont upload developer daemon tool
 **/*daemon.py
