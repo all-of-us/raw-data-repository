@@ -106,7 +106,7 @@ class BQPDRConsentPIISchema(_BQModuleSchema):
   )
 
 class BQPDRConsentPII(BQTable):
-  """ PRD ConsentPII BigQuery Table """
+  """ PDR ConsentPII BigQuery Table """
   __tablename__ = 'pdr_mod_consentpii'
   __schema__ = BQPDRConsentPIISchema
   __project_map__ = [
@@ -115,9 +115,9 @@ class BQPDRConsentPII(BQTable):
 
 
 class BQPDRConsentPIIView(BQView):
-  """ PRD ConsentPII BigQuery View """
+  """ PDR ConsentPII BigQuery View """
   __viewname__ = 'v_pdr_mod_consentpii'
-  __viewdescr__ = 'PRD ConsentPII Module View'
+  __viewdescr__ = 'PDR ConsentPII Module View'
   __table__ = BQPDRConsentPII
   _show_created = True
 
@@ -180,9 +180,9 @@ class BQPDRTheBasics(BQTable):
 
 
 class BQPDRTheBasicsView(BQView):
-  """ PRD TheBasics BiqQuery View """
+  """ PDR TheBasics BiqQuery View """
   __viewname__ = 'v_pdr_mod_thebasics'
-  __viewdescr__ = 'PRD TheBasics Module View'
+  __viewdescr__ = 'PDR TheBasics Module View'
   __table__ = BQPDRTheBasics
   _show_created = True
 
@@ -206,9 +206,9 @@ class BQPDRLifestyle(BQTable):
 
 
 class BQPDRLifestyleView(BQView):
-  """ PRD TheBasics BiqQuery View """
+  """ PDR TheBasics BiqQuery View """
   __viewname__ = 'v_pdr_mod_lifestyle'
-  __viewdescr__ = 'PRD Lifestyle Module View'
+  __viewdescr__ = 'PDR Lifestyle Module View'
   __table__ = BQPDRLifestyle
   _show_created = True
 
@@ -235,9 +235,9 @@ class BQPDROverallHealth(BQTable):
 
 
 class BQPDROverallHealthView(BQView):
-  """ PRD OverallHealth BiqQuery View """
+  """ PDR OverallHealth BiqQuery View """
   __viewname__ = 'v_pdr_mod_overallhealth'
-  __viewdescr__ = 'PRD OverallHealth Module View'
+  __viewdescr__ = 'PDR OverallHealth Module View'
   __table__ = BQPDROverallHealth
   _show_created = True
 
@@ -265,9 +265,9 @@ class BQPDREHRConsentPII(BQTable):
 
 
 class BQPDREHRConsentPIIView(BQView):
-  """ PRD EHRConsentPII BiqQuery View """
+  """ PDR EHRConsentPII BiqQuery View """
   __viewname__ = 'v_pdr_mod_ehrconsentpii'
-  __viewdescr__ = 'PRD EHRConsentPII Module View'
+  __viewdescr__ = 'PDR EHRConsentPII Module View'
   __table__ = BQPDREHRConsentPII
   _show_created = True
 
@@ -293,8 +293,8 @@ class BQPDRDVEHRSharing(BQTable):
 
 
 class BQPDRDVEHRSharingView(BQView):
-  """ PRD DVEHRConsentPII BiqQuery View """
+  """ PDR DVEHRConsentPII BiqQuery View """
   __viewname__ = 'v_pdr_mod_dvehrsharing'
-  __viewdescr__ = 'PRD DVEHRConsentPII Module View'
+  __viewdescr__ = 'PDR DVEHRConsentPII Module View'
   __table__ = BQPDRDVEHRSharing
   _show_created = True
