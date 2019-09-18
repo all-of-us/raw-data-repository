@@ -52,7 +52,7 @@ class AppUtilTest(BaseTestCase):
         with clock.FakeClock(datetime.datetime(1994, 11, 6, 8, 49, 37)):
             app_util.add_headers(response)
 
-        self.assertEqual(response.headers["Date"], "Sun, 06 Nov 1994 14:49:37 GMT")
+        self.assertEqual(response.headers["Date"], "Sun, 06 Nov 1994 08:49:37 GMT")
 
     def test_expiry_header(self):
         response = lambda: None  # dummy object
