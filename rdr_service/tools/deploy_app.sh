@@ -212,8 +212,6 @@ then
 
   echo "${BOLD}Deploying application...${NONE}"
   $UPDATE_TRACKER --version $VERSION --comment "${before_comment}"
-  echo "${yamls[@]}"
-  cat app.yaml
   gcloud app deploy "${yamls[@]}" \
       --quiet --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
   $UPDATE_TRACKER --version $VERSION --comment "${after_comment}"
