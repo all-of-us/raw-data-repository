@@ -1,7 +1,9 @@
 import logging
-from genomic import genomic_set_file_handler, validation, genomic_biobank_menifest_handler
+from genomic import genomic_set_file_handler, validation, genomic_biobank_menifest_handler, \
+  genomic_center_menifest_handler
 from dao.genomics_dao import GenomicSetDao
 from model.genomics import GenomicSetStatus
+
 
 def process_genomic_water_line():
   """
@@ -24,3 +26,4 @@ def process_genomic_water_line():
     logging.info('No file found or nothing read from genomic set file')
 
   genomic_biobank_menifest_handler.process_genomic_manifest_result_file_from_bucket()
+  genomic_center_menifest_handler.process_genotyping_manifest_files()
