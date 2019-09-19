@@ -101,7 +101,7 @@ def rebuild_bq_participant_task(timestamp, limit=0):
     if limit:
       query = query.limit(limit)
 
-    sql = dao.query_to_text(query)
+    # sql = dao.query_to_text(query)
     results = query.all()
     count = 0
     excluded = 0
