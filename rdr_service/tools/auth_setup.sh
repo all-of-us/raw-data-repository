@@ -144,7 +144,7 @@ function run_cloud_sql_proxy {
 
   echo "Running cloud proxy..."
   $CLOUD_SQL_PROXY -instances=${INSTANCE_CONNECTION_NAME}=tcp:${PORT} -credential_file=${CREDS_FILE} &
-  sleep 3
+  sleep 5
   CLOUD_PROXY_PID=%1
 }
 

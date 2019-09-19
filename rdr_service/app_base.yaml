@@ -2,37 +2,7 @@
 # This file is concatenated at the beginning of app_(non)?prod.yaml (instead of
 # using an "includes" since "includes" only imports some directives).
 
-threadsafe: true
-runtime: python27
-api_version: 1
+env_variables:
+  RDR_CONFIG_PROVIDER: "rdr_service.config.GoogleCloudDatastoreConfigProvider"
 
-
-libraries:
-- name: ssl
-  version: "2.7.11"
-- name: pycrypto
-  version: 2.6
-- name: protorpc
-  version: 1.0
-- name: MySQLdb
-  version: "latest"
-
-# Patterns for files within rest-api that we do not want to deploy to AppEngine
-skip_files:
-- ^(.*/)?#.*#$
-- ^(.*/)?.*~$
-- ^(.*/)?.*\.py[co]$
-- ^(.*/)?.*/RCS/.*$
-- ^(.*/)?\..*$
-- ^alembic/.*$
-- ^bin/.*$
-- ^data/.*$
-- ^etl/.*$
-- ^etl_test/.*$
-- ^test/.*$
-- ^tools/.*$
-- ^venv/.*$
-- ^services/.*$
-- ^client_cli/.*$
-- ^services_libs/.*$
-
+runtime: python37

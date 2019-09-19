@@ -24,7 +24,7 @@
 
 rest-api/**
 ptc-uploads-unit-testing/**
-get-hooks/**
+git-hooks/**
 
 # dont upload developer daemon tool
 **/*daemon.py

@@ -2,15 +2,12 @@
 # to support running dev_appserver locally for tests in a way that can
 # run pipelines and our endpoints on one port.
 # This file should be kept in sync with app.yaml and offline.yaml.
-threadsafe: true
-runtime: python27
-api_version: 1
+runtime: python37
 
 builtins:
-- deferred: on
+- deferred: auto
 
 module: testing
-version: 1
 
 handlers:
 - url: /_ah/pipeline.*
@@ -18,7 +15,7 @@ handlers:
   login: admin
   secure: always
 - url: /_ah/queue/deferred
-  script: google.appengine.ext.deferred.deferred.application
+  script: auto
   login: admin
 - url: /offline/.*
   script: offline.main.app
@@ -28,15 +25,4 @@ handlers:
 - url: /app_data/.*
   login: admin
   static_dir: app_data
-  application_readable: true
-
-libraries:
-- name: ssl
-  version: "latest"
-- name: pycrypto
-  version: 2.6
-- name: protorpc
-  version: 1.0
-- name: MySQLdb
-  version: "latest"
 
