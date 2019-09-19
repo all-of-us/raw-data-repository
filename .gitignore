@@ -36,3 +36,6 @@ htmlcov/
 
 # ignore temp folders
 */temp/
+
+# ignore env configs
+/rdr_service/.configs/*

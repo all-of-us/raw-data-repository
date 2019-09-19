@@ -29,7 +29,7 @@ sleep 2
 cd rdr_service
 
 ./tools/install_config.sh --config=config/config_dev.json --update
-./tools/setup_local_database.sh --db_user root --db_name circle_test
+./tools/setup_local_database.sh --db_user root --db_name rdr
 
 cd $PROJ_DIR
 
