@@ -29,13 +29,16 @@ class BigQueryGenerator(object):
     if not dao or not session:
       raise ValueError('Invalid BigQuerySyncDao dao or session argument.')
 
+    cur_id = 'localhost'
     try:
       from google.appengine.api import app_identity
       cur_id = app_identity.get_application_id()
       if not cur_id or cur_id == 'None':
         cur_id = 'localhost'
     except ImportError:
-      cur_id = 'localhost'
+      pass
+    except AttributeError:
+      pass
 
     mappings = bqtable.get_project_map(cur_id)
 
