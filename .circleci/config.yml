@@ -204,8 +204,8 @@ workflows:
           <<: *filter_no_python3
   deploy_to_test:
     jobs:
-      #- build_and_test:
-      #    <<: *filter_master
+      - build_and_test:
+          <<: *filter_master
       - deploy_test:
           <<: *filter_master
           requires:
