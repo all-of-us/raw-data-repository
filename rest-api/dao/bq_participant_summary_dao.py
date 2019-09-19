@@ -514,7 +514,7 @@ def rebuild_bq_participant(p_id, dao, session, ps_bqgen=None, pdr_bqgen=None):
 
   # save the participant summary record.
   ps_bqgen.save_bqrecord(p_id, ps_bqr, bqtable=BQParticipantSummary, dao=dao, session=session)
-  # Since the PRD participant summary is primarily a subset of the Participant Summary, call the full
+  # Since the PDR participant summary is primarily a subset of the Participant Summary, call the full
   # Participant Summary generator and take what we need from it.
   pdr_bqr = pdr_bqgen.make_bqrecord(p_id, ps_bqr=ps_bqr)
   pdr_bqgen.save_bqrecord(p_id, pdr_bqr, bqtable=BQPDRParticipantSummary, dao=dao, session=session)

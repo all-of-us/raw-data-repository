@@ -7,7 +7,7 @@ BQ_TABLES = [
   ('model.bq_site', 'BQSite'),
   ('model.bq_code', 'BQCode'),
 
-  # PRD Tables
+  # PDR Tables
   ('model.bq_questionnaires', 'BQPDRConsentPII'),
   ('model.bq_questionnaires', 'BQPDRTheBasics'),
   ('model.bq_questionnaires', 'BQPDRLifestyle'),
@@ -25,7 +25,7 @@ BQ_VIEWS = [
   ('model.bq_organization', 'BQOrganizationView'),
   ('model.bq_site', 'BQSiteView'),
   ('model.bq_code', 'BQCodeView'),
-  # PRD Views
+  # PDR Views
   ('model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryView'),
   ('model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryWithdrawnView'),
   ('model.bq_pdr_participant_summary', 'BQPDRPMView'),
