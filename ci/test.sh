@@ -13,7 +13,7 @@ ci/test_pre_push.sh
 
 # Make sure JSON files are well-formed (but don't bother printing them).
 for json_file in ./rdr_service/config/*.json; do
-    cat $json_file | json_pp -t null;
+    json_pp -t null < $json_file
 done
 
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
