@@ -183,9 +183,13 @@ then
   declare -a tmp_files
 
   # Deploy cron/queue in all cases.
-  tools/build_cron_yaml.py --project ${PROJECT} > cron.yaml
+  tools/build_cron_yaml.py --project ${PROJECT} > ../cron.yaml
+  cd ..
+  cp rdr_service/queue.yaml .
+  cp rdr_service/offline.yaml .
+  cp rdr_service/index.yaml .
   yamls+=( cron.yaml queue.yaml )
-  tmp_files+=( cron.yaml )
+  tmp_files+=( cron.yaml queue.yaml offline.yaml index.yaml)
   before_comment="Updating cron/queue configuration in ${PROJECT}."
   after_comment="cron/queue configuration updated in ${PROJECT}."
 
@@ -194,14 +198,14 @@ then
     if [ "${PROJECT}" = "all-of-us-rdr-prod" ] || [ "${USE_PROD_YAML}" = "true" ]
     then
       echo "Using ${BOLD}prod${NONE} app.yaml for project $PROJECT."
-      APP_YAML=app_prod.yaml
+      APP_YAML=rdr_service/app_prod.yaml
     else
-      APP_YAML=app_nonprod.yaml
+      APP_YAML=rdr_service/app_nonprod.yaml
     fi
-    cat app_base.yaml $APP_YAML > app.yaml
+    cat rdr_service/app_base.yaml $APP_YAML > app.yaml
 
     yamls+=( app.yaml index.yaml offline.yaml )
-    tmp_files+=( app.yaml )
+    tmp_files+=( app.yaml cron.yaml)
     before_comment="Deploying app to ${PROJECT}."
     after_comment="App deployed to ${PROJECT}."
   fi

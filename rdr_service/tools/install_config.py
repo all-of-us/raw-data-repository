@@ -35,6 +35,7 @@ def main(args):
     client = Client(parse_cli=False, creds_file=args.creds_file, default_instance=args.instance)
     config_path = "Config/%s" % args.key if args.key else "Config"
     try:
+        logging.info("-------------- Getting Config -------------------")
         config_server = client.request_json(config_path, "GET")
         formatted_server_config = _json_to_sorted_string(config_server)
     except HttpException as e:
