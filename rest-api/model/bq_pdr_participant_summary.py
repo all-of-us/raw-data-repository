@@ -241,3 +241,15 @@ class BQPDRConsentView(BQView):
       WHERE ps.modified = ps.max_timestamp 
   """
 
+class BQPDRBioSpecView(BQView):
+  __viewname__ = 'v_pdr_biospec'
+  __viewdescr__ = 'PDR Participant BioBank Order View'
+  __table__ = BQPDRParticipantSummary
+  __sql__ = """
+    SELECT ps.participant_id, nt.*
+      FROM (
+        SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+          FROM `{project}`.{dataset}.pdr_participant 
+      ) ps cross join unnest(biospec) as nt
+      WHERE ps.modified = ps.max_timestamp 
+  """
