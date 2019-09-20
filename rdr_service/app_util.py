@@ -1,7 +1,7 @@
 import datetime
+import calendar
 import email.utils
 import logging
-import time
 import urllib.parse
 
 import netaddr
@@ -191,7 +191,7 @@ def add_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Content-Type"] = "application/json; charset=utf-8"  # override to add charset
     response.headers["Date"] = email.utils.formatdate(
-        time.mktime(pytz.utc.localize(clock.CLOCK.now()).astimezone(_GMT).timetuple()), usegmt=True
+        calendar.timegm(pytz.utc.localize(clock.CLOCK.now()).astimezone(_GMT).timetuple()), usegmt=True
     )
     response.headers["Pragma"] = "no-cache"
     response.headers["Cache-control"] = "no-cache, must-revalidate"

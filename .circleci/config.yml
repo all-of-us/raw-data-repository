@@ -19,15 +19,24 @@ filter_master: &filter_master
     branches:
       only: master
 
-filter_devel: &filter_devel
+filter_no_python3: &filter_no_python3
   filters:
     branches:
-      ignore: devel
+      only:
+        - master
+        - /^python-?2.*/
 
 only_devel: &only_devel
   filters:
     branches:
       only: devel
+
+filter_python3_branches: &filter_python3_branches
+  filters:
+    branches:
+      ignore:
+        - master
+        - /^python-?2.*/
 
 filter_releases: &filter_releases
   filters:
@@ -51,7 +60,7 @@ jobs:
       - run: pip install --upgrade pip
       - run: pip install --upgrade httplib2 jira oauth2client parallel pylint isort==4.3.8
       - run: pip install -I alembic==0.9.1
-      - run: ./ci/test.sh
+      - run: ./ci/test_python2.sh
       - save_cache:
           key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
           paths:
@@ -127,9 +136,11 @@ jobs:
     # ./ci/deploy.sh all-of-us-rdr-stable config/config_stable.json <configurator key file>
     # ./ci/deploy.sh all-of-us-rdr config/config_prod.json <configurator key file>
 
-  test_devel:
-    docker:
-      - image: circleci/python:3.7.4
+  test_python3_branches:
+    machine:
+      # Machine configuration can be found here:
+      # https://raw.githubusercontent.com/circleci/image-builder/picard-vm-image/provision.sh
+      image: ubuntu-1604:201903-01
     working_directory: ~/all-of-us/raw-data-repository
     parallelism: 1
     shell: /bin/bash --login
@@ -141,12 +152,42 @@ jobs:
       - checkout
       - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
       - run:
-          working_directory: ~/all-of-us/raw-data-repository
-          command: 'sudo service mysql status || sudo service mysql start; '
+          name: install mysql
+          command: |
+            export DEBIAN_FRONTEND=noninteractive
+            sudo apt-get update
+            mkdir ~/tmp_mysql && cd ~/tmp_mysql/
+            curl -LO https://dev.mysql.com/get/mysql-apt-config_0.8.13-1_all.deb
+            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-preview select '
+            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-product select Ok'
+            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-server select mysql-5.7'
+            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-tools select '
+            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/unsupported-platform select abort'
+            sudo -E dpkg -i mysql-apt-config_0.8.13-1_all.deb
+            sudo apt-get update
+            sudo debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password root"
+            sudo debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password root"
+            sudo -E apt-get -y install mysql-community-server
+            sudo chmod 660 /var/log/mysql/error.log
+            sudo chmod 750 /var/log/mysql
+            sudo chmod 775 /var/log
+            sudo chmod 755 /var
+            export MYSQL_ROOT_PASSWORD=root
       - restore_cache:
           key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
-      - run: sudo chmod o+w /opt
-      - run: pip install --upgrade pip
+      - run:
+          name: setup rabbitmq
+          command: |
+            sudo apt-get install -y rabbitmq-server
+            sudo systemctl start rabbitmq-server.service
+      - run:
+          name: setup python
+          working_directory: ~/all-of-us/raw-data-repository
+          command: |
+            DEBIAN_FRONTEND=noninteractive
+            sudo apt-get -y install software-properties-common build-essential python-dev libmysqlclient-dev
+            pyenv global 3.7.0
+            sudo chmod o+w /opt
       - run: ./ci/test.sh
       - save_cache:
          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
@@ -166,11 +207,11 @@ workflows:
   build_and_test:
     jobs:
       - build_and_test:
-        <<: *filter_devel
+          <<: *filter_no_python3
   deploy_to_test:
     jobs:
-      #- build_and_test:
-      #    <<: *filter_master
+      - build_and_test:
+          <<: *filter_master
       - deploy_test:
           <<: *filter_master
           requires:
@@ -183,7 +224,7 @@ workflows:
           <<: *filter_releases
           requires:
             - build_and_test
-  test_devel:
+  test_python3_branches:
     jobs:
-      - test_devel:
-          <<: *only_devel
+      - test_python3_branches:
+          <<: *filter_python3_branches

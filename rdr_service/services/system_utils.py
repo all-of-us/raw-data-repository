@@ -402,6 +402,7 @@ def find_mysqld_executable() -> str:
     """
     KNOWN_PATHS = [
         '/usr/libexec/mysqld',
+        '/var/run/mysqld/mysql',
         '/usr/local/opt/mysql@5.7/bin/mysqld',
         '/usr/local/opt/mysql@8.0/bin/mysqld'
     ]

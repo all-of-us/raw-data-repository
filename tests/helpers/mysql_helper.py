@@ -106,7 +106,7 @@ def _initialize_database(with_data=True, with_consent_codes=False):
 
     if "CIRCLECI" in os.environ:
         # Default no-pw login, according to https://circleci.com/docs/1.0/manually/#databases .
-        mysql_login = "ubuntu"
+        mysql_login = "root"
     else:
         mysql_login = "root"
 

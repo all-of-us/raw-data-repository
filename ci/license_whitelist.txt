@@ -10,6 +10,7 @@ BSD
 BSD License
 Simplified BSD
 3-Clause BSD License
+BSD-derived (http://www.repoze.org/LICENSE.txt)
 
 # MIT
 MIT
@@ -25,3 +26,19 @@ Zope Public License
 
 # Academic Free License (AFL).
 Academic Free License (AFL)
+
+# Artistic License
+Artistic License
+Artistic License 2.0
+Artistic-2.0
+
+# GNU Library or Lesser General Public License (LGPL)
+GNU Library or Lesser General Public License (LGPL)
+LGPL
+
+# GNU General Public License (GPL)
+GNU General Public License (GPL)
+
+# Mozilla Public License
+Mozilla Public License 1.0 (MPL)
+MPL
