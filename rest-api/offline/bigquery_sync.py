@@ -104,8 +104,7 @@ def rebuild_bq_participant_task(timestamp, limit=0):
     # sql = dao.query_to_text(query)
     results = query.all()
     count = 0
-    excluded = 0
-    # put a log entry in every 2,500 records. Should be approximately every 10 minutes.
+
     for row in results:
       count += 1
       # All logic for generating a participant summary is here.
@@ -130,8 +129,7 @@ def rebuild_bq_participant_task(timestamp, limit=0):
           mod_bqgen.save_bqrecord(
                 mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table, dao=dao, session=session)
 
-    logging.info('Rebuilt BigQuery data for {0} participants, excluded {1} test/ghost participants.'.format(
-      count - excluded, excluded))
+    logging.info('Rebuilt BigQuery data for {0} participants.'.format(count))
 
 
 def insert_batch_into_bq(bq, project_id, dataset, table, batch, dryrun=False):
