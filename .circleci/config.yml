@@ -181,7 +181,6 @@ jobs:
             sudo apt-get -y install software-properties-common build-essential python-dev libmysqlclient-dev
             pyenv global 3.7.0
             sudo chmod o+w /opt
-            pip install --upgrade pip
       - run: ./ci/test.sh
       - save_cache:
          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
