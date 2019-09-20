@@ -31,7 +31,7 @@ cd rdr_service
 
 # Shouldn't need this anymore
 # ./tools/install_config.sh --config=config/config_dev.json --update
-# ./tools/setup_local_database.sh --db_user root --db_name rdr
+./tools/setup_local_database.sh --db_user root --db_name rdr
 
 cd $PROJ_DIR
 
