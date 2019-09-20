@@ -138,6 +138,8 @@ jobs:
 
   test_python3_branches:
     machine:
+      # Machine configuration can be found here:
+      # https://raw.githubusercontent.com/circleci/image-builder/picard-vm-image/provision.sh
       image: ubuntu-1604:201903-01
     working_directory: ~/all-of-us/raw-data-repository
     parallelism: 1
@@ -173,6 +175,11 @@ jobs:
             export MYSQL_ROOT_PASSWORD=root
       - restore_cache:
           key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
+      - run:
+          name: setup rabbitmq
+          command: |
+            sudo apt-get install -y rabbitmq-server
+            sudo systemctl start rabbitmq-server.service
       - run:
           name: setup python
           working_directory: ~/all-of-us/raw-data-repository
