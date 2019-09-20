@@ -114,4 +114,4 @@ class BigQuerySyncDaoTest(SqlTestBase):
     self.assertEqual(ps_json['pm'][0]['pm_finalized_site'], 'hpo-site-monroeville')
     self.assertEqual(ps_json.suspension_status, 'NOT_SUSPENDED')
     self.assertEqual(ps_json.withdrawal_status, 'NOT_WITHDRAWN')
-    self.assertEqual(ps_json['pm'][0]['pm_status'], 'UNSET')
+    self.assertEqual(ps_json['pm'][0]['pm_status'], 'COMPLETED')
