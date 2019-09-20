@@ -279,19 +279,25 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
     data = {}
     pm_list = list()
 
-    query = session.query(PhysicalMeasurements.created, PhysicalMeasurements.createdSiteId, PhysicalMeasurements.final,
-                       PhysicalMeasurements.finalized, PhysicalMeasurements.finalizedSiteId,
-                       PhysicalMeasurements.status).\
+    query = session.query(PhysicalMeasurements.created, PhysicalMeasurements.createdSiteId,
+                       PhysicalMeasurements.final, PhysicalMeasurements.finalized,
+                       PhysicalMeasurements.finalizedSiteId, PhysicalMeasurements.status,
+                          PhysicalMeasurements.cancelledTime).\
             filter(PhysicalMeasurements.participantId == p_id).\
             order_by(desc(PhysicalMeasurements.created))
     # sql = self.dao.query_to_text(query)
     results = query.all()
 
     for row in results:
+      # row.status is not really used, we can only determine status
+      if not row.cancelledTime:
+        status = PhysicalMeasurementsStatus.COMPLETED
+      else:
+        status = PhysicalMeasurementsStatus.CANCELLED
+
       pm_list.append({
-        'pm_status': str(PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.UNSET),
-        'pm_status_id': int(PhysicalMeasurementsStatus(row.status) if row.status else
-                                PhysicalMeasurementsStatus.UNSET),
+        'pm_status': str(status),
+        'pm_status_id': int(status),
         'pm_created': row.created,
         'pm_created_site': self._lookup_site_name(row.createdSiteId, session),
         'pm_created_site_id': row.createdSiteId,
@@ -368,7 +374,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
       # get the order list index for this sample record
       idx = orders.index(filter(lambda order: order['bbo_biobank_order_id'] == row.biobank_order_id, orders)[0])
       # if we haven't added any samples to this order, create an empty list.
-      if 'samples' not in orders[idx]:
+      if 'bbo_samples' not in orders[idx]:
         orders[idx]['bbo_samples'] = list()
       # append the sample to the order
       orders[idx]['bbo_samples'].append({
@@ -390,6 +396,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
     if len(orders) > 0:
       data['biobank_orders'] = orders
     return data
+
 
   def _calculate_enrollment_status(self, summary):
     """
@@ -418,16 +425,19 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         dvehr_consent = True
 
     # check physical measurements
-    if 'pm_status_id' in summary and summary['pm_status_id'] == int(PhysicalMeasurementsStatus.COMPLETED):
-      pm_complete = True
+    if 'pm' in summary and summary['pm']:
+      for row in summary['pm']:
+        if row['pm_status_id'] == int(PhysicalMeasurementsStatus.COMPLETED):
+          pm_complete = True
+          break
 
     baseline_module_count = dna_sample_count = 0
     if 'modules' in summary:
-      baseline_module_count = len(filter(lambda module: module['mod_baseline_module'] == 'true', summary['modules']))
+      baseline_module_count = len(filter(lambda module: module['mod_baseline_module'] == 1, summary['modules']))
     if 'biobank_orders' in summary:
       for order in summary['biobank_orders']:
-        if 'samples' in order:
-          dna_sample_count += len(filter(lambda sample: sample['bbs_dna_test'] == 'true', order['samples']))
+        if 'bbo_samples' in order:
+          dna_sample_count += len(filter(lambda sample: sample['bbs_dna_test'] == 1, order['bbo_samples']))
 
     if study_consent:
       status = EnrollmentStatus.INTERESTED

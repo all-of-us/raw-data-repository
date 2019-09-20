@@ -102,7 +102,8 @@ class BQPDRConsentPIISchema(_BQModuleSchema):
     'ConsentPII_EmailAddress',
     'EHRConsentPII_Signature',
     'ExtraConsent_CABoRSignature',
-    'ExtraConsent_Signature'
+    'ExtraConsent_Signature',
+    'ConsentPII_HelpWithConsentSignature'
   )
 
 class BQPDRConsentPII(BQTable):
@@ -164,10 +165,12 @@ class BQPDRTheBasicsSchema(_BQModuleSchema):
     'EmploymentWorkAddress_AddressLineTwo',
     'EmploymentWorkAddress_City',
     'EmploymentWorkAddress_Country',
+    'Employment_EmploymentWorkAddress',
     'PersonOneAddress_PersonOneAddressZipCode',
     'SecondContactsAddress_SecondContactZipCode',
     'PersonOneAddress_PersonOneAddressZipCode',
-    'SecondContactsAddress_SecondContactZipCode'
+    'SecondContactsAddress_SecondContactZipCode',
+    'OtherHealthPlan_FreeText'
   )
 
 class BQPDRTheBasics(BQTable):
