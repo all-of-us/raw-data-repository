@@ -22,7 +22,7 @@ done
 
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 
-python main.py &
+python main.py --flask --unittest &
 
 sleep 2
 
