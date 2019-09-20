@@ -1,7 +1,6 @@
 import datetime
 
 from dateutil import parser, tz
-from google.appengine.api import app_identity
 from sqlalchemy import func, desc
 
 import config
@@ -499,19 +498,7 @@ def rebuild_bq_participant(p_id, dao, session, ps_bqgen=None, pdr_bqgen=None):
     from dao.bq_pdr_participant_summary_dao import BQPDRParticipantSummaryGenerator
     pdr_bqgen = BQPDRParticipantSummaryGenerator()
 
-  try:
-    app_id = app_identity.get_application_id()
-  except AttributeError:
-    app_id = 'localhost'
-
   ps_bqr = ps_bqgen.make_bqrecord(p_id)
-
-  # filter test or ghost participants if production
-  if app_id == 'all-of-us-rdr-prod':  # or app_id == 'localhost':
-    if ps_bqr.is_ghost_id == 1 or not ps_bqr.hpo or ps_bqr.hpo == 'TEST' or \
-          not ps_bqr.email or '@example.com' in ps_bqr.email:
-      return None
-
   # save the participant summary record.
   ps_bqgen.save_bqrecord(p_id, ps_bqr, bqtable=BQParticipantSummary, dao=dao, session=session)
   # Since the PDR participant summary is primarily a subset of the Participant Summary, call the full
