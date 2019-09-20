@@ -26,14 +26,14 @@ Zope Public License
 # Academic Free License (AFL).
 Academic Free License (AFL)
 
-# TODO: Get approval before merge on the following licenses
-# Artistic License : text-unidecode
-# GNU Library or Lesser General Public License (LGPL) : pyzmq
-# LGPL : astroid
-# UNKNOWN : locust and probably others
-# GNU General Public License (GPL) : Pylint
+# Artistic License
 Artistic License
+Artistic License 2.0
+Artistic-2.0
+
+# GNU Library or Lesser General Public License (LGPL)
 GNU Library or Lesser General Public License (LGPL)
 LGPL
-UNKNOWN
+
+# GNU General Public License (GPL)
 GNU General Public License (GPL)
