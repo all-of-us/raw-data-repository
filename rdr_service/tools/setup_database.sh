@@ -16,7 +16,7 @@
 # Example usage for changing root and rdr/alembic/readonly passwords:
 # tools/setup_database.sh --account dan.rodney@pmi-ops.org --project all-of-us-rdr-staging --update_passwords
 
-echo "\n!!! Depreciated Tool !!!  use new style database tool. IE: python -m tools mysql."
+echo "\n!!! Deprecated Tool !!!  use new style database tool. IE: python -m tools mysql."
 
 CREATE_INSTANCE=
 UPDATE_PASSWORDS=
