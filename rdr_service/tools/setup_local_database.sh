@@ -51,21 +51,27 @@ trap finish EXIT
 echo "Setting database configuration..."
 echo '{"db_connection_string": "'$DB_CONNECTION_STRING'", ' \
      ' "backup_db_connection_string": "'$DB_CONNECTION_STRING'", ' \
-     ' "unittest_connection_string": "'mysql+mysqldb://root@127.0.0.1:9306'",' \
+     ' "unittest_db_connection_string": "'mysql+mysqldb://root@127.0.0.1:9306'",' \
+     ' "celery_db_connection_string": "'db+mysql://${ALEMBIC_DB_USER}:${RDR_PASSWORD}@127.0.0.1/rdr_tasks?charset=utf8'",' \
+     ' "celery_broker_url": "pyamqp://guest:@localhost//", ' \
      ' "db_password": "'$RDR_PASSWORD'", ' \
      ' "db_connection_name": "", '\
      ' "db_user": "'$RDR_DB_USER'", '\
      ' "db_name": "'$DB_NAME'" }' > .configs/db_config.json
 
+# pretty print the json config
+cat .configs/db_config.json | python -m json.tool > /tmp/db_config.json
+mv -f /tmp/db_config.json .configs/db_config.json
+
 if [ -z "${UPGRADE}" ]
 then
-  for db_name in "rdr" "metrics"; do
+  for db_name in "rdr" "metrics" "rdr_tasks"; do
     # Include charset here since mysqld defaults to Latin1 (even though CloudSQL
     # is configured with UTF8 as the default). Keep in sync with unit_test_util.py.
     cat tools/drop_db.sql tools/create_db.sql | envsubst > $CREATE_DB_FILE
     cat tools/grant_permissions.sql | envsubst >> $CREATE_DB_FILE
 
-    echo "Creating empty database..."
+    echo "Creating empty database ${db_name}..."
     mysql -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < ${CREATE_DB_FILE}
     if [ $? != '0' ]
     then

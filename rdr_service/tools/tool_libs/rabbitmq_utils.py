@@ -17,11 +17,11 @@ _logger = logging.getLogger("rdr_logger")
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
-tool_cmd = "template"
-tool_desc = "put tool help description here"
+tool_cmd = "rabbitmq"
+tool_desc = "RabbitMQ utilities"
 
 
-class ProgramTemplateClass(object):
+class RabbitMQClass(object):
     def __init__(self, args, gcp_env):
         """
     :param args: command line arguments.
@@ -35,7 +35,7 @@ class ProgramTemplateClass(object):
     Main program process
     :return: Exit code value
     """
-        # TODO: write program main process here after setting 'tool_cmd' and 'tool_desc'...
+        print("not implemented")
         return 0
 
 
@@ -53,10 +53,15 @@ def run():
     parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
+    parser.add_argument("--create-cloud-instance", help="create new gce rabbitmq vm instance",
+                            default=False, action="store_true")  # noqa
+    parser.add_argument("--create-user", help="create new user with password",
+                            default=False, action="store_true")  # noqa
+    parser.add_argument("--delete-user", help="delete user", default=False, action="store_true")  # noqa
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-        process = ProgramTemplateClass(args, gcp_env)
+        process = RabbitMQClass(args, gcp_env)
         exit_code = process.run()
         return exit_code
 

@@ -8,7 +8,7 @@ from rdr_service.api_util import PTC_AND_HEALTHPRO
 from rdr_service.api.base_api import BaseApi
 from rdr_service.app_util import auth_required_task, auth_required
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
-from rdr_service.dao.bq_code_dao import deferrered_bq_codebook_update  # pylint: disable=unused-import
+from rdr_service.dao.bq_code_dao import bq_codebook_update_task  # pylint: disable=unused-import
 from rdr_service.dao.bq_hpo_dao import bq_hpo_update  # pylint: disable=unused-import
 from rdr_service.dao.bq_organization_dao import bq_organization_update  # pylint: disable=unused-import
 from rdr_service.dao.bq_site_dao import bq_site_update  # pylint: disable=unused-import

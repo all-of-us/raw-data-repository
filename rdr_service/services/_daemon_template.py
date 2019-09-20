@@ -16,7 +16,7 @@ import signal
 import sys
 
 from .daemon import Daemon
-from .system_utils import setup_logging, setup_unicode
+from .system_utils import setup_logging, setup_i18n
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -54,7 +54,7 @@ def run():
     # Set global debug value and setup application logging.
     setup_logging(_logger, progname, "--debug" in sys.argv, "{0}.log".format(progname))
 
-    setup_unicode()
+    setup_i18n()
 
     # Setup program arguments.
     parser = argparse.ArgumentParser(prog=progname)

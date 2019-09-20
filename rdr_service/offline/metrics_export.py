@@ -1,5 +1,3 @@
-from rdr_service import deferred
-
 from rdr_service import clock, config
 from rdr_service.code_constants import EHR_CONSENT_QUESTION_CODE, PPI_SYSTEM, RACE_QUESTION_CODE, UNMAPPED
 from rdr_service.dao.code_dao import CodeDao
@@ -165,7 +163,10 @@ class MetricsExport(object):
         """Entry point to exporting data for use by the metrics pipeline. Begins the export of
     the first shard of the participant data."""
         filename_prefix = "%s/" % clock.CLOCK.now().isoformat()
-        deferred.defer(MetricsExport._start_participant_export, bucket_name, filename_prefix, num_shards, 0)
+        # TODO: Do we need to convert this to a Celery task?
+        # deferred.defer(
+        MetricsExport._start_participant_export(bucket_name, filename_prefix, num_shards, 0)
+        # )
 
     @staticmethod
     def _start_export(
@@ -182,15 +183,15 @@ class MetricsExport(object):
         shard_number += 1
         if shard_number == num_shards:
             if next_type_methodname:
-                deferred.defer(
-                    getattr(MetricsExport, next_type_methodname), bucket_name, filename_prefix, num_shards, 0
-                )
+                # deferred.defer(
+                getattr(MetricsExport, next_type_methodname), bucket_name, filename_prefix, num_shards, 0
+                # )
             else:
                 getattr(MetricsExport, finish_methodname)(bucket_name, filename_prefix, num_shards)
         else:
-            deferred.defer(
-                getattr(MetricsExport, next_shard_methodname), bucket_name, filename_prefix, num_shards, shard_number
-            )
+            # deferred.defer(
+            getattr(MetricsExport, next_shard_methodname), bucket_name, filename_prefix, num_shards, shard_number
+            # )
 
     @classmethod
     def _start_participant_export(cls, bucket_name, filename_prefix, num_shards, shard_number):

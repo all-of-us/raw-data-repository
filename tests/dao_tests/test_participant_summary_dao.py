@@ -583,7 +583,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             self.assertEqual(summary.numberDistinctVisits, 3)
 
     def test_qa_scenarios_for_pmb_visits(self):
-        """ PRD at https://docs.google.com/document/d/1sL54f-I91RvhjIprrdbwD8TlR9Jq91MX2ELf1EtJdxc/edit#heading=h.bqo8kt3igsrw<Paste> """
+        """ PDR at https://docs.google.com/document/d/1sL54f-I91RvhjIprrdbwD8TlR9Jq91MX2ELf1EtJdxc/edit#heading=h.bqo8kt3igsrw<Paste> """
         self.participant = self._insert(Participant(participantId=6, biobankId=66))
 
         # test scenario 1
