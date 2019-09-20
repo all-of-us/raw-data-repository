@@ -13,7 +13,7 @@ import sys
 import time
 
 from rdr_service.services.gcp_utils import gcp_get_app_access_token
-from rdr_service.services.system_utils import setup_logging, setup_unicode
+from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
 
 _logger = logging.getLogger("rdr_logger")
@@ -62,7 +62,7 @@ def run():
     setup_logging(
         _logger, tool_cmd, "--debug" in sys.argv, "{0}.log".format(tool_cmd) if "--log-file" in sys.argv else None
     )
-    setup_unicode()
+    setup_i18n()
 
     # Setup program arguments.
     parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)

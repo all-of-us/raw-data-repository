@@ -132,7 +132,7 @@ def _initialize_database(with_data=True, with_consent_codes=False):
     singletons.reset_for_tests()
 
     conn_str = "mysql+mysqldb://{0}@{1}:{2}/rdr?charset=utf8".format(mysql_login, mysql_host, MYSQL_PORT)
-    config.override_setting('unittest_connection_string', conn_str)
+    config.override_setting('unittest_db_connection_string', conn_str)
 
     if with_data:
         _setup_hpos()

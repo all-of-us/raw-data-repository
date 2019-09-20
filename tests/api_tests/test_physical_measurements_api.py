@@ -268,8 +268,8 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.assertTrue(link)
         self.assertEqual("next", link[0]["relation"])
         self.assertEqual(1, len(sync_response["entry"]))
-        prefix_index = link[0]["url"].index(main.PREFIX)
-        relative_url = link[0]["url"][prefix_index + len(main.PREFIX) :]
+        prefix_index = link[0]["url"].index(main.API_PREFIX)
+        relative_url = link[0]["url"][prefix_index + len(main.API_PREFIX):]
 
         sync_response_2 = self.send_get(relative_url)
         self.assertEqual(1, len(sync_response_2["entry"]))

@@ -120,7 +120,7 @@ class SyncConsentFilesTest(BaseTestCase):
         ])
 
         # with trailing slashes
-        sync_consent_files.cloudstorage_copy_objects("/fake_bucket1/prefix1/", "/fake_bucket2/prefix2/")
+        sync_consent_files.cloudstorage_copy_objects_task("/fake_bucket1/prefix1/", "/fake_bucket2/prefix2/")
         mock_copy_cloud_file.assert_has_calls(
             [
                 mock.call("/fake_bucket1/prefix1/foo", "/fake_bucket2/prefix2/foo"),
@@ -128,7 +128,7 @@ class SyncConsentFilesTest(BaseTestCase):
             ]
         )
         # without trailing slashes
-        sync_consent_files.cloudstorage_copy_objects("/fake_bucket1/prefix1", "/fake_bucket2/prefix2")
+        sync_consent_files.cloudstorage_copy_objects_task("/fake_bucket1/prefix1", "/fake_bucket2/prefix2")
         mock_copy_cloud_file.assert_has_calls(
             [
                 mock.call("/fake_bucket1/prefix1/foo", "/fake_bucket2/prefix2/foo"),
@@ -159,7 +159,7 @@ class SyncConsentFilesTest(BaseTestCase):
         self._write_cloud_object("/fake_bucket1/prefix/x1/y1/foo.txt", "foo")
         with open_cloud_file("/fake_bucket1/prefix/x1/y1/foo.txt") as f:
             self.assertEqual(f.read(), "foo", "Wrote to cloud storage")
-        sync_consent_files.cloudstorage_copy_objects("/fake_bucket1/prefix/x1/", "/fake_bucket2/prefix/z/x1/")
+        sync_consent_files.cloudstorage_copy_objects_task("/fake_bucket1/prefix/x1/", "/fake_bucket2/prefix/z/x1/")
         self.assertEqual(
             sorted([
                 file_stat.name
@@ -192,7 +192,7 @@ class SyncConsentFilesTest(BaseTestCase):
         self._write_cloud_object("/fake_bucket1/prefix/x1/bar.txt", "bar")
         self._write_cloud_object("/fake_bucket2/prefix/z/x1/foo.txt", "foo")
         self._write_cloud_object("/fake_bucket2/prefix/z/x1/bar.txt", "baz")
-        sync_consent_files.cloudstorage_copy_objects("/fake_bucket1/prefix/x1/", "/fake_bucket2/prefix/z/x1/")
+        sync_consent_files.cloudstorage_copy_objects_task("/fake_bucket1/prefix/x1/", "/fake_bucket2/prefix/z/x1/")
 
         mock_copy_cloud_file.assert_called_once_with("/fake_bucket1/prefix/x1/bar.txt",
                                                      "/fake_bucket2/prefix/z/x1/bar.txt")

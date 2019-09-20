@@ -2,14 +2,13 @@ import logging
 
 from flask import jsonify, request, url_for
 from flask_restful import Resource
-from rdr_service import deferred
 from sqlalchemy import inspect
 from sqlalchemy.exc import NoInspectionAvailable
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import app_util
-from rdr_service.dao.base_dao import deferred_save_raw_request
-from rdr_service.dao.bq_participant_summary_dao import deferred_bq_participant_summary_update
+from rdr_service.dao.base_dao import save_raw_request_record
+from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.query import OrderBy, Query
@@ -50,7 +49,7 @@ class BaseApi(Resource):
         return request.args.get(key).lower() == "true"
 
     def _save_raw_request(self, obj):
-        """ Create deferred task to save the request payload and possibly link it to a table record """
+        """ Save the request payload and possibly link it to a table record """
         log = RequestsLog()
 
         log.endpoint = request.endpoint
@@ -83,7 +82,7 @@ class BaseApi(Resource):
                 pass
             except Exception:  #  pylint: disable=broad-except
                 pass
-            deferred.defer(deferred_save_raw_request, log)
+            save_raw_request_record(log)
 
     def get(self, id_=None, participant_id=None):
         """Handle a GET request.
@@ -132,7 +131,8 @@ class BaseApi(Resource):
         m = self._get_model_to_insert(resource, participant_id)
         result = self._do_insert(m)
         if participant_id:
-            deferred.defer(deferred_bq_participant_summary_update, participant_id)
+            task = bq_participant_summary_update_task.delay(participant_id)
+            task.forget()
         self._save_raw_request(result)
         return self._make_response(result)
 
@@ -281,7 +281,8 @@ class UpdatableApi(BaseApi):
         m = self._get_model_to_update(resource, id_, expected_version, participant_id)
         self._do_update(m)
         if participant_id:
-            deferred.defer(deferred_bq_participant_summary_update, participant_id)
+            task = bq_participant_summary_update_task.delay(participant_id)
+            task.forget()
         self._save_raw_request(m)
         return self._make_response(m)
 

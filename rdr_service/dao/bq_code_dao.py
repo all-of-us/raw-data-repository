@@ -2,6 +2,7 @@ import logging
 
 from sqlalchemy.sql import text
 
+from rdr_service.services.flask import celery
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_code import BQCode
@@ -27,10 +28,10 @@ class BQCodeGenerator(BigQueryGenerator):
             data = dao.to_dict(row)
             return BQRecord(schema=BQCodeSchema, data=data, convert_to_enum=convert_to_enum)
 
-
-def deferrered_bq_codebook_update():
+@celery.task()
+def bq_codebook_update_task():
     """
-    Generate all new Codebook records for BQ.
+    Celery Task: Generate all new Codebook records for BQ.
     """
     dao = BigQuerySyncDao()
     with dao.session() as session:

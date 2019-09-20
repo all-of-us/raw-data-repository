@@ -17,7 +17,7 @@ import time
 
 from rdr_service.services.daemon import Daemon
 from rdr_service.services.gcp_utils import gcp_activate_account, gcp_activate_sql_proxy, gcp_format_sql_instance
-from rdr_service.services.system_utils import is_valid_email, setup_logging, setup_unicode, which
+from rdr_service.services.system_utils import is_valid_email, setup_logging, setup_i18n, which
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -135,7 +135,7 @@ def run():
     # Set global debug value and setup application logging.
     setup_logging(_logger, progname, "--debug" in sys.argv)
 
-    setup_unicode()
+    setup_i18n()
 
     # Setup program arguments.
     parser = argparse.ArgumentParser(prog=progname)

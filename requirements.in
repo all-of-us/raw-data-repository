@@ -20,6 +20,8 @@ flask-restful
 backoff
 oauth2client
 requests[security]
+supervisor
+gunicorn
 
 ## google cloud services
 ## https://cloud.google.com/python/references/libraries
@@ -38,6 +40,10 @@ fhirclient
 protorpc
 dictalchemy
 sqlparse
+
+## Background Tasks
+celery
+librabbitmq
 
 ## misc
 dnspython

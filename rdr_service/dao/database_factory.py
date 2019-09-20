@@ -56,7 +56,7 @@ def get_db_connection_string(backup=False, instance_name=None):
     from rdr_service import config
 
     if os.environ.get("UNITTEST_FLAG", None):
-        connection_string_key = "unittest_connection_string"
+        connection_string_key = "unittest_db_connection_string"
     elif backup:
         connection_string_key = "backup_db_connection_string"
     else:

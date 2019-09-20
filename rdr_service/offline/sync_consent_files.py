@@ -7,11 +7,11 @@ import collections
 import json
 import os
 import sqlalchemy
-from rdr_service import deferred
 
 from rdr_service.api_util import open_cloud_file, list_blobs, copy_cloud_file, get_blob
 from rdr_service.cloud_utils.google_sheets import GoogleSheetCSVReader
 from rdr_service.dao import database_factory
+from rdr_service.services.flask import celery
 
 HPO_REPORT_CONFIG_GCS_PATH = "/all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
 
@@ -45,11 +45,10 @@ def do_sync_consent_files():
             "participant_id": participant_data.participant_id,
             "google_group": participant_data.google_group or DEFAULT_GOOGLE_GROUP,
         }
-        deferred.defer(
-            cloudstorage_copy_objects,
+        task = cloudstorage_copy_objects_task.delay(
             "/{source_bucket}/Participant/P{participant_id}/".format(**kwargs),
-            "/{destination_bucket}/Participant/{google_group}/P{participant_id}/".format(**kwargs),
-        )
+            "/{destination_bucket}/Participant/{google_group}/P{participant_id}/".format(**kwargs))
+        task.forget()
 
 
 def _get_sheet_id():
@@ -114,13 +113,12 @@ def _iter_participants_data():
         for row in session.execute(PARTICIPANT_DATA_SQL):
             yield ParticipantData(*row)
 
-
-def cloudstorage_copy_objects(source, destination):
+@celery.task()
+def cloudstorage_copy_objects_task(source, destination):
     """
-       Copies all objects matching the source to the destination
-       Both source and destination use the following format: /bucket/prefix/
+    Copies all objects matching the source to the destination.
+    Both source and destination use the following format: /bucket/prefix/
     """
-
     path = source if source[0:1] != '/' else source[1:]
     bucket_name, _, prefix = path.partition('/')
     prefix = None if prefix == '' else '/' + prefix

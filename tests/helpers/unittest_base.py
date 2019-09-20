@@ -260,7 +260,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
       expected_status: What HTTP status to assert, if not 200 (OK).
     """
         response = self.app.open(
-            main.PREFIX + local_path,
+            main.API_PREFIX + local_path,
             method=method,
             data=json.dumps(request_data) if request_data is not None else None,
             query_string=query_string,

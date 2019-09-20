@@ -14,7 +14,7 @@ from time import sleep
 
 from rdr_service.service_libs import GCPProcessContext
 from rdr_service.services.gcp_utils import gcp_get_app_access_token, gcp_get_app_host_name, gcp_make_auth_header
-from rdr_service.services.system_utils import make_api_request, setup_logging, setup_unicode
+from rdr_service.services.system_utils import make_api_request, setup_logging, setup_i18n
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -127,7 +127,7 @@ def run():
     setup_logging(
         _logger, mod_cmd, "--debug" in sys.argv, "{0}.log".format(mod_cmd) if "--log-file" in sys.argv else None
     )
-    setup_unicode()
+    setup_i18n()
     exit_code = 1
 
     # Setup program arguments.

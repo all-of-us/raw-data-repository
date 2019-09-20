@@ -7,6 +7,7 @@ from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_questionnaires import BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle, \
     BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII
+from rdr_service.services.flask import celery
 
 
 class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
@@ -85,10 +86,10 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
 
         return table, bqrs
 
-
-def deferred_bq_questionnaire_update(p_id, qr_id):
+@celery.task()
+def bq_questionnaire_update_task(p_id, qr_id):
     """
-    Generate a BQ questionnaire response record from the given p_id and questionnaire response id.
+    Celery Task: Generate a BQ questionnaire response record from the given p_id and questionnaire response id.
     :param p_id: participant id
     :param qr_id: A questionnaire response id.
     """
@@ -102,6 +103,7 @@ def deferred_bq_questionnaire_update(p_id, qr_id):
 
     dao = BigQuerySyncDao()
     qr_gen = BQPDRQuestionnaireResponseGenerator()
+    module_id = None
 
     with dao.session() as session:
 
@@ -110,6 +112,10 @@ def deferred_bq_questionnaire_update(p_id, qr_id):
             for row in results:
                 module_id = row.value
                 break
+
+            if not module_id:
+                logging.error(f'No questionnaire module id found for questionnaire response id {qr_id}')
+                return
 
             table, bqrs = qr_gen.make_bqrecord(p_id, module_id, latest=True)
             for bqr in bqrs:

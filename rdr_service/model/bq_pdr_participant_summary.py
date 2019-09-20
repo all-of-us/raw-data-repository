@@ -1,5 +1,5 @@
 #
-# BigQuery schemas for PRD that do not contain PII.
+# BigQuery schemas for PDR that do not contain PII.
 #
 #
 from rdr_service.model.bq_base import BQTable, BQSchema, BQView, BQField, BQFieldTypeEnum, BQFieldModeEnum, \
@@ -14,7 +14,7 @@ from rdr_service.model.bq_participant_summary import (
 
 class BQPDRPhysicalMeasurements(BQSchema):
     """
-    PRD Participant Physical Measurements
+    PDR Participant Physical Measurements
     """
     pm_status = BQField('pm_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     pm_status_id = BQField('pm_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
@@ -110,7 +110,7 @@ class BQPDRParticipantSummarySchema(BQSchema):
 
 
 class BQPDRParticipantSummary(BQTable):
-    """ PRD Participant Summary BigQuery Table """
+    """ PDR Participant Summary BigQuery Table """
     __tablename__ = 'pdr_participant'
     __schema__ = BQPDRParticipantSummarySchema
     __project_map__ = [
@@ -119,9 +119,9 @@ class BQPDRParticipantSummary(BQTable):
 
 
 class BQPDRParticipantSummaryView(BQView):
-    """ PRD Team view of the Participant Summary """
+    """ PDR Team view of the Participant Summary """
     __viewname__ = 'v_pdr_participant'
-    __viewdescr__ = 'PRD Participant Summary View'
+    __viewdescr__ = 'PDR Participant Summary View'
     __table__ = BQPDRParticipantSummary
     # Manually define the fields, because we need to break out the sub-tables.
     __sql__ = """
@@ -181,7 +181,7 @@ class BQPDRParticipantSummaryView(BQView):
 
 class BQPDRParticipantSummaryWithdrawnView(BQView):
     __viewname__ = 'v_pdr_participant_withdrawn'
-    __viewdescr__ = 'PRD Participant Summary Withdrawn View'
+    __viewdescr__ = 'PDR Participant Summary Withdrawn View'
     __table__ = BQPDRParticipantSummary
     __sql__ = BQPDRParticipantSummaryView.__sql__.replace('ps.withdrawal_status_id = 1',
                                                           'ps.withdrawal_status_id != 1')
@@ -189,7 +189,7 @@ class BQPDRParticipantSummaryWithdrawnView(BQView):
 
 class BQPDRPMView(BQView):
     __viewname__ = 'v_pdr_participant_pm'
-    __viewdescr__ = 'PRD Physical Measurements View'
+    __viewdescr__ = 'PDR Physical Measurements View'
     __table__ = BQPDRParticipantSummary
     __sql__ = """
     SELECT ps.participant_id, nt.*
@@ -203,7 +203,7 @@ class BQPDRPMView(BQView):
 
 class BQPDRGenderView(BQView):
     __viewname__ = 'v_pdr_participant_gender'
-    __viewdescr__ = 'PRD Participant Gender View'
+    __viewdescr__ = 'PDR Participant Gender View'
     __table__ = BQPDRParticipantSummary
     __sql__ = """
     SELECT ps.participant_id, nt.*
@@ -217,7 +217,7 @@ class BQPDRGenderView(BQView):
 
 class BQPDRRaceView(BQView):
     __viewname__ = 'v_pdr_participant_race'
-    __viewdescr__ = 'PRD Participant Race View'
+    __viewdescr__ = 'PDR Participant Race View'
     __table__ = BQPDRParticipantSummary
     __sql__ = """
     SELECT ps.participant_id, nt.*
@@ -231,7 +231,7 @@ class BQPDRRaceView(BQView):
 
 class BQPDRModuleView(BQView):
     __viewname__ = 'v_pdr_participant_module'
-    __viewdescr__ = 'PRD Participant Survey Module View'
+    __viewdescr__ = 'PDR Participant Survey Module View'
     __table__ = BQPDRParticipantSummary
     __sql__ = """
     SELECT ps.participant_id, nt.*
@@ -245,7 +245,7 @@ class BQPDRModuleView(BQView):
 
 class BQPDRConsentView(BQView):
     __viewname__ = 'v_pdr_participant_consent'
-    __viewdescr__ = 'PRD Participant Consent View'
+    __viewdescr__ = 'PDR Participant Consent View'
     __table__ = BQPDRParticipantSummary
     __sql__ = """
     SELECT ps.participant_id, nt.*
