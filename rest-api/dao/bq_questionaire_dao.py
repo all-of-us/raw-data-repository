@@ -66,7 +66,10 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         if isinstance(fld_value, (datetime.date, datetime.datetime)):
           setattr(bqr, fld_name, fld_value.isoformat())
         else:
-          setattr(bqr, fld_name, str(fld_value))
+          try:
+            setattr(bqr, fld_name, str(fld_value))
+          except UnicodeEncodeError:
+            setattr(bqr, fld_name, unicode(fld_value))
 
         # Truncate zip codes to 3 digits
         if fld_name in ('StreetAddress_PIIZIP', 'EmploymentWorkAddress_ZipCode') and len(fld_value) > 2:
