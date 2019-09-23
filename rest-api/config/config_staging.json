@@ -45,7 +45,7 @@
     "staging_genomic_set_upload"
   ],
   "genomic_center_bucket_name": [
-    "genomics-baylor-dryrun", "genomics-broad-dryrun", "genomics-northwest-dryrun", "genomics-color-dryrun"
+    "staging-genomics-baylor-dryrun", "staging-genomics-broad-dryrun", "staging-genomics-northwest-dryrun", "staging-genomics-color-dryrun"
   ],
   "genotyping_sample_manifest_folder_name": [
     "genotyping_sample_manifests"

@@ -9,7 +9,7 @@
     "prod_genomic_set_upload"
   ],
   "genomic_center_bucket_name": [
-    "genomics-baylor-dryrun", "genomics-broad-dryrun", "genomics-northwest-dryrun", "genomics-color-dryrun"
+    "prod-genomics-baylor-dryrun", "prod-genomics-broad-dryrun", "prod-genomics-northwest-dryrun", "prod-genomics-color-dryrun"
   ],
   "genotyping_sample_manifest_folder_name": [
     "genotyping_sample_manifests"
