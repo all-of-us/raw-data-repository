@@ -40,15 +40,13 @@ from rdr_service.services.system_utils import run_external_program
 
 def _warmup():
     # Load configurations into the cache.
+    # Not called in AppEngine2????
     get_config()
     get_db_config()
     return '{ "success": "true" }'
 
 def _start():
-
-    code, so, se = run_external_program('pip list')
-    logging.info(so)
-
+    # Load configurations into the cache.
     get_config()
     get_db_config()
     return '{ "success": "true" }'

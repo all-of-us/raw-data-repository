@@ -19,7 +19,7 @@ class VersionApi(Resource):
         task = add.delay(2, 40)
         count = 30
         while not task.ready() and count > 0:
-            count =- 1
+            count -= 1
             sleep(1.0)
 
         if not task.ready():
