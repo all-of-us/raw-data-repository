@@ -13,12 +13,12 @@ inbound_services:
 handlers:
 - url: /.*
   script: main.app
-  secure: auto
+  secure: always
 # App data directory used to load static files in AppEngine; not used for actual serving.
 - url: /app_data/.*
   login: admin
   static_dir: app_data
-  secure: auto
+  secure: always
 - url: /_ah/warmup
   script: main.app
   login: admin
