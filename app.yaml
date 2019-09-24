@@ -7,4 +7,8 @@ env_variables:
   RDR_STORAGE_PROVIDER: "rdr_service.storage.GoogleCloudStorageProvider"
 
 runtime: python37
-endpoint: python3 main.py --service
+entrypoint: python3 main.py --service
+# app_base.yaml is concatenated to the beginning of this file for deployment.
+
+instance_class: F4
+

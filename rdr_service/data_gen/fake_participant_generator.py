@@ -216,12 +216,12 @@ class FakeParticipantGenerator(object):
                 logging.warning("Question for code %s missing; import questionnaires", code_value)
 
     def _read_all_lines(self, filename):
-        with open("app_data/%s" % filename) as f:
+        with open("rdr_service/app_data/%s" % filename) as f:
             reader = csv.reader(f)
             return [line[0].strip() for line in reader]
 
     def _read_json(self, filename):
-        with open("app_data/%s" % filename) as f:
+        with open("rdr_service/app_data/%s" % filename) as f:
             return json.load(f)
 
     def _read_csv_from_gcs(self, bucket_name, file_name):
@@ -229,12 +229,12 @@ class FakeParticipantGenerator(object):
             return list(csv.DictReader(infile))
 
     def _read_csv_from_file(self, file_name):
-        with open("app_data/%s" % file_name, mode="r") as infile:
+        with open("rdr_service/app_data/%s" % file_name, mode="r") as infile:
             return list(csv.DictReader(infile))
 
     def _setup_data(self):
         self._zip_code_to_state = {}
-        with open("app_data/zipcodes.txt") as zipcodes:
+        with open("rdr_service/app_data/zipcodes.txt") as zipcodes:
             reader = csv.reader(zipcodes)
             for zipcode, state in reader:
                 self._zip_code_to_state[zipcode] = state
