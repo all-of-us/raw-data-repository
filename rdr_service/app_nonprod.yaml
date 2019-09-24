@@ -18,4 +18,3 @@ handlers:
   secure: always
 - url: /_ah/warmup
   script: auto
-  login: admin
