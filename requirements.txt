@@ -5,7 +5,7 @@
 #    pip-compile
 #
 alembic==1.0.11
-amqp==2.5.1               # via kombu, librabbitmq
+amqp==2.1.1               # via kombu, librabbitmq
 aniso8601==7.0.0          # via flask-restful
 asn1crypto==0.24.0        # via cryptography
 astroid==2.2.5            # via pylint

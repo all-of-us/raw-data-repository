@@ -35,6 +35,7 @@ from rdr_service.api.questionnaire_api import QuestionnaireApi
 from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireAnswers, QuestionnaireResponseApi
 from rdr_service.config import get_config, get_db_config
 from rdr_service.services.flask import app, API_PREFIX
+from rdr_service.services.system_utils import run_external_program
 
 
 def _warmup():
@@ -43,6 +44,17 @@ def _warmup():
     get_db_config()
     return '{ "success": "true" }'
 
+def _start():
+
+    code, so, se = run_external_program('pip list')
+    logging.info(so)
+
+    get_config()
+    get_db_config()
+    return '{ "success": "true" }'
+
+def _stop():
+    return '{ "success": "true" }'
 
 def _log_request_exception(sender, exception, **extra):  # pylint: disable=unused-argument
     """Logs HTTPExceptions.
@@ -243,6 +255,8 @@ app.add_url_rule(API_PREFIX + 'RebuildBigQueryCore',
                  methods=['POST'])
 
 app.add_url_rule("/_ah/warmup", endpoint="warmup", view_func=_warmup, methods=["GET"])
+app.add_url_rule("/_ah/start", endpoint="start", view_func=_start, methods=["GET"])
+app.add_url_rule("/_ah/stop", endpoint="stop", view_func=_stop, methods=["GET"])
 
 app.after_request(app_util.add_headers)
 app.before_request(app_util.request_logging)
