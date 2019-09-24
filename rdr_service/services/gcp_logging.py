@@ -1,3 +1,4 @@
+# pylint: disable=unused-import
 from datetime import datetime, timezone
 import os
 import requests
@@ -9,7 +10,6 @@ from google.cloud.logging.resource import Resource
 from google.protobuf import json_format, any_pb2
 
 from rdr_service.services import gcp_request_log_pb2
-
 from google.logging.type import http_request_pb2
 
 # https://cloud.google.com/appengine/docs/standard/python3/writing-application-logs
@@ -20,10 +20,11 @@ from google.logging.type import http_request_pb2
 # https://github.com/googleapis/googleapis/blob/master/google/appengine/logging/v1/request_log.proto
 # https://developers.google.com/protocol-buffers/docs/downloads
 
-def setup_logging_resource():
+
+def setup_logging_zone():
     """
-    Set the values for the Google Logging Resource object
-    :return: Resource object
+    Attempt to get the project zone information.
+    return: zone string.
     """
     zone = 'local-machine'
     if 'GAE_SERVICE' in os.environ:
@@ -31,14 +32,23 @@ def setup_logging_resource():
             resp = requests.get('http://metadata.google.internal/computeMetadata/v1/instance/zone', timeout=15.0)
             if resp.status_code == 200:
                 zone = resp.text.strip()
+        # pylint: disable=broad-except
         except Exception:
             zone = 'unknown'
+    return zone
 
+logging_zone = setup_logging_zone()
+
+def setup_logging_resource():
+    """
+    Set the values for the Google Logging Resource object
+    :return: Resource object
+    """
     labels = {
         "project_id": os.environ.get('GAE_APPLICATION', 'localhost'),
         "module_id": os.environ.get('GAE_SERVICE', 'default'),
         "version_id": os.environ.get('GAE_VERSION', 'develop'),
-        "zone": zone
+        "zone": logging_zone
     }
 
     resource = Resource(type='gae_app', labels=labels)
@@ -98,7 +108,8 @@ def setup_request_log(lines: list):
 def log_event_to_stackdriver():
 
     lines = []
-    lines.append(setup_log_line("This is a Teacup message for Michael.", datetime.now(timezone.utc).isoformat(), "INFO"))
+    lines.append(setup_log_line("This is a Teacup message for Michael.",
+                                    datetime.now(timezone.utc).isoformat(), "INFO"))
     lines.append(
         setup_log_line("Bad Mojo Teacups Rock!", datetime.now(timezone.utc).isoformat(), "ERROR"))
 
@@ -111,7 +122,7 @@ def log_event_to_stackdriver():
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
-    z = json_format.MessageToJson(pb)
+    # z = json_format.MessageToJson(pb)
 
 
     client = logging.Client(project='all-of-us-rdr-sandbox')
@@ -136,6 +147,3 @@ def log_event_to_stackdriver():
 #
 # c = logging.Client(project='all-of-us-rdr-sandbox')
 
-# logger.log_text('{ "message": "Michael", "weather": "partly cloudy"}', resource=res, severity="INFO", httpRequest={"status": 500"}, protoPayload='{"@type": "type.googleapis.com/google.appengine.logging.v1.Req
-# uestLog", "line": [{"0": {"test": "test line 0"}}, {"1": {"t
-# est": "test line 1"}}], "method":"POST"}', resource="/offline/Michael")
