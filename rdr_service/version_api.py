@@ -15,17 +15,18 @@ class VersionApi(Resource):
 
     def get(self):
 
+        # Code for testing that Celery background tasks are working.
         task = add.delay(2, 40)
         count = 30
-
         while not task.ready() and count > 0:
             count =- 1
             sleep(1.0)
 
         if not task.ready():
+            task.forget()
             print('****** Celery Add Task Failed ********')
         else:
-            print('****** Celery Add Task Succeeded, The Answer Is: {0} ********'.format(task.get()))
-
+            answer = task.get()
+            print('****** Celery Add Task Succeeded, The Answer Is: {0} ********'.format(answer))
 
         return {"version_id": GAE_VERSION_ID}
