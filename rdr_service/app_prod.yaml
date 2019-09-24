@@ -1,6 +1,4 @@
 #  app_base.yaml is concatenated to the beginning of this file for deployment.
-env_variables:
-  RDR_CONFIG_PROVIDER: "rdr_service.config.GoogleCloudDatastoreConfigProvider"
 builtins:
 - deferred: auto
 
