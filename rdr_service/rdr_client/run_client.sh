@@ -39,7 +39,7 @@ then
     CREDS_ACCOUNT="${ACCOUNT}"
   fi
   echo "Getting credentials for ${PROJECT}..."
-  source ${REPO_ROOT_DIR}/rest-api/tools/auth_setup.sh
+  source ${REPO_ROOT_DIR}/tools/auth_setup.sh
   echo "Running script..."
   python $SCRIPT --creds_file ${CREDS_FILE} --instance ${INSTANCE} --project ${PROJECT} $@
 else
