@@ -21,7 +21,7 @@ if os.getenv('GAE_ENV', '').startswith('standard'):
     # Production in the standard environment
     import google.auth
     GAE_CREDENTIALS, GAE_PROJECT = google.auth.default()
-    GAE_VERSION_ID = os.environ.get('CURRENT_VERSION_ID')
+    GAE_VERSION_ID = os.environ.get('GAE_VERSION')
 else:
     GAE_CREDENTIALS = 'local@localhost.net'
     GAE_PROJECT = 'localhost'
