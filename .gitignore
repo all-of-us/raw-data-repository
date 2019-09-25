@@ -39,3 +39,5 @@ htmlcov/
 
 # ignore env configs
 /rdr_service/.configs/*
+
+app.yaml
