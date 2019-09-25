@@ -42,3 +42,6 @@ GNU General Public License (GPL)
 # Mozilla Public License
 Mozilla Public License 1.0 (MPL)
 MPL
+
+# Public Domain
+Public Domain

@@ -18,3 +18,15 @@ ordereddict
 
 # locust apparently has a public license, but doesn't have metadata set up
 locust
+
+# Licenses for sphinx-related extensions are BSD, but not in metadata, according to
+# https://pypi.org/project/sphinxcontrib-applehelp/
+# https://pypi.org/project/sphinxcontrib-devhelp/
+# https://pypi.org/project/sphinxcontrib-htmlhelp/
+# https://pypi.org/project/sphinxcontrib-serializinghtml/
+# https://pypi.org/project/sphinxcontrib-qthelp/
+sphinxcontrib-applehelp
+sphinxcontrib-devhelp
+sphinxcontrib-htmlhelp
+sphinxcontrib-serializinghtml
+sphinxcontrib-qthelp
