@@ -9,6 +9,7 @@ class Provider(ABC):
 
     @classmethod
     def get_provider(cls, name: str = None, default=None):
+        print(" ================= {0} =============== ".format(cls.environment_variable_name))
         name = name or os.environ.get(cls.environment_variable_name)
         if name:
             return import_from_string(name)
