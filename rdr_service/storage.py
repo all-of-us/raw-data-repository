@@ -294,6 +294,11 @@ class GoogleCloudStorageProvider(StorageProvider):
 
 
 def get_storage_provider():
-    provider_class = StorageProvider.get_provider(default=LocalFilesystemStorageProvider)
+    # Set a good default and let the environment var be the override.
+    if os.getenv('GAE_ENV', '').startswith('standard'):
+        default_provider = GoogleCloudStorageFile
+    else:
+        default_provider = LocalFilesystemStorageProvider
+    provider_class = StorageProvider.get_provider(default=default_provider)
     return provider_class()
 
