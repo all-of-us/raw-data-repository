@@ -44,7 +44,7 @@ class OrganizationHierarchySyncDao(BaseDao):
   def to_client_json(self, hierarchy_org_obj):
     return hierarchy_org_obj.as_json()
 
-  def get_etag(self, id, pid):  # pylint: disable=unused-argument
+  def get_etag(self, id_, pid):  # pylint: disable=unused-argument
     return None
 
   def update(self, hierarchy_org_obj):
