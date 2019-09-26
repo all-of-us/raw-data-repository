@@ -44,3 +44,5 @@ htmlcov/
 /rdr_service/doc/_build
 /rdr_service/doc/_static
 /rdr_service/doc/_templates
+
+app.yaml

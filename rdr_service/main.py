@@ -3,6 +3,8 @@
 This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
 import logging
+import os
+import signal
 
 # pylint: disable=unused-import
 from flask import got_request_exception
@@ -46,12 +48,21 @@ def _warmup():
     return '{ "success": "true" }'
 
 def _start():
-    # Load configurations into the cache.
     get_config()
     get_db_config()
     return '{ "success": "true" }'
 
 def _stop():
+    pid_file = '/tmp/supervisord.pid'
+    if os.path.exists(pid_file):
+        try:
+            pid = int(open(pid_file).read())
+            if pid:
+                os.kill(pid, signal.SIGTERM)
+                logging.info('******** Shutting down, sent supervisor the termination signal. ********')
+        except TypeError:
+            logging.warning('******** Shutting down, supervisor pid file is invalid. ********')
+            pass
     return '{ "success": "true" }'
 
 def _log_request_exception(sender, exception, **extra):  # pylint: disable=unused-argument
