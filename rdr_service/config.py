@@ -203,7 +203,12 @@ class GoogleCloudDatastoreConfigProvider(ConfigProvider):
 
 
 def get_config_provider():
-    provider_class = ConfigProvider.get_provider(default=LocalFilesystemConfigProvider)
+    # Set a good default and let the environment var be the override.
+    if os.getenv('GAE_ENV', '').startswith('standard'):
+        default_provider = GoogleCloudDatastoreConfigProvider
+    else:
+        default_provider = LocalFilesystemConfigProvider
+    provider_class = ConfigProvider.get_provider(default=default_provider)
     return provider_class()
 
 

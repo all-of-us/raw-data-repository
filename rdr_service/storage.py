@@ -170,6 +170,12 @@ class GoogleCloudStorageFile(ContextDecorator):
         self.temp_file = None
         self.temp_file_path = None
 
+    def __iter__(self):
+        self._filedata = self.read()
+        self._lines = self._filedata.split('\n')
+        self._line = 0
+        return self
+
     def read(self, size=None):
         kwargs = {'start': self.position}
         if size is not None:
@@ -201,6 +207,12 @@ class GoogleCloudStorageFile(ContextDecorator):
             self.blob.upload_from_filename(self.temp_file_path)
             self.temp_file.close()
 
+    def __next__(self):
+        if self._line < len(self._lines):
+            data = self._lines[self._line]
+            self._line += 1
+            return data
+        return None
 
     def __enter__(self):
         return self
@@ -281,6 +293,11 @@ class GoogleCloudStorageProvider(StorageProvider):
 
 
 def get_storage_provider():
-    provider_class = StorageProvider.get_provider(default=LocalFilesystemStorageProvider)
+    # Set a good default and let the environment var be the override.
+    if os.getenv('GAE_ENV', '').startswith('standard'):
+        default_provider = GoogleCloudStorageFile
+    else:
+        default_provider = LocalFilesystemStorageProvider
+    provider_class = StorageProvider.get_provider(default=default_provider)
     return provider_class()
 

@@ -48,7 +48,6 @@ def _warmup():
     return '{ "success": "true" }'
 
 def _start():
-    # Load configurations into the cache.
     get_config()
     get_db_config()
     return '{ "success": "true" }'
@@ -60,9 +59,9 @@ def _stop():
             pid = int(open(pid_file).read())
             if pid:
                 os.kill(pid, signal.SIGTERM)
-                logging.info('Sent Supervisor the termination signal.')
+                logging.info('******** Shutting down, sent supervisor the termination signal. ********')
         except TypeError:
-            logging.warning('Supervisor pid file is invalid.')
+            logging.warning('******** Shutting down, supervisor pid file is invalid. ********')
             pass
     return '{ "success": "true" }'
 
