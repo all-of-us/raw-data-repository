@@ -15,7 +15,7 @@ import sys
 from unittest.mock import MagicMock
 
 sys.path.insert(0, os.path.abspath('../../'))
-
+master_doc = 'index'  # for some reason the above line broke RTD builder, so this explicitly sets master_doc
 
 
 # -- Project information -----------------------------------------------------
