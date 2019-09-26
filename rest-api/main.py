@@ -30,6 +30,7 @@ from api.public_metrics_api import PublicMetricsApi
 from api.questionnaire_api import QuestionnaireApi
 from api.questionnaire_response_api import QuestionnaireResponseApi, ParticipantQuestionnaireAnswers
 from api.patient_status import PatientStatusApi, PatientStatusHistoryApi
+from api.organization_hierarchy_api import OrganizationHierarchyApi
 from config import get_config, get_db_config
 from flask import Flask, got_request_exception
 from flask_restful import Api
@@ -194,6 +195,11 @@ api.add_resource(AwardeeApi,
                  PREFIX + 'Awardee/<string:a_id>',
                  endpoint='awardee',
                  methods=['GET'])
+
+api.add_resource(OrganizationHierarchyApi,
+                 PREFIX + 'organization/hierarchy',
+                 endpoint='hierarchy_content.organizations',
+                 methods=['PUT', 'POST'])
 
 # Configuration API for admin use.
 
