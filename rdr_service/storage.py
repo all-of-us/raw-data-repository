@@ -171,7 +171,6 @@ class GoogleCloudStorageFile(ContextDecorator):
         self.temp_file_path = None
 
     def __iter__(self):
-        # TODO: Download file now and
         self._filedata = self.read()
         self._lines = self._filedata.split('\n')
         self._line = 0
