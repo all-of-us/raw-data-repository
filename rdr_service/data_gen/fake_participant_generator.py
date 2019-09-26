@@ -353,7 +353,7 @@ class FakeParticipantGenerator(object):
                 "value": value,
             }
         if "string" in measurement["types"]:
-            resource["valueString"] = "".join([random.choice(string.lowercase) for _ in range(20)])
+            resource["valueString"] = "".join([random.choice(string.ascii_lowercase) for _ in range(20)])
         if measurement["valueCodes"]:
             value_code = random.choice(measurement["valueCodes"])
             resource["valueCodeableConcept"] = {
@@ -873,18 +873,18 @@ class FakeParticipantGenerator(object):
             return [{"valueBoolean": random.random() < 0.5}]
         if int(answer_spec["string_answer_count"]) > 0:
             return [
-                {"valueString": "".join([random.choice(string.lowercase) for _ in range(20)])}
+                {"valueString": "".join([random.choice(string.ascii_lowercase) for _ in range(20)])}
                 for _ in range(answer_count)
             ]
         if int(answer_spec["uri_answer_count"]) > 0:
             return [
                 {
                     "valueUri": "gs://notarealbucket.example.com/%s"
-                    % "".join([random.choice(string.lowercase) for _ in range(20)])
+                    % "".join([random.choice(string.ascii_lowercase) for _ in range(20)])
                 }
                 for _ in range(answer_count)
             ]
-        logging.warn("No answer type found for %s, skipping..." % answer_spec["question_code"])
+        logging.warning("No answer type found for %s, skipping..." % answer_spec["question_code"])
         return None
 
     def _choose_answers_for_other_questions(self, answer_map):

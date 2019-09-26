@@ -162,6 +162,10 @@ class LocalFilesystemStorageProvider(StorageProvider):
 
 
 class GoogleCloudStorageFile(ContextDecorator):
+
+    _lines = None
+    _line = 0
+
     def __init__(self, provider, blob):
         self.provider = provider
         self.blob = blob
@@ -171,9 +175,6 @@ class GoogleCloudStorageFile(ContextDecorator):
         self.temp_file_path = None
 
     def __iter__(self):
-        self._filedata = self.read()
-        self._lines = self._filedata.split('\n')
-        self._line = 0
         return self
 
     def read(self, size=None):
@@ -208,11 +209,15 @@ class GoogleCloudStorageFile(ContextDecorator):
             self.temp_file.close()
 
     def __next__(self):
+        if not self._lines:
+            self._filedata = self.read()
+            self._lines = self._filedata.decode('utf-8').splitlines()
+
         if self._line < len(self._lines):
             data = self._lines[self._line]
             self._line += 1
             return data
-        return None
+        raise StopIteration
 
     def __enter__(self):
         return self
