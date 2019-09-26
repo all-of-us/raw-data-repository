@@ -1,9 +1,16 @@
 Data Capture System
 ************************************************************
+.. figure:: https://ipsumimage.appspot.com/640x360
+   :align:  center
+   :alt:    Data Capture System
+
+   Figure 1, Data Capture System diagram.
+
+
 
 Overview
 ============================================================
-The Data-Capture System is a module that facilitates the capture and modification of data elements associated to a participant (eg. gender, age, height, medical history, etc.).  These data elements are managed through the Questionnaire subsystem via a Codebook, a data structure that acts as both a data-dictionary and a data-model for questions, answers, and questionnaire concepts.
+The Data-Capture System is a module that facilitates the capture and modification of data elements associated to a participant (eg. gender, age, height, medical history, etc.).  These data elements are managed through the Questionnaire subsystem via a Codebook, a data structure that acts as both a data-dictionary and a data-model for questions, answers, and questionnaire concepts.  Physical measurements and electronic health records (EHRs) for a participant are also included in this system, however this data is not managed by the Questionnaire subsystem.
 
 
 Components
@@ -40,23 +47,19 @@ For example, for the following ["value" (code_id)]:
         GenderIdentity_NonBinary	(210)	is an answer with parent id 205
 
 
-
 Questionnaire
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 The Questionnaire object is the primary object that represents a collection of questions to eventually present to a participant. The questionnaire table contains versioning data and has a history table associated to it.
 
 
-
 QuestionnaireConcept
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-The QuestionnaireConcept object relates Concepts (a Code instance with code_type = 1) to Questionnaire instances.  Note that the terms "Concept" and "Module" are used in the code synonomously.
-
+The QuestionnaireConcept object relates Concepts (a Code instance with code_type = 1) to Questionnaire instances.  Note that the terms "Concept" and "Module" are used in the code synonymously.
 
 
 QuestionnaireQuestion
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 The QuestionnaireQuestion object associates a question (a Code instance with code_type = 3) in a questionnaire. Each question has a concept system and code defining what the question is about. Questions on different questionnaires can share the same concept code, but concept code is unique within a given questionnaire.
-
 
 
 QuestionnaireResponse
@@ -67,9 +70,6 @@ The QuestionnaireResponse object represents a participant's response to a questi
 QuestionnaireResponseAnswer
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 The QuestionnaireResponseAnswer object represents an answer found in a questionnaire response. Note that there could be multiple answers to the same question, if the questionnaire allows for multiple answers. An answer is given to a particular question which has a particular concept code. The answer is the current answer for a participant from the time period between its parent response's creation field and the endTime field (or now, if endTime is not set.)
-
-
-
 
 
 Physical Measurement Subsystem
@@ -84,7 +84,7 @@ The PhysicalMeasurements object associates multiple measurements to a participan
 
 Measurement
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-The Measurement object represents an individual measurement and is a child of PhysicalMeasurements. Attributes include value fields for the measurement and codes for where and how the measurement was taken (bodySiteCodeSystem).  These fields are generally populated by the HealtPro client.
+The Measurement object represents an individual measurement and is a child of PhysicalMeasurements. Attributes include value fields for the measurement and codes for where and how the measurement was taken (bodySiteCodeSystem).  These fields are generally populated by the HealthPro client.
 .. TODO: need more info regarding measurements
 
 
@@ -93,6 +93,7 @@ Electronic Health Records (EHR)
 Electronic health records are given a receipt when an HPO provides EHR data. The EHR receipt is logged in the ehr_receipt table.
 
 .. TODO: get any additional information regarding this.
+
 The EhrReceipt object logs when HPOs submit EHR data.
 
 
@@ -100,3 +101,133 @@ The EhrReceipt object logs when HPOs submit EHR data.
 Workflows
 ============================================================
 .. TODO: define workflows here.
+
+
+Object Models
+============================================================
+Below are the most important objects implemented for the Data Capture System.
+
+Code
+------------------------------------------------------------
+
+Code Data Model
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.model.code
+   :members: _CodeBase, Code
+   :exclude-members: CodeHistory
+   :undoc-members:
+
+
+Code Data Access Objects
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.dao.code_dao
+   :members: CodeBookDao, CodeDao
+   :no-inherited-members:
+   :exclude-members: get_id, insert_with_session
+
+
+Questionnaire
+------------------------------------------------------------
+
+Questionnaire Data Model
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.model.questionnaire
+   :members: QuestionnaireBase, Questionnaire
+   :undoc-members:
+
+
+Questionnaire Data Access Objects
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.dao.questionnaire_dao
+   :members: QuestionnaireDao
+   :no-inherited-members:
+   :exclude-members: get_id, insert_with_session, from_client_json
+
+QuestionnaireConcept
+------------------------------------------------------------
+
+QuestionnaireConcept Data Model
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.model.questionnaire
+   :members: QuestionnaireConcept
+   :noindex:
+   :undoc-members:
+
+
+QuestionnaireQuestion
+------------------------------------------------------------
+
+QuestionnaireQuestion Data Model
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.model.questionnaire
+   :members: QuestionnaireQuestion
+   :noindex:
+   :undoc-members:
+
+
+QuestionnaireResponse
+------------------------------------------------------------
+
+QuestionnaireResponse Data Model
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.model.questionnaire_response
+   :members: QuestionnaireResponse
+   :noindex:
+   :undoc-members:
+
+
+QuestionnaireResponse Data Access Object
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.dao.questionnaire_response_dao
+   :members: QuestionnaireResponseDao
+   :no-inherited-members:
+   :exclude-members: get_id, insert_with_session, from_client_json
+
+
+QuestionnaireResponseAnswer
+------------------------------------------------------------
+
+QuestionnaireResponseAnswer Data Model
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.model.questionnaire_response
+   :members: QuestionnaireResponseAnswer
+   :noindex:
+   :undoc-members:
+
+
+QuestionnaireResponseAnswer Data Access Object
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.dao.questionnaire_response_dao
+   :members: QuestionnaireResponseAnswerDao
+   :no-inherited-members:
+   :noindex:
+   :exclude-members: get_id, insert_with_session, from_client_json
+
+
+Measurements Data Model
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.model.measurements
+  :members: PhysicalMeasurements, Measurement
+  :undoc-members:
+
+Measurements Data Access Objects
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.dao.physical_measurements_dao
+   :members: PhysicalMeasurementsDao
+   :no-inherited-members:
+   :exclude-members: get_id, insert_with_session, get_with_children_with_session, get_with_children, insert, get_with_session, from_client_json
+
+
+EHR Data Model
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.model.ehr
+   :members: EhrReceipt
+   :undoc-members:
+
+
+EHR Data Access Objects
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.dao.ehr_dao
+   :members: EhrReceiptDao
+   :no-inherited-members:
+   :exclude-members: get_id, insert_with_session, get_with_children_with_session, get_with_children, insert, get_with_session, from_client_json

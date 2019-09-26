@@ -4,7 +4,7 @@ RDR Systems Reference
 .. figure:: https://ipsumimage.appspot.com/640x360
    :align:  center
 
-   The All of Us Raw Data Repository Systems Reference
+   Figure 1, The All of Us Raw Data Repository Systems Reference
 
 .. toctree::
    :maxdepth: 2

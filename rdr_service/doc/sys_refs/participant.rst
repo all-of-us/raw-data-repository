@@ -1,11 +1,12 @@
 Participant System
 ************************************************************
-  * :ref:`Overview <ps_overview>`
-  * :ref:`Data Flow <ps_data_flow>`
-  * :ref:`Workflows <ps_workflows>`
+.. figure:: https://ipsumimage.appspot.com/640x360
+   :align:  center
+   :alt:    Participant System
+
+   Figure 1, Participant System diagram.
 
 
-.. _ps_overview:
 
 Overview
 ============================================================
@@ -13,10 +14,9 @@ The Participant system is the core system of the RDR.  All other systems integra
 
 .. TODO: discuss the exceptions mentioned above
 
-Participant data is aggregated and delivered to analysts by the Reporting system.
+Participant data is aggregated and delivered to analysts by the Reporting system.  Participant data is also retrieved using the Participant Summary API. This is described here (TODO: LINK).
 
 
-.. _ps_data_flow:
 
 Data Flow
 ============================================================
@@ -25,7 +25,7 @@ Data Flow
 .. figure:: https://via.placeholder.com/350x150
    :align:  center
 
-   General Data Flow for the Participant System
+   Figure 1, General Data Flow for the Participant System
 
 A participant is first created when data is submitted through the Participant Portal client.  A POST request with an empty JSON payload will create a participant record in the `participant` table.
 
@@ -51,3 +51,42 @@ Participants are modified through the Data Capture system (TODO: LINK), which as
 Reading
 ----------
 Commonly viewed via the participant summary (TODO: LINK).
+
+
+Data Object Model
+============================================================
+Below are the most important objects implemented for the Participant System.
+
+API Objects
+------------------------------------------------------------
+The following are the most important API objects for the Participant object.
+
+Participant API
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+.. autoclass:: rdr_service.api.participant_api.ParticipantApi
+   :members:
+
+Participant Summary API
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. autoclass:: rdr_service.api.participant_summary_api.ParticipantSummaryApi
+   :members:
+
+
+Data Access Objects (DAO)
+------------------------------------------------------------
+The following are the Data Access Objects that represents the Participant and Participant Summary objects.
+
+Participant DAO
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.dao.participant_dao
+   :members: ParticipantDao
+   :no-inherited-members:
+   :exclude-members: get_id, insert_with_session, get_with_children_with_session, get_with_children, insert, get_with_session, from_client_json, to_client_json
+
+Participant Summary DAO
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. automodule:: rdr_service.dao.participant_summary_dao
+   :members: ParticipantSummaryDao
+   :no-inherited-members:
+   :exclude-members: get_id, insert_with_session, get_with_children_with_session, get_with_children, insert, get_with_session, from_client_json, to_client_json
