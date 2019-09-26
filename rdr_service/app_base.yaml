@@ -9,3 +9,16 @@ env_variables:
 runtime: python37
 
 entrypoint: python3 main.py --service
+
+# Send warmup requests to instances on startup, which will initialize the app and load configs.
+inbound_services:
+- warmup
+
+handlers:
+# App data directory used to load static files in AppEngine; not used for actual serving.
+- url: /app_data/.*
+  login: admin
+  static_dir: app_data
+  secure: always
+- url: /_ah/warmup
+  script: auto
