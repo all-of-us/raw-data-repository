@@ -26,7 +26,7 @@ class OrganizationHierarchySyncDao(BaseDao):
     self.organization_dao = OrganizationDao()
     self.site_dao = SiteDao()
 
-  def from_client_json(self, resource_json, id_=None, expected_version=None, client_id=None):
+  def from_client_json(self, resource_json, id_=None, expected_version=None, client_id=None):  # pylint: disable=unused-argument
     try:
       fhir_org = lib_fhir.fhirclient_3_0_0.models.organization.Organization(resource_json)
     except FHIRValidationError:
