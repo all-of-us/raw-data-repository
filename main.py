@@ -26,6 +26,7 @@ if __name__ == '__main__':
     parser.add_argument("--service", help="launch supervisor and start web service", default=False,
                             action="store_true")  # noqa
     parser.add_argument("--unittests", help="enable unittest mode", default=False, action="store_true")  # noqa
+    parser.add_argument("--offline", help="start offline web service", default=False, action="store_true")  # noqa
 
     args = parser.parse_args()
     env = dict(os.environ)
@@ -50,7 +51,12 @@ if __name__ == '__main__':
         p.wait()
         exit(0)
 
-    p_args = ['supervisord', '-c', 'rdr_service/services/supervisor.conf']
+    if not args.offline:
+        config_file = 'rdr_service/services/supervisor.conf'
+    else:
+        config_file = 'rdr_service/services/supervisor_offline.conf'
+
+    p_args = ['supervisord', '-c', config_file]
     p = subprocess.Popen(p_args, env=env)
     p.wait()
     exit(0)
