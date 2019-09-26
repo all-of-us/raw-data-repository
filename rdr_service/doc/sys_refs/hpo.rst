@@ -68,7 +68,7 @@ HPO Data Access Objects
 .. automodule:: rdr_service.dao.hpo_dao
    :members: HPODao
    :no-inherited-members:
-   :exclude-members: get_id, insert_with_session, get_with_children_with_session, get_with_children, insert, get_with_session, from_client_json
+   :exclude-members: get_id, insert_with_session, get_with_children_with_session, get_with_children, insert, get_with_session, from_client_json, to_client_json, update_with_patch
 
 
 Organization
@@ -86,7 +86,7 @@ Organization Data Access Objects
 .. automodule:: rdr_service.dao.organization_dao
    :members: OrganizationDao
    :no-inherited-members:
-   :exclude-members: get_id, insert_with_session, get_with_children_with_session, get_with_children, insert, get_with_session, from_client_json
+   :exclude-members: get_id, insert_with_session, get_with_children_with_session, get_with_children, insert, get_with_session, from_client_json, to_client_json, update_with_patch
 
 
 

@@ -86,6 +86,8 @@ Participant DAO
 
 Participant Summary DAO
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+See also: :ref:`Participant Summary Data Model <Participant Summary DM>`
+
 .. automodule:: rdr_service.dao.participant_summary_dao
    :members: ParticipantSummaryDao
    :no-inherited-members:

@@ -27,25 +27,6 @@ Code
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 The Code object describes the organizational heirarchy of the components in the Questionnaire Subsystem. In the database, the `code` table is a self-joining heirarchical table. A Code object has a code_type attribute that can be a module, a question, or an answer. These objects are structured such that Modules have Topics as children, and Topics have Questions as children and Questions have Answers as children.
 
-For example, for the following ["value" (code_id)]:
-  TheBasics (1) is a module.
-    TheBasics_Gender (183) is a topic with parent_id = 1
-      Gender_CloserGenderDescription (184) is a question with parent_id = 183
-        CloserGenderDescription_GenderVariant	(185)	is an answer with parent id 184
-        CloserGenderDescription_Genderqueer	(186)	is an answer with parent id 184
-        CloserGenderDescription_Unsure	(187)	is an answer with parent id 184
-        CloserGenderDescription_TransMan	(188)	is an answer with parent id 184
-        CloserGenderDescription_SpecifiedGender	(189)	is an answer with parent id 184
-        CloserGenderDescription_Genderfluid	(191)	is an answer with parent id 184
-        GenderIdentity_SexualityCloserDescription	(192)	is an answer with parent id 184
-        CloserGenderDescription_TransWoman	(204)	is an answer with parent id 184
-      Gender_GenderIdentity (205) is a question with parent_id = 183
-        GenderIdentity_Transgender	(206)	is an answer with parent id 205
-        GenderIdentity_Man	(207)	is an answer with parent id 205
-        GenderIdentity_Woman	(208)	is an answer with parent id 205
-        GenderIdentity_AdditionalOptions	(209)	is an answer with parent id 205
-        GenderIdentity_NonBinary	(210)	is an answer with parent id 205
-
 
 Questionnaire
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -113,7 +94,7 @@ Code
 Code Data Model
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 .. automodule:: rdr_service.model.code
-   :members: _CodeBase, Code
+   :members: CodeBook, _CodeBase, Code
    :exclude-members: CodeHistory
    :undoc-members:
 
