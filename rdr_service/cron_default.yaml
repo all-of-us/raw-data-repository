@@ -1,9 +1,9 @@
 cron:
-- description: Daily metrics
-  url: /offline/MetricsRecalculate
-  schedule: every day 03:30
-  timezone: America/New_York
-  target: offline
+#- description: Daily metrics
+#  url: /offline/MetricsRecalculate
+#  schedule: every day 03:30
+#  timezone: America/New_York
+#  target: offline
 - description: Daily public metrics
   url: /offline/PublicMetricsRecalculate
   schedule: every day 04:30

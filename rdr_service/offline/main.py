@@ -13,12 +13,12 @@ from werkzeug.exceptions import BadRequest
 from rdr_service import app_util, config
 from rdr_service.api_util import EXPORTER
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
-from rdr_service.dao.metrics_dao import MetricsVersionDao
+from rdr_service.dao.metrics_dao import MetricsVersionDao  # pylint: disable=unused-import
 from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import rebuild_bigquery_handler, sync_bigquery_handler
 from rdr_service.offline.exclude_ghost_participants import mark_ghost_participants
-from rdr_service.offline.metrics_export import MetricsExport
+from rdr_service.offline.metrics_export import MetricsExport  # pylint: disable=unused-import
 from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.offline.participant_maint import skew_duplicate_last_modified
 from rdr_service.offline.patient_status_backfill import backfill_patient_status
@@ -63,19 +63,19 @@ def _alert_on_exceptions(func):
     return alert_on_exceptions_wrapper
 
 
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def recalculate_metrics():
-    # TODO: This should be refactored or removed.
-    in_progress = MetricsVersionDao().get_version_in_progress()
-    if in_progress:
-        logging.info("=========== Metrics pipeline already running ============")
-        return '{"metrics-pipeline-status": "running"}'
-    else:
-        bucket_name = app_identity.get_default_gcs_bucket_name()  # pylint: disable=undefined-variable
-        logging.info("=========== Starting metrics export ============")
-        MetricsExport.start_export_tasks(bucket_name, int(config.getSetting(config.METRICS_SHARDS, 1)))
-        return '{"metrics-pipeline-status": "started"}'
+# @app_util.auth_required_cron
+# @_alert_on_exceptions
+# def recalculate_metrics():
+#     # TODO: This should be refactored or removed.
+#     in_progress = MetricsVersionDao().get_version_in_progress()
+#     if in_progress:
+#         logging.info("=========== Metrics pipeline already running ============")
+#         return '{"metrics-pipeline-status": "running"}'
+#     else:
+#         bucket_name = app_identity.get_default_gcs_bucket_name()  # pylint: disable=undefined-variable
+#         logging.info("=========== Starting metrics export ============")
+#         MetricsExport.start_export_tasks(bucket_name, int(config.getSetting(config.METRICS_SHARDS, 1)))
+#         return '{"metrics-pipeline-status": "started"}'
 
 
 @app_util.auth_required_cron
@@ -226,6 +226,8 @@ def patient_status_backfill():
     backfill_patient_status()
     return '{"success": "true"}'
 
+def start():
+    return '{"success": "true"}'
 
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
@@ -249,9 +251,9 @@ def _build_pipeline_app():
         PREFIX + "SkewDuplicates", endpoint="skew_duplicates", view_func=skew_duplicates, methods=["GET"]
     )
 
-    offline_app.add_url_rule(
-        PREFIX + "MetricsRecalculate", endpoint="metrics_recalc", view_func=recalculate_metrics, methods=["GET"]
-    )
+    # offline_app.add_url_rule(
+    #     PREFIX + "MetricsRecalculate", endpoint="metrics_recalc", view_func=recalculate_metrics, methods=["GET"]
+    # )
 
     offline_app.add_url_rule(
         PREFIX + "PublicMetricsRecalculate",
@@ -305,6 +307,8 @@ def _build_pipeline_app():
         view_func=patient_status_backfill,
         methods=["GET"],
     )
+
+    offline_app.add_url_rule('/_ah/start', endpoint='start', view_func=start, methods=["GET"])
 
     offline_app.after_request(app_util.add_headers)
     offline_app.before_request(app_util.request_logging)
