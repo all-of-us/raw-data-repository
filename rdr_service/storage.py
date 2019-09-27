@@ -1,3 +1,4 @@
+import io
 import os
 import glob
 import shutil
@@ -173,9 +174,6 @@ class GoogleCloudStorageFile(ContextDecorator):
         self.dirty = False
         self.temp_file = None
         self.temp_file_path = None
-
-    def __iter__(self):
-        return self
 
     def read(self, size=None):
         kwargs = {'start': self.position}
