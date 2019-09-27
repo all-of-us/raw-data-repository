@@ -37,7 +37,9 @@ def setup_logging_zone():
             zone = 'unknown'
     return zone
 
+
 logging_zone = setup_logging_zone()
+
 
 def setup_logging_resource():
     """
@@ -53,6 +55,7 @@ def setup_logging_resource():
 
     resource = Resource(type='gae_app', labels=labels)
     return resource
+
 
 def setup_log_line(message: str, event_ts: str, level: str):
     """
@@ -74,6 +77,7 @@ def setup_log_line(message: str, event_ts: str, level: str):
     }
 
     return line
+
 
 def setup_request_log(lines: list):
 
@@ -105,6 +109,7 @@ def setup_request_log(lines: list):
 
     return msg
 
+
 def log_event_to_stackdriver():
 
     lines = []
@@ -135,15 +140,64 @@ def log_event_to_stackdriver():
     return log
 
 
+class GCPStackDriverLogHandler(logging.Handler):
+    """
+    Sends log records to google stackdriver logging.
+    Buffers up to `buffer_size` log records into one protobuffer to be submitted.
+    """
+    
+    def __init__(self, trace_id, buffer_size=10):
+        self._trace_id = trace_id
+        self._buffer_size = buffer_size
+        self._buffer = collections.deque()
+
+    def emit(self, record):
+        self._buffer.append(self.format(record))
+        if len(self._buffer) >= self._buffer_size:
+            self.publish_to_stackdriver()
+        
+    def publish_to_stackdriver(self):
+        lines = list(map(setup_log_line, self._buffer))
+        if lines:
+            logger.log_proto(
+                message=setup_request_log(lines),
+                severity=self.get_highest_severity_level_from_lines(lines),
+                resource=setup_logging_resource(),
+                trace=self._trace_id
+            )
+    
+    @staticmethod
+    def get_highest_severity_level_from_lines(lines):
+        if lines:
+            return sorted(
+                [line['severity'] for line in lines],
+                key=lambda severity: -getattr(logging, severity, 0)
+            )[0]
+        else:
+            return None
 
 
-# req = gcp_request_log_pb2.RequestLog()
-# json_format.MessageToJson(req)
-#
+class FlaskGCPStackDriverLoggingMiddleware:
+    """
+    Adds a special log handler for each request.
+    Ensures that protobuffers contain only messages from one request.
+    """
 
-
-#
-# logger = c.logger('appengine.googleapis.com%2Frequest_log')
-#
-# c = logging.Client(project='all-of-us-rdr-sandbox')
-
+    def __init__(self, app):
+        self.root_logger = logging.getLogger()
+        self.app = app
+    
+    def __call__(self, environ, start_response):
+        """
+        NOTE: The `X-Cloud-Trace-Context` header is only available in GAE Python 2.7.
+            In Python 3 the recommended setup is: https://cloud.google.com/trace/docs/setup/python
+        """
+        trace_id = 0  # see note in docstring
+        handler = GCPStackDriverLogHandler(trace_id)
+        self.root_logger.addHandler(handl)
+        try:
+            return self.app(environ, start_response)
+        except:
+            raise
+        finally:
+            self.root_logger.removeHandler(handler)
