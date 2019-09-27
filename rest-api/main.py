@@ -199,7 +199,7 @@ api.add_resource(AwardeeApi,
 api.add_resource(OrganizationHierarchyApi,
                  PREFIX + 'organization/hierarchy',
                  endpoint='hierarchy_content.organizations',
-                 methods=['PUT', 'POST'])
+                 methods=['PUT'])
 
 # Configuration API for admin use.
 
