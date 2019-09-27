@@ -1,6 +1,6 @@
 import datetime
 import mock
-
+import json
 from dao.hpo_dao import HPODao
 from dao.organization_dao import OrganizationDao
 from dao.site_dao import SiteDao
@@ -61,7 +61,10 @@ class HierarchyContentApiTest(FlaskTestBase):
         'versionId': '1'
       },
       "extension": [
-
+        {
+         "url": "http://all-of-us.org/fhir/sites/awardee-type",
+         "valueString": "DV"
+        }
       ],
       "identifier": [
         {
@@ -96,7 +99,10 @@ class HierarchyContentApiTest(FlaskTestBase):
         'versionId': '2'
       },
       "extension": [
-
+        {
+          "url": "http://all-of-us.org/fhir/sites/awardee-type",
+          "valueString": "DV"
+        }
       ],
       "identifier": [
         {

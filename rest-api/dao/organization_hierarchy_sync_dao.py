@@ -67,7 +67,8 @@ class OrganizationHierarchySyncDao(BaseDao):
     if awardee_id is None:
       raise BadRequest('No organization-identifier info found in payload data.')
     is_obsolete = ObsoleteStatus('OBSOLETE') if not hierarchy_org_obj.active else None
-    awardee_type = 'DV'  # TODO waiting for PTSC's document
+    awardee_type = self._get_value_from_extention(hierarchy_org_obj, _FHIR_SYSTEM_PREFIX +
+                                                  'awardee-type')
 
     try:
       organization_type = OrganizationType(awardee_type)
