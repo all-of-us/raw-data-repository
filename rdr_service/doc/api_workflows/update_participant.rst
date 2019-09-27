@@ -147,7 +147,7 @@ Cancellation/Amending/Restoring Physical Measurements
 This will change the status to ``CANCELLED/RESTORED/AMENDED`` as appropriate. When syncing against the ``PhysicalMeasurements/_history`` api check for this field specifically. Other fields of interest on edited measurements are:
 
 ::
-  
+
   cancelled_username
   cancelled_site_id
   cancelled_time
@@ -156,8 +156,17 @@ This will change the status to ``CANCELLED/RESTORED/AMENDED`` as appropriate. Wh
 An amended PhysicalMeasurement will have an amended_measurement_id that points to the original measurement. These are defined by the enum ``PhysicalMeasurementsStatus``.
 
 
-Update Participant
+BioBank Orders
 ------------------------------------------------------------
+The BioBank Order API maintains records of orders placed from HealthPro to the Biobank. Each order is a resource as documented here, including:
+
+* ``subject``: a reference to the participant, in the form ``Patient/:pid``.  The :pid variable of this refernce must match the participant ID supplied in the POST URL.
+
+.. note:: Note the use of the word "Patient" here, which comes from FHIR.
+
+* ``identifier``: an array of Identifiers, each with a system and value. These should include the HealthPro identifier for this order as well as the biobank identifier for this order.
+
+
 
 Update Participant
 ------------------------------------------------------------
