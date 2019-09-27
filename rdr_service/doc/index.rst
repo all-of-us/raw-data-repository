@@ -47,6 +47,30 @@ The above concepts are illustrated in Figure 2:
    Figure 2, General Concepts of the RDR, illustrated.
 
 
+API Workflows
+--------------------------------------------------------------------------------
+The following are the API workflows that the RDR supports and are covered in this documentation:
+
+   *  PTC to RDR (Raw Data Repository)
+       *  Create and update Participant information
+       *  Create and update Questionnaires and Responses ("PPI", Participant-provided information)
+       *  Read data about a participant
+   *  Health Professional Portal to RDR
+       *  Search Participants
+          *  At check-in time, look up an individual by name, date of birth, zip code
+          *  For a Work Queue, filter participants based on summary information (e.g. age, race)
+       *  Get Participant Summary (by id)
+       *  Update a Participant with a new Medical Record Number
+       *  Insert results from physical measurements
+       *  Insert biospecimen orders
+   *  BioBank to RDR
+       *  Google Cloud Storage “add a csv file to bucket”, performed daily
+   *  For release management and operational monitoring
+       *  Serving version identifier - no auth required
+
+
+
+
 Further Reading
 ================================================================================
 * `All of Us <https://www.joinallofus.org/en/about>`_
