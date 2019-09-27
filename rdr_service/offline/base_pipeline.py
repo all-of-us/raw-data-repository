@@ -2,12 +2,22 @@ import datetime
 import logging
 import os
 
-import pipeline
+# import pipeline
 from rdr_service.config import GAE_PROJECT
 from google.appengine.api import mail
 from google.appengine.ext import db
 
 from rdr_service import config
+
+class pipeline(object):
+    """ Dummy class to replace Pipeline 2.7 library package """
+
+    pipeline_id = None
+    root_pipeline_id = None
+    base_path = ''
+    _root_pipeline_key = ''
+    was_aborted = None
+
 
 
 # TODO(DA-448) For more reliable delivery, switch to creating tickets via the JIRA API.
@@ -26,7 +36,8 @@ def send_failure_alert(job_name, message, log_exc_info=False, extra_recipients=N
     mail.send_mail(sender, to_list, subject, message)
 
 
-class BasePipeline(pipeline.Pipeline):
+# class BasePipeline(pipeline.Pipeline):
+class BasePipeline(pipeline):
     def handle_pipeline_failure(self):
         """Invoked when a pipeline fails. Subclasses can override to implement custom behavior."""
         pass
