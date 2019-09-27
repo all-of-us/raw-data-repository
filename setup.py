@@ -6,9 +6,8 @@ import os
 from setuptools import setup
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
-rdr_common_dir = os.path.join(base_dir, "rdr_common")
-rdr_client_dir = os.path.join(base_dir, "rdr_client")
-with open(os.path.join(rdr_common_dir, "README.md")) as readme:
+rdr_client_dir = os.path.join(base_dir, "rdr_service/rdr_client")
+with open(os.path.join(base_dir, "README.md")) as readme:
     readme_contents = readme.read()
 with open(os.path.join(rdr_client_dir, "requirements.txt")) as requirements:
     requirements_list = [l.strip() for l in requirements.readlines()]
@@ -20,6 +19,6 @@ setup(
     long_description=readme_contents,
     url="https://github.com/all-of-us/raw-data-repository",
     # These packages may be imported after the egg is installed.
-    packages=["rdr_common", "rdr_client"],
+    packages=["rdr_client"],
     install_requires=requirements_list,
 )

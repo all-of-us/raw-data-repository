@@ -6,7 +6,7 @@
 # Note: Steps to update local venv packages before running pip-compile on this file
 #
 #    1. run: "pip freeze > /tmp/tmp_req.txt"
-#    2. change all '==' in /tmp/tmp_req.txt to '>='. Check for django package max version and set it
+#    2. change all '==' in /tmp/tmp_req.txt to '>='. Check for package max version and set it. NOT RECOMMENDED.
 #    3. run: "pip install -r /tmp/tmp_req.txt --upgrade"
 #    4. run: pip-compile -r -U -o requirements.txt requirements.in
 
