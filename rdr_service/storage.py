@@ -223,10 +223,10 @@ class GoogleCloudStorageFile(ContextDecorator):
     def __exit__(self, *exc):
         self.close()
         return False
-        
+
     def __iter__(self):
         return self.iter_lines()
-    
+
     def iter_chunks(self, chunk_size=1024):
         i = 0
         while True:

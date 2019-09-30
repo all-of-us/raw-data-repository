@@ -146,18 +146,19 @@ class GCPStackDriverLogHandler(logging.Handler):
     Sends log records to google stackdriver logging.
     Buffers up to `buffer_size` log records into one protobuffer to be submitted.
     """
-    
+
     def __init__(self, trace_id, buffer_size=10):
         self._trace_id = trace_id
         self._buffer_size = buffer_size
         self._buffer = collections.deque()
+        client = logging.Client(project='all-of-us-rdr-sandbox')  #TODO: pass in other envs.
         self.logger = client.logger('appengine.googleapis.com%2Frequest_log')
 
     def emit(self, record):
         self._buffer.append(self.format(record))
         if len(self._buffer) >= self._buffer_size:
             self.publish_to_stackdriver()
-        
+
     def publish_to_stackdriver(self):
         lines = list(map(setup_log_line, self._buffer))
         if lines:
@@ -166,8 +167,8 @@ class GCPStackDriverLogHandler(logging.Handler):
                 severity=self.get_highest_severity_level_from_lines(lines),
                 resource=setup_logging_resource(),
                 trace=self._trace_id
-            )
-    
+            ) 
+
     @staticmethod
     def get_highest_severity_level_from_lines(lines):
         if lines:
@@ -188,7 +189,7 @@ class FlaskGCPStackDriverLoggingMiddleware:
     def __init__(self, app):
         self.root_logger = logging.getLogger()
         self.app = app
-    
+
     def __call__(self, environ, start_response):
         """
         NOTE: The `X-Cloud-Trace-Context` header is only available in GAE Python 2.7.
