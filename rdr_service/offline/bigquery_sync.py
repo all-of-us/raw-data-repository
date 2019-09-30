@@ -103,8 +103,7 @@ def rebuild_bq_participant_task(timestamp, limit=0):
                 subquery()
             query = session.query(sq.c.participant_id.label('participantId')). \
                 filter(or_(sq.c.id == None, sq.c.modified < timestamp)).order_by(sq.c.modified)
-            if limit:
-                query = query.limit(1)
+            query = query.limit(1)
 
             # sql = dao.query_to_text(query)
             results = query.all()
