@@ -167,7 +167,7 @@ class GCPStackDriverLogHandler(logging.Handler):
                 severity=self.get_highest_severity_level_from_lines(lines),
                 resource=setup_logging_resource(),
                 trace=self._trace_id
-            ) 
+            )
 
     @staticmethod
     def get_highest_severity_level_from_lines(lines):
