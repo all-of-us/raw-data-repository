@@ -1,6 +1,7 @@
 BioBank System
 ************************************************************
-.. figure:: https://ipsumimage.appspot.com/640x360
+.. TODO
+   figure:: https://ipsumimage.appspot.com/640x360
    :align:  center
    :alt:    BioBank System
 
@@ -21,7 +22,6 @@ Components
 
 Samples Subsystem
 ------------------------------------------------------------
-(TODO: learn more about this)
 Biospecimens are referred to as Samples in the RDR system. Samples are `ordered`, which means they are ...? or `stored`
 
 Mayo has defined a sample manifest format that will be uploaded to the RDR daily. The RDR scans this manifest and uses it to populate `BiobankSamples` resources. Once these are created, a client can query for available samples.

@@ -1,13 +1,14 @@
 ************************************************************
 RDR Systems Reference
 ************************************************************
-.. figure:: https://ipsumimage.appspot.com/640x360
+.. todo:
+   figure:: https://ipsumimage.appspot.com/640x360
    :align:  center
 
    Figure 1, The All of Us Raw Data Repository Systems Reference
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    Participant System <sys_refs/participant>
    Data Capture System <sys_refs/data_capture>

@@ -1,6 +1,10 @@
+
+.. _data_capture:
+
 Data Capture System
 ************************************************************
-.. figure:: https://ipsumimage.appspot.com/640x360
+.. TODO
+   figure:: https://ipsumimage.appspot.com/640x360
    :align:  center
    :alt:    Data Capture System
 
@@ -82,3 +86,5 @@ The EhrReceipt object logs when HPOs submit EHR data.
 Workflows
 ============================================================
 .. TODO: define workflows here.
+
+Associating data from the Data Capture system to participants uses the API workflows covered in this section: :ref:`Creating and Updating Participant Data <update_participant>`.

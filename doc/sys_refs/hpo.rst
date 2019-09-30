@@ -1,6 +1,7 @@
 Healthcare Provider Organization (HPO) System
 ************************************************************
-.. figure:: https://ipsumimage.appspot.com/640x360
+.. TODO
+   figure:: https://ipsumimage.appspot.com/640x360
    :align:  center
    :alt:    HPO System
 

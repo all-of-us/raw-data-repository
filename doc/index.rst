@@ -25,7 +25,7 @@ Table of Contents
 .. Table of Contents section
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
    sys_ref
    api_wf
@@ -34,13 +34,35 @@ Table of Contents
 General Concepts
 ================================================================================
 
-Terminology
+Terminology Used
 --------------------------------------------------------------------------------
-Explain System, Components, DAO, Data Model, Object Model, API, api client.
 
-The above concepts are illustrated in Figure 2:
+.. glossary::
 
-.. figure:: https://ipsumimage.appspot.com/640x360
+  Participant
+    A participant is a core object in the RDR representing a single person who has initiated the process of joining the *All of Us* research program.  Questionnaire, physical measurements, and biospecimens can be associated to a participant.
+
+  Healthcare Provider Organization (HPO)
+    An HPO is an object that represents a healthcare provider that has partnered with the *All of Us* research program to send data to the RDR, usually through the HealthPro client.  A participant will have an associated hpo_id property. A HPO will have Organizations as children.
+
+  Organization
+    An organization has a HPO as a parent and sites as children.
+
+  Site
+    A site has an organization as a parent and a HPO as a grandparent. A site is associated to a participant and represents the physical location where they entered data or joined.
+
+  Awardee
+    Awardee is synonymous with HPO in the context of the RDR.
+
+
+
+
+
+
+.. The above concepts are illustrated in Figure 2:
+
+.. TODO:
+   figure:: https://ipsumimage.appspot.com/640x360
    :align:  center
    :alt:    General Concepts illustrated.
 

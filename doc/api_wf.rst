@@ -1,20 +1,19 @@
+
 ************************************************************
 API Workflows
 ************************************************************
-.. figure:: https://ipsumimage.appspot.com/640x360
-   :align:  center
 
-   Figure 1, The *All of Us Raw* Data Repository API Workflows
+.. _api_wf:
 
 General Workflows
 ============================================================
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 4
 
-   Create Participant Workflow <api_workflows/create_participant>
-   Creating and Updating Participant Data Workflows <api_workflows/update_participant>
-   Search and Filter Participants <api_workflows/search_participant>
-   API Resource Reference <api_workflows/api_resource_ref>
+   Creating Participants <api_workflows/create_participant>
+   Creating and Updating Participant Data <api_workflows/update_participant>
+   Searching and Filtering Participant Data <api_workflows/search_participant>
+   Reporting APIs <api_workflows/reporting>
 
 
 Task Specific Workflows
@@ -46,3 +45,12 @@ BioBank to RDR
 For release management and operational monitoring
 ------------------------------------------------------------
   * Serving version identifier - no auth required
+
+
+
+API Resource Reference
+============================================================
+.. toctree::
+   :maxdepth: 2
+
+   API Resource Reference <api_workflows/api_resource_ref>

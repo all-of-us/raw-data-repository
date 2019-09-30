@@ -1,6 +1,10 @@
+
+.. _reporting:
+
 Reporting System
 ************************************************************
-.. figure:: https://ipsumimage.appspot.com/640x360
+.. todo
+   figure:: https://ipsumimage.appspot.com/640x360
    :align:  center
    :alt:    Reporting System
 
@@ -23,7 +27,7 @@ The Metrics component provides cached reporting for various data of interest to 
 
 Participant Summary
 ------------------------------------------------------------
-The Participant Summary, also part of the Participant Core System, is a denormalized construction of all data related to a participant.
+The Participant Summary, also part of the Participant Core System, is a flat construction of all data related to a participant.
 
 
 
