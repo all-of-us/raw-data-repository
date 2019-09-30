@@ -45,9 +45,9 @@ def do_sync_consent_files():
             "participant_id": participant_data.participant_id,
             "google_group": participant_data.google_group or DEFAULT_GOOGLE_GROUP,
         }
-        task = cloudstorage_copy_objects_task.delay(
-            "/{source_bucket}/Participant/P{participant_id}/".format(**kwargs),
-            "/{destination_bucket}/Participant/{google_group}/P{participant_id}/".format(**kwargs))
+        task = cloudstorage_copy_objects_task.apply_async(queue='default', args=(
+                    "/{source_bucket}/Participant/P{participant_id}/".format(**kwargs),
+                    "/{destination_bucket}/Participant/{google_group}/P{participant_id}/".format(**kwargs)))
         task.forget()
 
 

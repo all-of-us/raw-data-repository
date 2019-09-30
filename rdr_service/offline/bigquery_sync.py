@@ -3,7 +3,6 @@ import logging
 import math
 from datetime import datetime
 
-# from google.appengine.api import taskqueue
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from sqlalchemy import or_, func, and_
@@ -22,12 +21,13 @@ from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
     BQPDREHRConsentPII, BQPDRDVEHRSharing
 from rdr_service.model.participant import Participant
+from rdr_service.services.flask import celery
 
 
 # disable pylint warning for 'Exception':
 # pylint: disable=redefined-builtin
 # pylint: disable=unused-argument
-def BigQueryJobError(Exception):
+class BigQueryJobError(BaseException):
     """ BigQuery Job Exception """
 
 
@@ -41,7 +41,7 @@ def rebuild_bigquery_handler():
     """
     # pylint: disable=unused-variable
     timestamp = datetime.utcnow()
-    batch_size = 100
+    batch_size = 300
 
     dao = BigQuerySyncDao()
     with dao.session() as session:
@@ -51,15 +51,8 @@ def rebuild_bigquery_handler():
                      format(count, total_rows, batch_size))
 
         while count > 0:
-            # task = taskqueue.add(
-            #     queue_name='bigquery-rebuild',
-            #     url='/rdr/v1/BQRebuildTaskApi',
-            #     method='GET',
-            #     target='worker',
-            #     params={'timestamp': timestamp, 'limit': batch_size}
-            # )
-            #
-            # logging.info('Task {} enqueued, ETA {}.'.format(task.name, task.eta))
+            task = rebuild_bq_participant_task.apply_async(queue='offline', args=(timestamp, batch_size))
+            task.forget()
             count -= 1
     #
     # Process tables that don't need to be broken up into smaller tasks.
@@ -74,6 +67,7 @@ def rebuild_bigquery_handler():
     bq_site_update()
 
 
+@celery.task()
 def rebuild_bq_participant_task(timestamp, limit=0):
     """
     Loop through all participants and generate the BQ participant summary data and
@@ -96,49 +90,51 @@ def rebuild_bq_participant_task(timestamp, limit=0):
     ps_bqgen = BQParticipantSummaryGenerator()
     pdr_bqgen = BQPDRParticipantSummaryGenerator()
     mod_bqgen = BQPDRQuestionnaireResponseGenerator()
+    count = 0
 
     with dao.session() as session:
-        # Collect all participants who do not have a PS generated yet or the modified date is less than the timestamp.
-        sq = session.query(Participant.participantId, BigQuerySync.id, BigQuerySync.modified). \
-            outerjoin(BigQuerySync, and_(
-            BigQuerySync.pk_id == Participant.participantId,
-            or_(BigQuerySync.tableId == 'participant_summary', BigQuerySync.tableId == 'pdr_participant'))).subquery()
-        query = session.query(sq.c.participant_id.label('participantId')). \
-            filter(or_(sq.c.id == None, sq.c.modified < timestamp))
-        if limit:
-            query = query.limit(limit)
+        while limit:
+            limit -= 1
+            # Note: Since we are being run in parallel now,
+            # Collect all participants who do not have a PS generated yet or the modified date is less than the timestamp.
+            sq = session.query(Participant.participantId, BigQuerySync.id, BigQuerySync.modified). \
+                outerjoin(BigQuerySync, and_(
+                BigQuerySync.pk_id == Participant.participantId,
+                or_(BigQuerySync.tableId == 'participant_summary', BigQuerySync.tableId == 'pdr_participant'))).subquery()
+            query = session.query(sq.c.participant_id.label('participantId')). \
+                filter(or_(sq.c.id == None, sq.c.modified < timestamp)).order_by(sq.c.modified)
+            if limit:
+                query = query.limit(1)
 
-        # sql = dao.query_to_text(query)
-        results = query.all()
-        count = 0
-        excluded = 0
-        # put a log entry in every 2,500 records. Should be approximately every 10 minutes.
-        for row in results:
-            count += 1
-            # All logic for generating a participant summary is here.
-            rebuild_bq_participant(row.participantId, dao=dao, session=session, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen)
+            # sql = dao.query_to_text(query)
+            results = query.all()
 
-            # Generate participant questionnaire module response data
-            modules = (
-                BQPDRConsentPII,
-                BQPDRTheBasics,
-                BQPDRLifestyle,
-                BQPDROverallHealth,
-                BQPDREHRConsentPII,
-                BQPDRDVEHRSharing
-            )
-            for module in modules:
-                mod = module()
-                table, mod_bqrs = mod_bqgen.make_bqrecord(row.participantId, mod.get_schema().get_module_name())
-                if not table:
-                    continue
 
-                for mod_bqr in mod_bqrs:
-                    mod_bqgen.save_bqrecord(
-                        mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table, dao=dao, session=session)
+            for row in results:
+                count += 1
+                # All logic for generating a participant summary is here.
+                rebuild_bq_participant(row.participantId, dao=dao, session=session, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen)
 
-        logging.info('Rebuilt BigQuery data for {0} participants, excluded {1} test/ghost participants.'.format(
-            count - excluded, excluded))
+                # Generate participant questionnaire module response data
+                modules = (
+                    BQPDRConsentPII,
+                    BQPDRTheBasics,
+                    BQPDRLifestyle,
+                    BQPDROverallHealth,
+                    BQPDREHRConsentPII,
+                    BQPDRDVEHRSharing
+                )
+                for module in modules:
+                    mod = module()
+                    table, mod_bqrs = mod_bqgen.make_bqrecord(row.participantId, mod.get_schema().get_module_name())
+                    if not table:
+                        continue
+
+                    for mod_bqr in mod_bqrs:
+                        mod_bqgen.save_bqrecord(
+                            mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table, dao=dao, session=session)
+
+    logging.info('Rebuilt BigQuery data for {0} participants.'.format(count))
 
 
 def insert_batch_into_bq(bq, project_id, dataset, table, batch, dryrun=False):
@@ -188,7 +184,9 @@ def sync_bigquery_handler(dryrun=False):
     # https://cloud.google.com/bigquery/troubleshooting-errors#streaming
     """
     dao = BigQuerySyncDao()
-    bq = build('bigquery', 'v2') if dryrun is False else None
+    # https://github.com/googleapis/google-api-python-client/issues/299
+    # https://github.com/pior/appsecrets/issues/7
+    bq = build('bigquery', 'v2', cache_discovery=False) if dryrun is False else None
     total_inserts = 0
     # Google says maximum of 500 in a batch. Pretty sure they are talking about log shipping, I believe
     # that one participant summary record is larger than their expected average log record size.

@@ -66,7 +66,7 @@ def import_codebook():
     response["active_version"] = new_codebook.version
     response["status_messages"] = ["Imported %d codes." % code_count]
 
-    task = bq_codebook_update_task.delay()
+    task = bq_codebook_update_task.apply_async(queue='default')
     task.forget()
 
     return _log_and_return_json(response)

@@ -26,7 +26,7 @@ class QuestionnaireResponseApi(BaseApi):
     def post(self, p_id):
         resp = super(QuestionnaireResponseApi, self).post(participant_id=p_id)
         if resp and 'id' in resp:
-            task = bq_questionnaire_update_task.delay(p_id, int(resp['id']))
+            task = bq_questionnaire_update_task.apply_async(queue='default', args=(p_id, int(resp['id'])))
             task.forget()
         return resp
 

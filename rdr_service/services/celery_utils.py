@@ -19,7 +19,8 @@ _celery_includes = [
     'rdr_service.dao.bq_participant_summary_dao',
     'rdr_service.api.data_gen_api',
     'rdr_service.offline.sync_consent_files',
-    'rdr_service.celery_test'
+    'rdr_service.celery_test',
+    'rdr_service.offline.bigquery_sync'
 ]
 
 def configure_celery(flask_app):

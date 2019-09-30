@@ -166,7 +166,7 @@ class GoogleCloudStorageFile(ContextDecorator):
     _lines = None
     _line = 0
 
-    def __init__(self, provider, blob):
+    def __init__(self, provider=None, blob=None):
         self.provider = provider
         self.blob = blob
         self.position = 0
@@ -300,7 +300,7 @@ class GoogleCloudStorageProvider(StorageProvider):
 def get_storage_provider():
     # Set a good default and let the environment var be the override.
     if os.getenv('GAE_ENV', '').startswith('standard'):
-        default_provider = GoogleCloudStorageFile
+        default_provider = GoogleCloudStorageProvider
     else:
         default_provider = LocalFilesystemStorageProvider
     provider_class = StorageProvider.get_provider(default=default_provider)

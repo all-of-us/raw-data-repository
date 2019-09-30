@@ -16,7 +16,7 @@ class VersionApi(Resource):
     def get(self):
 
         # Code for testing that Celery background tasks are working.
-        task = add.delay(2, 40)
+        task = add.apply_async(queue='offline', args=(2, 40))
         count = 30
         while not task.ready() and count > 0:
             count -= 1

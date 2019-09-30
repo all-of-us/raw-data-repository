@@ -159,8 +159,8 @@ class DataGenApi(Resource):
                     include_physical_measurements, include_biobank_orders, requested_hpo
                 )
         if resource_json.get("create_biobank_samples"):
-            task = generate_samples_task.delay(
-                        resource_json.get("samples_missing_fraction", _SAMPLES_MISSING_FRACTION))
+            task = generate_samples_task.apply_async(queue='default', args=(
+                        resource_json.get("samples_missing_fraction", _SAMPLES_MISSING_FRACTION)))
             task.forget()
 
     @nonprod
