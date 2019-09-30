@@ -131,6 +131,31 @@ jobs:
     - run: ./ci/deploy.sh all-of-us-rdr-staging config/config_staging.json ~/gcloud-credentials.key
     - run: ./rest-api/test/test_server.sh -i https://all-of-us-rdr-staging.appspot.com -c ~/gcloud-credentials.key
 
+  deploy_sandbox_py3:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+      - checkout
+      - run:
+          working_directory: ~/all-of-us/raw-data-repository
+          command: 'sudo service mysql status || sudo service mysql start; '
+      - restore_cache:
+           key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
+      - run: pip install --upgrade pip
+      - run: pip install --upgrade httplib2 jira oauth2client parallel pylint isort==4.3.8
+      - run: pip install -I alembic==0.9.1
+      - run: ./ci/setup.sh
+      - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
+      - run:
+          working_directory: ~/all-of-us/raw-data-repository/
+          command: ./tools/upgrade_database.sh -i https://all-of-us-rdr-sandbox.appspot.com --creds_file ~/gcloud-credentials.key
+      - save_cache:
+          working_directory: ~/all-of-us/raw-data-repository
+          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          paths:
+          - "venv"
+      - run: ./ci/deploy.sh all-of-us-rdr-sandbox config/config_sandbox.json ~/gcloud-credentials.key
+      - run: ./rdr_service/test/test_server.sh -i https://all-of-us-rdr-sandbox.appspot.com -c ~/gcloud-credentials.key
     # Stable and production deployments are not done automatically but can be
     # manually executed with the test.sh and deploy.sh pair, e.g.:
     # ./ci/deploy.sh all-of-us-rdr-stable config/config_stable.json <configurator key file>
@@ -228,3 +253,7 @@ workflows:
     jobs:
       - test_python3_branches:
           <<: *filter_python3_branches
+      - deploy_sandbox_py3:
+          <<: *filter_python3_branches
+          requires:
+            - test_python3_branches
