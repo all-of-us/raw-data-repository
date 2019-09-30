@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 if 'GAE_SERVICE' in os.environ:
     from rdr_service.services.gcp_logging import FlaskGCPStackDriverLoggingMiddleware
-    app = FlaskGCPLoggingMiddleware(app)
+    app = FlaskGCPStackDriverLoggingMiddleware(app)
 
 app.url_map.converters["participant_id"] = ParticipantIdConverter
 app.config.setdefault("RESTFUL_JSON", {"cls": RdrJsonEncoder})

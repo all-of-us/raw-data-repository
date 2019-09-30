@@ -1,4 +1,5 @@
 # pylint: disable=unused-import
+import collections
 from datetime import datetime, timezone
 import os
 import requests
@@ -150,6 +151,7 @@ class GCPStackDriverLogHandler(logging.Handler):
         self._trace_id = trace_id
         self._buffer_size = buffer_size
         self._buffer = collections.deque()
+        self.logger = client.logger('appengine.googleapis.com%2Frequest_log')
 
     def emit(self, record):
         self._buffer.append(self.format(record))
@@ -159,7 +161,7 @@ class GCPStackDriverLogHandler(logging.Handler):
     def publish_to_stackdriver(self):
         lines = list(map(setup_log_line, self._buffer))
         if lines:
-            logger.log_proto(
+            self.logger.log_proto(
                 message=setup_request_log(lines),
                 severity=self.get_highest_severity_level_from_lines(lines),
                 resource=setup_logging_resource(),
@@ -194,7 +196,7 @@ class FlaskGCPStackDriverLoggingMiddleware:
         """
         trace_id = 0  # see note in docstring
         handler = GCPStackDriverLogHandler(trace_id)
-        self.root_logger.addHandler(handl)
+        self.root_logger.addHandler(handler)
         try:
             return self.app(environ, start_response)
         except:
