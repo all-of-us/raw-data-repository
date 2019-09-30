@@ -95,12 +95,12 @@ def rebuild_bq_participant_task(timestamp, limit=0):
     with dao.session() as session:
         while limit:
             limit -= 1
-            # Note: Since we are being run in parallel now,
-            # Collect all participants who do not have a PS generated yet or the modified date is less than the timestamp.
+            # Note: Since we are being run in parallel now, only grab one participant to rebuild.
             sq = session.query(Participant.participantId, BigQuerySync.id, BigQuerySync.modified). \
                 outerjoin(BigQuerySync, and_(
                 BigQuerySync.pk_id == Participant.participantId,
-                or_(BigQuerySync.tableId == 'participant_summary', BigQuerySync.tableId == 'pdr_participant'))).subquery()
+                or_(BigQuerySync.tableId == 'participant_summary', BigQuerySync.tableId == 'pdr_participant'))).\
+                subquery()
             query = session.query(sq.c.participant_id.label('participantId')). \
                 filter(or_(sq.c.id == None, sq.c.modified < timestamp)).order_by(sq.c.modified)
             if limit:
@@ -113,7 +113,8 @@ def rebuild_bq_participant_task(timestamp, limit=0):
             for row in results:
                 count += 1
                 # All logic for generating a participant summary is here.
-                rebuild_bq_participant(row.participantId, dao=dao, session=session, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen)
+                rebuild_bq_participant(row.participantId, dao=dao, session=session, ps_bqgen=ps_bqgen,
+                                       pdr_bqgen=pdr_bqgen)
 
                 # Generate participant questionnaire module response data
                 modules = (
