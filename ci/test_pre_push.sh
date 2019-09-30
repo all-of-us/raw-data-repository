@@ -11,7 +11,7 @@ then
   echo "No keys may be checked in, but found: $KEY_FILES"
   exit 1
 fi
-echo "No keys found!"
+echo "No private keys found, continuing."
 
 # Pylint checks. Use pylint --list-msgs to see more available messages.
 # More options are set in rest-api/pylintrc.
