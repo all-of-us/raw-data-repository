@@ -92,6 +92,7 @@ def rebuild_bq_participant_task(timestamp, limit=0):
   mod_bqgen = BQPDRQuestionnaireResponseGenerator()
 
   with dao.session() as session:
+    count = 0
     while limit:
       limit -= 1
       # Collect all participants who do not have a PS generated yet or the modified date is less than the timestamp.
@@ -106,7 +107,6 @@ def rebuild_bq_participant_task(timestamp, limit=0):
 
       # sql = dao.query_to_text(query)
       results = query.all()
-      count = 0
 
       for row in results:
         count += 1
