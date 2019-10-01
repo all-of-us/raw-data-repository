@@ -20,7 +20,7 @@ def delete_service_account_keys():
 
     project_name = "projects/" + app_id
     try:
-        service = discovery.build("iam", "v1")
+        service = discovery.build("iam", "v1", cache_discovery=False)
         request = service.projects().serviceAccounts().list(name=project_name)
         response = request.execute()
         accounts = response["accounts"]
@@ -31,7 +31,7 @@ def delete_service_account_keys():
                 continue
 
             serviceaccount = project_name + "/serviceAccounts/" + account["email"]
-            request = list(service.projects().serviceAccounts().keys()).list(
+            request = service.projects().serviceAccounts().keys().list(
                 name=serviceaccount, keyTypes="USER_MANAGED"
             )
             response = request.execute()
@@ -51,7 +51,7 @@ def delete_service_account_keys():
                             )
                         )
 
-                        delete_request = list(service.projects().serviceAccounts().keys()).delete(name=keyname)
+                        delete_request = service.projects().serviceAccounts().keys().delete(name=keyname)
                         delete_request.execute()
                     else:
                         logging.info("Service Account key is {} days old: {}".format(key_age_days, keyname))

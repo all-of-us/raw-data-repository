@@ -131,7 +131,7 @@ class BaseApi(Resource):
         m = self._get_model_to_insert(resource, participant_id)
         result = self._do_insert(m)
         if participant_id:
-            task = bq_participant_summary_update_task.delay(participant_id)
+            task = bq_participant_summary_update_task.apply_async(queue='default', args=(participant_id,))
             task.forget()
         self._save_raw_request(result)
         return self._make_response(result)
@@ -281,7 +281,7 @@ class UpdatableApi(BaseApi):
         m = self._get_model_to_update(resource, id_, expected_version, participant_id)
         self._do_update(m)
         if participant_id:
-            task = bq_participant_summary_update_task.delay(participant_id)
+            task = bq_participant_summary_update_task.apply_async(queue='default', args=(participant_id,))
             task.forget()
         self._save_raw_request(m)
         return self._make_response(m)

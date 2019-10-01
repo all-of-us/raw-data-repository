@@ -7,11 +7,11 @@ if os.getenv('GAE_ENV', '').startswith('standard'):
     _port = os.environ.get('PORT', 8081)
 
 bind = "0.0.0.0:{0}".format(_port)
-workers = 1
-threads = 1
+workers = 2
+threads = 2
 timeout = 60
 log_level = "debug"
-# Do not use "gevent" for worker class, doesn't work.
+# Do not use "gevent" for worker class, doesn't work on App Engine.
 # worker_class = "gevent"
 raw_env = [
     "RDR_CONFIG_PROVIDER={0}".format(os.environ.get('RDR_CONFIG_PROVIDER', None)),
