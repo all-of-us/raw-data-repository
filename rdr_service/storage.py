@@ -1,3 +1,4 @@
+import io
 import os
 import glob
 import shutil
@@ -174,9 +175,6 @@ class GoogleCloudStorageFile(ContextDecorator):
         self.temp_file = None
         self.temp_file_path = None
 
-    def __iter__(self):
-        return self
-
     def read(self, size=None):
         kwargs = {'start': self.position}
         if size is not None:
@@ -225,6 +223,36 @@ class GoogleCloudStorageFile(ContextDecorator):
     def __exit__(self, *exc):
         self.close()
         return False
+
+    def __iter__(self):
+        return self.iter_lines()
+
+    def iter_chunks(self, chunk_size=1024):
+        i = 0
+        while True:
+            chunk = self.blob.download_as_string(start=i, end=i+chunk_size)
+            if chunk:
+                yield chunk
+                i += len(chunk)
+            else:
+                break
+
+    def iter_lines(self):
+        buffer = io.StringIO()
+        chunks = self.iter_chunks()
+        for chunk in chunks:
+            for character in chunk:
+                if character == '\n':
+                    buffer.seek(0)
+                    yield buffer.read()
+                    buffer.seek(0)
+                    buffer.truncate(0)
+                else:
+                    buffer.write(character)
+        if buffer.tell() > 0:
+            buffer.seek(0)
+            yield buffer.read()
+
 
 
 class GoogleCloudStorageProvider(StorageProvider):
