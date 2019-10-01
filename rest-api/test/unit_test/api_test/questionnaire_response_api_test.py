@@ -117,21 +117,21 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     resource['questionnaire']['reference'] = 'Questionnaire/%s/_history/aaa' % questionnaire_id
     self.assertJsonResponseMatches(resource, response)
 
-    #  sending response with history reference
+    #  sending an update response with history reference
     with open(data_path('questionnaire_response4.json')) as fd:
-      history_resource = json.load(fd)
-    history_resource['subject']['reference'] = \
-      history_resource['subject']['reference'].format(participant_id=participant_id)
-    history_resource['questionnaire']['reference'] = \
-      history_resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id,
+      update_resource = json.load(fd)
+    update_resource['subject']['reference'] = \
+      update_resource['subject']['reference'].format(participant_id=participant_id)
+    update_resource['questionnaire']['reference'] = \
+      update_resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id,
                                                             semantic_version='aaa')
-    response = self.send_post(_questionnaire_response_url(participant_id), history_resource)
-    history_resource['id'] = response['id']
-    self.assertJsonResponseMatches(resource, response)
+    response = self.send_post(_questionnaire_response_url(participant_id), update_resource)
+    update_resource['id'] = response['id']
+    self.assertJsonResponseMatches(update_resource, response)
 
     # Do a get to fetch the questionnaire
     get_response = self.send_get(_questionnaire_response_url(participant_id) + "/" + response['id'])
-    self.assertJsonResponseMatches(resource, get_response)
+    self.assertJsonResponseMatches(update_resource, get_response)
 
     code_dao = CodeDao()
 

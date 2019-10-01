@@ -35,8 +35,8 @@ TIME_3 = datetime.datetime(2016, 1, 3)
 TIME_4 = datetime.datetime(2016, 1, 4)
 
 ANSWERS = {'answers': {}}
-QUESTIONNAIRE_RESOURCE = '{"x": "y"}'
-QUESTIONNAIRE_RESOURCE_2 = '{"x": "z"}'
+QUESTIONNAIRE_RESOURCE = '{"x": "y", "version": "V1"}'
+QUESTIONNAIRE_RESOURCE_2 = '{"x": "z", "version": "V1"}'
 QUESTIONNAIRE_RESPONSE_RESOURCE = '{"resourceType": "QuestionnaireResponse", "a": "b"}'
 QUESTIONNAIRE_RESPONSE_RESOURCE_2 = '{"resourceType": "QuestionnaireResponse", "a": "c"}'
 QUESTIONNAIRE_RESPONSE_RESOURCE_3 = '{"resourceType": "QuestionnaireResponse", "a": "d"}'
@@ -159,7 +159,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     p = Participant(participantId=1, biobankId=2)
     self.participant_dao.insert(p)
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
 
@@ -169,7 +170,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     q.concepts.append(QuestionnaireConcept(codeId=self.consent_code_id))
     self.questionnaire_dao.insert(q)
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.extend(self._names_and_email_answers())
     # Answers are there but the participant is not.
     with self.assertRaises(BadRequest):
@@ -181,7 +183,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.participant_dao.insert(p)
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=2, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=2,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.extend(self._names_and_email_answers())
     with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
@@ -192,7 +195,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.participant_dao.insert(p)
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.extend(self._names_and_email_answers())
     with self.assertRaises(Forbidden):
       self.questionnaire_response_dao.insert(qr)
@@ -203,7 +207,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.participant_dao.insert(p)
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.append(QuestionnaireResponseAnswer(questionnaireResponseAnswerId=2,
                                            questionnaireResponseId=1,
                                            questionId=2, valueSystem='c', valueCodeId=4))
@@ -217,7 +222,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.participant_dao.insert(p)
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.append(self.FN_ANSWER)
     with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
@@ -228,7 +234,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.participant_dao.insert(p)
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.append(self.LN_ANSWER)
     # Both first and last name are required.
     with self.assertRaises(BadRequest):
@@ -240,7 +247,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.participant_dao.insert(p)
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.append(self.FN_ANSWER)
     qr.answers.append(self.LN_ANSWER)
     # Email is required.
@@ -253,7 +261,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.participant_dao.insert(p)
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.append(self.EMAIL_ANSWER)
     # First and last name are required.
     with self.assertRaises(BadRequest):
@@ -265,7 +274,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.participant_dao.insert(p)
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
     # First and last name are required.
     with self.assertRaises(BadRequest):
@@ -277,7 +287,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.participant_dao.insert(p)
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.append(self.EMAIL_ANSWER)
     qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
     # First and last name are required.
@@ -290,7 +301,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.participant_dao.insert(p)
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.extend(self._names_and_login_phone_number_answers())
     time = datetime.datetime(2016, 1, 1)
     with FakeClock(time):
@@ -299,6 +311,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
                                         questionnaireVersion=1, participantId=1,
+                                        questionnaireSemanticVersion='V1',
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
                                         created=time,
                                         authored=time)
@@ -313,7 +326,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.participant_dao.insert(p)
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.extend(self._names_and_email_answers())
     time = datetime.datetime(2016, 1, 1)
     with FakeClock(time):
@@ -322,6 +336,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
                                         questionnaireVersion=1, participantId=1,
+                                        questionnaireSemanticVersion='V1',
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
                                         created=time,
                                         authored=time)
@@ -336,7 +351,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.participant_dao.insert(p)
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.append(self.FN_ANSWER)
     qr.answers.append(self.LN_ANSWER)
     qr.answers.append(self.EMAIL_ANSWER)
@@ -348,6 +364,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
                                         questionnaireVersion=1, participantId=1,
+                                        questionnaireSemanticVersion='V1',
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
                                         created=time,
                                         authored=time)
@@ -365,11 +382,13 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.participant_dao.insert(p)
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.extend(self._names_and_email_answers())
     self.questionnaire_response_dao.insert(qr)
     qr2 = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                                participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2)
+                                questionnaireSemanticVersion='V1', participantId=1,
+                                resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2)
     qr2.answers.append(QuestionnaireResponseAnswer(
         questionnaireResponseAnswerId=2,
         questionnaireResponseId=1,
@@ -387,7 +406,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self._setup_questionnaire()
 
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
 
     answer_1 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1,
                                            questionnaireResponseId=1,
@@ -409,6 +429,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
                                         questionnaireVersion=1, participantId=1,
+                                        questionnaireSemanticVersion='V1',
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
                                         created=TIME_2,
                                         authored=TIME_2)
@@ -467,7 +488,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.participant_dao.insert(p)
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.extend(self._names_and_email_answers())
     self.questionnaire_response_dao.insert(qr)
     p.withdrawalStatus = WithdrawalStatus.NO_USE
@@ -482,7 +504,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
       self.participant_dao.insert(p)
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     answer_1 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1,
                                            questionnaireResponseId=1,
                                            questionId=1, valueSystem='a', valueCodeId=3,
@@ -500,6 +523,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
                                         questionnaireVersion=1, participantId=1,
+                                        questionnaireSemanticVersion='V1',
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
                                         created=TIME_2,
                                         authored=TIME_2)
@@ -549,7 +573,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.questionnaire_dao.insert(q2)
 
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+                               questionnaireSemanticVersion='V1', participantId=1,
+                               resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     answer_1 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1,
                                            questionnaireResponseId=1,
                                            questionId=1, valueSystem='a', valueCodeId=3,
@@ -580,6 +605,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     qr2 = QuestionnaireResponse(questionnaireResponseId=2, questionnaireId=2,
                                 questionnaireVersion=1, participantId=1,
+                                questionnaireSemanticVersion='V1',
                                 resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2)
     answer_3 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=6,
                                            questionnaireResponseId=2,
@@ -593,6 +619,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
                                         questionnaireVersion=1, participantId=1,
+                                        questionnaireSemanticVersion='V1',
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
                                         created=TIME_2,
                                         authored=TIME_2)
@@ -607,6 +634,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     # The new questionnaire response should be there, too.
     expected_qr2 = QuestionnaireResponse(questionnaireResponseId=2, questionnaireId=2,
                                          questionnaireVersion=1, participantId=1,
+                                         questionnaireSemanticVersion='V1',
                                          resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE_2, 2),
                                          created=TIME_3,
                                          authored=TIME_3)
@@ -631,6 +659,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     qr3 = QuestionnaireResponse(questionnaireResponseId=3, questionnaireId=2,
                                 questionnaireVersion=1, participantId=1,
+                                questionnaireSemanticVersion='V1',
                                 resource=QUESTIONNAIRE_RESPONSE_RESOURCE_3)
     answer_4 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=7,
                                            questionnaireResponseId=3,
@@ -651,10 +680,11 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     # The third questionnaire response should be there.
     expected_qr3 = QuestionnaireResponse(questionnaireResponseId=3, questionnaireId=2,
-                                        questionnaireVersion=1, participantId=1,
-                                        resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE_3, 3),
-                                        created=TIME_4,
-                                        authored=TIME_4)
+                                         questionnaireVersion=1, participantId=1,
+                                         questionnaireSemanticVersion='V1',
+                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE_3, 3),
+                                         created=TIME_4,
+                                         authored=TIME_4)
     expected_qr3.answers.append(answer_4)
     self.check_response(expected_qr3)
 

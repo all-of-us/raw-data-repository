@@ -227,17 +227,18 @@ class QuestionnaireHistoryDao(BaseDao):
     super(QuestionnaireHistoryDao, self).__init__(QuestionnaireHistory)
 
   def get_id(self, obj):
-    return [obj.questionnaireId, obj.semantic_version]
+    return [obj.questionnaireId, obj.version]
 
-  def get_with_children_with_session(self, session, questionnaireIdAndVersion):
-    query = session.query(QuestionnaireHistory) \
-        .options(subqueryload(QuestionnaireHistory.concepts),
-                 subqueryload(QuestionnaireHistory.questions))
-    return query.get(questionnaireIdAndVersion)
+  def get_with_children_with_session(self, session, questionnaire_id_and_semantic_version):
+    query = session.query(QuestionnaireHistory)\
+      .options(subqueryload(QuestionnaireHistory.concepts), subqueryload(QuestionnaireHistory.questions))\
+      .filter(QuestionnaireHistory.questionnaireId == questionnaire_id_and_semantic_version[0],
+              QuestionnaireHistory.semanticVersion == questionnaire_id_and_semantic_version[1])
+    return query.first()
 
-  def get_with_children(self, questionnaireIdAndVersion):
+  def get_with_children(self, questionnaire_id_and_semantic_version):
     with self.session() as session:
-      return self.get_with_children_with_session(session, questionnaireIdAndVersion)
+      return self.get_with_children_with_session(session, questionnaire_id_and_semantic_version)
 
 
 class QuestionnaireConceptDao(BaseDao):

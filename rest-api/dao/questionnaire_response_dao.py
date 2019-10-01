@@ -120,12 +120,12 @@ class QuestionnaireResponseDao(BaseDao):
     questionnaire_history = (
         QuestionnaireHistoryDao().
         get_with_children_with_session(session, [questionnaire_response.questionnaireId,
-                                                 questionnaire_response.questionnaireVersion]))
+                                                 questionnaire_response.questionnaireSemanticVersion]))
 
     if not questionnaire_history:
-      raise BadRequest('Questionnaire with ID %s, version %s is not found' %
+      raise BadRequest('Questionnaire with ID %s, semantic version %s is not found' %
                        (questionnaire_response.questionnaireId,
-                        questionnaire_response.questionnaireVersion))
+                        questionnaire_response.questionnaireSemanticVersion))
 
     # Get the questions from the questionnaire history record.
     q_question_ids = set([
@@ -403,6 +403,7 @@ class QuestionnaireResponseDao(BaseDao):
 
     qr = QuestionnaireResponse(questionnaireId=questionnaire.questionnaireId,
                                questionnaireVersion=questionnaire.version,
+                               questionnaireSemanticVersion=questionnaire.semanticVersion,
                                participantId=participant_id,
                                authored=authored,
                                language=language,
@@ -441,7 +442,7 @@ class QuestionnaireResponseDao(BaseDao):
         semantic_version = questionnaire_ref_parts[1]
         q = QuestionnaireHistoryDao().get_with_children((questionnaire_id, semantic_version))
         if not q:
-          raise BadRequest('Questionnaire with id %d, version %s is not found' %
+          raise BadRequest('Questionnaire with id %d, semantic version %s is not found' %
                            (questionnaire_id, semantic_version))
         return q
       except ValueError:
