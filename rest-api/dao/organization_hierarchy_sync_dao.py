@@ -15,8 +15,7 @@ from participant_enums import OrganizationType
 from dao.organization_dao import OrganizationDao
 from dao.site_dao import SiteDao
 from dateutil.parser import parse
-
-_FHIR_SYSTEM_PREFIX = 'http://all-of-us.org/fhir/sites/'
+from api_util import HIERARCHY_CONTENT_SYSTEM_PREFIX
 
 
 class OrganizationHierarchySyncDao(BaseDao):
@@ -63,11 +62,11 @@ class OrganizationHierarchySyncDao(BaseDao):
 
   def _update_awardee(self, hierarchy_org_obj):
     awardee_id = self._get_value_from_identifier(hierarchy_org_obj,
-                                                 _FHIR_SYSTEM_PREFIX + 'organization-identifier')
+                                                 HIERARCHY_CONTENT_SYSTEM_PREFIX + 'organization-identifier')
     if awardee_id is None:
       raise BadRequest('No organization-identifier info found in payload data.')
     is_obsolete = ObsoleteStatus('OBSOLETE') if not hierarchy_org_obj.active else None
-    awardee_type = self._get_value_from_extention(hierarchy_org_obj, _FHIR_SYSTEM_PREFIX +
+    awardee_type = self._get_value_from_extention(hierarchy_org_obj, HIERARCHY_CONTENT_SYSTEM_PREFIX +
                                                   'awardee-type')
 
     try:
@@ -105,7 +104,7 @@ class OrganizationHierarchySyncDao(BaseDao):
 
   def _update_organization(self, hierarchy_org_obj):
     organization_id = self._get_value_from_identifier(hierarchy_org_obj,
-                                                      _FHIR_SYSTEM_PREFIX +
+                                                      HIERARCHY_CONTENT_SYSTEM_PREFIX +
                                                       'organization-identifier')
     if organization_id is None:
       raise BadRequest('No organization-identifier info found in payload data.')
@@ -141,7 +140,7 @@ class OrganizationHierarchySyncDao(BaseDao):
 
   def _update_site(self, hierarchy_org_obj):
     google_group = self._get_value_from_identifier(hierarchy_org_obj,
-                                                   _FHIR_SYSTEM_PREFIX + 'organization-identifier')
+                                                   HIERARCHY_CONTENT_SYSTEM_PREFIX + 'organization-identifier')
     if google_group is None:
       raise BadRequest('No organization-identifier info found in payload data.')
     google_group = google_group.lower()
@@ -155,7 +154,7 @@ class OrganizationHierarchySyncDao(BaseDao):
 
     launch_date = None
     launch_date_str = self._get_value_from_extention(hierarchy_org_obj,
-                                                     _FHIR_SYSTEM_PREFIX + 'anticipatedLaunchDate',
+                                                     HIERARCHY_CONTENT_SYSTEM_PREFIX + 'anticipatedLaunchDate',
                                                      'valueDate')
     if launch_date_str:
       try:
@@ -166,7 +165,7 @@ class OrganizationHierarchySyncDao(BaseDao):
     name = hierarchy_org_obj.name
     mayolink_client_number = None
     mayolink_client_number_str = self._get_value_from_identifier(hierarchy_org_obj,
-                                                                 _FHIR_SYSTEM_PREFIX +
+                                                                 HIERARCHY_CONTENT_SYSTEM_PREFIX +
                                                                  'mayo-link-identifier')
     if mayolink_client_number_str:
       try:
@@ -175,10 +174,10 @@ class OrganizationHierarchySyncDao(BaseDao):
         raise BadRequest('Invalid Mayolink Client # {} for site {}'.format(
           mayolink_client_number_str, google_group))
 
-    notes = self._get_value_from_extention(hierarchy_org_obj, _FHIR_SYSTEM_PREFIX + 'notes')
+    notes = self._get_value_from_extention(hierarchy_org_obj, HIERARCHY_CONTENT_SYSTEM_PREFIX + 'notes')
 
     site_status_bool = self._get_value_from_extention(hierarchy_org_obj,
-                                                      _FHIR_SYSTEM_PREFIX +
+                                                      HIERARCHY_CONTENT_SYSTEM_PREFIX +
                                                       'schedulingStatusActive',
                                                       'valueBoolean')
     try:
@@ -187,7 +186,7 @@ class OrganizationHierarchySyncDao(BaseDao):
       raise BadRequest('Invalid site status {} for site {}'.format(site_status, google_group))
 
     enrolling_status_bool = self._get_value_from_extention(hierarchy_org_obj,
-                                                           _FHIR_SYSTEM_PREFIX +
+                                                           HIERARCHY_CONTENT_SYSTEM_PREFIX +
                                                            'enrollmentStatusActive',
                                                            'valueBoolean')
     try:
@@ -197,7 +196,7 @@ class OrganizationHierarchySyncDao(BaseDao):
                        .format(enrolling_status_bool, google_group))
 
     digital_scheduling_bool = self._get_value_from_extention(hierarchy_org_obj,
-                                                             _FHIR_SYSTEM_PREFIX +
+                                                             HIERARCHY_CONTENT_SYSTEM_PREFIX +
                                                              'digitalSchedulingStatusActive',
                                                              'valueBoolean')
     try:
@@ -208,9 +207,9 @@ class OrganizationHierarchySyncDao(BaseDao):
                        .format(digital_scheduling_bool, google_group))
 
     directions = self._get_value_from_extention(hierarchy_org_obj,
-                                                _FHIR_SYSTEM_PREFIX + 'directions')
+                                                HIERARCHY_CONTENT_SYSTEM_PREFIX + 'directions')
     physical_location_name = self._get_value_from_extention(hierarchy_org_obj,
-                                                            _FHIR_SYSTEM_PREFIX + 'locationName')
+                                                            HIERARCHY_CONTENT_SYSTEM_PREFIX + 'locationName')
     address_1, address_2, city, state, zip_code = self._get_address(hierarchy_org_obj)
 
     phone = self._get_contact_point(hierarchy_org_obj, 'phone')
@@ -218,7 +217,7 @@ class OrganizationHierarchySyncDao(BaseDao):
     link = self._get_contact_point(hierarchy_org_obj, 'url')
 
     schedule_instructions = self._get_value_from_extention(hierarchy_org_obj,
-                                                           _FHIR_SYSTEM_PREFIX + 'schedulingInstructions')
+                                                           HIERARCHY_CONTENT_SYSTEM_PREFIX + 'schedulingInstructions')
 
     entity = Site(siteName=name,
                   googleGroup=google_group,
@@ -279,7 +278,7 @@ class OrganizationHierarchySyncDao(BaseDao):
     for type_item in type_arr:
       code_arr = type_item.coding
       for code_item in code_arr:
-        if code_item.system == _FHIR_SYSTEM_PREFIX + 'awardee-type':
+        if code_item.system == HIERARCHY_CONTENT_SYSTEM_PREFIX + 'awardee-type':
           obj_type = code_item.code
           break
 

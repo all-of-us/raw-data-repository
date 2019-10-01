@@ -22,6 +22,7 @@ VIBRENT_FHIR_URL = 'http://joinallofus.org/fhir/'
 VIBRENT_BARCODE_URL = VIBRENT_FHIR_URL + 'barcode'
 VIBRENT_ORDER_URL = VIBRENT_FHIR_URL + 'order-type'
 VIBRENT_FULFILLMENT_URL = VIBRENT_FHIR_URL + 'fulfillment-status'
+HIERARCHY_CONTENT_SYSTEM_PREFIX = 'http://all-of-us.org/fhir/sites/'
 
 def parse_date(date_str, date_format=None, date_only=False):
   """Parses JSON dates.
