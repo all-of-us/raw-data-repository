@@ -3,8 +3,7 @@ import json
 
 import fhirclient.models.questionnaire
 from sqlalchemy.orm import subqueryload
-from werkzeug.exceptions import BadRequest
-
+from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed
 from dao.base_dao import BaseDao, UpdatableDao
 from code_constants import PPI_EXTRA_SYSTEM
 from model.code import CodeType
@@ -74,7 +73,7 @@ class QuestionnaireDao(UpdatableDao):
     # Set the ID in the resource JSON
     resource_json = json.loads(questionnaire.resource)
     resource_json['id'] = str(questionnaire.questionnaireId)
-    resource_json['version'] = str(questionnaire.version)
+    questionnaire.semanticVersion = resource_json['version']
     questionnaire.resource = json.dumps(resource_json)
 
     history = self._make_history(questionnaire, concepts, questions)
@@ -89,7 +88,7 @@ class QuestionnaireDao(UpdatableDao):
     obj.created = existing_obj.created
     resource_json = json.loads(obj.resource)
     resource_json['id'] = str(obj.questionnaireId)
-    resource_json['version'] = str(obj.version)
+    obj.semanticVersion = resource_json['version']
     obj.resource = json.dumps(resource_json)
     super(QuestionnaireDao, self)._do_update(session, obj, existing_obj)
 
@@ -112,11 +111,13 @@ class QuestionnaireDao(UpdatableDao):
     fhir_q = fhirclient.models.questionnaire.Questionnaire(resource_json)
     if not fhir_q.group:
       raise BadRequest('No top-level group found in questionnaire')
+    if 'version' not in resource_json:
+      raise BadRequest('No version info found in questionnaire')
 
     q = Questionnaire(
         resource=json.dumps(resource_json),
         questionnaireId=id_,
-        version=expected_version)
+        semanticVersion=expected_version)
     # Assemble a map of (system, value) -> (display, code_type, parent_id) for passing into CodeDao.
     # Also assemble a list of (system, code) for concepts and (system, code, linkId) for questions,
     # which we'll use later when assembling the child objects.
@@ -138,6 +139,19 @@ class QuestionnaireDao(UpdatableDao):
     cls._add_questions(q, code_id_map, questions)
 
     return q
+
+  def _validate_update(self, session, obj, existing_obj):
+    """Validates that an update is OK before performing it. (Not applied on insert.)
+
+    By default, validates that the object already exists, and if an expected semanticVersion ID is provided,
+    that it matches.
+    """
+    if not existing_obj:
+      raise NotFound('%s with id %s does not exist' % (self.model_type.__name__, id))
+    if self.validate_version_match and existing_obj.semanticVersion != obj.semanticVersion:
+      raise PreconditionFailed('Expected semanticVersion was %s; stored semanticVersion was %s' %
+                               (obj.semanticVersion, existing_obj.semanticVersion))
+    self._validate_model(session, obj)
 
   @classmethod
   def _add_concepts(cls, q, code_id_map, concepts):
@@ -213,7 +227,7 @@ class QuestionnaireHistoryDao(BaseDao):
     super(QuestionnaireHistoryDao, self).__init__(QuestionnaireHistory)
 
   def get_id(self, obj):
-    return [obj.questionnaireId, obj.version]
+    return [obj.questionnaireId, obj.semantic_version]
 
   def get_with_children_with_session(self, session, questionnaireIdAndVersion):
     query = session.query(QuestionnaireHistory) \

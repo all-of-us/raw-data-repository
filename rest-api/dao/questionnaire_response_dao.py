@@ -34,7 +34,7 @@ from participant_enums import QuestionnaireStatus, get_race, QuestionnaireDefini
 _QUESTIONNAIRE_PREFIX = 'Questionnaire/'
 _QUESTIONNAIRE_HISTORY_SEGMENT = '/_history/'
 _QUESTIONNAIRE_REFERENCE_FORMAT = (_QUESTIONNAIRE_PREFIX + "%d" +
-                                   _QUESTIONNAIRE_HISTORY_SEGMENT + "%d")
+                                   _QUESTIONNAIRE_HISTORY_SEGMENT + "%s")
 
 _SIGNED_CONSENT_EXTENSION = (
     'http://terminology.pmi-ops.org/StructureDefinition/consent-form-signed-pdf')
@@ -438,11 +438,11 @@ class QuestionnaireResponseDao(BaseDao):
         raise BadRequest('Questionnaire id %s is invalid' % questionnaire_reference)
       try:
         questionnaire_id = int(questionnaire_ref_parts[0])
-        version = int(questionnaire_ref_parts[1])
-        q = QuestionnaireHistoryDao().get_with_children((questionnaire_id, version))
+        semantic_version = questionnaire_ref_parts[1]
+        q = QuestionnaireHistoryDao().get_with_children((questionnaire_id, semantic_version))
         if not q:
-          raise BadRequest('Questionnaire with id %d, version %d is not found' %
-                           (questionnaire_id, version))
+          raise BadRequest('Questionnaire with id %d, version %s is not found' %
+                           (questionnaire_id, semantic_version))
         return q
       except ValueError:
         raise BadRequest('Questionnaire id %s is invalid' % questionnaire_reference)
@@ -455,7 +455,8 @@ class QuestionnaireResponseDao(BaseDao):
         if not q:
           raise BadRequest('Questionnaire with id %d is not found' % questionnaire_id)
         # Mutate the questionnaire reference to include the version.
-        questionnaire_reference = _QUESTIONNAIRE_REFERENCE_FORMAT % (questionnaire_id, q.version)
+        questionnaire_reference = _QUESTIONNAIRE_REFERENCE_FORMAT % (questionnaire_id,
+                                                                     q.semanticVersion)
         resource_json["questionnaire"]["reference"] = questionnaire_reference
         return q
       except ValueError:

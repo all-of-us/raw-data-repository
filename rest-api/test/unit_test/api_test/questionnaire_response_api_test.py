@@ -114,7 +114,19 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     response = self.send_post(_questionnaire_response_url(participant_id), resource)
     resource['id'] = response['id']
     # The resource gets rewritten to include the version
-    resource['questionnaire']['reference'] = 'Questionnaire/%s/_history/1' % questionnaire_id
+    resource['questionnaire']['reference'] = 'Questionnaire/%s/_history/aaa' % questionnaire_id
+    self.assertJsonResponseMatches(resource, response)
+
+    #  sending response with history reference
+    with open(data_path('questionnaire_response4.json')) as fd:
+      history_resource = json.load(fd)
+    history_resource['subject']['reference'] = \
+      history_resource['subject']['reference'].format(participant_id=participant_id)
+    history_resource['questionnaire']['reference'] = \
+      history_resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id,
+                                                            semantic_version='aaa')
+    response = self.send_post(_questionnaire_response_url(participant_id), history_resource)
+    history_resource['id'] = response['id']
     self.assertJsonResponseMatches(resource, response)
 
     # Do a get to fetch the questionnaire
