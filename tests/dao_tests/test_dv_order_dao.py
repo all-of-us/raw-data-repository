@@ -85,25 +85,24 @@ class DvOrderDaoTestBase(BaseTestCase):
         self.assertEqual(status, OrderShipmentTrackingStatus.IN_TRANSIT)
 
     def test_from_client_json(self):
-        # pylint: disable=unused-variable
-        req_payload = self.send_post(
+        self.send_post(
             "SupplyRequest",
             request_data=self.post_request,
             expected_status=http.client.CREATED,
         )
-        deliv_payload = self.send_post(
+        self.send_post(
             "SupplyDelivery",
             request_data=self.post_delivery,
             expected_status=http.client.CREATED,
         )
 
-        existing_obj = self.dao.from_client_json(self.post_delivery, participant_id=self.participant.participantId)
+        result_from_dao = self.dao.from_client_json(self.post_delivery, participant_id=self.participant.participantId)
 
         # Test values from dv_order_api_post_supply_delivery.json file
-        self.assertEqual(parse_date("2019-04-01T00:00:00+00:00"), existing_obj.shipmentEstArrival)
-        self.assertEqual("sample carrier", existing_obj.shipmentCarrier)
-        self.assertEqual("P12435464423", existing_obj.trackingId)
-        self.assertEqual(parse_date("2019-03-01T00:00:00+00:00"), existing_obj.shipmentLastUpdate)
+        self.assertEqual(parse_date("2019-04-01T00:00:00+00:00"), result_from_dao.shipmentEstArrival)
+        self.assertEqual("sample carrier", result_from_dao.shipmentCarrier)
+        self.assertEqual("P12435464423", result_from_dao.trackingId)
+        self.assertEqual(parse_date("2019-03-01T00:00:00+00:00"), result_from_dao.shipmentLastUpdate)
 
         # Address
         test_address = {
@@ -112,10 +111,10 @@ class DvOrderDaoTestBase(BaseTestCase):
             "postalCode": "22033",
             "line": ["4114 Legato Rd", "test line 2"],
         }
-        self.assertEqual(test_address["city"], existing_obj.address["city"])
-        self.assertEqual(get_code_id(test_address, self.code_dao, "state", "State_"), existing_obj.address["state"])
-        self.assertEqual(test_address["postalCode"], existing_obj.address["postalCode"])
-        self.assertEqual(test_address["line"], existing_obj.address["line"])
+        self.assertEqual(test_address["city"], result_from_dao.address["city"])
+        self.assertEqual(get_code_id(test_address, self.code_dao, "state", "State_"), result_from_dao.address["state"])
+        self.assertEqual(test_address["postalCode"], result_from_dao.address["postalCode"])
+        self.assertEqual(test_address["line"], result_from_dao.address["line"])
 
     @mock.patch("rdr_service.dao.dv_order_dao.MayoLinkApi")
     def test_service_unavailable(self, mocked_api):
