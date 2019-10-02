@@ -26,9 +26,10 @@ class BQHPOGenerator(BigQueryGenerator):
       data = dao.to_dict(row)
       return BQRecord(schema=BQHPOSchema, data=data, convert_to_enum=convert_to_enum)
 
-def bq_hpo_update():
+def bq_hpo_update(project_id=None):
   """
   Generate all new HPO records for BQ. Since there is called from a tool, this is not deferred.
+  :param project_id: Override the project_id
   """
   dao = BigQuerySyncDao()
   with dao.session() as session:
@@ -38,4 +39,4 @@ def bq_hpo_update():
     logging.info('BQ HPO table: rebuilding {0} records...'.format(len(results)))
     for row in results:
       bqr = gen.make_bqrecord(row.hpoId)
-      gen.save_bqrecord(row.hpoId, bqr, bqtable=BQHPO, dao=dao, session=session)
+      gen.save_bqrecord(row.hpoId, bqr, bqtable=BQHPO, dao=dao, session=session, project_id=project_id)

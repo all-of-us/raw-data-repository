@@ -208,6 +208,7 @@ def sync_bigquery_handler(dryrun=False):
       errors = ''
       error_count = 0
       try:
+        # pylint: disable=unused-variable
         max_created, max_modified = _get_remote_max_timestamps(project_id, dataset_id, table_id) \
                                           if dryrun is False else (datetime.min, datetime.min)
       except httplib.HTTPException:
@@ -216,8 +217,8 @@ def sync_bigquery_handler(dryrun=False):
 
       # figure out how many records need to be sync'd and divide into slices.
       total_rows = session.query(BigQuerySync.id). \
-                  filter(BigQuerySync.tableId == table_id, BigQuerySync.datasetId == dataset_id,
-                         or_(BigQuerySync.created > max_created, BigQuerySync.modified > max_modified)).count()
+                  filter(BigQuerySync.projectId == project_id, BigQuerySync.tableId == table_id,
+                         BigQuerySync.datasetId == dataset_id, BigQuerySync.modified > max_modified).count()
 
       if total_rows == 0:
         logging.info('No rows to sync for {0}.{1}.'.format(dataset_id, table_id))
@@ -227,16 +228,15 @@ def sync_bigquery_handler(dryrun=False):
 
       while slice_num < slices:
         results = session.query(BigQuerySync.id, BigQuerySync.created, BigQuerySync.modified). \
-              filter(BigQuerySync.tableId == table_id, BigQuerySync.datasetId == dataset_id,
-                     or_(BigQuerySync.created > max_created, BigQuerySync.modified > max_modified)).\
-              order_by(BigQuerySync.modified).\
-              slice(slice_num * batch_size, (slice_num + 1) * batch_size).\
-              all()
+              filter(BigQuerySync.projectId == project_id, BigQuerySync.tableId == table_id,
+                     BigQuerySync.datasetId == dataset_id, BigQuerySync.modified > max_modified).\
+              order_by(BigQuerySync.modified).limit(batch_size).all()
         slice_num += 1
         batch = list()
 
         for row in results:
           count += 1
+          max_modified = row.modified
           rec = session.query(BigQuerySync.resource).filter(BigQuerySync.id == row.id).first()
           if isinstance(rec.resource, (str, unicode)):
             rec_data = json.loads(rec.resource)

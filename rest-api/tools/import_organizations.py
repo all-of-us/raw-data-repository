@@ -595,9 +595,9 @@ def main(args):
 
   # Update Organization BigQuery records
   if not args.dry_run:
-    bq_hpo_update()
-    bq_organization_update()
-    bq_site_update()
+    bq_hpo_update(args.project)
+    bq_organization_update(args.project)
+    bq_site_update(args.project)
 
 
 if __name__ == '__main__':
