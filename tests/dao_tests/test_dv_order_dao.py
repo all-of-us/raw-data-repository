@@ -86,7 +86,6 @@ class DvOrderDaoTestBase(BaseTestCase):
 
     def test_from_client_json(self):
         # pylint: disable=unused-variable
-        
         req_payload = self.send_post(
             "SupplyRequest",
             request_data=self.post_request,

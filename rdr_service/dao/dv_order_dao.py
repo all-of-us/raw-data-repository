@@ -144,8 +144,11 @@ class DvOrderDao(UpdatableDao):
             existing_obj.shipmentCarrier = fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "carrier").valueString
 
             # shipmentEstArrival
-            # The fhir_resource.get() method will raise an exception on "expected-delivery-date" if the resource doesn't have that path
-            delivery_date_url = [extension.url for extension in fhir_resource["extension"] if extension.url == VIBRENT_FHIR_URL + "expected-delivery-date"]
+            # The fhir_resource.get() method
+            # will raise an exception on "expected-delivery-date"
+            # if the resource doesn't have that path
+            delivery_date_url = [extension.url for extension in fhir_resource["extension"]
+                                 if extension.url == VIBRENT_FHIR_URL + "expected-delivery-date"]
             if delivery_date_url:
                 existing_obj.shipmentEstArrival = parse_date(
                      fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime
