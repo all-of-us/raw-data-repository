@@ -26,9 +26,10 @@ class BQSiteGenerator(BigQueryGenerator):
       return BQRecord(schema=BQSiteSchema, data=data, convert_to_enum=convert_to_enum)
 
 
-def bq_site_update():
+def bq_site_update(project_id=None):
   """
   Generate all new Site records for BQ. Since there is called from a tool, this is not deferred.
+  :param project_id: Override the project_id
   """
   dao = BigQuerySyncDao()
   with dao.session() as session:
@@ -38,4 +39,4 @@ def bq_site_update():
 
     for row in results:
       bqr = gen.make_bqrecord(row.siteId)
-      gen.save_bqrecord(row.siteId, bqr, bqtable=BQSite, dao=dao, session=session)
+      gen.save_bqrecord(row.siteId, bqr, bqtable=BQSite, dao=dao, session=session, project_id=project_id)
