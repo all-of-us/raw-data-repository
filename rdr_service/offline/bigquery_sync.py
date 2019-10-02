@@ -1,6 +1,7 @@
 import json
 import logging
 import math
+import random
 from datetime import datetime
 
 from googleapiclient.discovery import build
@@ -191,17 +192,24 @@ def sync_bigquery_handler(dryrun=False):
     # Google says maximum of 500 in a batch. Pretty sure they are talking about log shipping, I believe
     # that one participant summary record is larger than their expected average log record size.
     batch_size = 250
-    run_limit = (2 * 60) - 30  # Only run for 90 seconds before exiting, so we don't have overlapping cron jobs.
+    run_limit = (2 * 60) - 10  # Run for 110 seconds before exiting, so we don't have overlapping cron jobs.
+    limit_reached = False
     start_ts = datetime.now()
+    table_list = list()
 
     with dao.session() as session:
         tables = session.query(BigQuerySync.projectId, BigQuerySync.datasetId, BigQuerySync.tableId). \
             distinct(BigQuerySync.projectId, BigQuerySync.datasetId, BigQuerySync.tableId).all()
 
+        # don't always process the list in the same order so we don't get stuck processing the same table each run.
         for table_row in tables:
-            project_id = table_row.projectId
-            dataset_id = table_row.datasetId
-            table_id = table_row.tableId
+            table_list.append((table_row.projectId, table_row.datasetId, table_row.tableId))
+        random.shuffle(table_list)
+
+        for item in table_list:
+            project_id = item[0]
+            dataset_id = item[1]
+            table_id = item[2]
             count = 0
             errors = ''
             error_count = 0
@@ -259,6 +267,7 @@ def sync_bigquery_handler(dryrun=False):
                 # Don't exceed our execution time limit.
                 if (datetime.now() - start_ts).seconds > run_limit:
                     logging.info('Hit {0} second time limit.'.format(run_limit))
+                    limit_reached = True
                     break
 
             if errors:
@@ -271,6 +280,9 @@ def sync_bigquery_handler(dryrun=False):
                 logging.info(msg)
             else:
                 logging.info(msg)
+
+            if limit_reached:
+                break
 
     return total_inserts
 
