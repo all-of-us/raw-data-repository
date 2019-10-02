@@ -39,4 +39,5 @@ def bq_organization_update(project_id=None):
 
     for row in results:
       bqr = gen.make_bqrecord(row.organizationId)
-      gen.save_bqrecord(row.organizationId, bqr, bqtable=BQOrganization, dao=dao, session=session, project_id=project_id)
+      gen.save_bqrecord(row.organizationId, bqr, bqtable=BQOrganization, dao=dao, session=session,
+                        project_id=project_id)

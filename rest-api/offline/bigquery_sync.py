@@ -208,6 +208,7 @@ def sync_bigquery_handler(dryrun=False):
       errors = ''
       error_count = 0
       try:
+        # pylint: disable=unused-variable
         max_created, max_modified = _get_remote_max_timestamps(project_id, dataset_id, table_id) \
                                           if dryrun is False else (datetime.min, datetime.min)
       except httplib.HTTPException:
