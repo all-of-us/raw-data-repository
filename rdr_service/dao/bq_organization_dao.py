@@ -27,9 +27,10 @@ class BQOrganizationGenerator(BigQueryGenerator):
             return BQRecord(schema=BQOrganizationSchema, data=data, convert_to_enum=convert_to_enum)
 
 
-def bq_organization_update():
+def bq_organization_update(project_id=None):
     """
     Generate all new Organization records for BQ. Since there is called from a tool, this is not deferred.
+    :param project_id: Override the project_id
     """
     dao = BigQuerySyncDao()
     with dao.session() as session:
@@ -39,4 +40,5 @@ def bq_organization_update():
 
         for row in results:
             bqr = gen.make_bqrecord(row.organizationId)
-            gen.save_bqrecord(row.organizationId, bqr, bqtable=BQOrganization, dao=dao, session=session)
+            gen.save_bqrecord(row.organizationId, bqr, bqtable=BQOrganization, dao=dao, session=session,
+                              project_id=project_id)
