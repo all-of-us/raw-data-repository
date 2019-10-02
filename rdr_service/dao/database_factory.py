@@ -57,8 +57,8 @@ def get_db_connection_string(backup=False, instance_name=None) -> str:
     :return: connection string.
     """
     # RDR tools define the connection string we should use in the environment var.
-    env_db_connection_string = os.getenv('DB_CONNECTION_STRING')
-    if env_db_connection_string:
+    env_db_connection_string = os.environ.get('DB_CONNECTION_STRING', None)
+    if not os.environ.get("UNITTEST_FLAG", None) and env_db_connection_string:
         return env_db_connection_string
 
     # Only import "config" on demand, as it depends on Datastore packages (and
