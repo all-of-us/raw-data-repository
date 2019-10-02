@@ -4,8 +4,9 @@ import json
 import mock
 from werkzeug.exceptions import ServiceUnavailable
 
-from rdr_service.api_util import VIBRENT_FHIR_URL
+from rdr_service.api_util import VIBRENT_FHIR_URL, parse_date, get_code_id
 from rdr_service.dao.dv_order_dao import DvOrderDao
+from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
@@ -13,7 +14,6 @@ from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus
 from tests.test_data import load_test_data_json
 from tests.helpers.unittest_base import BaseTestCase
-
 
 class DvOrderDaoTestBase(BaseTestCase):
     def setUp(self):
@@ -25,6 +25,7 @@ class DvOrderDaoTestBase(BaseTestCase):
         self.put_request = load_test_data_json("dv_order_api_put_supply_request.json")
         self.dao = DvOrderDao()
 
+        self.code_dao = CodeDao()
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
 
@@ -82,6 +83,40 @@ class DvOrderDaoTestBase(BaseTestCase):
             fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "tracking-status").valueString
         )
         self.assertEqual(status, OrderShipmentTrackingStatus.IN_TRANSIT)
+
+    def test_from_client_json(self):
+        # pylint: disable=unused-variable
+        
+        req_payload = self.send_post(
+            "SupplyRequest",
+            request_data=self.post_request,
+            expected_status=http.client.CREATED,
+        )
+        deliv_payload = self.send_post(
+            "SupplyDelivery",
+            request_data=self.post_delivery,
+            expected_status=http.client.CREATED,
+        )
+
+        existing_obj = self.dao.from_client_json(self.post_delivery, participant_id=self.participant.participantId)
+
+        # Test values from dv_order_api_post_supply_delivery.json file
+        self.assertEqual(parse_date("2019-04-01T00:00:00+00:00"), existing_obj.shipmentEstArrival)
+        self.assertEqual("sample carrier", existing_obj.shipmentCarrier)
+        self.assertEqual("P12435464423", existing_obj.trackingId)
+        self.assertEqual(parse_date("2019-03-01T00:00:00+00:00"), existing_obj.shipmentLastUpdate)
+
+        # Address
+        test_address = {
+                "city": "Fairfax",
+                "state": "VA",
+                "postalCode": "22033",
+                "line": ["4114 Legato Rd", "test line 2"],
+            }
+        self.assertEqual(test_address["city"], existing_obj.address["city"])
+        self.assertEqual(get_code_id(test_address, self.code_dao, "state", "State_"), existing_obj.address["state"])
+        self.assertEqual(test_address["postalCode"], existing_obj.address["postalCode"])
+        self.assertEqual(test_address["line"], existing_obj.address["line"])
 
     @mock.patch("rdr_service.dao.dv_order_dao.MayoLinkApi")
     def test_service_unavailable(self, mocked_api):
