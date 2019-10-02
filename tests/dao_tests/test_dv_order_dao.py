@@ -107,11 +107,11 @@ class DvOrderDaoTestBase(BaseTestCase):
 
         # Address
         test_address = {
-                "city": "Fairfax",
-                "state": "VA",
-                "postalCode": "22033",
-                "line": ["4114 Legato Rd", "test line 2"],
-            }
+            "city": "Fairfax",
+            "state": "VA",
+            "postalCode": "22033",
+            "line": ["4114 Legato Rd", "test line 2"],
+        }
         self.assertEqual(test_address["city"], existing_obj.address["city"])
         self.assertEqual(get_code_id(test_address, self.code_dao, "state", "State_"), existing_obj.address["state"])
         self.assertEqual(test_address["postalCode"], existing_obj.address["postalCode"])

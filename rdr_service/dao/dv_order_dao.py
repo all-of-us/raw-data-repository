@@ -151,8 +151,7 @@ class DvOrderDao(UpdatableDao):
                                  if extension.url == VIBRENT_FHIR_URL + "expected-delivery-date"]
             if delivery_date_url:
                 existing_obj.shipmentEstArrival = parse_date(
-                     fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime
-                 )
+                    fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime)
 
             existing_obj.trackingId = fhir_resource.identifier.get(system=VIBRENT_FHIR_URL + "trackingId").value
             # USPS status
