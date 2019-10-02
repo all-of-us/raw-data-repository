@@ -18,7 +18,12 @@ app.url_map.converters["participant_id"] = ParticipantIdConverter
 app.config.setdefault("RESTFUL_JSON", {"cls": RdrJsonEncoder})
 
 # Add celery configuration information into Flask app.
-_result_backend = config.get_db_config()['celery_db_connection_string']
+if not os.environ.get("UNITTEST_FLAG", None):
+    key = 'celery_db_connection_string'
+else:
+    key = 'unittest_celery_db_connection_string'
+
+_result_backend = config.get_db_config()[key]
 _broker_url = config.get_db_config()['celery_broker_url']
 
 app.config.update(

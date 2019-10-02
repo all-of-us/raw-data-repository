@@ -53,6 +53,7 @@ echo '{"db_connection_string": "'$DB_CONNECTION_STRING'", ' \
      ' "backup_db_connection_string": "'$DB_CONNECTION_STRING'", ' \
      ' "unittest_db_connection_string": "'mysql+mysqldb://root@127.0.0.1:9306'",' \
      ' "celery_db_connection_string": "'db+mysql://${ALEMBIC_DB_USER}:${RDR_PASSWORD}@127.0.0.1/rdr_tasks?charset=utf8'",' \
+     ' "unittest_celery_db_connection_string": "'db+mysql://root@127.0.0.1:9306/rdr_tasks?charset=utf8'",' \
      ' "celery_broker_url": "pyamqp://guest:@localhost//", ' \
      ' "db_password": "'$RDR_PASSWORD'", ' \
      ' "db_connection_name": "", '\
