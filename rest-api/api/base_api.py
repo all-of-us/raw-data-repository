@@ -1,5 +1,4 @@
 import logging
-import json
 import app_util
 from flask import request, jsonify, url_for
 from flask_restful import Resource
