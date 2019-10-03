@@ -8,12 +8,15 @@ from rdr_service.api_util import VIBRENT_FHIR_URL, parse_date, get_code_id
 from rdr_service.dao.dv_order_dao import DvOrderDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.model.biobank_dv_order import BiobankDVOrder
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
 from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus
 from tests.test_data import load_test_data_json
 from tests.helpers.unittest_base import BaseTestCase
+
+from collections import namedtuple
 
 class DvOrderDaoTestBase(BaseTestCase):
     def setUp(self):
@@ -85,36 +88,30 @@ class DvOrderDaoTestBase(BaseTestCase):
         self.assertEqual(status, OrderShipmentTrackingStatus.IN_TRANSIT)
 
     def test_from_client_json(self):
-        self.send_post(
-            "SupplyRequest",
-            request_data=self.post_request,
-            expected_status=http.client.CREATED,
-        )
-        self.send_post(
-            "SupplyDelivery",
-            request_data=self.post_delivery,
-            expected_status=http.client.CREATED,
-        )
+        self.make_supply_posts()
+
+        expected_result = self.build_expected_data(self.post_delivery)
 
         result_from_dao = self.dao.from_client_json(self.post_delivery, participant_id=self.participant.participantId)
 
-        # Test values from dv_order_api_post_supply_delivery.json file
-        self.assertEqual(parse_date("2019-04-01T00:00:00+00:00"), result_from_dao.shipmentEstArrival)
-        self.assertEqual("sample carrier", result_from_dao.shipmentCarrier)
-        self.assertEqual("P12435464423", result_from_dao.trackingId)
-        self.assertEqual(parse_date("2019-03-01T00:00:00+00:00"), result_from_dao.shipmentLastUpdate)
+        # run tests against result_from_dao
+        for i, test_field in enumerate(expected_result):
+            self.assertEqual(test_field, getattr(result_from_dao, expected_result._fields[i]))
 
-        # Address
-        test_address = {
-            "city": "Fairfax",
-            "state": "VA",
-            "postalCode": "22033",
-            "line": ["4114 Legato Rd", "test line 2"],
-        }
-        self.assertEqual(test_address["city"], result_from_dao.address["city"])
-        self.assertEqual(get_code_id(test_address, self.code_dao, "state", "State_"), result_from_dao.address["state"])
-        self.assertEqual(test_address["postalCode"], result_from_dao.address["postalCode"])
-        self.assertEqual(test_address["line"], result_from_dao.address["line"])
+    def test_dv_order_post_inserted_correctly(self):
+
+        expected_result = self.build_expected_data(self.post_delivery)
+
+        # make posts to create
+        self.make_supply_posts()
+
+        # return a BiobankDVOrder object from database
+        with self.dao.session() as session:
+            dv_order_result = session.query(BiobankDVOrder).filter_by(participantId=self.participant.participantId).first()
+
+        # run tests against dv_order_result
+        for i, test_field in enumerate(expected_result):
+            self.assertEqual(test_field, getattr(dv_order_result, expected_result._fields[i]))
 
     @mock.patch("rdr_service.dao.dv_order_dao.MayoLinkApi")
     def test_service_unavailable(self, mocked_api):
@@ -125,3 +122,48 @@ class DvOrderDaoTestBase(BaseTestCase):
         with self.assertRaises(ServiceUnavailable):
             mocked_api.return_value.post.side_effect = raises
             self.dao.send_order(self.post_delivery, self.participant.participantId)
+
+    def build_expected_data(self, json_data):
+        """Helper function to build the data we are testing against from the test-data file."""
+        fhir_resource = SimpleFhirR4Reader(json_data)
+
+        # add fields to test
+        test_fields = {
+            'shipmentEstArrival': parse_date(fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime),
+            'shipmentCarrier': fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "carrier").valueString,
+            'trackingId': fhir_resource.identifier.get(system=VIBRENT_FHIR_URL + "trackingId").value,
+            'shipmentLastUpdate': parse_date(fhir_resource.occurrenceDateTime),
+            'order_id': int(fhir_resource.basedOn[0].identifier.value),
+        }
+
+        # Address Handling
+        fhir_address = fhir_resource.contained.get(resourceType="Location").get("address")
+        address_fields = {
+            "streetAddress1": fhir_address.line[0],
+            "streetAddress2": fhir_address.line[1],
+            "city": fhir_address.city,
+            "stateId": get_code_id(fhir_address, self.code_dao, "state", "State_"),
+            "zipCode": fhir_address.postalCode,
+        }
+        test_fields.update(address_fields)
+
+        Supply = namedtuple('Supply', test_fields.keys())
+        expected_data = Supply(**test_fields)
+
+        return expected_data
+
+    def make_supply_posts(self, supply_request=True, supply_delivery=True):
+        """Helper function to make the POSTs for tests that depend on existing dv_orders"""
+        if supply_request:
+            self.send_post(
+                "SupplyRequest",
+                request_data=self.post_request,
+                expected_status=http.client.CREATED,
+            )
+
+        if supply_delivery:
+            self.send_post(
+                "SupplyDelivery",
+                request_data=self.post_delivery,
+                expected_status=http.client.CREATED,
+            )
