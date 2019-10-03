@@ -969,7 +969,7 @@ class FakeParticipantGenerator(object):
                'status': 'completed',
                'subject': {'reference': 'Patient/%s' % participant_id},
                'questionnaire': {'reference':
-                                 'Questionnaire/%d/_history/%d' % (q_id_and_version[0],
+                                 'Questionnaire/%d/_history/%s' % (q_id_and_version[0],
                                                                     q_id_and_version[1])},
                'group': {}}
     if questions_with_answers:
