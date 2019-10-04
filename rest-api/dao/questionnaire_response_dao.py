@@ -34,7 +34,7 @@ from participant_enums import QuestionnaireStatus, get_race, QuestionnaireDefini
 _QUESTIONNAIRE_PREFIX = 'Questionnaire/'
 _QUESTIONNAIRE_HISTORY_SEGMENT = '/_history/'
 _QUESTIONNAIRE_REFERENCE_FORMAT = (_QUESTIONNAIRE_PREFIX + "%d" +
-                                   _QUESTIONNAIRE_HISTORY_SEGMENT + "%d")
+                                   _QUESTIONNAIRE_HISTORY_SEGMENT + "%s")
 
 _SIGNED_CONSENT_EXTENSION = (
     'http://terminology.pmi-ops.org/StructureDefinition/consent-form-signed-pdf')
@@ -120,12 +120,12 @@ class QuestionnaireResponseDao(BaseDao):
     questionnaire_history = (
         QuestionnaireHistoryDao().
         get_with_children_with_session(session, [questionnaire_response.questionnaireId,
-                                                 questionnaire_response.questionnaireVersion]))
+                                                 questionnaire_response.questionnaireSemanticVersion]))
 
     if not questionnaire_history:
-      raise BadRequest('Questionnaire with ID %s, version %s is not found' %
+      raise BadRequest('Questionnaire with ID %s, semantic version %s is not found' %
                        (questionnaire_response.questionnaireId,
-                        questionnaire_response.questionnaireVersion))
+                        questionnaire_response.questionnaireSemanticVersion))
 
     # Get the questions from the questionnaire history record.
     q_question_ids = set([
@@ -403,6 +403,7 @@ class QuestionnaireResponseDao(BaseDao):
 
     qr = QuestionnaireResponse(questionnaireId=questionnaire.questionnaireId,
                                questionnaireVersion=questionnaire.version,
+                               questionnaireSemanticVersion=questionnaire.semanticVersion,
                                participantId=participant_id,
                                authored=authored,
                                language=language,
@@ -438,11 +439,11 @@ class QuestionnaireResponseDao(BaseDao):
         raise BadRequest('Questionnaire id %s is invalid' % questionnaire_reference)
       try:
         questionnaire_id = int(questionnaire_ref_parts[0])
-        version = int(questionnaire_ref_parts[1])
-        q = QuestionnaireHistoryDao().get_with_children((questionnaire_id, version))
+        semantic_version = questionnaire_ref_parts[1]
+        q = QuestionnaireHistoryDao().get_with_children((questionnaire_id, semantic_version))
         if not q:
-          raise BadRequest('Questionnaire with id %d, version %d is not found' %
-                           (questionnaire_id, version))
+          raise BadRequest('Questionnaire with id %d, semantic version %s is not found' %
+                           (questionnaire_id, semantic_version))
         return q
       except ValueError:
         raise BadRequest('Questionnaire id %s is invalid' % questionnaire_reference)
@@ -455,7 +456,8 @@ class QuestionnaireResponseDao(BaseDao):
         if not q:
           raise BadRequest('Questionnaire with id %d is not found' % questionnaire_id)
         # Mutate the questionnaire reference to include the version.
-        questionnaire_reference = _QUESTIONNAIRE_REFERENCE_FORMAT % (questionnaire_id, q.version)
+        questionnaire_reference = _QUESTIONNAIRE_REFERENCE_FORMAT % (questionnaire_id,
+                                                                     q.semanticVersion)
         resource_json["questionnaire"]["reference"] = questionnaire_reference
         return q
       except ValueError:

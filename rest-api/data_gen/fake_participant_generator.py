@@ -160,7 +160,7 @@ class FakeParticipantGenerator(object):
       questionnaire = questionnaire_dao.get_latest_questionnaire_with_concept(code.codeId)
       if questionnaire is None:
         raise BadRequest('Questionnaire for code %s missing; import data.' % concept)
-      questionnaire_id_and_version = (questionnaire.questionnaireId, questionnaire.version)
+      questionnaire_id_and_version = (questionnaire.questionnaireId, questionnaire.semanticVersion)
       if concept == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
         self._consent_questionnaire_id_and_version = questionnaire_id_and_version
       elif concept == THE_BASICS_PPI_MODULE:
@@ -969,7 +969,7 @@ class FakeParticipantGenerator(object):
                'status': 'completed',
                'subject': {'reference': 'Patient/%s' % participant_id},
                'questionnaire': {'reference':
-                                 'Questionnaire/%d/_history/%d' % (q_id_and_version[0],
+                                 'Questionnaire/%d/_history/%s' % (q_id_and_version[0],
                                                                     q_id_and_version[1])},
                'group': {}}
     if questions_with_answers:

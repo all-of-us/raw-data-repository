@@ -3,11 +3,12 @@
   "status": "published",
   "date": "2016-09-13T10:19:52-04:00",
   "publisher": "admin",
-  "version": "aaa",
+  "version": "abc123",
   "group": {
     "linkId": "root",
     "required": true,
     "repeats": false,
+    "text": "questionnaire with version",
     "group": [
       {
         "linkId": "1"

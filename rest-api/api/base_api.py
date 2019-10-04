@@ -1,5 +1,4 @@
 import logging
-
 import app_util
 from flask import request, jsonify, url_for
 from flask_restful import Resource
@@ -240,7 +239,7 @@ class UpdatableApi(BaseApi):
 
   def _make_response(self, obj):
     result = super(UpdatableApi, self)._make_response(obj)
-    etag = _make_etag(obj.version)
+    etag = self.make_etag(obj.version)
     result['meta'] = {'versionId': etag}
     return result, 200, {'ETag': etag}
 
@@ -265,13 +264,19 @@ class UpdatableApi(BaseApi):
       etag = request.headers.get('If-Match')
       if not etag:
         raise BadRequest("If-Match is missing for PUT request")
-      expected_version = _parse_etag(etag)
+      expected_version = self.parse_etag(etag)
     m = self._get_model_to_update(resource, id_, expected_version, participant_id)
     self._do_update(m)
     if participant_id:
       deferred.defer(deferred_bq_participant_summary_update, participant_id)
     self._save_raw_request(m)
     return self._make_response(m)
+
+  def make_etag(self, version):
+    return _make_etag(version)
+
+  def parse_etag(self, etag):
+    return _parse_etag(etag)
 
   def patch(self, id_):
     """Handles a PATCH request; the current object must exist, and will be amended
@@ -294,7 +299,7 @@ class UpdatableApi(BaseApi):
 
 
 def _make_etag(version):
-  return 'W/"%d"' % version
+  return 'W/"{}"'.format(str(version))
 
 
 def _parse_etag(etag):
