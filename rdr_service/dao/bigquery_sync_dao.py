@@ -18,7 +18,7 @@ class BigQueryGenerator(object):
     Base class for generating BigQuery data JSON for storing in the bigquery_sync mysql table.
     """
 
-    def save_bqrecord(self, pk_id, bqrecord, bqtable, dao, session):
+    def save_bqrecord(self, pk_id, bqrecord, bqtable, dao, session, project_id=None):
         """
         Save the BQRecord object into the bigquery_sync table.
         :param pk_id: primary key id value from source table.
@@ -26,17 +26,25 @@ class BigQueryGenerator(object):
         :param bqtable: BQTable object.
         :param dao: BigQuerySyncDao object
         :param session: Session from a BigQuerySyncDao object
+        :param project_id: Project ID override value.
         """
         if not dao or not session:
             raise ValueError('Invalid BigQuerySyncDao dao or session argument.')
 
-        try:
-            from rdr_service import config
-            cur_id = config.GAE_PROJECT
-            if not cur_id or cur_id == 'None':
-                cur_id = 'localhost'
-        except ImportError:
+        # see if there is a project id override value.
+        if project_id:
+            cur_id = project_id
+        else:
             cur_id = 'localhost'
+            try:
+                from rdr_service import config
+                cur_id = config.GAE_PROJECT
+                if not cur_id or cur_id == 'None':
+                    cur_id = 'localhost'
+            except ImportError:
+                pass
+            except AttributeError:
+                pass
 
         mappings = bqtable.get_project_map(cur_id)
 
