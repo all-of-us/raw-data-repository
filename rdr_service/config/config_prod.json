@@ -11,6 +11,9 @@
   "genomic_biobank_manifest_folder_name": [
     "genomic_water_line_test"
   ],
+  "genomic_center_bucket_name": [
+    "prod-genomics-baylor-dryrun", "prod-genomics-broad-dryrun", "prod-genomics-northwest-dryrun", "prod-genomics-color-dryrun"
+  ],
   "genomic_biobank_manifest_result_folder_name": [
     "genomic_water_line_test_results"
   ],
@@ -144,6 +147,14 @@
       "awardee": "NE_PMC",
       "whitelisted_ip_ranges" : {
         "ip4": ["170.223.207.49/28", "170.223.207.64"]
+      },
+        "description": "/28 mask covers 170.223.207.48-63"
+    },
+    "awardee-wisconsin@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "WISCONSIN",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["192.236.17.40-49"]
       },
         "description": "/28 mask covers 170.223.207.48-63"
     },

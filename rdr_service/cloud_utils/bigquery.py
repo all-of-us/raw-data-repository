@@ -33,7 +33,9 @@ class BigQueryJob(object):
         self.retry_count = retry_count
         self.socket_timeout = socket_timeout
         self.page_size = page_size
-        self._service = build("bigquery", "v2")
+        # https://github.com/pior/appsecrets/issues/7
+        # https://github.com/googleapis/google-api-python-client/issues/299
+        self._service = build("bigquery", "v2", cache_discovery=False)
         self._job_ref = None
         self._page_token = None
 
@@ -49,7 +51,7 @@ class BigQueryJob(object):
         else:
             return self.get_rows_from_response(self.get_job_results(page_token=self._page_token))
 
-    def __next__(self):
+    def next(self):
         return self.__next__()
 
     def _make_job_body(self):

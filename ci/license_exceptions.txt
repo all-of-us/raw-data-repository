@@ -16,7 +16,7 @@ certifi
 # apparently the metadata is lacking (it shows up as UNKNOWN)
 ordereddict
 
-# locust apparently has a public license, but doesn't have metadata set up
+# locust has a public license, but doesn't have metadata
 locust
 
 # Licenses for sphinx-related extensions are BSD, but not in metadata, according to

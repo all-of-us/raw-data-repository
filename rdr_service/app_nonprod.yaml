@@ -1,4 +1,5 @@
 # app_base.yaml is concatenated to the beginning of this file for deployment.
+# https://cloud.google.com/appengine/docs/standard/
 instance_class: F4
 
 # Have 2 idle instances to prepare for sudden traffic spikes.

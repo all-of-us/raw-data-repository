@@ -354,8 +354,11 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         # loop through results again and add each sample to it's order.
         for row in results:
             # get the order list index for this sample record
-            idx = orders.index(
-                    list(filter(lambda order: order['bbo_biobank_order_id'] == row.biobank_order_id, orders))[0])
+            try:
+                idx = orders.index(
+                        list(filter(lambda order: order['bbo_biobank_order_id'] == row.biobank_order_id, orders))[0])
+            except IndexError:
+                continue
             # if we haven't added any samples to this order, create an empty list.
             if 'samples' not in orders[idx]:
                 orders[idx]['bbo_samples'] = list()
