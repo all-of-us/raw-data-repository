@@ -8,11 +8,14 @@
   "genomic_set_bucket_name": [
     "prod_genomic_set_upload"
   ],
-  "genomic_biobank_manifest_folder_name": [
-    "genomic_water_line_test"
-  ],
   "genomic_center_bucket_name": [
     "prod-genomics-baylor-dryrun", "prod-genomics-broad-dryrun", "prod-genomics-northwest-dryrun", "prod-genomics-color-dryrun"
+  ],
+  "genotyping_sample_manifest_folder_name": [
+    "genotyping_sample_manifests"
+  ],
+  "genomic_biobank_manifest_folder_name": [
+    "genomic_water_line_test"
   ],
   "genomic_biobank_manifest_result_folder_name": [
     "genomic_water_line_test_results"
@@ -51,32 +54,6 @@
       "whitelisted_appids": [
         "healthpro-prod"
       ]
-    },
-    "pentest@all-of-us-rdr-stable.iam.gserviceaccount.com": {
-      "comment": "Penetration testing for Coalfire, PD-334.",
-      "roles": ["ptc", "healthpro"],
-      "whitelisted_ip_ranges": {
-        "ip4": [
-                "192.81.133.103",
-                "74.207.236.177",
-                "45.79.100.105",
-                "173.230.139.170",
-                "52.11.110.146",
-                "199.127.201.80",
-                "199.127.201.81",
-                "199.127.201.122",
-                "199.127.201.123",
-                "199.127.201.124",
-                "96.90.174.97-101",
-                "96.90.174.109",
-                "50.78.81.213",
-                "8.44.144.96",
-                "45.33.19.185",
-                "45.56.64.112",
-                "45.33.122.251",
-                "45.79.83.180"
-        ]
-      }
     },
     "aou-res-storefront-prod@appspot.gserviceaccount.com": {
       "roles": ["storefront"]
@@ -128,6 +105,17 @@
           ]
       },
       "description": "Using subnet mask range to cover 161.249.241.64-127 and 161.249.150.128-191, 208.72.48.248/22 covers from 208.72.48.0 - 208.72.51.255"
+    },
+    "awardee-seec@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "SEEC",
+      "whitelisted_ip_ranges" : {
+        "ip4": [
+          "129.171.150.187",
+          "129.171.150.141",
+          "204.68.92.141"
+        ]
+      }
     },
     "awardee-pitt@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
       "roles": [
@@ -184,6 +172,32 @@
         ]
       }
     },
+    "pentest@all-of-us-rdr-stable.iam.gserviceaccount.com": {
+      "comment": "Penetration testing for Coalfire, PD-334.",
+      "roles": ["ptc", "healthpro"],
+      "whitelisted_ip_ranges": {
+        "ip4": [
+                "192.81.133.103",
+                "74.207.236.177",
+                "45.79.100.105",
+                "173.230.139.170",
+                "52.11.110.146",
+                "199.127.201.80",
+                "199.127.201.81",
+                "199.127.201.122",
+                "199.127.201.123",
+                "199.127.201.124",
+                "96.90.174.97-101",
+                "96.90.174.109",
+                "50.78.81.213",
+                "8.44.144.96",
+                "45.33.19.185",
+                "45.56.64.112",
+                "45.33.122.251",
+                "45.79.83.180"
+        ]
+      }
+    },
     "awardee-columbia@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "COLUMBIA",
@@ -191,9 +205,11 @@
         "ip4": [
           "10.115.115.90",
           "10.115.115.88",
-          "156.145.115.188"
+          "156.145.115.188",
+          "156.145.115.105"
         ]
       }
     }
   }
 }
+
