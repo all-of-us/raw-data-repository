@@ -53,7 +53,7 @@ Participant Summary Field List
 
   ageRange
       The "bucketed" age range of participant.
-    :ref:`Field options <age_range>`
+      :ref:`Field options <age_range>`
 
   genderIdentity
       The personal sense of one's own gender. It can correlate with assigned sex at birth or can differ from it.
@@ -72,7 +72,7 @@ Participant Summary Field List
 
   enrollmentStatus
       Depends on a number of factors including questionnaires and biobank samples completed.
-    :ref:`Field options <enrollment_status>`
+      :ref:`Field options <enrollment_status>`
 
   race
       A race is a grouping of humans based on shared physical or social qualities into categories generally viewed as distinct by society. First used to refer to speakers of a common language and then to denote national affiliations, by the 17th century the term race began to refer to physical (phenotypical) traits.
@@ -109,14 +109,14 @@ Participant Summary Field List
 
   consentForStudyEnrollment
       indicates whether enrollment consent has been received
-    :ref:`Field options <consent_for_study_enrollment>`
+      :ref:`Field options <consent_for_study_enrollment>`
 
   consentForStudyEnrollmentTime
       indicates the time at which enrollment consent has been received (ISO-8601 time)
 
   consentForElectronicHealthRecords
       indicates whether electronic health recode (EHR) consent has been received
-    :ref:`Field options <consent_for_ehr>`
+      :ref:`Field options <consent_for_ehr>`
 
   consentForElectronicHealthRecordsTime
       indicates the time at which the RDR received notice of consentForElectronicHealthRecords.
@@ -125,8 +125,7 @@ Participant Summary Field List
       indicates status for Overall Health PPI module.
 
   questionnaireOnOverallHealthTime
-      A questionnaire
-    on OverallHealthTime that a participant can fill out.
+      A questionnaire on OverallHealthTime that a participant can fill out.
 
   questionnaireOnHealthcareAccess
       A questionnaire on HealthcareAccess that a participant can fill out.
@@ -234,7 +233,7 @@ Participant Summary Field List
 
   sampleOrderStatus1UR10
       The individual order status of sample 1UR10.
-      :ref:`Field options <sample_order_status_1UR10>`
+      :ref:`Field options <sample_order_status>`
 
   sampleOrderStatus1UR10Time
       The time the sample was marked as finalized by the processing site.
@@ -255,14 +254,14 @@ Participant Summary Field List
 
   sampleOrderStatus1CFD9
       The individual order status of sample 1CFD9.
-      :ref:`Field options <sample_order_status_1CFD9>`
+      :ref:`Field options <sample_order_status>`
 
   sampleOrderStatus1CFD9Time
       The time the sample was marked as finalized by the processing site.
 
   sampleOrderStatus1PXR2
       The individual order status of sample 1PXR2.
-      :ref:`Field options <sample_order_status_1PXR2>`
+      :ref:`Field options <sample_order_status>`
 
   sampleOrderStatus1PXR2Time
       The time the sample was marked as finalized by the processing site.
