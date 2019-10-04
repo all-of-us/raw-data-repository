@@ -111,7 +111,8 @@ class DvOrderDaoTestBase(BaseTestCase):
 
             # return a BiobankDVOrder object from database
             with self.dao.session() as session:
-                dv_order_result = session.query(BiobankDVOrder).filter_by(participantId=self.participant.participantId).first()
+                dv_order_result = session.query(BiobankDVOrder).filter_by(
+                    participantId=self.participant.participantId).first()
 
             # run tests against dv_order_result
             for i, test_field in enumerate(expected_result):
@@ -165,7 +166,8 @@ class DvOrderDaoTestBase(BaseTestCase):
         if resource_type == self.post_delivery:
             test_fields.update({
                 'order_id': int(fhir_resource.basedOn[0].identifier.value),
-                'shipmentEstArrival': parse_date(fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime),
+                'shipmentEstArrival': parse_date(fhir_resource.extension.get(
+                    url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime),
                 'shipmentCarrier': fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "carrier").valueString,
                 'trackingId': fhir_resource.identifier.get(system=VIBRENT_FHIR_URL + "trackingId").value,
                 'shipmentLastUpdate': parse_date(fhir_resource.occurrenceDateTime),
@@ -207,4 +209,3 @@ class DvOrderDaoTestBase(BaseTestCase):
                 request_data=self.post_delivery,
                 expected_status=http.client.CREATED,
             )
-
