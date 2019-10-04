@@ -49,7 +49,18 @@ def get_generic_database() -> Database:
     )
 
 
-def get_db_connection_string(backup=False, instance_name=None):
+def get_db_connection_string(backup=False, instance_name=None) -> str:
+    """
+    Return the database connection string we should use to connect with.
+    :param backup: Use backup instance connection information.
+    :param instance_name: Connect to specific named instance.
+    :return: connection string.
+    """
+    # RDR tools define the connection string we should use in the environment var.
+    env_db_connection_string = os.environ.get('DB_CONNECTION_STRING', None)
+    if not os.environ.get("UNITTEST_FLAG", None) and env_db_connection_string:
+        return env_db_connection_string
+
     # Only import "config" on demand, as it depends on Datastore packages (and
     # GAE). When running via CLI or tests, we'll have this from the environment
     # instead (above).
