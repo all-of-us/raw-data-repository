@@ -223,7 +223,7 @@ def sync_bigquery_handler(dryrun=False):
             # figure out how many records need to be sync'd and divide into slices.
             total_rows = session.query(BigQuerySync.id). \
                 filter(BigQuerySync.tableId == table_id, BigQuerySync.datasetId == dataset_id,
-                       or_(BigQuerySync.created > max_created, BigQuerySync.modified > max_modified)).count()
+                       or_(BigQuerySync.created > max_created, BigQuerySync.modified >= max_modified)).count()
 
             if total_rows == 0:
                 logging.info('No rows to sync for {0}.{1}.'.format(dataset_id, table_id))
@@ -234,7 +234,7 @@ def sync_bigquery_handler(dryrun=False):
             while slice_num < slices:
                 results = session.query(BigQuerySync.id, BigQuerySync.created, BigQuerySync.modified). \
                     filter(BigQuerySync.tableId == table_id, BigQuerySync.datasetId == dataset_id,
-                           or_(BigQuerySync.created > max_created, BigQuerySync.modified > max_modified)). \
+                           or_(BigQuerySync.created > max_created, BigQuerySync.modified >= max_modified)). \
                     order_by(BigQuerySync.modified). \
                     slice(slice_num * batch_size, (slice_num + 1) * batch_size). \
                     all()
