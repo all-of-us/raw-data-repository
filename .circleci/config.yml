@@ -277,6 +277,8 @@ workflows:
           <<: *filter_python3_branches
   deploy_to_sandbox:
     jobs:
+      - test_python3_branches:
+          <<: *only_devel
       - deploy_sandbox_py3:
           <<: *only_devel
           requires:

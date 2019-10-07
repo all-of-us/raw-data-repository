@@ -8,8 +8,6 @@ import subprocess
 import sys
 import os
 
-from rdr_service.services.system_utils import setup_i18n
-
 
 # try:
 #     import googleclouddebugger
@@ -21,7 +19,6 @@ def print_service_list():
     print("Possible services are --celery, --flask, --gunicorn and --service.")
 
 if __name__ == '__main__':
-    setup_i18n()
 
     parser = argparse.ArgumentParser(prog='rdr-service', description="RDR web service")
     parser.add_argument("--debug", help="enable debug output", default=False, action="store_true")  # noqa
@@ -34,9 +31,10 @@ if __name__ == '__main__':
     parser.add_argument("--offline", help="start offline web service", default=False, action="store_true")  # noqa
 
     args = parser.parse_args()
-    env = dict(os.environ)
+
     if args.unittests:
-        env["UNITTEST_FLAG"] = "True"
+        os.environ["UNITTEST_FLAG"] = "1"
+    env = dict(os.environ)
 
     service_count = sum([args.flask, args.gunicorn, args.service, args.celery])
 
