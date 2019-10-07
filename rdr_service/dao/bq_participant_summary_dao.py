@@ -1,4 +1,5 @@
 import datetime
+import time
 
 from dateutil import parser, tz
 from sqlalchemy import func, desc
@@ -63,7 +64,15 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :param session: DAO session object
         :return: dict
         """
-        p = session.query(Participant).filter(Participant.participantId == p_id).first()
+        count = 24
+        p = None
+        while count:
+            p = session.query(Participant).filter(Participant.participantId == p_id).first()
+            if p:
+                break
+            time.sleep(5.0)
+            count -= 1
+
         if not p:
             raise LookupError('participant lookup for P{0} failed.'.format(p_id))
 
