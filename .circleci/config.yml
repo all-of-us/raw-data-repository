@@ -134,11 +134,16 @@ jobs:
   deploy_sandbox_py3:
     machine:
       image: ubuntu-1604:201903-01
+    working_directory: ~/all-of-us/raw-data-repository
+    parallelism: 1
+    shell: /bin/bash --login
+    environment:
+      IS_AUTOMATED_TESTING_ENVIRONMENT: true
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
     steps:
       - checkout
-      - run:
-          working_directory: ~/all-of-us/raw-data-repository
-          command: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
       - run:
           name: install mysql
           command: |
@@ -186,6 +191,14 @@ jobs:
           - "venv"
       - run: ./ci/deploy.sh all-of-us-rdr-sandbox config/config_sandbox.json ~/gcloud-credentials.key
       - run: ./rdr_service/test/test_server.sh -i https://all-of-us-rdr-sandbox.appspot.com -c ~/gcloud-credentials.key
+      # Save test results
+      - store_test_results:
+         path: /tmp/circleci-test-results
+      # Save artifacts
+      - store_artifacts:
+         path: /tmp/circleci-artifacts
+      - store_artifacts:
+         path: /tmp/circleci-test-results
     # Stable and production deployments are not done automatically but can be
     # manually executed with the test.sh and deploy.sh pair, e.g.:
     # ./ci/deploy.sh all-of-us-rdr-stable config/config_stable.json <configurator key file>
