@@ -138,7 +138,7 @@ jobs:
       - checkout
       - run:
           working_directory: ~/all-of-us/raw-data-repository
-      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+          command: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
       - run:
           name: install mysql
           command: |
@@ -275,11 +275,12 @@ workflows:
     jobs:
       - test_python3_branches:
           <<: *filter_python3_branches
-  deploy_to_sandbox:
-    jobs:
-      - test_python3_branches:
-          <<: *only_devel
-      - deploy_sandbox_py3:
-          <<: *only_devel
-          requires:
-            - test_python3_branches
+#  This will need to be revisited when we the deployment server is set up
+#  deploy_to_sandbox:
+#    jobs:
+#      - test_python3_branches:
+#          <<: *only_devel
+#      - deploy_sandbox_py3:
+#          <<: *only_devel
+#          requires:
+#            - test_python3_branches
