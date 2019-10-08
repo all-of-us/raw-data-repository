@@ -177,12 +177,18 @@ jobs:
             pyenv global 3.7.0
             sudo chmod o+w /opt
       - run: pip install --upgrade pip
-      - run: pip install --upgrade httplib2 jira oauth2client parallel pylint isort==4.3.8
+      - run: pip install --upgrade httplib2 jira oauth2client pylint isort==4.3.8
       - run: pip install -I alembic==0.9.1
       - run: ./ci/setup.sh
-      - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
       - run:
+          name: activate credentials
           working_directory: ~/all-of-us/raw-data-repository/
+          command: |
+          pyenv local 2.7.12
+          ./ci/activate_creds.sh ~/gcloud-credentials.key
+          pyenv local 3.7.0
+      - run:
+          working_directory: ~/all-of-us/raw-data-repository/rdr_service/
           command: ./tools/upgrade_database.sh -i https://all-of-us-rdr-sandbox.appspot.com --creds_file ~/gcloud-credentials.key
       - save_cache:
           working_directory: ~/all-of-us/raw-data-repository
@@ -296,11 +302,11 @@ workflows:
     jobs:
       - test_python3_branches:
           <<: *filter_python3_branches
-  deploy_to_sandbox:
-    jobs:
-      - test_python3_branches:
-          <<: *only_devel
-      - deploy_sandbox_py3:
-          <<: *only_devel
-          requires:
-            - test_python3_branches
+#  deploy_to_sandbox:
+#    jobs:
+#      - test_python3_branches:
+#          <<: *only_devel
+#      - deploy_sandbox_py3:
+#          <<: *only_devel
+#          requires:
+#            - test_python3_branches
