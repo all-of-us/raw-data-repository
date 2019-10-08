@@ -78,7 +78,7 @@ class HierarchyContentApiTest(FlaskTestBase):
           "coding": [
             {
               "code": "AWARDEE",
-              "system": "http://all-of-us.org/fhir/sites/awardee-type"
+              "system": "http://all-of-us.org/fhir/sites/type"
             }
           ]
         }
@@ -116,7 +116,7 @@ class HierarchyContentApiTest(FlaskTestBase):
           "coding": [
             {
               "code": "AWARDEE",
-              "system": "http://all-of-us.org/fhir/sites/awardee-type"
+              "system": "http://all-of-us.org/fhir/sites/type"
             }
           ]
         }
@@ -151,7 +151,7 @@ class HierarchyContentApiTest(FlaskTestBase):
           "coding": [
             {
               "code": "ORGANIZATION",
-              "system": "http://all-of-us.org/fhir/sites/awardee-type"
+              "system": "http://all-of-us.org/fhir/sites/type"
             }
           ]
         }
@@ -198,7 +198,7 @@ class HierarchyContentApiTest(FlaskTestBase):
           "coding": [
             {
               "code": "ORGANIZATION",
-              "system": "http://all-of-us.org/fhir/sites/awardee-type"
+              "system": "http://all-of-us.org/fhir/sites/type"
             }
           ]
         }
@@ -290,7 +290,7 @@ class HierarchyContentApiTest(FlaskTestBase):
           "coding": [
             {
               "code": "SITE",
-              "system": "http://all-of-us.org/fhir/sites/awardee-type"
+              "system": "http://all-of-us.org/fhir/sites/type"
             }
           ]
         }
@@ -429,7 +429,7 @@ class HierarchyContentApiTest(FlaskTestBase):
           "coding": [
             {
               "code": "SITE",
-              "system": "http://all-of-us.org/fhir/sites/awardee-type"
+              "system": "http://all-of-us.org/fhir/sites/type"
             }
           ]
         }

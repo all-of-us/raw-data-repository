@@ -278,7 +278,7 @@ class OrganizationHierarchySyncDao(BaseDao):
     for type_item in type_arr:
       code_arr = type_item.coding
       for code_item in code_arr:
-        if code_item.system == HIERARCHY_CONTENT_SYSTEM_PREFIX + 'awardee-type':
+        if code_item.system == HIERARCHY_CONTENT_SYSTEM_PREFIX + 'type':
           obj_type = code_item.code
           break
 
