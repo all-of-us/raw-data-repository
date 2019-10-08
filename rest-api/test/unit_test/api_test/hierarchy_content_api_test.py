@@ -39,6 +39,7 @@ def _make_organization_dict(organization_id, display_name, sites=None):
 
 
 class HierarchyContentApiTest(FlaskTestBase):
+  
   def setUp(self):
     super(HierarchyContentApiTest, self).setUp(with_data=False)
 
