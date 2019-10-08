@@ -21,14 +21,17 @@ def _make_awardee_resource(awardee_id, display_name, org_type, organizations=Non
     resource['organizations'] = organizations
   return resource
 
+
 def _make_awardee_with_resource(resource, awardee_id):
   return {'fullUrl': 'http://localhost/rdr/v1/Awardee/%s' % awardee_id,
           'resource': resource }
+
 
 def _make_awardee(awardee_id, display_name, org_type, organizations=None):
   return _make_awardee_with_resource(_make_awardee_resource(awardee_id, display_name,
                                                             org_type, organizations),
                                      awardee_id)
+
 
 def _make_organization_dict(organization_id, display_name, sites=None):
   resource = {'displayName': display_name,
@@ -39,7 +42,6 @@ def _make_organization_dict(organization_id, display_name, sites=None):
 
 
 class HierarchyContentApiTest(FlaskTestBase):
-  
   def setUp(self):
     super(HierarchyContentApiTest, self).setUp(with_data=False)
 
