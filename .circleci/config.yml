@@ -184,9 +184,9 @@ jobs:
           name: activate credentials
           working_directory: ~/all-of-us/raw-data-repository/
           command: |
-          pyenv local 2.7.12
-          ./ci/activate_creds.sh ~/gcloud-credentials.key
-          pyenv local 3.7.0
+            pyenv local 2.7.12
+            ./ci/activate_creds.sh ~/gcloud-credentials.key
+            pyenv local 3.7.0
       - run:
           working_directory: ~/all-of-us/raw-data-repository/rdr_service/
           command: ./tools/upgrade_database.sh -i https://all-of-us-rdr-sandbox.appspot.com --creds_file ~/gcloud-credentials.key
