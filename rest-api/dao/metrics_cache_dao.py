@@ -3,6 +3,7 @@ from model.metrics_cache import MetricsEnrollmentStatusCache, MetricsGenderCache
   MetricsCacheJobStatus
 from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
+from model.site import Site
 from dao.code_dao import CodeDao
 from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN, GenderIdentity
 from code_constants import PPI_SYSTEM
@@ -2576,3 +2577,14 @@ class MetricsLanguageCacheDao(BaseDao):
     sql = sql + ' UNION '.join(sub_queries)
 
     return sql
+
+
+class MetricsSitesCacheDao(BaseDao):
+  def __init__(self):
+    super(MetricsSitesCacheDao, self).__init__(Site)
+
+  def get_sites_count(self):
+    with self.session() as session:
+      query = session.query(func.count(Site.googleGroup))
+      query = query.filter(Site.isObsolete is None, Site.siteStatus == 1, Site.enrollingStatus == 1)
+      return query.first()

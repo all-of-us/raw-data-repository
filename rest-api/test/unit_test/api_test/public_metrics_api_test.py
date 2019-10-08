@@ -1441,6 +1441,13 @@ class PublicMetricsApiTest(FlaskTestBase):
                    u'metrics': {u'ORGANIZATIONS_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 4}},
                   results)
 
+  def test_public_metrics_get_sites_count_api(self):
+    qs = '&stratification=SITES_COUNT'
+    results = self.send_get('PublicMetrics', query_string=qs)
+    result_json = {'sites_count': results[0]}
+    print(str(result_json))
+
+
   def create_demographics_questionnaire(self):
     """Uses the demographics test data questionnaire.  Returns the questionnaire id"""
     return self.create_questionnaire('questionnaire3.json')

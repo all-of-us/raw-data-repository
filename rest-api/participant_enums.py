@@ -192,6 +192,7 @@ class Stratifications(messages.Enum):
   LANGUAGE = 15
   PRIMARY_CONSENT = 16
   EHR_METRICS = 17
+  SITES_COUNT = 18
 
 METRIC_SET_KEYS = {
   MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS: set([
