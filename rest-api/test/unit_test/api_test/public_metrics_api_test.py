@@ -6,12 +6,14 @@ from model.hpo import HPO
 from dao.hpo_dao import HPODao
 from model.code import Code, CodeType
 from dao.code_dao import CodeDao
+from dao.site_dao import SiteDao
 from model.calendar import Calendar
 from dao.calendar_dao import CalendarDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json
 from model.participant import Participant
 from concepts import Concept
+from model.site import Site
 from model.participant_summary import ParticipantSummary, ParticipantGenderAnswers
 from dao.participant_summary_dao import ParticipantGenderAnswersDao
 from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID,\
@@ -22,6 +24,7 @@ from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGender
   MetricsLanguageCacheDao
 from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_AIAN_CODE,
                             RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, RACE_MENA_CODE)
+from unit_test_util import PITT_HPO_ID
 
 TIME_1 = datetime.datetime(2017, 12, 31)
 
@@ -1442,10 +1445,20 @@ class PublicMetricsApiTest(FlaskTestBase):
                   results)
 
   def test_public_metrics_get_sites_count_api(self):
+    site = Site(siteName='site', googleGroup='site@googlegroups.com',
+                mayolinkClientNumber=12345, hpoId=PITT_HPO_ID, siteStatus=1, enrollingStatus=1)
+
+    site2 = Site(siteName='site2', googleGroup='site2@googlegroups.com',
+                 mayolinkClientNumber=12346, hpoId=PITT_HPO_ID, siteStatus=1, enrollingStatus=1)
+
+    site_dao = SiteDao()
+    site_dao.insert(site)
+    site_dao.insert(site2)
+
     qs = '&stratification=SITES_COUNT'
     results = self.send_get('PublicMetrics', query_string=qs)
     result_json = {'sites_count': results[0]}
-    print(str(result_json))
+    self.assertEquals(result_json, {'sites_count': 2})
 
 
   def create_demographics_questionnaire(self):

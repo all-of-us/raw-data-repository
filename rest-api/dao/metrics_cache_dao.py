@@ -2586,5 +2586,5 @@ class MetricsSitesCacheDao(BaseDao):
   def get_sites_count(self):
     with self.session() as session:
       query = session.query(func.count(Site.googleGroup))
-      query = query.filter(Site.isObsolete is None, Site.siteStatus == 1, Site.enrollingStatus == 1)
+      query = query.filter(Site.isObsolete == None, Site.siteStatus == 1, Site.enrollingStatus == 1)
       return query.first()
