@@ -162,11 +162,11 @@ class SyncConsentClass(object):
                 else:
                     site_info = sites.get(rec[2])
                     if not site_info:
-                        _logger.warn("\nsite info not found for [{0}].".format(rec[2]))
+                        _logger.warning("\nsite info not found for [{0}].".format(rec[2]))
                         continue
                     bucket = site_info.get("bucket_name")
                 if not bucket:
-                    _logger.warn("\nno bucket name found for [{0}].".format(rec[2]))
+                    _logger.warning("\nno bucket name found for [{0}].".format(rec[2]))
                     continue
 
                 src_bucket = SOURCE_BUCKET.format(p_id=p_id)
@@ -217,10 +217,10 @@ def run():
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
     parser.add_argument("--org-id", help="organization id", default=None)  # noqa
     parser.add_argument(
-        "--destination_bucket", default=None, help="Override the destination bucket lookup for the given organization."
+        "--destination-bucket", default=None, help="Override the destination bucket lookup for the given organization."
     )
     parser.add_argument(
-        "--dry_run", action="store_true", help="Do not copy files, only print the list of files that would be copied"
+        "--dry-run", action="store_true", help="Do not copy files, only print the list of files that would be copied"
     )
     args = parser.parse_args()
 
