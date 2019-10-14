@@ -126,7 +126,7 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
       self.assertEqual(i.id, long(1))
       self.assertEqual(i.order_id, long(999999))
       self.assertEqual(i.biobankOrderId, 'WEB1ABCD1234')
-      self.assertEqual(i.biobankStatus, 'Delivered')
+      self.assertEqual(i.biobankStatus, 'Queued')
       self.assertEqual(i.biobankTrackingId, 'PAT-123-456')
 
     with self.dv_order_dao.session() as session:

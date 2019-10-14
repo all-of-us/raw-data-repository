@@ -99,7 +99,7 @@ class DvOrderDao(UpdatableDao):
     if for_update:
       result = dict()
       reduced_model = model['orders']['order']
-      result['status'] = reduced_model['status']
+      result['biobankStatus'] = reduced_model['status']
       result['barcode'] = reduced_model['reference_number']
       result['received'] = reduced_model['received']
       result['biobankOrderId'] = reduced_model['number']
@@ -129,6 +129,13 @@ class DvOrderDao(UpdatableDao):
       existing_obj = self.get(self.get_id(order))
       if not existing_obj:
         raise NotFound('existing order record not found')
+
+      # handling of biobankStatus from Mayolink API
+      try:
+        existing_obj.biobankStatus = resource_json['biobankStatus']
+      except KeyError:
+        # resource will only have biobankStatus on a PUT
+        pass
 
       existing_obj.shipmentStatus = self._enumerate_order_tracking_status(fhir_resource.extension.get(
           url=VIBRENT_FHIR_URL + 'tracking-status').valueString)
@@ -226,7 +233,7 @@ class DvOrderDao(UpdatableDao):
 
         order.id = existing_obj.id
         order.version = expected_version
-        order.biobankStatus = fhir_resource.status if hasattr(fhir_resource, 'status') else None
+        order.biobankStatus = fhir_resource.biobankStatus if hasattr(fhir_resource, 'biobankStatus') else None
         try:
           order.barcode = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).valueString
         except ValueError:

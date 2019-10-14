@@ -41,7 +41,7 @@ class DvOrderDaoTestBase(FlaskTestBase):
     self.put_request = load_test_data_json('dv_order_api_put_supply_request.json')
 
     self.mayolink_response = {'orders': {'order': {
-      'status': 'finished',
+      'status': 'Queued',
       'reference_number': 'barcode',
       'received': '2019-04-05 12:00:00',
       'number': '12345',
@@ -93,7 +93,7 @@ class DvOrderDaoTestBase(FlaskTestBase):
     payload = self.send_post('SupplyRequest', request_data=self.post_request, expected_status=httplib.CREATED)
     request_response = json.loads(payload.response[0])
     location = payload.location.rsplit('/', 1)[-1]
-    put_response = self.send_put('SupplyRequest/{}'.format(location), request_data=self.put_request)
+    self.send_put('SupplyRequest/{}'.format(location), request_data=self.put_request)
 
     payload = self.send_post('SupplyDelivery', request_data=self.post_delivery, expected_status=httplib.CREATED)
     post_response = json.loads(payload.response[0])
@@ -113,7 +113,7 @@ class DvOrderDaoTestBase(FlaskTestBase):
     post_response = json.loads(payload.response[0])
 
     self.assertEquals(post_response['biobankOrderId'], '12345')
-    self.assertEquals(post_response['biobankStatus'], 'Delivered')
+    self.assertEquals(post_response['biobankStatus'], 'Queued')
     self.assertEquals(post_response['trackingId'], '98765432109876543210')
 
     put_response = self.send_put('SupplyDelivery/{}'.format(location), request_data=self.put_delivery_mayo)
