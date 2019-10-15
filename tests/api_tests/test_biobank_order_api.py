@@ -150,6 +150,7 @@ class BiobankOrderApiTest(BaseTestCase):
 
         self.assertEqual(get_summary.biospecimenSourceSiteId, 1)
         self.assertEqual(get_summary.biospecimenCollectedSiteId, 1)
+        self.assertEqual(get_summary.biospecimenFinalizedSiteId, 2)
 
     def test_you_can_not_restore_a_not_cancelled_order(self):
         self.summary_dao.insert(self.participant_summary(self.participant))
