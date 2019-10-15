@@ -128,7 +128,7 @@ class BiobankOrderApiTest(BaseTestCase):
         order_json2['identifier'][0]['value'] = 'healthpro-order-id-1231234'
         order_json2['identifier'][1]['value'] = 'WEB1YLHV1234'
         result = self.send_post(self.path, order_json)
-        result2 = self.send_post(self.path, order_json2)
+        self.send_post(self.path, order_json2)
 
         biobank_order_id = result["identifier"][1]["value"]
         path = self.path + "/" + biobank_order_id
