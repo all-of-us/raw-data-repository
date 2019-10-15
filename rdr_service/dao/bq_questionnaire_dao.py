@@ -7,7 +7,6 @@ from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_questionnaires import BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle, \
     BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII
-from rdr_service.services.flask import celery
 
 
 class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
@@ -86,10 +85,10 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
 
         return table, bqrs
 
-@celery.task()
+
 def bq_questionnaire_update_task(p_id, qr_id):
     """
-    Celery Task: Generate a BQ questionnaire response record from the given p_id and questionnaire response id.
+    Cloud Task: Generate a BQ questionnaire response record from the given p_id and questionnaire response id.
     :param p_id: participant id
     :param qr_id: A questionnaire response id.
     """

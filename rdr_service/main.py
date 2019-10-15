@@ -18,7 +18,9 @@ from rdr_service import app_util
 from rdr_service.api import metrics_ehr_api
 from rdr_service.api.awardee_api import AwardeeApi
 from rdr_service.api.bigquery_participant_summary_api import BQParticipantSummaryApi
-from rdr_service.api.cloud_tasks_api import BQRebuildTaskApi
+from rdr_service.api.cloud_tasks_api import RebuildParticipantsBQTaskApi, RebuildCodebookBQTaskApi, \
+    CopyCloudStorageObjectTaskApi, BQRebuildQuestionnaireTaskApi, GenerateBiobankSamplesTaskApi, \
+    BQRebuildOneParticipantTaskApi
 from rdr_service.api.biobank_order_api import BiobankOrderApi
 from rdr_service.api.check_ppi_data_api import check_ppi_data
 from rdr_service.api.data_gen_api import DataGenApi, SpecDataGenApi
@@ -238,8 +240,24 @@ api.add_resource(DataGenApi, API_PREFIX + "DataGen", endpoint="datagen", methods
 #
 # Cloud Tasks API endpoints
 #
-# Task Queue API endpoing to rebuild BQ participant summary records.
-api.add_resource(BQRebuildTaskApi, TASK_PREFIX + "BQRebuildTaskApi", endpoint="bq_rebuild_task", methods=["GET"])
+# Task Queue API endpoint to rebuild BQ participant summary records.
+api.add_resource(RebuildParticipantsBQTaskApi, TASK_PREFIX + "BQRebuildParticipantsTaskApi",
+                 endpoint="bq_rebuild_participants_task", methods=["GET"])
+# Task Queue API endpoint to rebuild ONE participant id.
+api.add_resource(BQRebuildOneParticipantTaskApi, TASK_PREFIX + "BQRebuildOneParticipantTaskApi",
+                 endpoint="bq_rebuild_one_participant_task", methods=["GET"])
+# Task Queue API endpoing to rebuild BQ codebook records.
+api.add_resource(RebuildCodebookBQTaskApi, TASK_PREFIX + "BQRebuildCodebookTaskApi",
+                 endpoint="bq_rebuild_codebook_task", methods=["GET"])
+
+api.add_resource(CopyCloudStorageObjectTaskApi, TASK_PREFIX + "CopyCloudStorageObjectTaskApi",
+                 endpoint="copy_cloudstorage_object_task", methods=["GET"])
+
+api.add_resource(BQRebuildQuestionnaireTaskApi, TASK_PREFIX + "BQRebuildQuestionnaireTaskApi",
+                 endpoint="bq_rebuild_questionnaire_task", methods=["GET"])
+
+api.add_resource(GenerateBiobankSamplesTaskApi, TASK_PREFIX + "GenerateBiobankSamplesTaskApi",
+                 endpoint="generate_bio_samples_task", methods=["GET"])
 
 
 #

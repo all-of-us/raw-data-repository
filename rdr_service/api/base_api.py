@@ -7,11 +7,13 @@ from sqlalchemy.exc import NoInspectionAvailable
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import app_util
+from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.base_dao import save_raw_request_record
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.query import OrderBy, Query
+from rdr_service.services.flask import TASK_PREFIX
 
 DEFAULT_MAX_RESULTS = 100
 MAX_MAX_RESULTS = 10000
@@ -131,8 +133,20 @@ class BaseApi(Resource):
         m = self._get_model_to_insert(resource, participant_id)
         result = self._do_insert(m)
         if participant_id:
-            task = bq_participant_summary_update_task.apply_async(queue='default', args=(participant_id,))
-            task.forget()
+            # Rebuild participant for BigQuery
+            if GAE_PROJECT == 'localhost':
+                bq_participant_summary_update_task(participant_id)
+            else:
+                from google.appengine.api import taskqueue
+                task = taskqueue.add(
+                    queue_name='bigquery-rebuild',
+                    url=TASK_PREFIX + 'BQRebuildOneParticipantTaskApi',
+                    method='GET',
+                    target='worker',
+                    params={'p_id': participant_id}
+                )
+                logging.info('Task {} enqueued, ETA {}.'.format(task.name, task.eta))
+
         self._save_raw_request(result)
         return self._make_response(result)
 
@@ -281,8 +295,19 @@ class UpdatableApi(BaseApi):
         m = self._get_model_to_update(resource, id_, expected_version, participant_id)
         self._do_update(m)
         if participant_id:
-            task = bq_participant_summary_update_task.apply_async(queue='default', args=(participant_id,))
-            task.forget()
+            # Rebuild participant for BigQuery
+            if GAE_PROJECT == 'localhost':
+                bq_participant_summary_update_task(participant_id)
+            else:
+                from google.appengine.api import taskqueue
+                task = taskqueue.add(
+                    queue_name='bigquery-rebuild',
+                    url=TASK_PREFIX + 'BQRebuildOneParticipantTaskApi',
+                    method='GET',
+                    target='worker',
+                    params={'p_id': participant_id}
+                )
+                logging.info('Task {} enqueued, ETA {}.'.format(task.name, task.eta))
         self._save_raw_request(m)
         return self._make_response(m)
 

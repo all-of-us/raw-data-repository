@@ -5,7 +5,6 @@
 import argparse
 import shlex
 import subprocess
-import sys
 import os
 
 

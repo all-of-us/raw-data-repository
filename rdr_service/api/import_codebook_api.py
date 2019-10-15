@@ -3,10 +3,12 @@ import logging
 import pprint
 import urllib.request, urllib.error, urllib.parse
 
+from rdr_service.config import GAE_PROJECT
 from rdr_service.api_util import PTC_AND_HEALTHPRO
 from rdr_service.app_util import auth_required
-from rdr_service.dao.bq_code_dao import bq_codebook_update_task
+from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
 from rdr_service.dao.code_dao import CodeBookDao
+from rdr_service.services.flask import TASK_PREFIX
 
 _CODEBOOK_URL_BASE = "https://raw.githubusercontent.com/all-of-us-terminology/codebook-to-fhir/"
 _CODEBOOK_ERRORS_URL = _CODEBOOK_URL_BASE + "gh-pages/CodeSystem/ppi.issues.json"
@@ -66,8 +68,19 @@ def import_codebook():
     response["active_version"] = new_codebook.version
     response["status_messages"] = ["Imported %d codes." % code_count]
 
-    task = bq_codebook_update_task.apply_async(queue='default')
-    task.forget()
+    if GAE_PROJECT == 'localhost':
+        rebuild_bq_codebook_task()
+    else:
+        from google.appengine.api import taskqueue
+        task = taskqueue.add(
+            queue_name='bigquery-rebuild',
+            url=TASK_PREFIX + 'BQRebuildCodebookTaskApi',
+            method='GET',
+            target='worker',
+            params=None
+        )
+
+        logging.info('Task {} enqueued, ETA {}.'.format(task.name, task.eta))
 
     return _log_and_return_json(response)
 

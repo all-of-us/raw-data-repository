@@ -18,7 +18,6 @@ from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatus, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus
-from rdr_service.services.flask import celery
 
 
 class BQParticipantSummaryGenerator(BigQueryGenerator):
@@ -125,9 +124,6 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             # return the minimum data required when we don't have the questionnaire data.
             return {'email': None, 'is_ghost_id': 0}
         qnan = BQRecord(schema=None, data=qnans[0])  # use only most recent response.
-        if not hasattr(qnan, 'PIIBirthInformation_BirthDate'):
-            qnan.update_values({'PIIBirthInformation_BirthDate': None})
-
         # TODO: We may need to use the first response to set consent dates,
         #  unless the consent value changed across response records.
 
@@ -135,10 +131,10 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             'first_name': qnan.PIIName_First,
             'middle_name': qnan.PIIName_Middle,
             'last_name': qnan.PIIName_Last,
-            'date_of_birth': qnan.PIIBirthInformation_BirthDate,
+            'date_of_birth': getattr(qnan, 'PIIBirthInformation_BirthDate', None),
             'primary_language': qnan.language,
             'email': qnan.ConsentPII_EmailAddress,
-            'phone_number': qnan.PIIContactInformation_Phone,
+            'phone_number': getattr(qnan, 'PIIContactInformation_Phone', None),
             'login_phone_number': qnan.ConsentPII_VerifiedPrimaryPhoneNumber,
             'addresses': [
                 {
@@ -523,10 +519,10 @@ def rebuild_bq_participant(p_id, dao, session, ps_bqgen=None, pdr_bqgen=None):
 
     return ps_bqr
 
-@celery.task()
+
 def bq_participant_summary_update_task(p_id):
     """
-    Deferred task to update the Participant Summary record for the given participant.
+    Cloud task to update the Participant Summary record for the given participant.
     :param p_id: Participant ID
     """
     dao = BigQuerySyncDao()

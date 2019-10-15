@@ -5,13 +5,15 @@ Organize all consent files from PTSC source bucket into proper awardee buckets.
 """
 import collections
 import json
+import logging
 import os
 import sqlalchemy
 
+from rdr_service.config import GAE_PROJECT
 from rdr_service.api_util import open_cloud_file, list_blobs, copy_cloud_file, get_blob
 from rdr_service.cloud_utils.google_sheets import GoogleSheetCSVReader
 from rdr_service.dao import database_factory
-from rdr_service.services.flask import celery
+from rdr_service.services.flask import TASK_PREFIX
 
 HPO_REPORT_CONFIG_GCS_PATH = "/all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
 
@@ -45,10 +47,22 @@ def do_sync_consent_files():
             "participant_id": participant_data.participant_id,
             "google_group": participant_data.google_group or DEFAULT_GOOGLE_GROUP,
         }
-        task = cloudstorage_copy_objects_task.apply_async(queue='default', args=(
-                    "/{source_bucket}/Participant/P{participant_id}/".format(**kwargs),
-                    "/{destination_bucket}/Participant/{google_group}/P{participant_id}/".format(**kwargs)))
-        task.forget()
+        source = "/{source_bucket}/Participant/P{participant_id}/".format(**kwargs)
+        destination = "/{destination_bucket}/Participant/{google_group}/P{participant_id}/".format(**kwargs)
+
+        if GAE_PROJECT == 'localhost':
+            cloudstorage_copy_objects_task(source, destination)
+        else:
+            from google.appengine.api import taskqueue
+            task = taskqueue.add(
+                queue_name='default',
+                url=TASK_PREFIX + 'CopyCloudStorageObjectTaskApi',
+                method='GET',
+                target='worker',
+                params={'source': source, 'destination': destination}
+            )
+
+            logging.info('Task {} enqueued, ETA {}.'.format(task.name, task.eta))
 
 
 def _get_sheet_id():
@@ -113,10 +127,9 @@ def _iter_participants_data():
         for row in session.execute(PARTICIPANT_DATA_SQL):
             yield ParticipantData(*row)
 
-@celery.task()
 def cloudstorage_copy_objects_task(source, destination):
     """
-    Copies all objects matching the source to the destination.
+    Cloud Task: Copies all objects matching the source to the destination.
     Both source and destination use the following format: /bucket/prefix/
     """
     path = source if source[0:1] != '/' else source[1:]
