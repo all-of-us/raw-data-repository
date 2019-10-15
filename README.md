@@ -559,15 +559,12 @@ participant level.
 #### `POST /Questionnaire`
 
 Create a new Questionnaire in the RDR. Body is a FHIR DSTU2 Questionnaire
-resource. Response is the stored resource, which includes an `id`. RDR will 
-use the `version` value in the payload as the questionnaire version.
+resource. Response is the stored resource, which includes an `id`.
 
 #### `PUT /Questionnaire/:id`
 
 Replace the questionnaire with the specified ID. Body is a FHIR DSTU2 Questionnaire
 resource. Response is the stored resource, which includes an `id`.
-RDR will use the `version` value in the payload as the questionnaire version.
-
 
 #### `GET /Questionnaire/:id`
 
@@ -1229,17 +1226,6 @@ example: [put_supply_delivery](rest-api/test/test-data/dv_order_api_put_supply_d
 
 #### Example payloads
 [payloads](rest-api/test/test-data)
-
-## Hierarchy Content API
-
-We use the FHIR [Organization](http://hl7.org/fhir/STU3/organization.html) 
-resources to update our HPO, Organization and Site information.
-
-
-#### `PUT /organization/hierarchy`
-
-Create or update a HPO or Organization or Site in the RDR. Body is a FHIR STU3 Organization
-resource. Response is the stored resource.
 
 ## Organization API
 

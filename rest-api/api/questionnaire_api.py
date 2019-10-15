@@ -35,15 +35,3 @@ class QuestionnaireApi(UpdatableApi):
   @app_util.auth_required(PTC)
   def put(self, id_):
     return super(QuestionnaireApi, self).put(id_)
-
-  def parse_etag(self, etag):
-    if etag.startswith('W/"') and etag.endswith('"'):
-      return etag.split('"')[1]
-    raise BadRequest("Invalid ETag: %s" % etag)
-
-  def _make_response(self, obj):
-    result = super(UpdatableApi, self)._make_response(obj)
-    # use semantic version for questionnaire etag
-    etag = self.make_etag(result['version'])
-    result['meta'] = {'versionId': etag}
-    return result, 200, {'ETag': etag}

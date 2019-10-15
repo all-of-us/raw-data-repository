@@ -23,10 +23,10 @@ EXPECTED_QUESTION_2 = QuestionnaireQuestion(questionnaireQuestionId=2, questionn
                                             repeats=True)
 TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
-RESOURCE_1 = '{"x": "y", "version": "V1"}'
-RESOURCE_1_WITH_ID = '{"x": "y", "version": "V1", "id": "1"}'
-RESOURCE_2 = '{"x": "z", "version": "V2"}'
-RESOURCE_2_WITH_ID = '{"x": "z", "version": "V2", "id": "1"}'
+RESOURCE_1 = '{"x": "y"}'
+RESOURCE_1_WITH_ID = '{"x": "y", "version": "1", "id": "1"}'
+RESOURCE_2 = '{"x": "z", "version": "2"}'
+RESOURCE_2_WITH_ID = '{"x": "z", "version": "2", "id": "1"}'
 
 class QuestionnaireDaoTest(SqlTestBase):
   def setUp(self):
@@ -67,19 +67,17 @@ class QuestionnaireDaoTest(SqlTestBase):
     self.assertIsNone(self.dao.get_with_children(1))
     self.assertIsNone(self.dao.get_latest_questionnaire_with_concept(self.CODE_1.codeId))
     self.assertIsNone(self.questionnaire_history_dao.get([1, 1]))
-    self.assertIsNone(self.questionnaire_history_dao.get_with_children([1, 'V1']))
+    self.assertIsNone(self.questionnaire_history_dao.get_with_children([1, 1]))
     self.assertIsNone(self.questionnaire_concept_dao.get(1))
     self.assertIsNone(self.questionnaire_question_dao.get(1))
 
   def check_history(self):
-    expected_history = QuestionnaireHistory(questionnaireId=1, version=1, semanticVersion='V1', created=TIME,
+    expected_history = QuestionnaireHistory(questionnaireId=1, version=1, created=TIME,
                                             lastModified=TIME, resource=RESOURCE_1_WITH_ID)
     questionnaire_history = self.questionnaire_history_dao.get([1, 1])
     self.assertEquals(expected_history.asdict(), questionnaire_history.asdict())
 
-    questionnaire_history = self.questionnaire_history_dao.get_with_children([1, 'V1'])
-    self.assertEquals(expected_history.asdict(), questionnaire_history.asdict())
-
+    questionnaire_history = self.questionnaire_history_dao.get_with_children([1, 1])
     expected_history.concepts.append(EXPECTED_CONCEPT_1)
     expected_history.concepts.append(EXPECTED_CONCEPT_2)
     expected_history.questions.append(EXPECTED_QUESTION_1)
@@ -103,8 +101,8 @@ class QuestionnaireDaoTest(SqlTestBase):
     # Creating a questionnaire creates a history entry with children
     self.check_history()
 
-    expected_questionnaire = Questionnaire(questionnaireId=1, version=1, semanticVersion='V1', created=TIME,
-                                           lastModified=TIME, resource=RESOURCE_1_WITH_ID)
+    expected_questionnaire = Questionnaire(questionnaireId=1, version=1, created=TIME,
+                                          lastModified=TIME, resource=RESOURCE_1_WITH_ID)
     questionnaire = self.dao.get(1)
     self.assertEquals(expected_questionnaire.asdict(), questionnaire.asdict())
 
@@ -134,12 +132,12 @@ class QuestionnaireDaoTest(SqlTestBase):
     with FakeClock(TIME):
       self.dao.insert(q)
 
-    q = Questionnaire(questionnaireId=1, semanticVersion='V1', resource=RESOURCE_2)
+    q = Questionnaire(questionnaireId=1, version=1, resource=RESOURCE_2)
     with FakeClock(TIME_2):
       self.dao.update(q)
 
     expected_questionnaire = Questionnaire(questionnaireId=1, version=2, created=TIME,
-                                           semanticVersion='V2', lastModified=TIME_2, resource=RESOURCE_2_WITH_ID)
+                                           lastModified=TIME_2, resource=RESOURCE_2_WITH_ID)
     questionnaire = self.dao.get(1)
     self.assertEquals(expected_questionnaire.asdict(), questionnaire.asdict())
 
@@ -148,7 +146,7 @@ class QuestionnaireDaoTest(SqlTestBase):
     with FakeClock(TIME):
       self.dao.insert(q)
 
-    q = Questionnaire(questionnaireId=1, semanticVersion='Vxx', resource=RESOURCE_2)
+    q = Questionnaire(questionnaireId=1, version=2, resource=RESOURCE_2)
     with FakeClock(TIME_2):
       try:
         self.dao.update(q)
