@@ -115,11 +115,9 @@ def _initialize_database(with_data=True, with_consent_codes=False):
 
     with engine.begin():
         engine.execute("DROP DATABASE IF EXISTS rdr")
-        engine.execute("DROP DATABASE IF EXISTS rdr_tasks")
         engine.execute("DROP DATABASE IF EXISTS metrics")
         # Keep in sync with tools/setup_local_database.sh.
         engine.execute("CREATE DATABASE rdr CHARACTER SET utf8 COLLATE utf8_general_ci")
-        engine.execute("CREATE DATABASE rdr_tasks CHARACTER SET utf8 COLLATE utf8_general_ci")
         engine.execute("CREATE DATABASE metrics CHARACTER SET utf8 COLLATE utf8_general_ci")
 
         engine.execute("USE metrics")
@@ -129,44 +127,13 @@ def _initialize_database(with_data=True, with_consent_codes=False):
         database.create_schema()
         _load_views_and_functions(engine)
 
-        # Celery will create these tables during class loading. But since we are dropping the databases
-        # later to reset, we need to create them every time we initialize the database.
-        engine.execute("USE rdr_tasks")
-        engine.execute("""
-            create table rdr_tasks.celery_taskmeta
-            (
-                id        int auto_increment primary key,
-                task_id   varchar(155) null,
-                status    varchar(50)  null,
-                result    blob         null,
-                date_done datetime     null,
-                traceback text         null,
-                constraint task_id
-                    unique (task_id)
-            );
-        """)
-
-        engine.execute("""
-            create table rdr_tasks.celery_tasksetmeta
-            (
-                id         int auto_increment primary key,
-                taskset_id varchar(155) null,
-                result     blob         null,
-                date_done  datetime     null,
-                constraint taskset_id
-                    unique (taskset_id)
-            );
-        """)
-
 
     engine.dispose()
     database = None
     singletons.reset_for_tests()
 
     db_conn_str = "mysql+mysqldb://{0}@{1}:{2}/rdr?charset=utf8".format(mysql_login, mysql_host, MYSQL_PORT)
-    celery_conn_str = "mysql+mysqldb://{0}@{1}:{2}/rdr_tasks?charset=utf8".format(mysql_login, mysql_host, MYSQL_PORT)
     config.override_setting('unittest_db_connection_string', db_conn_str)
-    config.override_setting('unittest_celery_db_connection_string', celery_conn_str)
 
     if with_data:
         _setup_hpos()

@@ -4,6 +4,7 @@ import math
 import random
 from datetime import datetime
 
+from google.appengine.api import taskqueue
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from sqlalchemy import or_, func, and_
@@ -52,8 +53,17 @@ def rebuild_bigquery_handler():
                      format(count, total_rows, batch_size))
 
         while count > 0:
-            task = rebuild_bq_participant_task.apply_async(queue='offline', args=(timestamp, batch_size))
-            task.forget()
+            # task = rebuild_bq_participant_task.apply_async(queue='offline', args=(timestamp, batch_size))
+            # task.forget()
+            task = taskqueue.add(
+                queue_name='bigquery-rebuild',
+                url='/rdr/v1/BQRebuildTaskApi',
+                method='GET',
+                target='worker',
+                params={'timestamp': timestamp, 'limit': batch_size}
+            )
+
+            logging.info('Task {} enqueued, ETA {}.'.format(task.name, task.eta))
             count -= 1
     #
     # Process tables that don't need to be broken up into smaller tasks.
@@ -68,7 +78,6 @@ def rebuild_bigquery_handler():
     bq_site_update()
 
 
-@celery.task()
 def rebuild_bq_participant_task(timestamp, limit=0):
     """
     Loop through all participants and generate the BQ participant summary data and

@@ -18,7 +18,7 @@ from rdr_service import app_util
 from rdr_service.api import metrics_ehr_api
 from rdr_service.api.awardee_api import AwardeeApi
 from rdr_service.api.bigquery_participant_summary_api import BQParticipantSummaryApi
-from rdr_service.api.bigquery_task_queue_api import BQRebuildTaskApi, rebuild_bigquery_core
+from rdr_service.api.cloud_tasks_api import BQRebuildTaskApi
 from rdr_service.api.biobank_order_api import BiobankOrderApi
 from rdr_service.api.check_ppi_data_api import check_ppi_data
 from rdr_service.api.data_gen_api import DataGenApi, SpecDataGenApi
@@ -36,8 +36,7 @@ from rdr_service.api.public_metrics_api import PublicMetricsApi
 from rdr_service.api.questionnaire_api import QuestionnaireApi
 from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireAnswers, QuestionnaireResponseApi
 from rdr_service.config import get_config, get_db_config
-from rdr_service.services.flask import app, API_PREFIX
-from rdr_service.services.system_utils import run_external_program
+from rdr_service.services.flask import app, API_PREFIX, TASK_PREFIX
 
 
 def _warmup():
@@ -236,14 +235,16 @@ api.add_resource(version_api.VersionApi, "/", API_PREFIX, endpoint="version", me
 # Data generator API used to load fake data into the database.
 api.add_resource(DataGenApi, API_PREFIX + "DataGen", endpoint="datagen", methods=["POST", "PUT"])
 
-
+#
+# Cloud Tasks API endpoints
+#
 # Task Queue API endpoing to rebuild BQ participant summary records.
-api.add_resource(BQRebuildTaskApi, API_PREFIX + "BQRebuildTaskApi", endpoint="bq_rebuilt_task", methods=["GET"])
+api.add_resource(BQRebuildTaskApi, TASK_PREFIX + "BQRebuildTaskApi", endpoint="bq_rebuild_task", methods=["GET"])
+
 
 #
 # Non-resource endpoints
 #
-
 api.add_resource(SpecDataGenApi, API_PREFIX + "SpecDataGen", endpoint="specdatagen", methods=["POST"])
 
 app.add_url_rule(
@@ -258,10 +259,6 @@ app.add_url_rule(API_PREFIX + "CheckPpiData", endpoint="check_ppi_data", view_fu
 app.add_url_rule(API_PREFIX + "ImportCodebook", endpoint="import_codebook", view_func=import_codebook,
                  methods=["POST"])
 
-app.add_url_rule(API_PREFIX + 'RebuildBigQueryCore',
-                 endpoint='rebuildbigquerycore',
-                 view_func=rebuild_bigquery_core,
-                 methods=['POST'])
 
 app.add_url_rule("/_ah/warmup", endpoint="warmup", view_func=_warmup, methods=["GET"])
 app.add_url_rule("/_ah/start", endpoint="start", view_func=_start, methods=["GET"])
