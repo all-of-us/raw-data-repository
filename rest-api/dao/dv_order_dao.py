@@ -39,7 +39,7 @@ class DvOrderDao(UpdatableDao):
     fhir_resource = SimpleFhirR4Reader(resource)
     summary = ParticipantSummaryDao().get(pid)
     if not summary:
-      raise BadRequest('No summary for particpant id: {}'.format(pid))
+      raise BadRequest('No summary for participant id: {}'.format(pid))
     code_dict = summary.asdict()
     format_json_code(code_dict, self.code_dao, 'genderIdentityId')
     format_json_code(code_dict, self.code_dao, 'stateId')
