@@ -46,18 +46,17 @@ def upgrade_rdr():
 
     # Make a bkup_ table
     op.execute(
-      "CREATE TABLE bkup_biobank_dv_order_history AS SELECT * FROM biobank_dv_order_history;"
+      "CREATE TABLE bkup_biobank_dv_order_history LIKE biobank_dv_order_history;"
+    )
+
+    op.execute(
+      "INSERT INTO bkup_biobank_dv_order_history SELECT * FROM biobank_dv_order_history;"
     )
 
     # PREP THE tmp_ TABLE
     # create the tmp_ table
     op.execute(
-      "CREATE TABLE tmp_biobank_dv_order_history AS select * from biobank_dv_order_history LIMIT 1;"
-    )
-
-    # Clear the table
-    op.execute(
-      "TRUNCATE TABLE tmp_biobank_dv_order_history;"
+      "CREATE TABLE tmp_biobank_dv_order_history LIKE biobank_dv_order_history;"
     )
 
     # Add the `version` column
@@ -103,9 +102,13 @@ def upgrade_rdr():
 
     # create the table again based on tmp_ table data
     op.execute(
-      "CREATE TABLE biobank_dv_order_history AS SELECT * FROM tmp_biobank_dv_order_history;")
+      "CREATE TABLE biobank_dv_order_history LIKE tmp_biobank_dv_order_history;")
 
-    # Clean out the tmp_ table
+    op.execute(
+      "INSERT INTO biobank_dv_order_history SELECT * FROM tmp_biobank_dv_order_history;"
+    )
+
+    # Remove the tmp_ table
     op.execute("DROP TABLE tmp_biobank_dv_order_history;")
 
     # Removing the bkup_ table
