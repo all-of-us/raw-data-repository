@@ -35,6 +35,7 @@ google-cloud-bigquery==1.18.0
 google-cloud-core==1.0.3  # via google-cloud-bigquery, google-cloud-datastore, google-cloud-firestore, google-cloud-storage
 google-cloud-datastore==1.9.0
 google-cloud-firestore==1.4.0
+google-cloud-logging==1.13.0
 google-cloud-storage==1.18.0
 google-python-cloud-debugger==2.13
 google-resumable-media==0.3.2  # via google-cloud-bigquery, google-cloud-storage
