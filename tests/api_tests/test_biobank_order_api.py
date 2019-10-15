@@ -121,6 +121,36 @@ class BiobankOrderApiTest(BaseTestCase):
             path, request_data=request_data, headers={"If-Match": 'W/"2"'}, expected_status=http.client.BAD_REQUEST
         )
 
+    def test_cancel_one_order_with_another_good_order(self):
+        self.summary_dao.insert(self.participant_summary(self.participant))
+        order_json = load_biobank_order_json(self.participant.participantId, filename="biobank_order_1.json")
+        order_json2 = load_biobank_order_json(self.participant.participantId, filename="biobank_order_2.json")
+        order_json2['identifier'][0]['value'] = 'healthpro-order-id-1231234'
+        order_json2['identifier'][1]['value'] = 'WEB1YLHV1234'
+        result = self.send_post(self.path, order_json)
+        result2 = self.send_post(self.path, order_json2)
+
+        biobank_order_id = result["identifier"][1]["value"]
+        path = self.path + "/" + biobank_order_id
+        request_data = {
+            "amendedReason": "Its all wrong",
+            "cancelledInfo": {
+                "author": {"system": "https://www.pmi-ops.org/healthpro-username", "value": "fred@pmi-ops.org"},
+                "site": {"system": "https://www.pmi-ops.org/site-id", "value": "hpo-site-monroeville"},
+            },
+            "status": "cancelled",
+        }
+        self.send_patch(path, request_data=request_data, headers={"If-Match": 'W/"1"'})
+
+        self.send_patch(
+            path, request_data=request_data, headers={"If-Match": 'W/"2"'}, expected_status=http.client.BAD_REQUEST
+        )
+
+        get_summary = self.summary_dao.get(self.participant.participantId)
+
+        self.assertEqual(get_summary.biospecimenSourceSiteId, 1)
+        self.assertEqual(get_summary.biospecimenCollectedSiteId, 1)
+
     def test_you_can_not_restore_a_not_cancelled_order(self):
         self.summary_dao.insert(self.participant_summary(self.participant))
         order_json = load_biobank_order_json(self.participant.participantId, filename="biobank_order_2.json")
@@ -181,6 +211,7 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual(get_summary.sampleOrderStatus1ED02, OrderStatus.FINALIZED)
         self.assertEqual(get_summary.sampleOrderStatus2SST8, OrderStatus.FINALIZED)
         self.assertEqual(get_summary.sampleOrderStatus2PST8, OrderStatus.FINALIZED)
+        self.assertEqual(get_summary.biospecimenFinalizedSiteId, 2)
         self.assertEqual(restored_order["status"], "UNSET")
         self.assertEqual(restored_order["restoredInfo"]["author"]["value"], "fred@pmi-ops.org")
         self.assertEqual(restored_order["restoredInfo"]["site"]["value"], "hpo-site-monroeville")

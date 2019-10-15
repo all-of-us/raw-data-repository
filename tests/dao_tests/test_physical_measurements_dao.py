@@ -18,6 +18,8 @@ from tests.helpers.unittest_base import BaseTestCase
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
 TIME_3 = datetime.datetime(2016, 1, 3)
+TIME_4 = datetime.datetime(2016, 1, 4)
+TIME_5 = datetime.datetime(2016, 1, 5)
 
 
 class PhysicalMeasurementsDaoTest(BaseTestCase):
@@ -174,6 +176,7 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
             measurements = self.dao.insert(self._make_physical_measurements())
 
         cancel = BaseTestCase.get_restore_or_cancel_info()
+
         with FakeClock(TIME_3):
             with PhysicalMeasurementsDao().session() as session:
                 update = self.dao.update_with_patch(measurements.physicalMeasurementsId, session, cancel)
@@ -189,3 +192,27 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
         self.assertEqual(summary.physicalMeasurementsFinalizedTime, TIME_1)
         self.assertEqual(summary.physicalMeasurementsCreatedSiteId, 1)
         self.assertEqual(summary.physicalMeasurementsFinalizedSiteId, None)
+
+        with FakeClock(TIME_3):
+            measurements = self.dao.insert(self._make_physical_measurements(physicalMeasurementsId=2))
+
+        with FakeClock(TIME_4):
+            self.dao.insert(self._make_physical_measurements(physicalMeasurementsId=3))
+
+        summary = ParticipantSummaryDao().get(self.participant.participantId)
+        self.assertEqual(summary.physicalMeasurementsStatus, PhysicalMeasurementsStatus.COMPLETED)
+        self.assertEqual(summary.physicalMeasurementsTime, TIME_4)
+        self.assertEqual(summary.physicalMeasurementsFinalizedTime, TIME_1)
+        self.assertEqual(summary.physicalMeasurementsCreatedSiteId, 1)
+        self.assertEqual(summary.physicalMeasurementsFinalizedSiteId, 2)
+
+        with FakeClock(TIME_5):
+            with PhysicalMeasurementsDao().session() as session:
+                update = self.dao.update_with_patch(measurements.physicalMeasurementsId, session, cancel)
+
+#        summary = ParticipantSummaryDao().get(self.participant.participantId)
+#        self.assertEqual(summary.physicalMeasurementsStatus, PhysicalMeasurementsStatus.COMPLETED)
+#        self.assertEqual(summary.physicalMeasurementsTime, TIME_4)
+#        self.assertEqual(summary.physicalMeasurementsFinalizedTime, TIME_1)
+#        self.assertEqual(summary.physicalMeasurementsCreatedSiteId, 1)
+#        self.assertEqual(summary.physicalMeasurementsFinalizedSiteId, 2)
