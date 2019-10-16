@@ -191,7 +191,6 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertEqual(summary.physicalMeasurementsTime, None)
     self.assertEqual(summary.physicalMeasurementsFinalizedTime, TIME_1)
     self.assertEqual(summary.physicalMeasurementsCreatedSiteId, 1)
-    self.assertEqual(summary.physicalMeasurementsFinalizedSiteId, 2)
     self.assertEqual(summary.physicalMeasurementsFinalizedSiteId, None)
 
     with FakeClock(TIME_3):
