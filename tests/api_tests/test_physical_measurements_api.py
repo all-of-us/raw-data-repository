@@ -385,6 +385,8 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         ps = self.send_get("ParticipantSummary?participantId=%s" % _id)
         self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsStatus"], "CANCELLED")
         self.assertNotIn("physicalMeasurementsTime", ps["entry"][0]["resource"])
+        self.assertNotIn("physicalMeasurementsFinalizedSiteId", ps["entry"][0]["resource"])
+        self.assertEqual("UNSET", ps["entry"][0]["resource"]["physicalMeasurementsFinalizedSite"])
 
     def test_restore_a_physical_measuremnet(self):
         self.send_consent(self.participant_id)

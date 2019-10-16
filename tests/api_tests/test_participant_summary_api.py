@@ -1614,6 +1614,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertIsNone(ps_1.get("enrollmentStatusCoreOrderedSampleTime"))
         self.assertIsNone(ps_1.get("sampleOrderStatus2ED10Time"))
         self.assertEqual(ps_1.get("sampleOrderStatus2ED10"), "UNSET")
+        self.assertEqual(ps_1.get("biospecimenFinalizedSite"), "UNSET")
+        self.assertEqual(ps_1.get("biospecimenCollectedSite"), "UNSET")
 
     def test_member_ordered_stored_times_for_consent_withdraw(self):
         questionnaire_id = self.create_questionnaire("questionnaire3.json")
