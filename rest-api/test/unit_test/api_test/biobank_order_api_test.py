@@ -107,6 +107,34 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.assertEqual(get_cancelled_order['cancelledInfo']['author']['value'], 'fred@pmi-ops.org')
     self.assertEqual(get_cancelled_order['cancelledInfo']['site']['value'], 'hpo-site-monroeville')
 
+
+  def test_cancel_one_order_with_another_good_order(self):
+    self.summary_dao.insert(self.participant_summary(self.participant))
+    order_json = load_biobank_order_json(self.participant.participantId, filename="biobank_order_1.json")
+    order_json2 = load_biobank_order_json(self.participant.participantId, filename="biobank_order_2.json")
+    order_json2['identifier'][0]['value'] = 'healthpro-order-id-1231234'
+    order_json2['identifier'][1]['value'] = 'WEB1YLHV1234'
+    result = self.send_post(self.path, order_json)
+    self.send_post(self.path, order_json2)
+
+    biobank_order_id = result["identifier"][1]["value"]
+    path = self.path + "/" + biobank_order_id
+    request_data = {
+        "amendedReason": "Its all wrong",
+        "cancelledInfo": {
+            "author": {"system": "https://www.pmi-ops.org/healthpro-username", "value": "fred@pmi-ops.org"},
+            "site": {"system": "https://www.pmi-ops.org/site-id", "value": "hpo-site-monroeville"},
+        },
+        "status": "cancelled",
+    }
+    self.send_patch(path, request_data=request_data, headers={"If-Match": 'W/"1"'})
+
+    get_summary = self.summary_dao.get(self.participant.participantId)
+
+    self.assertEqual(get_summary.biospecimenSourceSiteId, 1)
+    self.assertEqual(get_summary.biospecimenCollectedSiteId, 1)
+    self.assertEqual(get_summary.biospecimenFinalizedSiteId, 2)
+
   def test_you_can_not_cancel_a_cancelled_order(self):
     self.summary_dao.insert(self.participant_summary(self.participant))
     order_json = load_biobank_order_json(self.participant.participantId,
