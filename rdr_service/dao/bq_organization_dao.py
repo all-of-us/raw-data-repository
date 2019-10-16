@@ -19,11 +19,11 @@ class BQOrganizationGenerator(BigQueryGenerator):
         :param convert_to_enum: If schema field description includes Enum class info, convert value to Enum.
         :return: BQRecord object
         """
-        dao = BigQuerySyncDao()
-        with dao.session() as session:
-            row = session.execute(
+        ro_dao = BigQuerySyncDao(backup=True)
+        with ro_dao.session() as ro_session:
+            row = ro_session.execute(
                 text('select * from rdr.organization where organization_id = :id'), {'id': organization_id}).first()
-            data = dao.to_dict(row)
+            data = ro_dao.to_dict(row)
             return BQRecord(schema=BQOrganizationSchema, data=data, convert_to_enum=convert_to_enum)
 
 
@@ -32,13 +32,15 @@ def bq_organization_update(project_id=None):
     Generate all new Organization records for BQ. Since there is called from a tool, this is not deferred.
     :param project_id: Override the project_id
     """
-    dao = BigQuerySyncDao()
-    with dao.session() as session:
+    ro_dao = BigQuerySyncDao(backup=True)
+    with ro_dao.session() as ro_session:
         gen = BQOrganizationGenerator()
-        results = session.query(Organization.organizationId).all()
-        logging.info('BQ Organization table: rebuilding {0} records...'.format(len(results)))
+        results = ro_session.query(Organization.organizationId).all()
 
+    w_dao = BigQuerySyncDao()
+    logging.info('BQ Organization table: rebuilding {0} records...'.format(len(results)))
+    with w_dao.session() as w_session:
         for row in results:
             bqr = gen.make_bqrecord(row.organizationId)
-            gen.save_bqrecord(row.organizationId, bqr, bqtable=BQOrganization, dao=dao, session=session,
+            gen.save_bqrecord(row.organizationId, bqr, bqtable=BQOrganization, w_dao=w_dao, w_session=w_session,
                               project_id=project_id)
