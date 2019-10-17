@@ -17,17 +17,17 @@ class BigQueryGenerator(object):
   """
   Base class for generating BigQuery data JSON for storing in the bigquery_sync mysql table.
   """
-  def save_bqrecord(self, pk_id, bqrecord, bqtable, dao, session, project_id=None):
+  def save_bqrecord(self, pk_id, bqrecord, bqtable, w_dao, w_session, project_id=None):
     """
     Save the BQRecord object into the bigquery_sync table.
     :param pk_id: primary key id value from source table.
     :param bqrecord: BQRecord object.
     :param bqtable: BQTable object.
-    :param dao: BigQuerySyncDao object
-    :param session: Session from a BigQuerySyncDao object
+    :param w_dao: Writable BigQuerySyncDao object
+    :param w_session: Session from a writable BigQuerySyncDao object
     :param project_id: Project ID override value.
     """
-    if not dao or not session:
+    if not w_dao or not w_session:
       raise ValueError('Invalid BigQuerySyncDao dao or session argument.')
 
     # see if there is a project id override value.
@@ -52,7 +52,7 @@ class BigQueryGenerator(object):
       if dataset_id is None:
         # logging.warning('{0} is mapped to none in {1} project.'.format(project_id, cur_id))
         continue
-      bqs_rec = session.query(BigQuerySync.id).\
+      bqs_rec = w_session.query(BigQuerySync.id).\
                   filter(BigQuerySync.pk_id == pk_id, BigQuerySync.projectId == project_id,
                          BigQuerySync.datasetId == dataset_id, BigQuerySync.tableId == table_id).first()
 
@@ -63,7 +63,7 @@ class BigQueryGenerator(object):
       bqs.datasetId = dataset_id
       bqs.tableId = table_id
       bqs.resource = bqrecord.to_dict(serialize=True)
-      dao.upsert_with_session(session, bqs)
+      w_dao.upsert_with_session(w_session, bqs)
       # we don't call session flush here, because we might be part of a batch process.
 
 
@@ -83,42 +83,42 @@ class BigQueryGenerator(object):
 
     return dict1
 
-  def _lookup_code_value(self, code_id, session):
+  def _lookup_code_value(self, code_id, ro_session):
     """
     Return the code id string value from the code table.
     :param code_id: codeId from code table
-    :param session: DAO session object
+    :param ro_session: ReadOnly DAO session object
     :return: string
     """
     if code_id is None:
       return None
-    result = session.query(Code.value).filter(Code.codeId == int(code_id)).first()
+    result = ro_session.query(Code.value).filter(Code.codeId == int(code_id)).first()
     if not result:
       return None
     return result.value
 
-  def _lookup_code_id(self, code, session):
+  def _lookup_code_id(self, code, ro_session):
     """
     Return the code id for the given code value string.
     :param code: code value string
-    :param session: DAO session object
+    :param ro_session: ReadOnly DAO session object
     :return: int
     """
     if code is None:
       return None
-    result = session.query(Code.codeId).filter(Code.value == code).first()
+    result = ro_session.query(Code.codeId).filter(Code.value == code).first()
     if not result:
       return None
     return result.codeId
 
-  def _lookup_site_name(self, site_id, session):
+  def _lookup_site_name(self, site_id, ro_session):
     """
     Look up the site name
     :param site_id: site id integer
-    :param session: DAO session object
+    :param ro_session: ReadOnly DAO session object
     :return: string
     """
-    site = session.query(Site.googleGroup).filter(Site.siteId == site_id).first()
+    site = ro_session.query(Site.googleGroup).filter(Site.siteId == site_id).first()
     if not site:
       return None
     return site.googleGroup

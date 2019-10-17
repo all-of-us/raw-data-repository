@@ -19,10 +19,10 @@ class BQSiteGenerator(BigQueryGenerator):
     :param convert_to_enum: If schema field description includes Enum class info, convert value to Enum.
     :return: BQRecord object
     """
-    dao = BigQuerySyncDao()
-    with dao.session() as session:
-      row = session.execute(text('select * from site where site_id = :id'), {'id': site_id}).first()
-      data = dao.to_dict(row)
+    ro_dao = BigQuerySyncDao()
+    with ro_dao.session() as ro_session:
+      row = ro_session.execute(text('select * from site where site_id = :id'), {'id': site_id}).first()
+      data = ro_dao.to_dict(row)
       return BQRecord(schema=BQSiteSchema, data=data, convert_to_enum=convert_to_enum)
 
 
@@ -31,12 +31,14 @@ def bq_site_update(project_id=None):
   Generate all new Site records for BQ. Since there is called from a tool, this is not deferred.
   :param project_id: Override the project_id
   """
-  dao = BigQuerySyncDao()
-  with dao.session() as session:
+  ro_dao = BigQuerySyncDao()
+  with ro_dao.session() as ro_session:
     gen = BQSiteGenerator()
-    results = session.query(Site.siteId).all()
-    logging.info('BQ Site table: rebuilding {0} records...'.format(len(results)))
+    results = ro_session.query(Site.siteId).all()
 
+  w_dao = BigQuerySyncDao()
+  with w_dao.session() as w_session:
+    logging.info('BQ Site table: rebuilding {0} records...'.format(len(results)))
     for row in results:
       bqr = gen.make_bqrecord(row.siteId)
-      gen.save_bqrecord(row.siteId, bqr, bqtable=BQSite, dao=dao, session=session, project_id=project_id)
+      gen.save_bqrecord(row.siteId, bqr, bqtable=BQSite, w_dao=w_dao, w_session=w_session, project_id=project_id)
