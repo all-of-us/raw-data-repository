@@ -1127,6 +1127,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
     results = dao.get_latest_version_from_cache('2018-01-01', '2018-01-08')
 
@@ -1169,6 +1170,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao(version=MetricsAPIVersion.V2)
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
     results = dao.get_latest_version_from_cache('2018-01-01', '2018-01-08')
 
@@ -1198,13 +1200,13 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     p2 = Participant(participantId=2, biobankId=5)
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
-
     p3 = Participant(participantId=3, biobankId=6)
     self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
                  time_mem=self.time3, time_fp_stored=self.time4)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
     results = dao.get_latest_version_from_cache('2018-01-01', '2018-01-08')
     self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0, 'core': 0, 'registered': 3}},
@@ -1233,6 +1235,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = """
@@ -1286,6 +1289,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = """
@@ -1351,6 +1355,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = """
@@ -1403,6 +1408,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = """
@@ -1466,6 +1472,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsGenderCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
     results = dao.get_latest_version_from_cache('2017-12-31', '2018-01-08')
 
@@ -1522,6 +1529,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, gender_identity=5)
 
     service = ParticipantCountsOverTimeService()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
     service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(
       MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
@@ -1573,6 +1581,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, gender_identity=5)
 
     service = ParticipantCountsOverTimeService()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
 
     qs = """
@@ -1636,6 +1645,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, gender_identity=5)
 
     service = ParticipantCountsOverTimeService()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
 
     qs = """
@@ -1715,6 +1725,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, gender_identity=5)
 
     service = ParticipantCountsOverTimeService()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
 
     qs = """
@@ -1791,6 +1802,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsAgeCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
     results = dao.get_latest_version_from_cache('2017-12-31', '2018-01-08')
 
@@ -1857,6 +1869,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, dob=dob3)
 
     service = ParticipantCountsOverTimeService()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
 
     qs = """
@@ -1915,6 +1928,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, dob=dob3)
 
     service = ParticipantCountsOverTimeService()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
 
     qs = """
@@ -1977,6 +1991,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, dob=dob3)
 
     service = ParticipantCountsOverTimeService()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
 
     qs = """
@@ -2028,6 +2043,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = """
@@ -2064,6 +2080,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = """
@@ -2128,6 +2145,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRaceCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     results = dao.get_latest_version_from_cache('2017-12-31', '2018-01-08')
@@ -2224,6 +2242,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
     service = ParticipantCountsOverTimeService()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
     service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(
       MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
@@ -2311,6 +2330,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRaceCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = """
@@ -2417,6 +2437,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRaceCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = """
@@ -2507,6 +2528,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRaceCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = """
@@ -2586,6 +2608,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     results1 = dao.get_latest_version_from_cache('2017-12-31', 'FULL_STATE')
@@ -2869,6 +2892,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao(version=MetricsAPIVersion.V2)
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_STATE')
@@ -3054,6 +3078,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_STATE')
@@ -3116,6 +3141,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs1 = """
@@ -3554,6 +3580,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs1 = """
@@ -3815,6 +3842,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = """
@@ -3895,6 +3923,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = """
@@ -4001,6 +4030,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs1 = """
@@ -4378,6 +4408,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs1 = """
@@ -4600,6 +4631,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     results1 = dao.get_latest_version_from_cache('2018-01-01', 'FULL_STATE')
@@ -4664,6 +4696,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsLifecycleCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     results = dao.get_latest_version_from_cache('2018-01-03')
@@ -4848,6 +4881,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsLifecycleCacheDao(MetricsCacheType.METRICS_V2_API, MetricsAPIVersion.V2)
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     results = dao.get_latest_version_from_cache('2018-01-01')
@@ -5071,6 +5105,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                  time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
     service = ParticipantCountsOverTimeService()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
                                                                     .METRICS_V2_API))
     service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
@@ -5251,6 +5286,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                  time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
     service = ParticipantCountsOverTimeService()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
                                                                     .METRICS_V2_API))
     service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
@@ -5390,6 +5426,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                  time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
     service = ParticipantCountsOverTimeService()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
                                                                     .METRICS_V2_API))
     dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
@@ -5458,6 +5495,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsLanguageCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
     results = dao.get_latest_version_from_cache('2017-12-30', '2018-01-03')
 
@@ -5491,6 +5529,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsLanguageCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     # test API without awardee and enrollmentStatus parameters
@@ -5581,6 +5620,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsLanguageCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
     results = dao.get_latest_version_from_cache('2017-12-30', '2018-01-03')
 
