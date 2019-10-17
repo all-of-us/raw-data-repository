@@ -1,7 +1,7 @@
 import os
 
 from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum
-from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
+from rdr_service.dao.bigquery_sync_dao import BigQueryGenerator
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummarySchema

@@ -484,12 +484,10 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         return data
 
 
-def rebuild_bq_participant(p_id, ro_dao, ro_session, ps_bqgen=None, pdr_bqgen=None):
+def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None):
     """
     Rebuild a BQ record for a specific participant
     :param p_id: participant id
-    :param ro_dao: Readonly BQBigQuerySync dao object
-    :param ro_session: Readonly DAO session object
     :param ps_bqgen: BQParticipantSummaryGenerator object
     :param pdr_bqgen: BQPDRParticipantSummaryGenerator object
     :return:
@@ -533,7 +531,4 @@ def bq_participant_summary_update_task(p_id):
     Deferred task to update the Participant Summary record for the given participant.
     :param p_id: Participant ID
     """
-    ro_dao = BigQuerySyncDao()
-    with ro_dao.session() as ro_session:
-        rebuild_bq_participant(p_id, ro_dao=ro_dao, ro_session=ro_session)
-        ro_session.flush()
+    rebuild_bq_participant(p_id)

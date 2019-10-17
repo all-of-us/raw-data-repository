@@ -113,8 +113,7 @@ def rebuild_bq_participant_task(timestamp, limit=0):
             for row in results:
                 count += 1
                 # All logic for generating a participant summary is here.
-                rebuild_bq_participant(row.participantId, ro_dao=ro_dao, ro_session=ro_session, ps_bqgen=ps_bqgen,
-                                       pdr_bqgen=pdr_bqgen)
+                rebuild_bq_participant(row.participantId, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen)
 
                 # Generate participant questionnaire module response data
                 modules = (
@@ -134,8 +133,8 @@ def rebuild_bq_participant_task(timestamp, limit=0):
                     w_dao = BigQuerySyncDao()
                     with w_dao.session() as w_session:
                         for mod_bqr in mod_bqrs:
-                            mod_bqgen.save_bqrecord(
-                                mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table, w_dao=w_dao, w_session=w_session)
+                            mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
+                                                    w_dao=w_dao, w_session=w_session)
 
     logging.info('Rebuilt BigQuery data for {0} participants.'.format(count))
 
