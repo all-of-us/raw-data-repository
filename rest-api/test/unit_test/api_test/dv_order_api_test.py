@@ -2,6 +2,7 @@ import copy
 import httplib
 
 import mock
+import config_api
 from dao.code_dao import CodeDao
 from dao.dv_order_dao import DvOrderDao
 from dao.hpo_dao import HPODao
@@ -70,14 +71,14 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
       'orders': {
           'order': {
               'status': 'Queued',
-        'reference_number': 'somebarcodenumber',
-        'received': '2016-12-01T12:00:00-05:00',
-        'number': 'WEB1ABCD1234',
-        'patient': {
-            'medical_record_number': 'PAT-123-456'
-        }
+              'reference_number': 'somebarcodenumber',
+              'received': '2016-12-01T12:00:00-05:00',
+              'number': 'WEB1ABCD1234',
+              'patient': {
+                  'medical_record_number': 'PAT-123-456'
+              }
+          }
       }
-    }
   }
 
   def _set_mayo_address(self, data):
@@ -149,6 +150,49 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
     order = self.get_orders()
     self.assertEquals(1, len(order))
     self.assertEquals(post_response._status_code, 201)
+
+  def test_set_system_identifier_by_user(self):
+    # Testing how to change the AUTH_USER for the requests below
+    # self._AUTH_USER = "vibrent-drc-prod@fake-testbed-test.com"
+    # config_api.CONFIG_ADMIN_MAP["testbed-test"] = self._AUTH_USER
+    # self.set_auth_user(self._AUTH_USER)
+
+    system_from_user = {
+      'vibrent-drc-prod': "http://vibrenthealth.com",
+      'careevolution': "http://carevolution.be",
+      'authorized': "test"
+    }
+
+    post_response = self.send_post(
+      'SupplyRequest',
+      request_data=self.get_payload('dv_order_api_post_supply_request.json'),
+      expected_status=httplib.CREATED
+    )
+
+    api_user = dict(post_response.headers)['auth_user'].split("@")[0]
+
+    location_id = post_response.location.rsplit('/', 1)[-1]
+    self.send_put(
+      'SupplyRequest/{}'.format(location_id),
+      request_data=self.get_payload('dv_order_api_put_supply_request.json'),
+    )
+    self.send_post(
+      'SupplyDelivery',
+      request_data=self._set_mayo_address(
+        self.get_payload('dv_order_api_post_supply_delivery.json')),
+      expected_status=httplib.CREATED
+    )
+
+    with self.dv_order_dao.session() as session:
+      identifiers = session.query(BiobankOrderIdentifier).filter_by(
+        biobankOrderId=self.mayolink_response['orders']['order']['number']
+      ).all()
+    for identifier in identifiers:
+      if identifier.system.endswith('/trackingId'):
+        self.assertEqual(identifier.system, system_from_user[api_user] + "/trackingId")
+      else:
+        self.assertEqual(identifier.system, system_from_user[api_user])
+
 
 class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
   mayolink_response = {

@@ -1,8 +1,8 @@
 import logging
 import dateutil
 from api.base_api import UpdatableApi
-from api_util import PTC, PTC_AND_HEALTHPRO, VIBRENT_FHIR_URL
-from app_util import auth_required, ObjDict
+from api_util import PTC, PTC_AND_HEALTHPRO, DV_FHIR_URL
+from app_util import auth_required, ObjDict, get_validated_user_info
 from dao.dv_order_dao import DvOrderDao
 from fhir_utils import SimpleFhirR4Reader
 from flask import request
@@ -33,6 +33,8 @@ class DvOrderApi(UpdatableApi):
   def post(self):
     try:
       resource = request.get_json(force=True)
+      user_email = get_validated_user_info()[0]
+      resource['auth_user'] = user_email
     except BadRequest:
       raise BadRequest('missing FHIR resource')
 
@@ -86,7 +88,7 @@ class DvOrderApi(UpdatableApi):
       p_id = from_client_participant_id(pid.value)
       bo_id = fhir.basedOn[0].identifier.value
       _id = self.dao.get_id(ObjDict({'participantId': p_id, 'order_id': int(bo_id)}))
-      tracking_status = fhir.extension.get(url=VIBRENT_FHIR_URL + 'tracking-status').valueString.lower()
+      tracking_status = fhir.extension.get(url=DV_FHIR_URL + 'tracking-status').valueString.lower()
     except AttributeError as e:
       raise BadRequest(e.message)
     except Exception as e:
@@ -110,6 +112,7 @@ class DvOrderApi(UpdatableApi):
 
     response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True, resource=merged_resource)
     response[2]['Location'] = '/rdr/v1/SupplyDelivery/{}'.format(bo_id)
+    response[2]['auth_user'] = resource['auth_user']
     if response[1] == 200:
       created_response = list(response)
       created_response[1] = 201
@@ -120,11 +123,12 @@ class DvOrderApi(UpdatableApi):
     fhir_resource = SimpleFhirR4Reader(resource)
     patient = fhir_resource.contained.get(resourceType='Patient')
     pid = patient.identifier.get(
-      system=VIBRENT_FHIR_URL + 'participantId').value
+      system=DV_FHIR_URL + 'participantId').value
     p_id = from_client_participant_id(pid)
     response = super(DvOrderApi, self).post(participant_id=p_id)
-    order_id = fhir_resource.identifier.get(system=VIBRENT_FHIR_URL + 'orderId').value
+    order_id = fhir_resource.identifier.get(system=DV_FHIR_URL + 'orderId').value
     response[2]['Location'] = '/rdr/v1/SupplyRequest/{}'.format(order_id)
+    response[2]['auth_user'] = resource['auth_user']
     if response[1] == 200:
       created_response = list(response)
       created_response[1] = 201
@@ -170,7 +174,7 @@ class DvOrderApi(UpdatableApi):
     try:
       fhir_resource = SimpleFhirR4Reader(resource)
       pid = fhir_resource.contained.get(
-           resourceType='Patient').identifier.get(system=VIBRENT_FHIR_URL + 'participantId')
+           resourceType='Patient').identifier.get(system=DV_FHIR_URL + 'participantId')
       p_id = from_client_participant_id(pid.value)
     except AttributeError as e:
       raise BadRequest(e.message)
@@ -190,13 +194,13 @@ class DvOrderApi(UpdatableApi):
       participant_id = fhir.patient.identifier.value
       p_id = from_client_participant_id(participant_id)
       update_time = dateutil.parser.parse(fhir.occurrenceDateTime)
-      carrier_name = fhir.extension.get(url=VIBRENT_FHIR_URL + 'carrier').valueString
+      carrier_name = fhir.extension.get(url=DV_FHIR_URL + 'carrier').valueString
 
       eta = None
-      if hasattr(fhir['extension'], VIBRENT_FHIR_URL + 'expected-delivery-date'):
-        eta = dateutil.parser.parse(fhir.extension.get(url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime)
+      if hasattr(fhir['extension'], DV_FHIR_URL + 'expected-delivery-date'):
+        eta = dateutil.parser.parse(fhir.extension.get(url=DV_FHIR_URL + "expected-delivery-date").valueDateTime)
 
-      tracking_status = fhir.extension.get(url=VIBRENT_FHIR_URL + 'tracking-status').valueString
+      tracking_status = fhir.extension.get(url=DV_FHIR_URL + 'tracking-status').valueString
       if tracking_status:
         tracking_status = tracking_status.lower()
     except AttributeError as e:

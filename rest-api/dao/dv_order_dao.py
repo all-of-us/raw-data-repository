@@ -3,7 +3,7 @@ import datetime
 import clock
 from api.mayolink_api import MayoLinkApi
 from api_util import format_json_code, get_code_id, format_json_enum, parse_date, \
-  VIBRENT_BARCODE_URL, VIBRENT_FHIR_URL, VIBRENT_ORDER_URL, VIBRENT_FULFILLMENT_URL
+  DV_BARCODE_URL, DV_FHIR_URL, DV_ORDER_URL, DV_FULFILLMENT_URL
 from app_util import ObjectView
 from dao.base_dao import UpdatableDao
 from dao.biobank_order_dao import BiobankOrderDao
@@ -85,7 +85,7 @@ class DvOrderDao(UpdatableDao):
                           'npi': None
                          },
             'report_notes': fhir_resource.extension.get(
-                url=VIBRENT_ORDER_URL).valueString,
+                url=DV_ORDER_URL).valueString,
             'tests': {'test': {'code': '1SAL2',
                                'name': 'PMI Saliva, FDA Kit',
                                'comments': None
@@ -138,23 +138,23 @@ class DvOrderDao(UpdatableDao):
         pass
 
       existing_obj.shipmentStatus = self._enumerate_order_tracking_status(fhir_resource.extension.get(
-          url=VIBRENT_FHIR_URL + 'tracking-status').valueString)
+          url=DV_FHIR_URL + 'tracking-status').valueString)
       existing_obj.shipmentCarrier = fhir_resource.extension.get(
-          url=VIBRENT_FHIR_URL + 'carrier').valueString
+          url=DV_FHIR_URL + 'carrier').valueString
 
       # shipmentEstArrival
       # The fhir_resource.get() method
       # will raise an exception on "expected-delivery-date"
       # if the resource doesn't have that path
       delivery_date_url = [extension.url for extension in fhir_resource["extension"]
-                           if extension.url == VIBRENT_FHIR_URL + "expected-delivery-date"]
+                           if extension.url == DV_FHIR_URL + "expected-delivery-date"]
       if delivery_date_url:
         existing_obj.shipmentEstArrival = parse_date(
           fhir_resource.extension.get(
-            url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime)
+            url=DV_FHIR_URL + "expected-delivery-date").valueDateTime)
 
       existing_obj.trackingId = fhir_resource.identifier.get(
-          system=VIBRENT_FHIR_URL + 'trackingId').value
+          system=DV_FHIR_URL + 'trackingId').value
       # USPS status
       existing_obj.orderStatus = self._enumerate_order_shipping_status(
           fhir_resource.status)
@@ -196,7 +196,7 @@ class DvOrderDao(UpdatableDao):
 
     if resource_json['resourceType'].lower() == 'supplyrequest':
       order.order_id = int(fhir_resource.identifier.get(
-          system=VIBRENT_FHIR_URL + 'orderId').value)
+          system=DV_FHIR_URL + 'orderId').value)
       if id_ and int(id_) != order.order_id:
         raise Conflict('url order id param does not match document order id')
 
@@ -205,12 +205,12 @@ class DvOrderDao(UpdatableDao):
 
       order.supplier = fhir_resource.contained.get(resourceType='Organization').id
       order.created = clock.CLOCK.now()
-      order.supplierStatus = fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString
+      order.supplierStatus = fhir_resource.extension.get(url=DV_FULFILLMENT_URL).valueString
 
       fhir_device = fhir_resource.contained.get(resourceType='Device')
       order.itemName = fhir_device.deviceName.get(type='manufacturer-name').name
       order.itemSKUCode = fhir_device.identifier.get(
-          system=VIBRENT_FHIR_URL + 'SKU').value
+          system=DV_FHIR_URL + 'SKU').value
       order.itemQuantity = fhir_resource.quantity.value
 
       fhir_patient = fhir_resource.contained.get(resourceType='Patient')
@@ -222,7 +222,7 @@ class DvOrderDao(UpdatableDao):
       order.zipCode = fhir_address.postalCode
 
       order.orderType = fhir_resource.extension.get(
-          url=VIBRENT_ORDER_URL).valueString
+          url=DV_ORDER_URL).valueString
       if id_ is None:
         order.version = 1
       else:
@@ -235,7 +235,7 @@ class DvOrderDao(UpdatableDao):
         order.version = expected_version
         order.biobankStatus = fhir_resource.biobankStatus if hasattr(fhir_resource, 'biobankStatus') else None
         try:
-          order.barcode = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).valueString
+          order.barcode = fhir_resource.extension.get(url=DV_BARCODE_URL).valueString
         except ValueError:
           order.barcode = None
 
@@ -259,24 +259,25 @@ class DvOrderDao(UpdatableDao):
 
   def _add_identifiers_and_main_id(self, order, resource):
     order.identifiers = []
+    dv_user = resource.auth_user.split("@")[0]
     for i in resource.identifier:
       try:
-        if i['system'].lower() == VIBRENT_FHIR_URL + 'trackingid':
-          order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._VIBRENT_ID_SYSTEM
+        if i['system'].lower() == DV_FHIR_URL + 'trackingid':
+          order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._DV_ID_SYSTEM[dv_user]
                                                           + '/trackingId', value=i['value']))
       except AttributeError:
         raise BadRequest(
             'No identifier for system %r, required for primary key.' %
-             BiobankDVOrder._VIBRENT_ID_SYSTEM)
+             BiobankDVOrder._DV_ID_SYSTEM[dv_user])
     for i in resource.basedOn:
       try:
-        if i['identifier']['system'].lower() == VIBRENT_FHIR_URL + 'orderid':
-          order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._VIBRENT_ID_SYSTEM,
+        if i['identifier']['system'].lower() == DV_FHIR_URL + 'orderid':
+          order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._DV_ID_SYSTEM[dv_user],
                                                           value=i['identifier']['value']))
       except AttributeError:
         raise BadRequest(
             'No identifier for system %r, required for primary key.' %
-             BiobankDVOrder._VIBRENT_ID_SYSTEM)
+             BiobankDVOrder._DV_ID_SYSTEM[dv_user])
 
   def get_etag(self, id_, pid):
     with self.session() as session:

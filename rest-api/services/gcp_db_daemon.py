@@ -59,6 +59,11 @@ def run():
         if self._args.enable_replica:
           _logger.info('    pmi-drc-api-test:       replica    -> tcp: 127.0.0.1:9945')
 
+      if self._args.enable_care_evo is True:
+        _logger.info('    all-of-us-rdr-careevo-test:       primary    -> tcp: 127.0.0.1:9950')
+        if self._args.enable_replica:
+          _logger.info('    all-of-us-rdr-careevo-test:       replica    -> tcp: 127.0.0.1:9955')
+
     def get_instances(self):
       """
       Build all instances we are going to connect to
@@ -89,6 +94,11 @@ def run():
         instances += gcp_format_sql_instance('pmi-drc-api-test', 9940) + ','
         if self._args.enable_replica:
           instances += gcp_format_sql_instance('pmi-drc-api-test', 9945, True) + ','
+
+      if self._args.enable_care_evo is True:
+        instances += gcp_format_sql_instance('all-of-us-rdr-careevo-test', 9950) + ','
+        if self._args.enable_replica:
+          instances += gcp_format_sql_instance('all-of-us-rdr-careevo-test', 9955, True) + ','
 
       # remove trailing comma
       instances = instances[:-1]
@@ -160,6 +170,10 @@ def run():
   # pylint: disable=E0602
   parser.add_argument('--enable-test', help=_('Add proxy to pmi-drc-api-test'),
                       default=False, action='store_true')  # noqa
+  # pylint: disable=E0602
+  parser.add_argument('--enable-care-evo', help=_('Add proxy to all-of-us-rdr-careevo-test'),
+                      default=False, action='store_true')  # noqa
+
   parser.add_argument('action', choices=('start', 'stop', 'restart'), default='')  # noqa
 
   args = parser.parse_args()
