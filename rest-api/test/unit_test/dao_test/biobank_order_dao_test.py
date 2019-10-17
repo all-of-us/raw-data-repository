@@ -191,6 +191,9 @@ class BiobankOrderDaoTest(SqlTestBase):
     self.assertEqual(updated_order.orderStatus, BiobankOrderStatus.CANCELLED)
     self.assertEqual(updated_order.amendedReason, cancelled_request['amendedReason'])
 
+    ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
+    self.assertEqual(ps_dao.biospecimenFinalizedSiteId, None)
+
   def test_cancelled_order_removes_from_participant_summary(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
     samples = [BiobankOrderedSample(
