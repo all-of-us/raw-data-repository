@@ -101,13 +101,14 @@ def bq_questionnaire_update_task(p_id, qr_id):
     where qr.questionnaire_response_id = :qr_id
   """)
 
+    ro_dao = BigQuerySyncDao(backup=True)
     w_dao = BigQuerySyncDao()
     qr_gen = BQPDRQuestionnaireResponseGenerator()
     module_id = None
 
-    with w_dao.session() as w_session:
+    with ro_dao.session() as ro_session:
 
-        results = w_session.execute(sql, {'qr_id': qr_id})
+        results = ro_session.execute(sql, {'qr_id': qr_id})
         if results:
             for row in results:
                 module_id = row.value
@@ -118,5 +119,6 @@ def bq_questionnaire_update_task(p_id, qr_id):
                 return
 
             table, bqrs = qr_gen.make_bqrecord(p_id, module_id, latest=True)
-            for bqr in bqrs:
-                qr_gen.save_bqrecord(qr_id, bqr, bqtable=table, w_dao=w_dao, w_session=w_session)
+            with w_dao.session() as w_session:
+                for bqr in bqrs:
+                    qr_gen.save_bqrecord(qr_id, bqr, bqtable=table, w_dao=w_dao, w_session=w_session)

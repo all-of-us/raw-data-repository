@@ -44,9 +44,9 @@ def rebuild_bigquery_handler():
     timestamp = datetime.utcnow()
     batch_size = 300
 
-    dao = BigQuerySyncDao(backup=True)
-    with dao.session() as session:
-        total_rows = session.query(func.count(Participant.participantId)).first()[0]
+    ro_dao = BigQuerySyncDao(backup=True)
+    with ro_dao.session() as ro_session:
+        total_rows = ro_session.query(func.count(Participant.participantId)).first()[0]
         count = int(math.ceil(float(total_rows) / float(batch_size)))
         logging.info('Calculated {0} tasks from {1} records and a batch size of {2}.'.
                      format(count, total_rows, batch_size))
