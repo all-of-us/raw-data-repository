@@ -322,6 +322,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
             participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.CANCELLED
             participant_summary.physicalMeasurementsTime = None
+            participant_summary.physicalMeasurementsFinalizedSiteId = None
 
         # These fields set on any measurement not cancelled
         elif obj.status != PhysicalMeasurementsStatus.CANCELLED:

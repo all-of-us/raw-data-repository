@@ -13,7 +13,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
     """
     Generate a questionnaire module response BQRecord
     """
-    dao = None
+    ro_dao = None
 
     def make_bqrecord(self, p_id, module_id, latest=False, convert_to_enum=False):
         """
@@ -24,8 +24,8 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         :param convert_to_enum: If schema field description includes Enum class info, convert value to Enum.
         :return: BQTable object, List of BQRecord objects
         """
-        if not self.dao:
-            self.dao = BigQuerySyncDao()
+        if not self.ro_dao:
+            self.ro_dao = BigQuerySyncDao(backup=True)
 
         if module_id == 'TheBasics':
             table = BQPDRTheBasics
@@ -43,7 +43,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             logging.error('Generator: unknown or unsupported questionnaire module id [{0}].'.format(module_id))
             return None, list()
 
-        qnans = self.dao.call_proc('sp_get_questionnaire_answers', args=[module_id, p_id])
+        qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=[module_id, p_id])
         if not qnans or len(qnans) == 0:
             return None, list()
 
@@ -100,13 +100,14 @@ def bq_questionnaire_update_task(p_id, qr_id):
     where qr.questionnaire_response_id = :qr_id
   """)
 
-    dao = BigQuerySyncDao()
+    ro_dao = BigQuerySyncDao(backup=True)
+    w_dao = BigQuerySyncDao()
     qr_gen = BQPDRQuestionnaireResponseGenerator()
     module_id = None
 
-    with dao.session() as session:
+    with ro_dao.session() as ro_session:
 
-        results = session.execute(sql, {'qr_id': qr_id})
+        results = ro_session.execute(sql, {'qr_id': qr_id})
         if results:
             for row in results:
                 module_id = row.value
@@ -117,5 +118,6 @@ def bq_questionnaire_update_task(p_id, qr_id):
                 return
 
             table, bqrs = qr_gen.make_bqrecord(p_id, module_id, latest=True)
-            for bqr in bqrs:
-                qr_gen.save_bqrecord(qr_id, bqr, bqtable=table, dao=dao, session=session)
+            with w_dao.session() as w_session:
+                for bqr in bqrs:
+                    qr_gen.save_bqrecord(qr_id, bqr, bqtable=table, w_dao=w_dao, w_session=w_session)

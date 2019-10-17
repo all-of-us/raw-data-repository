@@ -1,7 +1,7 @@
 import os
 
 from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum
-from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
+from rdr_service.dao.bigquery_sync_dao import BigQueryGenerator
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummarySchema
@@ -13,7 +13,6 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
     This is a Participant Summary record without PII.
     Note: Logic to create a PDR Participant Summary is in bq_participant_summary_dao:rebuild_bq_participant.
     """
-    dao = None
     rural_zipcodes = None
 
     def make_bqrecord(self, p_id, convert_to_enum=False, ps_bqr=None):
@@ -24,8 +23,6 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
         :param ps_bqr: A BQParticipantSummary BQRecord object.
         :return: BQRecord object
         """
-        if not self.dao:
-            self.dao = BigQuerySyncDao()
         # Since we are primarily a subset of the Participant Summary, call the full Participant Summary generator
         # and take what we need from it.
         if not ps_bqr:
