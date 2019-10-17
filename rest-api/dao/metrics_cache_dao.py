@@ -4,12 +4,13 @@ from model.metrics_cache import MetricsEnrollmentStatusCache, MetricsGenderCache
 from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
 from dao.code_dao import CodeDao
-from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN, GenderIdentity
+from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN, GenderIdentity, WithdrawalStatus
 from code_constants import PPI_SYSTEM
 from census_regions import census_regions
 import datetime
 import json
 import sqlalchemy
+import warnings
 from sqlalchemy import func, or_, and_, desc
 from participant_enums import Stratifications, AGE_BUCKETS_METRICS_V2_API, \
   AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API, MetricsCacheType, MetricsAPIVersion, EnrollmentStatus, \
@@ -19,6 +20,66 @@ from participant_enums import Stratifications, AGE_BUCKETS_METRICS_V2_API, \
 class MetricsCacheJobStatusDao(UpdatableDao):
   def __init__(self):
     super(MetricsCacheJobStatusDao, self).__init__(MetricsCacheJobStatus)
+    self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
+    self.test_email_pattern = TEST_EMAIL_PATTERN
+
+  def init_tmp_table(self):
+    with self.session() as session:
+      with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        session.execute('DROP TABLE IF EXISTS metrics_tmp_participant;')
+      session.execute('CREATE TABLE metrics_tmp_participant LIKE participant_summary')
+
+      indexes_cursor = session.execute('SHOW INDEX FROM metrics_tmp_participant')
+      index_name_list = []
+      for index in indexes_cursor:
+        index_name_list.append(index[2])
+      index_name_list = list(set(index_name_list))
+
+      for index_name in index_name_list:
+        if index_name not in ['PRIMARY', 'participant_summary_hpo']:
+          session.execute('ALTER TABLE  metrics_tmp_participant DROP INDEX  {}'.format(index_name))
+
+      session.execute('CREATE INDEX idx_sign_up_time ON metrics_tmp_participant (sign_up_time)')
+      session.execute('CREATE INDEX idx_consent_time ON metrics_tmp_participant '
+                      '(consent_for_study_enrollment_time)')
+      session.execute('CREATE INDEX idx_member_time ON metrics_tmp_participant '
+                      '(enrollment_status_member_time)')
+      session.execute('CREATE INDEX idx_sample_time ON metrics_tmp_participant '
+                      '(enrollment_status_core_stored_sample_time)')
+
+      session.execute('ALTER TABLE metrics_tmp_participant MODIFY first_name VARCHAR(255)')
+      session.execute('ALTER TABLE metrics_tmp_participant MODIFY last_name VARCHAR(255)')
+      session.execute('ALTER TABLE metrics_tmp_participant MODIFY suspension_status SMALLINT')
+
+      columns_cursor = session.execute('SELECT * FROM metrics_tmp_participant LIMIT 0')
+
+      participant_fields = ['participant_id', 'biobank_id', 'sign_up_time', 'withdrawal_status',
+                            'hpo_id', 'organization_id', 'site_id']
+
+      def get_field_name(name):
+        if name in participant_fields:
+          return 'p.' + name
+        else:
+          return 'ps.' + name
+
+      columns = map(get_field_name, columns_cursor.keys())
+      columns_str = ','.join(columns)
+
+      sql = """
+        INSERT INTO metrics_tmp_participant
+        SELECT 
+        """ + columns_str + """
+        FROM participant p 
+        left join participant_summary ps on p.participant_id = ps.participant_id
+        WHERE p.hpo_id <> :test_hpo_id
+        AND p.is_ghost_id IS NOT TRUE
+        AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+        AND p.withdrawal_status = :not_withdraw
+      """
+      params = {'test_hpo_id': self.test_hpo_id, 'test_email_pattern': self.test_email_pattern,
+                'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN)}
+      session.execute(sql, params)
 
   def set_to_complete(self, obj):
     with self.session() as session:
@@ -228,16 +289,12 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                   SELECT SUM(results.enrollment_count)
                   FROM
                   (
-                    SELECT DATE(p.sign_up_time) AS sign_up_time,
+                    SELECT DATE(ps.sign_up_time) AS sign_up_time,
                            DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
                            count(*) enrollment_count
-                    FROM participant p
-                           LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-                    WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-                      AND p.is_ghost_id IS NOT TRUE
-                      AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                      AND p.withdrawal_status = :not_withdraw
-                    GROUP BY DATE(p.sign_up_time), DATE(ps.consent_for_study_enrollment_time)
+                    FROM metrics_tmp_participant ps
+                    WHERE ps.hpo_id = :hpo_id
+                    GROUP BY DATE(ps.sign_up_time), DATE(ps.consent_for_study_enrollment_time)
                   ) AS results
                   WHERE c.day>=DATE(sign_up_time) AND consent_for_study_enrollment_time IS NULL
                 ),0) AS registered_count,
@@ -248,12 +305,8 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                     SELECT DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
                            DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
                            count(*) enrollment_count
-                    FROM participant p
-                           LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-                    WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-                      AND p.is_ghost_id IS NOT TRUE
-                      AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                      AND p.withdrawal_status = :not_withdraw
+                    FROM metrics_tmp_participant ps
+                    WHERE ps.hpo_id = :hpo_id
                     GROUP BY DATE(ps.consent_for_study_enrollment_time), DATE(ps.enrollment_status_member_time)
                   ) AS results
                   WHERE consent_for_study_enrollment_time IS NOT NULL AND c.day>=DATE(consent_for_study_enrollment_time) AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
@@ -265,12 +318,8 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                     SELECT DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
                            DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
                            count(*) enrollment_count
-                    FROM participant p
-                           LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-                    WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-                      AND p.is_ghost_id IS NOT TRUE
-                      AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                      AND p.withdrawal_status = :not_withdraw
+                    FROM metrics_tmp_participant ps
+                    WHERE ps.hpo_id = :hpo_id
                     GROUP BY DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
                   ) AS results
                   WHERE enrollment_status_member_time IS NOT NULL AND day>=DATE(enrollment_status_member_time) AND (enrollment_status_core_stored_sample_time IS NULL OR day < DATE(enrollment_status_core_stored_sample_time))
@@ -281,12 +330,8 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                   (
                     SELECT DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
                            count(*) enrollment_count
-                    FROM participant p
-                           LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-                    WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-                      AND p.is_ghost_id IS NOT TRUE
-                      AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                      AND p.withdrawal_status = :not_withdraw
+                    FROM metrics_tmp_participant ps
+                    WHERE ps.hpo_id = :hpo_id
                     GROUP BY DATE(ps.enrollment_status_core_stored_sample_time)
                   ) AS results
                   WHERE enrollment_status_core_stored_sample_time IS NOT NULL AND day>=DATE(enrollment_status_core_stored_sample_time)
@@ -536,18 +581,13 @@ class MetricsGenderCacheDao(BaseDao):
             SELECT SUM(results.gender_count)
             FROM
             (
-              SELECT DATE(p.sign_up_time) as day,
+              SELECT DATE(ps.sign_up_time) as day,
                      DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
                      COUNT(*) gender_count
-              FROM participant p
-                     LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-                     LEFT JOIN {answers_table_sql} pga ON p.participant_id = pga.participant_id
-              WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-                AND p.is_ghost_id IS NOT TRUE
-                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                AND p.withdrawal_status = :not_withdraw
-                AND {gender_condition}
-              GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_core_stored_sample_time)
+              FROM metrics_tmp_participant ps
+              LEFT JOIN {answers_table_sql} pga ON ps.participant_id = pga.participant_id
+              WHERE ps.hpo_id = :hpo_id AND {gender_condition}
+              GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_core_stored_sample_time)
             ) AS results
             WHERE results.day <= c.day
             AND enrollment_status_core_stored_sample_time IS NOT NULL
@@ -568,18 +608,13 @@ class MetricsGenderCacheDao(BaseDao):
             SELECT SUM(results.gender_count)
             FROM
             (
-              SELECT DATE(p.sign_up_time) as day,
+              SELECT DATE(ps.sign_up_time) as day,
                      DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
                      COUNT(*) gender_count
-              FROM participant p
-                     LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-                     LEFT JOIN {answers_table_sql} pga ON p.participant_id = pga.participant_id
-              WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-                AND p.is_ghost_id IS NOT TRUE
-                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                AND p.withdrawal_status = :not_withdraw
-                AND {gender_condition}
-              GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time)
+              FROM metrics_tmp_participant ps
+              LEFT JOIN {answers_table_sql} pga ON ps.participant_id = pga.participant_id
+              WHERE ps.hpo_id = :hpo_id AND {gender_condition}
+              GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_member_time)
             ) AS results
             WHERE results.day <= c.day
             AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
@@ -599,19 +634,14 @@ class MetricsGenderCacheDao(BaseDao):
             SELECT SUM(results.gender_count)
             FROM
             (
-              SELECT DATE(p.sign_up_time) as day,
+              SELECT DATE(ps.sign_up_time) as day,
                      DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
                      DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
                      COUNT(*) gender_count
-              FROM participant p
-                     LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-                     LEFT JOIN {answers_table_sql} pga ON p.participant_id = pga.participant_id
-              WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-                AND p.is_ghost_id IS NOT TRUE
-                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                AND p.withdrawal_status = :not_withdraw
-                AND {gender_condition}
-              GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+              FROM metrics_tmp_participant ps
+              LEFT JOIN {answers_table_sql} pga ON ps.participant_id = pga.participant_id
+              WHERE ps.hpo_id = :hpo_id AND {gender_condition}
+              GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
             ) AS results
             WHERE results.day <= c.day
             AND enrollment_status_member_time IS NOT NULL
@@ -655,17 +685,12 @@ class MetricsGenderCacheDao(BaseDao):
                   SELECT SUM(results.gender_count)
                   FROM
                   (
-                    SELECT DATE(p.sign_up_time) as day,
+                    SELECT DATE(ps.sign_up_time) as day,
                            DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
                            COUNT(*) gender_count
-                    FROM participant p
-                           LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-                    WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-                      AND p.is_ghost_id IS NOT TRUE
-                      AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                      AND p.withdrawal_status = :not_withdraw
-                      AND {gender_condition}
-                    GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                    FROM metrics_tmp_participant ps
+                    WHERE ps.hpo_id = :hpo_id AND {gender_condition}
+                    GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_core_stored_sample_time)
                   ) AS results
                   WHERE results.day <= c.day
                   AND enrollment_status_core_stored_sample_time IS NOT NULL
@@ -686,17 +711,12 @@ class MetricsGenderCacheDao(BaseDao):
                   SELECT SUM(results.gender_count)
                   FROM
                   (
-                    SELECT DATE(p.sign_up_time) as day,
+                    SELECT DATE(ps.sign_up_time) as day,
                            DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
                            COUNT(*) gender_count
-                    FROM participant p
-                           LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-                    WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-                      AND p.is_ghost_id IS NOT TRUE
-                      AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                      AND p.withdrawal_status = :not_withdraw
-                      AND {gender_condition}
-                    GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time)
+                    FROM metrics_tmp_participant ps
+                    WHERE ps.hpo_id = :hpo_id AND {gender_condition}
+                    GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_member_time)
                   ) AS results
                   WHERE results.day <= c.day
                   AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
@@ -716,18 +736,13 @@ class MetricsGenderCacheDao(BaseDao):
                   SELECT SUM(results.gender_count)
                   FROM
                   (
-                    SELECT DATE(p.sign_up_time) as day,
+                    SELECT DATE(ps.sign_up_time) as day,
                            DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
                            DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
                            COUNT(*) gender_count
-                    FROM participant p
-                           LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-                    WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-                      AND p.is_ghost_id IS NOT TRUE
-                      AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                      AND p.withdrawal_status = :not_withdraw
-                      AND {gender_condition}
-                    GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                    FROM metrics_tmp_participant ps
+                    WHERE ps.hpo_id = :hpo_id AND {gender_condition}
+                    GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
                   ) AS results
                   WHERE results.day <= c.day
                   AND enrollment_status_member_time IS NOT NULL
@@ -901,17 +916,12 @@ class MetricsAgeCacheDao(BaseDao):
             SELECT SUM(results.age_count)
             FROM
             (
-              SELECT DATE(p.sign_up_time) AS day,
+              SELECT DATE(ps.sign_up_time) AS day,
                      DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
                      count(*) age_count
-              FROM participant p
-                     LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-              WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-                AND p.is_ghost_id IS NOT TRUE
-                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                AND p.withdrawal_status = :not_withdraw
-                AND ps.date_of_birth IS NULL
-              GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_core_stored_sample_time)
+              FROM metrics_tmp_participant ps
+              WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NULL
+              GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_core_stored_sample_time)
             ) AS results
             WHERE results.day <= c.day
             AND enrollment_status_core_stored_sample_time IS NOT NULL
@@ -932,17 +942,12 @@ class MetricsAgeCacheDao(BaseDao):
             SELECT SUM(results.age_count)
             FROM
             (
-              SELECT DATE(p.sign_up_time) AS day,
+              SELECT DATE(ps.sign_up_time) AS day,
                      DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
                      count(*) age_count
-              FROM participant p
-                     LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-              WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-                AND p.is_ghost_id IS NOT TRUE
-                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                AND p.withdrawal_status = :not_withdraw
-                AND ps.date_of_birth IS NULL
-              GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time)
+              FROM metrics_tmp_participant ps
+              WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NULL
+              GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_member_time)
             ) AS results
             WHERE results.day <= c.day
             AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
@@ -962,18 +967,13 @@ class MetricsAgeCacheDao(BaseDao):
             SELECT SUM(results.age_count)
             FROM
             (
-              SELECT DATE(p.sign_up_time) AS day,
+              SELECT DATE(ps.sign_up_time) AS day,
                      DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
                      DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
                      count(*) age_count
-              FROM participant p
-                     LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-              WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-                AND p.is_ghost_id IS NOT TRUE
-                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                AND p.withdrawal_status = :not_withdraw
-                AND ps.date_of_birth IS NULL
-              GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+              FROM metrics_tmp_participant ps
+              WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NULL
+              GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
             ) AS results
             WHERE results.day <= c.day
             AND enrollment_status_member_time IS NOT NULL
@@ -1010,18 +1010,13 @@ class MetricsAgeCacheDao(BaseDao):
           SELECT SUM(results.age_count)
           FROM
           (
-            SELECT DATE(p.sign_up_time) AS day,
+            SELECT DATE(ps.sign_up_time) AS day,
                    DATE(ps.date_of_birth) AS dob,
                    DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
                    count(*) age_count
-            FROM participant p
-                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-            WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-              AND p.is_ghost_id IS NOT TRUE
-              AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-              AND p.withdrawal_status = :not_withdraw
-              AND ps.date_of_birth IS NOT NULL
-            GROUP BY DATE(p.sign_up_time), DATE(ps.date_of_birth), DATE(ps.enrollment_status_core_stored_sample_time)
+            FROM metrics_tmp_participant ps
+            WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NOT NULL
+            GROUP BY DATE(ps.sign_up_time), DATE(ps.date_of_birth), DATE(ps.enrollment_status_core_stored_sample_time)
           ) AS results
           WHERE results.day <= c.day 
           AND enrollment_status_core_stored_sample_time IS NOT NULL
@@ -1043,18 +1038,13 @@ class MetricsAgeCacheDao(BaseDao):
           SELECT SUM(results.age_count)
           FROM
           (
-            SELECT DATE(p.sign_up_time) AS day,
+            SELECT DATE(ps.sign_up_time) AS day,
                    DATE(ps.date_of_birth) AS dob,
                    DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
                    count(*) age_count
-            FROM participant p
-                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-            WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-              AND p.is_ghost_id IS NOT TRUE
-              AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-              AND p.withdrawal_status = :not_withdraw
-              AND ps.date_of_birth IS NOT NULL
-            GROUP BY DATE(p.sign_up_time), DATE(ps.date_of_birth), DATE(ps.enrollment_status_member_time)
+            FROM metrics_tmp_participant ps
+            WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NOT NULL
+            GROUP BY DATE(ps.sign_up_time), DATE(ps.date_of_birth), DATE(ps.enrollment_status_member_time)
           ) AS results
           WHERE results.day <= c.day 
           AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
@@ -1075,19 +1065,14 @@ class MetricsAgeCacheDao(BaseDao):
           SELECT SUM(results.age_count)
           FROM
           (
-            SELECT DATE(p.sign_up_time) AS day,
+            SELECT DATE(ps.sign_up_time) AS day,
                    DATE(ps.date_of_birth) AS dob,
                    DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
                    DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
                    count(*) age_count
-            FROM participant p
-                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-            WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-              AND p.is_ghost_id IS NOT TRUE
-              AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-              AND p.withdrawal_status = :not_withdraw
-              AND ps.date_of_birth IS NOT NULL
-            GROUP BY DATE(p.sign_up_time), DATE(ps.date_of_birth), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+            FROM metrics_tmp_participant ps
+            WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NOT NULL
+            GROUP BY DATE(ps.sign_up_time), DATE(ps.date_of_birth), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
           ) AS results
           WHERE results.day <= c.day 
           AND enrollment_status_member_time IS NOT NULL
@@ -1395,9 +1380,9 @@ class MetricsRaceCacheDao(BaseDao):
                                 MAX(WhatRaceEthnicity_NHPI)                     AS WhatRaceEthnicity_NHPI,
                                 COUNT(*) as Number_of_Answer
                          FROM (
-                                SELECT p.participant_id,
-                                       p.hpo_id,
-                                       p.sign_up_time,
+                                SELECT ps.participant_id,
+                                       ps.hpo_id,
+                                       ps.sign_up_time,
                                        ps.enrollment_status_member_time,
                                        ps.enrollment_status_core_stored_sample_time,
                                        CASE WHEN q.code_id = {WhatRaceEthnicity_Hispanic} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
@@ -1411,14 +1396,9 @@ class MetricsRaceCacheDao(BaseDao):
                                        CASE WHEN q.code_id = {WhatRaceEthnicity_MENA} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_MENA,
                                        CASE WHEN q.code_id = {PMI_Skip} THEN 1 ELSE 0 END   AS PMI_Skip,
                                        CASE WHEN q.code_id = {WhatRaceEthnicity_NHPI} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_NHPI
-                                FROM participant_summary ps
-                                LEFT JOIN participant p ON p.participant_id = ps.participant_id
-                                LEFT JOIN participant_race_answers q ON p.participant_id = q.participant_id
-                                WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
-                                  AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                                  AND p.withdrawal_status = :not_withdraw
-                                  AND p.is_ghost_id IS NOT TRUE
-                                  AND ps.questionnaire_on_the_basics = 1
+                                FROM metrics_tmp_participant ps
+                                LEFT JOIN participant_race_answers q ON ps.participant_id = q.participant_id
+                                WHERE ps.hpo_id=:hpo_id AND ps.questionnaire_on_the_basics = 1
                               ) x
                          GROUP BY participant_id, hpo_id, sign_up_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time
                        ) p,
@@ -1522,9 +1502,9 @@ class MetricsRaceCacheDao(BaseDao):
                                       MAX(WhatRaceEthnicity_NHPI)                     AS WhatRaceEthnicity_NHPI,
                                       COUNT(*) as Number_of_Answer
                                FROM (
-                                      SELECT p.participant_id,
-                                             p.hpo_id,
-                                             p.sign_up_time,
+                                      SELECT ps.participant_id,
+                                             ps.hpo_id,
+                                             ps.sign_up_time,
                                              ps.enrollment_status_member_time,
                                              ps.enrollment_status_core_stored_sample_time,
                                              CASE WHEN q.code_id = {WhatRaceEthnicity_Hispanic} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
@@ -1538,14 +1518,9 @@ class MetricsRaceCacheDao(BaseDao):
                                              CASE WHEN q.code_id = {WhatRaceEthnicity_MENA} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_MENA,
                                              CASE WHEN q.code_id = {PMI_Skip} THEN 1 ELSE 0 END   AS PMI_Skip,
                                              CASE WHEN q.code_id = {WhatRaceEthnicity_NHPI} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_NHPI
-                                      FROM participant_summary ps
-                                      LEFT JOIN participant p ON p.participant_id = ps.participant_id
-                                      LEFT JOIN participant_race_answers q ON p.participant_id = q.participant_id
-                                      WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
-                                        AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                                        AND p.withdrawal_status = :not_withdraw
-                                        AND p.is_ghost_id IS NOT TRUE
-                                        AND ps.questionnaire_on_the_basics = 1
+                                      FROM metrics_tmp_participant ps
+                                      LEFT JOIN participant_race_answers q ON ps.participant_id = q.participant_id
+                                      WHERE ps.hpo_id=:hpo_id AND ps.questionnaire_on_the_basics = 1
                                     ) x
                                GROUP BY participant_id, hpo_id, sign_up_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time
                              ) p,
@@ -1842,18 +1817,15 @@ class MetricsRegionCacheDao(BaseDao):
           (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
           c.day,
           IFNULL(ps.value,'UNSET') AS state_name,
-          count(p.participant_id) AS state_count
-        FROM participant p INNER JOIN
-          (SELECT participant_id, email, value, enrollment_status_core_stored_sample_time FROM participant_summary, code WHERE state_id=code_id) ps ON p.participant_id=ps.participant_id,
+          count(ps.participant_id) AS state_count
+        FROM
+          (SELECT participant_id, hpo_id, email, value, enrollment_status_core_stored_sample_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
           calendar c
-        WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
-        AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-        AND p.withdrawal_status = :not_withdraw
-        AND p.is_ghost_id IS NOT TRUE
+        WHERE ps.hpo_id=:hpo_id
         AND ps.enrollment_status_core_stored_sample_time IS NOT NULL
         AND DATE(ps.enrollment_status_core_stored_sample_time) <= c.day
         AND c.day BETWEEN :start_date AND :end_date
-        GROUP BY c.day, p.hpo_id ,ps.value
+        GROUP BY c.day, ps.hpo_id ,ps.value
         union 
         SELECT
           :date_inserted AS date_inserted,
@@ -1862,19 +1834,16 @@ class MetricsRegionCacheDao(BaseDao):
           (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
           c.day,
           IFNULL(ps.value,'UNSET') AS state_name,
-          count(p.participant_id) AS state_count
-        FROM participant p INNER JOIN
-          (SELECT participant_id, email, value, sign_up_time, consent_for_study_enrollment_time FROM participant_summary, code WHERE state_id=code_id) ps ON p.participant_id=ps.participant_id,
+          count(ps.participant_id) AS state_count
+        FROM
+          (SELECT participant_id, hpo_id, email, value, sign_up_time, consent_for_study_enrollment_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
           calendar c
-        WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
-        AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-        AND p.withdrawal_status = :not_withdraw
-        AND p.is_ghost_id IS NOT TRUE
+        WHERE ps.hpo_id=:hpo_id
         AND ps.sign_up_time IS NOT NULL
         AND DATE(ps.sign_up_time) <= c.day
         AND ps.consent_for_study_enrollment_time IS NULL
         AND c.day BETWEEN :start_date AND :end_date
-        GROUP BY c.day, p.hpo_id ,ps.value
+        GROUP BY c.day, ps.hpo_id ,ps.value
         union 
         SELECT
           :date_inserted AS date_inserted,
@@ -1883,19 +1852,16 @@ class MetricsRegionCacheDao(BaseDao):
           (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
           c.day,
           IFNULL(ps.value,'UNSET') AS state_name,
-          count(p.participant_id) AS state_count
-        FROM participant p INNER JOIN
-          (SELECT participant_id, email, value, consent_for_study_enrollment_time, enrollment_status_member_time FROM participant_summary, code WHERE state_id=code_id) ps ON p.participant_id=ps.participant_id,
+          count(ps.participant_id) AS state_count
+        FROM
+          (SELECT participant_id, hpo_id, email, value, consent_for_study_enrollment_time, enrollment_status_member_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
           calendar c
-        WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
-        AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-        AND p.withdrawal_status = :not_withdraw
-        AND p.is_ghost_id IS NOT TRUE
+        WHERE ps.hpo_id=:hpo_id
         AND ps.consent_for_study_enrollment_time IS NOT NULL
         AND DATE(ps.consent_for_study_enrollment_time) <= c.day
         AND (ps.enrollment_status_member_time is null or DATE(ps.enrollment_status_member_time)>c.day)
         AND c.day BETWEEN :start_date AND :end_date
-        GROUP BY c.day, p.hpo_id ,ps.value
+        GROUP BY c.day, ps.hpo_id ,ps.value
         union 
         SELECT
           :date_inserted AS date_inserted,
@@ -1904,19 +1870,16 @@ class MetricsRegionCacheDao(BaseDao):
           (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
           c.day,
           IFNULL(ps.value,'UNSET') AS state_name,
-          count(p.participant_id) AS state_count
-        FROM participant p INNER JOIN
-          (SELECT participant_id, email, value, enrollment_status_member_time, enrollment_status_core_stored_sample_time FROM participant_summary, code WHERE state_id=code_id) ps ON p.participant_id=ps.participant_id,
+          count(ps.participant_id) AS state_count
+        FROM
+          (SELECT participant_id, hpo_id, email, value, enrollment_status_member_time, enrollment_status_core_stored_sample_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
           calendar c
-        WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
-        AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-        AND p.withdrawal_status = :not_withdraw
-        AND p.is_ghost_id IS NOT TRUE
+        WHERE ps.hpo_id=:hpo_id
         AND ps.enrollment_status_member_time IS NOT NULL
         AND DATE(ps.enrollment_status_member_time) <= c.day
         AND (ps.enrollment_status_core_stored_sample_time is null or DATE(ps.enrollment_status_core_stored_sample_time)>c.day)
         AND c.day BETWEEN :start_date AND :end_date
-        GROUP BY c.day, p.hpo_id ,ps.value
+        GROUP BY c.day, ps.hpo_id ,ps.value
         ;
     """
 
@@ -2180,10 +2143,10 @@ class MetricsLifecycleCacheDao(BaseDao):
                 select
                   :date_inserted AS date_inserted,
                   '{cache_type}' as type,
-                  p.hpo_id,
+                  ps.hpo_id,
                   (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
                   day,
-                  SUM(CASE WHEN DATE(p.sign_up_time) <= calendar.day THEN 1 ELSE 0 END) AS registered,
+                  SUM(CASE WHEN DATE(ps.sign_up_time) <= calendar.day THEN 1 ELSE 0 END) AS registered,
                   SUM(CASE WHEN DATE(ps.consent_for_study_enrollment_time) <= calendar.day THEN 1 ELSE 0 END) AS consent_enrollment,
                   SUM(CASE WHEN DATE(ps.enrollment_status_member_time) <= calendar.day THEN 1 ELSE 0 END) AS consent_complete,
                   SUM(CASE
@@ -2270,14 +2233,10 @@ class MetricsLifecycleCacheDao(BaseDao):
                     THEN 1 ELSE 0
                   END) AS sample_received,
                   SUM(CASE WHEN DATE(ps.enrollment_status_core_stored_sample_time) <= calendar.day THEN 1 ELSE 0 END) AS core_participant
-                from participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
+                from metrics_tmp_participant ps,
                      calendar
-                WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-                  AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                  AND p.withdrawal_status = :not_withdraw
-                  AND p.is_ghost_id IS NOT TRUE
-                  AND calendar.day BETWEEN :start_date AND :end_date
-                GROUP BY day, p.hpo_id;
+                WHERE ps.hpo_id = :hpo_id AND calendar.day BETWEEN :start_date AND :end_date
+                GROUP BY day, ps.hpo_id;
             """.format(cache_type=self.cache_type)
     else:
       sql = """
@@ -2285,10 +2244,10 @@ class MetricsLifecycleCacheDao(BaseDao):
           select
             :date_inserted AS date_inserted,
             '{cache_type}' as type,
-            p.hpo_id,
+            ps.hpo_id,
             (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
             day,
-            SUM(CASE WHEN DATE(p.sign_up_time) <= calendar.day THEN 1 ELSE 0 END) AS registered,
+            SUM(CASE WHEN DATE(ps.sign_up_time) <= calendar.day THEN 1 ELSE 0 END) AS registered,
             SUM(CASE WHEN DATE(ps.consent_for_study_enrollment_time) <= calendar.day THEN 1 ELSE 0 END) AS consent_enrollment,
             SUM(CASE WHEN DATE(ps.enrollment_status_member_time) <= calendar.day THEN 1 ELSE 0 END) AS consent_complete,
             SUM(CASE
@@ -2369,14 +2328,10 @@ class MetricsLifecycleCacheDao(BaseDao):
               THEN 1 ELSE 0
             END) AS sample_received,
             SUM(CASE WHEN DATE(ps.enrollment_status_core_stored_sample_time) <= calendar.day THEN 1 ELSE 0 END) AS core_participant
-          from participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
+          from metrics_tmp_participant ps,
                calendar
-          WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-            AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-            AND p.withdrawal_status = :not_withdraw
-            AND p.is_ghost_id IS NOT TRUE
-            AND calendar.day BETWEEN :start_date AND :end_date
-          GROUP BY day, p.hpo_id;
+          WHERE ps.hpo_id = :hpo_id AND calendar.day BETWEEN :start_date AND :end_date
+          GROUP BY day, ps.hpo_id;
       """.format(cache_type=self.cache_type)
     return sql
 
@@ -2546,18 +2501,14 @@ class MetricsLanguageCacheDao(BaseDao):
           SELECT SUM(results.count)
           FROM
           (
-            SELECT DATE(p.sign_up_time) AS sign_up_time,
+            SELECT DATE(ps.sign_up_time) AS sign_up_time,
                    DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
                    DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
                    count(*) count
-            FROM participant p
-                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-            WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
-              AND p.is_ghost_id IS NOT TRUE
-              AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-              AND p.withdrawal_status = :not_withdraw
+            FROM metrics_tmp_participant ps
+            WHERE ps.hpo_id = :hpo_id
               {2}
-            GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+            GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
           ) AS results
           WHERE {3}
         ),0) AS language_count

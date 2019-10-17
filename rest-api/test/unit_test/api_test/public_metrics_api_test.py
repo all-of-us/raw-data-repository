@@ -248,6 +248,7 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = (
@@ -353,6 +354,7 @@ class PublicMetricsApiTest(FlaskTestBase):
                                       codeId=gender_code_dict['GenderIdentity_Transgender'])))
 
     service = ParticipantCountsOverTimeService()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
     service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(
       MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
@@ -527,6 +529,7 @@ class PublicMetricsApiTest(FlaskTestBase):
                                       codeId=gender_code_dict['GenderIdentity_Transgender'])))
 
     service = ParticipantCountsOverTimeService()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
     service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(
       MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
@@ -659,6 +662,7 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsAgeCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = (
@@ -751,6 +755,7 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = (
@@ -830,6 +835,7 @@ class PublicMetricsApiTest(FlaskTestBase):
     setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
     service = ParticipantCountsOverTimeService()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
     service.refresh_data_for_metrics_cache(
       MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
@@ -995,6 +1001,7 @@ class PublicMetricsApiTest(FlaskTestBase):
     setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
     service = ParticipantCountsOverTimeService()
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
     service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(
       MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
@@ -1154,6 +1161,7 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs1 = (
@@ -1228,6 +1236,7 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs1 = (
@@ -1305,6 +1314,7 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsLanguageCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
     qs = (
           '&stratification=LANGUAGE'
@@ -1351,6 +1361,7 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = (
@@ -1398,6 +1409,7 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+    service.init_tmp_table()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = (

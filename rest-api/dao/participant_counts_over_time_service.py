@@ -21,8 +21,12 @@ class ParticipantCountsOverTimeService(BaseDao):
     self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
     self.test_email_pattern = TEST_EMAIL_PATTERN
 
-  def refresh_metrics_cache_data(self):
+  def init_tmp_table(self):
+    dao = MetricsCacheJobStatusDao()
+    dao.init_tmp_table()
+    logging.info('Init tmp table for metrics cron job.')
 
+  def refresh_metrics_cache_data(self):
     self.refresh_data_for_metrics_cache(MetricsEnrollmentStatusCacheDao())
     logging.info('Refresh MetricsEnrollmentStatusCache done.')
     self.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
