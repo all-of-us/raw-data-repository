@@ -39,7 +39,7 @@ from rdr_service.api.questionnaire_api import QuestionnaireApi
 from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireAnswers, QuestionnaireResponseApi
 from rdr_service.config import get_config, get_db_config
 
-from rdr_service.services.flask import app, API_PREFIX, finalize_request_logging
+from rdr_service.services.flask import app, API_PREFIX, TASK_PREFIX, finalize_request_logging
 
 
 def _warmup():

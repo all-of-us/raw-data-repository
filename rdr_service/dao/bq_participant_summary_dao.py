@@ -152,7 +152,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 {
                     'consent': 'ConsentPII',
                     'consent_id': self._lookup_code_id('ConsentPII', ro_session),
-                    'consent_date': parser.parse(qnan.authored).date() if qnan.authored else None,
+                    'consent_date': parser.parse(qnan.get('authored')).date() if qnan.get('authored') else None,
                     'consent_value': 'ConsentPermission_Yes',
                     'consent_value_id': self._lookup_code_id('ConsentPermission_Yes', ro_session),
                 },
@@ -258,14 +258,14 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         if len(gl) > 0:
             data['genders'] = gl
 
-        data['education'] = qnan.EducationLevel_HighestGrade
-        data['education_id'] = self._lookup_code_id(qnan.EducationLevel_HighestGrade, ro_session)
-        data['income'] = qnan.Income_AnnualIncome
-        data['income_id'] = self._lookup_code_id(qnan.Income_AnnualIncome, ro_session)
-        data['sex'] = qnan.BiologicalSexAtBirth_SexAtBirth
-        data['sex_id'] = self._lookup_code_id(qnan.BiologicalSexAtBirth_SexAtBirth, ro_session)
-        data['sexual_orientation'] = qnan.TheBasics_SexualOrientation
-        data['sexual_orientation_id'] = self._lookup_code_id(qnan.TheBasics_SexualOrientation, ro_session)
+        data['education'] = qnan.get('EducationLevel_HighestGrade')
+        data['education_id'] = self._lookup_code_id(qnan.get('EducationLevel_HighestGrade'), ro_session)
+        data['income'] = qnan.get('Income_AnnualIncome')
+        data['income_id'] = self._lookup_code_id(qnan.get('Income_AnnualIncome'), ro_session)
+        data['sex'] = qnan.get('BiologicalSexAtBirth_SexAtBirth')
+        data['sex_id'] = self._lookup_code_id(qnan.get('BiologicalSexAtBirth_SexAtBirth'), ro_session)
+        data['sexual_orientation'] = qnan.get('TheBasics_SexualOrientation')
+        data['sexual_orientation_id'] = self._lookup_code_id(qnan.get('TheBasics_SexualOrientation'), ro_session)
 
         return data
 
