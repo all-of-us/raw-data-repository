@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import traceback
 
 from werkzeug.exceptions import HTTPException, InternalServerError
@@ -42,6 +43,15 @@ celery = configure_celery(app)
 
 app_log_service.flush()
 
+def finalize_request_logging(response):
+    """
+    Finalize and send log message(s) for request.
+    :param response: Flask response object
+    """
+    app_log_service.end_request(response)
+    return response
+
+
 @app.errorhandler(Exception)
 def handle_exception(e):
     """
@@ -49,10 +59,23 @@ def handle_exception(e):
     :param e: exception object
     :return: flask response, status code
     """
+    tb = None
+    if e:
+        tb = e.__traceback__ if hasattr(e, '__traceback__') else None
+
+    if not tb:
+        # pylint: disable=unused-variable
+        etype, value, tb = sys.exc_info()
+
+    if tb:
+        tb_out = traceback.format_tb(tb)
+    else:
+        tb_out = ['No exception traceback available.', ]
+
     # Mimic the nice python exception and traceback print.
     e_error = e.__repr__()
     tb_heading = 'Traceback (most recent call last):'
-    tb_data = ''.join(traceback.format_tb(e.__traceback__))
+    tb_data = ''.join(tb_out)
     message = '{0}\n{1}\n{2}'.format(e_error, tb_heading, tb_data)
 
     response = Response()
@@ -76,13 +99,26 @@ def handle_500(e):
     :param e: exception object
     :return: flask response, status code
     """
+    tb = None
     original = getattr(e, "original_exception", None)
-    tb = traceback.format_tb(original.__traceback__ if original else e.__traceback__)
+    if original:
+        tb = original.__traceback__ if hasattr(original, '__traceback__') else None
+    elif e:
+        tb = e.__traceback__ if hasattr(e, '__traceback__') else None
+
+    if not tb:
+        # pylint: disable=unused-variable
+        etype, value, tb = sys.exc_info()
+
+    if tb:
+        tb_out = traceback.format_tb(tb)
+    else:
+        tb_out = ['No exception traceback available.', ]
 
     # Mimic the nice python exception and traceback print.
     e_error = e.__repr__()
     tb_heading = 'Traceback (most recent call last):'
-    tb_data = ''.join(traceback.format_tb(tb))
+    tb_data = ''.join(tb_out)
     message = '{0}\n{1}\n{2}'.format(e_error, tb_heading, tb_data)
 
     response = Response()

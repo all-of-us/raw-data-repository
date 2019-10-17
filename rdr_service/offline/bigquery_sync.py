@@ -44,9 +44,9 @@ def rebuild_bigquery_handler():
     timestamp = datetime.utcnow()
     batch_size = 300
 
-    dao = BigQuerySyncDao()
-    with dao.session() as session:
-        total_rows = session.query(func.count(Participant.participantId)).first()[0]
+    ro_dao = BigQuerySyncDao(backup=True)
+    with ro_dao.session() as ro_session:
+        total_rows = ro_session.query(func.count(Participant.participantId)).first()[0]
         count = int(math.ceil(float(total_rows) / float(batch_size)))
         logging.info('Calculated {0} tasks from {1} records and a batch size of {2}.'.
                      format(count, total_rows, batch_size))
@@ -87,22 +87,22 @@ def rebuild_bq_participant_task(timestamp, limit=0):
     #   app_id = app_identity.get_application_id()
     # except AttributeError:
     #   app_id = 'localhost'
-    dao = BigQuerySyncDao()
+    ro_dao = BigQuerySyncDao(backup=True)
     ps_bqgen = BQParticipantSummaryGenerator()
     pdr_bqgen = BQPDRParticipantSummaryGenerator()
     mod_bqgen = BQPDRQuestionnaireResponseGenerator()
     count = 0
 
-    with dao.session() as session:
+    with ro_dao.session() as ro_session:
         while limit:
             limit -= 1
             # Note: Since we are being run in parallel now, only grab one participant to rebuild.
-            sq = session.query(Participant.participantId, BigQuerySync.id, BigQuerySync.modified). \
+            sq = ro_session.query(Participant.participantId, BigQuerySync.id, BigQuerySync.modified). \
                 outerjoin(BigQuerySync, and_(
                 BigQuerySync.pk_id == Participant.participantId,
                 or_(BigQuerySync.tableId == 'participant_summary', BigQuerySync.tableId == 'pdr_participant'))).\
                 subquery()
-            query = session.query(sq.c.participant_id.label('participantId')). \
+            query = ro_session.query(sq.c.participant_id.label('participantId')). \
                 filter(or_(sq.c.id == None, sq.c.modified < timestamp)).order_by(sq.c.modified)
             query = query.limit(1)
 
@@ -113,8 +113,7 @@ def rebuild_bq_participant_task(timestamp, limit=0):
             for row in results:
                 count += 1
                 # All logic for generating a participant summary is here.
-                rebuild_bq_participant(row.participantId, dao=dao, session=session, ps_bqgen=ps_bqgen,
-                                       pdr_bqgen=pdr_bqgen)
+                rebuild_bq_participant(row.participantId, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen)
 
                 # Generate participant questionnaire module response data
                 modules = (
@@ -131,9 +130,11 @@ def rebuild_bq_participant_task(timestamp, limit=0):
                     if not table:
                         continue
 
-                    for mod_bqr in mod_bqrs:
-                        mod_bqgen.save_bqrecord(
-                            mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table, dao=dao, session=session)
+                    w_dao = BigQuerySyncDao()
+                    with w_dao.session() as w_session:
+                        for mod_bqr in mod_bqrs:
+                            mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
+                                                    w_dao=w_dao, w_session=w_session)
 
     logging.info('Rebuilt BigQuery data for {0} participants.'.format(count))
 
@@ -184,7 +185,7 @@ def sync_bigquery_handler(dryrun=False):
     # https://cloud.google.com/bigquery/docs/reference/rest/v2/tabledata/insertAll
     # https://cloud.google.com/bigquery/troubleshooting-errors#streaming
     """
-    dao = BigQuerySyncDao()
+    ro_dao = BigQuerySyncDao(backup=True)
     # https://github.com/googleapis/google-api-python-client/issues/299
     # https://github.com/pior/appsecrets/issues/7
     bq = build('bigquery', 'v2', cache_discovery=False) if dryrun is False else None
@@ -197,8 +198,8 @@ def sync_bigquery_handler(dryrun=False):
     start_ts = datetime.now()
     table_list = list()
 
-    with dao.session() as session:
-        tables = session.query(BigQuerySync.projectId, BigQuerySync.datasetId, BigQuerySync.tableId). \
+    with ro_dao.session() as ro_session:
+        tables = ro_session.query(BigQuerySync.projectId, BigQuerySync.datasetId, BigQuerySync.tableId). \
             distinct(BigQuerySync.projectId, BigQuerySync.datasetId, BigQuerySync.tableId).all()
 
         # don't always process the list in the same order so we don't get stuck processing the same table each run.
@@ -222,7 +223,7 @@ def sync_bigquery_handler(dryrun=False):
                 return 0
 
             # figure out how many records need to be sync'd and divide into slices.
-            total_rows = session.query(BigQuerySync.id). \
+            total_rows = ro_session.query(BigQuerySync.id). \
                 filter(BigQuerySync.projectId == project_id, BigQuerySync.tableId == table_id,
                        BigQuerySync.datasetId == dataset_id, BigQuerySync.modified >= max_modified).count()
 
@@ -233,7 +234,7 @@ def sync_bigquery_handler(dryrun=False):
             slice_num = 0
 
             while slice_num < slices:
-                results = session.query(BigQuerySync.id, BigQuerySync.created, BigQuerySync.modified). \
+                results = ro_session.query(BigQuerySync.id, BigQuerySync.created, BigQuerySync.modified). \
                     filter(BigQuerySync.projectId == project_id, BigQuerySync.tableId == table_id,
                            BigQuerySync.datasetId == dataset_id, BigQuerySync.modified >= max_modified). \
                     order_by(BigQuerySync.modified).limit(batch_size).all()
@@ -243,7 +244,7 @@ def sync_bigquery_handler(dryrun=False):
                 for row in results:
                     count += 1
                     max_modified = row.modified
-                    rec = session.query(BigQuerySync.resource).filter(BigQuerySync.id == row.id).first()
+                    rec = ro_session.query(BigQuerySync.resource).filter(BigQuerySync.id == row.id).first()
                     if isinstance(rec.resource, str):
                         rec_data = json.loads(rec.resource)
                     else:

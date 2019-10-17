@@ -14,8 +14,10 @@ from google.cloud import logging as gcp_logging
 from google.cloud import logging_v2 as gcp_logging_v2
 from google.logging.type import http_request_pb2 as gcp_http_request_pb2
 from google.protobuf import json_format as gcp_json_format, any_pb2 as gcp_any_pb2
+
 # pylint: disable=unused-import
 from rdr_service.services import gcp_request_log_pb2
+from rdr_service.config import GAE_PROJECT
 
 # https://pypi.org/project/google-cloud-logging/
 # https://cloud.google.com/logging/docs/reference/v2/rpc/google.logging.v2
@@ -61,7 +63,7 @@ def setup_logging_resource():
     :return: MonitoredResource pb2 structure.
     """
     labels = {
-        "project_id": os.environ.get('GAE_APPLICATION', 'localhost'),
+        "project_id": GAE_PROJECT,
         "module_id": os.environ.get('GAE_SERVICE', 'default'),
         "version_id": os.environ.get('GAE_VERSION', 'develop'),
         "zone": logging_zone_pb2
@@ -189,7 +191,7 @@ class GCPStackDriverLogHandler(logging.Handler):
         self._request_agent = None
         self._request_ip_addr = None
 
-        self._response_status_code = None
+        self._response_status_code = 200
         self._response_size = None
 
         self._buffer.clear()
@@ -260,13 +262,11 @@ class GCPStackDriverLogHandler(logging.Handler):
             self._response_status_code = response.status_code
             self._response_size = len(response.data)
 
-        if len(self._buffer):
-            if self.log_completion_status != LogCompletionStatusEnum.COMPLETE:
-                self.log_completion_status = LogCompletionStatusEnum.PARTIAL_FINISHED
-                self._update_long_operation(self.log_completion_status)
+        if self.log_completion_status != LogCompletionStatusEnum.COMPLETE:
+            self.log_completion_status = LogCompletionStatusEnum.PARTIAL_FINISHED
+            self._update_long_operation(self.log_completion_status)
 
-            self.publish_to_stackdriver()
-
+        self.publish_to_stackdriver()
         self._reset()
 
 
@@ -276,7 +276,6 @@ class GCPStackDriverLogHandler(logging.Handler):
         """
         lines = list(map(setup_log_line, self._buffer))
         self._end_time = datetime.now(timezone.utc).isoformat()
-
 
         log_entry_pb2_args = {
             'resource': logging_resource_pb2,
@@ -321,7 +320,7 @@ class GCPStackDriverLogHandler(logging.Handler):
 
         self._logging_client.write_log_entries([log_entry_pb2],
             log_name="projects/{project_id}/logs/appengine.googleapis.com%2Frequest_log".
-                                               format(os.environ.get('GAE_APPLICATION', 'localhost')))
+                                    format(project_id=GAE_PROJECT))
 
         # remove any log entries from buffer.
         self._buffer.clear()
@@ -339,7 +338,7 @@ class GCPStackDriverLogHandler(logging.Handler):
             )
             return s[0]
         else:
-            return None
+            return gcp_logging_v2.gapic.enums.LogSeverity(200)
 
 
 class FlaskGCPStackDriverLogging:
