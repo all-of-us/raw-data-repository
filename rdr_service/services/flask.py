@@ -43,6 +43,15 @@ celery = configure_celery(app)
 
 app_log_service.flush()
 
+def finalize_request_logging(response):
+    """
+    Finalize and send log message(s) for request.
+    :param response: Flask response object
+    """
+    app_log_service.end_request(response)
+    return response
+
+
 @app.errorhandler(Exception)
 def handle_exception(e):
     """

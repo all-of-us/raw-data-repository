@@ -191,7 +191,7 @@ class GCPStackDriverLogHandler(logging.Handler):
         self._request_agent = None
         self._request_ip_addr = None
 
-        self._response_status_code = None
+        self._response_status_code = 200
         self._response_size = None
 
         self._buffer.clear()
@@ -262,13 +262,11 @@ class GCPStackDriverLogHandler(logging.Handler):
             self._response_status_code = response.status_code
             self._response_size = len(response.data)
 
-        if len(self._buffer):
-            if self.log_completion_status != LogCompletionStatusEnum.COMPLETE:
-                self.log_completion_status = LogCompletionStatusEnum.PARTIAL_FINISHED
-                self._update_long_operation(self.log_completion_status)
+        if self.log_completion_status != LogCompletionStatusEnum.COMPLETE:
+            self.log_completion_status = LogCompletionStatusEnum.PARTIAL_FINISHED
+            self._update_long_operation(self.log_completion_status)
 
-            self.publish_to_stackdriver()
-
+        self.publish_to_stackdriver()
         self._reset()
 
 
@@ -278,7 +276,6 @@ class GCPStackDriverLogHandler(logging.Handler):
         """
         lines = list(map(setup_log_line, self._buffer))
         self._end_time = datetime.now(timezone.utc).isoformat()
-
 
         log_entry_pb2_args = {
             'resource': logging_resource_pb2,
@@ -341,7 +338,7 @@ class GCPStackDriverLogHandler(logging.Handler):
             )
             return s[0]
         else:
-            return None
+            return gcp_logging_v2.gapic.enums.LogSeverity(200)
 
 
 class FlaskGCPStackDriverLogging:
@@ -383,5 +380,4 @@ class FlaskGCPStackDriverLogging:
         Flush any pending log records.
         """
         if self._log_handler:
-            logging.info('End of request transaction.')
             self._log_handler.finalize()
