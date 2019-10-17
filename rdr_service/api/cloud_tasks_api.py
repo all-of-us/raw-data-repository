@@ -74,7 +74,7 @@ class CopyCloudStorageObjectTaskApi(BaseApi):
         source = request.args.get('source', None)
         destination = request.args.get('destination', None)
 
-        if not source or destination:
+        if not source or not destination:
             raise NotFound('Invalid cloud storage path: Copy {0} to {1}.'.format(source, destination))
 
         cloudstorage_copy_objects_task(source, destination)
