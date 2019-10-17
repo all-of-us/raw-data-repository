@@ -23,7 +23,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
   """
   Generate a Participant Summary BQRecord object
   """
-  dao = None
+  ro_dao = None
 
   def make_bqrecord(self, p_id, convert_to_enum=False):
     """
@@ -32,10 +32,10 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
     :param convert_to_enum: If schema field description includes Enum class info, convert value to Enum.
     :return: BQRecord object
     """
-    if not self.dao:
-      self.dao = BigQuerySyncDao(backup=True)
+    if not self.ro_dao:
+      self.ro_dao = BigQuerySyncDao(backup=True)
 
-    with self.dao.session() as session:
+    with self.ro_dao.session() as session:
       # prep participant info from Participant record
       summary = self._prep_participant(p_id, session)
       # prep ConsentPII questionnaire information
@@ -104,14 +104,14 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
     return data
 
-  def _prep_consentpii_answers(self, p_id, session):
+  def _prep_consentpii_answers(self, p_id, ro_session):
     """
     Get participant information from the ConsentPII questionnaire
     :param p_id: participant id
-    :param session: DAO session object
+    :param ro_session: Readonly DAO session object
     :return: dict
     """
-    qnans = self.dao.call_proc('sp_get_questionnaire_answers', args=['ConsentPII', p_id])
+    qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=['ConsentPII', p_id])
     if not qnans or len(qnans) == 0:
       # return the minimum data required when we don't have the questionnaire data.
       return {'email': None, 'is_ghost_id': 0}
@@ -145,27 +145,27 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
       'consents': [
         {
           'consent': 'ConsentPII',
-          'consent_id': self._lookup_code_id('ConsentPII', session),
+          'consent_id': self._lookup_code_id('ConsentPII', ro_session),
           'consent_date': parser.parse(qnan.authored).date() if qnan.authored else None,
           'consent_value': 'ConsentPermission_Yes',
-          'consent_value_id': self._lookup_code_id('ConsentPermission_Yes', session),
+          'consent_value_id': self._lookup_code_id('ConsentPermission_Yes', ro_session),
         },
       ]
     }
 
     return data
 
-  def _prep_modules(self, p_id, session):
+  def _prep_modules(self, p_id, ro_session):
     """
     Find all questionnaire modules the participant has completed and loop through them.
     :param p_id: participant id
-    :param session: DAO session object
+    :param ro_session: Readonly DAO session object
     :return: dict
     """
-    code_id_query = session.query(func.max(QuestionnaireConcept.codeId)).\
+    code_id_query = ro_session.query(func.max(QuestionnaireConcept.codeId)).\
                         filter(QuestionnaireResponse.questionnaireId ==
                                 QuestionnaireConcept.questionnaireId).label('codeId')
-    query = session.query(
+    query = ro_session.query(
                   QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
                   QuestionnaireResponse.created, QuestionnaireResponse.language, code_id_query).\
                 filter(QuestionnaireResponse.participantId == p_id).\
@@ -192,7 +192,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
     if results:
       for row in results:
-        module_name = self._lookup_code_value(row.codeId, session)
+        module_name = self._lookup_code_value(row.codeId, ro_session)
         modules.append({
           'mod_module': module_name,
           'mod_baseline_module': 1 if module_name in baseline_modules else 0,  # Boolean field
@@ -206,15 +206,15 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         # check if this is a module with consents.
         if module_name not in consent_modules:
           continue
-        qnans = self.dao.call_proc('sp_get_questionnaire_answers', args=[module_name, p_id])
+        qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=[module_name, p_id])
         if qnans and len(qnans) > 0:
           qnan = BQRecord(schema=None, data=qnans[0])  # use only most recent questionnaire.
           consents.append({
             'consent': consent_modules[module_name],
-            'consent_id': self._lookup_code_id(consent_modules[module_name], session),
+            'consent_id': self._lookup_code_id(consent_modules[module_name], ro_session),
             'consent_date': parser.parse(qnan.authored).date() if qnan.authored else None,
             'consent_value': qnan[consent_modules[module_name]],
-            'consent_value_id': self._lookup_code_id(qnan[consent_modules[module_name]], session),
+            'consent_value_id': self._lookup_code_id(qnan[consent_modules[module_name]], ro_session),
           })
 
     if len(modules) > 0:
@@ -224,14 +224,14 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
     return data
 
-  def _prep_the_basics(self, p_id, session):
+  def _prep_the_basics(self, p_id, ro_session):
     """
     Get the participant's race and gender selections
     :param p_id: participant id
-    :param session: DAO session object
+    :param ro_session: Readonly DAO session object
     :return: dict
     """
-    qnans = self.dao.call_proc('sp_get_questionnaire_answers', args=['TheBasics', p_id])
+    qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=['TheBasics', p_id])
     if not qnans or len(qnans) == 0:
       return {}
 
@@ -241,7 +241,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
     if qnan.Race_WhatRaceEthnicity:
       rl = list()
       for val in qnan.Race_WhatRaceEthnicity.split(','):
-        rl.append({'race': val, 'race_id': self._lookup_code_id(val, session)})
+        rl.append({'race': val, 'race_id': self._lookup_code_id(val, ro_session)})
       data['races'] = rl
     # get gender question answers
     gl = list()
@@ -249,40 +249,40 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
       for val in qnan.Gender_GenderIdentity.split(','):
         if val == 'GenderIdentity_AdditionalOptions':
           continue
-        gl.append({'gender': val, 'gender_id': self._lookup_code_id(val, session)})
+        gl.append({'gender': val, 'gender_id': self._lookup_code_id(val, ro_session)})
     # get additional gender answers, if any.
     if qnan.GenderIdentity_SexualityCloserDescription:
       for val in qnan.GenderIdentity_SexualityCloserDescription.split(','):
-        gl.append({'gender': val, 'gender_id': self._lookup_code_id(val, session)})
+        gl.append({'gender': val, 'gender_id': self._lookup_code_id(val, ro_session)})
 
     if len(gl) > 0:
       data['genders'] = gl
 
     data['education'] = qnan.EducationLevel_HighestGrade
-    data['education_id'] = self._lookup_code_id(qnan.EducationLevel_HighestGrade, session)
+    data['education_id'] = self._lookup_code_id(qnan.EducationLevel_HighestGrade, ro_session)
     data['income'] = qnan.Income_AnnualIncome
-    data['income_id'] = self._lookup_code_id(qnan.Income_AnnualIncome, session)
+    data['income_id'] = self._lookup_code_id(qnan.Income_AnnualIncome, ro_session)
     data['sex'] = qnan.BiologicalSexAtBirth_SexAtBirth
-    data['sex_id'] = self._lookup_code_id(qnan.BiologicalSexAtBirth_SexAtBirth, session)
+    data['sex_id'] = self._lookup_code_id(qnan.BiologicalSexAtBirth_SexAtBirth, ro_session)
     data['sexual_orientation'] = qnan.TheBasics_SexualOrientation
-    data['sexual_orientation_id'] = self._lookup_code_id(qnan.TheBasics_SexualOrientation, session)
+    data['sexual_orientation_id'] = self._lookup_code_id(qnan.TheBasics_SexualOrientation, ro_session)
 
     return data
 
-  def _prep_physical_measurements(self, p_id, session):
+  def _prep_physical_measurements(self, p_id, ro_session):
     """
     Get participant's physical measurements information
     :param p_id: participant id
-    :param session: DAO session object
+    :param ro_session: Readonly DAO session object
     :return: dict
     """
     data = {}
     pm_list = list()
 
-    query = session.query(PhysicalMeasurements.created, PhysicalMeasurements.createdSiteId,
-                       PhysicalMeasurements.final, PhysicalMeasurements.finalized,
-                       PhysicalMeasurements.finalizedSiteId, PhysicalMeasurements.status,
-                          PhysicalMeasurements.cancelledTime).\
+    query = ro_session.query(PhysicalMeasurements.created, PhysicalMeasurements.createdSiteId,
+                             PhysicalMeasurements.final, PhysicalMeasurements.finalized,
+                             PhysicalMeasurements.finalizedSiteId, PhysicalMeasurements.status,
+                             PhysicalMeasurements.cancelledTime).\
             filter(PhysicalMeasurements.participantId == p_id).\
             order_by(desc(PhysicalMeasurements.created))
     # sql = self.dao.query_to_text(query)
@@ -299,10 +299,10 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         'pm_status': str(status),
         'pm_status_id': int(status),
         'pm_created': row.created,
-        'pm_created_site': self._lookup_site_name(row.createdSiteId, session),
+        'pm_created_site': self._lookup_site_name(row.createdSiteId, ro_session),
         'pm_created_site_id': row.createdSiteId,
         'pm_finalized': row.finalized,
-        'pm_finalized_site': self._lookup_site_name(row.finalizedSiteId, session),
+        'pm_finalized_site': self._lookup_site_name(row.finalizedSiteId, ro_session),
         'pm_finalized_site_id': row.finalizedSiteId,
       })
 
@@ -310,11 +310,11 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
       data['pm'] = pm_list
     return data
 
-  def _prep_biobank_info(self, p_id, session):
+  def _prep_biobank_info(self, p_id, ro_session):
     """
     Look up biobank orders
     :param p_id: participant id
-    :param session: DAO session object
+    :param ro_session: Readonly DAO session object
     :return:
     """
     data = {}
@@ -351,7 +351,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         order by bo.biobank_order_id, bos.test;
     """
 
-    cursor = session.execute(sql, {'pid': p_id})
+    cursor = ro_session.execute(sql, {'pid': p_id})
     results = [r for r in cursor]
     # loop through results and create one order record for each biobank_order_id value.
     for row in results:
@@ -362,11 +362,11 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
           'bbo_status': str(BiobankOrderStatus(row.order_status) if row.order_status else BiobankOrderStatus.UNSET),
           'bbo_status_id': int(BiobankOrderStatus(row.order_status) if row.order_status else BiobankOrderStatus.UNSET),
           'bbo_dv_order': 0 if row.dv_order == 0 else 1,  # Boolean field
-          'bbo_collected_site': self._lookup_site_name(row.collected_site_id, session),
+          'bbo_collected_site': self._lookup_site_name(row.collected_site_id, ro_session),
           'bbo_collected_site_id': row.collected_site_id,
-          'bbo_processed_site': self._lookup_site_name(row.processed_site_id, session),
+          'bbo_processed_site': self._lookup_site_name(row.processed_site_id, ro_session),
           'bbo_processed_site_id': row.processed_site_id,
-          'bbo_finalized_site': self._lookup_site_name(row.finalized_site_id, session),
+          'bbo_finalized_site': self._lookup_site_name(row.finalized_site_id, ro_session),
           'bbo_finalized_site_id': row.finalized_site_id,
         })
     # loop through results again and add each sample to it's order.
@@ -494,12 +494,10 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
     data['distinct_visits'] = len(dates)
     return data
 
-def rebuild_bq_participant(p_id, dao, session, ps_bqgen=None, pdr_bqgen=None):
+def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None):
   """
   Rebuild a BQ record for a specific participant
   :param p_id: participant id
-  :param dao: BQBigQuerySync dao object
-  :param session: dao session object
   :param ps_bqgen: BQParticipantSummaryGenerator object
   :param pdr_bqgen: BQPDRParticipantSummaryGenerator object
   :return:
@@ -512,12 +510,16 @@ def rebuild_bq_participant(p_id, dao, session, ps_bqgen=None, pdr_bqgen=None):
     pdr_bqgen = BQPDRParticipantSummaryGenerator()
 
   ps_bqr = ps_bqgen.make_bqrecord(p_id)
-  # save the participant summary record.
-  ps_bqgen.save_bqrecord(p_id, ps_bqr, bqtable=BQParticipantSummary, dao=dao, session=session)
   # Since the PDR participant summary is primarily a subset of the Participant Summary, call the full
   # Participant Summary generator and take what we need from it.
   pdr_bqr = pdr_bqgen.make_bqrecord(p_id, ps_bqr=ps_bqr)
-  pdr_bqgen.save_bqrecord(p_id, pdr_bqr, bqtable=BQPDRParticipantSummary, dao=dao, session=session)
+
+  w_dao = BigQuerySyncDao()
+  with w_dao.session() as w_session:
+    # save the participant summary record.
+    ps_bqgen.save_bqrecord(p_id, ps_bqr, bqtable=BQParticipantSummary, w_dao=w_dao, w_session=w_session)
+    # save the PDR participant summary record
+    pdr_bqgen.save_bqrecord(p_id, pdr_bqr, bqtable=BQPDRParticipantSummary, w_dao=w_dao, w_session=w_session)
 
   return ps_bqr
 
@@ -526,7 +528,4 @@ def deferred_bq_participant_summary_update(p_id):
   Deferred task to update the Participant Summary record for the given participant.
   :param p_id: Participant ID
   """
-  dao = BigQuerySyncDao()
-  with dao.session() as session:
-    rebuild_bq_participant(p_id, dao=dao, session=session)
-    session.flush()
+  rebuild_bq_participant(p_id)
