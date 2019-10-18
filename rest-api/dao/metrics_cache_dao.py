@@ -4,13 +4,12 @@ from model.metrics_cache import MetricsEnrollmentStatusCache, MetricsGenderCache
 from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
 from dao.code_dao import CodeDao
-from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN, GenderIdentity, WithdrawalStatus
+from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN, GenderIdentity
 from code_constants import PPI_SYSTEM
 from census_regions import census_regions
 import datetime
 import json
 import sqlalchemy
-import warnings
 from sqlalchemy import func, or_, and_, desc
 from participant_enums import Stratifications, AGE_BUCKETS_METRICS_V2_API, \
   AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API, MetricsCacheType, MetricsAPIVersion, EnrollmentStatus, \
@@ -20,68 +19,6 @@ from participant_enums import Stratifications, AGE_BUCKETS_METRICS_V2_API, \
 class MetricsCacheJobStatusDao(UpdatableDao):
   def __init__(self):
     super(MetricsCacheJobStatusDao, self).__init__(MetricsCacheJobStatus)
-    self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
-    self.test_email_pattern = TEST_EMAIL_PATTERN
-
-  def init_tmp_table(self):
-    with self.session() as session:
-      with warnings.catch_warnings():
-        warnings.simplefilter('ignore')
-        session.execute('DROP TABLE IF EXISTS metrics_tmp_participant;')
-      session.execute('CREATE TABLE metrics_tmp_participant LIKE participant_summary')
-
-      indexes_cursor = session.execute('SHOW INDEX FROM metrics_tmp_participant')
-      index_name_list = []
-      for index in indexes_cursor:
-        index_name_list.append(index[2])
-      index_name_list = list(set(index_name_list))
-
-      for index_name in index_name_list:
-        if index_name != 'PRIMARY':
-          session.execute('ALTER TABLE  metrics_tmp_participant DROP INDEX  {}'.format(index_name))
-
-      session.execute('ALTER TABLE metrics_tmp_participant MODIFY first_name VARCHAR(255)')
-      session.execute('ALTER TABLE metrics_tmp_participant MODIFY last_name VARCHAR(255)')
-      session.execute('ALTER TABLE metrics_tmp_participant MODIFY suspension_status SMALLINT')
-
-      columns_cursor = session.execute('SELECT * FROM metrics_tmp_participant LIMIT 0')
-
-      participant_fields = ['participant_id', 'biobank_id', 'sign_up_time', 'withdrawal_status',
-                            'hpo_id', 'organization_id', 'site_id']
-
-      def get_field_name(name):
-        if name in participant_fields:
-          return 'p.' + name
-        else:
-          return 'ps.' + name
-
-      columns = map(get_field_name, columns_cursor.keys())
-      columns_str = ','.join(columns)
-
-      sql = """
-        INSERT INTO metrics_tmp_participant
-        SELECT 
-        """ + columns_str + """
-        FROM participant p 
-        left join participant_summary ps on p.participant_id = ps.participant_id
-        WHERE p.hpo_id <> :test_hpo_id
-        AND p.is_ghost_id IS NOT TRUE
-        AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-        AND p.withdrawal_status = :not_withdraw
-      """
-      params = {'test_hpo_id': self.test_hpo_id, 'test_email_pattern': self.test_email_pattern,
-                'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN)}
-
-      session.execute('CREATE INDEX idx_hpo_id ON metrics_tmp_participant (hpo_id)')
-      session.execute('CREATE INDEX idx_sign_up_time ON metrics_tmp_participant (sign_up_time)')
-      session.execute('CREATE INDEX idx_consent_time ON metrics_tmp_participant '
-                      '(consent_for_study_enrollment_time)')
-      session.execute('CREATE INDEX idx_member_time ON metrics_tmp_participant '
-                      '(enrollment_status_member_time)')
-      session.execute('CREATE INDEX idx_sample_time ON metrics_tmp_participant '
-                      '(enrollment_status_core_stored_sample_time)')
-
-      session.execute(sql, params)
 
   def set_to_complete(self, obj):
     with self.session() as session:
