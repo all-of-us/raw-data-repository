@@ -9,7 +9,13 @@ class BiobankDVOrder(Base):
   """
   Direct Volunteer kit order shipment record
   """
-  _VIBRENT_ID_SYSTEM = 'http://vibrenthealth.com'
+  # Considering moving _DV_ID_SYSTEM to the configs; perhaps into USER_INFO
+  _DV_ID_SYSTEM = {
+      'vibrent-drc-prod': "http://vibrenthealth.com",
+      'careevolution': "http://carevolution.be",
+      'authorized': "system-test"
+    }
+
   __tablename__ = 'biobank_dv_order'
 
   # Primary Key
