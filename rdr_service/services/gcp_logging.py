@@ -64,8 +64,8 @@ def setup_logging_resource():
     """
     labels = {
         "project_id": GAE_PROJECT,
-        "module_id": os.environ.get('GAE_SERVICE', 'default'),
-        "version_id": os.environ.get('GAE_VERSION', 'develop'),
+        "module_id": 'kin-' + os.environ.get('GAE_SERVICE', 'default'),
+        "version_id": os.environ.get('GAE_VERSION', 'devel'),
         "zone": logging_zone_pb2
     }
 
@@ -91,13 +91,18 @@ def setup_log_line(record: logging.LogRecord):
     event_ts = event_ts.isoformat()
     severity = gcp_logging._helpers._normalize_severity(record.levelno)
     message = record.msg if record.msg else ''
+
+    funcname = record.funcName if record.funcName else ''
+    file = record.pathname if record.pathname else ''
+    lineno = record.lineno if record.lineno else 0
+
     line = {
         "logMessage": message,
         "severity": severity,
         "sourceLocation": {
-            "file": "/base/data/home/apps/s~all-of-us-rdr-stable/v1-55-rc2.421152339935578377/app_util.py",
-            "functionName": "request_logging",
-            "line": 183
+            "file": file,
+            "functionName": funcname,
+            "line": lineno
         },
         "time": event_ts
     }
@@ -181,7 +186,7 @@ class GCPStackDriverLogHandler(logging.Handler):
         self._operation_pb2 = None
         self._request_id = None
 
-        self._trace_id = None
+        self._trace = None
         self._start_time = None
         self._end_time = None
 
@@ -225,13 +230,17 @@ class GCPStackDriverLogHandler(logging.Handler):
             self.finalize()
 
         self._start_time = datetime.now(timezone.utc).isoformat()
-        self._trace_id = req.headers.get('X-Cloud-Trace-Context', '')
         self._request_method = req.method
         self._request_endpoint = req.endpoint
         self._request_resource = req.path
         self._request_agent = str(req.user_agent)
         self._request_ip_addr = req.remote_addr
 
+        trace_id = req.headers.get('X-Cloud-Trace-Context', '')
+        if trace_id:
+            trace_id = trace_id.split('/')[0]
+            trace = 'projects/{0}/traces/{1}'.format(GAE_PROJECT, trace_id)
+            self._trace = trace
 
     def emit(self, record: logging.LogRecord):
         """
@@ -280,7 +289,8 @@ class GCPStackDriverLogHandler(logging.Handler):
         log_entry_pb2_args = {
             'resource': logging_resource_pb2,
             'severity': self.get_highest_severity_level_from_lines(lines),
-            'trace': self._trace_id
+            'trace': self._trace,
+            'traceSampled': True,
         }
 
         if self._response_status_code:
@@ -297,10 +307,14 @@ class GCPStackDriverLogHandler(logging.Handler):
             'method': self._request_method,
             'resource': self._request_resource,
             'userAgent': self._request_agent,
+            'host': GAE_PROJECT + '.appspot.com',
             'ip': self._request_ip_addr,
             'responseSize': self._response_size,
             'status': self._response_status_code,
-            'requestId': self._request_id
+            'requestId': self._request_id,
+            'traceId': self._trace,
+            'traceSampled': True,
+            'versionId': os.environ.get('GAE_VERSION', 'devel')
         }
 
         if self.__first_log_ts:
