@@ -27,7 +27,6 @@ from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.participant_enums import BiobankOrderStatus, OrderShipmentStatus, OrderShipmentTrackingStatus
 
-
 class DvOrderDao(UpdatableDao):
     def __init__(self):
         self.code_dao = CodeDao()
@@ -106,7 +105,7 @@ class DvOrderDao(UpdatableDao):
         if for_update:
             result = dict()
             reduced_model = model["orders"]["order"]
-            result["status"] = reduced_model["status"]
+            result["biobankStatus"] = reduced_model["status"]
             result["barcode"] = reduced_model["reference_number"]
             result["received"] = reduced_model["received"]
             result["biobankOrderId"] = reduced_model["number"]
@@ -137,6 +136,13 @@ class DvOrderDao(UpdatableDao):
             existing_obj = self.get(self.get_id(order))
             if not existing_obj:
                 raise NotFound("existing order record not found")
+
+            # handling of biobankStatus from Mayolink API
+            try:
+                existing_obj.biobankStatus = resource_json['biobankStatus']
+            except KeyError:
+                # resource will only have biobankStatus on a PUT
+                pass
 
             existing_obj.shipmentStatus = self._enumerate_order_tracking_status(
                 fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "tracking-status").valueString
@@ -231,7 +237,6 @@ class DvOrderDao(UpdatableDao):
 
                 order.id = existing_obj.id
                 order.version = expected_version
-                order.biobankStatus = fhir_resource.status
                 order.barcode = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).valueString
 
         return order
@@ -245,7 +250,6 @@ class DvOrderDao(UpdatableDao):
         obj.biobankOrderId = resource["biobankOrderId"]
         test = self.get(resource["id"])
         obj.dvOrders = [test]
-
         bod = BiobankOrderDao()
         obj.samples = [BiobankOrderedSample(test="1SAL2", processingRequired=False, description="salivary pilot kit")]
         self._add_identifiers_and_main_id(obj, ObjectView(resource))

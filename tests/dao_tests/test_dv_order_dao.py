@@ -24,7 +24,6 @@ from tests.helpers.unittest_base import BaseTestCase
 
 from collections import namedtuple
 
-
 class DvOrderDaoTestBase(BaseTestCase):
     def setUp(self):
         super().setUp()
@@ -46,7 +45,7 @@ class DvOrderDaoTestBase(BaseTestCase):
         self.mayolink_response = {
             "orders": {
                 "order": {
-                    "status": "finished",
+                    "status": "Queued",
                     "reference_number": "barcode",
                     "received": "2019-04-05 12:00:00",
                     "number": "12345",
@@ -65,7 +64,7 @@ class DvOrderDaoTestBase(BaseTestCase):
         payload = self.send_post("SupplyRequest", request_data=self.post_request, expected_status=http.client.CREATED)
         request_response = json.loads(payload.response[0])
         location = payload.location.rsplit("/", 1)[-1]
-        put_response = self.send_put("SupplyRequest/{}".format(location), request_data=self.put_request)
+        self.send_put("SupplyRequest/{}".format(location), request_data=self.put_request)
         payload = self.send_post(
             "SupplyDelivery", request_data=self.post_delivery, expected_status=http.client.CREATED
         )
@@ -78,8 +77,6 @@ class DvOrderDaoTestBase(BaseTestCase):
         self.assertEqual(put_response["version"], 4)
         self.assertEqual(put_response["meta"]["versionId"].strip("W/"), '"4"')
         self.assertEqual(put_response["barcode"], "SABR90160121INA")
-        # self.assertEqual(put_response["biobankOrderId"], "12345")
-        self.assertEqual(put_response["biobankStatus"], "Delivered")
         self.assertEqual(put_response["order_id"], 999999)
 
     def test_enumerate_shipping_status(self):
