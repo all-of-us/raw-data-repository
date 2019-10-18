@@ -62,7 +62,7 @@ class OrganizationHierarchySyncDao(BaseDao):
 
   def _update_awardee(self, hierarchy_org_obj):
     awardee_id = self._get_value_from_identifier(hierarchy_org_obj,
-                                                 HIERARCHY_CONTENT_SYSTEM_PREFIX + 'organization-identifier')
+                                                 HIERARCHY_CONTENT_SYSTEM_PREFIX + 'awardee-id')
     if awardee_id is None:
       raise BadRequest('No organization-identifier info found in payload data.')
     is_obsolete = ObsoleteStatus('OBSOLETE') if not hierarchy_org_obj.active else None
@@ -105,7 +105,7 @@ class OrganizationHierarchySyncDao(BaseDao):
   def _update_organization(self, hierarchy_org_obj):
     organization_id = self._get_value_from_identifier(hierarchy_org_obj,
                                                       HIERARCHY_CONTENT_SYSTEM_PREFIX +
-                                                      'organization-identifier')
+                                                      'organization-id')
     if organization_id is None:
       raise BadRequest('No organization-identifier info found in payload data.')
     is_obsolete = ObsoleteStatus('OBSOLETE') if not hierarchy_org_obj.active else None
@@ -140,7 +140,7 @@ class OrganizationHierarchySyncDao(BaseDao):
 
   def _update_site(self, hierarchy_org_obj):
     google_group = self._get_value_from_identifier(hierarchy_org_obj,
-                                                   HIERARCHY_CONTENT_SYSTEM_PREFIX + 'organization-identifier')
+                                                   HIERARCHY_CONTENT_SYSTEM_PREFIX + 'site-id')
     if google_group is None:
       raise BadRequest('No organization-identifier info found in payload data.')
     google_group = google_group.lower()
