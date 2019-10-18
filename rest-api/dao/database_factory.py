@@ -13,8 +13,8 @@ SCHEMA_TRANSLATE_MAP = None
 
 
 class _SqlDatabase(Database):
-  def __init__(self, db_name, backup=False, instance_name=None, **kwargs):
-    url = make_url(get_db_connection_string(backup, instance_name))
+  def __init__(self, db_name, backup=False, instance_name=None, alembic=False, **kwargs):
+    url = make_url(get_db_connection_string(backup, instance_name, alembic))
     if url.drivername != "sqlite" and not url.database:
       url.database = db_name
     super(_SqlDatabase, self).__init__(url, **kwargs)
@@ -25,10 +25,19 @@ class _BackupSqlDatabase(_SqlDatabase):
     super(_BackupSqlDatabase, self).__init__(db_name, backup=True, **kwargs)
 
 
+class _AlembicSqlDatabase(_SqlDatabase):
+  def __init__(self, db_name, **kwargs):
+    super(_AlembicSqlDatabase, self).__init__(db_name, alembic=True, **kwargs)
+
 
 def get_database(db_name='rdr'):
   """Returns a singleton _SqlDatabase which USEs the rdr DB."""
   return singletons.get(singletons.SQL_DATABASE_INDEX, _SqlDatabase, db_name=db_name)
+
+
+def get_database_with_alembic_user(db_name='rdr'):
+  """Returns a singleton _SqlDatabase which USEs the rdr DB."""
+  return singletons.get(singletons.ALEMBIC_SQL_DATABASE_INDEX, _AlembicSqlDatabase, db_name=db_name)
 
 
 def get_backup_database():
@@ -50,7 +59,7 @@ def get_generic_database():
                         execution_options={'schema_translate_map': SCHEMA_TRANSLATE_MAP})
 
 
-def get_db_connection_string(backup=False, instance_name=None):
+def get_db_connection_string(backup=False, instance_name=None, alembic=False):
   if DB_CONNECTION_STRING:
     return DB_CONNECTION_STRING
 
@@ -60,6 +69,11 @@ def get_db_connection_string(backup=False, instance_name=None):
   import config
   connection_string_key = 'backup_db_connection_string' if backup else 'db_connection_string'
   result = config.get_db_config()[connection_string_key]
+  if alembic:
+    if backup:
+      raise Exception("backup and alembic should not be used together")
+    # rdr user and alembic user share the same password
+    result = result.replace('rdr', 'alembic', '1')
   if instance_name:
     if backup:
       raise Exception("backup and instance_name should not be used together")
