@@ -18,7 +18,6 @@ from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatus, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus
-from rdr_service.services.flask import celery
 
 
 class BQParticipantSummaryGenerator(BigQueryGenerator):
@@ -125,31 +124,27 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             # return the minimum data required when we don't have the questionnaire data.
             return {'email': None, 'is_ghost_id': 0}
         qnan = BQRecord(schema=None, data=qnans[0])  # use only most recent response.
-        if not hasattr(qnan, 'PIIBirthInformation_BirthDate'):
-            qnan.update_values({'PIIBirthInformation_BirthDate': None})
-
         # TODO: We may need to use the first response to set consent dates,
         #  unless the consent value changed across response records.
 
         data = {
-            'first_name': qnan.PIIName_First,
-            'middle_name': qnan.PIIName_Middle,
-            'last_name': qnan.PIIName_Last,
-            'date_of_birth': qnan.PIIBirthInformation_BirthDate,
-            'primary_language': qnan.language,
-            'email': qnan.ConsentPII_EmailAddress,
-            'phone_number': qnan.PIIContactInformation_Phone,
-            'login_phone_number': qnan.ConsentPII_VerifiedPrimaryPhoneNumber,
+            'first_name': qnan.get('PIIName_First'),
+            'middle_name': qnan.get('PIIName_Middle'),
+            'last_name': qnan.get('PIIName_Last'),
+            'date_of_birth': qnan.get('PIIBirthInformation_BirthDate'),
+            'primary_language': qnan.get('language'),
+            'email': qnan.get('ConsentPII_EmailAddress'),
+            'phone_number': qnan.get('PIIContactInformation_Phone'),
+            'login_phone_number': qnan.get('ConsentPII_VerifiedPrimaryPhoneNumber'),
             'addresses': [
                 {
                     'addr_type': BQStreetAddressTypeEnum.RESIDENCE.name,
                     'addr_type_id': BQStreetAddressTypeEnum.RESIDENCE.value,
-                    'addr_street_address_1': qnan.PIIAddress_StreetAddress,
-                    'addr_street_address_2': qnan.PIIAddress_StreetAddress2,
-                    'addr_city': qnan.StreetAddress_PIICity,
-                    'addr_state': qnan.StreetAddress_PIIState.replace('PIIState_', '').upper()
-                    if qnan.StreetAddress_PIIState else None,
-                    'addr_zip': qnan.StreetAddress_PIIZIP,
+                    'addr_street_address_1': qnan.get('PIIAddress_StreetAddress'),
+                    'addr_street_address_2': qnan.get('PIIAddress_StreetAddress2'),
+                    'addr_city': qnan.get('StreetAddress_PIICity'),
+                    'addr_state': qnan.get('StreetAddress_PIIState', '').replace('PIIState_', '').upper(),
+                    'addr_zip': qnan.get('StreetAddress_PIIZIP'),
                     'addr_country': 'US'
                 }
             ],
@@ -157,7 +152,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 {
                     'consent': 'ConsentPII',
                     'consent_id': self._lookup_code_id('ConsentPII', ro_session),
-                    'consent_date': parser.parse(qnan.authored).date() if qnan.authored else None,
+                    'consent_date': parser.parse(qnan.get('authored')).date() if qnan.get('authored') else None,
                     'consent_value': 'ConsentPermission_Yes',
                     'consent_value_id': self._lookup_code_id('ConsentPermission_Yes', ro_session),
                 },
@@ -243,34 +238,34 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         # get race question answers
         qnan = BQRecord(schema=None, data=qnans[0])  # use only most recent questionnaire.
         data = {}
-        if qnan.Race_WhatRaceEthnicity:
+        if qnan.get('Race_WhatRaceEthnicity'):
             rl = list()
-            for val in qnan.Race_WhatRaceEthnicity.split(','):
+            for val in qnan.get('Race_WhatRaceEthnicity').split(','):
                 rl.append({'race': val, 'race_id': self._lookup_code_id(val, ro_session)})
             data['races'] = rl
         # get gender question answers
         gl = list()
-        if qnan.Gender_GenderIdentity:
-            for val in qnan.Gender_GenderIdentity.split(','):
+        if qnan.get('Gender_GenderIdentity'):
+            for val in qnan.get('Gender_GenderIdentity').split(','):
                 if val == 'GenderIdentity_AdditionalOptions':
                     continue
                 gl.append({'gender': val, 'gender_id': self._lookup_code_id(val, ro_session)})
         # get additional gender answers, if any.
-        if qnan.GenderIdentity_SexualityCloserDescription:
-            for val in qnan.GenderIdentity_SexualityCloserDescription.split(','):
+        if qnan.get('GenderIdentity_SexualityCloserDescription'):
+            for val in qnan.get('GenderIdentity_SexualityCloserDescription').split(','):
                 gl.append({'gender': val, 'gender_id': self._lookup_code_id(val, ro_session)})
 
         if len(gl) > 0:
             data['genders'] = gl
 
-        data['education'] = qnan.EducationLevel_HighestGrade
-        data['education_id'] = self._lookup_code_id(qnan.EducationLevel_HighestGrade, ro_session)
-        data['income'] = qnan.Income_AnnualIncome
-        data['income_id'] = self._lookup_code_id(qnan.Income_AnnualIncome, ro_session)
-        data['sex'] = qnan.BiologicalSexAtBirth_SexAtBirth
-        data['sex_id'] = self._lookup_code_id(qnan.BiologicalSexAtBirth_SexAtBirth, ro_session)
-        data['sexual_orientation'] = qnan.TheBasics_SexualOrientation
-        data['sexual_orientation_id'] = self._lookup_code_id(qnan.TheBasics_SexualOrientation, ro_session)
+        data['education'] = qnan.get('EducationLevel_HighestGrade')
+        data['education_id'] = self._lookup_code_id(qnan.get('EducationLevel_HighestGrade'), ro_session)
+        data['income'] = qnan.get('Income_AnnualIncome')
+        data['income_id'] = self._lookup_code_id(qnan.get('Income_AnnualIncome'), ro_session)
+        data['sex'] = qnan.get('BiologicalSexAtBirth_SexAtBirth')
+        data['sex_id'] = self._lookup_code_id(qnan.get('BiologicalSexAtBirth_SexAtBirth'), ro_session)
+        data['sexual_orientation'] = qnan.get('TheBasics_SexualOrientation')
+        data['sexual_orientation_id'] = self._lookup_code_id(qnan.get('TheBasics_SexualOrientation'), ro_session)
 
         return data
 
@@ -525,10 +520,10 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None):
 
     return ps_bqr
 
-@celery.task()
+
 def bq_participant_summary_update_task(p_id):
     """
-    Deferred task to update the Participant Summary record for the given participant.
+    Cloud task to update the Participant Summary record for the given participant.
     :param p_id: Participant ID
     """
     rebuild_bq_participant(p_id)

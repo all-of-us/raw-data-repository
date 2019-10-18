@@ -44,11 +44,6 @@ protorpc
 dictalchemy
 sqlparse
 
-## Background Tasks
-celery
-librabbitmq
-amqp==2.1.1
-
 ## misc
 dnspython
 xmltodict

@@ -5,7 +5,6 @@
 import argparse
 import shlex
 import subprocess
-import sys
 import os
 
 
@@ -16,17 +15,15 @@ import os
 #     pass
 
 def print_service_list():
-    print("Possible services are --celery, --flask, --gunicorn and --service.")
+    print("Possible services are --flask, --gunicorn and --service.")
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(prog='rdr-service', description="RDR web service")
     parser.add_argument("--debug", help="enable debug output", default=False, action="store_true")  # noqa
-    parser.add_argument("--celery", help="launch celery app worker", default=False, action="store_true")  # noqa
     parser.add_argument("--flask", help="launch flask app", default=False, action="store_true")  # noqa
     parser.add_argument("--gunicorn", help="launch gunicorn web service", default=False, action="store_true")  # noqa
-    parser.add_argument("--service", help="launch supervisor and start web service", default=False,
-                            action="store_true")  # noqa
+    parser.add_argument("--service", help="launch supervisor service", default=False, action="store_true")  # noqa
     parser.add_argument("--unittests", help="enable unittest mode", default=False, action="store_true")  # noqa
     parser.add_argument("--offline", help="start offline web service", default=False, action="store_true")  # noqa
 
@@ -36,7 +33,7 @@ if __name__ == '__main__':
         os.environ["UNITTEST_FLAG"] = "1"
     env = dict(os.environ)
 
-    service_count = sum([args.flask, args.gunicorn, args.service, args.celery])
+    service_count = sum([args.flask, args.gunicorn, args.service])
 
     if service_count == 0:
         print("You must specify a service to start up.")
@@ -76,12 +73,6 @@ if __name__ == '__main__':
         p.wait()
         exit(0)
 
-    if args.celery:
-        p_args = ['celery', '-A', 'rdr_service.services.flask:celery', 'worker',
-                  '--loglevel={0}'.format('debug' if '--debug' in sys.argv else 'info')]
-        p = subprocess.Popen(p_args, env=env)
-        p.wait()
-        exit(0)
 
     if not args.offline:
         config_file = 'rdr_service/services/supervisor.conf'

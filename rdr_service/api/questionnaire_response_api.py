@@ -1,7 +1,9 @@
+import logging
 from flask_restful import Resource, request
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import app_util
+from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.api.base_api import BaseApi
 from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO
@@ -11,6 +13,7 @@ from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
+from rdr_service.services.flask import TASK_PREFIX
 
 
 class QuestionnaireResponseApi(BaseApi):
@@ -26,8 +29,21 @@ class QuestionnaireResponseApi(BaseApi):
     def post(self, p_id):
         resp = super(QuestionnaireResponseApi, self).post(participant_id=p_id)
         if resp and 'id' in resp:
-            task = bq_questionnaire_update_task.apply_async(queue='default', args=(p_id, int(resp['id'])))
-            task.forget()
+
+            qr_id = int(resp['id'])
+            if GAE_PROJECT == 'localhost':
+                bq_questionnaire_update_task(p_id, qr_id)
+            else:
+                from google.appengine.api import taskqueue
+                task = taskqueue.add(
+                    queue_name='bigquery-rebuild',
+                    url=TASK_PREFIX + 'BQRebuildQuestionnaireTaskApi',
+                    method='GET',
+                    target='worker',
+                    params={'p_id': p_id, 'qr_id': qr_id}
+                )
+                logging.info('Task {} enqueued, ETA {}.'.format(task.name, task.eta))
+
         return resp
 
 

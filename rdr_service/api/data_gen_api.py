@@ -13,6 +13,7 @@ from rdr_service import app_util, config, clock
 from rdr_service.api_util import HEALTHPRO, open_cloud_file
 from rdr_service.app_util import get_validated_user_info, nonprod
 from rdr_service.code_constants import BIOBANK_TESTS
+from rdr_service.config import GAE_PROJECT
 from rdr_service.config_api import is_config_admin
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -20,9 +21,8 @@ from rdr_service.data_gen.fake_participant_generator import FakeParticipantGener
 from rdr_service.data_gen.in_process_client import InProcessClient
 from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.offline.biobank_samples_pipeline import CsvColumns, INPUT_CSV_TIME_FORMAT
-
 # 10% of individual stored samples are missing by default.
-from rdr_service.services.flask import celery
+from rdr_service.services.flask import TASK_PREFIX
 
 # 1% of participants have samples with no associated order
 _SAMPLES_MISSING_FRACTION = 0.1
@@ -92,12 +92,10 @@ def _new_row(sample_id, biobank_id, test, confirmed_time):
     return row
 
 
-@celery.task()
 def generate_samples_task(fraction_missing):
     """
-    Celery Task: Creates fake sample CSV data in GCS.
+    Cloud Task: Creates fake sample CSV data in GCS.
     :param fraction_missing:
-    :return:
     """
     bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
     now = clock.CLOCK.now()
@@ -139,7 +137,6 @@ def generate_samples_task(fraction_missing):
     logging.info("Generated %d samples in %s.", num_rows, file_name)
 
 
-
 class DataGenApi(Resource):
 
     method_decorators = [_auth_required_healthpro_or_config_admin]
@@ -159,9 +156,19 @@ class DataGenApi(Resource):
                     include_physical_measurements, include_biobank_orders, requested_hpo
                 )
         if resource_json.get("create_biobank_samples"):
-            task = generate_samples_task.apply_async(queue='default', args=(
-                        resource_json.get("samples_missing_fraction", _SAMPLES_MISSING_FRACTION)))
-            task.forget()
+            fraction = resource_json.get("samples_missing_fraction", _SAMPLES_MISSING_FRACTION)
+            if GAE_PROJECT == 'localhost':
+                generate_samples_task(fraction)
+            else:
+                from google.appengine.api import taskqueue
+                task = taskqueue.add(
+                    queue_name='default',
+                    url=TASK_PREFIX + 'GenerateBiobankSamplesTaskApi',
+                    method='GET',
+                    target='worker',
+                    params={'fraction': fraction}
+                )
+                logging.info('Task {} enqueued, ETA {}.'.format(task.name, task.eta))
 
     @nonprod
     def put(self):

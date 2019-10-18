@@ -11,7 +11,7 @@ from sqlalchemy import or_, func, and_
 from rdr_service import config
 from rdr_service.cloud_utils.bigquery import BigQueryJob
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
-from rdr_service.dao.bq_code_dao import bq_codebook_update_task
+from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
 from rdr_service.dao.bq_hpo_dao import bq_hpo_update
 from rdr_service.dao.bq_organization_dao import bq_organization_update
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator, rebuild_bq_participant
@@ -22,7 +22,7 @@ from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
     BQPDREHRConsentPII, BQPDRDVEHRSharing
 from rdr_service.model.participant import Participant
-from rdr_service.services.flask import celery
+from rdr_service.services.flask import TASK_PREFIX
 
 
 # disable pylint warning for 'Exception':
@@ -52,14 +52,24 @@ def rebuild_bigquery_handler():
                      format(count, total_rows, batch_size))
 
         while count > 0:
-            task = rebuild_bq_participant_task.apply_async(queue='offline', args=(timestamp, batch_size))
-            task.forget()
+            if config.GAE_PROJECT == 'localhost':
+                rebuild_bq_codebook_task(timestamp, batch_size)
+            else:
+                from google.appengine.api import taskqueue
+                task = taskqueue.add(
+                    queue_name='bigquery-rebuild',
+                    url=TASK_PREFIX + 'BQRebuildParticipantsTaskApi',
+                    method='GET',
+                    target='worker',
+                    params={'timestamp': timestamp, 'limit': batch_size}
+                )
+                logging.info('Task {} enqueued, ETA {}.'.format(task.name, task.eta))
             count -= 1
     #
     # Process tables that don't need to be broken up into smaller tasks.
     #
     # Code Table
-    bq_codebook_update_task()
+    rebuild_bq_codebook_task()
     # HPO Table
     bq_hpo_update()
     # Organization Table
@@ -68,7 +78,6 @@ def rebuild_bigquery_handler():
     bq_site_update()
 
 
-@celery.task()
 def rebuild_bq_participant_task(timestamp, limit=0):
     """
     Loop through all participants and generate the BQ participant summary data and

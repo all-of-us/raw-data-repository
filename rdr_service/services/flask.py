@@ -1,5 +1,4 @@
 import logging
-import os
 import sys
 import traceback
 
@@ -8,10 +7,8 @@ from werkzeug.wrappers import Response
 
 from flask import Flask
 
-from rdr_service import config
 from rdr_service.json_encoder import RdrJsonEncoder
 from rdr_service.model.utils import ParticipantIdConverter
-from rdr_service.services.celery_utils import configure_celery
 from rdr_service.services.gcp_logging import FlaskGCPStackDriverLogging
 
 app_log_service = FlaskGCPStackDriverLogging()
@@ -23,23 +20,8 @@ app.after_request(app_log_service.end_request)
 app.url_map.converters["participant_id"] = ParticipantIdConverter
 app.config.setdefault("RESTFUL_JSON", {"cls": RdrJsonEncoder})
 
-# Add celery configuration information into Flask app.
-if not os.environ.get("UNITTEST_FLAG", None):
-    key = 'celery_db_connection_string'
-else:
-    key = 'unittest_celery_db_connection_string'
-
-_result_backend = config.get_db_config()[key]
-_broker_url = config.get_db_config()['celery_broker_url']
-
-app.config.update(
-    CELERY_BROKER_URL=_broker_url,
-    RESULT_BACKEND=_result_backend,
-)
-
 API_PREFIX = "/rdr/v1/"
-
-celery = configure_celery(app)
+TASK_PREFIX = API_PREFIX + "tasks/"
 
 app_log_service.flush()
 
@@ -129,3 +111,4 @@ def handle_500(e):
     app_log_service.end_request(response)
 
     return response
+
