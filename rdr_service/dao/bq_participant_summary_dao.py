@@ -240,7 +240,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         data = {}
         if qnan.get('Race_WhatRaceEthnicity'):
             rl = list()
-            for val in qnan.Race_WhatRaceEthnicity.split(','):
+            for val in qnan.get('Race_WhatRaceEthnicity').split(','):
                 rl.append({'race': val, 'race_id': self._lookup_code_id(val, ro_session)})
             data['races'] = rl
         # get gender question answers
@@ -251,8 +251,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                     continue
                 gl.append({'gender': val, 'gender_id': self._lookup_code_id(val, ro_session)})
         # get additional gender answers, if any.
-        if qnan.GenderIdentity_SexualityCloserDescription:
-            for val in qnan.GenderIdentity_SexualityCloserDescription.split(','):
+        if qnan.get('GenderIdentity_SexualityCloserDescription'):
+            for val in qnan.get('GenderIdentity_SexualityCloserDescription').split(','):
                 gl.append({'gender': val, 'gender_id': self._lookup_code_id(val, ro_session)})
 
         if len(gl) > 0:
