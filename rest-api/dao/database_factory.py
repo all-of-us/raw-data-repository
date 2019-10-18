@@ -73,7 +73,7 @@ def get_db_connection_string(backup=False, instance_name=None, alembic=False):
     if backup:
       raise Exception("backup and alembic should not be used together")
     # rdr user and alembic user share the same password
-    result = result.replace('rdr', 'alembic', '1')
+    result = result.replace('rdr', 'alembic', 1)
   if instance_name:
     if backup:
       raise Exception("backup and instance_name should not be used together")
