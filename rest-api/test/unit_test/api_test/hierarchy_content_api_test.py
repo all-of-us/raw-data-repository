@@ -71,7 +71,7 @@ class HierarchyContentApiTest(FlaskTestBase):
       ],
       "identifier": [
         {
-          "system": "http://all-of-us.org/fhir/sites/organization-identifier",
+          "system": "http://all-of-us.org/fhir/sites/awardee-id",
           "value": "TEST_HPO_NAME"
         }
       ],
@@ -109,7 +109,7 @@ class HierarchyContentApiTest(FlaskTestBase):
       ],
       "identifier": [
         {
-          "system": "http://all-of-us.org/fhir/sites/organization-identifier",
+          "system": "http://all-of-us.org/fhir/sites/awardee-id",
           "value": "PITT"
         }
       ],
@@ -144,7 +144,7 @@ class HierarchyContentApiTest(FlaskTestBase):
       ],
       "identifier": [
         {
-          "system": "http://all-of-us.org/fhir/sites/organization-identifier",
+          "system": "http://all-of-us.org/fhir/sites/organization-id",
           "value": "TEST_NEW_ORG"
         }
       ],
@@ -191,7 +191,7 @@ class HierarchyContentApiTest(FlaskTestBase):
       ],
       "identifier": [
         {
-          "system": "http://all-of-us.org/fhir/sites/organization-identifier",
+          "system": "http://all-of-us.org/fhir/sites/organization-id",
           "value": "AARDVARK_ORG"
         }
       ],
@@ -275,7 +275,7 @@ class HierarchyContentApiTest(FlaskTestBase):
       ],
       "identifier": [
         {
-          "system": "http://all-of-us.org/fhir/sites/organization-identifier",
+          "system": "http://all-of-us.org/fhir/sites/site-id",
           "value": "hpo-site-awesome-testing"
         },
         {
@@ -414,7 +414,7 @@ class HierarchyContentApiTest(FlaskTestBase):
       ],
       "identifier": [
         {
-          "system": "http://all-of-us.org/fhir/sites/organization-identifier",
+          "system": "http://all-of-us.org/fhir/sites/site-id",
           "value": "hpo-site-1"
         },
         {
