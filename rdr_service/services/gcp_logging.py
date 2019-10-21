@@ -62,7 +62,7 @@ def setup_logging_resource():
     """
     labels = {
         "project_id": GAE_PROJECT,
-        "module_id": 'kin-' + os.environ.get('GAE_SERVICE', 'default'),
+        "module_id": 'primary-' + os.environ.get('GAE_SERVICE', 'default'),
         "version_id": os.environ.get('GAE_VERSION', 'devel'),
         "zone": logging_zone_pb2
     }
