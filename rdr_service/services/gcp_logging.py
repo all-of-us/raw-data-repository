@@ -2,10 +2,12 @@ import collections
 import json
 import logging
 import os
+import string
 import sys
 import traceback
 from datetime import datetime, timezone
 from enum import IntEnum
+import random
 
 import requests
 from flask import request, Response
@@ -29,6 +31,8 @@ from rdr_service.config import GAE_PROJECT
 # How many log lines should be batched before pushing them to StackDriver.
 _LOG_BUFFER_SIZE = 24
 
+GAE_LOGGING_MODULE_ID = 'primary-' + os.environ.get('GAE_SERVICE', 'default')
+GAE_LOGGING_VERSION_ID = os.environ.get('GAE_VERSION', 'devel')
 
 class LogCompletionStatusEnum(IntEnum):
     """
@@ -60,6 +64,7 @@ def setup_logging_zone():
 logging_zone_pb2 = setup_logging_zone()
 
 
+
 def setup_logging_resource():
     """
     Set the values for the Google Logging Resource object
@@ -67,8 +72,8 @@ def setup_logging_resource():
     """
     labels = {
         "project_id": GAE_PROJECT,
-        "module_id": 'primary-' + os.environ.get('GAE_SERVICE', 'default'),
-        "version_id": os.environ.get('GAE_VERSION', 'devel'),
+        "module_id": GAE_LOGGING_MODULE_ID,
+        "version_id": GAE_LOGGING_VERSION_ID,
         "zone": logging_zone_pb2
     }
 
@@ -79,14 +84,13 @@ def setup_logging_resource():
 
 logging_resource_pb2 = setup_logging_resource()
 
-
-def setup_log_line(record: logging.LogRecord):
+# pylint: disable=unused-argument
+def setup_log_line(record: logging.LogRecord, resource, method):
     """
     Prepare a log event for sending to GCP StackDriver.
     :param record: Log event record.
-    :param message: Log message.
-    :param event_ts: Log event timestamp.
-    :param level: Log severity level.
+    :param resource: request resource
+    :param method: request method
     :return: LogLine proto buffer object
     """
     event_ts = datetime.utcfromtimestamp(record.created)
@@ -95,22 +99,34 @@ def setup_log_line(record: logging.LogRecord):
     severity = gcp_logging._helpers._normalize_severity(record.levelno)
     message = record.msg if record.msg else ''
 
-    funcname = record.funcName if record.funcName else ''
-    file = record.pathname if record.pathname else ''
-    lineno = record.lineno if record.lineno else 0
+    # Look for embedded traceback source location override information
+    if '%%' in message:
+        tmp_sl = message[message.find('%%'):message.rfind('%%')+2]
+        message = message.replace(tmp_sl, '')
+        tmp_sl = tmp_sl.replace('%%', '')
+        source_location = json.loads(tmp_sl)
 
-    line = {
-        "logMessage": message,
-        "severity": severity,
-        "sourceLocation": {
+    else:
+        funcname = record.funcName if record.funcName else ''
+        file = record.pathname if record.pathname else ''
+        lineno = record.lineno if record.lineno else 0
+        source_location = {
             "file": file,
             "functionName": funcname,
             "line": lineno
-        },
+        }
+
+    message = message.replace('$$method$$', method if method else '')
+    message = message.replace('$$resource$$', resource if resource else '/')
+
+    log_line = {
+        "logMessage": message,
+        "severity": severity,
+        "sourceLocation": source_location,
         "time": event_ts
     }
 
-    return line
+    return log_line
 
 
 def setup_proto_payload(lines: list, log_status: LogCompletionStatusEnum, **kwargs):
@@ -292,13 +308,23 @@ class GCPStackDriverLogHandler(logging.Handler):
         """
         Send a set of log entries to StackDriver.
         """
-        lines = list(map(setup_log_line, self._buffer))
+        insert_id = \
+            ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
+        lines = list()
+        index = 0
+
+        for line in self._buffer:
+            lines.append(setup_log_line(line, self._request_resource, self._request_method))
+            index += 1
+
         self._end_time = datetime.now(timezone.utc).isoformat()
 
         log_entry_pb2_args = {
             'resource': logging_resource_pb2,
             'severity': self.get_highest_severity_level_from_lines(lines),
             'trace': self._trace,
+            'insert_id': insert_id,
+            'trace_sampled': True if self._trace else False
         }
 
         if self._response_status_code:
@@ -323,7 +349,9 @@ class GCPStackDriverLogHandler(logging.Handler):
             'status': self._response_status_code,
             'requestId': self._request_log_id,
             'traceId': self._trace,
-            'versionId': os.environ.get('GAE_VERSION', 'devel')
+            # 'traceSampled': True,
+            'versionId': os.environ.get('GAE_VERSION', 'devel'),
+            'urlMapEntry': 'main.app'
         }
 
         if self.__first_log_ts:
@@ -395,7 +423,6 @@ class FlaskGCPStackDriverLogging:
         """
         if self._log_handler:
             self._log_handler.finalize(response)
-
         return response
 
     def flush(self):
@@ -405,13 +432,15 @@ class FlaskGCPStackDriverLogging:
         if self._log_handler:
             self._log_handler.finalize()
 
+
 def _get_traceback(e):
     """
     Return a string formatted with the exception traceback.
     :param e: exception object
-    :return: string
+    :return: string, source location object
     """
     tb = None
+    source_location = None
     if e:
         tb = e.__traceback__ if hasattr(e, '__traceback__') else None
 
@@ -421,23 +450,39 @@ def _get_traceback(e):
 
     if tb:
         tb_out = traceback.format_tb(tb)
+        # Extract the individual traceback items into a list and reverse them. Capture the source location info for
+        # the first item filename in our project.
+        tb_items = traceback.extract_tb(tb)[::-1]
+        for item in tb_items:
+            if '/rdr_service/' in item.filename:
+                source_location = {
+                    "file": item.filename,
+                    "functionName": item.name,
+                    "line": item.lineno
+                }
+                break
+
     else:
         tb_out = ['No exception traceback available.', ]
 
     # Mimic the nice python exception and traceback print.
-    e_error = e.__repr__()
-    tb_heading = 'Traceback (most recent call last):'
-    tb_data = ''.join(tb_out)
-    message = '{0}\n{1}\n{2}'.format(e_error, tb_heading, tb_data)
+    e_error = e.__repr__().strip()
+    tb_heading = 'LogMessage: Exception on $$resource$$ [$$method$$]'
+    tb_data = ''.join(tb_out).strip()
+    message = '{0}\nTraceback (most recent call last):\n{1}\n{2}'.format(tb_heading, tb_data, e_error)
+
+    # Embed source location information in the message, which will be picked when the log entry is parsed later.
+    if source_location:
+        message = '{0}\n%%{1}%%'.format(message, json.dumps(source_location))
+
     return message
 
 
 def log_exception_error(e):
     """
-    Log exception errors
-    :param sender: Flask object
+    Log exception errors, this is where all unhandled exceptions errors are logged.
     :param e: exception object
-    :return: flask response, status code
+    :return: flask response
     """
     traceback_msg = _get_traceback(e)
 
@@ -462,7 +507,6 @@ def log_exception_error(e):
 
     # now you're handling non-HTTP exceptions only
     return response
-
 
 
 app_log_service = FlaskGCPStackDriverLogging()
