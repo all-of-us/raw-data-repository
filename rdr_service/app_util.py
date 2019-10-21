@@ -248,7 +248,11 @@ def get_validated_user_info():
 
     user_info = lookup_user_info(user_email)
     if user_info:
-        enforce_ip_whitelisted(request.remote_addr, get_whitelisted_ips(user_info))
+        if 'X-Appengine-User-Ip' in request.headers:
+            addr = request.headers.get('X-Appengine-User-Ip')
+        else:
+            addr = request.remote_addr
+        enforce_ip_whitelisted(addr, get_whitelisted_ips(user_info))
         enforce_appid_whitelisted(request.headers.get("X-Appengine-Inbound-Appid"), get_whitelisted_appids(user_info))
         logging.info("User %r ALLOWED", user_email)
         return (user_email, user_info)

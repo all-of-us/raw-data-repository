@@ -51,10 +51,10 @@ if __name__ == '__main__':
         # can be configured by adding an `entrypoint` to app.yaml.
         if not args.offline:
             from rdr_service.main import app
-            app.run(host='127.0.0.1', port=8080, debug=True)
+            app.run(host='127.0.0.1', port=8080, debug=args.debug)
         else:
             from rdr_service.offline.main import app
-            app.run(host='127.0.0.1', port=8080, debug=True)
+            app.run(host='127.0.0.1', port=8080, debug=args.debug)
 
         exit(0)
 

@@ -1,8 +1,6 @@
 import collections
 import logging
 import os
-import random
-import string
 from datetime import datetime, timezone
 from enum import IntEnum
 
@@ -24,7 +22,7 @@ from rdr_service.config import GAE_PROJECT
 # https://developers.google.com/resources/api-libraries/documentation/logging/v2/python/latest/logging_v2.entries.html
 
 # How many log lines should be batched before pushing them to StackDriver.
-_LOG_BUFFER_SIZE = 10
+_LOG_BUFFER_SIZE = 24
 
 
 class LogCompletionStatusEnum(IntEnum):
@@ -174,8 +172,6 @@ class GCPStackDriverLogHandler(logging.Handler):
         self._reset()
 
         self._logging_client = gcp_logging_v2.LoggingServiceV2Client()
-
-        self._request_id = None
         self._operation_pb2 = None
 
     def _reset(self):
@@ -184,7 +180,6 @@ class GCPStackDriverLogHandler(logging.Handler):
 
         self.log_completion_status = LogCompletionStatusEnum.COMPLETE
         self._operation_pb2 = None
-        self._request_id = None
 
         self._trace = None
         self._start_time = None
@@ -194,7 +189,9 @@ class GCPStackDriverLogHandler(logging.Handler):
         self._request_endpoint = None
         self._request_resource = None
         self._request_agent = None
-        self._request_ip_addr = None
+        self._request_remote_addr = None
+        self._request_log_id = None
+        self._request_host = None
 
         self._response_status_code = 200
         self._response_size = None
@@ -206,15 +203,15 @@ class GCPStackDriverLogHandler(logging.Handler):
         Handle long operations.
         :param op_status: LogCompletionStatusEnum value.
         """
-        if not self._request_id:
-            self._request_id = ''.join(random.choice('abcdef' + string.digits) for _ in range(114))
-
-        first = True if op_status == LogCompletionStatusEnum.PARTIAL_BEGIN else False
-        last = True if op_status == LogCompletionStatusEnum.PARTIAL_FINISHED else False
+        if op_status == LogCompletionStatusEnum.COMPLETE:
+            first = last = True
+        else:
+            first = True if op_status == LogCompletionStatusEnum.PARTIAL_BEGIN else False
+            last = True if op_status == LogCompletionStatusEnum.PARTIAL_FINISHED else False
 
         # https://cloud.google.com/logging/docs/reference/v2/rpc/google.logging.v2#google.logging.v2.LogEntryOperation
         self._operation_pb2 = gcp_logging_v2.proto.log_entry_pb2.LogEntryOperation(
-            id=self._request_id,
+            id=self._request_log_id,
             producer='all-of-us.raw-data-repository/rdr-service',
             first=first,
             last=last
@@ -234,7 +231,9 @@ class GCPStackDriverLogHandler(logging.Handler):
         self._request_endpoint = req.endpoint
         self._request_resource = req.path
         self._request_agent = str(req.user_agent)
-        self._request_ip_addr = req.remote_addr
+        self._request_remote_addr = req.headers.get('X-Appengine-User-Ip', request.remote_addr)
+        self._request_host = req.headers.get('X-Appengine-Default-Version-Hostname', request.host)
+        self._request_log_id = req.headers.get('X-Appengine-Request-Log-Id', 'None')
 
         trace_id = req.headers.get('X-Cloud-Trace-Context', '')
         if trace_id:
@@ -267,13 +266,18 @@ class GCPStackDriverLogHandler(logging.Handler):
         """
         Finalize and send any log entries to StackDriver.
         """
+        if self.log_completion_status == LogCompletionStatusEnum.COMPLETE:
+            if len(self._buffer) == 0:
+                # nothing to log
+                self._reset()
+                return
+        else:
+            self.log_completion_status = LogCompletionStatusEnum.PARTIAL_FINISHED
+            self._update_long_operation(self.log_completion_status)
+
         if response:
             self._response_status_code = response.status_code
             self._response_size = len(response.data)
-
-        if self.log_completion_status != LogCompletionStatusEnum.COMPLETE:
-            self.log_completion_status = LogCompletionStatusEnum.PARTIAL_FINISHED
-            self._update_long_operation(self.log_completion_status)
 
         self.publish_to_stackdriver()
         self._reset()
@@ -290,7 +294,6 @@ class GCPStackDriverLogHandler(logging.Handler):
             'resource': logging_resource_pb2,
             'severity': self.get_highest_severity_level_from_lines(lines),
             'trace': self._trace,
-            'traceSampled': True,
         }
 
         if self._response_status_code:
@@ -298,8 +301,10 @@ class GCPStackDriverLogHandler(logging.Handler):
             if self._response_status_code > int(log_entry_pb2_args['severity']):
                 log_entry_pb2_args['severity'] = gcp_logging_v2.gapic.enums.LogSeverity(self._response_status_code)
 
-        if self._operation_pb2:
-            log_entry_pb2_args['operation'] = self._operation_pb2
+        if not self._operation_pb2:
+            self._update_long_operation(LogCompletionStatusEnum.COMPLETE)
+
+        log_entry_pb2_args['operation'] = self._operation_pb2
 
         proto_payload_args = {
             'startTime': self._start_time,
@@ -307,13 +312,12 @@ class GCPStackDriverLogHandler(logging.Handler):
             'method': self._request_method,
             'resource': self._request_resource,
             'userAgent': self._request_agent,
-            'host': GAE_PROJECT + '.appspot.com',
-            'ip': self._request_ip_addr,
+            'host': self._request_host,
+            'ip': self._request_remote_addr,
             'responseSize': self._response_size,
             'status': self._response_status_code,
-            'requestId': self._request_id,
+            'requestId': self._request_log_id,
             'traceId': self._trace,
-            'traceSampled': True,
             'versionId': os.environ.get('GAE_VERSION', 'devel')
         }
 
@@ -363,7 +367,7 @@ class FlaskGCPStackDriverLogging:
     _log_handler = None
 
     def __init__(self, log_level=logging.INFO):
-        if 'GAE_SERVICE' in os.environ:
+        if 'GAE_ENV' in os.environ:
             # Configure root logger
             self.root_logger = logging.getLogger()
             self.root_logger.setLevel(log_level)

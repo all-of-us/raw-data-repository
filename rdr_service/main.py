@@ -10,7 +10,7 @@ import signal
 from flask import got_request_exception
 from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, InternalServerError
 
 from rdr_service import config_api
 from rdr_service import version_api
@@ -39,7 +39,7 @@ from rdr_service.api.questionnaire_api import QuestionnaireApi
 from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireAnswers, QuestionnaireResponseApi
 from rdr_service.config import get_config, get_db_config
 
-from rdr_service.services.flask import app, API_PREFIX, TASK_PREFIX, finalize_request_logging
+from rdr_service.services.flask import app, API_PREFIX, TASK_PREFIX, finalize_request_logging, log_exception_error
 
 
 def _warmup():
