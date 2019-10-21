@@ -1,11 +1,14 @@
 import collections
+import json
 import logging
 import os
+import sys
+import traceback
 from datetime import datetime, timezone
 from enum import IntEnum
 
 import requests
-from flask import request
+from flask import request, Response
 
 from google.api.monitored_resource_pb2 import MonitoredResource
 from google.cloud import logging as gcp_logging
@@ -14,6 +17,8 @@ from google.logging.type import http_request_pb2 as gcp_http_request_pb2
 from google.protobuf import json_format as gcp_json_format, any_pb2 as gcp_any_pb2
 
 # pylint: disable=unused-import
+from werkzeug.exceptions import HTTPException
+
 from rdr_service.services import gcp_request_log_pb2
 from rdr_service.config import GAE_PROJECT
 
@@ -399,3 +404,86 @@ class FlaskGCPStackDriverLogging:
         """
         if self._log_handler:
             self._log_handler.finalize()
+
+def _get_traceback(e):
+    """
+    Return a string formatted with the exception traceback.
+    :param e: exception object
+    :return: string
+    """
+    tb = None
+    if e:
+        tb = e.__traceback__ if hasattr(e, '__traceback__') else None
+
+    if not tb:
+        # pylint: disable=unused-variable
+        etype, value, tb = sys.exc_info()
+
+    if tb:
+        tb_out = traceback.format_tb(tb)
+    else:
+        tb_out = ['No exception traceback available.', ]
+
+    # Mimic the nice python exception and traceback print.
+    e_error = e.__repr__()
+    tb_heading = 'Traceback (most recent call last):'
+    tb_data = ''.join(tb_out)
+    message = '{0}\n{1}\n{2}'.format(e_error, tb_heading, tb_data)
+    return message
+
+
+def log_exception_error(e):
+    """
+    Log exception errors
+    :param sender: Flask object
+    :param e: exception object
+    :return: flask response, status code
+    """
+    traceback_msg = _get_traceback(e)
+
+    if isinstance(e, HTTPException):
+        response = e.get_response()
+        response.data = json.dumps({
+            "code": e.code,
+            "name": e.name,
+            "description": e.description,
+        })
+        response.content_type = "application/json"
+    else:
+        response = Response()
+        response.status_code = 500
+
+    logging.error(traceback_msg)
+    # app_log_service.end_request(response)
+
+    # pass through HTTP errors
+    if isinstance(e, HTTPException):
+        return e
+
+    # now you're handling non-HTTP exceptions only
+    return response
+
+
+
+app_log_service = FlaskGCPStackDriverLogging()
+
+def setup_request_logging():
+    app_log_service.begin_request()
+
+
+def finalize_request_logging(response):
+    """
+    Finalize and send log message(s) for request.
+    :param response: Flask response object
+    """
+    app_log_service.end_request(response)
+    return response
+
+# pylint: disable=unused-argument
+def flask_restful_log_exception_error(sender, exception, **kwargs):
+    """
+    Make sure we can log exception errors to Google when running under Gunicorn.
+    """
+    log_exception_error(exception)
+
+

@@ -39,7 +39,9 @@ from rdr_service.api.questionnaire_api import QuestionnaireApi
 from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireAnswers, QuestionnaireResponseApi
 from rdr_service.config import get_config, get_db_config
 
-from rdr_service.services.flask import app, API_PREFIX, TASK_PREFIX, finalize_request_logging, log_exception_error
+from rdr_service.services.flask import app, API_PREFIX, TASK_PREFIX
+from rdr_service.services.gcp_logging import setup_request_logging, finalize_request_logging, \
+    flask_restful_log_exception_error
 
 
 def _warmup():
@@ -283,7 +285,12 @@ app.add_url_rule("/_ah/warmup", endpoint="warmup", view_func=_warmup, methods=["
 app.add_url_rule("/_ah/start", endpoint="start", view_func=_start, methods=["GET"])
 app.add_url_rule("/_ah/stop", endpoint="stop", view_func=_stop, methods=["GET"])
 
-app.after_request(app_util.add_headers)
-app.after_request(finalize_request_logging)
+app.before_request(setup_request_logging)  # Must be first before_request() call.
 app.before_request(app_util.request_logging)
+app.after_request(app_util.add_headers)
+app.after_request(finalize_request_logging)  # Must be last after_request() call.
+
 app.register_error_handler(DBAPIError, app_util.handle_database_disconnect)
+
+# https://github.com/flask-restful/flask-restful/issues/792
+got_request_exception.connect(flask_restful_log_exception_error, app)
