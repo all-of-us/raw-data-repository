@@ -4,7 +4,9 @@ from model.metrics import MetricsBucket
 from dao.metrics_dao import MetricsBucketDao, MetricsVersionDao
 
 from test.unit_test.unit_test_util import FlaskTestBase
+from unittest import skip
 
+@unittest.skip("uses old metrics. remove with code")
 class MetricsApiTest(FlaskTestBase):
 
   def setUp(self):
