@@ -7,7 +7,6 @@ that metrics come back and that it doen't crash.
 
 import httplib
 import unittest
-from unittest import skip
 import pprint
 
 from client import HttpException
