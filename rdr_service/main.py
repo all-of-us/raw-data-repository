@@ -142,6 +142,7 @@ api.add_resource(
     methods=["GET", "POST", "PATCH"],
 )
 
+# TODO: remove commented metrics 1 endpoints after December 1 2020.
 #api.add_resource(MetricsApi, API_PREFIX + "Metrics", endpoint="metrics", methods=["POST"])
 
 api.add_resource(
