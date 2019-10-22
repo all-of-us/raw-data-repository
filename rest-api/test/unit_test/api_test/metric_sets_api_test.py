@@ -1,4 +1,5 @@
 import datetime
+import unittest
 
 from dao.metric_set_dao import MetricSetDao, AggregateMetricsDao
 from model.metric_set import MetricSet, AggregateMetrics
@@ -94,6 +95,7 @@ class MetricSetsApiTest(FlaskTestBase):
       self.assertIn(m['key'], want)
       self.assertItemsEqual(m['values'], want[m['key']])
 
+  @unittest.skip("uses old metrics v1")
   def test_get_metrics_bad_keys(self):
     self.create_metric_set('live')
     self.send_get('MetricSets/live/Metrics', query_string={
