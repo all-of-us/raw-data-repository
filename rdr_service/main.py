@@ -7,7 +7,7 @@ import os
 import signal
 
 # pylint: disable=unused-import
-from flask import got_request_exception
+from flask import got_request_exception, Response
 from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import HTTPException, InternalServerError
@@ -62,8 +62,11 @@ def _stop():
         try:
             pid = int(open(pid_file).read())
             if pid:
-                os.kill(pid, signal.SIGTERM)
                 logging.info('******** Shutting down, sent supervisor the termination signal. ********')
+                response = Response()
+                response.status_code = 200
+                finalize_request_logging(response)
+                os.kill(pid, signal.SIGTERM)
         except TypeError:
             logging.warning('******** Shutting down, supervisor pid file is invalid. ********')
             pass

@@ -329,8 +329,10 @@ class GCPStackDriverLogHandler(logging.Handler):
 
         if self._response_status_code:
             log_entry_pb2_args['http_request'] = gcp_http_request_pb2.HttpRequest(status=self._response_status_code)
-            if self._response_status_code > int(log_entry_pb2_args['severity']):
-                log_entry_pb2_args['severity'] = gcp_logging_v2.gapic.enums.LogSeverity(self._response_status_code)
+            # Transform the response code to a logging severity level.
+            tmp_code = int(round(self._response_status_code / 100, 0) * 100)
+            if tmp_code > int(log_entry_pb2_args['severity']):
+                log_entry_pb2_args['severity'] = gcp_logging_v2.gapic.enums.LogSeverity(tmp_code)
 
         if not self._operation_pb2:
             self._update_long_operation(LogCompletionStatusEnum.COMPLETE)
