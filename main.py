@@ -8,11 +8,12 @@ import subprocess
 import os
 
 
-# try:
-#     import googleclouddebugger
-#     googleclouddebugger.enable()
-# except ImportError:
-#     pass
+if os.getenv('GAE_ENV', '').startswith('standard'):
+    try:
+        import googleclouddebugger
+        googleclouddebugger.enable()
+    except ImportError:
+        pass
 
 def print_service_list():
     print("Possible services are --flask, --gunicorn and --service.")
