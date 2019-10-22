@@ -31,7 +31,7 @@ from rdr_service.config import GAE_PROJECT
 # How many log lines should be batched before pushing them to StackDriver.
 _LOG_BUFFER_SIZE = 24
 
-GAE_LOGGING_MODULE_ID = 'primary-' + os.environ.get('GAE_SERVICE', 'default')
+GAE_LOGGING_MODULE_ID = 'app-' + os.environ.get('GAE_SERVICE', 'default')
 GAE_LOGGING_VERSION_ID = os.environ.get('GAE_VERSION', 'devel')
 
 class LogCompletionStatusEnum(IntEnum):
