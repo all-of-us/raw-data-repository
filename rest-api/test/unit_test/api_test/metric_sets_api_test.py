@@ -24,10 +24,12 @@ class MetricSetsApiTest(FlaskTestBase):
     self.metric_set_dao.insert(ms)
     return ms
 
+  @unittest.skip("uses old metrics v1")
   def test_get_metric_sets_no_data(self):
     response = self.send_get('MetricSets')
     self.assertEquals({'metricSets': []}, response)
 
+  @unittest.skip("uses old metrics v1")
   def test_get_metric_sets(self):
     self.create_metric_set('live1')
     self.create_metric_set('live2')
@@ -60,6 +62,8 @@ class MetricSetsApiTest(FlaskTestBase):
       }),
       param('non-matching subset', keys=['AGE_RANGE'], want={}),
   ])
+
+  @unittest.skip("uses old metrics v1")
   def test_get_metrics(self, _, ms_id='live', keys=None, want=None):
     self.create_metric_set('empty')
     self.create_metric_set('live')
