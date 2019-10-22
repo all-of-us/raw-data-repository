@@ -7,7 +7,6 @@ that metrics come back and that it doen't crash.
 
 import http.client
 import unittest
-from unittest import skip
 
 from rdr_service.rdr_client.client import HttpException
 from tests.client_tests.base import BaseClientTest
