@@ -42,7 +42,9 @@ def task_auth_required(func):
     """A decorator that ensures that the user is a task job."""
 
     def wrapped(*args, **kwargs):
-        if request.headers.get("X-Appengine-Taskname") and "AppEngine-Google" in request.headers.get("User-Agent", ""):
+        if GAE_PROJECT == "localhost" or (
+            request.headers.get("X-Appengine-Taskname") and "AppEngine-Google" in request.headers.get("User-Agent", "")
+        ):
             logging.info("App Engine task request ALLOWED for task endpoint.")
             return func(*args, **kwargs)
         logging.info("User {} NOT ALLOWED for task endpoint".format(get_oauth_id()))
@@ -65,7 +67,6 @@ def nonprod(func):
 def check_auth(role_whitelist):
     """Raises Unauthorized or Forbidden if the current user is not allowed."""
     user_email, user_info = get_validated_user_info()
-
     if set(user_info.get("roles", [])) & set(role_whitelist):
         return
 
@@ -99,7 +100,7 @@ def get_oauth_id():
         - could be validated locally instead of with API
     '''
     if GAE_PROJECT == 'localhost':  # NOTE: 2019-08-15 mimic devappserver.py behavior
-        return "example@example.com"
+        return config.LOCAL_AUTH_USER
     try:
         token = get_auth_token()
     except ValueError as e:
