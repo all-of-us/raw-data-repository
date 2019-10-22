@@ -1,13 +1,16 @@
 import collections
+import json
 import logging
 import os
-import random
 import string
+import sys
+import traceback
 from datetime import datetime, timezone
 from enum import IntEnum
+import random
 
 import requests
-from flask import request
+from flask import request, Response
 
 from google.api.monitored_resource_pb2 import MonitoredResource
 from google.cloud import logging as gcp_logging
@@ -16,6 +19,8 @@ from google.logging.type import http_request_pb2 as gcp_http_request_pb2
 from google.protobuf import json_format as gcp_json_format, any_pb2 as gcp_any_pb2
 
 # pylint: disable=unused-import
+from werkzeug.exceptions import HTTPException
+
 from rdr_service.services import gcp_request_log_pb2
 from rdr_service.config import GAE_PROJECT
 
@@ -24,8 +29,10 @@ from rdr_service.config import GAE_PROJECT
 # https://developers.google.com/resources/api-libraries/documentation/logging/v2/python/latest/logging_v2.entries.html
 
 # How many log lines should be batched before pushing them to StackDriver.
-_LOG_BUFFER_SIZE = 10
+_LOG_BUFFER_SIZE = 24
 
+GAE_LOGGING_MODULE_ID = 'app-' + os.environ.get('GAE_SERVICE', 'default')
+GAE_LOGGING_VERSION_ID = os.environ.get('GAE_VERSION', 'devel')
 
 class LogCompletionStatusEnum(IntEnum):
     """
@@ -57,6 +64,7 @@ def setup_logging_zone():
 logging_zone_pb2 = setup_logging_zone()
 
 
+
 def setup_logging_resource():
     """
     Set the values for the Google Logging Resource object
@@ -64,8 +72,8 @@ def setup_logging_resource():
     """
     labels = {
         "project_id": GAE_PROJECT,
-        "module_id": os.environ.get('GAE_SERVICE', 'default'),
-        "version_id": os.environ.get('GAE_VERSION', 'develop'),
+        "module_id": GAE_LOGGING_MODULE_ID,
+        "version_id": GAE_LOGGING_VERSION_ID,
         "zone": logging_zone_pb2
     }
 
@@ -76,14 +84,13 @@ def setup_logging_resource():
 
 logging_resource_pb2 = setup_logging_resource()
 
-
-def setup_log_line(record: logging.LogRecord):
+# pylint: disable=unused-argument
+def setup_log_line(record: logging.LogRecord, resource, method):
     """
     Prepare a log event for sending to GCP StackDriver.
     :param record: Log event record.
-    :param message: Log message.
-    :param event_ts: Log event timestamp.
-    :param level: Log severity level.
+    :param resource: request resource
+    :param method: request method
     :return: LogLine proto buffer object
     """
     event_ts = datetime.utcfromtimestamp(record.created)
@@ -91,18 +98,35 @@ def setup_log_line(record: logging.LogRecord):
     event_ts = event_ts.isoformat()
     severity = gcp_logging._helpers._normalize_severity(record.levelno)
     message = record.msg if record.msg else ''
-    line = {
+
+    # Look for embedded traceback source location override information
+    if '%%' in message:
+        tmp_sl = message[message.find('%%'):message.rfind('%%')+2]
+        message = message.replace(tmp_sl, '')
+        tmp_sl = tmp_sl.replace('%%', '')
+        source_location = json.loads(tmp_sl)
+
+    else:
+        funcname = record.funcName if record.funcName else ''
+        file = record.pathname if record.pathname else ''
+        lineno = record.lineno if record.lineno else 0
+        source_location = {
+            "file": file,
+            "functionName": funcname,
+            "line": lineno
+        }
+
+    message = message.replace('$$method$$', method if method else '')
+    message = message.replace('$$resource$$', resource if resource else '/')
+
+    log_line = {
         "logMessage": message,
         "severity": severity,
-        "sourceLocation": {
-            "file": "/base/data/home/apps/s~all-of-us-rdr-stable/v1-55-rc2.421152339935578377/app_util.py",
-            "functionName": "request_logging",
-            "line": 183
-        },
+        "sourceLocation": source_location,
         "time": event_ts
     }
 
-    return line
+    return log_line
 
 
 def setup_proto_payload(lines: list, log_status: LogCompletionStatusEnum, **kwargs):
@@ -169,8 +193,6 @@ class GCPStackDriverLogHandler(logging.Handler):
         self._reset()
 
         self._logging_client = gcp_logging_v2.LoggingServiceV2Client()
-
-        self._request_id = None
         self._operation_pb2 = None
 
     def _reset(self):
@@ -179,9 +201,8 @@ class GCPStackDriverLogHandler(logging.Handler):
 
         self.log_completion_status = LogCompletionStatusEnum.COMPLETE
         self._operation_pb2 = None
-        self._request_id = None
 
-        self._trace_id = None
+        self._trace = None
         self._start_time = None
         self._end_time = None
 
@@ -189,7 +210,9 @@ class GCPStackDriverLogHandler(logging.Handler):
         self._request_endpoint = None
         self._request_resource = None
         self._request_agent = None
-        self._request_ip_addr = None
+        self._request_remote_addr = None
+        self._request_log_id = None
+        self._request_host = None
 
         self._response_status_code = 200
         self._response_size = None
@@ -201,15 +224,15 @@ class GCPStackDriverLogHandler(logging.Handler):
         Handle long operations.
         :param op_status: LogCompletionStatusEnum value.
         """
-        if not self._request_id:
-            self._request_id = ''.join(random.choice('abcdef' + string.digits) for _ in range(114))
-
-        first = True if op_status == LogCompletionStatusEnum.PARTIAL_BEGIN else False
-        last = True if op_status == LogCompletionStatusEnum.PARTIAL_FINISHED else False
+        if op_status == LogCompletionStatusEnum.COMPLETE:
+            first = last = True
+        else:
+            first = True if op_status == LogCompletionStatusEnum.PARTIAL_BEGIN else False
+            last = True if op_status == LogCompletionStatusEnum.PARTIAL_FINISHED else False
 
         # https://cloud.google.com/logging/docs/reference/v2/rpc/google.logging.v2#google.logging.v2.LogEntryOperation
         self._operation_pb2 = gcp_logging_v2.proto.log_entry_pb2.LogEntryOperation(
-            id=self._request_id,
+            id=self._request_log_id,
             producer='all-of-us.raw-data-repository/rdr-service',
             first=first,
             last=last
@@ -225,13 +248,19 @@ class GCPStackDriverLogHandler(logging.Handler):
             self.finalize()
 
         self._start_time = datetime.now(timezone.utc).isoformat()
-        self._trace_id = req.headers.get('X-Cloud-Trace-Context', '')
         self._request_method = req.method
         self._request_endpoint = req.endpoint
         self._request_resource = req.path
         self._request_agent = str(req.user_agent)
-        self._request_ip_addr = req.remote_addr
+        self._request_remote_addr = req.headers.get('X-Appengine-User-Ip', request.remote_addr)
+        self._request_host = req.headers.get('X-Appengine-Default-Version-Hostname', request.host)
+        self._request_log_id = req.headers.get('X-Appengine-Request-Log-Id', 'None')
 
+        trace_id = req.headers.get('X-Cloud-Trace-Context', '')
+        if trace_id:
+            trace_id = trace_id.split('/')[0]
+            trace = 'projects/{0}/traces/{1}'.format(GAE_PROJECT, trace_id)
+            self._trace = trace
 
     def emit(self, record: logging.LogRecord):
         """
@@ -258,13 +287,18 @@ class GCPStackDriverLogHandler(logging.Handler):
         """
         Finalize and send any log entries to StackDriver.
         """
+        if self.log_completion_status == LogCompletionStatusEnum.COMPLETE:
+            if len(self._buffer) == 0:
+                # nothing to log
+                self._reset()
+                return
+        else:
+            self.log_completion_status = LogCompletionStatusEnum.PARTIAL_FINISHED
+            self._update_long_operation(self.log_completion_status)
+
         if response:
             self._response_status_code = response.status_code
             self._response_size = len(response.data)
-
-        if self.log_completion_status != LogCompletionStatusEnum.COMPLETE:
-            self.log_completion_status = LogCompletionStatusEnum.PARTIAL_FINISHED
-            self._update_long_operation(self.log_completion_status)
 
         self.publish_to_stackdriver()
         self._reset()
@@ -274,22 +308,36 @@ class GCPStackDriverLogHandler(logging.Handler):
         """
         Send a set of log entries to StackDriver.
         """
-        lines = list(map(setup_log_line, self._buffer))
+        insert_id = \
+            ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
+        lines = list()
+        index = 0
+
+        for line in self._buffer:
+            lines.append(setup_log_line(line, self._request_resource, self._request_method))
+            index += 1
+
         self._end_time = datetime.now(timezone.utc).isoformat()
 
         log_entry_pb2_args = {
             'resource': logging_resource_pb2,
             'severity': self.get_highest_severity_level_from_lines(lines),
-            'trace': self._trace_id
+            'trace': self._trace,
+            'insert_id': insert_id,
+            'trace_sampled': True if self._trace else False
         }
 
         if self._response_status_code:
             log_entry_pb2_args['http_request'] = gcp_http_request_pb2.HttpRequest(status=self._response_status_code)
-            if self._response_status_code > int(log_entry_pb2_args['severity']):
-                log_entry_pb2_args['severity'] = gcp_logging_v2.gapic.enums.LogSeverity(self._response_status_code)
+            # Transform the response code to a logging severity level.
+            tmp_code = int(round(self._response_status_code / 100, 0) * 100)
+            if tmp_code > int(log_entry_pb2_args['severity']):
+                log_entry_pb2_args['severity'] = gcp_logging_v2.gapic.enums.LogSeverity(tmp_code)
 
-        if self._operation_pb2:
-            log_entry_pb2_args['operation'] = self._operation_pb2
+        if not self._operation_pb2:
+            self._update_long_operation(LogCompletionStatusEnum.COMPLETE)
+
+        log_entry_pb2_args['operation'] = self._operation_pb2
 
         proto_payload_args = {
             'startTime': self._start_time,
@@ -297,10 +345,15 @@ class GCPStackDriverLogHandler(logging.Handler):
             'method': self._request_method,
             'resource': self._request_resource,
             'userAgent': self._request_agent,
-            'ip': self._request_ip_addr,
+            'host': self._request_host,
+            'ip': self._request_remote_addr,
             'responseSize': self._response_size,
             'status': self._response_status_code,
-            'requestId': self._request_id
+            'requestId': self._request_log_id,
+            'traceId': self._trace,
+            # 'traceSampled': True,
+            'versionId': os.environ.get('GAE_VERSION', 'devel'),
+            'urlMapEntry': 'main.app'
         }
 
         if self.__first_log_ts:
@@ -349,7 +402,7 @@ class FlaskGCPStackDriverLogging:
     _log_handler = None
 
     def __init__(self, log_level=logging.INFO):
-        if 'GAE_SERVICE' in os.environ:
+        if 'GAE_ENV' in os.environ:
             # Configure root logger
             self.root_logger = logging.getLogger()
             self.root_logger.setLevel(log_level)
@@ -372,7 +425,6 @@ class FlaskGCPStackDriverLogging:
         """
         if self._log_handler:
             self._log_handler.finalize(response)
-
         return response
 
     def flush(self):
@@ -381,3 +433,103 @@ class FlaskGCPStackDriverLogging:
         """
         if self._log_handler:
             self._log_handler.finalize()
+
+
+def _get_traceback(e):
+    """
+    Return a string formatted with the exception traceback.
+    :param e: exception object
+    :return: string, source location object
+    """
+    tb = None
+    source_location = None
+    if e:
+        tb = e.__traceback__ if hasattr(e, '__traceback__') else None
+
+    if not tb:
+        # pylint: disable=unused-variable
+        etype, value, tb = sys.exc_info()
+
+    if tb:
+        tb_out = traceback.format_tb(tb)
+        # Extract the individual traceback items into a list and reverse them. Capture the source location info for
+        # the first item filename in our project.
+        tb_items = traceback.extract_tb(tb)[::-1]
+        for item in tb_items:
+            if '/rdr_service/' in item.filename:
+                source_location = {
+                    "file": item.filename,
+                    "functionName": item.name,
+                    "line": item.lineno
+                }
+                break
+
+    else:
+        tb_out = ['No exception traceback available.', ]
+
+    # Mimic the nice python exception and traceback print.
+    e_error = e.__repr__().strip()
+    tb_heading = 'LogMessage: Exception on $$resource$$ [$$method$$]'
+    tb_data = ''.join(tb_out).strip()
+    message = '{0}\nTraceback (most recent call last):\n{1}\n{2}'.format(tb_heading, tb_data, e_error)
+
+    # Embed source location information in the message, which will be picked when the log entry is parsed later.
+    if source_location:
+        message = '{0}\n%%{1}%%'.format(message, json.dumps(source_location))
+
+    return message
+
+
+def log_exception_error(e):
+    """
+    Log exception errors, this is where all unhandled exceptions errors are logged.
+    :param e: exception object
+    :return: flask response
+    """
+    traceback_msg = _get_traceback(e)
+
+    if isinstance(e, HTTPException):
+        response = e.get_response()
+        response.data = json.dumps({
+            "code": e.code,
+            "name": e.name,
+            "description": e.description,
+        })
+        response.content_type = "application/json"
+    else:
+        response = Response()
+        response.status_code = 500
+
+    logging.error(traceback_msg)
+    # app_log_service.end_request(response)
+
+    # pass through HTTP errors
+    if isinstance(e, HTTPException):
+        return e
+
+    # now you're handling non-HTTP exceptions only
+    return response
+
+
+app_log_service = FlaskGCPStackDriverLogging()
+
+def setup_request_logging():
+    app_log_service.begin_request()
+
+
+def finalize_request_logging(response):
+    """
+    Finalize and send log message(s) for request.
+    :param response: Flask response object
+    """
+    app_log_service.end_request(response)
+    return response
+
+# pylint: disable=unused-argument
+def flask_restful_log_exception_error(sender, exception, **kwargs):
+    """
+    Make sure we can log exception errors to Google when running under Gunicorn.
+    """
+    log_exception_error(exception)
+
+
