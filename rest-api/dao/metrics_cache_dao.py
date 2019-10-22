@@ -2,9 +2,8 @@ from model.metrics_cache import MetricsEnrollmentStatusCache, MetricsGenderCache
   MetricsRaceCache, MetricsRegionCache, MetricsLifecycleCache, MetricsLanguageCache, \
   MetricsCacheJobStatus
 from dao.base_dao import BaseDao, UpdatableDao
-from dao.hpo_dao import HPODao
 from dao.code_dao import CodeDao
-from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN, GenderIdentity
+from participant_enums import GenderIdentity
 from code_constants import PPI_SYSTEM
 from census_regions import census_regions
 import datetime
@@ -49,8 +48,6 @@ class MetricsCacheJobStatusDao(UpdatableDao):
 class MetricsEnrollmentStatusCacheDao(BaseDao):
   def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API, version=None):
     super(MetricsEnrollmentStatusCacheDao, self).__init__(MetricsEnrollmentStatusCache)
-    self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
-    self.test_email_pattern = TEST_EMAIL_PATTERN
     self.version = version
     self.table_name = MetricsEnrollmentStatusCache.__tablename__
     try:
@@ -280,7 +277,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
               ;
     """
 
-    return sql
+    return [sql]
 
 class MetricsGenderCacheDao(BaseDao):
   def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API, version=None):
@@ -697,7 +694,7 @@ class MetricsGenderCacheDao(BaseDao):
         sub_queries.append(sub_query)
 
       sql += ' union '.join(sub_queries)
-    return sql
+    return [sql]
 
 class MetricsAgeCacheDao(BaseDao):
 
@@ -1031,7 +1028,7 @@ class MetricsAgeCacheDao(BaseDao):
 
     sql += ' union '.join(sub_queries)
 
-    return sql
+    return [sql]
 
 class MetricsRaceCacheDao(BaseDao):
 
@@ -1483,7 +1480,7 @@ class MetricsRaceCacheDao(BaseDao):
                            WhatRaceEthnicity_MENA=race_code_dict['WhatRaceEthnicity_MENA'],
                            PMI_Skip=race_code_dict['PMI_Skip'],
                            WhatRaceEthnicity_NHPI=race_code_dict['WhatRaceEthnicity_NHPI'])
-    return sql
+    return [sql]
 
 class MetricsRegionCacheDao(BaseDao):
 
@@ -1822,7 +1819,7 @@ class MetricsRegionCacheDao(BaseDao):
         ;
     """
 
-    return sql
+    return [sql]
 
 class MetricsLifecycleCacheDao(BaseDao):
 
@@ -1845,7 +1842,7 @@ class MetricsLifecycleCacheDao(BaseDao):
               .order_by(MetricsLifecycleCache.dateInserted.desc())
               .first())
 
-  def get_active_buckets(self, cutoff, hpo_ids=None):
+  def get_active_buckets(self, cutoff, hpo_ids=None, enrollment_statuses=None):
     with self.session() as session:
       last_inserted_record = self.get_serving_version_with_session(session)
       if last_inserted_record is None:
@@ -1891,8 +1888,43 @@ class MetricsLifecycleCacheDao(BaseDao):
 
         return query.group_by(MetricsLifecycleCache.date).all()
       else:
-        query = session.query(MetricsLifecycleCache) \
-          .filter(MetricsLifecycleCache.dateInserted == last_inserted_date)
+        query = session.query(MetricsLifecycleCache.date,
+                              MetricsLifecycleCache.hpoId,
+                              MetricsLifecycleCache.hpoName,
+                              func.sum(MetricsLifecycleCache.registered)
+                              .label('registered'),
+                              func.sum(MetricsLifecycleCache.consentEnrollment)
+                              .label('consentEnrollment'),
+                              func.sum(MetricsLifecycleCache.consentComplete)
+                              .label('consentComplete'),
+                              func.sum(MetricsLifecycleCache.ppiBasics)
+                              .label('ppiBasics'),
+                              func.sum(MetricsLifecycleCache.ppiOverallHealth)
+                              .label('ppiOverallHealth'),
+                              func.sum(MetricsLifecycleCache.ppiLifestyle)
+                              .label('ppiLifestyle'),
+                              func.sum(MetricsLifecycleCache.ppiHealthcareAccess)
+                              .label('ppiHealthcareAccess'),
+                              func.sum(MetricsLifecycleCache.ppiMedicalHistory)
+                              .label('ppiMedicalHistory'),
+                              func.sum(MetricsLifecycleCache.ppiMedications)
+                              .label('ppiMedications'),
+                              func.sum(MetricsLifecycleCache.ppiFamilyHealth)
+                              .label('ppiFamilyHealth'),
+                              func.sum(MetricsLifecycleCache.ppiBaselineComplete)
+                              .label('ppiBaselineComplete'),
+                              func.sum(MetricsLifecycleCache.physicalMeasurement)
+                              .label('physicalMeasurement'),
+                              func.sum(MetricsLifecycleCache.retentionModulesEligible)
+                              .label('retentionModulesEligible'),
+                              func.sum(MetricsLifecycleCache.retentionModulesComplete)
+                              .label('retentionModulesComplete'),
+                              func.sum(MetricsLifecycleCache.sampleReceived)
+                              .label('sampleReceived'),
+                              func.sum(MetricsLifecycleCache.fullParticipant)
+                              .label('fullParticipant')
+                              )
+        query = query.filter(MetricsLifecycleCache.dateInserted == last_inserted_date)
         query = query.filter(MetricsLifecycleCache.type !=
                              MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
         query = query.filter(MetricsLifecycleCache.date == cutoff)
@@ -1900,7 +1932,21 @@ class MetricsLifecycleCacheDao(BaseDao):
         if hpo_ids:
           query = query.filter(MetricsLifecycleCache.hpoId.in_(hpo_ids))
 
-        return query.all()
+        if enrollment_statuses:
+          status_filter_list = []
+          for status in enrollment_statuses:
+            if status == str(EnrollmentStatusV2.REGISTERED):
+              status_filter_list.append('registered')
+            elif status == str(EnrollmentStatusV2.PARTICIPANT):
+              status_filter_list.append('participant')
+            elif status == str(EnrollmentStatusV2.FULLY_CONSENTED):
+              status_filter_list.append('consented')
+            elif status == str(EnrollmentStatusV2.CORE_PARTICIPANT):
+              status_filter_list.append('core')
+          query = query.filter(MetricsLifecycleCache.enrollmentStatus.in_(status_filter_list))
+
+        return query.group_by(MetricsLifecycleCache.hpoId, MetricsLifecycleCache.hpoName,
+                              MetricsLifecycleCache.date).all()
 
   def get_primary_consent_count_over_time(self, start_date, end_date, hpo_ids=None):
     with self.session() as session:
@@ -1930,8 +1976,8 @@ class MetricsLifecycleCacheDao(BaseDao):
         client_json.append(new_item)
       return client_json
 
-  def get_latest_version_from_cache(self, cutoff, hpo_ids=None):
-    buckets = self.get_active_buckets(cutoff, hpo_ids)
+  def get_latest_version_from_cache(self, cutoff, hpo_ids=None, enrollment_statuses=None):
+    buckets = self.get_active_buckets(cutoff, hpo_ids, enrollment_statuses)
     if buckets is None:
       return []
     operation_funcs = {
@@ -1961,36 +2007,36 @@ class MetricsLifecycleCacheDao(BaseDao):
           'hpo': record.hpoName,
           'metrics': {
             'completed': {
-              'Registered': record.registered,
-              'Consent_Enrollment': record.consentEnrollment,
-              'Consent_Complete': record.consentComplete,
-              'PPI_Module_The_Basics': record.ppiBasics,
-              'PPI_Module_Overall_Health': record.ppiOverallHealth,
-              'PPI_Module_Lifestyle': record.ppiLifestyle,
-              'Baseline_PPI_Modules_Complete': record.ppiBaselineComplete,
-              'Physical_Measurements': record.physicalMeasurement,
-              'PPI_Module_Healthcare_Access': record.ppiHealthcareAccess,
-              'PPI_Module_Family_Health': record.ppiFamilyHealth,
-              'PPI_Module_Medical_History': record.ppiMedicalHistory,
-              'PPI_Retention_Modules_Complete': record.retentionModulesComplete,
-              'Samples_Received': record.sampleReceived,
-              'Full_Participant': record.fullParticipant
+              'Registered': int(record.registered),
+              'Consent_Enrollment': int(record.consentEnrollment),
+              'Consent_Complete': int(record.consentComplete),
+              'PPI_Module_The_Basics': int(record.ppiBasics),
+              'PPI_Module_Overall_Health': int(record.ppiOverallHealth),
+              'PPI_Module_Lifestyle': int(record.ppiLifestyle),
+              'Baseline_PPI_Modules_Complete': int(record.ppiBaselineComplete),
+              'Physical_Measurements': int(record.physicalMeasurement),
+              'PPI_Module_Healthcare_Access': int(record.ppiHealthcareAccess),
+              'PPI_Module_Family_Health': int(record.ppiFamilyHealth),
+              'PPI_Module_Medical_History': int(record.ppiMedicalHistory),
+              'PPI_Retention_Modules_Complete': int(record.retentionModulesComplete),
+              'Samples_Received': int(record.sampleReceived),
+              'Full_Participant': int(record.fullParticipant)
             },
             'not_completed': {
               'Registered': 0,
-              'Consent_Enrollment': record.registered - record.consentEnrollment,
-              'Consent_Complete': record.consentEnrollment - record.consentComplete,
-              'PPI_Module_The_Basics': record.consentEnrollment - record.ppiBasics,
-              'PPI_Module_Overall_Health': record.consentEnrollment - record.ppiOverallHealth,
-              'PPI_Module_Lifestyle': record.consentEnrollment - record.ppiLifestyle,
-              'Baseline_PPI_Modules_Complete': record.consentEnrollment - record.ppiBaselineComplete,
-              'Physical_Measurements': record.consentEnrollment - record.physicalMeasurement,
-              'PPI_Module_Healthcare_Access': record.retentionModulesEligible - record.ppiHealthcareAccess,
-              'PPI_Module_Family_Health': record.retentionModulesEligible - record.ppiFamilyHealth,
-              'PPI_Module_Medical_History': record.retentionModulesEligible - record.ppiMedicalHistory,
-              'PPI_Retention_Modules_Complete': record.retentionModulesEligible - record.retentionModulesComplete,
-              'Samples_Received': record.consentEnrollment - record.sampleReceived,
-              'Full_Participant': record.consentEnrollment - record.fullParticipant
+              'Consent_Enrollment': int(record.registered - record.consentEnrollment),
+              'Consent_Complete': int(record.consentEnrollment - record.consentComplete),
+              'PPI_Module_The_Basics': int(record.consentEnrollment - record.ppiBasics),
+              'PPI_Module_Overall_Health': int(record.consentEnrollment - record.ppiOverallHealth),
+              'PPI_Module_Lifestyle': int(record.consentEnrollment - record.ppiLifestyle),
+              'Baseline_PPI_Modules_Complete': int(record.consentEnrollment - record.ppiBaselineComplete),
+              'Physical_Measurements': int(record.consentEnrollment - record.physicalMeasurement),
+              'PPI_Module_Healthcare_Access': int(record.retentionModulesEligible - record.ppiHealthcareAccess),
+              'PPI_Module_Family_Health': int(record.retentionModulesEligible - record.ppiFamilyHealth),
+              'PPI_Module_Medical_History': int(record.retentionModulesEligible - record.ppiMedicalHistory),
+              'PPI_Retention_Modules_Complete': int(record.retentionModulesEligible - record.retentionModulesComplete),
+              'Samples_Received': int(record.consentEnrollment - record.sampleReceived),
+              'Full_Participant': int(record.consentEnrollment - record.fullParticipant)
             }
           }
         }
@@ -2002,28 +2048,28 @@ class MetricsLifecycleCacheDao(BaseDao):
           'hpo': record.hpoName,
           'metrics': {
             'completed': {
-              'Registered': record.registered,
-              'Consent_Enrollment': record.consentEnrollment,
-              'Consent_Complete': record.consentComplete,
-              'PPI_Module_The_Basics': record.ppiBasics,
-              'PPI_Module_Overall_Health': record.ppiOverallHealth,
-              'PPI_Module_Lifestyle': record.ppiLifestyle,
-              'Baseline_PPI_Modules_Complete': record.ppiBaselineComplete,
-              'Physical_Measurements': record.physicalMeasurement,
-              'Samples_Received': record.sampleReceived,
-              'Full_Participant': record.fullParticipant
+              'Registered': int(record.registered),
+              'Consent_Enrollment': int(record.consentEnrollment),
+              'Consent_Complete': int(record.consentComplete),
+              'PPI_Module_The_Basics': int(record.ppiBasics),
+              'PPI_Module_Overall_Health': int(record.ppiOverallHealth),
+              'PPI_Module_Lifestyle': int(record.ppiLifestyle),
+              'Baseline_PPI_Modules_Complete': int(record.ppiBaselineComplete),
+              'Physical_Measurements': int(record.physicalMeasurement),
+              'Samples_Received': int(record.sampleReceived),
+              'Full_Participant': int(record.fullParticipant)
             },
             'not_completed': {
               'Registered': 0,
-              'Consent_Enrollment': record.registered - record.consentEnrollment,
-              'Consent_Complete': record.consentEnrollment - record.consentComplete,
-              'PPI_Module_The_Basics': record.consentEnrollment - record.ppiBasics,
-              'PPI_Module_Overall_Health': record.consentEnrollment - record.ppiOverallHealth,
-              'PPI_Module_Lifestyle': record.consentEnrollment - record.ppiLifestyle,
-              'Baseline_PPI_Modules_Complete': record.consentEnrollment - record.ppiBaselineComplete,
-              'Physical_Measurements': record.consentEnrollment - record.physicalMeasurement,
-              'Samples_Received': record.consentEnrollment - record.sampleReceived,
-              'Full_Participant': record.consentEnrollment - record.fullParticipant
+              'Consent_Enrollment': int(record.registered - record.consentEnrollment),
+              'Consent_Complete': int(record.consentEnrollment - record.consentComplete),
+              'PPI_Module_The_Basics': int(record.consentEnrollment - record.ppiBasics),
+              'PPI_Module_Overall_Health': int(record.consentEnrollment - record.ppiOverallHealth),
+              'PPI_Module_Lifestyle': int(record.consentEnrollment - record.ppiLifestyle),
+              'Baseline_PPI_Modules_Complete': int(record.consentEnrollment - record.ppiBaselineComplete),
+              'Physical_Measurements': int(record.consentEnrollment - record.physicalMeasurement),
+              'Samples_Received': int(record.consentEnrollment - record.sampleReceived),
+              'Full_Participant': int(record.consentEnrollment - record.fullParticipant)
             }
           }
         }
@@ -2076,112 +2122,133 @@ class MetricsLifecycleCacheDao(BaseDao):
     return client_json
 
   def get_metrics_cache_sql(self):
+    sql_arr = []
     if self.cache_type == MetricsCacheType.METRICS_V2_API:
-      sql = """
-              insert into metrics_lifecycle_cache
-                select
-                  :date_inserted AS date_inserted,
-                  '{cache_type}' as type,
-                  ps.hpo_id,
-                  (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
-                  day,
-                  SUM(CASE WHEN DATE(ps.sign_up_time) <= calendar.day THEN 1 ELSE 0 END) AS registered,
-                  SUM(CASE WHEN DATE(ps.consent_for_study_enrollment_time) <= calendar.day THEN 1 ELSE 0 END) AS consent_enrollment,
-                  SUM(CASE WHEN DATE(ps.enrollment_status_member_time) <= calendar.day THEN 1 ELSE 0 END) AS consent_complete,
-                  SUM(CASE
-                    WHEN
-                      DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
-                      DATE(ps.consent_for_study_enrollment_time) <= calendar.day
-                    THEN 1 ELSE 0
-                  END) AS ppi_basics,
-                  SUM(CASE
-                    WHEN
-                      DATE(ps.questionnaire_on_overall_health_time) <= calendar.day AND
-                      DATE(ps.consent_for_study_enrollment_time) <= calendar.day
-                    THEN 1 ELSE 0
-                  END) AS ppi_overall_health,
-                  SUM(CASE
-                    WHEN
-                      DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND
-                      DATE(ps.consent_for_study_enrollment_time) <= calendar.day
-                    THEN 1 ELSE 0
-                  END) AS ppi_lifestyle,
-                  SUM(CASE
-                    WHEN
-                      DATE(ps.questionnaire_on_healthcare_access_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
-                      DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
-                    THEN 1 ELSE 0
-                  END) AS ppi_healthcare_access,
-                  SUM(CASE
-                    WHEN
-                      DATE(ps.questionnaire_on_medical_history_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
-                      DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
-                    THEN 1 ELSE 0
-                  END) AS ppi_medical_history,
-                  SUM(CASE
-                    WHEN
-                      DATE(ps.questionnaire_on_medications_time) <= calendar.day AND
-                      DATE(ps.consent_for_study_enrollment_time) <= calendar.day
-                    THEN 1 ELSE 0
-                  END) AS ppi_medications,
-                  SUM(CASE
-                    WHEN
-                      DATE(ps.questionnaire_on_family_health_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
-                      DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
-                    THEN 1 ELSE 0
-                  END) AS ppi_family_health,
-                  SUM(CASE
-                    WHEN
-                      DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_overall_health_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
-                      DATE(ps.consent_for_study_enrollment_time) <= calendar.day
-                    THEN 1 ELSE 0
-                  END) AS ppi_complete,
-                  SUM(CASE
-                    WHEN
-                      DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
-                      DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
-                    THEN 1 ELSE 0
-                  END) AS retention_modules_eligible,
-                  SUM(CASE
-                    WHEN
-                      DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_healthcare_access_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_family_health_time) <= calendar.day AND
-                      DATE(ps.questionnaire_on_medical_history_time) <= calendar.day AND 
-                      DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
-                    THEN 1 ELSE 0
-                  END) AS retention_modules_complete,
-                  SUM(CASE
-                    WHEN
-                      DATE(ps.physical_measurements_time) <= calendar.day AND
-                      DATE(ps.consent_for_study_enrollment_time) <= calendar.day
-                    THEN 1 ELSE 0
-                  END) AS physical_measurement,
-                  SUM(CASE
-                    WHEN
-                      DATE(ps.sample_status_1ed10_time) <= calendar.day OR
-                      DATE(ps.sample_status_2ed10_time) <= calendar.day OR
-                      DATE(ps.sample_status_1ed04_time) <= calendar.day OR
-                      DATE(ps.sample_status_1sal_time) <= calendar.day OR
-                      DATE(ps.sample_status_1sal2_time) <= calendar.day
-                    THEN 1 ELSE 0
-                  END) AS sample_received,
-                  SUM(CASE WHEN DATE(ps.enrollment_status_core_stored_sample_time) <= calendar.day THEN 1 ELSE 0 END) AS core_participant
-                from metrics_tmp_participant ps,
-                     calendar
-                WHERE ps.hpo_id = :hpo_id AND calendar.day BETWEEN :start_date AND :end_date
-                GROUP BY day, ps.hpo_id;
-            """.format(cache_type=self.cache_type)
+      enrollment_status_criteria_arr = [
+        ('registered', 'calendar.day>=DATE(sign_up_time) '
+                       'AND consent_for_study_enrollment_time IS NULL'),
+        ('participant', 'consent_for_study_enrollment_time IS NOT NULL '
+                        'AND calendar.day>=DATE(consent_for_study_enrollment_time) '
+                        'AND (enrollment_status_member_time IS NULL '
+                        'OR calendar.day < DATE(enrollment_status_member_time))'),
+        ('consented', 'enrollment_status_member_time IS NOT NULL '
+                      'AND calendar.day>=DATE(enrollment_status_member_time) '
+                      'AND (enrollment_status_core_stored_sample_time IS NULL '
+                      'OR calendar.day < DATE(enrollment_status_core_stored_sample_time))'),
+        ('core', 'enrollment_status_core_stored_sample_time IS NOT NULL '
+                 'AND calendar.day>=DATE(enrollment_status_core_stored_sample_time)')
+      ]
+      for item in enrollment_status_criteria_arr:
+        sql = """
+                insert into metrics_lifecycle_cache
+                  select
+                    :date_inserted AS date_inserted,
+                    '{enrollment_status}' as enrollment_status,
+                    '{cache_type}' as type,
+                    ps.hpo_id,
+                    (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+                    day,
+                    SUM(CASE WHEN DATE(ps.sign_up_time) <= calendar.day THEN 1 ELSE 0 END) AS registered,
+                    SUM(CASE WHEN DATE(ps.consent_for_study_enrollment_time) <= calendar.day THEN 1 ELSE 0 END) AS consent_enrollment,
+                    SUM(CASE WHEN DATE(ps.enrollment_status_member_time) <= calendar.day THEN 1 ELSE 0 END) AS consent_complete,
+                    SUM(CASE
+                      WHEN
+                        DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                        DATE(ps.consent_for_study_enrollment_time) <= calendar.day
+                      THEN 1 ELSE 0
+                    END) AS ppi_basics,
+                    SUM(CASE
+                      WHEN
+                        DATE(ps.questionnaire_on_overall_health_time) <= calendar.day AND
+                        DATE(ps.consent_for_study_enrollment_time) <= calendar.day
+                      THEN 1 ELSE 0
+                    END) AS ppi_overall_health,
+                    SUM(CASE
+                      WHEN
+                        DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND
+                        DATE(ps.consent_for_study_enrollment_time) <= calendar.day
+                      THEN 1 ELSE 0
+                    END) AS ppi_lifestyle,
+                    SUM(CASE
+                      WHEN
+                        DATE(ps.questionnaire_on_healthcare_access_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                        DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
+                      THEN 1 ELSE 0
+                    END) AS ppi_healthcare_access,
+                    SUM(CASE
+                      WHEN
+                        DATE(ps.questionnaire_on_medical_history_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                        DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
+                      THEN 1 ELSE 0
+                    END) AS ppi_medical_history,
+                    SUM(CASE
+                      WHEN
+                        DATE(ps.questionnaire_on_medications_time) <= calendar.day AND
+                        DATE(ps.consent_for_study_enrollment_time) <= calendar.day
+                      THEN 1 ELSE 0
+                    END) AS ppi_medications,
+                    SUM(CASE
+                      WHEN
+                        DATE(ps.questionnaire_on_family_health_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                        DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
+                      THEN 1 ELSE 0
+                    END) AS ppi_family_health,
+                    SUM(CASE
+                      WHEN
+                        DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_overall_health_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                        DATE(ps.consent_for_study_enrollment_time) <= calendar.day
+                      THEN 1 ELSE 0
+                    END) AS ppi_complete,
+                    SUM(CASE
+                      WHEN
+                        DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                        DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
+                      THEN 1 ELSE 0
+                    END) AS retention_modules_eligible,
+                    SUM(CASE
+                      WHEN
+                        DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_healthcare_access_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_family_health_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_medical_history_time) <= calendar.day AND 
+                        DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
+                      THEN 1 ELSE 0
+                    END) AS retention_modules_complete,
+                    SUM(CASE
+                      WHEN
+                        DATE(ps.physical_measurements_time) <= calendar.day AND
+                        DATE(ps.consent_for_study_enrollment_time) <= calendar.day
+                      THEN 1 ELSE 0
+                    END) AS physical_measurement,
+                    SUM(CASE
+                      WHEN
+                        DATE(ps.sample_status_1ed10_time) <= calendar.day OR
+                        DATE(ps.sample_status_2ed10_time) <= calendar.day OR
+                        DATE(ps.sample_status_1ed04_time) <= calendar.day OR
+                        DATE(ps.sample_status_1sal_time) <= calendar.day OR
+                        DATE(ps.sample_status_1sal2_time) <= calendar.day
+                      THEN 1 ELSE 0
+                    END) AS sample_received,
+                    SUM(CASE WHEN DATE(ps.enrollment_status_core_stored_sample_time) <= calendar.day THEN 1 ELSE 0 END) AS core_participant
+                  from metrics_tmp_participant ps,
+                       calendar
+                  WHERE {enrollment_status_criteria} 
+                  AND ps.hpo_id = :hpo_id AND calendar.day BETWEEN :start_date AND :end_date
+                  GROUP BY day, ps.hpo_id;
+              """.format(enrollment_status=item[0], cache_type=self.cache_type,
+                         enrollment_status_criteria=item[1])
+        sql_arr.append(sql)
     else:
       sql = """
         insert into metrics_lifecycle_cache
           select
             :date_inserted AS date_inserted,
+            '' as enrollment_status,
             '{cache_type}' as type,
             ps.hpo_id,
             (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
@@ -2272,7 +2339,8 @@ class MetricsLifecycleCacheDao(BaseDao):
           WHERE ps.hpo_id = :hpo_id AND calendar.day BETWEEN :start_date AND :end_date
           GROUP BY day, ps.hpo_id;
       """.format(cache_type=self.cache_type)
-    return sql
+      sql_arr.append(sql)
+    return sql_arr
 
 class MetricsLanguageCacheDao(BaseDao):
 
@@ -2465,4 +2533,4 @@ class MetricsLanguageCacheDao(BaseDao):
 
     sql = sql + ' UNION '.join(sub_queries)
 
-    return sql
+    return [sql]

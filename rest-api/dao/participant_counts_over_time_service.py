@@ -133,16 +133,15 @@ class ParticipantCountsOverTimeService(BaseDao):
     dao.delete_old_records()
 
   def insert_cache_by_hpo(self, dao, hpo_id, updated_time):
-    sql = dao.get_metrics_cache_sql()
+    sql_arr = dao.get_metrics_cache_sql()
     start_date = CACHE_START_DATE
     end_date = datetime.datetime.now().date() + datetime.timedelta(days=10)
 
-    params = {'hpo_id': hpo_id, 'test_hpo_id': self.test_hpo_id,
-              'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN),
-              'test_email_pattern': self.test_email_pattern, 'start_date': start_date,
-              'end_date': end_date, 'date_inserted': updated_time}
+    params = {'hpo_id': hpo_id, 'start_date': start_date, 'end_date': end_date,
+              'date_inserted': updated_time}
     with dao.session() as session:
-      session.execute(sql, params)
+      for sql in sql_arr:
+        session.execute(sql, params)
 
   def get_filtered_results(self, stratification, start_date, end_date, history, awardee_ids,
                            enrollment_statuses, sample_time_def, version):
@@ -204,7 +203,7 @@ class ParticipantCountsOverTimeService(BaseDao):
                                                enrollment_statuses)
     elif str(history) == 'TRUE' and stratification == Stratifications.LIFECYCLE:
       dao = MetricsLifecycleCacheDao(version=version)
-      return dao.get_latest_version_from_cache(end_date, awardee_ids)
+      return dao.get_latest_version_from_cache(end_date, awardee_ids, enrollment_statuses)
     elif stratification == Stratifications.TOTAL:
       strata = ['TOTAL']
       sql = self.get_total_sql(filters_sql_ps)
