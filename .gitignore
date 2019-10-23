@@ -42,9 +42,5 @@ htmlcov/
 
 app.yaml
 
-!**/.idea
-**/.idea/httpRequests/*
-**/.idea/inspectionProfiles/*
-**/.idea/libraries/*
-**/.idea/codeStyles/*
+**/.idea
 !**/.idea/runConfigurations/
