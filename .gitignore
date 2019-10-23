@@ -41,3 +41,7 @@ htmlcov/
 /rdr_service/.configs/*
 
 app.yaml
+
+!**/.idea
+**/.idea/**
+!**/.idea/runConfigurations/
