@@ -59,8 +59,6 @@ def _iter_validation_flags(row, date_of_birth_cutoff):
               for this validation.
   :param date_of_birth_cutoff: any birth date before dob_cutoff will be invalid
   """
-    if row.existing_valid_genomic_count != 0:
-        yield GenomicValidationFlag.INVALID_DUP_PARTICIPANT
     if not row.consent_time or row.consent_time < GENOMIC_VALID_CONSENT_CUTOFF:
         yield GenomicValidationFlag.INVALID_CONSENT
     if row.withdrawal_status != WithdrawalStatus.NOT_WITHDRAWN:
