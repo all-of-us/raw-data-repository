@@ -4700,7 +4700,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     service.refresh_data_for_metrics_cache(dao)
 
     results = dao.get_latest_version_from_cache('2018-01-03')
-    self.assertEquals(results, [{'date': '2018-01-03',
+    self.assertEqual(len(results), 3)
+    self.assertIn({'date': '2018-01-03',
                                  'metrics': {'not_completed': {'Full_Participant': 0L,
                                                                'Baseline_PPI_Modules_Complete': 0L,
                                                                'PPI_Module_The_Basics': 0L,
@@ -4722,7 +4723,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                            'Registered': 1L,
                                                            'Samples_Received': 1L}
                                              }, 'hpo': u'UNSET'},
-                                {'date': '2018-01-03',
+                  results)
+    self.assertIn({'date': '2018-01-03',
                                  'metrics': {'not_completed': {'Full_Participant': 2L,
                                                                'Baseline_PPI_Modules_Complete': 1L,
                                                                'PPI_Module_The_Basics': 1L,
@@ -4744,7 +4746,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                            'Registered': 2L,
                                                            'Samples_Received': 1L}
                                              }, 'hpo': u'PITT'},
-                                {'date': '2018-01-03',
+                  results)
+    self.assertIn({'date': '2018-01-03',
                                  'metrics': {'not_completed': {'Full_Participant': 1L,
                                                                'Baseline_PPI_Modules_Complete': 1L,
                                                                'PPI_Module_The_Basics': 1L,
@@ -4765,11 +4768,12 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                            'Physical_Measurements': 1L,
                                                            'Registered': 2L,
                                                            'Samples_Received': 1L}
-                                             }, 'hpo': u'AZ_TUCSON'}
-                                ])
+                                             }, 'hpo': u'AZ_TUCSON'},
+                  results)
 
     results2 = dao.get_latest_version_from_cache('2018-01-08')
-    self.assertEquals(results2, [{'date': '2018-01-08',
+    self.assertEqual(len(results2), 3)
+    self.assertIn({'date': '2018-01-08',
                                   'metrics': {'not_completed': {'Full_Participant': 0L,
                                                                 'Baseline_PPI_Modules_Complete': 0L,
                                                                 'PPI_Module_The_Basics': 0L,
@@ -4791,7 +4795,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                             'Registered': 1L,
                                                             'Samples_Received': 1L}
                                               }, 'hpo': u'UNSET'},
-                                 {'date': '2018-01-08',
+                  results2)
+    self.assertIn({'date': '2018-01-08',
                                   'metrics': {'not_completed': {'Full_Participant': 0L,
                                                                 'Baseline_PPI_Modules_Complete': 0L,
                                                                 'PPI_Module_The_Basics': 0L,
@@ -4813,7 +4818,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                             'Registered': 2L,
                                                             'Samples_Received': 2L}
                                               }, 'hpo': u'PITT'},
-                                 {'date': '2018-01-08',
+                  results2)
+    self.assertIn({'date': '2018-01-08',
                                   'metrics': {'not_completed': {'Full_Participant': 0L,
                                                                 'Baseline_PPI_Modules_Complete': 0L,
                                                                 'PPI_Module_The_Basics': 0L,
@@ -4833,7 +4839,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                             'PPI_Module_Lifestyle': 2L,
                                                             'Physical_Measurements': 2L,
                                                             'Registered': 2L, 'Samples_Received': 2L}
-                                              }, 'hpo': u'AZ_TUCSON'}])
+                                              }, 'hpo': u'AZ_TUCSON'},
+                  results2)
 
   def test_refresh_metrics_lifecycle_cache_data_v2(self):
 
@@ -4885,7 +4892,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     service.refresh_data_for_metrics_cache(dao)
 
     results = dao.get_latest_version_from_cache('2018-01-01')
-    self.assertEquals(results, [{'date': '2018-01-01',
+    self.assertEqual(len(results), 3)
+    self.assertIn({'date': '2018-01-01',
                                  'metrics': {'not_completed':
                                                {'Full_Participant': 0L,
                                                 'PPI_Module_The_Basics': 0L,
@@ -4916,7 +4924,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                 'PPI_Module_Medical_History': 0L,
                                                 'PPI_Module_Healthcare_Access': 0L,
                                                 'Samples_Received': 1L}}, 'hpo': u'UNSET'},
-                                {'date': '2018-01-01',
+                  results)
+    self.assertIn({'date': '2018-01-01',
                                  'metrics': {'not_completed':
                                                {'Full_Participant': 0L,
                                                 'PPI_Module_The_Basics': 0L,
@@ -4947,7 +4956,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                 'PPI_Module_Medical_History': 0L,
                                                 'PPI_Module_Healthcare_Access': 0L,
                                                 'Samples_Received': 2L}}, 'hpo': u'PITT'},
-                                {'date': '2018-01-01',
+                  results)
+    self.assertIn({'date': '2018-01-01',
                                  'metrics': {'not_completed':
                                                {'Full_Participant': 1L,
                                                 'PPI_Module_The_Basics': 1L,
@@ -4977,10 +4987,12 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                 'Registered': 1L,
                                                 'PPI_Module_Medical_History': 0L,
                                                 'PPI_Module_Healthcare_Access': 0L,
-                                                'Samples_Received': 0L}}, 'hpo': u'AZ_TUCSON'}])
+                                                'Samples_Received': 0L}}, 'hpo': u'AZ_TUCSON'},
+                  results)
 
     results2 = dao.get_latest_version_from_cache('2018-01-03')
-    self.assertEquals(results2, [{'date': '2018-01-03',
+    self.assertEqual(len(results2), 3)
+    self.assertIn({'date': '2018-01-03',
                                   'metrics': {
                                     'not_completed':
                                       {'Full_Participant': 0L,
@@ -5012,7 +5024,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                        'PPI_Module_Medical_History': 0L,
                                        'PPI_Module_Healthcare_Access': 0L,
                                        'Samples_Received': 1L}}, 'hpo': u'UNSET'},
-                                 {'date': '2018-01-03',
+                  results2)
+    self.assertIn({'date': '2018-01-03',
                                   'metrics': {
                                     'not_completed':
                                       {'Full_Participant': 2L,
@@ -5044,7 +5057,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                        'PPI_Module_Medical_History': 2L,
                                        'PPI_Module_Healthcare_Access': 2L,
                                        'Samples_Received': 3L}}, 'hpo': u'PITT'},
-                                 {'date': '2018-01-03',
+                  results2)
+    self.assertIn({'date': '2018-01-03',
                                   'metrics':
                                     {'not_completed':
                                        {'Full_Participant': 1L,
@@ -5075,7 +5089,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                         'Registered': 2L,
                                         'PPI_Module_Medical_History': 0L,
                                         'PPI_Module_Healthcare_Access': 0L,
-                                        'Samples_Received': 1L}}, 'hpo': u'AZ_TUCSON'}])
+                                        'Samples_Received': 1L}}, 'hpo': u'AZ_TUCSON'},
+                  results2)
 
   def test_get_metrics_lifecycle_data_api(self):
 
@@ -5131,8 +5146,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
 
-    self.assertEquals(results,
-                      [{u'date': u'2018-01-03',
+    self.assertEqual(len(results), 3)
+    self.assertIn({u'date': u'2018-01-03',
                         u'metrics': {u'not_completed': {u'Full_Participant': 0,
                                                         u'PPI_Module_The_Basics': 0,
                                                         u'Consent_Complete': 0,
@@ -5153,7 +5168,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                     u'PPI_Module_Overall_Health': 1,
                                                     u'Physical_Measurements': 1,
                                                     u'Samples_Received': 1}}, u'hpo': u'UNSET'},
-                       {u'date': u'2018-01-03',
+                  results)
+    self.assertIn({u'date': u'2018-01-03',
                         u'metrics': {u'not_completed': {u'Full_Participant': 2,
                                                         u'PPI_Module_The_Basics': 1,
                                                         u'Consent_Complete': 1,
@@ -5174,7 +5190,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                     u'PPI_Module_Overall_Health': 1,
                                                     u'Physical_Measurements': 1,
                                                     u'Samples_Received': 1}}, u'hpo': u'PITT'},
-                       {u'date': u'2018-01-03',
+                  results)
+    self.assertIn({u'date': u'2018-01-03',
                         u'metrics': {u'not_completed': {u'Full_Participant': 1,
                                                         u'PPI_Module_The_Basics': 1,
                                                         u'Consent_Complete': 0,
@@ -5194,11 +5211,11 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                     u'Baseline_PPI_Modules_Complete': 1,
                                                     u'PPI_Module_Overall_Health': 1,
                                                     u'Physical_Measurements': 1,
-                                                    u'Samples_Received': 1}}, u'hpo': u'AZ_TUCSON'}
-                       ])
+                                                    u'Samples_Received': 1}}, u'hpo': u'AZ_TUCSON'},
+                  results)
 
-    self.assertEquals(results2,
-                      [{u'date': u'2018-01-08',
+    self.assertEqual(len(results2), 2)
+    self.assertIn({u'date': u'2018-01-08',
                         u'metrics': {u'not_completed': {u'Full_Participant': 0,
                                                         u'PPI_Module_The_Basics': 0,
                                                         u'Consent_Complete': 0,
@@ -5219,7 +5236,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                     u'PPI_Module_Overall_Health': 2,
                                                     u'Physical_Measurements': 2,
                                                     u'Samples_Received': 2}}, u'hpo': u'PITT'},
-                       {u'date': u'2018-01-08',
+                  results2)
+    self.assertIn({u'date': u'2018-01-08',
                         u'metrics': {u'not_completed': {u'Full_Participant': 0,
                                                         u'PPI_Module_The_Basics': 0,
                                                         u'Consent_Complete': 0,
@@ -5239,8 +5257,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                     u'Baseline_PPI_Modules_Complete': 2,
                                                     u'PPI_Module_Overall_Health': 2,
                                                     u'Physical_Measurements': 2,
-                                                    u'Samples_Received': 2}}, u'hpo': u'AZ_TUCSON'}
-                       ])
+                                                    u'Samples_Received': 2}}, u'hpo': u'AZ_TUCSON'},
+                  results2)
 
   def test_get_metrics_lifecycle_data_api_v2(self):
 
@@ -5301,7 +5319,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     qs1 = ''.join(qs1.split())
     results = self.send_get('ParticipantCountsOverTime', query_string=qs1)
-    self.assertEquals(results, [{u'date': u'2018-01-03',
+    self.assertEqual(len(results), 3)
+    self.assertIn({u'date': u'2018-01-03',
                                  u'metrics':
                                    {u'not_completed':
                                       {u'Full_Participant': 0,
@@ -5333,7 +5352,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                        u'PPI_Retention_Modules_Complete': 0,
                                        u'PPI_Module_Healthcare_Access': 0,
                                        u'Samples_Received': 1}}, u'hpo': u'UNSET'},
-                                {u'date': u'2018-01-03',
+                  results)
+    self.assertIn({u'date': u'2018-01-03',
                                  u'metrics':
                                    {u'not_completed':
                                       {u'Full_Participant': 2,
@@ -5365,7 +5385,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                        u'PPI_Retention_Modules_Complete': 1,
                                        u'PPI_Module_Healthcare_Access': 2,
                                        u'Samples_Received': 3}}, u'hpo': u'PITT'},
-                                {u'date': u'2018-01-03',
+                  results)
+    self.assertIn({u'date': u'2018-01-03',
                                  u'metrics':
                                    {u'not_completed':
                                       {u'Full_Participant': 1,
@@ -5396,7 +5417,66 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                        u'PPI_Module_Medical_History': 0,
                                        u'PPI_Retention_Modules_Complete': 0,
                                        u'PPI_Module_Healthcare_Access': 0,
-                                       u'Samples_Received': 1}}, u'hpo': u'AZ_TUCSON'}])
+                                       u'Samples_Received': 1}}, u'hpo': u'AZ_TUCSON'},
+                  results)
+
+    qs2 = ('&stratification=LIFECYCLE'
+           '&endDate=2018-01-03'
+           '&history=TRUE'
+           '&version=2'
+           '&enrollmentStatus=CORE_PARTICIPANT')
+
+    results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
+    self.assertEqual(len(results2), 3)
+
+    self.assertIn({u'date': u'2018-01-03', u'metrics': {
+      u'not_completed': {u'Full_Participant': 0, u'PPI_Module_The_Basics': 0,
+                         u'Consent_Complete': 0, u'Consent_Enrollment': 0,
+                         u'PPI_Module_Lifestyle': 0, u'Registered': 0,
+                         u'Baseline_PPI_Modules_Complete': 0, u'Physical_Measurements': 0,
+                         u'PPI_Module_Family_Health': 0, u'PPI_Module_Overall_Health': 0,
+                         u'PPI_Module_Medical_History': 0, u'PPI_Retention_Modules_Complete': 0,
+                         u'PPI_Module_Healthcare_Access': 0, u'Samples_Received': 0},
+      u'completed': {u'Full_Participant': 1, u'PPI_Module_The_Basics': 1, u'Consent_Complete': 1,
+                     u'Consent_Enrollment': 1, u'PPI_Module_Lifestyle': 1, u'Registered': 1,
+                     u'Baseline_PPI_Modules_Complete': 1, u'Physical_Measurements': 1,
+                     u'PPI_Module_Family_Health': 0, u'PPI_Module_Overall_Health': 1,
+                     u'PPI_Module_Medical_History': 0, u'PPI_Retention_Modules_Complete': 0,
+                     u'PPI_Module_Healthcare_Access': 0, u'Samples_Received': 1}
+    }, u'hpo': u'UNSET'},
+                  results2)
+    self.assertIn({u'date': u'2018-01-03', u'metrics': {
+      u'not_completed': {u'Full_Participant': 0, u'PPI_Module_The_Basics': 0,
+                         u'Consent_Complete': 0, u'Consent_Enrollment': 0,
+                         u'PPI_Module_Lifestyle': 0, u'Registered': 0,
+                         u'Baseline_PPI_Modules_Complete': 0, u'Physical_Measurements': 0,
+                         u'PPI_Module_Family_Health': 1, u'PPI_Module_Overall_Health': 0,
+                         u'PPI_Module_Medical_History': 0, u'PPI_Retention_Modules_Complete': 1,
+                         u'PPI_Module_Healthcare_Access': 0, u'Samples_Received': 0},
+      u'completed': {u'Full_Participant': 2, u'PPI_Module_The_Basics': 2, u'Consent_Complete': 2,
+                     u'Consent_Enrollment': 2, u'PPI_Module_Lifestyle': 2, u'Registered': 2,
+                     u'Baseline_PPI_Modules_Complete': 2, u'Physical_Measurements': 2,
+                     u'PPI_Module_Family_Health': 1, u'PPI_Module_Overall_Health': 2,
+                     u'PPI_Module_Medical_History': 2, u'PPI_Retention_Modules_Complete': 1,
+                     u'PPI_Module_Healthcare_Access': 2, u'Samples_Received': 2}
+    }, u'hpo': u'PITT'},
+                     results2)
+    self.assertIn({u'date': u'2018-01-03', u'metrics': {
+      u'not_completed': {u'Full_Participant': 0, u'PPI_Module_The_Basics': 0,
+                         u'Consent_Complete': 0, u'Consent_Enrollment': 0,
+                         u'PPI_Module_Lifestyle': 0, u'Registered': 0,
+                         u'Baseline_PPI_Modules_Complete': 0, u'Physical_Measurements': 0,
+                         u'PPI_Module_Family_Health': 0, u'PPI_Module_Overall_Health': 0,
+                         u'PPI_Module_Medical_History': 0, u'PPI_Retention_Modules_Complete': 0,
+                         u'PPI_Module_Healthcare_Access': 0, u'Samples_Received': 0},
+      u'completed': {u'Full_Participant': 1, u'PPI_Module_The_Basics': 1, u'Consent_Complete': 1,
+                     u'Consent_Enrollment': 1, u'PPI_Module_Lifestyle': 1, u'Registered': 1,
+                     u'Baseline_PPI_Modules_Complete': 1, u'Physical_Measurements': 1,
+                     u'PPI_Module_Family_Health': 0, u'PPI_Module_Overall_Health': 1,
+                     u'PPI_Module_Medical_History': 0, u'PPI_Retention_Modules_Complete': 0,
+                     u'PPI_Module_Healthcare_Access': 0, u'Samples_Received': 1}
+    }, u'hpo': u'AZ_TUCSON'},
+                  results2)
 
   def test_refresh_metrics_lifecycle_cache_data_for_public_metrics_api(self):
 
