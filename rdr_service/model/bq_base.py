@@ -595,4 +595,5 @@ class BQRecord(object):
         return json.dumps(self.to_dict(full_schema), default=json_serial)
 
     def get(self, attr: str, default: any = None):
-        return getattr(self, attr, default)
+        result = getattr(self, attr, default)
+        return result if result else default

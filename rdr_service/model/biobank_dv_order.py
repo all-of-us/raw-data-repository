@@ -10,7 +10,12 @@ class BiobankDVOrder(Base):
   Direct Volunteer kit order shipment record
   """
 
-    _VIBRENT_ID_SYSTEM = "http://vibrenthealth.com"
+    _DV_ID_SYSTEM = {
+        'vibrent-drc-prod': "http://vibrenthealth.com",
+        'careevolution': "http://carevolution.be",
+        'example': "system-test"
+    }
+
     __tablename__ = "biobank_dv_order"
 
     # Primary Key

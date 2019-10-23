@@ -5,8 +5,8 @@ from flask import request
 from werkzeug.exceptions import BadRequest, Conflict, MethodNotAllowed
 
 from rdr_service.api.base_api import UpdatableApi
-from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO, VIBRENT_FHIR_URL
-from rdr_service.app_util import ObjDict, auth_required
+from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO, DV_FHIR_URL
+from rdr_service.app_util import ObjDict, auth_required, get_oauth_id
 from rdr_service.dao.dv_order_dao import DvOrderDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
 from rdr_service.model.utils import from_client_participant_id
@@ -34,6 +34,8 @@ class DvOrderApi(UpdatableApi):
     def post(self):
         try:
             resource = request.get_json(force=True)
+            user_email = get_oauth_id()
+            resource['auth_user'] = user_email
         except BadRequest:
             raise BadRequest("missing FHIR resource")
 
@@ -90,7 +92,7 @@ class DvOrderApi(UpdatableApi):
                 ObjDict({"participantId": p_id, "order_id": int(bo_id)})
             )
             tracking_status = fhir.extension.get(
-                url=VIBRENT_FHIR_URL + "tracking-status"
+                url=DV_FHIR_URL + "tracking-status"
             ).valueString.lower()
         except AttributeError as e:
             raise BadRequest(e)
@@ -125,6 +127,7 @@ class DvOrderApi(UpdatableApi):
             bo_id, participant_id=p_id, skip_etag=True, resource=merged_resource
         )
         response[2]["Location"] = "/rdr/v1/SupplyDelivery/{}".format(bo_id)
+        response[2]['auth_user'] = resource['auth_user']
         if response[1] == 200:
             created_response = list(response)
             created_response[1] = 201
@@ -134,11 +137,12 @@ class DvOrderApi(UpdatableApi):
     def _post_supply_request(self, resource):
         fhir_resource = SimpleFhirR4Reader(resource)
         patient = fhir_resource.contained.get(resourceType="Patient")
-        pid = patient.identifier.get(system=VIBRENT_FHIR_URL + "participantId").value
+        pid = patient.identifier.get(system=DV_FHIR_URL + "participantId").value
         p_id = from_client_participant_id(pid)
         response = super(DvOrderApi, self).post(participant_id=p_id)
-        order_id = fhir_resource.identifier.get(system=VIBRENT_FHIR_URL + "orderId").value
+        order_id = fhir_resource.identifier.get(system=DV_FHIR_URL + "orderId").value
         response[2]["Location"] = "/rdr/v1/SupplyRequest/{}".format(order_id)
+        response[2]['auth_user'] = resource['auth_user']
         if response[1] == 200:
             created_response = list(response)
             created_response[1] = 201
@@ -180,7 +184,7 @@ class DvOrderApi(UpdatableApi):
         try:
             fhir_resource = SimpleFhirR4Reader(resource)
             pid = fhir_resource.contained.get(resourceType="Patient").identifier.get(
-                system=VIBRENT_FHIR_URL + "participantId"
+                system=DV_FHIR_URL + "participantId"
             )
             p_id = from_client_participant_id(pid.value)
         except AttributeError as e:
@@ -202,19 +206,19 @@ class DvOrderApi(UpdatableApi):
             p_id = from_client_participant_id(participant_id)
             update_time = dateutil.parser.parse(fhir.occurrenceDateTime)
             carrier_name = fhir.extension.get(
-                url=VIBRENT_FHIR_URL + "carrier"
+                url=DV_FHIR_URL + "carrier"
             ).valueString
 
             eta = None
-            if hasattr(fhir["extension"], VIBRENT_FHIR_URL + "expected-delivery-date"):
+            if hasattr(fhir["extension"], DV_FHIR_URL + "expected-delivery-date"):
                 eta = dateutil.parser.parse(
                     fhir.extension.get(
-                        url=VIBRENT_FHIR_URL + "expected-delivery-date"
+                        url=DV_FHIR_URL + "expected-delivery-date"
                     ).valueDateTime
                 )
 
             tracking_status = fhir.extension.get(
-                url=VIBRENT_FHIR_URL + "tracking-status"
+                url=DV_FHIR_URL + "tracking-status"
             ).valueString
             if tracking_status:
                 tracking_status = tracking_status.lower()
