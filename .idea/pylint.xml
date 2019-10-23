@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PylintConfigService">
+    <option name="customPylintPath" value="$PROJECT_DIR$/../.pyenv/shims/pylint" />
+    <option name="pylintrcPath" value="$PROJECT_DIR$/pylintrc" />
+  </component>
+</project>
