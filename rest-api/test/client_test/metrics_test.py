@@ -28,6 +28,7 @@ class MetricsTest(BaseClientTest):
       else:
         raise
 
+  @unittest.skip("metrics 1 endpoint, remove with endpoint.")
   def test_metrics_limit(self):
     request = {
         'start_date': '2017-01-21',
@@ -37,6 +38,7 @@ class MetricsTest(BaseClientTest):
       self.client.request_json('Metrics', 'POST', request)
     self.assertEqual(cm.exception.code, httplib.BAD_REQUEST)
 
+  @unittest.skip("metrics 1 endpoint, remove with endpoint.")
   def test_metrics_empty_dates(self):
     request = {
         'start_date': '',

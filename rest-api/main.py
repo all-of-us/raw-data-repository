@@ -118,27 +118,29 @@ api.add_resource(PhysicalMeasurementsApi,
                  endpoint='participant.physicalMeasurements',
                  methods=['GET', 'POST', 'PATCH'])
 
-api.add_resource(MetricsApi,
-                 PREFIX + 'Metrics',
-                 endpoint='metrics',
-                 methods=['POST'])
+#api.add_resource(MetricsApi,
+#                 PREFIX + 'Metrics',
+#                 endpoint='metrics',
+#                 methods=['POST'])
 
 api.add_resource(ParticipantCountsOverTimeApi,
                  PREFIX + 'ParticipantCountsOverTime',
                  endpoint='participant_counts_over_time',
                  methods=['GET'])
 
+# Returns fields in metrics configs. Used in dashboards.
 api.add_resource(MetricsFieldsApi,
                  PREFIX + 'MetricsFields',
                  endpoint='metrics_fields',
                  methods=['GET'])
 
-api.add_resource(MetricSetsApi,
-                 PREFIX + 'MetricSets',
-                 PREFIX + 'MetricSets/<string:ms_id>/Metrics',
-                 endpoint='metric_sets',
-                 methods=['GET'])
+#api.add_resource(MetricSetsApi,
+#                 PREFIX + 'MetricSets',
+#                 PREFIX + 'MetricSets/<string:ms_id>/Metrics',
+#                 endpoint='metric_sets',
+#                 methods=['GET'])
 
+# Used by participant_counts_over_time
 api.add_resource(metrics_ehr_api.MetricsEhrApi,
                  PREFIX + 'MetricsEHR',
                  endpoint='metrics_ehr',
