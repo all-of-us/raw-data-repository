@@ -42,3 +42,11 @@ def bq_site_update(project_id=None):
     for row in results:
       bqr = gen.make_bqrecord(row.siteId)
       gen.save_bqrecord(row.siteId, bqr, bqtable=BQSite, w_dao=w_dao, w_session=w_session, project_id=project_id)
+
+
+def bq_site_update_by_id(site_id):
+  gen = BQSiteGenerator()
+  bqr = gen.make_bqrecord(site_id)
+  w_dao = BigQuerySyncDao()
+  with w_dao.session() as w_session:
+    gen.save_bqrecord(site_id, bqr, bqtable=BQSite, w_dao=w_dao, w_session=w_session)

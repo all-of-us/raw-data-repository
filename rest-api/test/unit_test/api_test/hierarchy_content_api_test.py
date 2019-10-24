@@ -47,11 +47,11 @@ class HierarchyContentApiTest(FlaskTestBase):
 
     hpo_dao = HPODao()
     hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET', displayName='Unset',
-                       organizationType=OrganizationType.UNSET))
+                       organizationType=OrganizationType.UNSET, resourceId='h123456'))
     hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT', displayName='Pittsburgh',
-                       organizationType=OrganizationType.HPO))
+                       organizationType=OrganizationType.HPO, resourceId='h123457'))
     hpo_dao.insert(HPO(hpoId=AZ_HPO_ID, name='AZ_TUCSON', displayName='Arizona',
-                       organizationType=OrganizationType.HPO))
+                       organizationType=OrganizationType.HPO, resourceId='h123458'))
     self.site_dao = SiteDao()
     self.org_dao = OrganizationDao()
 
@@ -161,10 +161,7 @@ class HierarchyContentApiTest(FlaskTestBase):
       ],
       "name": "Test create organization display name",
       "partOf": {
-        "identifier": {
-          "value": "PITT"
-        },
-        "display": "awardee"
+        "reference": "Organization/h123457"
       }
     }
 
@@ -208,10 +205,7 @@ class HierarchyContentApiTest(FlaskTestBase):
       ],
       "name": "Test update organization display name",
       "partOf": {
-        "identifier": {
-          "value": "PITT"
-        },
-        "display": "awardee"
+        "reference": "Organization/h123457"
       }
     }
 
@@ -300,10 +294,7 @@ class HierarchyContentApiTest(FlaskTestBase):
       ],
       "name": "Awesome Genomics Testing",
       "partOf": {
-        "identifier": {
-          "value": "AARDVARK_ORG"
-        },
-        "display": "Organization"
+        "reference": "Organization/o123457"
       },
       "address": [{
         "line": [
@@ -439,10 +430,7 @@ class HierarchyContentApiTest(FlaskTestBase):
       ],
       "name": "Awesome Genomics Testing",
       "partOf": {
-        "identifier": {
-          "value": "ORG_1"
-        },
-        "display": "Organization"
+        "reference": "Organization/o123456"
       },
       "address": [{
         "line": [
@@ -501,13 +489,223 @@ class HierarchyContentApiTest(FlaskTestBase):
     self.assertEqual(existing_entity.launchDate, datetime.date(2010, 7, 2))
     self.assertEqual(existing_entity.phoneNumber, '7031234567')
 
+  @mock.patch('dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao.'
+              '_get_lat_long_for_site')
+  @mock.patch('dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao.'
+              '_get_time_zone')
+  def test_create_hpo_org_site(self, time_zone, lat_long):
+    hpo_json = {
+      "resourceType": "Organization",
+      "id": "a893282c-2717-4a20-b276-d5c9c2c0e51f",
+      'meta': {
+        'versionId': '1'
+      },
+      "extension": [
+        {
+          "url": "http://all-of-us.org/fhir/sites/awardee-type",
+          "valueString": "DV"
+        }
+      ],
+      "identifier": [
+        {
+          "system": "http://all-of-us.org/fhir/sites/awardee-id",
+          "value": "TEST_HPO_NAME"
+        }
+      ],
+      "active": True,
+      "type": [
+        {
+          "coding": [
+            {
+              "code": "AWARDEE",
+              "system": "http://all-of-us.org/fhir/sites/type"
+            }
+          ]
+        }
+      ],
+      "name": "Test new HPO display name"
+    }
+    self.send_put('organization/hierarchy', request_data=hpo_json)
+
+    org_json = {
+      "resourceType": "Organization",
+      "id": "a893282c-2717-4a20-b276-d5c9c2c0e123",
+      'meta': {
+        'versionId': '1'
+      },
+      "extension": [
+
+      ],
+      "identifier": [
+        {
+          "system": "http://all-of-us.org/fhir/sites/organization-id",
+          "value": "TEST_NEW_ORG"
+        }
+      ],
+      "active": True,
+      "type": [
+        {
+          "coding": [
+            {
+              "code": "ORGANIZATION",
+              "system": "http://all-of-us.org/fhir/sites/type"
+            }
+          ]
+        }
+      ],
+      "name": "Test create organization display name",
+      "partOf": {
+        "reference": "Organization/a893282c-2717-4a20-b276-d5c9c2c0e51f"
+      }
+    }
+
+    self.send_put('organization/hierarchy', request_data=org_json)
+
+    lat_long.return_value = 100, 110
+    time_zone.return_value = 'America/Los_Angeles'
+    site_json = {
+      "resourceType": "Organization",
+      "id": "a893282c-2717-4a20-b276-d5c9c2c0e234",
+      'meta': {
+        'versionId': '1'
+      },
+      "extension": [
+        {
+          "url": "http://all-of-us.org/fhir/sites/enrollmentStatusActive",
+          "valueBoolean": True
+        },
+        {
+          "url": "http://all-of-us.org/fhir/sites/digitalSchedulingStatusActive",
+          "valueBoolean": True
+        },
+        {
+          "url": "http://all-of-us.org/fhir/sites/schedulingStatusActive",
+          "valueBoolean": True
+        },
+        {
+          "url": "http://all-of-us.org/fhir/sites/notes",
+          "valueString": "This is a note about an organization"
+        },
+        {
+          "url": "http://all-of-us.org/fhir/sites/schedulingInstructions",
+          "valueString": "Please schedule appointments up to a week before intended date."
+        },
+        {
+          "url": "http://all-of-us.org/fhir/sites/anticipatedLaunchDate",
+          "valueDate": "07-02-2010"
+        },
+        {
+          "url": "http://all-of-us.org/fhir/sites/locationName",
+          "valueString": "Thompson Building"
+        },
+        {
+          "url": "http://all-of-us.org/fhir/sites/directions",
+          "valueString": "Exit 95 N and make a left onto Fake Street"
+        }
+      ],
+      "identifier": [
+        {
+          "system": "http://all-of-us.org/fhir/sites/site-id",
+          "value": "hpo-site-awesome-testing"
+        },
+        {
+          "system": "http://all-of-us.org/fhir/sites/mayo-link-identifier",
+          "value": "123456"
+        },
+        {
+          "system": "http://all-of-us.org/fhir/sites/google-group-identifier",
+          "value": "Awesome Genomics Testing"
+        }
+      ],
+      "active": True,
+      "type": [
+        {
+          "coding": [
+            {
+              "code": "SITE",
+              "system": "http://all-of-us.org/fhir/sites/type"
+            }
+          ]
+        }
+      ],
+      "name": "Awesome Genomics Testing",
+      "partOf": {
+        "reference": "Organization/a893282c-2717-4a20-b276-d5c9c2c0e123"
+      },
+      "address": [{
+        "line": [
+          "1855 4th Street",
+          "AAC5/6"
+        ],
+        "city": "San Francisco",
+        "state": "CA",
+        "postalCode": "94158"
+      }],
+      "contact": [
+        {
+          "telecom": [{
+            "system": "phone",
+            "value": "7031234567"
+          }]
+        },
+        {
+          "telecom": [{
+            "system": "email",
+            "value": "support@awesome-testing.com"
+          }]
+        },
+        {
+          "telecom": [{
+            "system": "url",
+            "value": "http://awesome-genomic-testing.com"
+          }]
+        }
+      ]
+    }
+
+    self.send_put('organization/hierarchy', request_data=site_json)
+
+    result = self.send_get('Awardee/TEST_HPO_NAME')
+    self.assertEqual({
+      u'displayName': u'Test new HPO display name',
+      u'type': u'DV',
+      u'id': u'TEST_HPO_NAME',
+      u'organizations': [{u'displayName': u'Test create organization display name',
+                          u'id': u'TEST_NEW_ORG',
+                          u'sites': [{u'mayolinkClientNumber': 123456,
+                                      u'timeZoneId': u'America/Los_Angeles',
+                                      u'displayName': u'Awesome Genomics Testing',
+                                      u'notes': u'This is a note about an organization',
+                                      u'launchDate': u'2010-07-02',
+                                      u'notesEs': u'',
+                                      u'enrollingStatus': u'ACTIVE',
+                                      u'longitude': 110.0,
+                                      u'schedulingInstructions': u'Please schedule appointments up '
+                                                                 u'to a week before intended date.',
+                                      u'latitude': 100.0,
+                                      u'physicalLocationName': u'Thompson Building',
+                                      u'phoneNumber': u'7031234567',
+                                      u'siteStatus': u'ACTIVE',
+                                      u'address': {
+                                        u'postalCode': u'94158', u'city': u'San Francisco',
+                                        u'line': [u'1855 4th Street', u'AAC5/6'], u'state': u'CA'
+                                      },
+                                      u'directions': u'Exit 95 N and make a left onto Fake Street',
+                                      u'link': u'http://awesome-genomic-testing.com',
+                                      u'id': u'hpo-site-awesome-testing',
+                                      u'adminEmails': [u'support@awesome-testing.com'],
+                                      u'digitalSchedulingStatus': u'ACTIVE'
+                                      }]
+                          }]
+    }, result)
+
   def _setup_data(self):
     organization_dao = OrganizationDao()
     site_dao = SiteDao()
-    org_1 = organization_dao.insert(Organization(externalId='ORG_1',
-                                                 displayName='Organization 1', hpoId=PITT_HPO_ID))
-    organization_dao.insert(Organization(externalId='AARDVARK_ORG',
-                                         displayName='Aardvarks Rock', hpoId=PITT_HPO_ID))
+    org_1 = organization_dao.insert(Organization(externalId='ORG_1', displayName='Organization 1',
+                                                 hpoId=PITT_HPO_ID, resourceId='o123456'))
+    organization_dao.insert(Organization(externalId='AARDVARK_ORG', displayName='Aardvarks Rock',
+                                         hpoId=PITT_HPO_ID, resourceId='o123457'))
 
     site_dao.insert(Site(siteName='Site 1',
                          googleGroup='hpo-site-1',
