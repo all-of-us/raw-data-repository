@@ -21,7 +21,7 @@ class BQOrganizationGenerator(BigQueryGenerator):
     ro_dao = BigQuerySyncDao()
     with ro_dao.session() as ro_session:
       row = ro_session.execute(
-        text('select * from rdr.organization where organization_id = :id'), {'id': organization_id}).first()
+        text('select * from organization where organization_id = :id'), {'id': organization_id}).first()
       data = ro_dao.to_dict(row)
       return BQRecord(schema=BQOrganizationSchema, data=data, convert_to_enum=convert_to_enum)
 
@@ -43,3 +43,11 @@ def bq_organization_update(project_id=None):
       bqr = gen.make_bqrecord(row.organizationId)
       gen.save_bqrecord(row.organizationId, bqr, bqtable=BQOrganization, w_dao=w_dao, w_session=w_session,
                         project_id=project_id)
+
+
+def bq_organization_update_by_id(org_id):
+  gen = BQOrganizationGenerator()
+  bqr = gen.make_bqrecord(org_id)
+  w_dao = BigQuerySyncDao()
+  with w_dao.session() as w_session:
+    gen.save_bqrecord(org_id, bqr, bqtable=BQOrganization, w_dao=w_dao, w_session=w_session)

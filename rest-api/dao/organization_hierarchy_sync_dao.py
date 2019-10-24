@@ -14,6 +14,9 @@ from dao.hpo_dao import HPODao
 from participant_enums import OrganizationType
 from dao.organization_dao import OrganizationDao
 from dao.site_dao import SiteDao
+from dao.bq_hpo_dao import bq_hpo_update_by_id
+from dao.bq_organization_dao import bq_organization_update_by_id
+from dao.bq_site_dao import bq_site_update_by_id
 from dateutil.parser import parse
 from api_util import HIERARCHY_CONTENT_SYSTEM_PREFIX
 
@@ -61,6 +64,8 @@ class OrganizationHierarchySyncDao(BaseDao):
     operation_funcs[obj_type](hierarchy_org_obj)
 
   def _update_awardee(self, hierarchy_org_obj):
+    if hierarchy_org_obj.id is None:
+      raise BadRequest('No id found in payload data.')
     awardee_id = self._get_value_from_identifier(hierarchy_org_obj,
                                                  HIERARCHY_CONTENT_SYSTEM_PREFIX + 'awardee-id')
     if awardee_id is None:
@@ -80,13 +85,15 @@ class OrganizationHierarchySyncDao(BaseDao):
     entity = HPO(name=awardee_id.upper(),
                  displayName=hierarchy_org_obj.name,
                  organizationType=organization_type,
-                 isObsolete=is_obsolete)
+                 isObsolete=is_obsolete,
+                 resourceId=hierarchy_org_obj.id)
 
     existing_map = {entity.name: entity for entity in self.hpo_dao.get_all()}
     existing_entity = existing_map.get(entity.name)
 
     with self.hpo_dao.session() as session:
       if existing_entity:
+        hpo_id = existing_entity.hpoId
         new_dict = entity.asdict()
         new_dict['hpoId'] = None
         existing_dict = existing_entity.asdict()
@@ -97,29 +104,35 @@ class OrganizationHierarchySyncDao(BaseDao):
           existing_entity.displayName = entity.displayName
           existing_entity.organizationType = entity.organizationType
           existing_entity.isObsolete = entity.isObsolete
+          existing_entity.resourceId = entity.resourceId
           self.hpo_dao.update_with_session(session, existing_entity)
       else:
         entity.hpoId = len(existing_map)
+        hpo_id = entity.hpoId
         self.hpo_dao.insert_with_session(session, entity)
+    bq_hpo_update_by_id(hpo_id)
 
   def _update_organization(self, hierarchy_org_obj):
+    if hierarchy_org_obj.id is None:
+      raise BadRequest('No id found in payload data.')
     organization_id = self._get_value_from_identifier(hierarchy_org_obj,
                                                       HIERARCHY_CONTENT_SYSTEM_PREFIX +
                                                       'organization-id')
     if organization_id is None:
       raise BadRequest('No organization-identifier info found in payload data.')
     is_obsolete = ObsoleteStatus('OBSOLETE') if not hierarchy_org_obj.active else None
-    awardee_id = hierarchy_org_obj.partOf.identifier.value
+    resource_id = self._get_reference(hierarchy_org_obj)
 
-    hpo = self.hpo_dao.get_by_name(awardee_id.upper())
+    hpo = self.hpo_dao.get_by_resource_id(resource_id)
     if hpo is None:
-      raise BadRequest('Invalid awardee ID {} importing organization {}'
-                       .format(awardee_id, organization_id))
+      raise BadRequest('Invalid partOf reference {} importing organization {}'
+                       .format(resource_id, organization_id))
 
     entity = Organization(externalId=organization_id.upper(),
                           displayName=hierarchy_org_obj.name,
                           hpoId=hpo.hpoId,
-                          isObsolete=is_obsolete)
+                          isObsolete=is_obsolete,
+                          resourceId=hierarchy_org_obj.id)
     existing_map = {entity.externalId: entity for entity in self.organization_dao.get_all()}
     existing_entity = existing_map.get(entity.externalId)
     with self.organization_dao.session() as session:
@@ -134,23 +147,28 @@ class OrganizationHierarchySyncDao(BaseDao):
           existing_entity.displayName = entity.displayName
           existing_entity.hpoId = entity.hpoId
           existing_entity.isObsolete = entity.isObsolete
+          existing_entity.resourceId = entity.resourceId
           self.organization_dao.update_with_session(session, existing_entity)
       else:
         self.organization_dao.insert_with_session(session, entity)
+    org_id = self.organization_dao.get_by_external_id(organization_id.upper()).organizationId
+    bq_organization_update_by_id(org_id)
 
   def _update_site(self, hierarchy_org_obj):
+    if hierarchy_org_obj.id is None:
+      raise BadRequest('No id found in payload data.')
     google_group = self._get_value_from_identifier(hierarchy_org_obj,
                                                    HIERARCHY_CONTENT_SYSTEM_PREFIX + 'site-id')
     if google_group is None:
       raise BadRequest('No organization-identifier info found in payload data.')
     google_group = google_group.lower()
     is_obsolete = ObsoleteStatus('OBSOLETE') if not hierarchy_org_obj.active else None
-    organization_id = hierarchy_org_obj.partOf.identifier.value
+    resource_id = self._get_reference(hierarchy_org_obj)
 
-    organization = self.organization_dao.get_by_external_id(organization_id.upper())
+    organization = self.organization_dao.get_by_resource_id(resource_id)
     if organization is None:
-      raise BadRequest('Invalid organization ID {} importing site {}'
-                       .format(organization_id, google_group))
+      raise BadRequest('Invalid partOf reference {} importing site {}'
+                       .format(resource_id, google_group))
 
     launch_date = None
     launch_date_str = self._get_value_from_extention(hierarchy_org_obj,
@@ -242,7 +260,8 @@ class OrganizationHierarchySyncDao(BaseDao):
                   phoneNumber=phone,
                   adminEmails=admin_email_addresses,
                   link=link,
-                  isObsolete=is_obsolete)
+                  isObsolete=is_obsolete,
+                  resourceId=hierarchy_org_obj.id)
 
     existing_map = {entity.googleGroup: entity for entity in self.site_dao.get_all()}
 
@@ -271,6 +290,8 @@ class OrganizationHierarchySyncDao(BaseDao):
           (entity.latitude is None or entity.longitude is None):
           raise BadRequest('Active site without geocoding: {}'.format(entity.googleGroup))
         self.site_dao.insert_with_session(session, entity)
+    site_id = self.site_dao.get_by_google_group(google_group).siteId
+    bq_site_update_by_id(site_id)
 
   def _get_type(self, hierarchy_org_obj):
     obj_type = None
@@ -320,6 +341,12 @@ class OrganizationHierarchySyncDao(BaseDao):
     postal_code = address.postalCode
 
     return address_1, address_2, city, state, postal_code
+
+  def _get_reference(self, hierarchy_org_obj):
+    try:
+      return hierarchy_org_obj.partOf.reference.split('/')[1]
+    except IndexError:
+      return None
 
   def _populate_lat_lng_and_time_zone(self, site, existing_site):
     if site.address1 and site.city and site.state:
