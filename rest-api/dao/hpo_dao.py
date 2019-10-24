@@ -37,6 +37,11 @@ class HPODao(CacheAllDao):
   def get_by_name(self, name):
     return self._get_cache().index_maps['name'].get(name)
 
+  def get_by_resource_id(self, resource_id):
+    with self.session() as session:
+      query = session.query(HPO).filter(HPO.resourceId == resource_id)
+      return query.first()
+
   def get_with_children_in_session(self, session, obj_id):
     return (session.query(HPO)
         .options(subqueryload(HPO.organizations).subqueryload(Organization.sites))

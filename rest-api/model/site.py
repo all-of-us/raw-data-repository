@@ -37,3 +37,4 @@ class Site(Base):
   adminEmails = Column('admin_emails', String(4096))
   link = Column('link', String(255))
   isObsolete = Column('is_obsolete', Enum(ObsoleteStatus))
+  resourceId = Column('resource_id', String(255))
