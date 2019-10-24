@@ -38,6 +38,7 @@ class BiobankOrderBase(object):
     # The username / email of the HealthPro user that finalized the order -- finalizedInfo['author']
     # in the resulting JSON.
     finalizedUsername = Column("finalized_username", String(255))
+    finalizedTime = Column('finalized_time', UTCDateTime)
 
     # cancelled finalized order may still be shipped to biobank for destruction
     # orderstatus can be cancelled/amended/restored
