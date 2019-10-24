@@ -11,14 +11,15 @@ class BQOrganizationGenerator(BigQueryGenerator):
   Generate an Organization BQRecord object
   """
 
-  def make_bqrecord(self, organization_id, convert_to_enum=False):
+  def make_bqrecord(self, organization_id, convert_to_enum=False, backup=True):
     """
     Build a BQRecord object from the given organization id.
     :param organization_id: Primary key value from the organization table.
     :param convert_to_enum: If schema field description includes Enum class info, convert value to Enum.
+    :param backup: if True, get from backup database
     :return: BQRecord object
     """
-    ro_dao = BigQuerySyncDao()
+    ro_dao = BigQuerySyncDao(backup=backup)
     with ro_dao.session() as ro_session:
       row = ro_session.execute(
         text('select * from organization where organization_id = :id'), {'id': organization_id}).first()
@@ -47,7 +48,7 @@ def bq_organization_update(project_id=None):
 
 def bq_organization_update_by_id(org_id):
   gen = BQOrganizationGenerator()
-  bqr = gen.make_bqrecord(org_id)
+  bqr = gen.make_bqrecord(org_id, backup=False)
   w_dao = BigQuerySyncDao()
   with w_dao.session() as w_session:
     gen.save_bqrecord(org_id, bqr, bqtable=BQOrganization, w_dao=w_dao, w_session=w_session)
