@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 
 import app_util
 from flask import request, jsonify, url_for
@@ -225,24 +224,24 @@ class BaseApi(Resource):
       bundle_dict['link'] = [{"relation": "next", "url": next_url}]
     entries = []
     for item in results.items:
-      json = self._make_response(item)
-      full_url = self._make_resource_url(json, id_field, participant_id)
+      response_json = self._make_response(item)
+      full_url = self._make_resource_url(response_json, id_field, participant_id)
       entries.append({"fullUrl": full_url,
-                     "resource": json})
+                     "resource": response_json})
     bundle_dict['entry'] = entries
     if results.total is not None:
       bundle_dict['total'] = results.total
     return bundle_dict
 
-  def _make_resource_url(self, json, id_field, participant_id):
+  def _make_resource_url(self, response_json, id_field, participant_id):
     import main
     if participant_id:
       return main.api.url_for(self.__class__,
-                              id_=json[id_field],
+                              id_=response_json[id_field],
                               p_id=to_client_participant_id(participant_id),
                               _external=True)
     else:
-      return main.api.url_for(self.__class__, p_id=json[id_field],
+      return main.api.url_for(self.__class__, p_id=response_json[id_field],
                               _external=True)
 
 class UpdatableApi(BaseApi):
