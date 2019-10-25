@@ -388,13 +388,16 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.assertNotIn("physicalMeasurementsFinalizedSiteId", ps["entry"][0]["resource"])
         self.assertEqual("UNSET", ps["entry"][0]["resource"]["physicalMeasurementsFinalizedSite"])
 
-    def test_restore_a_physical_measuremnet(self):
+    def test_restore_a_physical_measurement(self):
         self.send_consent(self.participant_id)
         measurement = load_measurement_json(self.participant_id)
         path = "Participant/%s/PhysicalMeasurements" % self.participant_id
         response = self.send_post(path, measurement)
+        ps = self.send_get("Participant/%s/Summary" % self.participant_id)
         path = path + "/" + response["id"]
         self.send_patch(path, BaseTestCase.get_restore_or_cancel_info())
+        ps_2 = self.send_get("Participant/%s/Summary" % self.participant_id)
+        self.assertTrue("physicalMeasurementsFinalizedTime" not in ps_2)
         restored_info = BaseTestCase.get_restore_or_cancel_info(reason="need to restore", status="restored", author="me")
         self.send_patch(path, restored_info)
 
@@ -405,6 +408,8 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.assertTrue("cancelledUsername" not in response)
         self.assertTrue("cancelledSiteId" not in response)
         self.assertTrue("cancelledTime" not in response)
+        ps_3 = self.send_get("Participant/%s/Summary" % self.participant_id)
+        self.assertEqual(ps_3['physicalMeasurementsFinalizedTime'], ps['physicalMeasurementsFinalizedTime'])
 
     def test_cannot_restore_a_valid_pm(self):
         self.send_consent(self.participant_id)
