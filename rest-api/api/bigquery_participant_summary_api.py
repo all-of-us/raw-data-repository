@@ -42,6 +42,8 @@ class BQParticipantSummaryApi(BaseApi):
           # logging.info(resource)
           records = BigQueryJob.get_rows(response)
           if len(records) == 1:
-            return records[0]
+            obj = records[0]
+            log_api_request(obj)
+            return response
 
     raise NotFound('participant not found')

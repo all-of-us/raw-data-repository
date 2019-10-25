@@ -1,7 +1,7 @@
 import app_util
 import config
 
-from api.base_api import BaseApi, DEFAULT_MAX_RESULTS, get_sync_results_for_request
+from api.base_api import BaseApi, DEFAULT_MAX_RESULTS, get_sync_results_for_request, log_api_request
 from api_util import HEALTHPRO, PTC_AND_HEALTHPRO, PTC
 from flask import request
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
@@ -23,7 +23,10 @@ class PhysicalMeasurementsApi(BaseApi):
   @app_util.auth_required(HEALTHPRO)
   def patch(self, id_, p_id):
     resource = request.get_json(force=True)
-    return self.dao.patch(id_, resource, p_id)
+    obj = self.dao.patch(id_, resource, p_id)
+    log_api_request(obj)
+    return obj
+
 
   def list(self, participant_id=None):
     query = Query([FieldFilter('participantId', Operator.EQUALS, participant_id)],
