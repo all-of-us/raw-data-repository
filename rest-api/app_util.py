@@ -207,7 +207,11 @@ def auth_required(role_whitelist):
       request.logged = False
       result = func(*args, **kwargs)
       if request.logged == False:
-        log_api_request()
+        try:
+          log_api_request()
+        except RuntimeError:
+          # Unittests don't always setup a valid flask request object.
+          pass
       return result
     return wrapped
   return auth_required_wrapper
