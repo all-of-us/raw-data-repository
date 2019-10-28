@@ -1,3 +1,4 @@
+import json
 import logging
 
 import app_util
@@ -15,6 +16,62 @@ from sqlalchemy.exc import NoInspectionAvailable
 
 DEFAULT_MAX_RESULTS = 100
 MAX_MAX_RESULTS = 10000
+
+
+def log_api_request(model_obj=None):
+  """ Create deferred task to save the request payload and possibly link it to a table record """
+  log = RequestsLog()
+
+  log.endpoint = request.endpoint
+  log.method = request.method
+  log.url = request.url
+  log.user = app_util.get_oauth_id()
+  if request.method in ['POST', 'PUT', 'PATCH']:
+    try:
+      # We don't want to use request.json or request.get_json here.
+      log.resource = json.loads(request.data)
+    except ValueError:
+      log.resource = request.data
+  log.version = int(request.url.split('/')[4][1:])
+
+  request.logged = True
+
+  # See if we can get the participant id and a foreign key id out of the url.
+  if request.view_args and isinstance(request.view_args, dict):
+    for k, v in request.view_args.items():
+      if k == 'p_id':
+        log.participantId = int(v)
+      else:
+        if isinstance(v, int) or str(v).strip().isdigit():
+          log.fpk_id = int(v)
+        else:
+          log.fpk_alt_id = str(v).strip()
+
+  if model_obj:
+    try:
+      if hasattr(model_obj, '__table__'):
+        log.fpk_table = model_obj.__table__.name
+      if hasattr(model_obj, 'participantId'):
+        log.participantId = int(model_obj.participantId)
+
+      insp = inspect(model_obj)
+      if hasattr(insp, 'mapper'):
+        if insp.mapper._primary_key_propkeys and len(insp.mapper._primary_key_propkeys) == 1:
+          log.fpk_column = str(max(insp.mapper._primary_key_propkeys))
+      if insp.identity is None:
+        if log.fpk_column and log.fpk_column == 'participant_id' and log.participantId:
+          log.fpk_id = int(log.participantId)
+      else:
+        if isinstance(insp.identity[0], int) or str(insp.identity[0]).strip().isdigit():
+          log.fpk_id = int(insp.identity[0])
+        else:
+          log.fpk_alt_id = str(insp.identity[0])
+
+    except NoInspectionAvailable:
+      pass
+    except Exception:  # pylint: disable=broad-except
+      pass
+    deferred.defer(deferred_save_raw_request, log)
 
 
 class BaseApi(Resource):
@@ -47,42 +104,6 @@ class BaseApi(Resource):
       return default
     return request.args.get(key).lower() == 'true'
 
-  def _save_raw_request(self, obj):
-    """ Create deferred task to save the request payload and possibly link it to a table record """
-    log = RequestsLog()
-
-    log.endpoint = request.endpoint
-    log.method = request.method
-    log.url = request.url
-    log.resource = request.data
-    log.version = int(request.url.split('/')[4][1:])
-
-    if obj:
-      try:
-        if hasattr(obj, '__table__'):
-          log.fpk_table = obj.__table__.name
-        if hasattr(obj, 'participantId'):
-          log.participantId = int(obj.participantId)
-
-        insp = inspect(obj)
-        if hasattr(insp, 'mapper'):
-          if insp.mapper._primary_key_propkeys and len(insp.mapper._primary_key_propkeys) == 1:
-            log.fpk_column = str(max(insp.mapper._primary_key_propkeys))
-        if insp.identity is None:
-          if log.fpk_column and log.fpk_column == 'participant_id' and log.participantId:
-            log.fpk_id = int(log.participantId)
-        else:
-          if isinstance(insp.identity[0], int) or str(insp.identity[0]).strip().isdigit():
-            log.fpk_id = int(insp.identity[0])
-          else:
-            log.fpk_alt_id = str(insp.identity[0])
-
-      except NoInspectionAvailable:
-        pass
-      except Exception:  #  pylint: disable=broad-except
-        pass
-      deferred.defer(deferred_save_raw_request, log)
-
   def get(self, id_=None, participant_id=None):
     """Handle a GET request.
 
@@ -100,7 +121,7 @@ class BaseApi(Resource):
       if participant_id != obj.participantId:
         raise NotFound("%s with ID %s is not for participant with ID %s" %
                        (self.dao.model_type.__name__, id_, participant_id))
-    self._save_raw_request(obj)
+    log_api_request(obj)
     return self._make_response(obj)
 
   def _make_response(self, obj):
@@ -128,7 +149,7 @@ class BaseApi(Resource):
     result = self._do_insert(m)
     if participant_id:
       deferred.defer(deferred_bq_participant_summary_update, participant_id)
-    self._save_raw_request(result)
+    log_api_request(result)
     return self._make_response(result)
 
   def list(self, participant_id=None):
@@ -203,24 +224,24 @@ class BaseApi(Resource):
       bundle_dict['link'] = [{"relation": "next", "url": next_url}]
     entries = []
     for item in results.items:
-      json = self._make_response(item)
-      full_url = self._make_resource_url(json, id_field, participant_id)
+      response_json = self._make_response(item)
+      full_url = self._make_resource_url(response_json, id_field, participant_id)
       entries.append({"fullUrl": full_url,
-                     "resource": json})
+                     "resource": response_json})
     bundle_dict['entry'] = entries
     if results.total is not None:
       bundle_dict['total'] = results.total
     return bundle_dict
 
-  def _make_resource_url(self, json, id_field, participant_id):
+  def _make_resource_url(self, response_json, id_field, participant_id):
     import main
     if participant_id:
       return main.api.url_for(self.__class__,
-                              id_=json[id_field],
+                              id_=response_json[id_field],
                               p_id=to_client_participant_id(participant_id),
                               _external=True)
     else:
-      return main.api.url_for(self.__class__, p_id=json[id_field],
+      return main.api.url_for(self.__class__, p_id=response_json[id_field],
                               _external=True)
 
 class UpdatableApi(BaseApi):
@@ -270,7 +291,7 @@ class UpdatableApi(BaseApi):
     self._do_update(m)
     if participant_id:
       deferred.defer(deferred_bq_participant_summary_update, participant_id)
-    self._save_raw_request(m)
+    log_api_request(m)
     return self._make_response(m)
 
   def patch(self, id_):
@@ -285,7 +306,7 @@ class UpdatableApi(BaseApi):
       raise BadRequest("If-Match is missing for PATCH request")
     expected_version = _parse_etag(etag)
     order = self.dao.update_with_patch(id_, resource, expected_version)
-    self._save_raw_request(order)
+    log_api_request(order)
     return self._make_response(order)
 
   def update_with_patch(self, id_, resource, expected_version):

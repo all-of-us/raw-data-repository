@@ -11,6 +11,7 @@ from flask import request
 from google.appengine.api import app_identity, oauth
 from werkzeug.exceptions import Forbidden, Unauthorized
 
+from api.base_api import log_api_request
 
 _GMT = pytz.timezone('GMT')
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
@@ -203,7 +204,15 @@ def auth_required(role_whitelist):
           raise Unauthorized('HTTPS is required for %r' % appid,
                              www_authenticate='Bearer realm="rdr"')
         check_auth(role_whitelist)
-      return func(*args, **kwargs)
+      request.logged = False
+      result = func(*args, **kwargs)
+      if request.logged == False:
+        try:
+          log_api_request()
+        except RuntimeError:
+          # Unittests don't always setup a valid flask request object.
+          pass
+      return result
     return wrapped
   return auth_required_wrapper
 

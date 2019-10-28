@@ -3,7 +3,7 @@ import json
 from google.appengine.api import app_identity
 from werkzeug.exceptions import NotFound
 
-from api.base_api import BaseApi
+from api.base_api import BaseApi, log_api_request
 from api_util import PTC_AND_HEALTHPRO
 from app_util import auth_required, nonprod
 from cloud_utils.bigquery import BigQueryJob
@@ -42,6 +42,8 @@ class BQParticipantSummaryApi(BaseApi):
           # logging.info(resource)
           records = BigQueryJob.get_rows(response)
           if len(records) == 1:
-            return records[0]
+            obj = records[0]
+            log_api_request(obj)
+            return response
 
     raise NotFound('participant not found')

@@ -35,6 +35,8 @@ class RequestsLog(Base):
   fpk_table = Column('fpk_table', String(65), nullable=True)
   # Foreign column name. Primary key column name where this request was used.
   fpk_column = Column('fpk_column', String(65), nullable=True)
+  # Authenticated User ID
+  user = Column('user', String(255), nullable=True)
 
 event.listen(RequestsLog, 'before_insert', model_insert_listener)
 event.listen(RequestsLog, 'before_update', model_update_listener)
