@@ -401,6 +401,15 @@ class MySqlReconciliationTest(BaseTestCase):
             finalized_tests=BIOBANK_TESTS[:2],
         )
 
+        # Order with missing sample from 2 days ago that was cancelled; does not show up in missing.
+        p_modified_cancelled = self._insert_participant()
+        modified_cancelled_order = self._insert_order(
+            p_modified_cancelled, 'TwoDaysMissingCancelled',
+            BIOBANK_TESTS[:1],
+            two_days_ago, finalized_tests=BIOBANK_TESTS[:1]
+        )
+        self._modify_order('CANCELLED', modified_cancelled_order)
+
         # Recent samples with no matching order; shows up in missing and received.
         p_extra = self._insert_participant(race_codes=[RACE_WHITE_CODE])
         self._insert_samples(
@@ -690,7 +699,7 @@ class MySqlReconciliationTest(BaseTestCase):
         self.assertCountEqual(multi_sample_row["sent_order_id"].split(","), ["ORepeatedOrder2"])
 
         # modified biobank orders show in modified report
-        exporter.assertRowCount(modified, 6)
+        exporter.assertRowCount(modified, 7)
         exporter.assertHasRow(
             modified,
             {

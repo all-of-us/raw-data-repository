@@ -299,6 +299,7 @@ def _query_and_write_reports(exporter, now, report_type, path_received, path_mis
             or (result[_SENT_FINALIZED_INDEX] and not result[_RECEIVED_TEST_INDEX])
         )
         and in_past_n_days(result, now, report_cover_range, ordered_before=now - _THIRTY_SIX_HOURS_AGO)
+        and result[_EDITED_CANCELLED_RESTORED_STATUS_FLAG_INDEX] != 'cancelled'
     )
 
     # Gets samples or orders where something has modified within the past n days.
@@ -618,8 +619,14 @@ _RECONCILIATION_REPORT_SQL = (
        WHERE participant.biobank_id = biobank_stored_sample.biobank_id
          AND participant.withdrawal_time IS NOT NULL)
   ) reconciled
-  WHERE (reconciled.collected IS NOT NULL AND reconciled.confirmed  IS NOT NULL AND reconciled.collected >= reconciled.confirmed AND reconciled.collected >= :n_days_ago)
-  OR (reconciled.collected IS NOT NULL AND reconciled.confirmed  IS NOT NULL AND reconciled.confirmed >= reconciled.collected AND reconciled.confirmed >= :n_days_ago)
+  WHERE (reconciled.collected IS NOT NULL 
+    AND reconciled.confirmed IS NOT NULL 
+    AND reconciled.collected >= reconciled.confirmed 
+    AND reconciled.collected >= :n_days_ago)
+  OR (reconciled.collected IS NOT NULL 
+    AND reconciled.confirmed IS NOT NULL 
+    AND reconciled.confirmed >= reconciled.collected 
+    AND reconciled.confirmed >= :n_days_ago)
   OR (reconciled.collected IS NULL AND reconciled.confirmed  IS NOT NULL AND reconciled.confirmed >= :n_days_ago)
   OR (reconciled.collected IS NOT NULL AND reconciled.confirmed  IS NULL AND reconciled.collected >= :n_days_ago)
   GROUP BY
