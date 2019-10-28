@@ -3,7 +3,7 @@ import json
 from rdr_service.config import GAE_PROJECT
 from werkzeug.exceptions import NotFound
 
-from rdr_service.api.base_api import BaseApi
+from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import PTC_AND_HEALTHPRO
 from rdr_service.app_util import auth_required, nonprod
 from rdr_service.cloud_utils.bigquery import BigQueryJob
@@ -42,6 +42,8 @@ class BQParticipantSummaryApi(BaseApi):
                     # logging.info(resource)
                     records = BigQueryJob.get_rows(response)
                     if len(records) == 1:
-                        return records[0]
+                        obj = records[0]
+                        log_api_request(obj)
+                        return obj
 
         raise NotFound("participant not found")

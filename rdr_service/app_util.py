@@ -1,5 +1,5 @@
-import datetime
 import calendar
+import datetime
 import email.utils
 import logging
 import urllib.parse
@@ -8,10 +8,11 @@ import netaddr
 import pytz
 import requests
 from flask import request
-from rdr_service.config import GAE_PROJECT
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from rdr_service import clock, config
+from rdr_service.api.base_api import log_api_request
+from rdr_service.config import GAE_PROJECT
 
 _GMT = pytz.timezone("GMT")
 SCOPE = "https://www.googleapis.com/auth/userinfo.email"
@@ -226,7 +227,15 @@ def auth_required(role_whitelist):
                 if request.scheme.lower() != "https" and appid not in acceptable_hosts:
                     raise Unauthorized("HTTPS is required for %r" % appid, www_authenticate='Bearer realm="rdr"')
                 check_auth(role_whitelist)
-            return func(*args, **kwargs)
+            request.logged = False
+            result = func(*args, **kwargs)
+            if request.logged is False:
+                try:
+                    log_api_request()
+                except RuntimeError:
+                    # Unittests don't always setup a valid flask request context.
+                    pass
+            return result
 
         return wrapped
 
