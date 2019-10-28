@@ -8,7 +8,7 @@
       <env name="UNITTEST_FLAG" value="1" />
     </envs>
     <option name="SDK_HOME" value="$PROJECT_DIR$/venv37/bin/python" />
-    <option name="WORKING_DIRECTORY" value="/usr/local/share/raw-data-repository" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
     <option name="IS_MODULE_SDK" value="false" />
     <option name="ADD_CONTENT_ROOTS" value="true" />
     <option name="ADD_SOURCE_ROOTS" value="true" />
