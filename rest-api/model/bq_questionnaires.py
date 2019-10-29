@@ -276,10 +276,10 @@ class BQPDREHRConsentPIIView(BQView):
 
 
 #
-# DVEHRConsentPII
+# DVEHRSharing
 #
 class BQPDRDVEHRSharingSchema(_BQModuleSchema):
-  """ EHRConsentPII Module """
+  """ DVEHRSharing Module """
   _module = 'DVEHRSharing'
   _excluded_fields = (
     'EHRConsentPII_Signature',
@@ -287,7 +287,7 @@ class BQPDRDVEHRSharingSchema(_BQModuleSchema):
 
 
 class BQPDRDVEHRSharing(BQTable):
-  """ DVEHRConsentPII BigQuery Table """
+  """ DVEHRSharing BigQuery Table """
   __tablename__ = 'pdr_mod_dvehrsharing'
   __schema__ = BQPDRDVEHRSharingSchema
   __project_map__ = [
@@ -296,8 +296,123 @@ class BQPDRDVEHRSharing(BQTable):
 
 
 class BQPDRDVEHRSharingView(BQView):
-  """ PDR DVEHRConsentPII BiqQuery View """
+  """ PDR DVEHRSharing BiqQuery View """
   __viewname__ = 'v_pdr_mod_dvehrsharing'
-  __viewdescr__ = 'PDR DVEHRConsentPII Module View'
+  __viewdescr__ = 'PDR DVEHRSharing Module View'
   __table__ = BQPDRDVEHRSharing
+  _show_created = True
+
+
+#
+# FamilyHistory
+#
+class BQPDRFamilyHistorySchema(_BQModuleSchema):
+  """ FamilyHistory Module """
+  _module = 'FamilyHistory'
+  _excluded_fields = (
+    'DaughterDiagnosisHistory_WhichConditions',
+    'OtherCancer_DaughterFreeTextBox',
+    'OtherCancer_SonFreeTextBox',
+    'OtherCondition_DaughterFreeTextBox',
+    'OtherCondition_SonFreeTextBox',
+    'SonDiagnosisHistory_WhichConditions',
+    'OtherCancer_GrandparentFreeTextBox',
+    'OtherCondition_GrandparentFreeTextBox',
+    'FatherDiagnosisHistory_WhichConditions',
+    'MotherDiagnosisHistory_WhichConditions',
+    'OtherCancer_FatherFreeTextBox',
+    'OtherCancer_MotherFreeTextBox',
+    'OtherCondition_FatherFreeTextBox',
+    'OtherCondition_MotherFreeTextBox',
+    'OtherCancer_SiblingFreeTextBox',
+    'OtherCondition_SiblingFreeTextBox',
+    'SiblingDiagnosisHistory_WhichConditions',
+  )
+
+
+class BQPDRFamilyHistory(BQTable):
+  """ FamilyHistory BigQuery Table """
+  __tablename__ = 'pdr_mod_familyhistory'
+  __schema__ = BQPDRFamilyHistorySchema
+  __project_map__ = [
+    ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
+  ]
+
+
+class BQPDRFamilyHistoryView(BQView):
+  """ PDR FamilyHistory BiqQuery View """
+  __viewname__ = 'v_pdr_mod_familyhistory'
+  __viewdescr__ = 'PDR FamilyHistory Module View'
+  __table__ = BQPDRFamilyHistory
+  _show_created = True
+
+
+#
+# HealthcareAccess
+#
+class BQPDRHealthcareAccessSchema(_BQModuleSchema):
+  """ HealthcareAccess Module """
+  _module = 'HealthcareAccess'
+  _excluded_fields = (
+    'OtherDelayedMedicalCare_FreeText',
+    'OtherInsuranceType_FreeText',
+  )
+
+
+class BQPDRHealthcareAccess(BQTable):
+  """ HealthcareAccess BigQuery Table """
+  __tablename__ = 'pdr_mod_healthcareaccess'
+  __schema__ = BQPDRHealthcareAccessSchema
+  __project_map__ = [
+    ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
+  ]
+
+
+class BQPDRHealthcareAccessView(BQView):
+  """ PDR HealthcareAccess BiqQuery View """
+  __viewname__ = 'v_pdr_mod_healthcareaccess'
+  __viewdescr__ = 'PDR HealthcareAccess Module View'
+  __table__ = BQPDRHealthcareAccess
+  _show_created = True
+
+
+#
+# PersonalMedicalHistory
+#
+class BQPDRPersonalMedicalHistorySchema(_BQModuleSchema):
+  """ PersonalMedicalHistory Module """
+  _module = 'PersonalMedicalHistory'
+  _excluded_fields = (
+    'OtherHeartorBloodCondition_FreeTextBox',
+    'OtherRespiratory_FreeTextBox',
+    'OtherCancer_FreeTextBox',
+    'OtherDigestiveCondition_FreeTextBox',
+    'OtherDiabetes_FreeTextBox',
+    'OtherHormoneEndocrine_FreeTextBox',
+    'OtherThyroid_FreeTextBox',
+    'OtherKidneyCondition_FreeTextBox',
+    'OtherBoneJointMuscle_FreeTextBox',
+    'OtherArthritis_FreeTextBox',
+    'OtherHearingEye_FreeTextBox',
+    'OtherInfectiousDisease_FreeTextBox',
+    'OtherBrainNervousSystem_FreeTextBox',
+    'OtherMentalHealthSubstanceUse_FreeTextBox',
+    'OtherDiagnosis_FreeTextBox',
+  )
+
+
+class BQPDRPersonalMedicalHistory(BQTable):
+  """ PersonalMedicalHistory BigQuery Table """
+  __tablename__ = 'pdr_mod_personalmedicalhistory'
+  __schema__ = BQPDRPersonalMedicalHistorySchema
+  __project_map__ = [
+    ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
+  ]
+
+
+class BQPDRPersonalMedicalHistoryView(BQView):
+  """ PDR PersonalMedicalHistory BiqQuery View """
+  __viewname__ = 'v_pdr_mod_personalmedicalhistory'
+  __viewdescr__ = 'PDR PersonalMedicalHistory Module View'
+  __table__ = BQPDRPersonalMedicalHistory
   _show_created = True

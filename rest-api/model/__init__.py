@@ -14,6 +14,9 @@ BQ_TABLES = [
   ('model.bq_questionnaires', 'BQPDROverallHealth'),
   ('model.bq_questionnaires', 'BQPDREHRConsentPII'),
   ('model.bq_questionnaires', 'BQPDRDVEHRSharing'),
+  ('model.bq_questionnaires', 'BQPDRFamilyHistory'),
+  ('model.bq_questionnaires', 'BQPDRHealthcareAccess'),
+  ('model.bq_questionnaires', 'BQPDRPersonalMedicalHistory'),
 
   ('model.bq_pdr_participant_summary', 'BQPDRParticipantSummary'),
 ]
@@ -40,4 +43,7 @@ BQ_VIEWS = [
   ('model.bq_questionnaires', 'BQPDROverallHealthView'),
   ('model.bq_questionnaires', 'BQPDREHRConsentPIIView'),
   ('model.bq_questionnaires', 'BQPDRDVEHRSharingView'),
+  ('model.bq_questionnaires', 'BQPDRFamilyHistoryView'),
+  ('model.bq_questionnaires', 'BQPDRHealthcareAccessView'),
+  ('model.bq_questionnaires', 'BQPDRPersonalMedicalHistoryView'),
 ]
