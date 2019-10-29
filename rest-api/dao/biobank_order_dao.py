@@ -1,5 +1,6 @@
 import clock
 from api_util import get_site_id_by_site_value as get_site
+from api_util import parse_date
 from code_constants import BIOBANK_TESTS_SET, SITE_ID_SYSTEM, HEALTHPRO_USERNAME_SYSTEM
 from dao.base_dao import UpdatableDao, FhirMixin, FhirProperty
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
@@ -19,7 +20,6 @@ from participant_enums import OrderStatus, BiobankOrderStatus
 from sqlalchemy import or_
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest, Conflict, PreconditionFailed
-
 
 def _ToFhirDate(dt):
   if not dt:
@@ -352,6 +352,8 @@ class BiobankOrderDao(UpdatableDao):
         resource.processed_info)
     order.finalizedUsername, order.finalizedSiteId = self._parse_handling_info(
         resource.finalized_info)
+    # order.finalizedTime uses the time from biobank_ordered_sample.finalized
+    order.finalizedTime = parse_date(self.get_random_sample_finalized_time(resource).isostring)
 
     if resource.notes:
       order.collectedNote = resource.notes.collected
