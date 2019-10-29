@@ -6,7 +6,8 @@ from sqlalchemy import text
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_questionnaires import BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle, \
-    BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII
+    BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory, \
+    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory
 
 
 class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
@@ -39,8 +40,14 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             table = BQPDRDVEHRSharing
         elif module_id == 'EHRConsentPII':
             table = BQPDREHRConsentPII
+        elif module_id == 'FamilyHistory':
+            table = BQPDRFamilyHistory
+        elif module_id == 'HealthcareAccess':
+            table = BQPDRHealthcareAccess
+        elif module_id == 'PersonalMedicalHistory':
+            table = BQPDRPersonalMedicalHistory
         else:
-            logging.error('Generator: unknown or unsupported questionnaire module id [{0}].'.format(module_id))
+            logging.info('Generator: ignoring questionnaire module id [{0}].'.format(module_id))
             return None, list()
 
         qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=[module_id, p_id])
@@ -114,7 +121,7 @@ def bq_questionnaire_update_task(p_id, qr_id):
                 break
 
             if not module_id:
-                logging.error(f'No questionnaire module id found for questionnaire response id {qr_id}')
+                logging.warning(f'No questionnaire module id found for questionnaire response id {qr_id}')
                 return
 
             table, bqrs = qr_gen.make_bqrecord(p_id, module_id, latest=True)
