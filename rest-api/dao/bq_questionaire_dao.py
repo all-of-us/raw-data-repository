@@ -6,7 +6,8 @@ from sqlalchemy import text
 from dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from model.bq_base import BQRecord
 from model.bq_questionnaires import BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle, \
-        BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII
+        BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory, \
+        BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory
 
 
 class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
@@ -39,8 +40,14 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
       table = BQPDRDVEHRSharing
     elif module_id == 'EHRConsentPII':
       table = BQPDREHRConsentPII
+    elif module_id == 'FamilyHistory':
+      table = BQPDRFamilyHistory
+    elif module_id == 'HealthcareAccess':
+      table = BQPDRHealthcareAccess
+    elif module_id == 'PersonalMedicalHistory':
+      table = BQPDRPersonalMedicalHistory
     else:
-      logging.error('Generator: unknown or unsupported questionnaire module id [{0}].'.format(module_id))
+      logging.info('Generator: ignoring questionnaire module id {0}.'.format(module_id))
       return None, list()
 
     qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=[module_id, p_id])
@@ -99,6 +106,7 @@ def deferred_bq_questionnaire_update(p_id, qr_id):
   ro_dao = BigQuerySyncDao(backup=True)
   w_dao = BigQuerySyncDao()
   qr_gen = BQPDRQuestionnaireResponseGenerator()
+  module_id = None
 
   with ro_dao.session() as ro_session:
 
@@ -107,6 +115,10 @@ def deferred_bq_questionnaire_update(p_id, qr_id):
       for row in results:
         module_id = row.value
         break
+
+      if not module_id:
+        logging.warning('No questionnaire module id found for questionnaire response id {0}'.format(qr_id))
+        return
 
       table, bqrs = qr_gen.make_bqrecord(p_id, module_id, latest=True)
       with w_dao.session() as w_session:
