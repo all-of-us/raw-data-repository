@@ -17,6 +17,7 @@ class HPO(Base):
     organizationType = Column("organization_type", Enum(OrganizationType), default=OrganizationType.UNSET)
     organizations = relationship("Organization", cascade="all, delete-orphan", order_by="Organization.externalId")
     isObsolete = Column("is_obsolete", Enum(ObsoleteStatus))
+    resourceId = Column('resource_id', String(255))
 
     __table_args__ = (UniqueConstraint("name"),)
 

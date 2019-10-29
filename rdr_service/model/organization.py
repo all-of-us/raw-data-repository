@@ -21,3 +21,4 @@ class Organization(Base):
     # Sites belonging to this organization.
     sites = relationship("Site", cascade="all, delete-orphan", order_by="Site.googleGroup")
     isObsolete = Column("is_obsolete", Enum(ObsoleteStatus))
+    resourceId = Column('resource_id', String(255))
