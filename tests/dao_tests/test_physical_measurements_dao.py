@@ -189,7 +189,7 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
         summary = ParticipantSummaryDao().get(self.participant.participantId)
         self.assertEqual(summary.physicalMeasurementsStatus, PhysicalMeasurementsStatus.CANCELLED)
         self.assertEqual(summary.physicalMeasurementsTime, None)
-        self.assertEqual(summary.physicalMeasurementsFinalizedTime, TIME_1)
+        self.assertEqual(summary.physicalMeasurementsFinalizedTime, None)
         self.assertEqual(summary.physicalMeasurementsCreatedSiteId, 1)
         self.assertEqual(summary.physicalMeasurementsFinalizedSiteId, None)
 
@@ -205,14 +205,3 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
         self.assertEqual(summary.physicalMeasurementsFinalizedTime, TIME_1)
         self.assertEqual(summary.physicalMeasurementsCreatedSiteId, 1)
         self.assertEqual(summary.physicalMeasurementsFinalizedSiteId, 2)
-
-        with FakeClock(TIME_5):
-            with PhysicalMeasurementsDao().session() as session:
-                update = self.dao.update_with_patch(measurements.physicalMeasurementsId, session, cancel)
-
-#        summary = ParticipantSummaryDao().get(self.participant.participantId)
-#        self.assertEqual(summary.physicalMeasurementsStatus, PhysicalMeasurementsStatus.COMPLETED)
-#        self.assertEqual(summary.physicalMeasurementsTime, TIME_4)
-#        self.assertEqual(summary.physicalMeasurementsFinalizedTime, TIME_1)
-#        self.assertEqual(summary.physicalMeasurementsCreatedSiteId, 1)
-#        self.assertEqual(summary.physicalMeasurementsFinalizedSiteId, 2)

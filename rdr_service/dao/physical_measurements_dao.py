@@ -70,6 +70,21 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
             return query
 
+    def get_date_from_pm_resource(self, pid, pm_id):
+        """ Retrieves a specific measurement and fetches the date from the measurement payload
+            which corresponds to 'finalized date'.
+            :param pid = participant id
+            :param pm_id = physical measurement id
+            :returns date from resource of measurement payload - UTC time"""
+        with self.session() as session:
+            pm = session.query(PhysicalMeasurements).filter(PhysicalMeasurements.participantId == pid)\
+                .filter(PhysicalMeasurements.physicalMeasurementsId == pm_id).first()
+
+            resource = json.loads(pm.resource)
+            measurement_date = resource['entry'][0]['resource']['date']
+            original_date = parse_date(measurement_date)
+            return original_date
+
     @staticmethod
     def handle_measurement(measurement_map, m):
         """Populating measurement_map with information extracted from measurement and its
@@ -322,6 +337,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
             participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.CANCELLED
             participant_summary.physicalMeasurementsTime = None
+            participant_summary.physicalMeasurementsFinalizedTime = None
             participant_summary.physicalMeasurementsFinalizedSiteId = None
 
         # These fields set on any measurement not cancelled
@@ -435,9 +451,11 @@ class PhysicalMeasurementsDao(UpdatableDao):
             measurement.createdSiteId = site_id
             measurement.finalizedSiteId = site_id
             measurement.finalizedUsername = author
-            measurement.finalized = clock.CLOCK.now()
+            # get original finalized time
+            measurement.finalized = self.get_date_from_pm_resource(measurement.participantId,
+                                                              measurement.physicalMeasurementsId)
 
-        logging.info("%s %s physical measuremnt %s.", author, resource["status"], measurement.physicalMeasurementsId)
+        logging.info("%s %s physical measurement %s.", author, resource["status"], measurement.physicalMeasurementsId)
         payload = self.add_root_fields_to_resource(measurement)
         super(PhysicalMeasurementsDao, self)._do_update(session, payload, payload)
         self._update_participant_summary(session, payload)
