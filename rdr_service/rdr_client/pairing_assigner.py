@@ -7,7 +7,7 @@ Usage:
 
 Where site = google_group, organization = external_id, awardee = name.
 
-The CSV contains lines with P12345678,NEW_ORGANIZATION like:
+The CSV contains lines with P12345678,NEW_ORGANIZATION (no headers necessary). e.g.:
 Example awardees:
   P11111111,AZ_TUCSON
   P22222222,AZ_TUCSON
