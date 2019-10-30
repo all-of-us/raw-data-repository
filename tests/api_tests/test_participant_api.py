@@ -1,8 +1,8 @@
 import datetime
 import http.client
 
-from dao.participant_summary_dao import ParticipantSummaryDao
-from model.utils import from_client_participant_id
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.model.utils import from_client_participant_id
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import PPI_SYSTEM, RACE_WHITE_CODE
 from rdr_service.concepts import Concept
@@ -175,7 +175,8 @@ class ParticipantApiTest(BaseTestCase):
 
         self.send_consent(participant_id)
         bio_path = "Participant/%s/BiobankOrder" % participant_id
-        order_json = load_biobank_order_json(from_client_participant_id(participant_id), filename="biobank_order_2.json")
+        order_json = load_biobank_order_json(from_client_participant_id(participant_id),
+                                             filename="biobank_order_2.json")
         self.send_post(bio_path, order_json)
 
         participant["site"] = None
