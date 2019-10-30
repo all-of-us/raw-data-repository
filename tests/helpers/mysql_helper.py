@@ -87,7 +87,7 @@ def start_mysql_instance():
     proc = subprocess.Popen(shlex.split(cmd), stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                             stdout=subprocess.DEVNULL, start_new_session=True)
 
-    sleep(0.5)
+    sleep(1.5)
     if not proc or not pid_is_running(proc.pid):
         raise OSError('new instance of mysqld service did not start.')
     # Register the stop method
