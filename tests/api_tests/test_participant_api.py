@@ -165,16 +165,26 @@ class ParticipantApiTest(BaseTestCase):
         update_1 = self.send_put(participant_path, participant, headers={"If-Match": 'W/"1"'})
         self.assertEqual(update_1["site"], "UNSET")
         self.assertEqual(update_1["organization"], "UNSET")
+        self.assertEqual(update_1["hpoId"], "PITT")
+
+        participant["site"] = "hpo-site-bannerphoenix"
+        update_2 = self.send_put(participant_path, participant, headers={"If-Match": 'W/"2"'})
+        self.assertEqual(update_2["site"], "hpo-site-bannerphoenix")
+        self.assertEqual(update_2["organization"], "PITT_BANNER_HEALTH")
+        self.assertEqual(update_2["hpoId"], "PITT")
 
         self.send_consent(participant_id)
         bio_path = "Participant/%s/BiobankOrder" % participant_id
         order_json = load_biobank_order_json(from_client_participant_id(participant_id), filename="biobank_order_2.json")
         self.send_post(bio_path, order_json)
 
-        participant["site"] = "hpo-site-bannerphoenix"
-        update_2 = self.send_put(participant_path, participant, headers={"If-Match": 'W/"3"'})
-        self.assertEqual(update_2["site"], "hpo-site-bannerphoenix")
-        self.assertEqual(update_2["organization"], "PITT_BANNER_HEALTH")
+        participant["site"] = None
+        participant["awardee"] = "AZ_TUCSON"
+        participant["organization"] = None
+        update_3 = self.send_put(participant_path, participant, headers={"If-Match": 'W/"4"'})
+        self.assertEqual(update_3["site"], "UNSET")
+        self.assertEqual(update_3["organization"], "UNSET")
+        self.assertEqual(update_3["hpoId"], "AZ_TUCSON")
 
     def test_administrative_withdrawal(self):
         with FakeClock(TIME_1):
