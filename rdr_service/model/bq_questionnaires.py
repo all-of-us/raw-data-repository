@@ -110,6 +110,7 @@ class BQPDRConsentPIISchema(_BQModuleSchema):
         'EHRConsentPII_Signature',
         'ExtraConsent_CABoRSignature',
         'ExtraConsent_Signature',
+        'ConsentPII_HelpWithConsentSignature',
         'PIIContactInformation_VerifiedPrimaryPhoneNumber',
         'PIIContactInformation_Email',
         'PIIBirthInformation_BirthDate'
