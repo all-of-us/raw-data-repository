@@ -123,6 +123,9 @@ class GenomicSetMember(Base):
 
     validatedTime = Column("validated_time", DateTime, nullable=True)
 
+    sampleId = Column('sample_id', String(80), nullable=True)
+    sampleType = Column('sample_type', String(50), nullable=True)
+
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
 event.listen(GenomicSetMember, "before_update", model_update_listener)

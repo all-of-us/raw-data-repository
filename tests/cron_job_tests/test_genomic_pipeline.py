@@ -26,6 +26,9 @@ _FAKE_BUCKET = "rdr_fake_bucket"
 _FAKE_BIOBANK_SAMPLE_BUCKET = "rdr_fake_biobank_sample_bucket"
 _FAKE_BUCKET_FOLDER = "rdr_fake_sub_folder"
 _FAKE_BUCKET_RESULT_FOLDER = "rdr_fake_sub_result_folder"
+_FAKE_GENOMIC_CENTER_BUCKET_A = 'rdr_fake_genomic_center_a_bucket'
+_FAKE_GENOMIC_CENTER_BUCKET_B = 'rdr_fake_genomic_center_b_bucket'
+_FAKE_GENOTYPING_FOLDER = 'rdr_fake_genotyping_folder'
 _OUTPUT_CSV_TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
 _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
@@ -39,6 +42,10 @@ class GenomicPipelineTest(BaseTestCase):
         config.override_setting(config.BIOBANK_SAMPLES_BUCKET_NAME, [_FAKE_BIOBANK_SAMPLE_BUCKET])
         config.override_setting(config.GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME, [_FAKE_BUCKET_FOLDER])
         config.override_setting(config.GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME, [_FAKE_BUCKET_RESULT_FOLDER])
+        config.override_setting(config.GENOMIC_CENTER_BUCKET_NAME, [_FAKE_GENOMIC_CENTER_BUCKET_A,
+                                                                    _FAKE_GENOMIC_CENTER_BUCKET_B])
+        config.override_setting(config.GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME,
+                                [_FAKE_GENOTYPING_FOLDER])
 
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
@@ -169,6 +176,20 @@ class GenomicPipelineTest(BaseTestCase):
             bucket=_FAKE_BIOBANK_SAMPLE_BUCKET,
             folder=_FAKE_BUCKET_RESULT_FOLDER,
         )
+
+        genotyping_sample_manifest_file_1 = test_data.open_genomic_set_file(
+            'Genomic-Test-Genotyping-Sample-Manifest-1.csv')
+        genotyping_sample_manifest_filename_1 = 'CIDR_AoU_GEN_PKG-1907-120819.csv'
+        self._write_cloud_csv(genotyping_sample_manifest_filename_1, genotyping_sample_manifest_file_1,
+                              bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+                              folder=_FAKE_GENOTYPING_FOLDER)
+
+        genotyping_sample_manifest_file_2 = test_data.open_genomic_set_file(
+            'Genomic-Test-Genotyping-Sample-Manifest-2.csv')
+        genotyping_sample_manifest_filename_2 = 'CIDR_AoU_GEN_PKG-1907-120810.csv'
+        self._write_cloud_csv(genotyping_sample_manifest_filename_2, genotyping_sample_manifest_file_2,
+                              bucket=_FAKE_GENOMIC_CENTER_BUCKET_B,
+                              folder=_FAKE_GENOTYPING_FOLDER)
 
         genomic_pipeline.process_genomic_water_line()
 
@@ -316,12 +337,14 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(rows[2][ExpectedCsvColumns.NY_FLAG], "N")
             self.assertEqual(rows[2][ExpectedCsvColumns.PACKAGE_ID], "PKG-XXXX-XXXX3")
 
-        # verify package id in database
+        # verify package id and sample id in database
         member_dao = GenomicSetMemberDao()
         members = member_dao.get_all()
         for member in members:
             self.assertIn(member.packageId, ["PKG-XXXX-XXXX1", "PKG-XXXX-XXXX2", "PKG-XXXX-XXXX3"])
             self.assertIn(member.biobankOrderClientId, ["12345678", "12345679", "12345680"])
+            self.assertIn(member.sampleId, ['19224001502', '19224001510', '19224001518'])
+            self.assertIn(member.sampleType, ['DNA'])
 
     def test_wrong_file_name_case(self):
         self.clear_default_storage()
