@@ -20,7 +20,6 @@ from sqlalchemy import or_
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest, Conflict, PreconditionFailed
 
-
 def _ToFhirDate(dt):
   if not dt:
     return None
@@ -352,6 +351,11 @@ class BiobankOrderDao(UpdatableDao):
         resource.processed_info)
     order.finalizedUsername, order.finalizedSiteId = self._parse_handling_info(
         resource.finalized_info)
+    # order.finalizedTime uses the time from biobank_ordered_sample.finalized
+    try:
+      order.finalizedTime = self.get_random_sample_finalized_time(resource).date.replace(tzinfo=None)
+    except AttributeError:
+      order.finalizedTime = None
 
     if resource.notes:
       order.collectedNote = resource.notes.collected

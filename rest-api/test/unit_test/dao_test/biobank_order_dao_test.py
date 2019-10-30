@@ -9,9 +9,8 @@ from participant_enums import WithdrawalStatus, BiobankOrderStatus, OrderStatus
 from dao.participant_dao import ParticipantDao
 from test.test_data import load_biobank_order_json
 from unit_test_util import SqlTestBase
-
+from api_util import parse_date
 from werkzeug.exceptions import BadRequest, Forbidden, Conflict
-
 
 class BiobankOrderDaoTest(SqlTestBase):
   _A_TEST = BIOBANK_TESTS[0]
@@ -121,6 +120,13 @@ class BiobankOrderDaoTest(SqlTestBase):
     self.assertEquals('sue@pmi-ops.org', order.processedUsername)
     self.assertEquals(2, order.finalizedSiteId)
     self.assertEquals('bob@pmi-ops.org', order.finalizedUsername)
+
+    # testing finalized_time
+    samples_finalized_time = None
+    for sample in order_json['samples']:
+      samples_finalized_time = parse_date(sample['finalized'])
+      break
+    self.assertEquals(samples_finalized_time, order.finalizedTime)
 
   def test_to_json(self):
     order = self._make_biobank_order()
