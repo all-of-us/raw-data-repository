@@ -255,3 +255,34 @@ class GenomicSetMemberDao(UpdatableDao):
             for biobank_id, genome_type, client_id, package_id in client_id_package_id_pair_iterable
         ]
         return session.execute(query, parameter_sets)
+
+    def bulk_update_genotyping_sample_manifest_data(self, genotyping_data_iterable):
+        with self.session() as session:
+            return self.bulk_update_genotyping_sample_manifest_data_with_session(session,
+                                                                                 genotyping_data_iterable)
+
+    def bulk_update_genotyping_sample_manifest_data_with_session(self, session,
+                                                                 genotyping_data_iterable):
+        query = (
+            sqlalchemy
+                .update(GenomicSetMember)
+                .where(
+                (GenomicSetMember.biobankId == sqlalchemy.bindparam('biobank_id_param')) &
+                (GenomicSetMember.genomeType == sqlalchemy.bindparam('genome_type_param'))
+            )
+                .values({
+                GenomicSetMember.sampleId.name: sqlalchemy.bindparam('sample_id_param'),
+                GenomicSetMember.sampleType.name: sqlalchemy.bindparam('sample_type_param')
+            })
+        )
+
+        parameter_sets = [
+            {
+                'biobank_id_param': biobank_id,
+                'genome_type_param': genome_type,
+                'sample_id_param': sample_id,
+                'sample_type_param': sample_type
+            }
+            for biobank_id, genome_type, sample_id, sample_type in genotyping_data_iterable
+        ]
+        return session.execute(query, parameter_sets)

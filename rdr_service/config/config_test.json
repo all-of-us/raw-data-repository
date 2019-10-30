@@ -37,6 +37,12 @@
   "genomic_set_bucket_name": [
     "test_genomic_set_upload"
   ],
+  "genomic_center_bucket_name": [
+    "test-genomics-baylor-dryrun", "test-genomics-broad-dryrun", "test-genomics-northwest-dryrun", "test-genomics-color-dryrun"
+  ],
+  "genotyping_sample_manifest_folder_name": [
+    "genotyping_sample_manifests"
+  ],
   "genomic_biobank_manifest_folder_name": [
     "genomic_water_line_test"
   ],
