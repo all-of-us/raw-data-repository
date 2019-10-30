@@ -235,7 +235,8 @@ class OrganizationHierarchySyncDao(BaseDao):
         link = self._get_contact_point(hierarchy_org_obj, 'url')
 
         schedule_instructions = self._get_value_from_extention(hierarchy_org_obj,
-                                                               HIERARCHY_CONTENT_SYSTEM_PREFIX + 'schedulingInstructions')
+                                                               HIERARCHY_CONTENT_SYSTEM_PREFIX
+                                                               + 'schedulingInstructions')
 
         entity = Site(siteName=name,
                       googleGroup=google_group,
