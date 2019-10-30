@@ -366,6 +366,13 @@ class BiobankOrderDao(UpdatableDao):
             )
         self._add_identifiers_and_main_id(order, resource)
         self._add_samples(order, resource)
+
+        # order.finalizedTime uses the time from biobank_ordered_sample.finalized
+        try:
+            order.finalizedTime = self.get_random_sample_finalized_time(resource).date.replace(tzinfo=None)
+        except AttributeError:
+            order.finalizedTime = None
+
         if resource.amendedReason:
             order.amendedReason = resource.amendedReason
         if resource.amendedInfo:

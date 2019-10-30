@@ -12,6 +12,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import BiobankOrderStatus, OrderStatus, WithdrawalStatus
 from tests.test_data import load_biobank_order_json
 from tests.helpers.unittest_base import BaseTestCase
+from rdr_service.api_util import parse_date
 
 
 class BiobankOrderDaoTest(BaseTestCase):
@@ -113,6 +114,13 @@ class BiobankOrderDaoTest(BaseTestCase):
         self.assertEqual("sue@pmi-ops.org", order.processedUsername)
         self.assertEqual(2, order.finalizedSiteId)
         self.assertEqual("bob@pmi-ops.org", order.finalizedUsername)
+
+        # testing finalized_time
+        samples_finalized_time = None
+        for sample in order_json['samples']:
+            samples_finalized_time = parse_date(sample['finalized'])
+            break
+        self.assertEqual(samples_finalized_time, order.finalizedTime)
 
     def test_to_json(self):
         order = self._make_biobank_order()
