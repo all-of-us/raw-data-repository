@@ -1,10 +1,13 @@
 import datetime
 import http.client
 
+from dao.participant_summary_dao import ParticipantSummaryDao
+from model.utils import from_client_participant_id
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import PPI_SYSTEM, RACE_WHITE_CODE
 from rdr_service.concepts import Concept
 from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.model.hpo import HPO
 from rdr_service.participant_enums import (
     OrganizationType,
@@ -14,6 +17,7 @@ from rdr_service.participant_enums import (
     WithdrawalStatus,
 )
 from tests.helpers.unittest_base import BaseTestCase
+from tests.test_data import load_biobank_order_json
 
 TIME_1 = datetime.datetime(2018, 1, 1)
 TIME_2 = datetime.datetime(2018, 1, 3)
@@ -26,12 +30,14 @@ class ParticipantApiTest(BaseTestCase):
         self.participant = {"providerLink": [provider_link]}
         self.participant_2 = {"externalId": 12345}
         self.provider_link_2 = {"primary": True, "organization": {"reference": "Organization/PITT"}}
+        self.summary_dao = ParticipantSummaryDao()
 
         # Needed by test_switch_to_test_account
         self.hpo_dao = HPODao()
         self.hpo_dao.insert(
             HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName="Test", organizationType=OrganizationType.UNSET)
         )
+        self.order = BiobankOrderDao()
 
     def test_insert(self):
         response = self.send_post("Participant", self.participant)
@@ -150,6 +156,25 @@ class ParticipantApiTest(BaseTestCase):
         self.assertEqual(update_4["site"], "hpo-site-clinic-phoenix")
         self.assertEqual(update_4["organization"], "AZ_TUCSON_BANNER_HEALTH")
         self.assertEqual(update_4["awardee"], "AZ_TUCSON")
+
+    def test_repairing_after_biobank_order(self):
+        participant = self.send_post("Participant", self.participant)
+        participant["providerLink"] = [self.provider_link_2]
+        participant_id = participant["participantId"]
+        participant_path = "Participant/%s" % participant_id
+        update_1 = self.send_put(participant_path, participant, headers={"If-Match": 'W/"1"'})
+        self.assertEqual(update_1["site"], "UNSET")
+        self.assertEqual(update_1["organization"], "UNSET")
+
+        self.send_consent(participant_id)
+        bio_path = "Participant/%s/BiobankOrder" % participant_id
+        order_json = load_biobank_order_json(from_client_participant_id(participant_id), filename="biobank_order_2.json")
+        self.send_post(bio_path, order_json)
+
+        participant["site"] = "hpo-site-bannerphoenix"
+        update_2 = self.send_put(participant_path, participant, headers={"If-Match": 'W/"3"'})
+        self.assertEqual(update_2["site"], "hpo-site-bannerphoenix")
+        self.assertEqual(update_2["organization"], "PITT_BANNER_HEALTH")
 
     def test_administrative_withdrawal(self):
         with FakeClock(TIME_1):
