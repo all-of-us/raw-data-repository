@@ -265,12 +265,12 @@ class GenomicSetMemberDao(UpdatableDao):
                                                                  genotyping_data_iterable):
         query = (
             sqlalchemy
-                .update(GenomicSetMember)
-                .where(
+            .update(GenomicSetMember)
+            .where(
                 (GenomicSetMember.biobankId == sqlalchemy.bindparam('biobank_id_param')) &
                 (GenomicSetMember.genomeType == sqlalchemy.bindparam('genome_type_param'))
             )
-                .values({
+            .values({
                 GenomicSetMember.sampleId.name: sqlalchemy.bindparam('sample_id_param'),
                 GenomicSetMember.sampleType.name: sqlalchemy.bindparam('sample_type_param')
             })
