@@ -117,10 +117,7 @@ class BiobankOrderDaoTest(BaseTestCase):
         self.assertEqual("bob@pmi-ops.org", order.finalizedUsername)
 
         # testing finalized_time
-        samples_finalized_time = None
-        for sample in order_json['samples']:
-            samples_finalized_time = parse_date(sample['finalized'])
-            break
+        samples_finalized_time = parse_date(order_json['samples'][0]['finalized'])
         self.assertEqual(samples_finalized_time, order.finalizedTime)
 
     def test_to_json(self):
