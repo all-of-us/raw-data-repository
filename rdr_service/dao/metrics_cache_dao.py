@@ -2049,12 +2049,16 @@ class MetricsLifecycleCacheDao(BaseDao):
                             'PPI_Module_The_Basics': int(record.consentEnrollment - record.ppiBasics),
                             'PPI_Module_Overall_Health': int(record.consentEnrollment - record.ppiOverallHealth),
                             'PPI_Module_Lifestyle': int(record.consentEnrollment - record.ppiLifestyle),
-                            'Baseline_PPI_Modules_Complete': int(record.consentEnrollment - record.ppiBaselineComplete),
+                            'Baseline_PPI_Modules_Complete': int(record.consentEnrollment -
+                                                                 record.ppiBaselineComplete),
                             'Physical_Measurements': int(record.consentEnrollment - record.physicalMeasurement),
-                            'PPI_Module_Healthcare_Access': int(record.retentionModulesEligible - record.ppiHealthcareAccess),
+                            'PPI_Module_Healthcare_Access': int(record.retentionModulesEligible -
+                                                                record.ppiHealthcareAccess),
                             'PPI_Module_Family_Health': int(record.retentionModulesEligible - record.ppiFamilyHealth),
-                            'PPI_Module_Medical_History': int(record.retentionModulesEligible - record.ppiMedicalHistory),
-                            'PPI_Retention_Modules_Complete': int(record.retentionModulesEligible - record.retentionModulesComplete),
+                            'PPI_Module_Medical_History': int(record.retentionModulesEligible -
+                                                              record.ppiMedicalHistory),
+                            'PPI_Retention_Modules_Complete': int(record.retentionModulesEligible -
+                                                                  record.retentionModulesComplete),
                             'Samples_Received': int(record.consentEnrollment - record.sampleReceived),
                             'Full_Participant': int(record.consentEnrollment - record.fullParticipant)
                         }
@@ -2086,7 +2090,8 @@ class MetricsLifecycleCacheDao(BaseDao):
                             'PPI_Module_The_Basics': int(record.consentEnrollment - record.ppiBasics),
                             'PPI_Module_Overall_Health': int(record.consentEnrollment - record.ppiOverallHealth),
                             'PPI_Module_Lifestyle': int(record.consentEnrollment - record.ppiLifestyle),
-                            'Baseline_PPI_Modules_Complete': int(record.consentEnrollment - record.ppiBaselineComplete),
+                            'Baseline_PPI_Modules_Complete': int(record.consentEnrollment -
+                                                                 record.ppiBaselineComplete),
                             'Physical_Measurements': int(record.consentEnrollment - record.physicalMeasurement),
                             'Samples_Received': int(record.consentEnrollment - record.sampleReceived),
                             'Full_Participant': int(record.consentEnrollment - record.fullParticipant)
