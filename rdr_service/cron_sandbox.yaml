@@ -2,7 +2,7 @@
 # See https://groups.google.com/forum/#!msg/pmi-drc-alerts/ifY__zLf5k8/TlCMREA4CwAJ
 cron:
 - description: Monthly reconciliation report
-- description: Participant count metrics
+- description: Participant count metrics (Do not manually start)
 - description: Flag ghost participants
 - description: Genomic pipeline
 - description: Daily Biobank sample import and order reconciliation

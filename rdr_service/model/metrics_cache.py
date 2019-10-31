@@ -110,6 +110,7 @@ class MetricsLifecycleCache(Base):
 
     __tablename__ = "metrics_lifecycle_cache"
     dateInserted = Column("date_inserted", UTCDateTime, default=clock.CLOCK.now, nullable=False, primary_key=True)
+    enrollmentStatus = Column('enrollment_status', String(50), primary_key=True, default='')
     type = Column("type", String(50), primary_key=True)
     hpoId = Column("hpo_id", String(20), primary_key=True)
     hpoName = Column("hpo_name", String(255), primary_key=True)

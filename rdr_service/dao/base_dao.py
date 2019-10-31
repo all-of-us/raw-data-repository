@@ -54,10 +54,12 @@ class BaseDao(object):
   If not specified, query() is not supported.
   """
 
-    def __init__(self, model_type, backup=False, order_by_ending=None, db=None):
+    def __init__(self, model_type, backup=False, alembic=False, order_by_ending=None, db=None):
         self.model_type = model_type
         if not db:
-            if backup:
+            if alembic:
+                db = database_factory.get_database_with_alembic_user()
+            elif backup:
                 db = database_factory.get_backup_database()
             else:
                 db = database_factory.get_database()
