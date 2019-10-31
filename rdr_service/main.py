@@ -37,6 +37,7 @@ from rdr_service.api.physical_measurements_api import PhysicalMeasurementsApi, s
 from rdr_service.api.public_metrics_api import PublicMetricsApi
 from rdr_service.api.questionnaire_api import QuestionnaireApi
 from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireAnswers, QuestionnaireResponseApi
+from rdr_service.api.organization_hierarchy_api import OrganizationHierarchyApi
 from rdr_service.config import get_config, get_db_config
 
 from rdr_service.services.flask import app, API_PREFIX, TASK_PREFIX
@@ -230,6 +231,11 @@ api.add_resource(
 
 api.add_resource(AwardeeApi, API_PREFIX + "Awardee", API_PREFIX + "Awardee/<string:a_id>",
                         endpoint="awardee", methods=["GET"])
+
+api.add_resource(OrganizationHierarchyApi,
+                 API_PREFIX + 'organization/hierarchy',
+                 endpoint='hierarchy_content.organizations',
+                 methods=['PUT'])
 
 # Configuration API for admin use.  # note: temporarily disabled until decided
 api.add_resource(

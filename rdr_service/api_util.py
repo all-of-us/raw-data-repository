@@ -22,6 +22,7 @@ DV_FHIR_URL = "http://joinallofus.org/fhir/"
 DV_BARCODE_URL = DV_FHIR_URL + "barcode"
 DV_ORDER_URL = DV_FHIR_URL + "order-type"
 DV_FULFILLMENT_URL = DV_FHIR_URL + "fulfillment-status"
+HIERARCHY_CONTENT_SYSTEM_PREFIX = 'http://all-of-us.org/fhir/sites/'
 
 
 def parse_date(date_str, date_format=None, date_only=False):

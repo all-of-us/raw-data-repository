@@ -1,14 +1,4 @@
 cron:
-#- description: Daily metrics
-#  url: /offline/MetricsRecalculate
-#  schedule: every day 03:30
-#  timezone: America/New_York
-#  target: offline
-- description: Daily public metrics
-  url: /offline/PublicMetricsRecalculate
-  schedule: every day 04:30
-  timezone: America/New_York
-  target: offline
 - description: Daily Biobank sample import and order reconciliation
   url: /offline/BiobankSamplesImport
   schedule: every day 02:30
@@ -16,7 +6,7 @@ cron:
   target: offline
 - description: Skew duplicate last modified
   url: /offline/SkewDuplicates
-  schedule: every day 04:15
+  schedule: every day 01:00
   timezone: America/New_York
   target: offline
 - description: Monthly reconciliation report
@@ -31,7 +21,7 @@ cron:
   target: offline
 - description: Participant count metrics
   url: /offline/ParticipantCountsOverTime
-  schedule: every day 04:30
+  schedule: every day 03:30
   timezone: America/New_York
   target: offline
 - description: Flag ghost participants
