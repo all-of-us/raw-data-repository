@@ -45,7 +45,7 @@ class ParticipantCountsOverTimeApi(Resource):
         try:
             filters["stratification"] = Stratifications(params["stratification"])
         except TypeError:
-            raise BadRequest("Invalid stratification: %s" % params["stratification"])
+            raise BadRequest(f"Invalid stratification: {params['stratification']}")
 
         if filters["stratification"] in [
             Stratifications.FULL_STATE,
@@ -63,7 +63,7 @@ class ParticipantCountsOverTimeApi(Resource):
                 end_date = datetime.datetime.strptime(params["end_date"], DATE_FORMAT).date()
                 start_date = end_date
             except ValueError:
-                raise BadRequest("Invalid end date: %s" % params["end_date"])
+                raise BadRequest(f"Invalid end date: {params['end_date']}")
 
             filters["start_date"] = start_date
             filters["end_date"] = end_date
@@ -74,21 +74,21 @@ class ParticipantCountsOverTimeApi(Resource):
             try:
                 start_date = datetime.datetime.strptime(params["start_date"], DATE_FORMAT).date()
             except ValueError:
-                raise BadRequest("Invalid start date: %s" % params["start_date"])
+                raise BadRequest(f"Invalid start date: {params['start_date']}")
             try:
                 end_date = datetime.datetime.strptime(params["end_date"], DATE_FORMAT).date()
             except ValueError:
-                raise BadRequest("Invalid end date: %s" % params["end_date"])
+                raise BadRequest(f"Invalid end date: {params['end_date']}")
             date_diff = abs((end_date - start_date).days)
             if params["history"] != "TRUE" and date_diff > DAYS_LIMIT_FOR_REALTIME_DATA:
                 raise BadRequest(
-                    "Difference between start date and end date "
-                    "should not be greater than %s days" % DAYS_LIMIT_FOR_REALTIME_DATA
+                    f"Difference between start date and end date \
+                    should not be greater than {DAYS_LIMIT_FOR_REALTIME_DATA} days"
                 )
             if params["history"] == "TRUE" and date_diff > DAYS_LIMIT_FOR_HISTORY_DATA:
                 raise BadRequest(
-                    "Difference between start date and end date "
-                    "should not be greater than %s days" % DAYS_LIMIT_FOR_HISTORY_DATA
+                    f"Difference between start date and end date \
+                    should not be greater than {DAYS_LIMIT_FOR_HISTORY_DATA} days"
                 )
 
             filters["start_date"] = start_date
@@ -102,7 +102,7 @@ class ParticipantCountsOverTimeApi(Resource):
                 if awardee != "":
                     awardee_id = get_awardee_id_from_name({"awardee": awardee}, self.hpo_dao)
                     if awardee_id is None:
-                        raise BadRequest("Invalid awardee name: %s" % awardee)
+                        raise BadRequest(f"Invalid awardee name: {awardee}")
                     awardee_ids.append(awardee_id)
         filters["awardee_ids"] = awardee_ids
 
@@ -131,16 +131,16 @@ class ParticipantCountsOverTimeApi(Resource):
                 for enrollment_status in enrollment_statuses:
                     if enrollment_status != "":
                         if enrollment_status not in valid_enrollment_statuses:
-                            raise BadRequest("Invalid enrollment status: %s" % enrollment_status)
+                            raise BadRequest(f"Invalid enrollment status: {enrollment_status}")
         filters["enrollment_statuses"] = enrollment_status_strs
 
         if params["sample_time_def"] and params["sample_time_def"] not in ["STORED", "ORDERED"]:
-            raise BadRequest("Invalid value for parameter filterBy: %s" % params["sample_time_def"])
+            raise BadRequest(f"Invalid value for parameter filterBy: {params['sample_time_def']}")
         else:
             filters["sample_time_def"] = params["sample_time_def"]
 
         if params["history"] and params["history"] not in ["TRUE", "FALSE"]:
-            raise BadRequest("Invalid value for parameter history: %s" % params["history"])
+            raise BadRequest(f"Invalid value for parameter history: {params['history']}")
         else:
             filters["history"] = params["history"]
 

@@ -27,15 +27,16 @@ class MetricsApi(Resource):
             try:
                 start_date = datetime.datetime.strptime(start_date_str, DATE_FORMAT).date()
             except ValueError:
-                raise BadRequest("Invalid start date: %s" % start_date_str)
+                raise BadRequest(f"Invalid start date: {start_date_str}")
             try:
                 end_date = datetime.datetime.strptime(end_date_str, DATE_FORMAT).date()
             except ValueError:
-                raise BadRequest("Invalid end date: %s" % end_date_str)
+                raise BadRequest(f"Invalid end date: {end_date_str}")
             date_diff = abs((end_date - start_date).days)
             if date_diff > DAYS_LIMIT:
                 raise BadRequest(
-                    "Difference between start date and end date " "should not be greater than %s days" % DAYS_LIMIT
+                    f"Difference between start date and end date \
+                    should not be greater than {DAYS_LIMIT} days"
                 )
             buckets = dao.get_active_buckets(start_date, end_date)
             if buckets is None:

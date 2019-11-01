@@ -23,10 +23,10 @@ class QuestionnaireApi(UpdatableApi):
                 raise BadRequest("Either questionnaire ID or concept must be specified in request.")
             concept_code = CodeDao().get_code(PPI_SYSTEM, concept)
             if not concept_code:
-                raise BadRequest("Code not found: %s" % concept)
+                raise BadRequest(f"Code not found: {concept}")
             questionnaire = self.dao.get_latest_questionnaire_with_concept(concept_code.codeId)
             if not questionnaire:
-                raise NotFound("Could not find questionnaire with concept: %s" % concept)
+                raise NotFound(f"Could not find questionnaire with concept: {concept}")
             return self._make_response(questionnaire)
 
     @app_util.auth_required(PTC)

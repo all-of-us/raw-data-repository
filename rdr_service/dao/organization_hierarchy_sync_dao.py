@@ -388,16 +388,16 @@ class OrganizationHierarchySyncDao(BaseDao):
                     longitude = location.get('lng')
                     return latitude, longitude
                 else:
-                    logging.warn('Can not find lat/long for %s', self.full_address)
+                    logging.warning(f'Can not find lat/long for {self.full_address}')
                     return None, None
             else:
-                logging.warn('Geocode results failed for %s.', self.full_address)
+                logging.warning(f'Geocode results failed for {self.full_address}.')
                 return None, None
         except ValueError as e:
-            logging.exception('Invalid geocode key: %s. ERROR: %s', self.api_key, e)
+            logging.exception(f'Invalid geocode key: {self.api_key}. ERROR: {e}')
             return None, None
         except IndexError as e:
-            logging.exception('Geocoding failure Check that address is correct. ERROR: %s', e)
+            logging.exception(f'Geocoding failure Check that address is correct. ERROR: {e}')
             return None, None
 
     def _get_time_zone(self, latitude, longitude):
@@ -406,5 +406,5 @@ class OrganizationHierarchySyncDao(BaseDao):
             time_zone_id = time_zone['timeZoneId']
             return time_zone_id
         else:
-            logging.info('can not retrieve time zone from %s', self.full_address)
+            logging.info(f'can not retrieve time zone from {self.full_address}')
             return None

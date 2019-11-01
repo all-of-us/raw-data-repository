@@ -113,7 +113,7 @@ def generate_samples_task(fraction_missing):
             rows = biobank_order_dao.get_ordered_samples_sample(session, 1 - fraction_missing, _BATCH_SIZE)
             for biobank_id, collected_time, test in rows:
                 if collected_time is None:
-                    logging.warning("biobank_id=%s test=%s skipped (collected=%s)", biobank_id, test, collected_time)
+                    logging.warning(f"biobank_id={biobank_id} test={test} skipped (collected={collected_time})")
                     continue
                 sample_id = sample_id_start + num_rows
                 minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_SAMPLE_COLLECTED_AND_CONFIRMED)
@@ -134,7 +134,7 @@ def generate_samples_task(fraction_missing):
                     writer.writerow(_new_row(sample_id, biobank_id, test, confirmed_time))
                     num_rows += 1
 
-    logging.info("Generated %d samples in %s.", num_rows, file_name)
+    logging.info(f"Generated {num_rows} samples in {file_name}.")
 
 
 class DataGenApi(Resource):
