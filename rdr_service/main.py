@@ -251,22 +251,22 @@ api.add_resource(DataGenApi, API_PREFIX + "DataGen", endpoint="datagen", methods
 #
 # Task Queue API endpoint to rebuild BQ participant summary records.
 api.add_resource(RebuildParticipantsBQTaskApi, TASK_PREFIX + "BQRebuildParticipantsTaskApi",
-                 endpoint="bq_rebuild_participants_task", methods=["GET"])
+                 endpoint="bq_rebuild_participants_task", methods=["POST"])
 # Task Queue API endpoint to rebuild ONE participant id.
 api.add_resource(BQRebuildOneParticipantTaskApi, TASK_PREFIX + "BQRebuildOneParticipantTaskApi",
-                 endpoint="bq_rebuild_one_participant_task", methods=["GET"])
+                 endpoint="bq_rebuild_one_participant_task", methods=["POST"])
 # Task Queue API endpoing to rebuild BQ codebook records.
 api.add_resource(RebuildCodebookBQTaskApi, TASK_PREFIX + "BQRebuildCodebookTaskApi",
-                 endpoint="bq_rebuild_codebook_task", methods=["GET"])
+                 endpoint="bq_rebuild_codebook_task", methods=["POST"])
 
 api.add_resource(CopyCloudStorageObjectTaskApi, TASK_PREFIX + "CopyCloudStorageObjectTaskApi",
-                 endpoint="copy_cloudstorage_object_task", methods=["GET"])
+                 endpoint="copy_cloudstorage_object_task", methods=["POST"])
 
 api.add_resource(BQRebuildQuestionnaireTaskApi, TASK_PREFIX + "BQRebuildQuestionnaireTaskApi",
-                 endpoint="bq_rebuild_questionnaire_task", methods=["GET"])
+                 endpoint="bq_rebuild_questionnaire_task", methods=["POST"])
 
 api.add_resource(GenerateBiobankSamplesTaskApi, TASK_PREFIX + "GenerateBiobankSamplesTaskApi",
-                 endpoint="generate_bio_samples_task", methods=["GET"])
+                 endpoint="generate_bio_samples_task", methods=["POST"])
 
 
 #
