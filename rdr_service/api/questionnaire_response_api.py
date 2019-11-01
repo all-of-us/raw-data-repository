@@ -1,4 +1,3 @@
-import logging
 from flask_restful import Resource, request
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -13,7 +12,7 @@ from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
-from rdr_service.services.flask import TASK_PREFIX
+from rdr_service.services.gcp_cloud_tasks import GCPCloudTask
 
 
 class QuestionnaireResponseApi(BaseApi):
@@ -34,15 +33,9 @@ class QuestionnaireResponseApi(BaseApi):
             if GAE_PROJECT == 'localhost':
                 bq_questionnaire_update_task(p_id, qr_id)
             else:
-                from google.appengine.api import taskqueue
-                task = taskqueue.add(
-                    queue_name='bigquery-rebuild',
-                    url=TASK_PREFIX + 'BQRebuildQuestionnaireTaskApi',
-                    method='GET',
-                    target='worker',
-                    params={'p_id': p_id, 'qr_id': qr_id}
-                )
-                logging.info('Task {} enqueued, ETA {}.'.format(task.name, task.eta))
+                params = {'p_id': p_id, 'qr_id': qr_id}
+                task = GCPCloudTask('bq_rebuild_questionnaire_task', payload=params)
+                task.execute()
 
         return resp
 

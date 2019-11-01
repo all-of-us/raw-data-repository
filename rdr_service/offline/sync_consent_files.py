@@ -5,7 +5,6 @@ Organize all consent files from PTSC source bucket into proper awardee buckets.
 """
 import collections
 import json
-import logging
 import os
 import sqlalchemy
 
@@ -13,7 +12,7 @@ from rdr_service.config import GAE_PROJECT
 from rdr_service.api_util import open_cloud_file, list_blobs, copy_cloud_file, get_blob
 from rdr_service.cloud_utils.google_sheets import GoogleSheetCSVReader
 from rdr_service.dao import database_factory
-from rdr_service.services.flask import TASK_PREFIX
+from rdr_service.services.gcp_cloud_tasks import GCPCloudTask
 
 HPO_REPORT_CONFIG_GCS_PATH = "/all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
 
@@ -53,16 +52,9 @@ def do_sync_consent_files():
         if GAE_PROJECT == 'localhost':
             cloudstorage_copy_objects_task(source, destination)
         else:
-            from google.appengine.api import taskqueue
-            task = taskqueue.add(
-                queue_name='default',
-                url=TASK_PREFIX + 'CopyCloudStorageObjectTaskApi',
-                method='GET',
-                target='worker',
-                params={'source': source, 'destination': destination}
-            )
-
-            logging.info('Task {} enqueued, ETA {}.'.format(task.name, task.eta))
+            params = {'source': source, 'destination': destination}
+            task = GCPCloudTask('copy_cloudstorage_object_task', payload=params)
+            task.execute()
 
 
 def _get_sheet_id():
