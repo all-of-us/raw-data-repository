@@ -1,6 +1,6 @@
-from datetime import datetime
-from dateutil import parser
+import logging
 from flask import request
+from flask_restful import Resource
 
 from werkzeug.exceptions import NotFound
 
@@ -8,40 +8,43 @@ from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_up
 from rdr_service.api.data_gen_api import generate_samples_task
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
-from rdr_service.api.base_api import BaseApi
 from rdr_service.app_util import task_auth_required
-from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.offline.bigquery_sync import rebuild_bq_participant_task
 from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
 
 
-class RebuildParticipantsBQTaskApi(BaseApi):
+def log_task_headers():
+    """
+    Log the task headers
+    """
+    msg = 'Task Information:\n'
+    msg += f'Task name: {request.headers.get("X-Appengine-Taskname", "unknown")}\n'
+    msg += f'Queue: {request.headers.get("X-Appengine-Queuename", "unknown")}\n'
+    msg += f'Retry count: {request.headers.get("X-Appengine-Taskretrycount", "1")}\n'
+    logging.info(msg)
+
+
+class RebuildParticipantsBQTaskApi(Resource):
     """
     Cloud Task endpoint: Rebuild all participant records for BigQuery.
     """
-    def __init__(self):
-        super(RebuildParticipantsBQTaskApi, self).__init__(BigQuerySyncDao())
-
     @task_auth_required
-    def get(self):
-        timestamp = parser.parse(
-            request.args.get("timestamp", datetime.utcnow().isoformat())
-        )
-        limit = int(request.args.get("limit", 300))
-        rebuild_bq_participant_task(timestamp, limit=limit)
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        rebuild_bq_participant_task(data)
         return '{"success": "true"}'
 
 
-class BQRebuildOneParticipantTaskApi(BaseApi):
+class BQRebuildOneParticipantTaskApi(Resource):
     """
     Cloud Task endpoint: Rebuild one participant record for BigQuery.
     """
-    def __init__(self):
-        super(BQRebuildOneParticipantTaskApi, self).__init__(BigQuerySyncDao())
-
     @task_auth_required
-    def get(self):
-        p_id = int(request.args.get('p_id', '0'))
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        p_id = int(data.get('p_id', 0))
         if not p_id:
             raise NotFound('Invalid participant id')
 
@@ -49,30 +52,27 @@ class BQRebuildOneParticipantTaskApi(BaseApi):
         return '{"success": "true"}'
 
 
-class RebuildCodebookBQTaskApi(BaseApi):
+class RebuildCodebookBQTaskApi(Resource):
     """
     Cloud Task endpoint: Rebuild Codebook records for BigQuery.
     """
-    def __init__(self):
-        super(RebuildCodebookBQTaskApi, self).__init__(BigQuerySyncDao())
-
     @task_auth_required
-    def get(self):
+    def post(self):
+        log_task_headers()
         rebuild_bq_codebook_task()
         return '{"success": "true"}'
 
 
-class CopyCloudStorageObjectTaskApi(BaseApi):
+class CopyCloudStorageObjectTaskApi(Resource):
     """
     Cloud Task endpoint: Copy cloud storage object.
     """
-    def __init__(self):
-        super(CopyCloudStorageObjectTaskApi, self).__init__(BigQuerySyncDao())
-
     @task_auth_required
-    def get(self):
-        source = request.args.get('source', None)
-        destination = request.args.get('destination', None)
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        source = data.get('source', None)
+        destination = data.get('destination', None)
 
         if not source or not destination:
             raise NotFound('Invalid cloud storage path: Copy {0} to {1}.'.format(source, destination))
@@ -81,17 +81,16 @@ class CopyCloudStorageObjectTaskApi(BaseApi):
         return '{"success": "true"}'
 
 
-class BQRebuildQuestionnaireTaskApi(BaseApi):
+class BQRebuildQuestionnaireTaskApi(Resource):
     """
     Cloud Task endpoint: Rebuild questionnaire response for BigQuery.
     """
-    def __init__(self):
-        super(BQRebuildQuestionnaireTaskApi, self).__init__(BigQuerySyncDao())
-
     @task_auth_required
-    def get(self):
-        p_id = int(request.args.get('p_id', '0'))
-        qr_id = int(request.args.get('qr_id', '0'))
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        p_id = int(data.get('p_id', 0))
+        qr_id = int(data.get('qr_id', 0))
         if not p_id:
             raise NotFound('Invalid participant id')
         if not qr_id:
@@ -101,15 +100,14 @@ class BQRebuildQuestionnaireTaskApi(BaseApi):
         return '{"success": "true"}'
 
 
-class GenerateBiobankSamplesTaskApi(BaseApi):
+class GenerateBiobankSamplesTaskApi(Resource):
     """
     Cloud Task endpoint: Generate Biobank sample records.
     """
-    def __init__(self):
-        super(GenerateBiobankSamplesTaskApi, self).__init__(BigQuerySyncDao())
-
     @task_auth_required
-    def get(self):
-        fraction = float(request.args.get('fraction', '0.0'))
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        fraction = float(data.get('fraction', 0.0))
         generate_samples_task(fraction)
         return '{"success": "true"}'
