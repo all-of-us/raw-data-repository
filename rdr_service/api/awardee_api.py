@@ -16,7 +16,7 @@ class AwardeeApi(BaseApi):
         if a_id:
             hpo = self.dao.get_by_name(a_id)
             if not hpo:
-                raise NotFound("Awardee with ID %s not found" % a_id)
+                raise NotFound(f"Awardee with ID {a_id} not found")
             return self._make_response(self.dao.get_with_children(hpo.hpoId))
         return super(AwardeeApi, self)._query(id_field="id")
 

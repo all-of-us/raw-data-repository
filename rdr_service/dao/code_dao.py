@@ -28,7 +28,7 @@ class CodeBookDao(BaseDao):
         old_latest = self.get_latest_with_session(session, obj.system)
         if old_latest:
             if old_latest.version == obj.version:
-                raise BadRequest("Codebook with system %s, version %s already exists" % (obj.system, obj.version))
+                raise BadRequest(f"Codebook with system {obj.system}, version {obj.version} already exists")
             old_latest.latest = False
             session.merge(old_latest)
         super(CodeBookDao, self).insert_with_session(session, obj)
@@ -54,7 +54,7 @@ class CodeBookDao(BaseDao):
         code_type = _CODE_TYPE_MAP.get(property_dict["concept-type"])
         if code_type is None:
             logging.warning(
-                "Unrecognized concept type: %s, value: %s; ignoring." % (property_dict["concept-type"], value)
+                f"Unrecognized concept type: {property_dict['concept-type']}, value: {value}; ignoring."
             )
             return 0
         code = Code(
@@ -88,7 +88,7 @@ class CodeBookDao(BaseDao):
         """Imports a codebook and all codes inside it. Returns (new_codebook, imported_code_count)."""
         version = codebook_json["version"]
         num_concepts = len(codebook_json["concept"])
-        logging.info("Importing %d concepts into new CodeBook version %r...", num_concepts, version)
+        logging.info(f"Importing {num_concepts} concepts into new CodeBook version {version}...")
         system = codebook_json["url"]
         codebook = CodeBook(name=codebook_json["name"], version=version, system=system)
         code_count = 0
@@ -102,9 +102,9 @@ class CodeBookDao(BaseDao):
             self.insert_with_session(session, codebook)
             session.flush()
             for i, concept in enumerate(codebook_json["concept"], start=1):
-                logging.info("Importing root concept %d of %d (%s).", i, num_concepts, concept.get("display"))
+                logging.info(f"Importing root concept {i} of {num_concepts} ({concept.get('display')}).")
                 code_count += self._import_concept(session, existing_codes, concept, system, codebook.codeBookId, None)
-        logging.info("Finished, %d codes imported.", code_count)
+        logging.info(f"Finished, {code_count} codes imported.")
         return codebook, code_count
 
 
@@ -195,7 +195,7 @@ class CodeDao(CacheAllDao):
                         continue
 
                     if not add_codes_if_missing:
-                        raise BadRequest("Couldn't find code: system = %s, value = %s" % (system, value))
+                        raise BadRequest(f"Couldn't find code: system = {system}, value = {value}")
                     # If it's not in the database, add it.
                     display, code_type, parent_id = code_map[(system, value)]
                     code = Code(
@@ -209,10 +209,8 @@ class CodeDao(CacheAllDao):
                     if self.silent:
                         # Log the traceback so that stackdriver error reporting reports on it.
                         logging.error(
-                            "Adding unmapped code: system = %s, value = %s: %s",
-                            code.system,
-                            code.value,
-                            traceback.format_exc(),
+                            f"Adding unmapped code: system = {code.system}, \
+                            value = {code.value}: {traceback.format_exc()}"
                         )
 
                     self.insert_with_session(session, code)

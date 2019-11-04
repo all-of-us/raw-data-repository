@@ -268,7 +268,7 @@ class DvOrderDao(UpdatableDao):
                     )
             except AttributeError:
                 raise BadRequest(
-                    "No identifier for system %r, required for primary key." % BiobankDVOrder._DV_ID_SYSTEM[dv_user]
+                    f"No identifier for system {BiobankDVOrder._DV_ID_SYSTEM[dv_user]}, required for primary key."
                 )
         for i in resource.basedOn:
             try:
@@ -280,7 +280,7 @@ class DvOrderDao(UpdatableDao):
                     )
             except AttributeError:
                 raise BadRequest(
-                    "No identifier for system %r, required for primary key." % BiobankDVOrder._DV_ID_SYSTEM[dv_user]
+                    f"No identifier for system {BiobankDVOrder._DV_ID_SYSTEM[dv_user]}, required for primary key."
                 )
 
     def get_etag(self, id_, pid):

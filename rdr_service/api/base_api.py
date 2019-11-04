@@ -119,12 +119,11 @@ class BaseApi(Resource):
             return self.list(participant_id)
         obj = self.dao.get_with_children(id_) if self._get_returns_children else self.dao.get(id_)
         if not obj:
-            raise NotFound("%s with ID %s not found" % (self.dao.model_type.__name__, id_))
+            raise NotFound(f"{self.dao.model_type.__name__} with ID {id_} not found")
         if participant_id:
             if participant_id != obj.participantId:
                 raise NotFound(
-                    "%s with ID %s is not for participant with ID %s"
-                    % (self.dao.model_type.__name__, id_, participant_id)
+                    f"{self.dao.model_type.__name__} with ID {id_} is not for participant with ID {participant_id}"
                 )
         log_api_request(obj)
         return self._make_response(obj)
@@ -184,7 +183,7 @@ class BaseApi(Resource):
       id_field: name of the field containing the ID used when constructing resource URLs for results
       participant_id: the participant ID under which to perform this query, if appropriate
     """
-        logging.info("Preparing query for %s.", self.dao.model_type)
+        logging.info(f"Preparing query for {self.dao.model_type}.")
         query = self._make_query()
         results = self.dao.query(query)
         logging.info("Query complete, bundling results.")
@@ -339,7 +338,7 @@ class UpdatableApi(BaseApi):
 
     def update_with_patch(self, id_, resource, expected_version):
         # pylint: disable=unused-argument
-        raise NotImplementedError("update_with_patch not implemented in % s " % self.__class__)
+        raise NotImplementedError(f"update_with_patch not implemented in {self.__class__}")
 
 
 def _make_etag(version):
@@ -352,8 +351,8 @@ def _parse_etag(etag):
         try:
             return int(version_str)
         except ValueError:
-            raise BadRequest("Invalid version: %s" % version_str)
-    raise BadRequest("Invalid ETag: %s" % etag)
+            raise BadRequest(f"Invalid version: {version_str}")
+    raise BadRequest(f"Invalid ETag: {etag}")
 
 
 def get_sync_results_for_request(dao, max_results):

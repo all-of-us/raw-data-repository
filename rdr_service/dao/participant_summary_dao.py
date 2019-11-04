@@ -317,7 +317,7 @@ class ParticipantSummaryDao(UpdatableDao):
     def _validate_update(self, session, obj, existing_obj):  # pylint: disable=unused-argument
         """Participant summaries don't have a version value; drop it from validation logic."""
         if not existing_obj:
-            raise NotFound("%s with id %s does not exist" % (self.model_type.__name__, id))
+            raise NotFound(f"{self.model_type.__name__} with id {id} does not exist")
 
     def _has_withdrawn_filter(self, query):
         for field_filter in query.field_filters:
@@ -339,7 +339,7 @@ class ParticipantSummaryDao(UpdatableDao):
         non_withdrawn_field = self._get_non_withdrawn_filter_field(query_def)
         if self._has_withdrawn_filter(query_def):
             if non_withdrawn_field:
-                raise BadRequest("Can't query on %s for withdrawn participants" % non_withdrawn_field)
+                raise BadRequest(f"Can't query on {non_withdrawn_field} for withdrawn participants")
             # When querying for withdrawn participants, ensure that the only fields being filtered on or
             # ordered by are in WITHDRAWN_PARTICIPANT_FIELDS.
             return super(ParticipantSummaryDao, self)._initialize_query(session, query_def)
@@ -388,21 +388,21 @@ class ParticipantSummaryDao(UpdatableDao):
         if field_name == "hpoId" or field_name == "awardee":
             hpo = self.hpo_dao.get_by_name(value)
             if not hpo:
-                raise BadRequest("No HPO found with name %s" % value)
+                raise BadRequest(f"No HPO found with name {value}")
             if field_name == "awardee":
                 field_name = "hpoId"
             return super(ParticipantSummaryDao, self).make_query_filter(field_name, hpo.hpoId)
         if field_name == "organization":
             organization = self.organization_dao.get_by_external_id(value)
             if not organization:
-                raise BadRequest("No organization found with name %s" % value)
+                raise BadRequest(f"No organization found with name {value}")
             return super(ParticipantSummaryDao, self).make_query_filter(field_name + "Id", organization.organizationId)
         if field_name in _SITE_FIELDS:
             if value == UNSET:
                 return super(ParticipantSummaryDao, self).make_query_filter(field_name + "Id", None)
             site = self.site_dao.get_by_google_group(value)
             if not site:
-                raise BadRequest("No site found with google group %s" % value)
+                raise BadRequest(f"No site found with google group {value}")
             return super(ParticipantSummaryDao, self).make_query_filter(field_name + "Id", site.siteId)
         if field_name in _CODE_FILTER_FIELDS:
             if value == UNSET:
@@ -410,7 +410,7 @@ class ParticipantSummaryDao(UpdatableDao):
             # Note: we do not at present support querying for UNMAPPED code values.
             code = self.code_dao.get_code(PPI_SYSTEM, value)
             if not code:
-                raise BadRequest("No code found: %s" % value)
+                raise BadRequest(f"No code found: {value}")
             return super(ParticipantSummaryDao, self).make_query_filter(field_name + "Id", code.codeId)
 
         if field_name == "patientStatus":
@@ -435,7 +435,7 @@ class ParticipantSummaryDao(UpdatableDao):
             )
         organization = self.organization_dao.get_by_external_id(organization_external_id)
         if not organization:
-            raise BadRequest("No organization found with name %s" % organization_external_id)
+            raise BadRequest(f"No organization found with name {organization_external_id}")
         # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
         # return PatientStatusFieldFilter(field_name, Operator.EQUALS, value,
         #                                 organization=organization,
@@ -839,7 +839,7 @@ class PatientStatusFieldFilter(FieldFilter):
                 )
             return query.filter(criterion)
         else:
-            raise ValueError("Invalid operator: %r." % self.operator)
+            raise ValueError(f"Invalid operator: {self.operator}.")
 
 
 class ParticipantGenderAnswersDao(UpdatableDao):

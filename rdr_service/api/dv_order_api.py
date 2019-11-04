@@ -120,7 +120,7 @@ class DvOrderApi(UpdatableApi):
             response = self.dao.send_order(resource, p_id)
             merged_resource = merge_dicts(response, resource)
             merged_resource["id"] = _id
-            logging.info("Sending salivary order to biobank for participant: %s", p_id)
+            logging.info(f"Sending salivary order to biobank for participant: {p_id}")
             self.dao.insert_biobank_order(p_id, merged_resource)
 
         response = super(DvOrderApi, self).put(
@@ -263,7 +263,7 @@ class DvOrderApi(UpdatableApi):
             response = self.dao.send_order(resource, p_id)
             merged_resource = merge_dicts(response, resource)
             merged_resource["id"] = _id
-            logging.info("Sending salivary order to biobank for participant: %s", p_id)
+            logging.info(f"Sending salivary order to biobank for participant: {p_id}")
             self.dao.insert_biobank_order(p_id, merged_resource)
 
         response = super(DvOrderApi, self).put(
