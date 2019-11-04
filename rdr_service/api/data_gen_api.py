@@ -21,9 +21,9 @@ from rdr_service.data_gen.fake_participant_generator import FakeParticipantGener
 from rdr_service.data_gen.in_process_client import InProcessClient
 from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.offline.biobank_samples_pipeline import CsvColumns, INPUT_CSV_TIME_FORMAT
-# 10% of individual stored samples are missing by default.
-from rdr_service.services.flask import TASK_PREFIX
+from rdr_service.services.gcp_cloud_tasks import GCPCloudTask
 
+# 10% of individual stored samples are missing by default.
 # 1% of participants have samples with no associated order
 _SAMPLES_MISSING_FRACTION = 0.1
 
@@ -103,7 +103,7 @@ def generate_samples_task(fraction_missing):
     num_rows = 0
     sample_id_start = random.randint(1000000, 10000000)
 
-    with open_cloud_file(file_name) as dest:
+    with open_cloud_file(file_name, mode='w') as dest:
         writer = csv.writer(dest, delimiter="\t")
         writer.writerow(CsvColumns.ALL)
 
@@ -113,7 +113,7 @@ def generate_samples_task(fraction_missing):
             rows = biobank_order_dao.get_ordered_samples_sample(session, 1 - fraction_missing, _BATCH_SIZE)
             for biobank_id, collected_time, test in rows:
                 if collected_time is None:
-                    logging.warning("biobank_id=%s test=%s skipped (collected=%s)", biobank_id, test, collected_time)
+                    logging.warning(f"biobank_id={biobank_id} test={test} skipped (collected={collected_time})")
                     continue
                 sample_id = sample_id_start + num_rows
                 minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_SAMPLE_COLLECTED_AND_CONFIRMED)
@@ -134,7 +134,7 @@ def generate_samples_task(fraction_missing):
                     writer.writerow(_new_row(sample_id, biobank_id, test, confirmed_time))
                     num_rows += 1
 
-    logging.info("Generated %d samples in %s.", num_rows, file_name)
+    logging.info(f"Generated {num_rows} samples in {file_name}.")
 
 
 class DataGenApi(Resource):
@@ -160,15 +160,10 @@ class DataGenApi(Resource):
             if GAE_PROJECT == 'localhost':
                 generate_samples_task(fraction)
             else:
-                from google.appengine.api import taskqueue
-                task = taskqueue.add(
-                    queue_name='default',
-                    url=TASK_PREFIX + 'GenerateBiobankSamplesTaskApi',
-                    method='GET',
-                    target='worker',
-                    params={'fraction': fraction}
-                )
-                logging.info('Task {} enqueued, ETA {}.'.format(task.name, task.eta))
+                params = {'fraction': fraction}
+                task = GCPCloudTask('generate_bio_samples_task', payload=params)
+                task.execute()
+
 
     @nonprod
     def put(self):

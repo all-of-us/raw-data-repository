@@ -517,6 +517,7 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None):
         ps_bqgen.save_bqrecord(p_id, ps_bqr, bqtable=BQParticipantSummary, w_dao=w_dao, w_session=w_session)
         # save the PDR participant summary record
         pdr_bqgen.save_bqrecord(p_id, pdr_bqr, bqtable=BQPDRParticipantSummary, w_dao=w_dao, w_session=w_session)
+        w_session.flush()
 
     return ps_bqr
 

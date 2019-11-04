@@ -196,12 +196,14 @@ class BiobankOrderDao(UpdatableDao):
             )
 
     def get_ordered_samples_sample(self, session, percentage, batch_size):
-        """Retrieves the biobank ID, collected time, and test for a percentage of ordered samples.
-    Used in fake data generation."""
+        """
+        Retrieves the biobank ID, collected time, and test for a percentage of ordered samples.
+        Used in fake data generation.
+        """
         return (
             session.query(Participant.biobankId, BiobankOrderedSample.collected, BiobankOrderedSample.test)
-            .join(BiobankOrder)
-            .join(BiobankOrderedSample)
+            .join(BiobankOrder, Participant.participantId == BiobankOrder.participantId)
+            .join(BiobankOrderedSample, BiobankOrder.biobankOrderId == BiobankOrderedSample.biobankOrderId)
             .filter(Participant.biobankId % 100 < percentage * 100)
             .yield_per(batch_size)
         )
