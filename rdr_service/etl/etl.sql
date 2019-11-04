@@ -1485,6 +1485,7 @@ SELECT
         WHEN src_m.value_boolean IS NOT NULL        THEN 'observ.bool'
     END                                         AS unit_id
 FROM cdm.src_mapped src_m
+WHERE src_m.question_ppi_code is not null
 ;
 
 -- -------------------------------------------------------------------
