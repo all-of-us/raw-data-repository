@@ -1,6 +1,6 @@
 cron:
 - description: Monthly reconciliation report
-- description: Participant count metrics
+- description: Participant count metrics (Do not manually start)
 - description: Flag ghost participants
 - description: Genomic pipeline
 - description: Daily Biobank sample import and order reconciliation

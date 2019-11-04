@@ -287,6 +287,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = "&stratification=ENROLLMENT_STATUS" "&startDate=2018-01-01" "&endDate=2018-01-08"
@@ -445,6 +446,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
         service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
 
@@ -859,6 +861,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
         service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
 
@@ -1190,6 +1193,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsAgeCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = "&stratification=AGE_RANGE" "&startDate=2017-12-31" "&endDate=2018-01-08"
@@ -1472,6 +1476,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = "&stratification=TOTAL" "&startDate=2018-01-01" "&endDate=2018-01-08"
@@ -1540,6 +1545,7 @@ class PublicMetricsApiTest(BaseTestCase):
         setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
         service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
 
@@ -1742,6 +1748,7 @@ class PublicMetricsApiTest(BaseTestCase):
         setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
         service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
 
@@ -2017,6 +2024,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRegionCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs1 = "&stratification=GEO_STATE" "&endDate=2017-12-31"
@@ -2185,6 +2193,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs1 = "&stratification=LIFECYCLE" "&endDate=2018-01-03"
@@ -2316,6 +2325,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsLanguageCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
         qs = "&stratification=LANGUAGE" "&startDate=2017-12-30" "&endDate=2018-01-03"
 
@@ -2412,6 +2422,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = "&stratification=PRIMARY_CONSENT" "&startDate=2017-12-31" "&endDate=2018-01-08"
@@ -2509,6 +2520,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = "&stratification=EHR_METRICS" "&startDate=2017-12-31" "&endDate=2018-01-08"
