@@ -540,8 +540,10 @@ class QuestionnaireResponseDao(BaseDao):
                                     answer_length = len(answer.valueString)
                                     max_length = QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN
                                     if answer_length > max_length:
-                                        err_msg = "String value too long (len={:d}); must be less than {:d}"
-                                        raise BadRequest(err_msg.format(answer_length, max_length))
+                                        raise BadRequest(
+                                            f"String value too long (len={answer_length}); "
+                                            f"must be less than {max_length}"
+                                        )
                                     qr_answer.valueString = answer.valueString
                                 if answer.valueDate is not None:
                                     qr_answer.valueDate = answer.valueDate.date
