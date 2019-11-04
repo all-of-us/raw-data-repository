@@ -14,7 +14,7 @@ from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_up
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.query import OrderBy, Query
-from rdr_service.services.flask import TASK_PREFIX
+from rdr_service.services.gcp_cloud_tasks import GCPCloudTask
 
 DEFAULT_MAX_RESULTS = 100
 MAX_MAX_RESULTS = 10000
@@ -157,15 +157,9 @@ class BaseApi(Resource):
             if GAE_PROJECT == 'localhost':
                 bq_participant_summary_update_task(participant_id)
             else:
-                from google.appengine.api import taskqueue
-                task = taskqueue.add(
-                    queue_name='bigquery-rebuild',
-                    url=TASK_PREFIX + 'BQRebuildOneParticipantTaskApi',
-                    method='GET',
-                    target='worker',
-                    params={'p_id': participant_id}
-                )
-                logging.info('Task {} enqueued, ETA {}.'.format(task.name, task.eta))
+                params = {'p_id': participant_id}
+                task = GCPCloudTask('bq_rebuild_one_participant_task', payload=params)
+                task.execute()
 
         log_api_request(result)
         return self._make_response(result)
@@ -320,15 +314,10 @@ class UpdatableApi(BaseApi):
             if GAE_PROJECT == 'localhost':
                 bq_participant_summary_update_task(participant_id)
             else:
-                from google.appengine.api import taskqueue
-                task = taskqueue.add(
-                    queue_name='bigquery-rebuild',
-                    url=TASK_PREFIX + 'BQRebuildOneParticipantTaskApi',
-                    method='GET',
-                    target='worker',
-                    params={'p_id': participant_id}
-                )
-                logging.info('Task {} enqueued, ETA {}.'.format(task.name, task.eta))
+                params = {'p_id': participant_id}
+                task = GCPCloudTask('bq_rebuild_one_participant_task', payload=params)
+                task.execute()
+
         log_api_request(m)
         return self._make_response(m)
 

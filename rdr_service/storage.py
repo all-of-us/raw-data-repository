@@ -9,6 +9,8 @@ import pathlib
 from contextlib import ContextDecorator
 from tempfile import mkstemp
 from abc import ABC, abstractmethod
+
+from google.api_core.exceptions import RequestRangeNotSatisfiable
 from google.cloud import storage
 from google.cloud.storage import Blob
 from google.cloud._helpers import UTC
@@ -230,7 +232,10 @@ class GoogleCloudStorageFile(ContextDecorator):
     def iter_chunks(self, chunk_size=1024):
         i = 0
         while True:
-            chunk = self.blob.download_as_string(start=i, end=i+chunk_size)
+            try:
+                chunk = self.blob.download_as_string(start=i, end=i+chunk_size)
+            except RequestRangeNotSatisfiable:
+                break
             if chunk:
                 yield chunk
                 i += len(chunk)
@@ -241,7 +246,7 @@ class GoogleCloudStorageFile(ContextDecorator):
         buffer = io.StringIO()
         chunks = self.iter_chunks()
         for chunk in chunks:
-            for character in chunk:
+            for character in chunk.decode('utf-8'):
                 if character == '\n':
                     buffer.seek(0)
                     yield buffer.read()

@@ -1,13 +1,13 @@
 """Assigns participants with the specified IDs to the organization.
 
 Usage:
-./run_client.sh --project all-of-us-rdr-prod --account $USER@pmi-ops.org \
-  pairing_assigner.py participant_ids_and_hpos.csv --pairing [site|organization|awardee] \
+./rdr_client/run_client.sh --project all-of-us-rdr-prod --account $USER@pmi-ops.org \
+  pairing_assigner.py file.csv --pairing [site|organization|awardee] \
   [--dry_run] [--override_site]
 
 Where site = google_group, organization = external_id, awardee = name.
 
-The CSV contains lines with P12345678,NEW_ORGANIZATION like:
+The CSV contains lines with P12345678,NEW_ORGANIZATION (no headers necessary). e.g.:
 Example awardees:
   P11111111,AZ_TUCSON
   P22222222,AZ_TUCSON
@@ -129,7 +129,7 @@ if __name__ == "__main__":
     configure_logging()
     client_log.setLevel(logging.WARN)  # Suppress the log of HTTP requests.
     arg_parser = get_parser()
-    arg_parser.add_argument("file", help="file containing the list of HPOs and participant IDs")
+    arg_parser.add_argument("file", help="The name of file containing the list of HPOs and participant IDs")
     arg_parser.add_argument("--dry_run", action="store_true")
     arg_parser.add_argument(
         "--pairing", help="set level of pairing as one of" "[site|organization|awardee]", required=True

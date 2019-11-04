@@ -214,6 +214,10 @@ class GCPStackDriverLogHandler(logging.Handler):
         self._request_log_id = None
         self._request_host = None
 
+        # cloud tasks
+        self._request_taskname = None
+        self._request_queue = None
+
         self._response_status_code = 200
         self._response_size = None
 
@@ -255,6 +259,9 @@ class GCPStackDriverLogHandler(logging.Handler):
         self._request_remote_addr = req.headers.get('X-Appengine-User-Ip', request.remote_addr)
         self._request_host = req.headers.get('X-Appengine-Default-Version-Hostname', request.host)
         self._request_log_id = req.headers.get('X-Appengine-Request-Log-Id', 'None')
+
+        self._request_taskname = req.headers.get('X-Appengine-Taskname', None)
+        self._request_queue = req.headers.get('X-Appengine-Queuename', None)
 
         trace_id = req.headers.get('X-Cloud-Trace-Context', '')
         if trace_id:
@@ -355,6 +362,10 @@ class GCPStackDriverLogHandler(logging.Handler):
             'versionId': os.environ.get('GAE_VERSION', 'devel'),
             'urlMapEntry': 'main.app'
         }
+
+        if self._request_taskname:
+            proto_payload_args['taskName'] = self._request_taskname
+            proto_payload_args['taskQueueName'] = self._request_queue
 
         if self.__first_log_ts:
             total_time = datetime.utcnow() - self.__first_log_ts
@@ -530,6 +541,19 @@ def flask_restful_log_exception_error(sender, exception, **kwargs):
     """
     Make sure we can log exception errors to Google when running under Gunicorn.
     """
+    if request:
+        try:
+            # Log headers for debugging purposes.
+            out = ''
+            for k, v in request.headers:
+                # Mask oauth token if in headers.
+                if k == 'Authorization':
+                    out += f'{k}: Bearer **********\n'
+                else:
+                    out += f'{k}: {v}\n'
+            logging.info(out)
+        except RuntimeError:
+            pass
     log_exception_error(exception)
 
 
