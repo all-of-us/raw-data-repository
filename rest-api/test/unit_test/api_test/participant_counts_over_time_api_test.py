@@ -1734,7 +1734,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
           &endDate=2018-01-08
           &history=TRUE
           &awardee=AZ_TUCSON,PITT
-          &enrollmentStatus=MEMBER
+          &enrollmentStatus=FULLY_CONSENTED
+          &version=2
           """
 
     qs = ''.join(qs.split())  # Remove all whitespace
@@ -1759,12 +1760,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L,
                                'More than one gender identity': 0}, 'hpo': u'AZ_TUCSON'},
                   response)
-    self.assertIn({'date': '2018-01-03',
-                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'Other/Additional Options': 0,
-                               'Non-Binary': 0, 'UNMAPPED': 0, 'Transgender': 0,
-                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 0,
-                               'More than one gender identity': 0}, 'hpo': 'PITT'},
-                  response)
+
     self.assertIn({'date': '2018-01-04',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'Other/Additional Options': 0,
                                'Non-Binary': 0, 'UNMAPPED': 0, 'Transgender': 1,

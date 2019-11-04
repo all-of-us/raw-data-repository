@@ -320,38 +320,38 @@ class PublicMetricsApiTest(FlaskTestBase):
                                       modified=self.time3,
                                       codeId=gender_code_dict['GenderIdentity_Transgender'])))
 
-    p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
-                 time_int=self.time4, time_mem=self.time5, gender_identity=5)
-    participant_gender_answer_dao.insert(
-      ParticipantGenderAnswers(**dict(participantId=4,
-                                      created=self.time4,
-                                      modified=self.time4,
-                                      codeId=gender_code_dict['GenderIdentity_Transgender'])))
-
-    p6 = Participant(participantId=6, biobankId=9)
-    self._insert(p6, 'Chad3', 'Caterpillar3', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
-                 time_int=self.time5, time_mem=self.time5, gender_identity=7)
-    participant_gender_answer_dao.insert(
-      ParticipantGenderAnswers(**dict(participantId=6,
-                                      created=self.time5,
-                                      modified=self.time5,
-                                      codeId=gender_code_dict['GenderIdentity_Woman'])))
-    participant_gender_answer_dao.insert(
-      ParticipantGenderAnswers(**dict(participantId=6,
-                                      created=self.time5,
-                                      modified=self.time5,
-                                      codeId=gender_code_dict['GenderIdentity_Man'])))
-
-    # ghost participant should be filtered out
-    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
-                 time_int=self.time1, gender_identity=5)
-    participant_gender_answer_dao.insert(
-      ParticipantGenderAnswers(**dict(participantId=5,
-                                      created=self.time1,
-                                      modified=self.time1,
-                                      codeId=gender_code_dict['GenderIdentity_Transgender'])))
+    # p4 = Participant(participantId=4, biobankId=7)
+    # self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+    #              time_int=self.time4, time_mem=self.time5, gender_identity=5)
+    # participant_gender_answer_dao.insert(
+    #   ParticipantGenderAnswers(**dict(participantId=4,
+    #                                   created=self.time4,
+    #                                   modified=self.time4,
+    #                                   codeId=gender_code_dict['GenderIdentity_Transgender'])))
+    #
+    # p6 = Participant(participantId=6, biobankId=9)
+    # self._insert(p6, 'Chad3', 'Caterpillar3', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+    #              time_int=self.time5, time_mem=self.time5, gender_identity=7)
+    # participant_gender_answer_dao.insert(
+    #   ParticipantGenderAnswers(**dict(participantId=6,
+    #                                   created=self.time5,
+    #                                   modified=self.time5,
+    #                                   codeId=gender_code_dict['GenderIdentity_Woman'])))
+    # participant_gender_answer_dao.insert(
+    #   ParticipantGenderAnswers(**dict(participantId=6,
+    #                                   created=self.time5,
+    #                                   modified=self.time5,
+    #                                   codeId=gender_code_dict['GenderIdentity_Man'])))
+    #
+    # # ghost participant should be filtered out
+    # p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    # self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+    #              time_int=self.time1, gender_identity=5)
+    # participant_gender_answer_dao.insert(
+    #   ParticipantGenderAnswers(**dict(participantId=5,
+    #                                   created=self.time1,
+    #                                   modified=self.time1,
+    #                                   codeId=gender_code_dict['GenderIdentity_Transgender'])))
 
     service = ParticipantCountsOverTimeService()
     service.init_tmp_table()
