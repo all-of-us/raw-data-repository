@@ -14,11 +14,11 @@ from rdr_service.api_util import (
     format_json_org,
     format_json_site,
     get_awardee_id_from_name,
-    get_oauth_id,
     get_organization_id_from_external_id,
     get_site_id_from_google_group,
     parse_json_enum,
 )
+from rdr_service.app_util import get_oauth_id
 from rdr_service.code_constants import UNSET
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.dao.hpo_dao import HPODao
@@ -75,6 +75,8 @@ class ParticipantDao(UpdatableDao):
         obj.version = 1
         obj.signUpTime = clock.CLOCK.now().replace(microsecond=0)
         obj.lastModified = obj.signUpTime
+        service_account = get_oauth_id()
+        obj.participantOrigination = service_account
         if obj.withdrawalStatus is None:
             obj.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
         if obj.suspensionStatus is None:
@@ -90,8 +92,6 @@ class ParticipantDao(UpdatableDao):
             assert obj.biobankId
             return super(ParticipantDao, self).insert(obj)
         assert not obj.biobankId
-        service_account = get_oauth_id()
-        obj.participantOrigination = service_account
         return self._insert_with_random_id(obj, ("participantId", "biobankId"))
 
     def update_ghost_participant(self, session, pid):
@@ -163,6 +163,7 @@ class ParticipantDao(UpdatableDao):
         obj.biobankId = existing_obj.biobankId
         obj.withdrawalTime = existing_obj.withdrawalTime
         obj.suspensionTime = existing_obj.suspensionTime
+        obj.participantOrigination = existing_obj.participantOrigination
 
         need_new_summary = False
         if obj.withdrawalStatus != existing_obj.withdrawalStatus:

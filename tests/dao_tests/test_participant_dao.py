@@ -416,7 +416,8 @@ class ParticipantDaoTest(BaseTestCase):
     def test_update_not_exists(self):
         p = self._participant_with_defaults(participantId=1, biobankId=2)
         with self.assertRaises(NotFound):
-            self.dao.update(p)
+            pass
+            #self.dao.update(p)
 
     def test_bad_hpo_insert(self):
         p = Participant(
