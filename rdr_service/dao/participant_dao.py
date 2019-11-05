@@ -134,6 +134,11 @@ class ParticipantDao(UpdatableDao):
             and obj.withdrawalReasonJustification is None
         ):
             raise BadRequest("missing withdrawalReasonJustification in update")
+        if get_oauth_id() != existing_obj.participantOrigination:
+            logging.warning(f"{get_oauth_id()} tried to modify participant from \
+                    {existing_obj.participantOrigination}")
+            raise BadRequest(f"{get_oauth_id()} not able to update participant from source \
+                    {existing_obj.participantOrigination}")
         super(ParticipantDao, self)._validate_update(session, obj, existing_obj)
         # Once a participant marks their withdrawal status as NO_USE, it can't be changed back.
         # TODO: Consider the future ability to un-withdraw.
