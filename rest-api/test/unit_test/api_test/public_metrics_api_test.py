@@ -630,15 +630,15 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     p2 = Participant(participantId=2, biobankId=5)
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time2,
-                 time_mem=self.time3, dob=dob2)
+                 time_study=self.time2, time_mem=self.time3, dob=dob2)
 
     p3 = Participant(participantId=3, biobankId=6)
     self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
-                 time_int=self.time3, time_mem=self.time5, dob=dob3)
+                 time_study=self.time3, time_int=self.time3, time_mem=self.time5, dob=dob3)
 
     p4 = Participant(participantId=4, biobankId=7)
     self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
-                 time_int=self.time4, time_mem=self.time5, dob=dob4)
+                 time_study=self.time4, time_int=self.time4, time_mem=self.time5, dob=dob4)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)

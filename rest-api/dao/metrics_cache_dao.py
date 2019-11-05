@@ -714,19 +714,20 @@ class MetricsAgeCacheDao(BaseDao):
         filters_hpo = ' (' + ' OR '.join('hpo_id='+str(x) for x in hpo_ids) + ') AND '
       else:
         filters_hpo = ''
-      if enrollment_statuses:
-        status_filter_list = []
-        for status in enrollment_statuses:
-          if status == str(EnrollmentStatus.INTERESTED):
-            status_filter_list.append('registered')
-          elif status == str(EnrollmentStatus.MEMBER):
-            status_filter_list.append('consented')
-          elif status == str(EnrollmentStatus.FULL_PARTICIPANT):
-            status_filter_list.append('core')
-        filters_hpo += ' (' + ' OR '.join('enrollment_status=\'' + str(x)
-                                          for x in status_filter_list) + '\') AND '
 
       if self.cache_type == MetricsCacheType.PUBLIC_METRICS_EXPORT_API:
+        if enrollment_statuses:
+          status_filter_list = []
+          for status in enrollment_statuses:
+            if status == str(EnrollmentStatus.INTERESTED):
+              status_filter_list.append('registered')
+              status_filter_list.append('participant')
+            elif status == str(EnrollmentStatus.MEMBER):
+              status_filter_list.append('consented')
+            elif status == str(EnrollmentStatus.FULL_PARTICIPANT):
+              status_filter_list.append('core')
+          filters_hpo += ' (' + ' OR '.join('enrollment_status=\'' + str(x) + '\''
+                                            for x in status_filter_list) + ') AND '
         sql = """
           SELECT date_inserted, date, CONCAT('{',group_concat(result),'}') AS json_result FROM
           (
@@ -745,6 +746,19 @@ class MetricsAgeCacheDao(BaseDao):
           GROUP BY date_inserted, date
         """ % {'filters_hpo': filters_hpo}
       else:
+        if enrollment_statuses:
+          status_filter_list = []
+          for status in enrollment_statuses:
+            if status == str(EnrollmentStatusV2.REGISTERED):
+              status_filter_list.append('registered')
+            elif status == str(EnrollmentStatusV2.PARTICIPANT):
+              status_filter_list.append('participant')
+            elif status == str(EnrollmentStatusV2.FULLY_CONSENTED):
+              status_filter_list.append('consented')
+            elif status == str(EnrollmentStatusV2.CORE_PARTICIPANT):
+              status_filter_list.append('core')
+          filters_hpo += ' (' + ' OR '.join('enrollment_status=\'' + str(x) + '\''
+                                            for x in status_filter_list) + ') AND '
         sql = """
           SELECT date_inserted, hpo_id, hpo_name, date, CONCAT('{',group_concat(result),'}') AS json_result FROM
           (
@@ -832,15 +846,13 @@ class MetricsAgeCacheDao(BaseDao):
             SELECT SUM(results.age_count)
             FROM
             (
-              SELECT DATE(ps.sign_up_time) AS day,
-                     DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+              SELECT DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
                      count(*) age_count
               FROM metrics_tmp_participant ps
               WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NULL
-              GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_core_stored_sample_time)
+              GROUP BY DATE(ps.enrollment_status_core_stored_sample_time)
             ) AS results
-            WHERE results.day <= c.day
-            AND enrollment_status_core_stored_sample_time IS NOT NULL
+            WHERE enrollment_status_core_stored_sample_time IS NOT NULL
             AND DATE(enrollment_status_core_stored_sample_time) <= c.day
           ),0) AS age_count
         FROM calendar c
@@ -859,13 +871,38 @@ class MetricsAgeCacheDao(BaseDao):
             FROM
             (
               SELECT DATE(ps.sign_up_time) AS day,
+                     DATE(ps.consent_for_study_enrollment_time) as consent_for_study_enrollment_time,
+                     count(*) age_count
+              FROM metrics_tmp_participant ps
+              WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NULL
+              GROUP BY DATE(ps.sign_up_time), DATE(ps.consent_for_study_enrollment_time)
+            ) AS results
+            WHERE results.day <= c.day AND consent_for_study_enrollment_time is null
+          ),0) AS age_count
+        FROM calendar c
+        WHERE c.day BETWEEN :start_date AND :end_date
+        UNION
+        SELECT
+          :date_inserted AS date_inserted,
+          'participant' as enrollment_status,
+          '{cache_type}' as type,
+          :hpo_id AS hpo_id,
+          (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+          c.day AS date,
+          'UNSET' AS age_range,
+          IFNULL((
+            SELECT SUM(results.age_count)
+            FROM
+            (
+              SELECT DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
                      DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
                      count(*) age_count
               FROM metrics_tmp_participant ps
               WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NULL
-              GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_member_time)
+              GROUP BY DATE(ps.consent_for_study_enrollment_time), DATE(ps.enrollment_status_member_time)
             ) AS results
-            WHERE results.day <= c.day
+            WHERE consent_for_study_enrollment_time IS NOT NULL 
+            AND c.day>=DATE(consent_for_study_enrollment_time)
             AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
           ),0) AS age_count
         FROM calendar c
@@ -883,16 +920,14 @@ class MetricsAgeCacheDao(BaseDao):
             SELECT SUM(results.age_count)
             FROM
             (
-              SELECT DATE(ps.sign_up_time) AS day,
-                     DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
+              SELECT DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
                      DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
                      count(*) age_count
               FROM metrics_tmp_participant ps
               WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NULL
-              GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+              GROUP BY DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
             ) AS results
-            WHERE results.day <= c.day
-            AND enrollment_status_member_time IS NOT NULL
+            WHERE enrollment_status_member_time IS NOT NULL
             AND DATE(enrollment_status_member_time) <= c.day
             AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
           ),0) AS age_count
@@ -926,16 +961,14 @@ class MetricsAgeCacheDao(BaseDao):
           SELECT SUM(results.age_count)
           FROM
           (
-            SELECT DATE(ps.sign_up_time) AS day,
-                   DATE(ps.date_of_birth) AS dob,
+            SELECT DATE(ps.date_of_birth) AS dob,
                    DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
                    count(*) age_count
             FROM metrics_tmp_participant ps
             WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NOT NULL
-            GROUP BY DATE(ps.sign_up_time), DATE(ps.date_of_birth), DATE(ps.enrollment_status_core_stored_sample_time)
+            GROUP BY DATE(ps.date_of_birth), DATE(ps.enrollment_status_core_stored_sample_time)
           ) AS results
-          WHERE results.day <= c.day 
-          AND enrollment_status_core_stored_sample_time IS NOT NULL
+          WHERE enrollment_status_core_stored_sample_time IS NOT NULL
           AND DATE(enrollment_status_core_stored_sample_time) <= c.day
           {age_range_condition}
         ),0) AS age_count
@@ -956,13 +989,39 @@ class MetricsAgeCacheDao(BaseDao):
           (
             SELECT DATE(ps.sign_up_time) AS day,
                    DATE(ps.date_of_birth) AS dob,
+                   DATE(ps.consent_for_study_enrollment_time) as consent_for_study_enrollment_time,
+                   count(*) age_count
+            FROM metrics_tmp_participant ps
+            WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NOT NULL
+            GROUP BY DATE(ps.sign_up_time), DATE(ps.date_of_birth), DATE(ps.consent_for_study_enrollment_time)
+          ) AS results
+          WHERE results.day <= c.day AND consent_for_study_enrollment_time is null
+          {age_range_condition}
+        ),0) AS age_count
+      FROM calendar c
+      WHERE c.day BETWEEN :start_date AND :end_date
+      UNION
+      SELECT
+        :date_inserted AS date_inserted,
+        'participant' as enrollment_status,
+        '{cache_type}' as type,
+        :hpo_id AS hpo_id,
+        (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+        c.day as date,
+        '{age_range}' AS age_range,
+        IFNULL((
+          SELECT SUM(results.age_count)
+          FROM
+          (
+            SELECT DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
+                   DATE(ps.date_of_birth) AS dob,
                    DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
                    count(*) age_count
             FROM metrics_tmp_participant ps
             WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NOT NULL
-            GROUP BY DATE(ps.sign_up_time), DATE(ps.date_of_birth), DATE(ps.enrollment_status_member_time)
+            GROUP BY DATE(ps.consent_for_study_enrollment_time), DATE(ps.date_of_birth), DATE(ps.enrollment_status_member_time)
           ) AS results
-          WHERE results.day <= c.day 
+          WHERE consent_for_study_enrollment_time IS NOT NULL AND consent_for_study_enrollment_time <= c.day 
           AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
           {age_range_condition}
         ),0) AS age_count
@@ -981,17 +1040,15 @@ class MetricsAgeCacheDao(BaseDao):
           SELECT SUM(results.age_count)
           FROM
           (
-            SELECT DATE(ps.sign_up_time) AS day,
-                   DATE(ps.date_of_birth) AS dob,
+            SELECT DATE(ps.date_of_birth) AS dob,
                    DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
                    DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
                    count(*) age_count
             FROM metrics_tmp_participant ps
             WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NOT NULL
-            GROUP BY DATE(ps.sign_up_time), DATE(ps.date_of_birth), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+            GROUP BY DATE(ps.date_of_birth), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
           ) AS results
-          WHERE results.day <= c.day 
-          AND enrollment_status_member_time IS NOT NULL
+          WHERE enrollment_status_member_time IS NOT NULL
           AND DATE(enrollment_status_member_time) <= c.day
           AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
           {age_range_condition}

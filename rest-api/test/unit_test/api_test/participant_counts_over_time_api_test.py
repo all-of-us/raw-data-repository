@@ -1996,7 +1996,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
           &endDate=2018-01-08
           &history=TRUE
           &awardee=AZ_TUCSON,PITT
-          &enrollmentStatus=MEMBER
+          &enrollmentStatus=FULLY_CONSENTED
+          &version=2
           """
 
     qs = ''.join(qs.split())  # Remove all whitespace
