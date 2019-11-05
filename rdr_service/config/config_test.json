@@ -24,6 +24,13 @@
         "ip4": ["0.0.0.0/0"]
       }
     },
+    "care-evolution@pmi-drc-api-test.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro"],
+      "whitelisted_ip_ranges": {
+        "ip6": ["::0/0"],
+        "ip4": ["0.0.0.0/0"]
+      }
+    },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro", "rdr"]
     },
