@@ -14,6 +14,7 @@ from rdr_service.api_util import (
     format_json_org,
     format_json_site,
     get_awardee_id_from_name,
+    get_oauth_id,
     get_organization_id_from_external_id,
     get_site_id_from_google_group,
     parse_json_enum,
@@ -89,6 +90,8 @@ class ParticipantDao(UpdatableDao):
             assert obj.biobankId
             return super(ParticipantDao, self).insert(obj)
         assert not obj.biobankId
+        service_account = get_oauth_id()
+        obj.participantOrigination = service_account
         return self._insert_with_random_id(obj, ("participantId", "biobankId"))
 
     def update_ghost_participant(self, session, pid):
