@@ -2,7 +2,7 @@
 
 # see ehr_upload_for_organization.py for docs
 
-USAGE="tools/ehr_upload.sh --csv_file --indput_bucket  --account <ACCOUNT> --project <PROJECT>"
+USAGE="tools/ehr_upload_for_organization.sh --csv_file --input_bucket  --account <ACCOUNT> --project <PROJECT>"
 while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
