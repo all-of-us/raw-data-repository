@@ -61,15 +61,11 @@
         "awardee": "TRANS_AM",
         "whitelisted_ip_ranges" : {
           "ip4": [
+            "150.198.1.0/24",
             "161.249.83.116",
             "161.249.147.132",
             "161.249.241.64/26",
-            "161.249.150.128/26",
-            "150.198.1.0/24",
-            "150.198.64.0/24",
-            "150.198.124.0/24",
-            "150.198.138.127",
-            "150.198.204.0/24"
+            "161.249.150.128/26"
           ]
         },
         "description": "Using subnet mask range to cover 161.249.241.64-127 and 161.249.150.128-191"
@@ -141,6 +137,13 @@
       "whitelisted_ip_ranges": {
         "ip4": ["52.4.219.3", "52.206.129.31", "174.64.55.14/32"],
         "ip6": []
+      }
+    },
+    "care-evolution@all-of-us-rdr-stable.iam.gserviceaccount.com": {
+      "roles": ["ptc"],
+      "whitelisted_ip_ranges": {
+        "ip6": [],
+        "ip4": ["52.86.97.51", "52.54.134.172"]
       }
     },
     "awardee-broad@all-of-us-rdr-stable.iam.gserviceaccount.com": {
