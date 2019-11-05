@@ -7,7 +7,7 @@ Input: csv file with 'pmi_id' and 'paired_site' headers.
 Input: awardee bucket for upload. i.e. aouxxx
 
 If you need to create the csv use the following query, export to csv, and add the headers:
-select p.participant_id, SUBSTRING_INDEX(s.google_group, '-', -1) from participant p
+select p.participant_id as pmi_id, SUBSTRING_INDEX(s.google_group, '-', -1) as paired_site from participant p
 left join site s on p.site_id = s.site_id
 where p.hpo_id = :hpo_id
 """
