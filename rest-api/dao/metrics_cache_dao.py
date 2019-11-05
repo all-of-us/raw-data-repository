@@ -341,8 +341,8 @@ class MetricsGenderCacheDao(BaseDao):
               status_filter_list.append('consented')
             elif status == str(EnrollmentStatus.FULL_PARTICIPANT):
               status_filter_list.append('core')
-          filters_hpo += ' (' + ' OR '.join('enrollment_status=\'' + str(x)
-                                            for x in status_filter_list) + '\') AND '
+          filters_hpo += ' (' + ' OR '.join('enrollment_status=\'' + str(x) + '\''
+                                            for x in status_filter_list) + ') AND '
         sql = """
           SELECT date_inserted, date, CONCAT('{',group_concat(result),'}') AS json_result FROM
           (
@@ -372,15 +372,15 @@ class MetricsGenderCacheDao(BaseDao):
               status_filter_list.append('consented')
             elif status == str(EnrollmentStatusV2.CORE_PARTICIPANT):
               status_filter_list.append('core')
-          filters_hpo += ' (' + ' OR '.join('enrollment_status=\'' + str(x)
-                                            for x in status_filter_list) + '\') AND '
+          filters_hpo += ' (' + ' OR '.join('enrollment_status=\'' + str(x) + '\''
+                                            for x in status_filter_list) + ') AND '
         sql = """
           SELECT date_inserted, hpo_id, hpo_name, date, CONCAT('{',group_concat(result),'}') AS json_result FROM
           (
-            SELECT date_inserted, hpo_id, hpo_name, date, CONCAT('"',gender_name, '":', gender_count) AS result FROM 
+            SELECT date_inserted, hpo_id, hpo_name, date, CONCAT('"',gender_name, '":', gender_count) AS result FROM
             (
-              SELECT date_inserted, hpo_id,hpo_name,date,gender_name, SUM(gender_count) AS gender_count 
-              FROM metrics_gender_cache 
+              SELECT date_inserted, hpo_id,hpo_name,date,gender_name, SUM(gender_count) AS gender_count
+              FROM metrics_gender_cache
               WHERE %(filters_hpo)s
               date_inserted=:date_inserted
               and type = :cache_type
@@ -455,6 +455,9 @@ class MetricsGenderCacheDao(BaseDao):
       }
       if 'UNMAPPED' not in new_item['metrics']:
         new_item['metrics']['UNMAPPED'] = 0
+      for gender_name in self.gender_names:
+        if gender_name not in new_item['metrics']:
+          new_item['metrics'][gender_name] = 0
       client_json.append(new_item)
     return client_json
 

@@ -177,7 +177,7 @@ class ParticipantCountsOverTimeService(BaseDao):
       dao = MetricsEnrollmentStatusCacheDao(version=version)
       return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
     elif str(history) == 'TRUE' and stratification == Stratifications.GENDER_IDENTITY:
-      dao = MetricsGenderCacheDao()
+      dao = MetricsGenderCacheDao(version=version)
       return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids,
                                                enrollment_statuses)
     elif str(history) == 'TRUE' and stratification == Stratifications.AGE_RANGE:

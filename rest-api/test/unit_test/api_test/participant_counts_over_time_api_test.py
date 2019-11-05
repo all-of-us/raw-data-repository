@@ -1709,16 +1709,16 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, gender_identity=3)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_mem=self.time3,
-                 gender_identity=2)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                 time_mem=self.time3, gender_identity=2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_mem=self.time4,
-                 gender_identity=5)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time4, gender_identity=5)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time4, time_mem=self.time5,
-                 gender_identity=5)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time4, time_study=self.time4,
+                 time_mem=self.time5, gender_identity=5)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
