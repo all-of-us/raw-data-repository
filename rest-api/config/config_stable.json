@@ -143,6 +143,13 @@
         "ip6": []
       }
     },
+    "care-evolution@all-of-us-rdr-stable.iam.gserviceaccount.com": {
+      "roles": ["ptc"],
+      "whitelisted_ip_ranges": {
+        "ip6": ["::0/0"],
+        "ip4": ["0.0.0.0/0"]
+      }
+    },
     "awardee-broad@all-of-us-rdr-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "Broad",
