@@ -6,13 +6,11 @@
   ],
   "user_info": {
     "healthpro-staging@appspot.gserviceaccount.com": {
-      "roles": ["healthpro"],
-      "whitelisted_appids": ["healthpro-staging", "healthpro-beta"]
+      "roles": ["healthpro"]
     },
     "pmi-hpo-dev@appspot.gserviceaccount.com": {
       "roles": ["healthpro"],
-      "comment": "for HealthPro testing",
-      "whitelisted_appids": ["pmi-hpo-dev"]
+      "comment": "for HealthPro testing"
     },
     "vibrent-drc-staging@vibrent-drc-staging-165017.iam.gserviceaccount.com": {
       "roles": ["ptc"],
