@@ -232,7 +232,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                     WHERE ps.hpo_id = :hpo_id
                     GROUP BY DATE(ps.sign_up_time), DATE(ps.consent_for_study_enrollment_time)
                   ) AS results
-                  WHERE c.day>=DATE(sign_up_time) AND consent_for_study_enrollment_time IS NULL
+                  WHERE c.day>=DATE(sign_up_time) AND (consent_for_study_enrollment_time IS NULL OR DATE(consent_for_study_enrollment_time)>c.day)
                 ),0) AS registered_count,
                 IFNULL((
                   SELECT SUM(results.enrollment_count)
@@ -621,7 +621,8 @@ class MetricsGenderCacheDao(BaseDao):
     else:
       enrollment_status_criteria_arr = [
         ('registered', 'c.day>=DATE(ps.sign_up_time) '
-                       'AND ps.consent_for_study_enrollment_time IS NULL'),
+                       'AND (ps.consent_for_study_enrollment_time IS NULL OR '
+                       'DATE(ps.consent_for_study_enrollment_time)>c.day)'),
         ('participant', 'ps.consent_for_study_enrollment_time IS NOT NULL '
                         'AND c.day>=DATE(ps.consent_for_study_enrollment_time) '
                         'AND (ps.enrollment_status_member_time IS NULL '
@@ -877,7 +878,7 @@ class MetricsAgeCacheDao(BaseDao):
               WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NULL
               GROUP BY DATE(ps.sign_up_time), DATE(ps.consent_for_study_enrollment_time)
             ) AS results
-            WHERE results.day <= c.day AND consent_for_study_enrollment_time is null
+            WHERE results.day <= c.day AND (consent_for_study_enrollment_time is NULL OR DATE(consent_for_study_enrollment_time)>c.day)
           ),0) AS age_count
         FROM calendar c
         WHERE c.day BETWEEN :start_date AND :end_date
@@ -995,7 +996,7 @@ class MetricsAgeCacheDao(BaseDao):
             WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NOT NULL
             GROUP BY DATE(ps.sign_up_time), DATE(ps.date_of_birth), DATE(ps.consent_for_study_enrollment_time)
           ) AS results
-          WHERE results.day <= c.day AND consent_for_study_enrollment_time is null
+          WHERE results.day <= c.day AND (consent_for_study_enrollment_time is NULL OR DATE(consent_for_study_enrollment_time)>c.day)
           {age_range_condition}
         ),0) AS age_count
       FROM calendar c
@@ -1153,6 +1154,7 @@ class MetricsRaceCacheDao(BaseDao):
           for status in enrollment_statuses:
             if status == str(EnrollmentStatus.INTERESTED):
               param_list.append(MetricsRaceCache.registeredFlag == 1)
+              param_list.append(MetricsRaceCache.participantFlag == 1)
             elif status == str(EnrollmentStatus.MEMBER):
               param_list.append(MetricsRaceCache.consentedFlag == 1)
             elif status == str(EnrollmentStatus.FULL_PARTICIPANT):
@@ -1162,8 +1164,31 @@ class MetricsRaceCacheDao(BaseDao):
 
         return query.group_by(MetricsRaceCache.date).all()
       else:
-        query = session.query(MetricsRaceCache)\
-          .filter(MetricsRaceCache.dateInserted == last_inserted_date,
+        query = session.query(MetricsRaceCache.date, MetricsRaceCache.hpoName,
+                              func.sum(MetricsRaceCache.americanIndianAlaskaNative)
+                              .label('americanIndianAlaskaNative'),
+                              func.sum(MetricsRaceCache.asian)
+                              .label('asian'),
+                              func.sum(MetricsRaceCache.blackAfricanAmerican)
+                              .label('blackAfricanAmerican'),
+                              func.sum(MetricsRaceCache.middleEasternNorthAfrican)
+                              .label('middleEasternNorthAfrican'),
+                              func.sum(MetricsRaceCache.nativeHawaiianOtherPacificIslander)
+                              .label('nativeHawaiianOtherPacificIslander'),
+                              func.sum(MetricsRaceCache.white)
+                              .label('white'),
+                              func.sum(MetricsRaceCache.hispanicLatinoSpanish)
+                              .label('hispanicLatinoSpanish'),
+                              func.sum(MetricsRaceCache.noneOfTheseFullyDescribeMe)
+                              .label('noneOfTheseFullyDescribeMe'),
+                              func.sum(MetricsRaceCache.preferNotToAnswer)
+                              .label('preferNotToAnswer'),
+                              func.sum(MetricsRaceCache.multiAncestry)
+                              .label('multiAncestry'),
+                              func.sum(MetricsRaceCache.noAncestryChecked)
+                              .label('noAncestryChecked')
+                              )
+        query = query.filter(MetricsRaceCache.dateInserted == last_inserted_date,
                              MetricsRaceCache.type == self.cache_type)
         if start_date:
           query = query.filter(MetricsRaceCache.date >= start_date)
@@ -1171,19 +1196,21 @@ class MetricsRaceCacheDao(BaseDao):
           query = query.filter(MetricsRaceCache.date <= end_date)
         if hpo_ids:
           query = query.filter(MetricsRaceCache.hpoId.in_(hpo_ids))
-        if enrollment_statuses:
+        if enrollment_statuses and self.version == MetricsAPIVersion.V2:
           param_list = []
           for status in enrollment_statuses:
-            if status == str(EnrollmentStatus.INTERESTED):
+            if status == str(EnrollmentStatusV2.REGISTERED):
               param_list.append(MetricsRaceCache.registeredFlag == 1)
-            elif status == str(EnrollmentStatus.MEMBER):
+            elif status == str(EnrollmentStatusV2.PARTICIPANT):
+              param_list.append(MetricsRaceCache.participantFlag == 1)
+            elif status == str(EnrollmentStatusV2.FULLY_CONSENTED):
               param_list.append(MetricsRaceCache.consentedFlag == 1)
-            elif status == str(EnrollmentStatus.FULL_PARTICIPANT):
+            elif status == str(EnrollmentStatusV2.CORE_PARTICIPANT):
               param_list.append(MetricsRaceCache.coreFlag == 1)
           if param_list:
             query = query.filter(or_(*param_list))
 
-        return query.all()
+        return query.group_by(MetricsRaceCache.date, MetricsRaceCache.hpoName).all()
 
   def get_latest_version_from_cache(self, start_date, end_date, hpo_ids=None,
                                     enrollment_statuses=None):
@@ -1215,17 +1242,17 @@ class MetricsRaceCacheDao(BaseDao):
         'date': record.date.isoformat(),
         'hpo': record.hpoName,
         'metrics': {
-          'American_Indian_Alaska_Native': record.americanIndianAlaskaNative,
-          'Asian': record.asian,
-          'Black_African_American': record.blackAfricanAmerican,
-          'Middle_Eastern_North_African': record.middleEasternNorthAfrican,
-          'Native_Hawaiian_other_Pacific_Islander': record.nativeHawaiianOtherPacificIslander,
-          'White': record.white,
-          'Hispanic_Latino_Spanish': record.hispanicLatinoSpanish,
-          'None_Of_These_Fully_Describe_Me': record.noneOfTheseFullyDescribeMe,
-          'Prefer_Not_To_Answer': record.preferNotToAnswer,
-          'Multi_Ancestry': record.multiAncestry,
-          'No_Ancestry_Checked': record.noAncestryChecked
+          'American_Indian_Alaska_Native': int(record.americanIndianAlaskaNative),
+          'Asian': int(record.asian),
+          'Black_African_American': int(record.blackAfricanAmerican),
+          'Middle_Eastern_North_African': int(record.middleEasternNorthAfrican),
+          'Native_Hawaiian_other_Pacific_Islander': int(record.nativeHawaiianOtherPacificIslander),
+          'White': int(record.white),
+          'Hispanic_Latino_Spanish': int(record.hispanicLatinoSpanish),
+          'None_Of_These_Fully_Describe_Me': int(record.noneOfTheseFullyDescribeMe),
+          'Prefer_Not_To_Answer': int(record.preferNotToAnswer),
+          'Multi_Ancestry': int(record.multiAncestry),
+          'No_Ancestry_Checked': int(record.noAncestryChecked)
         }
       }
       client_json.append(new_item)
@@ -1280,6 +1307,7 @@ class MetricsRaceCacheDao(BaseDao):
                 :date_inserted as date_inserted,
                 '{cache_type}' as type,
                 registered as registered_flag,
+                participant as participant_flag,
                 consented as consented_flag,
                 core as core_flag,
                 hpo_id,
@@ -1300,8 +1328,11 @@ class MetricsRaceCacheDao(BaseDao):
                 (
                   SELECT p.hpo_id,
                          day,
-                         CASE WHEN enrollment_status_member_time IS NULL OR DATE(enrollment_status_member_time)>calendar.day
-                             THEN 1 ELSE 0 END AS registered,
+                         CASE WHEN DATE(sign_up_time)<=calendar.day AND (consent_for_study_enrollment_time IS NULL OR DATE(consent_for_study_enrollment_time)>calendar.day)
+                                   THEN 1 ELSE 0 END AS registered,
+                         CASE WHEN (consent_for_study_enrollment_time IS NOT NULL AND DATE(consent_for_study_enrollment_time)<=calendar.day) AND 
+                                   (enrollment_status_member_time IS NULL OR DATE(enrollment_status_member_time)>calendar.day)
+                             THEN 1 ELSE 0 END AS participant,
                          CASE WHEN (enrollment_status_member_time IS NOT NULL AND DATE(enrollment_status_member_time)<=calendar.day) AND
                                    (enrollment_status_core_stored_sample_time IS NULL OR DATE(enrollment_status_core_stored_sample_time)>calendar.day)
                              THEN 1 ELSE 0 END AS consented,
@@ -1338,6 +1369,7 @@ class MetricsRaceCacheDao(BaseDao):
                          SELECT participant_id,
                                 hpo_id,
                                 sign_up_time,
+                                consent_for_study_enrollment_time,
                                 enrollment_status_member_time,
                                 enrollment_status_core_stored_sample_time,
                                 MAX(WhatRaceEthnicity_Hispanic)                 AS WhatRaceEthnicity_Hispanic,
@@ -1356,6 +1388,7 @@ class MetricsRaceCacheDao(BaseDao):
                                 SELECT ps.participant_id,
                                        ps.hpo_id,
                                        ps.sign_up_time,
+                                       consent_for_study_enrollment_time,
                                        ps.enrollment_status_member_time,
                                        ps.enrollment_status_core_stored_sample_time,
                                        CASE WHEN q.code_id = {WhatRaceEthnicity_Hispanic} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
@@ -1373,14 +1406,14 @@ class MetricsRaceCacheDao(BaseDao):
                                 LEFT JOIN participant_race_answers q ON ps.participant_id = q.participant_id
                                 WHERE ps.hpo_id=:hpo_id AND ps.questionnaire_on_the_basics = 1
                               ) x
-                         GROUP BY participant_id, hpo_id, sign_up_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time
+                         GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time
                        ) p,
                        calendar
                   WHERE calendar.day >= :start_date
                     AND calendar.day <= :end_date
                     AND calendar.day >= Date(p.sign_up_time)
                 ) y
-                GROUP BY day, hpo_id, registered, consented, core
+                GROUP BY day, hpo_id, registered, participant, consented, core
                 ;
           """.format(cache_type=self.cache_type,
                      Race_WhatRaceEthnicity=race_code_dict['Race_WhatRaceEthnicity'],
@@ -1402,6 +1435,7 @@ class MetricsRaceCacheDao(BaseDao):
                       :date_inserted as date_inserted,
                       '{cache_type}' as type,
                       registered as registered_flag,
+                      participant as participant_flag,
                       consented as consented_flag,
                       core as core_flag,
                       hpo_id,
@@ -1422,8 +1456,11 @@ class MetricsRaceCacheDao(BaseDao):
                       (
                         SELECT p.hpo_id,
                                day,
-                               CASE WHEN enrollment_status_member_time IS NULL OR DATE(enrollment_status_member_time)>calendar.day
+                               CASE WHEN DATE(sign_up_time)<=calendar.day AND (consent_for_study_enrollment_time IS NULL OR DATE(consent_for_study_enrollment_time)>calendar.day)
                                    THEN 1 ELSE 0 END AS registered,
+                               CASE WHEN (consent_for_study_enrollment_time IS NOT NULL AND DATE(consent_for_study_enrollment_time)<=calendar.day) AND 
+                                         (enrollment_status_member_time IS NULL OR DATE(enrollment_status_member_time)>calendar.day)
+                                   THEN 1 ELSE 0 END AS participant,  
                                CASE WHEN (enrollment_status_member_time IS NOT NULL AND DATE(enrollment_status_member_time)<=calendar.day) AND
                                          (enrollment_status_core_stored_sample_time IS NULL OR DATE(enrollment_status_core_stored_sample_time)>calendar.day)
                                    THEN 1 ELSE 0 END AS consented,
@@ -1460,6 +1497,7 @@ class MetricsRaceCacheDao(BaseDao):
                                SELECT participant_id,
                                       hpo_id,
                                       sign_up_time,
+                                      consent_for_study_enrollment_time,
                                       enrollment_status_member_time,
                                       enrollment_status_core_stored_sample_time,
                                       MAX(WhatRaceEthnicity_Hispanic)                 AS WhatRaceEthnicity_Hispanic,
@@ -1478,6 +1516,7 @@ class MetricsRaceCacheDao(BaseDao):
                                       SELECT ps.participant_id,
                                              ps.hpo_id,
                                              ps.sign_up_time,
+                                             consent_for_study_enrollment_time,
                                              ps.enrollment_status_member_time,
                                              ps.enrollment_status_core_stored_sample_time,
                                              CASE WHEN q.code_id = {WhatRaceEthnicity_Hispanic} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
@@ -1495,14 +1534,14 @@ class MetricsRaceCacheDao(BaseDao):
                                       LEFT JOIN participant_race_answers q ON ps.participant_id = q.participant_id
                                       WHERE ps.hpo_id=:hpo_id AND ps.questionnaire_on_the_basics = 1
                                     ) x
-                               GROUP BY participant_id, hpo_id, sign_up_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time
+                               GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time
                              ) p,
                              calendar
                         WHERE calendar.day >= :start_date
                           AND calendar.day <= :end_date
                           AND calendar.day >= Date(p.sign_up_time)
                       ) y
-                      GROUP BY day, hpo_id, registered, consented, core
+                      GROUP BY day, hpo_id, registered, participant, consented, core
                       ;
                 """.format(cache_type=self.cache_type,
                            Race_WhatRaceEthnicity=race_code_dict['Race_WhatRaceEthnicity'],
@@ -1814,7 +1853,7 @@ class MetricsRegionCacheDao(BaseDao):
         WHERE ps.hpo_id=:hpo_id
         AND ps.sign_up_time IS NOT NULL
         AND DATE(ps.sign_up_time) <= c.day
-        AND ps.consent_for_study_enrollment_time IS NULL
+        AND (ps.consent_for_study_enrollment_time IS NULL OR DATE(ps.consent_for_study_enrollment_time)>c.day)
         AND c.day BETWEEN :start_date AND :end_date
         GROUP BY c.day, ps.hpo_id ,ps.value
         union 
@@ -2163,7 +2202,8 @@ class MetricsLifecycleCacheDao(BaseDao):
     if self.cache_type == MetricsCacheType.METRICS_V2_API:
       enrollment_status_criteria_arr = [
         ('registered', 'calendar.day>=DATE(sign_up_time) '
-                       'AND consent_for_study_enrollment_time IS NULL'),
+                       'AND (consent_for_study_enrollment_time IS NULL OR '
+                       'DATE(consent_for_study_enrollment_time)>calendar.day)'),
         ('participant', 'consent_for_study_enrollment_time IS NOT NULL '
                         'AND calendar.day>=DATE(consent_for_study_enrollment_time) '
                         'AND (enrollment_status_member_time IS NULL '
