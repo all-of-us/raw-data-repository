@@ -179,8 +179,8 @@
         ]
       }
     },
-    "pentest@all-of-us-rdr-stable.iam.gserviceaccount.com": {
-      "comment": "Penetration testing for Coalfire, PD-334.",
+    "coalfire-scan@all-of-us-rdr-prod.iam.gserviceaccount.com": {
+      "comment": "Penetration testing for Coalfire, PD-334, ROC-230",
       "roles": ["ptc", "healthpro"],
       "whitelisted_ip_ranges": {
         "ip4": [
