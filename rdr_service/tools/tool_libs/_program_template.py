@@ -24,17 +24,17 @@ tool_desc = "put tool help description here"
 class ProgramTemplateClass(object):
     def __init__(self, args, gcp_env):
         """
-    :param args: command line arguments.
-    :param gcp_env: gcp environment information, see: gcp_initialize().
-    """
+        :param args: command line arguments.
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        """
         self.args = args
         self.gcp_env = gcp_env
 
     def run(self):
         """
-    Main program process
-    :return: Exit code value
-    """
+        Main program process
+        :return: Exit code value
+        """
         # TODO: write program main process here after setting 'tool_cmd' and 'tool_desc'...
         return 0
 

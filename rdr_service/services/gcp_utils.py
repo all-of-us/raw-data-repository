@@ -5,6 +5,7 @@
 #
 # superfluous-parens
 # pylint: disable=W0612
+from dateutil import parser
 import glob
 import logging
 import os
@@ -644,5 +645,126 @@ def gcp_mv(src, dest, args=None, flags=None):
     if pcode != 0:
         _logger.error("failed to copy file. ({0}: {1}).".format(pcode, se))
         return False
+
+    return True
+
+
+def gcp_get_app_versions(running_only: bool = False):
+    """
+    Get the list of current App Engine services and versions.
+    :param running_only: Only showing running versions if True.
+    :return: dict(service_name: dict(version, split, deployed, status))
+    """
+
+    args = "versions list"
+    pcode, so, se = gcp_gcloud_command("app", args)
+
+    if pcode != 0 or not so:
+        _logger.error("failed to retrieve app services and versions. ({0}: {1}).".format(pcode, se))
+        return None
+
+    lines = so.split('\n')
+    if not lines or not lines[0].startswith('SERVICE'):
+        _logger.error("invalid response when trying retrieve app information. ({0}: {1}).".format(pcode, se))
+        return None
+
+    lines.pop(0)
+
+    services = OrderedDict()
+
+    for line in lines:
+        if not line:
+            continue
+        while '  ' in line:
+            line = line.replace('  ', ' ')
+        parts = line.split(' ')
+
+        name = parts[0]
+        if not services.get(name, None):
+            services[name] = list()
+
+        if not running_only or (parts[4] == 'SERVING' and float(parts[2]) > 0.0):
+            services[name].append({
+                'version': parts[1],
+                'split': float(parts[2]),
+                'deployed': parser.parse(parts[3]),
+                'status': parts[4]
+            })
+
+    return services
+
+
+def gcp_app_services_split_traffic(service: str, versions: list, split_by: str = 'random'):
+    """
+    Split App Engine traffic between two or more services.  The sum of the split ratios must equal 1.0.
+    :param service: Service name to apply traffic splits to.
+    :param versions: A list of tuples containing (service name, split ratio).
+    :param split_by: Must be one of "ip", "cookie" or "random".
+    :return: True if successful, otherwise False
+    """
+
+    if not versions or not isinstance(versions, list):
+        _logger.error('list of services invalid.')
+        return False
+
+    total = 0.0
+    splits = ""
+    for item in versions:
+        if not isinstance(item, tuple) or len(item) != 2:
+            _logger.error('service description must be a tuple containing service name and split ratio.')
+            return False
+        total += float(item[1])
+        splits += "{0}={1},".format(item[0], item[1])
+
+    if total != 1.0:
+        _logger.error('service splits do not equal 1.0, unable to continue.')
+        return False
+
+    args = "--quiet services set-traffic {0}".format(service)
+    flags = "--splits {0} --split-by={1}".format(splits[:-1], split_by)
+    if len(versions) == 1:
+        flags += " --migrate"
+
+    pcode, so, se = gcp_gcloud_command("app", args, flags)
+
+    if pcode != 0:
+        _logger.error("failed to set traffic split. ({0}: {1}).".format(pcode, se))
+        return False
+
+    _logger.debug(so if so else se)
+
+    return True
+
+
+def gcp_deploy_app(project, config_files: list, version: str = None, promote: bool = False):
+    """
+    Deploy an app to App Engine.
+    :param project: project name
+    :param config_files: Path to app configuration yaml file.
+    :param version: Deploy as different version if needed.
+    :param promote: Promote version to serving traffic.
+    :return: True if successful, otherwise False.
+    """
+    if not config_files or not isinstance(config_files, list):
+        raise ValueError('Invalid configuration file list argument.')
+
+    configs = ' '.join(config_files)
+
+    args = "--quiet deploy {0}".format(configs)
+    if project:
+        args += " --project {0}".format(project)
+    flags = ''
+    if version:
+        flags += ' --version "{0}"'.format(version)
+    if not promote:
+        flags += ' --no-promote'
+
+    pcode, so, se = gcp_gcloud_command("app", args, flags.strip())
+
+    if pcode != 0:
+        _logger.error("failed to deploy app. ({0}: {1}).".format(pcode, se))
+        return False
+
+    _logger.debug(so if so else se)
 
     return True
