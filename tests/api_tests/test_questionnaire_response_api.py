@@ -273,6 +273,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "numberDistinctVisits": 0,
             "ehrStatus": "UNSET",
             "patientStatus": [],
+            "participantOrigination": "example"
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -376,6 +377,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "numberDistinctVisits": 0,
             "ehrStatus": "UNSET",
             "patientStatus": [],
+            "participantOrigination": "example"
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -565,6 +567,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "numberDistinctVisits": 0,
             "ehrStatus": "UNSET",
             "patientStatus": [],
+            "participnatOrigination": 'example'
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -897,6 +900,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "numberDistinctVisits": 0,
             "ehrStatus": "UNSET",
             "patientStatus": [],
+            "participantOrigination": "example"
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1016,5 +1020,6 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "numberDistinctVisits": 0,
             "ehrStatus": "UNSET",
             "patientStatus": [],
+            "participantOrigination": "example"
         }
         self.assertJsonResponseMatches(expected, summary)

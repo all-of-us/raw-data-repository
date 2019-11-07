@@ -1943,8 +1943,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
         questionnaire_id_3 = self.create_questionnaire("all_consents_questionnaire.json")
         participant_1 = self.send_post("Participant", {"providerLink": [self.provider_link]})
         participant_id_1 = participant_1["participantId"]
+        BaseTestCase.switch_auth_user("example@spellman.com", 'vibrent')
         participant_2 = self.send_post("Participant", {"providerLink": [self.provider_link]})
         participant_id_2 = participant_2["participantId"]
+        BaseTestCase.switch_auth_user("example@example.com", 'example')
         participant_3 = self.send_post("Participant", {})
         participant_id_3 = participant_3["participantId"]
         with FakeClock(TIME_1):
@@ -2062,7 +2064,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
             participant_2["withdrawalReasonJustification"] = "Duplicate."
             participant_3["suspensionStatus"] = "NO_CONTACT"
             participant_3["site"] = "hpo-site-monroeville"
+            BaseTestCase.switch_auth_user("example@spellman.com", 'vibrent')
             self.send_put("Participant/%s" % participant_id_2, participant_2, headers={"If-Match": 'W/"2"'})
+            BaseTestCase.switch_auth_user("example@example.com", 'example')
             self.send_put(
                 "Participant/%s" % participant_id_3,
                 participant_3,
@@ -2148,7 +2152,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", ps_2["sampleOrderStatus1HEP4"])
         self.assertEqual("UNSET", ps_2["sampleOrderStatus1UR10"])
         self.assertEqual("UNSET", ps_2["sampleOrderStatus1SAL"])
-        self.assertEqual("example", ps_2["participantOrigination"])
+        self.assertEqual("vibrent", ps_2["participantOrigination"])
 
         self.assertIsNone(ps_2.get("suspensionTime"))
         self.assertEqual(3, ps_3["numCompletedBaselinePPIModules"])
@@ -2275,8 +2279,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&sampleOrderStatus1ED10Time=lt2016-01-04", [[]])
             self.assertResponses("ParticipantSummary?_count=2&organization=PITT_BANNER_HEALTH", [[ps_1, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&site=hpo-site-monroeville", [[ps_1, ps_3]])
-            self.assertResponses("ParticipantSummary?_count=3&participantOrigination=example",
-                                 [[ps_1, ps_2, ps_3]])
+            self.assertResponses("ParticipantSummary?_count=2&participantOrigination=example", [[ps_1, ps_3]])
+            self.assertResponses("ParticipantSummary?participantOrigination=vibrent", [[ps_2]])
         # Two days after participant 2 withdraws, their fields are not set for anything but
         # participant ID, HPO ID, withdrawal status, and withdrawal time
         with FakeClock(TIME_5):

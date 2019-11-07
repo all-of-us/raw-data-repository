@@ -51,6 +51,7 @@
       "roles": [
         "healthpro"
       ],
+      "clientId": "hpro",
       "whitelisted_appids": [
         "healthpro-prod"
       ]
@@ -62,6 +63,7 @@
       "roles": [
         "ptc"
       ],
+      "clientId": "vibrent",
       "whitelisted_ip_ranges": {
         "ip4": [
           "34.204.157.148",

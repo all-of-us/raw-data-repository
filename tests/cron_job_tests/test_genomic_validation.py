@@ -60,6 +60,7 @@ class GenomicSetValidationBaseTestCase(BaseTestCase):
             sampleStatus1SAL2=SampleStatus.RECEIVED,
             samplesToIsolateDNA=SampleStatus.RECEIVED,
             consentForStudyEnrollmentTime=datetime.datetime(2019, 1, 1),
+            participantOrigination='example'
         )
         kwargs = dict(valid_kwargs, **override_kwargs)
         summary = self._participant_summary_with_defaults(**kwargs)

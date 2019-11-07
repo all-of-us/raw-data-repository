@@ -13,6 +13,7 @@
     },
     "careevolution@all-of-us-rdr-careevo-test.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"],
+      "clientId": "careevolution",
       "whitelisted_ip_ranges": {
         "ip6": ["::0/0"],
         "ip4": ["0.0.0.0/0"]

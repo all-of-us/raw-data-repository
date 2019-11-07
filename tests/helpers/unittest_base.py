@@ -171,7 +171,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             "hpoId": UNSET_HPO_ID,
             "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
             "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
-            "participantOrigination": "example@example.com"
+            "participantOrigination": "example"
         }
         common_args.update(kwargs)
         return Participant(**common_args)

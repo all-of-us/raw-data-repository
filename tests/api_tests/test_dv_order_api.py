@@ -156,7 +156,7 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
 
         # duplicate the test for each user (Vibrent and CE)
         for user, expected_system_identifier in system_from_user.items():
-            self._switch_auth_user(user)
+            BaseTestCase.switch_auth_user(user)
 
             # Make the series of API calls to create DV orders and associated Biobank records
             post_response = self.send_post(
@@ -192,7 +192,7 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
             self._intra_test_clean_up_db()
 
         # Resetting in case downstream tests require it
-        self._switch_auth_user("example@example.com")
+        BaseTestCase.switch_auth_user("example@example.com")
 
     # TODO: remove commented code
     # def _switch_auth_user(self, new_auth_user):
