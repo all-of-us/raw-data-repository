@@ -19,7 +19,7 @@ from rdr_service.api_util import (
     format_json_org,
     format_json_site,
 )
-from rdr_service.code_constants import BIOBANK_TESTS, PPI_SYSTEM, UNSET
+from rdr_service.code_constants import BIOBANK_TESTS, PPI_SYSTEM, UNSET, ORIGINATING_SOURCES
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
@@ -416,7 +416,13 @@ class ParticipantSummaryDao(UpdatableDao):
         if field_name == "patientStatus":
             return self._make_patient_status_field_filter(field_name, value)
 
+        if field_name == "participantOrigination":
+            if value not in ORIGINATING_SOURCES:
+                raise BadRequest(f"No origin source found for {value}")
+            return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
+
         return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
+
 
     def _make_patient_status_field_filter(self, field_name, value):
         try:
