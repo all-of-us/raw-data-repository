@@ -35,7 +35,7 @@ def gcp_test_environment():
 
     # TODO: Future: put additional checks here as needed, IE: required environment vars.
 
-    _logger.info("local environment is good.")
+    _logger.debug("Local Environment : Good.")
     return True
 
 
@@ -155,7 +155,7 @@ def gcp_initialize(project, account=None, service_account=None):
             return None
 
     for key, value in list(env.items()):
-        _logger.info("{0}: [{1}].".format(key, value))
+        _logger.debug("{0} : [{1}].".format(key, value))
 
     return env
 
@@ -247,9 +247,9 @@ def gcp_set_config(prop, value, flags=None):
     _logger.debug("successfully set gcp config property.")
 
     if prop.lower() == "project":
-        _logger.info("the current project is now [{0}].".format(value))
+        _logger.debug("current Project : {0}".format(value))
     else:
-        _logger.info("config: [{0}] is now [{1}].".format(prop, value))
+        _logger.debug("config : {0} is now {1}".format(prop, value))
 
     return True
 
