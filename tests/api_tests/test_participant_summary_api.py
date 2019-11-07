@@ -3,6 +3,8 @@ import http.client
 import threading
 import unittest
 
+import mock
+#from unittest.mock import patch
 from urllib.parse import urlencode
 
 from rdr_service import main
@@ -21,6 +23,7 @@ from rdr_service.code_constants import (
     GENDER_WOMAN_CODE,
     GENDER_NONBINARY_CODE,
     GENDER_PREFER_NOT_TO_ANSWER_CODE,
+    ORIGINATING_SOURCES
 )
 from rdr_service.concepts import Concept
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
@@ -110,6 +113,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.hpo_dao.insert(
             HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName="Test", organizationType=OrganizationType.UNSET)
         )
+
+        #self.mock_source = patch.object(ORIGINATING_SOURCES, return_value=['example'])
 
     def create_demographics_questionnaire(self):
         """Uses the demographics test data questionnaire.  Returns the questionnaire id"""
@@ -222,6 +227,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "numberDistinctVisits": 0,
                 "ehrStatus": "UNSET",
                 "patientStatus": patient_statuses or [],
+                "participantOrigination": "example"
             }
         )
 
@@ -2105,6 +2111,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("FINALIZED", ps_1["sampleOrderStatus1UR10"])
         self.assertEqual("FINALIZED", ps_1["sampleOrderStatus1SAL"])
         self.assertEqual("215-222-2222", ps_1["loginPhoneNumber"])
+        self.assertEqual("example", ps_1["participantOrigination"])
 
         # One day after participant 2 withdraws, their fields are still all populated.
         self.assertEqual(1, ps_2["numCompletedBaselinePPIModules"])
@@ -2141,6 +2148,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", ps_2["sampleOrderStatus1HEP4"])
         self.assertEqual("UNSET", ps_2["sampleOrderStatus1UR10"])
         self.assertEqual("UNSET", ps_2["sampleOrderStatus1SAL"])
+        self.assertEqual("example", ps_2["participantOrigination"])
 
         self.assertIsNone(ps_2.get("suspensionTime"))
         self.assertEqual(3, ps_3["numCompletedBaselinePPIModules"])
@@ -2161,6 +2169,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("hpo-site-monroeville", ps_3["site"])
         self.assertIsNone(ps_3.get("withdrawalTime"))
         self.assertIsNotNone(ps_3["suspensionTime"])
+        self.assertEqual("example", ps_3["participantOrigination"])
 
         # One day after participant 2 withdraws, the participant is still returned.
         with FakeClock(TIME_4):
@@ -2266,6 +2275,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&sampleOrderStatus1ED10Time=lt2016-01-04", [[]])
             self.assertResponses("ParticipantSummary?_count=2&organization=PITT_BANNER_HEALTH", [[ps_1, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&site=hpo-site-monroeville", [[ps_1, ps_3]])
+            self.assertResponses("ParticipantSummary?_count=3&participantOrigination=example",
+                                 [[ps_1, ps_2, ps_3]])
         # Two days after participant 2 withdraws, their fields are not set for anything but
         # participant ID, HPO ID, withdrawal status, and withdrawal time
         with FakeClock(TIME_5):

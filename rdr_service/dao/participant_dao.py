@@ -18,8 +18,8 @@ from rdr_service.api_util import (
     get_site_id_from_google_group,
     parse_json_enum,
 )
-from rdr_service.app_util import get_oauth_id
-from rdr_service.code_constants import UNSET
+from rdr_service.app_util import get_validated_user_info
+from rdr_service.code_constants import UNSET, ORIGINATING_SOURCES
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
@@ -75,8 +75,9 @@ class ParticipantDao(UpdatableDao):
         obj.version = 1
         obj.signUpTime = clock.CLOCK.now().replace(microsecond=0)
         obj.lastModified = obj.signUpTime
-        service_account = get_oauth_id()
-        obj.participantOrigination = service_account
+        _, user_info = get_validated_user_info()
+        base_name = user_info.get('clientId')
+        obj.participantOrigination = base_name
         if obj.withdrawalStatus is None:
             obj.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
         if obj.suspensionStatus is None:
@@ -135,10 +136,12 @@ class ParticipantDao(UpdatableDao):
         ):
             raise BadRequest("missing withdrawalReasonJustification in update")
         if existing_obj:
-            if get_oauth_id() != existing_obj.participantOrigination:
-                logging.warning(f"{get_oauth_id()} tried to modify participant from \
+            _, user_info = get_validated_user_info()
+            base_name = user_info.get('clientId')
+            if base_name.lower() in ORIGINATING_SOURCES and base_name.lower() != existing_obj.participantOrigination:
+                logging.warning(f"{base_name} tried to modify participant from \
                         {existing_obj.participantOrigination}")
-                raise BadRequest(f"{get_oauth_id()} not able to update participant from source \
+                raise BadRequest(f"{base_name} not able to update participant from \
                         {existing_obj.participantOrigination}")
         super(ParticipantDao, self)._validate_update(session, obj, existing_obj)
         # Once a participant marks their withdrawal status as NO_USE, it can't be changed back.
@@ -284,6 +287,7 @@ class ParticipantDao(UpdatableDao):
             suspensionStatus=obj.suspensionStatus,
             enrollmentStatus=EnrollmentStatus.INTERESTED,
             ehrStatus=EhrStatus.NOT_PRESENT,
+            participantOrigination=obj.participantOrigination
         )
 
     @staticmethod

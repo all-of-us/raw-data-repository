@@ -13,6 +13,7 @@ import contextlib
 import csv
 
 from tempfile import mkdtemp
+
 from rdr_service.storage import LocalFilesystemStorageProvider
 from rdr_service import config
 from tests.test_data import data_path
@@ -439,6 +440,18 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
                 os.mkdir(root_path + os.sep + path)
         except OSError:
             print("Creation mock buckets failed")
+
+    @staticmethod
+    def switch_auth_user(new_auth_user, client_id=None):
+        import api_util
+        config.LOCAL_AUTH_USER = new_auth_user
+        config_user_info = {
+            new_auth_user: {
+                'roles': api_util.ALL_ROLES,
+                'clientId': client_id
+            }
+        }
+        config.override_setting("user_info", config_user_info)
 
 
 class InMemorySqlExporter(sql_exporter.SqlExporter):

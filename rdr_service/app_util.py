@@ -96,7 +96,7 @@ def get_oauth_id():
     NOTES: 2019-08-15 by tanner and mikey
     currently verifies that the provided token
     is legitimate via google API.
-    - perfomance
+    - performance
         - could be cached
         - could be validated locally instead of with API
     '''
@@ -248,7 +248,7 @@ def get_validated_user_info():
     user_email = get_oauth_id()
 
     # Allow clients to simulate an unauthentiated request (for testing)
-    # becaues we haven't found another way to create an unauthenticated request
+    # because we haven't found another way to create an unauthenticated request
     # when using dev_appserver. When client tests are checking to ensure that an
     # unauthenticated requests gets rejected, they helpfully add this header.
     # The `application_id` check ensures this feature only works in dev_appserver.
@@ -264,6 +264,7 @@ def get_validated_user_info():
         else:
             addr = request.remote_addr
         enforce_ip_whitelisted(addr, get_whitelisted_ips(user_info))
+        # TODO: Probably need to remove appid whitelisted if testing in staging works out. 11-6-2019
         enforce_appid_whitelisted(request.headers.get("X-Appengine-Inbound-Appid"), get_whitelisted_appids(user_info))
         logging.info("User %r ALLOWED", user_email)
         return (user_email, user_info)

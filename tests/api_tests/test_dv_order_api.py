@@ -194,14 +194,15 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
         # Resetting in case downstream tests require it
         self._switch_auth_user("example@example.com")
 
-    def _switch_auth_user(self, new_auth_user):
-        config.LOCAL_AUTH_USER = new_auth_user
-        config_user_info = {
-            new_auth_user: {
-                'roles': api_util.ALL_ROLES
-            }
-        }
-        config.override_setting("user_info", config_user_info)
+    # TODO: remove commented code
+    # def _switch_auth_user(self, new_auth_user):
+    #     config.LOCAL_AUTH_USER = new_auth_user
+    #     config_user_info = {
+    #         new_auth_user: {
+    #             'roles': api_util.ALL_ROLES
+    #         }
+    #     }
+    #     config.override_setting("user_info", config_user_info)
 
     def _intra_test_clean_up_db(self):
         """DB clean-up to avoid duplicate key errors"""
