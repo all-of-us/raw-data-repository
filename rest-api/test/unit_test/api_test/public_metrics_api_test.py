@@ -304,7 +304,7 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     p2 = Participant(participantId=2, biobankId=5)
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time2,
-                 time_mem=self.time3, gender_identity=2)
+                 time_study=self.time2, time_mem=self.time3, gender_identity=2)
     participant_gender_answer_dao.insert(
       ParticipantGenderAnswers(**dict(participantId=2,
                                       created=self.time2,
@@ -313,7 +313,7 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     p3 = Participant(participantId=3, biobankId=6)
     self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
-                 time_int=self.time3, time_mem=self.time5, gender_identity=5)
+                 time_int=self.time3, time_study=self.time3, time_mem=self.time5, gender_identity=5)
     participant_gender_answer_dao.insert(
       ParticipantGenderAnswers(**dict(participantId=3,
                                       created=self.time3,
@@ -322,7 +322,7 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     p4 = Participant(participantId=4, biobankId=7)
     self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
-                 time_int=self.time4, time_mem=self.time5, gender_identity=5)
+                 time_int=self.time4, time_study=self.time4, time_mem=self.time5, gender_identity=5)
     participant_gender_answer_dao.insert(
       ParticipantGenderAnswers(**dict(participantId=4,
                                       created=self.time4,
@@ -331,7 +331,7 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     p6 = Participant(participantId=6, biobankId=9)
     self._insert(p6, 'Chad3', 'Caterpillar3', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
-                 time_int=self.time5, time_mem=self.time5, gender_identity=7)
+                 time_int=self.time5, time_study=self.time5, time_mem=self.time5, gender_identity=7)
     participant_gender_answer_dao.insert(
       ParticipantGenderAnswers(**dict(participantId=6,
                                       created=self.time5,
@@ -400,11 +400,6 @@ class PublicMetricsApiTest(FlaskTestBase):
           )
 
     results = self.send_get('PublicMetrics', query_string=qs)
-    self.assertIn({'date': '2017-12-31',
-                   'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
-                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0,
-                               'More than one gender identity': 0}}, results)
     self.assertIn({'date': '2018-01-01',
                    'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
@@ -435,16 +430,6 @@ class PublicMetricsApiTest(FlaskTestBase):
     )
 
     results = self.send_get('PublicMetrics', query_string=qs)
-    self.assertIn({'date': '2017-12-31',
-                   'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
-                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0,
-                               'More than one gender identity': 0}}, results)
-    self.assertIn({'date': '2018-01-01',
-                   'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
-                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0,
-                               'More than one gender identity': 0}}, results)
     self.assertIn({'date': '2018-01-02',
                    'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
@@ -645,15 +630,15 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     p2 = Participant(participantId=2, biobankId=5)
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time2,
-                 time_mem=self.time3, dob=dob2)
+                 time_study=self.time2, time_mem=self.time3, dob=dob2)
 
     p3 = Participant(participantId=3, biobankId=6)
     self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
-                 time_int=self.time3, time_mem=self.time5, dob=dob3)
+                 time_study=self.time3, time_int=self.time3, time_mem=self.time5, dob=dob3)
 
     p4 = Participant(participantId=4, biobankId=7)
     self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
-                 time_int=self.time4, time_mem=self.time5, dob=dob4)
+                 time_study=self.time4, time_int=self.time4, time_mem=self.time5, dob=dob4)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)

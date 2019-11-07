@@ -26,6 +26,7 @@ class MetricsRaceCache(Base):
                         nullable=False, primary_key=True)
   type = Column('type', String(50), primary_key=True)
   registeredFlag = Column('registered_flag', Boolean, nullable=False, primary_key=True)
+  participantFlag = Column('participant_flag', Boolean, nullable=False, primary_key=True)
   consentedFlag = Column('consent_flag', Boolean, nullable=False, primary_key=True)
   coreFlag = Column('core_flag', Boolean, nullable=False, primary_key=True)
   hpoId = Column('hpo_id', String(20), primary_key=True)
