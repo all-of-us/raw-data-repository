@@ -18,7 +18,7 @@ from rdr_service.api_util import (
     get_site_id_from_google_group,
     parse_json_enum,
 )
-from rdr_service.app_util import get_validated_user_info
+from rdr_service.app_util import get_oauth_id, lookup_user_info
 from rdr_service.code_constants import UNSET, ORIGINATING_SOURCES
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.dao.hpo_dao import HPODao
@@ -75,7 +75,8 @@ class ParticipantDao(UpdatableDao):
         obj.version = 1
         obj.signUpTime = clock.CLOCK.now().replace(microsecond=0)
         obj.lastModified = obj.signUpTime
-        _, user_info = get_validated_user_info()
+        email = get_oauth_id()
+        user_info = lookup_user_info(email)
         base_name = user_info.get('clientId')
         obj.participantOrigination = base_name
         if obj.withdrawalStatus is None:
@@ -136,9 +137,10 @@ class ParticipantDao(UpdatableDao):
         ):
             raise BadRequest("missing withdrawalReasonJustification in update")
         if existing_obj:
-            _, user_info = get_validated_user_info()
-            base_name = user_info.get('clientId')
-            if base_name.lower() in ORIGINATING_SOURCES and base_name.lower() != existing_obj.participantOrigination:
+            email = get_oauth_id()
+            user_info = lookup_user_info(email)
+            base_name = user_info.get('clientId').lower()
+            if base_name in ORIGINATING_SOURCES and base_name != existing_obj.participantOrigination:
                 logging.warning(f"{base_name} tried to modify participant from \
                         {existing_obj.participantOrigination}")
                 raise BadRequest(f"{base_name} not able to update participant from \
