@@ -80,7 +80,8 @@ class ParticipantDao(UpdatableDao):
         base_name = user_info.get('clientId')
         if not base_name:
             if email == DEV_MAIL:
-                base_name = "example"  # TODO: This is a hack because something sets up configs different when running all tests and it doesnt have the clientId key.
+                base_name = "example"  # TODO: This is a hack because something sets up configs different
+                # when running all tests and it doesnt have the clientId key.
         obj.participantOrigin = base_name
         if obj.withdrawalStatus is None:
             obj.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
@@ -145,7 +146,8 @@ class ParticipantDao(UpdatableDao):
             base_name = user_info.get('clientId')
             if not base_name:
                 if email == DEV_MAIL:
-                    base_name = "example"  # TODO: This is a hack because something sets up configs different when running all tests and it doesnt have the clientId key.
+                    base_name = "example"  # TODO: This is a hack because something sets up configs different
+                    # when running all tests and it doesnt have the clientId key.
             base_name = base_name.lower()
             if base_name in ORIGINATING_SOURCES and base_name != existing_obj.participantOrigin:
                 logging.warning(f"{base_name} tried to modify participant from \
