@@ -448,3 +448,73 @@ def start_mysqld_instance(basedir: str) -> int:
             if '/mysqld' in line and '--basedir=' in line:
                 path = line[line.find('/'):]
                 return path.split(' ')[0]
+
+
+def git_project_root(path=None):
+    """
+    Figure out the git project top level directory.
+    :param path: optional: path to check.
+    :return: Git project root path or None
+    """
+    cwd = os.curdir
+    if path:
+        if not os.path.exists(path):
+            raise ValueError('Invalid directory path argument')
+        os.chdir(path)
+
+    args = ['git', 'rev-parse', '--show-toplevel']
+    # pylint: disable=unused-variable
+    code, so, se = run_external_program(args=args)
+
+    os.chdir(cwd)
+
+    if code == 0:
+        return so.strip()
+
+    return None
+
+def git_current_branch():
+    """
+    Get the currently checked out branch.
+    :return: Git branch name.
+    """
+    args = ['git', 'rev-parse', '--abbrev-ref', 'HEAD']
+    # pylint: disable=unused-variable
+    code, so, se = run_external_program(args=args)
+
+    if code == 0:
+        return so.strip()
+
+    return None
+
+def git_checkout_branch(branch):
+    """
+    Change current branch to the given branch.
+    :param branch: git branch name to checkout.
+    :return: True if successful otherwise False
+    """
+    args = ['git', 'checkout', branch]
+    # pylint: disable=unused-variable
+    code, so, se = run_external_program(args=args)
+
+    if code == 0:
+        return True
+
+    _logger.error(se if se else so)
+
+    return False
+
+def is_git_branch_clean():
+    """
+    Does the current branch have any un-commited changes.
+    :return: True if successful otherwise False
+    """
+    args = ['git', 'status', '--porcelain']
+    # pylint: disable=unused-variable
+    code, so, se = run_external_program(args=args)
+
+    if code == 0 and not so:
+        return True
+
+    return False
+
