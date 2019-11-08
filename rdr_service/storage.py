@@ -315,13 +315,11 @@ class GoogleCloudStorageProvider(StorageProvider):
         source_bucket.copy_blob(source_blob, destination_bucket, destination_blob_name)
 
     def exists(self, path):
-        bucket_path = path.split(os.sep)
-        bucket_name = bucket_path[0]
-        file_name = bucket_path[-1]
-        storage_client = storage.Client()
-        bucket = storage_client.bucket(bucket_name)
-        gcs_stat = storage.Blob(bucket=bucket, name=file_name).exists(storage_client)
-        return gcs_stat is not None
+        bucket_name, blob_name = self._parse_path(path)
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        gcs_stat = storage.Blob(bucket=bucket, name=blob_name).exists(client)
+        return gcs_stat
 
     @staticmethod
     def _parse_path(path):
