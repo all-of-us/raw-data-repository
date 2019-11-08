@@ -44,7 +44,7 @@ class ParticipantBase(object):
     # participant.
     clientId = Column("client_id", String(80))
     # The originating resource for participant, this (unlike clientId) will not change.
-    participantOrigination = Column("participant_origination", String(80), nullable=False)
+    participantOrigin = Column("participant_origin", String(80), nullable=False)
 
     # Default values for withdrawal and suspension are managed through the DAO (instead of column
     # defaults here) to simplify insert v. update semantics.

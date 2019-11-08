@@ -123,7 +123,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         stream_handler = logging.StreamHandler(sys.stdout)
         logger.addHandler(stream_handler)
 
-        logger.setLevel(logging.CRITICAL)
+        logger.setLevel(logging.DEBUG)
 
         self.setup_config()
         self.setup_storage()
@@ -171,7 +171,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             "hpoId": UNSET_HPO_ID,
             "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
             "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
-            "participantOrigination": "example"
+            "participantOrigin": "example"
         }
         common_args.update(kwargs)
         return Participant(**common_args)
@@ -187,6 +187,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
             "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
             "enrollmentStatus": EnrollmentStatus.INTERESTED,
+            "participantOrigin": "example"
         }
         common_args.update(kwargs)
         return ParticipantSummary(**common_args)
@@ -198,7 +199,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             "version": 1,
             "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
             "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
-            "participantOrigination": "example@example.com"
+            "participantOrigin": "example"
         }
         common_args.update(kwargs)
         return ParticipantHistory(**common_args)

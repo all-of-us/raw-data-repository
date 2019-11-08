@@ -48,7 +48,7 @@ class BigQuerySyncDaoTest(BaseTestCase):
 
             ps = ParticipantSummary(participantId=123, biobankId=555, firstName='john', lastName='doe',
                                     withdrawalStatus=WithdrawalStatus.NOT_WITHDRAWN,
-                                    suspensionStatus=SuspensionStatus.NOT_SUSPENDED)
+                                    suspensionStatus=SuspensionStatus.NOT_SUSPENDED, participantOrigin='example')
             ps.hpoId = self.hpo.hpoId
             ps.siteId = self.site.siteId
             self.summary = ParticipantSummaryDao().insert(ps)

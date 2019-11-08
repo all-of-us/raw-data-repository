@@ -416,7 +416,7 @@ class ParticipantSummaryDao(UpdatableDao):
         if field_name == "patientStatus":
             return self._make_patient_status_field_filter(field_name, value)
 
-        if field_name == "participantOrigination":
+        if field_name == "participantOrigin":
             if value not in ORIGINATING_SOURCES:
                 raise BadRequest(f"No origin source found for {value}")
             return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)

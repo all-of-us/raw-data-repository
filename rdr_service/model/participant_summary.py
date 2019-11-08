@@ -285,7 +285,7 @@ class ParticipantSummary(Base):
     suspensionStatus = Column("suspension_status", Enum(SuspensionStatus), nullable=False)
     suspensionTime = Column("suspension_time", UTCDateTime)
     # The originating resource for participant, this (unlike clientId) will not change.
-    participantOrigination = Column("participant_origination", String(80), nullable=False)
+    participantOrigin = Column("participant_origin", String(80), nullable=False)
 
     participant = relationship("Participant", back_populates="participantSummary")
     # Note: leaving for future use if we go back to using a relationship to PatientStatus table.

@@ -95,6 +95,7 @@ class ParticipantApiTest(BaseTestCase):
         path = "Participant/%s" % participant_id
         BaseTestCase.switch_auth_user('example@spellman.com', 'vibrent')
         self.send_put(path, response, headers={"If-Match": 'W/"1"'}, expected_status=http.client.BAD_REQUEST)
+        BaseTestCase.switch_auth_user('example@example.com', 'example')
 
     def test_update_hpro_can_edit(self):
         response = self.send_post("Participant", self.participant)
