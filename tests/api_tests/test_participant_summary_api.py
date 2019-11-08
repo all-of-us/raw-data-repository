@@ -3,8 +3,6 @@ import http.client
 import threading
 import unittest
 
-import mock
-#from unittest.mock import patch
 from urllib.parse import urlencode
 
 from rdr_service import main
@@ -23,7 +21,6 @@ from rdr_service.code_constants import (
     GENDER_WOMAN_CODE,
     GENDER_NONBINARY_CODE,
     GENDER_PREFER_NOT_TO_ANSWER_CODE,
-    ORIGINATING_SOURCES
 )
 from rdr_service.concepts import Concept
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
