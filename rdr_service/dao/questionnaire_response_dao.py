@@ -3,6 +3,8 @@ import logging
 import os
 from datetime import datetime
 
+from rdr_service import app_util
+from api_util import DEV_MAIL
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 import pytz
 from sqlalchemy.orm import subqueryload
@@ -38,6 +40,7 @@ from rdr_service.dao.participant_summary_dao import (
 from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD
 from rdr_service.model.code import CodeType
+from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -71,6 +74,8 @@ def count_completed_ppi_modules(participant_summary):
     return sum(
         1 for field in ppi_module_fields if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED
     )
+
+
 
 
 class QuestionnaireResponseDao(BaseDao):
@@ -162,6 +167,7 @@ class QuestionnaireResponseDao(BaseDao):
         resource_json = json.loads(questionnaire_response.resource)
         resource_json["id"] = str(questionnaire_response.questionnaireResponseId)
         questionnaire_response.resource = json.dumps(resource_json)
+        self.validate_origin(questionnaire_response)
 
         # Gather the question ids and records that match the questions in the response
         question_ids = [answer.questionId for answer in questionnaire_response.answers]
@@ -197,6 +203,22 @@ class QuestionnaireResponseDao(BaseDao):
             session.merge(answer)
 
         return questionnaire_response
+
+    def validate_origin(self, obj):
+        pid = obj.participantId
+        email = app_util.get_oauth_id()
+        user_info = app_util.lookup_user_info(email)
+        base_name = user_info.get('clientId')
+        if email == DEV_MAIL and base_name is None:
+            base_name = 'example'  # account for temp configs that dont create the key
+        with self.session() as session:
+            result = session.query(Participant.participantOrigin).filter(
+                Participant.participantId == pid).first()
+            if result:
+                result = result[0]
+        if base_name != result:
+            raise BadRequest(f"{base_name} can not submit questionnaire response for participant with an origin from "
+                             f"{result}")
 
     def _get_field_value(self, field_type, answer):
         if field_type == FieldType.CODE:

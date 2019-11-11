@@ -1948,8 +1948,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
         participant_id_3 = participant_3["participantId"]
         with FakeClock(TIME_1):
             self.send_consent(participant_id_1)
-            self.send_consent(participant_id_2)
             self.send_consent(participant_id_3)
+            BaseTestCase.switch_auth_user("example@spellman.com", 'vibrent')
+            self.send_consent(participant_id_2)
+            BaseTestCase.switch_auth_user("example@example.com", 'example')
 
         self.submit_questionnaire_response(
             participant_id_1,
@@ -1975,6 +1977,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
             datetime.date(1978, 10, 9),
             "signature.pdf",
         )
+
+        BaseTestCase.switch_auth_user("example@spellman.com", 'vibrent')
         self.submit_questionnaire_response(
             participant_id_2,
             questionnaire_id,
@@ -1999,6 +2003,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
             datetime.date(1978, 10, 8),
             None,
         )
+        BaseTestCase.switch_auth_user("example@example.com", 'example')
+
         self.submit_questionnaire_response(
             participant_id_3,
             questionnaire_id,
@@ -2024,7 +2030,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
             None,
         )
         # Send a questionnaire response for the consent questionnaire for participants 2 and 3
+        BaseTestCase.switch_auth_user("example@spellman.com", 'vibrent')
         self._submit_consent_questionnaire_response(participant_id_2, questionnaire_id_3, CONSENT_PERMISSION_YES_CODE)
+        BaseTestCase.switch_auth_user("example@example.com", 'example')
         self._submit_consent_questionnaire_response(participant_id_3, questionnaire_id_3, CONSENT_PERMISSION_YES_CODE)
 
         # Send an empty questionnaire response for another questionnaire for participant 3,

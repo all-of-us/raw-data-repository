@@ -8,6 +8,7 @@ from collections import OrderedDict
 from contextlib import closing
 
 import sqlparse
+
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainResource
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirabstractbase import FHIRValidationError
 from protorpc import messages
@@ -155,6 +156,7 @@ class BaseDao(object):
     def _validate_model(self, session, obj):
         """Override to validate a model before any db write (insert or update)."""
         pass
+
 
     def _validate_insert(self, session, obj):
         """Override to validate a new model before inserting it (not applied to updates)."""

@@ -20,6 +20,7 @@ from tests.helpers.unittest_base import BaseTestCase
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
+TIME_3 = datetime.datetime(2016, 1, 3)
 
 
 def _questionnaire_response_url(participant_id):
@@ -1023,3 +1024,35 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "participantOrigin": "example"
         }
         self.assertJsonResponseMatches(expected, summary)
+
+    def test_different_origin_cannot_submit(self):
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id)
+
+        questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
+
+        with open(data_path("questionnaire_the_basics_resp.json")) as f:
+            resource = json.load(f)
+
+        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
+        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
+            questionnaire_id=questionnaire_id
+        )
+
+        with FakeClock(TIME_2):
+            resource["authored"] = TIME_2.isoformat()
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary["participantOrigin"], "example")
+
+        with FakeClock(TIME_3):
+            BaseTestCase.switch_auth_user("example@sabrina.com", "vibrent")
+            resource["authored"] = TIME_3.isoformat()
+            self.send_post(_questionnaire_response_url(participant_id), resource, expected_status=http.client.BAD_REQUEST)
+
+            summary = self.send_get("Participant/%s/Summary" % participant_id)
+            # Posting a QR should not change origin.
+            self.assertEqual(summary["participantOrigin"], "example")
+            BaseTestCase.switch_auth_user("example@example.com", "example")
