@@ -18,10 +18,10 @@ from google.cloud import logging_v2 as gcp_logging_v2
 from google.logging.type import http_request_pb2 as gcp_http_request_pb2
 from google.protobuf import json_format as gcp_json_format, any_pb2 as gcp_any_pb2
 
-# pylint: disable=unused-import
 from werkzeug.exceptions import HTTPException
 
-from rdr_service.services import gcp_request_log_pb2
+# Do not remove this import.
+from rdr_service.services import gcp_request_log_pb2  # pylint: disable=unused-import
 from rdr_service.config import GAE_PROJECT
 
 # https://pypi.org/project/google-cloud-logging/
@@ -187,6 +187,7 @@ class GCPStackDriverLogHandler(logging.Handler):
     def __init__(self, buffer_size=_LOG_BUFFER_SIZE):
 
         super(GCPStackDriverLogHandler, self).__init__()
+
         self._buffer_size = buffer_size
         self._buffer = collections.deque()
 
@@ -222,6 +223,7 @@ class GCPStackDriverLogHandler(logging.Handler):
         self._response_size = None
 
         self._buffer.clear()
+
 
     def _update_long_operation(self, op_status):
         """
@@ -274,7 +276,7 @@ class GCPStackDriverLogHandler(logging.Handler):
         Capture and store a log event record.
         :param record: Python log record
         """
-        self._buffer.append(record)
+        self._buffer.appendleft(record)
 
         if not self.__first_log_ts:
             self.__first_log_ts = datetime.utcnow()
@@ -295,7 +297,7 @@ class GCPStackDriverLogHandler(logging.Handler):
         Finalize and send any log entries to StackDriver.
         """
         if self.log_completion_status == LogCompletionStatusEnum.COMPLETE:
-            if len(self._buffer) == 0:
+            if len(self._buffer) == 0 and not response:
                 # nothing to log
                 self._reset()
                 return
@@ -320,7 +322,8 @@ class GCPStackDriverLogHandler(logging.Handler):
         lines = list()
         index = 0
 
-        for line in self._buffer:
+        while len(self._buffer):
+            line = self._buffer.pop()
             lines.append(setup_log_line(line, self._request_resource, self._request_method))
             index += 1
 
@@ -368,7 +371,10 @@ class GCPStackDriverLogHandler(logging.Handler):
             proto_payload_args['taskQueueName'] = self._request_queue
 
         if self.__first_log_ts:
-            total_time = datetime.utcnow() - self.__first_log_ts
+            if self.__first_log_ts:
+                total_time = datetime.utcnow() - self.__first_log_ts
+            else:
+                total_time = 0
             proto_payload_args['latency'] = '{0}.{1}s'.format(total_time.seconds, total_time.microseconds)
 
         proto_payload_pb2 = setup_proto_payload(
@@ -386,8 +392,6 @@ class GCPStackDriverLogHandler(logging.Handler):
             log_name="projects/{project_id}/logs/appengine.googleapis.com%2Frequest_log".
                                     format(project_id=GAE_PROJECT))
 
-        # remove any log entries from buffer.
-        self._buffer.clear()
 
     @staticmethod
     def get_highest_severity_level_from_lines(lines):
