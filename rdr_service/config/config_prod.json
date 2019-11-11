@@ -48,12 +48,7 @@
   ],
   "user_info": {
     "healthpro-prod@appspot.gserviceaccount.com": {
-      "roles": [
-        "healthpro"
-      ],
-      "whitelisted_appids": [
-        "healthpro-prod"
-      ]
+      "roles": ["healthpro"]
     },
     "aou-res-storefront-prod@appspot.gserviceaccount.com": {
       "roles": ["storefront"]
