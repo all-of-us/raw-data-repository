@@ -226,7 +226,7 @@ def auth_required(role_whitelist):
             # logging.info(str(request.headers))
             if not _is_self_request():
                 if request.scheme.lower() != "https" and appid not in acceptable_hosts:
-                    raise Unauthorized("HTTPS is required for %r" % appid, www_authenticate='Bearer realm="rdr"')
+                    raise Unauthorized(f"HTTPS is required for {appid}", www_authenticate='Bearer realm="rdr"')
                 check_auth(role_whitelist)
             request.logged = False
             result = func(*args, **kwargs)
@@ -265,10 +265,10 @@ def get_validated_user_info():
             addr = request.remote_addr
         enforce_ip_whitelisted(addr, get_whitelisted_ips(user_info))
         enforce_appid_whitelisted(request.headers.get("X-Appengine-Inbound-Appid"), get_whitelisted_appids(user_info))
-        logging.info("User %r ALLOWED", user_email)
+        logging.info(f"User {user_email} ALLOWED")
         return (user_email, user_info)
 
-    logging.info("User %r NOT ALLOWED" % user_email)
+    logging.info(f"User {user_email} NOT ALLOWED")
     raise Forbidden()
 
 

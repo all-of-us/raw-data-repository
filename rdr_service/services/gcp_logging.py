@@ -4,6 +4,7 @@ import logging
 import os
 import string
 import sys
+import threading
 import traceback
 from datetime import datetime, timezone
 from enum import IntEnum
@@ -34,6 +35,9 @@ _LOG_BUFFER_SIZE = 24
 GAE_LOGGING_MODULE_ID = 'app-' + os.environ.get('GAE_SERVICE', 'default')
 GAE_LOGGING_VERSION_ID = os.environ.get('GAE_VERSION', 'devel')
 
+# This is where we save all data that is tied to a specific execution thread.
+_thread_store = threading.local()
+
 class LogCompletionStatusEnum(IntEnum):
     """
     Indicator for log entry completion status, which can span multiple log entries.
@@ -60,14 +64,13 @@ def setup_logging_zone():
             zone = 'unknown'
     return zone
 
-
+# Safe to use for all threads.
 logging_zone_pb2 = setup_logging_zone()
-
 
 
 def setup_logging_resource():
     """
-    Set the values for the Google Logging Resource object
+    Set the values for the Google Logging Resource object. Thread safe.
     :return: MonitoredResource pb2 structure.
     """
     labels = {
@@ -81,13 +84,14 @@ def setup_logging_resource():
     resource_pb2 = MonitoredResource(type='gae_app', labels=labels)
     return resource_pb2
 
-
+# Safe to use for all threads.
 logging_resource_pb2 = setup_logging_resource()
+
 
 # pylint: disable=unused-argument
 def setup_log_line(record: logging.LogRecord, resource, method):
     """
-    Prepare a log event for sending to GCP StackDriver.
+    Prepare a log event for sending to GCP StackDriver.  Thread safe.
     :param record: Log event record.
     :param resource: request resource
     :param method: request method
@@ -129,9 +133,24 @@ def setup_log_line(record: logging.LogRecord, resource, method):
     return log_line
 
 
+def get_highest_severity_level_from_lines(lines):
+    """
+    Figure out the highest severity level in a given set of log records.
+    :param lines: List of log records
+    """
+    if lines:
+        s = sorted(
+            [line['severity'] for line in lines],
+            key=lambda severity: -getattr(logging, "severity", 0)
+        )
+        return s[0]
+    else:
+        return gcp_logging_v2.gapic.enums.LogSeverity(200)
+
+
 def setup_proto_payload(lines: list, log_status: LogCompletionStatusEnum, **kwargs):
     """
-    Build the log protoPayload portion of the log entry.
+    Build the log protoPayload portion of the log entry. Thread safe.
     :param lines: List of LogMessage lines to add.
     :param log_status: Logging completion status value.
     :return: RequestLog pb2 object.
@@ -175,18 +194,38 @@ def setup_proto_payload(lines: list, log_status: LogCompletionStatusEnum, **kwar
     return request_log_pb2
 
 
-class GCPStackDriverLogHandler(logging.Handler):
+def update_long_operation(request_log_id, op_status):
     """
-    Sends log records to google stackdriver logging.
-    Buffers up to `buffer_size` log records into one protobuffer to be submitted.
+    Handle long operations. Thread safe.
+    :param request_log_id: request logging id.
+    :param op_status: LogCompletionStatusEnum value.
     """
+    if op_status == LogCompletionStatusEnum.COMPLETE:
+        first = last = True
+    else:
+        first = True if op_status == LogCompletionStatusEnum.PARTIAL_BEGIN else False
+        last = True if op_status == LogCompletionStatusEnum.PARTIAL_FINISHED else False
 
+    # https://cloud.google.com/logging/docs/reference/v2/rpc/google.logging.v2#google.logging.v2.LogEntryOperation
+    operation_pb2 = gcp_logging_v2.proto.log_entry_pb2.LogEntryOperation(
+        id=request_log_id,
+        producer='all-of-us.raw-data-repository/rdr-service',
+        first=first,
+        last=last
+    )
+
+    return operation_pb2
+
+
+class GCPStackDriverLogger(object):
+    """
+    Sends log records to google stack driver logging.  Each thread needs its own copy of this object.
+    Buffers up to `buffer_size` log records into one ProtoBuffer to be submitted.
+    """
     # Used to determine how long a request took.
     __first_log_ts = None
 
     def __init__(self, buffer_size=_LOG_BUFFER_SIZE):
-
-        super(GCPStackDriverLogHandler, self).__init__()
 
         self._buffer_size = buffer_size
         self._buffer = collections.deque()
@@ -224,54 +263,37 @@ class GCPStackDriverLogHandler(logging.Handler):
 
         self._buffer.clear()
 
-
-    def _update_long_operation(self, op_status):
-        """
-        Handle long operations.
-        :param op_status: LogCompletionStatusEnum value.
-        """
-        if op_status == LogCompletionStatusEnum.COMPLETE:
-            first = last = True
-        else:
-            first = True if op_status == LogCompletionStatusEnum.PARTIAL_BEGIN else False
-            last = True if op_status == LogCompletionStatusEnum.PARTIAL_FINISHED else False
-
-        # https://cloud.google.com/logging/docs/reference/v2/rpc/google.logging.v2#google.logging.v2.LogEntryOperation
-        self._operation_pb2 = gcp_logging_v2.proto.log_entry_pb2.LogEntryOperation(
-            id=self._request_log_id,
-            producer='all-of-us.raw-data-repository/rdr-service',
-            first=first,
-            last=last
-        )
-
-    def setup_from_request(self, req):
+    def setup_from_request(self, _request, initial=False):
         """
         Gather everything we need to log from the request object.
-        :param req: Flask request object
+        :param _request: Flask request object
+        :param initial: Is this the beginning of a request? If no, this means flask 'begin_request' call failed.
         """
-        # send any pending log entries in-case 'end_request' was not called.
-        if len(self._buffer):
+        # send any pending log entries in case 'end_request' was not called.
+        if len(self._buffer) and initial:
             self.finalize()
 
         self._start_time = datetime.now(timezone.utc).isoformat()
-        self._request_method = req.method
-        self._request_endpoint = req.endpoint
-        self._request_resource = req.path
-        self._request_agent = str(req.user_agent)
-        self._request_remote_addr = req.headers.get('X-Appengine-User-Ip', request.remote_addr)
-        self._request_host = req.headers.get('X-Appengine-Default-Version-Hostname', request.host)
-        self._request_log_id = req.headers.get('X-Appengine-Request-Log-Id', 'None')
+        self._request_method = _request.method
+        self._request_endpoint = _request.endpoint
+        self._request_resource = _request.full_path
+        if self._request_resource and self._request_resource.endswith('?'):
+            self._request_resource = self._request_resource[:-1]
+        self._request_agent = str(_request.user_agent)
+        self._request_remote_addr = _request.headers.get('X-Appengine-User-Ip', request.remote_addr)
+        self._request_host = _request.headers.get('X-Appengine-Default-Version-Hostname', request.host)
+        self._request_log_id = _request.headers.get('X-Appengine-Request-Log-Id', 'None')
 
-        self._request_taskname = req.headers.get('X-Appengine-Taskname', None)
-        self._request_queue = req.headers.get('X-Appengine-Queuename', None)
+        self._request_taskname = _request.headers.get('X-Appengine-Taskname', None)
+        self._request_queue = _request.headers.get('X-Appengine-Queuename', None)
 
-        trace_id = req.headers.get('X-Cloud-Trace-Context', '')
+        trace_id = _request.headers.get('X-Cloud-Trace-Context', '')
         if trace_id:
             trace_id = trace_id.split('/')[0]
             trace = 'projects/{0}/traces/{1}'.format(GAE_PROJECT, trace_id)
             self._trace = trace
 
-    def emit(self, record: logging.LogRecord):
+    def log_event(self, record: logging.LogRecord):
         """
         Capture and store a log event record.
         :param record: Python log record
@@ -284,34 +306,36 @@ class GCPStackDriverLogHandler(logging.Handler):
         if len(self._buffer) >= self._buffer_size:
             if self.log_completion_status == LogCompletionStatusEnum.COMPLETE:
                 self.log_completion_status = LogCompletionStatusEnum.PARTIAL_BEGIN
-                self._update_long_operation(self.log_completion_status)
+                self._operation_pb2 = update_long_operation(self._request_log_id, self.log_completion_status)
 
             elif self.log_completion_status == LogCompletionStatusEnum.PARTIAL_BEGIN:
                 self.log_completion_status = LogCompletionStatusEnum.PARTIAL_MORE
-                self._update_long_operation(self.log_completion_status)
+                self._operation_pb2 = update_long_operation(self._request_log_id, self.log_completion_status)
 
             self.publish_to_stackdriver()
 
-    def finalize(self, response=None):
+    def finalize(self, _response=None, _request=None):
         """
         Finalize and send any log entries to StackDriver.
         """
+        if not self._start_time and _request:
+            self.setup_from_request(_request=_request, initial=False)
+
         if self.log_completion_status == LogCompletionStatusEnum.COMPLETE:
-            if len(self._buffer) == 0 and not response:
+            if len(self._buffer) == 0 and not _response:
                 # nothing to log
                 self._reset()
                 return
         else:
             self.log_completion_status = LogCompletionStatusEnum.PARTIAL_FINISHED
-            self._update_long_operation(self.log_completion_status)
+            self._operation_pb2 = update_long_operation(self._request_log_id, self.log_completion_status)
 
-        if response:
-            self._response_status_code = response.status_code
-            self._response_size = len(response.data)
+        if _response:
+            self._response_status_code = _response.status_code
+            self._response_size = len(_response.data)
 
         self.publish_to_stackdriver()
         self._reset()
-
 
     def publish_to_stackdriver(self):
         """
@@ -331,7 +355,7 @@ class GCPStackDriverLogHandler(logging.Handler):
 
         log_entry_pb2_args = {
             'resource': logging_resource_pb2,
-            'severity': self.get_highest_severity_level_from_lines(lines),
+            'severity': get_highest_severity_level_from_lines(lines),
             'trace': self._trace,
             'insert_id': insert_id,
             'trace_sampled': True if self._trace else False
@@ -345,7 +369,8 @@ class GCPStackDriverLogHandler(logging.Handler):
                 log_entry_pb2_args['severity'] = gcp_logging_v2.gapic.enums.LogSeverity(tmp_code)
 
         if not self._operation_pb2:
-            self._update_long_operation(LogCompletionStatusEnum.COMPLETE)
+            self.log_completion_status = LogCompletionStatusEnum.COMPLETE
+            self._operation_pb2 = update_long_operation(self._request_log_id, self.log_completion_status)
 
         log_entry_pb2_args['operation'] = self._operation_pb2
 
@@ -391,63 +416,6 @@ class GCPStackDriverLogHandler(logging.Handler):
         self._logging_client.write_log_entries([log_entry_pb2],
             log_name="projects/{project_id}/logs/appengine.googleapis.com%2Frequest_log".
                                     format(project_id=GAE_PROJECT))
-
-
-    @staticmethod
-    def get_highest_severity_level_from_lines(lines):
-        """
-        Figure out the highest severity level in a given set of log records.
-        :param lines: List of log records
-        """
-        if lines:
-            s = sorted(
-                [line['severity'] for line in lines],
-                key=lambda severity: -getattr(logging, "severity", 0)
-            )
-            return s[0]
-        else:
-            return gcp_logging_v2.gapic.enums.LogSeverity(200)
-
-
-class FlaskGCPStackDriverLogging:
-    """
-    Context Manager to handle logging to GCP StackDriver logging service.
-    """
-
-    _log_handler = None
-
-    def __init__(self, log_level=logging.INFO):
-        if 'GAE_ENV' in os.environ:
-            # Configure root logger
-            self.root_logger = logging.getLogger()
-            self.root_logger.setLevel(log_level)
-            # Configure StackDriver logging handler
-            self._log_handler = GCPStackDriverLogHandler()
-            self._log_handler.setLevel(log_level)
-            # Add StackDriver logging handler to root logger.
-            self.root_logger.addHandler(self._log_handler)
-
-    def begin_request(self):
-        """
-        Initialize logging for a new request.
-        """
-        if self._log_handler:
-            self._log_handler.setup_from_request(request)
-
-    def end_request(self, response):
-        """
-        Finalize and send any log entries.  Not guarantied to always be called.
-        """
-        if self._log_handler:
-            self._log_handler.finalize(response)
-        return response
-
-    def flush(self):
-        """
-        Flush any pending log records.
-        """
-        if self._log_handler:
-            self._log_handler.finalize()
 
 
 def _get_traceback(e):
@@ -526,24 +494,10 @@ def log_exception_error(e):
     return response
 
 
-app_log_service = FlaskGCPStackDriverLogging()
-
-def setup_request_logging():
-    app_log_service.begin_request()
-
-
-def finalize_request_logging(response):
-    """
-    Finalize and send log message(s) for request.
-    :param response: Flask response object
-    """
-    app_log_service.end_request(response)
-    return response
-
 # pylint: disable=unused-argument
 def flask_restful_log_exception_error(sender, exception, **kwargs):
     """
-    Make sure we can log exception errors to Google when running under Gunicorn.
+    Make sure we can log exception errors to GCP when running under Gunicorn.
     """
     if request:
         try:
@@ -561,3 +515,82 @@ def flask_restful_log_exception_error(sender, exception, **kwargs):
     log_exception_error(exception)
 
 
+def get_gcp_logger() -> GCPStackDriverLogger:
+    """
+    Return the GCPStackDriverLogger object for this thread.
+    :return: GCPStackDriverLogger object
+    """
+    if hasattr(_thread_store, 'logger'):
+        logger = getattr(_thread_store, 'logger')
+        return logger
+    return None
+
+
+class GCPLoggingHandler(logging.Handler):
+
+    def emit(self, record: logging.LogRecord):
+        """
+        Capture and store a log event record.
+        :param record: Python log record
+        """
+        _logger = get_gcp_logger()
+
+        # We may need to initialize the logger for this thread.
+        if 'GAE_ENV' in os.environ and not _logger:
+            _logger = GCPStackDriverLogger()
+            setattr(_thread_store, 'logger', _logger)
+
+        if _logger:
+            _logger.log_event(record)
+            return
+
+
+def initialize_logging(log_level=logging.INFO):
+    """
+    Setup GCP Stack Driver logging if we are running in App Engine.
+    :param log_level: Log level to use.
+    """
+    if 'GAE_ENV' in os.environ:
+        # Configure root logger
+        root_logger = logging.getLogger()
+        root_logger.setLevel(log_level)
+        # Configure StackDriver logging handler
+        log_handler = GCPLoggingHandler()
+        log_handler.setLevel(log_level)
+        # Add StackDriver logging handler to root logger.
+        root_logger.addHandler(log_handler)
+
+
+initialize_logging()
+
+
+def begin_request_logging():
+    """
+    Initialize logging for a new request.  Not guarantied to always be called.
+    """
+    _logger = get_gcp_logger()
+
+    # We may need to initialize the logger for this thread.
+    if 'GAE_ENV' in os.environ and not _logger:
+        _logger = GCPStackDriverLogger()
+        setattr(_thread_store, 'logger', _logger)
+
+    if _logger:
+        _logger.setup_from_request(_request=request, initial=True)
+
+def end_request_logging(response):
+    """
+    Finalize and send any log entries.  Not guarantied to always be called.
+    """
+    _logger = get_gcp_logger()
+    if _logger:
+        _logger.finalize(_response=response, _request=request)
+    return response
+
+def flush_request_logs():
+    """
+    Flush any pending log records.
+    """
+    _logger = get_gcp_logger()
+    if _logger:
+        _logger.finalize(_request=request)

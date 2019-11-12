@@ -41,7 +41,7 @@ from rdr_service.api.organization_hierarchy_api import OrganizationHierarchyApi
 from rdr_service.config import get_config, get_db_config
 
 from rdr_service.services.flask import app, API_PREFIX, TASK_PREFIX
-from rdr_service.services.gcp_logging import setup_request_logging, finalize_request_logging, \
+from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
     flask_restful_log_exception_error
 
 
@@ -66,7 +66,7 @@ def _stop():
                 logging.info('******** Shutting down, sent supervisor the termination signal. ********')
                 response = Response()
                 response.status_code = 200
-                finalize_request_logging(response)
+                end_request_logging(response)
                 os.kill(pid, signal.SIGTERM)
         except TypeError:
             logging.warning('******** Shutting down, supervisor pid file is invalid. ********')
@@ -297,10 +297,10 @@ app.add_url_rule("/_ah/warmup", endpoint="warmup", view_func=_warmup, methods=["
 app.add_url_rule("/_ah/start", endpoint="start", view_func=_start, methods=["GET"])
 app.add_url_rule("/_ah/stop", endpoint="stop", view_func=_stop, methods=["GET"])
 
-app.before_request(setup_request_logging)  # Must be first before_request() call.
+app.before_request(begin_request_logging)  # Must be first before_request() call.
 app.before_request(app_util.request_logging)
 app.after_request(app_util.add_headers)
-app.after_request(finalize_request_logging)  # Must be last after_request() call.
+app.after_request(end_request_logging)  # Must be last after_request() call.
 
 app.register_error_handler(DBAPIError, app_util.handle_database_disconnect)
 
