@@ -171,11 +171,12 @@ class ParticipantCountsOverTimeService(BaseDao):
     filters_sql_p = self.get_facets_sql(facets, stratification, table_prefix='p')
 
     if str(history) == 'TRUE' and stratification == Stratifications.TOTAL:
-      dao = MetricsEnrollmentStatusCacheDao()
-      return dao.get_total_interested_count(start_date, end_date, awardee_ids)
+      dao = MetricsEnrollmentStatusCacheDao(version=version)
+      return dao.get_total_interested_count(start_date, end_date, awardee_ids, enrollment_statuses)
     elif str(history) == 'TRUE' and stratification == Stratifications.ENROLLMENT_STATUS:
       dao = MetricsEnrollmentStatusCacheDao(version=version)
-      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
+      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids,
+                                               enrollment_statuses)
     elif str(history) == 'TRUE' and stratification == Stratifications.GENDER_IDENTITY:
       dao = MetricsGenderCacheDao(version=version)
       return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids,
