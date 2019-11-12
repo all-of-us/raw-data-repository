@@ -3,13 +3,11 @@ import logging
 import os
 from datetime import datetime
 
-from rdr_service import app_util
-from api_util import DEV_MAIL
-from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 import pytz
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
+from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 from rdr_service import storage
 from rdr_service import clock, config
 from rdr_service.code_constants import (
@@ -40,7 +38,6 @@ from rdr_service.dao.participant_summary_dao import (
 from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD
 from rdr_service.model.code import CodeType
-from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
