@@ -336,7 +336,11 @@ class ParticipantSummaryDao(UpdatableDao):
         return None
 
     def _initialize_query(self, session, query_def):
+        filter_client = False
         non_withdrawn_field = self._get_non_withdrawn_filter_field(query_def)
+        client_id = self.get_client_id()
+        if client_id in ORIGINATING_SOURCES:
+            filter_client = True
         if self._has_withdrawn_filter(query_def):
             if non_withdrawn_field:
                 raise BadRequest(f"Can't query on {non_withdrawn_field} for withdrawn participants")
@@ -345,11 +349,23 @@ class ParticipantSummaryDao(UpdatableDao):
             return super(ParticipantSummaryDao, self)._initialize_query(session, query_def)
         else:
             query = super(ParticipantSummaryDao, self)._initialize_query(session, query_def)
-            if non_withdrawn_field:
+
+            withdrawn_visible_start = clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
+            if filter_client and non_withdrawn_field:
+                return query.filter(ParticipantSummary.participantOrigin == client_id,
+                    or_(
+                        ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE,
+                        ParticipantSummary.withdrawalTime >= withdrawn_visible_start,
+                        )
+                )
+            elif filter_client:
+                return query.filter(
+                        ParticipantSummary.participantOrigin == client_id
+                        )
+            elif non_withdrawn_field:
                 # When querying on fields that aren't available for withdrawn participants,
                 # ensure that we only return participants
                 # who have not withdrawn or withdrew in the past 48 hours.
-                withdrawn_visible_start = clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
                 return query.filter(
                     or_(
                         ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE,
@@ -675,8 +691,21 @@ class ParticipantSummaryDao(UpdatableDao):
         is_distinct_visit = not (day_has_order or day_has_measurement)
         return is_distinct_visit
 
+    def get_client_id(self):
+        from rdr_service import app_util, api_util
+        email = app_util.get_oauth_id()
+        user_info = app_util.lookup_user_info(email)
+        client_id = user_info.get('clientId')
+        if email == api_util.DEV_MAIL and client_id is None:
+            client_id = 'example'  # account for temp configs that dont create the key
+        return client_id
+
     def to_client_json(self, model):
         result = model.asdict()
+        origin = result['participantOrigin']
+        client = self.get_client_id()
+        if client in ORIGINATING_SOURCES and origin != client:
+            return None
         # Participants that withdrew more than 48 hours ago should have fields other than
         # WITHDRAWN_PARTICIPANT_FIELDS cleared.
         if model.withdrawalStatus == WithdrawalStatus.NO_USE and (

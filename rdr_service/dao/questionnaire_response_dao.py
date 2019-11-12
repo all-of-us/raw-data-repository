@@ -167,7 +167,7 @@ class QuestionnaireResponseDao(BaseDao):
         resource_json = json.loads(questionnaire_response.resource)
         resource_json["id"] = str(questionnaire_response.questionnaireResponseId)
         questionnaire_response.resource = json.dumps(resource_json)
-        self.validate_origin(questionnaire_response)
+        super().validate_origin(questionnaire_response)
 
         # Gather the question ids and records that match the questions in the response
         question_ids = [answer.questionId for answer in questionnaire_response.answers]
@@ -204,21 +204,6 @@ class QuestionnaireResponseDao(BaseDao):
 
         return questionnaire_response
 
-    def validate_origin(self, obj):
-        pid = obj.participantId
-        email = app_util.get_oauth_id()
-        user_info = app_util.lookup_user_info(email)
-        base_name = user_info.get('clientId')
-        if email == DEV_MAIL and base_name is None:
-            base_name = 'example'  # account for temp configs that dont create the key
-        with self.session() as session:
-            result = session.query(Participant.participantOrigin).filter(
-                Participant.participantId == pid).first()
-            if result:
-                result = result[0]
-        if base_name != result:
-            raise BadRequest(f"{base_name} can not submit questionnaire response for participant with an origin from "
-                             f"{result}")
 
     def _get_field_value(self, field_type, answer):
         if field_type == FieldType.CODE:

@@ -2045,7 +2045,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
         path_2 = "Participant/%s/PhysicalMeasurements" % participant_id_2
         path_3 = "Participant/%s/PhysicalMeasurements" % participant_id_3
         with FakeClock(TIME_2):
+            BaseTestCase.switch_auth_user("example@spellman.com", 'vibrent')
             self.send_post(path_2, measurements_2)
+            BaseTestCase.switch_auth_user("example@example.com", 'example')
             # This pairs participant 3 with PITT and updates their version.
             self.send_post(path_3, measurements_3)
 
@@ -2080,8 +2082,11 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         with FakeClock(TIME_4):
             ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
-            ps_2 = self.send_get("Participant/%s/Summary" % participant_id_2)
             ps_3 = self.send_get("Participant/%s/Summary" % participant_id_3)
+
+            BaseTestCase.switch_auth_user("example@spellman.com", 'vibrent')
+            ps_2 = self.send_get("Participant/%s/Summary" % participant_id_2)
+            BaseTestCase.switch_auth_user("example@example.com", 'example')
 
         self.assertEqual(1, ps_1["numCompletedBaselinePPIModules"])
         self.assertEqual(1, ps_1["numBaselineSamplesArrived"])
@@ -2182,6 +2187,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         # One day after participant 2 withdraws, the participant is still returned.
         with FakeClock(TIME_4):
+            BaseTestCase.switch_auth_user("example@hpro.com", 'hpro')
             response = self.send_get("ParticipantSummary")
             self.assertBundle([_make_entry(ps_1), _make_entry(ps_2), _make_entry(ps_3)], response)
 
@@ -2286,14 +2292,20 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&site=hpo-site-monroeville", [[ps_1, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&participantOrigin=example", [[ps_1, ps_3]])
             self.assertResponses("ParticipantSummary?participantOrigin=vibrent", [[ps_2]])
+            BaseTestCase.switch_auth_user("example@example.com", 'example')
         # Two days after participant 2 withdraws, their fields are not set for anything but
         # participant ID, HPO ID, withdrawal status, and withdrawal time
         with FakeClock(TIME_5):
             new_ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
-            new_ps_2 = self.send_get("Participant/%s/Summary" % participant_id_2)
             new_ps_3 = self.send_get("Participant/%s/Summary" % participant_id_3)
+
+            BaseTestCase.switch_auth_user("example@spellman.com", 'vibrent')
+            new_ps_2 = self.send_get("Participant/%s/Summary" % participant_id_2)
+            BaseTestCase.switch_auth_user("example@example.com", 'example')
+
         self.assertEqual(ps_1, new_ps_1)
         self.assertEqual(ps_3, new_ps_3)
+        #self.assertEqual("vibrent", new_ps_2["participantOrigin"])
         self.assertEqual("Mary", new_ps_2["firstName"])
         self.assertEqual("Q", new_ps_2["middleName"])
         self.assertEqual("Jones", new_ps_2["lastName"])
@@ -2325,6 +2337,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         # include it; queries that ask for withdrawn participants get back participant 2 only.
         # Sort order does not affect whether withdrawn participants are included.
         with FakeClock(TIME_5):
+            BaseTestCase.switch_auth_user("example@hpro.com", 'hpro')
             self.assertResponses("ParticipantSummary?_count=2&_sort=firstName", [[ps_1, ps_3], [new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&_sort:asc=firstName", [[ps_1, ps_3], [new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&_sort:desc=firstName", [[new_ps_2, ps_3], [ps_1]])
@@ -2347,6 +2360,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED", [[ps_1]])
 
             self.assertResponses("ParticipantSummary?_count=2&lastModified=lt2016-01-04", [[ps_3]])
+            BaseTestCase.switch_auth_user("example@example.com", 'example')
 
     def testQuery_manyParticipants_dv_consent_only(self):
         self.setup_codes(
@@ -2919,6 +2933,50 @@ class ParticipantSummaryApiTest(BaseTestCase):
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary["genderIdentity"], "PMI_PreferNotToAnswer")
 
+    def test_origin_returns_only_origin(self):
+        participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
+        participant_id = participant["participantId"]
+        questionnaire_id = self.create_questionnaire("questionnaire3.json")
+        with FakeClock(TIME_1):
+            self.send_consent(participant_id)
+        # Populate some answers to the questionnaire
+        answers = {
+            "race": RACE_WHITE_CODE,
+            "genderIdentity": GENDER_PREFER_NOT_TO_ANSWER_CODE,
+            "firstName": self.fake.first_name(),
+            "middleName": self.fake.first_name(),
+            "lastName": self.fake.last_name(),
+            "zipCode": "78751",
+            "state": PMI_SKIP_CODE,
+            "streetAddress": self.streetAddress,
+            "streetAddress2": self.streetAddress2,
+            "city": "Austin",
+            "sex": PMI_SKIP_CODE,
+            "sexualOrientation": PMI_SKIP_CODE,
+            "phoneNumber": "512-555-5555",
+            "recontactMethod": PMI_SKIP_CODE,
+            "language": PMI_SKIP_CODE,
+            "education": PMI_SKIP_CODE,
+            "income": PMI_SKIP_CODE,
+            "dateOfBirth": datetime.date(1978, 10, 9),
+            "CABoRSignature": "signature.pdf",
+        }
+        self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
+
+        # switch user
+        BaseTestCase.switch_auth_user("example@sabrina.com", "vibrent")
+        participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
+        participant_id = participant["participantId"]
+        questionnaire_id = self.create_questionnaire("questionnaire3.json")
+        with FakeClock(TIME_1):
+            self.send_consent(participant_id)
+        self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
+
+        response = self.send_get("ParticipantSummary?_includeTotal=true")
+        self.assertEqual(response['total'], 1)
+        BaseTestCase.switch_auth_user("example@example.com", "example")
+        response = self.send_get("ParticipantSummary?_includeTotal=true")
+        self.assertEqual(response['total'], 1)
 
 def _add_code_answer(code_answers, link_id, code):
     if code:

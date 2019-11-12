@@ -1052,7 +1052,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             resource["authored"] = TIME_3.isoformat()
             self.send_post(_questionnaire_response_url(participant_id), resource, expected_status=http.client.BAD_REQUEST)
 
+            BaseTestCase.switch_auth_user("example@example.com", "example")
             summary = self.send_get("Participant/%s/Summary" % participant_id)
             # Posting a QR should not change origin.
             self.assertEqual(summary["participantOrigin"], "example")
-            BaseTestCase.switch_auth_user("example@example.com", "example")
