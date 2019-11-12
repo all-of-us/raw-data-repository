@@ -196,7 +196,7 @@ def update_ehr_status():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
-def genomic_pipeline():
+def genomic_pipeline_handler():
     genomic_pipeline.process_genomic_water_line()
     return '{"success": "true"}'
 
@@ -311,7 +311,7 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        PREFIX + "GenomicPipeline", endpoint="genomic_pipeline", view_func=genomic_pipeline, methods=["GET"]
+        PREFIX + "GenomicPipeline", endpoint="genomic_pipeline", view_func=genomic_pipeline_handler, methods=["GET"]
     )
 
     offline_app.add_url_rule(
