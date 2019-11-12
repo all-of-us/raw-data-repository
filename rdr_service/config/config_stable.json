@@ -7,8 +7,7 @@
   "user_info": {
     "pmi-hpo-test@appspot.gserviceaccount.com": {
       "roles": ["healthpro"],
-      "clientId": "hpro",
-      "whitelisted_appids": ["pmi-hpo-test"]
+      "clientId": "hpro"
     },
     "awardee-pitt@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
@@ -62,6 +61,7 @@
         "awardee": "TRANS_AM",
         "whitelisted_ip_ranges" : {
           "ip4": [
+            "150.198.1.0/24",
             "161.249.83.116",
             "161.249.147.132",
             "161.249.241.64/26",
@@ -138,6 +138,13 @@
       "whitelisted_ip_ranges": {
         "ip4": ["52.4.219.3", "52.206.129.31", "174.64.55.14/32"],
         "ip6": []
+      }
+    },
+    "care-evolution@all-of-us-rdr-stable.iam.gserviceaccount.com": {
+      "roles": ["ptc"],
+      "whitelisted_ip_ranges": {
+        "ip6": [],
+        "ip4": ["52.86.97.51", "52.54.134.172"]
       }
     },
     "awardee-broad@all-of-us-rdr-stable.iam.gserviceaccount.com": {

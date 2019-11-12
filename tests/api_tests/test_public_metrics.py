@@ -339,8 +339,9 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time2,
+            time_study=self.time2,
             time_mem=self.time3,
-            gender_identity=2,
+            gender_identity=2
         )
         participant_gender_answer_dao.insert(
             ParticipantGenderAnswers(
@@ -361,8 +362,9 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time3,
+            time_study=self.time3,
             time_mem=self.time5,
-            gender_identity=5,
+            gender_identity=5
         )
         participant_gender_answer_dao.insert(
             ParticipantGenderAnswers(
@@ -383,8 +385,9 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time4,
+            time_study=self.time4,
             time_mem=self.time5,
-            gender_identity=5,
+            gender_identity=5
         )
         participant_gender_answer_dao.insert(
             ParticipantGenderAnswers(
@@ -405,8 +408,9 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time5,
+            time_study=self.time5,
             time_mem=self.time5,
-            gender_identity=7,
+            gender_identity=7
         )
         participant_gender_answer_dao.insert(
             ParticipantGenderAnswers(
@@ -549,24 +553,6 @@ class PublicMetricsApiTest(BaseTestCase):
         results = self.send_get("PublicMetrics", query_string=qs)
         self.assertIn(
             {
-                "date": "2017-12-31",
-                "metrics": {
-                    "Woman": 0,
-                    "PMI_Skip": 0,
-                    "Other/Additional Options": 0,
-                    "Non-Binary": 0,
-                    "UNMAPPED": 0,
-                    "Transgender": 0,
-                    "Prefer not to say": 0,
-                    "UNSET": 0,
-                    "Man": 0,
-                    "More than one gender identity": 0,
-                },
-            },
-            results,
-        )
-        self.assertIn(
-            {
                 "date": "2018-01-01",
                 "metrics": {
                     "Woman": 0,
@@ -647,42 +633,6 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         results = self.send_get("PublicMetrics", query_string=qs)
-        self.assertIn(
-            {
-                "date": "2017-12-31",
-                "metrics": {
-                    "Woman": 0,
-                    "PMI_Skip": 0,
-                    "Other/Additional Options": 0,
-                    "Non-Binary": 0,
-                    "UNMAPPED": 0,
-                    "Transgender": 0,
-                    "Prefer not to say": 0,
-                    "UNSET": 0,
-                    "Man": 0,
-                    "More than one gender identity": 0,
-                },
-            },
-            results,
-        )
-        self.assertIn(
-            {
-                "date": "2018-01-01",
-                "metrics": {
-                    "Woman": 0,
-                    "PMI_Skip": 0,
-                    "Other/Additional Options": 0,
-                    "Non-Binary": 0,
-                    "UNMAPPED": 0,
-                    "Transgender": 0,
-                    "Prefer not to say": 0,
-                    "UNSET": 0,
-                    "Man": 0,
-                    "More than one gender identity": 0,
-                },
-            },
-            results,
-        )
         self.assertIn(
             {
                 "date": "2018-01-02",
@@ -1159,8 +1109,9 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time2,
+            time_study=self.time2,
             time_mem=self.time3,
-            dob=dob2,
+            dob=dob2
         )
 
         p3 = Participant(participantId=3, biobankId=6)
@@ -1170,9 +1121,10 @@ class PublicMetricsApiTest(BaseTestCase):
             "Caterpillar",
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
+            time_study=self.time3,
             time_int=self.time3,
             time_mem=self.time5,
-            dob=dob3,
+            dob=dob3
         )
 
         p4 = Participant(participantId=4, biobankId=7)
@@ -1182,9 +1134,10 @@ class PublicMetricsApiTest(BaseTestCase):
             "Caterpillar2",
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
+            time_study=self.time4,
             time_int=self.time4,
             time_mem=self.time5,
-            dob=dob4,
+            dob=dob4
         )
 
         # ghost participant should be filtered out

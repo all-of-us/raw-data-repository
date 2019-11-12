@@ -48,13 +48,11 @@
   ],
   "user_info": {
     "healthpro-prod@appspot.gserviceaccount.com": {
-      "roles": [
-        "healthpro"
-      ],
       "clientId": "hpro",
       "whitelisted_appids": [
         "healthpro-prod"
-      ]
+      ],
+      "roles": ["healthpro"]
     },
     "aou-res-storefront-prod@appspot.gserviceaccount.com": {
       "roles": ["storefront"]
@@ -181,8 +179,8 @@
         ]
       }
     },
-    "pentest@all-of-us-rdr-stable.iam.gserviceaccount.com": {
-      "comment": "Penetration testing for Coalfire, PD-334.",
+    "coalfire-scan@all-of-us-rdr-prod.iam.gserviceaccount.com": {
+      "comment": "Penetration testing for Coalfire, PD-334, ROC-230",
       "roles": ["ptc", "healthpro"],
       "whitelisted_ip_ranges": {
         "ip4": [
@@ -196,7 +194,7 @@
                 "199.127.201.122",
                 "199.127.201.123",
                 "199.127.201.124",
-                "96.90.174.97-101",
+                "96.90.174.96/29",
                 "96.90.174.109",
                 "50.78.81.213",
                 "8.44.144.96",

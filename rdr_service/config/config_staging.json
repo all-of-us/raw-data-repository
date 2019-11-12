@@ -15,6 +15,7 @@
       "comment": "for HealthPro testing",
       "whitelisted_appids": ["pmi-hpo-dev"],
       "clientId": "hpro"
+    }
     },
     "vibrent-drc-staging@vibrent-drc-staging-165017.iam.gserviceaccount.com": {
       "roles": ["ptc"],
@@ -30,6 +31,13 @@
       "whitelisted_ip_ranges": {
         "ip6": ["::0/0"],
         "ip4": ["0.0.0.0/0"]
+      }
+    },
+    "care-evolution@all-of-us-rdr-staging.iam.gserviceaccount.com": {
+      "roles": ["ptc"],
+      "whitelisted_ip_ranges": {
+        "ip6": [],
+        "ip4": ["52.86.97.51", "52.54.134.172"]
       }
     },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
