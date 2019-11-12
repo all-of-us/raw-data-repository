@@ -1,4 +1,5 @@
 import io
+import logging
 import os
 import glob
 import shutil
@@ -12,6 +13,7 @@ from abc import ABC, abstractmethod
 
 from google.api_core.exceptions import RequestRangeNotSatisfiable
 from google.cloud import storage
+from google.cloud.exceptions import GatewayTimeout
 from google.cloud.storage import Blob
 from google.cloud._helpers import UTC
 from google.cloud._helpers import _RFC3339_MICROS
@@ -318,8 +320,18 @@ class GoogleCloudStorageProvider(StorageProvider):
         bucket_name, blob_name = self._parse_path(path)
         client = storage.Client()
         bucket = client.bucket(bucket_name)
-        gcs_stat = storage.Blob(bucket=bucket, name=blob_name).exists(client)
-        return gcs_stat
+        blob = storage.Blob(bucket=bucket, name=blob_name)
+
+        retry = 3
+        while retry:
+            try:
+                gcs_stat = blob.exists(client)
+                return gcs_stat
+            except GatewayTimeout:
+                retry -= 1
+                logging.warning(f"Google Storage timeout error, {retry} retry attempts left.")
+
+        raise ConnectionRefusedError(f"Connection to Google Storage failed. ({path})")
 
     @staticmethod
     def _parse_path(path):
