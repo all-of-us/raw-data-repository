@@ -109,7 +109,7 @@
           ]
       }
     },
-    "awardee-seec@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+    "awardee-seec@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "SEEC",
       "whitelisted_ip_ranges" : {
