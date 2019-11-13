@@ -28,8 +28,8 @@ from rdr_service.offline.public_metrics_export import LIVE_METRIC_SET_ID, Public
 from rdr_service.offline.sa_key_remove import delete_service_account_keys
 from rdr_service.offline.table_exporter import TableExporter
 
-from rdr_service.services.gcp_logging import flask_restful_log_exception_error, finalize_request_logging, \
-    setup_request_logging
+from rdr_service.services.gcp_logging import flask_restful_log_exception_error, end_request_logging, \
+    begin_request_logging
 
 PREFIX = "/offline/"
 
@@ -196,7 +196,7 @@ def update_ehr_status():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
-def genomic_pipeline():
+def genomic_pipeline_handler():
     genomic_pipeline.process_genomic_water_line()
     return '{"success": "true"}'
 
@@ -243,7 +243,7 @@ def _stop():
                 logging.info('******** Shutting down, sent supervisor the termination signal. ********')
                 response = Response()
                 response.status_code = 200
-                finalize_request_logging(response)
+                end_request_logging(response)
                 os.kill(pid, signal.SIGTERM)
         except TypeError:
             logging.warning('******** Shutting down, supervisor pid file is invalid. ********')
@@ -311,7 +311,7 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        PREFIX + "GenomicPipeline", endpoint="genomic_pipeline", view_func=genomic_pipeline, methods=["GET"]
+        PREFIX + "GenomicPipeline", endpoint="genomic_pipeline", view_func=genomic_pipeline_handler, methods=["GET"]
     )
 
     offline_app.add_url_rule(
@@ -332,11 +332,11 @@ def _build_pipeline_app():
     offline_app.add_url_rule('/_ah/start', endpoint='start', view_func=start, methods=["GET"])
     offline_app.add_url_rule("/_ah/stop", endpoint="stop", view_func=_stop, methods=["GET"])
 
-    offline_app.before_request(setup_request_logging)  # Must be first before_request() call.
+    offline_app.before_request(begin_request_logging)  # Must be first before_request() call.
     offline_app.before_request(app_util.request_logging)
 
     offline_app.after_request(app_util.add_headers)
-    offline_app.after_request(finalize_request_logging)  # Must be last after_request() call.
+    offline_app.after_request(end_request_logging)  # Must be last after_request() call.
 
     offline_app.register_error_handler(DBAPIError, app_util.handle_database_disconnect)
 

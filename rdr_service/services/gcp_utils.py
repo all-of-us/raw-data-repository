@@ -453,6 +453,23 @@ def gcp_create_iam_service_key(service_account, account=None):
 
     return service_key_id
 
+def gcp_get_iam_service_key_info(service_key_id):
+    """
+    Get information about the given service key file ID
+    :param service_key_id:
+    :return: dict with key info
+    """
+    service_key_file = "{0}.json".format(service_key_id)
+    service_key_path = os.path.join(GCP_SERVICE_KEY_STORE, service_key_file)
+
+    data = {
+        'key_id': service_key_id,
+        'key_file': service_key_file,
+        'key_path': service_key_path,
+        'exists': os.path.exists(service_key_path)
+    }
+
+    return data
 
 def gcp_delete_iam_service_key(service_key_id, account=None):
     """
@@ -722,8 +739,6 @@ def gcp_app_services_split_traffic(service: str, versions: list, split_by: str =
 
     args = "--quiet services set-traffic {0}".format(service)
     flags = "--splits {0} --split-by={1}".format(splits[:-1], split_by)
-    if len(versions) == 1:
-        flags += " --migrate"
 
     pcode, so, se = gcp_gcloud_command("app", args, flags)
 
