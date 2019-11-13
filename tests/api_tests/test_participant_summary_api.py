@@ -84,7 +84,6 @@ class ParticipantSummaryMySqlApiTest(BaseTestCase):
         self.assertEqual("PITT", ps.get("hpoId"))
 
 
-# TODO: represent in new test suite
 class ParticipantSummaryApiTest(BaseTestCase):
     provider_link = {"primary": True, "organization": {"display": None, "reference": "Organization/PITT"}}
     az_provider_link = {"primary": True, "organization": {"display": None, "reference": "Organization/AZ_TUCSON"}}
@@ -111,7 +110,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
             HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName="Test", organizationType=OrganizationType.UNSET)
         )
 
-        #self.mock_source = patch.object(ORIGINATING_SOURCES, return_value=['example'])
 
     def create_demographics_questionnaire(self):
         """Uses the demographics test data questionnaire.  Returns the questionnaire id"""
