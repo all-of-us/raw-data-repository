@@ -106,7 +106,8 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
 
         return query.all()
 
-  def get_latest_version_from_cache(self, start_date, end_date, hpo_ids=None):
+  def get_latest_version_from_cache(self, start_date, end_date, hpo_ids=None,
+                                    enrollment_statuses=None):
     buckets = self.get_active_buckets(start_date, end_date, hpo_ids)
     if buckets is None:
       return []
@@ -114,7 +115,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
       MetricsCacheType.PUBLIC_METRICS_EXPORT_API: self.to_public_metrics_client_json,
       MetricsCacheType.METRICS_V2_API: self.to_metrics_client_json
     }
-    return operation_funcs[self.cache_type](buckets)
+    return operation_funcs[self.cache_type](buckets, enrollment_statuses)
 
   def delete_old_records(self, n_days_ago=7):
     with self.session() as session:
@@ -128,7 +129,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
         params = {'seven_days_ago': seven_days_ago}
         session.execute(delete_sql, params)
 
-  def to_metrics_client_json(self, result_set):
+  def to_metrics_client_json(self, result_set, enrollment_statuses=None):
     client_json = []
     if self.version == MetricsAPIVersion.V2:
       for record in result_set:
@@ -136,10 +137,14 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
           'date': record.date.isoformat(),
           'hpo': record.hpoName,
           'metrics': {
-            'registered': record.registeredCount,
-            'participant': record.participantCount,
-            'consented': record.consentedCount,
-            'core': record.coreCount
+            'registered': record.registeredCount if not enrollment_statuses or str(
+              EnrollmentStatusV2.REGISTERED) in enrollment_statuses else 0,
+            'participant': record.participantCount if not enrollment_statuses or str(
+              EnrollmentStatusV2.PARTICIPANT) in enrollment_statuses else 0,
+            'consented': record.consentedCount if not enrollment_statuses or str(
+              EnrollmentStatusV2.FULLY_CONSENTED) in enrollment_statuses else 0,
+            'core': record.coreCount if not enrollment_statuses or str(
+              EnrollmentStatusV2.CORE_PARTICIPANT) in enrollment_statuses else 0,
           }
         }
         client_json.append(new_item)
@@ -157,7 +162,8 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
         client_json.append(new_item)
     return client_json
 
-  def to_public_metrics_client_json(self, result_set):
+  def to_public_metrics_client_json(self, result_set, enrollment_statuses=None):
+    # pylint: disable=unused-argument
     client_json = []
     for record in result_set:
       new_item = {
@@ -172,7 +178,8 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
       client_json.append(new_item)
     return client_json
 
-  def get_total_interested_count(self, start_date, end_date, hpo_ids=None):
+  def get_total_interested_count(self, start_date, end_date, hpo_ids=None,
+                                 enrollment_statuses=None):
     with self.session() as session:
       last_inserted_record = self.get_serving_version_with_session(session)
       if last_inserted_record is None:
@@ -183,8 +190,21 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
         filters_hpo = ' (' + ' OR '.join('hpo_id='+str(x) for x in hpo_ids) + ') AND '
       else:
         filters_hpo = ''
+
+      select_field_mapping = {
+        str(EnrollmentStatusV2.REGISTERED): 'SUM(registered_count)',
+        str(EnrollmentStatusV2.PARTICIPANT): 'SUM(participant_count)',
+        str(EnrollmentStatusV2.FULLY_CONSENTED): 'SUM(consented_count)',
+        str(EnrollmentStatusV2.CORE_PARTICIPANT): 'SUM(core_count)'
+      }
+
+      if enrollment_statuses and self.version == MetricsAPIVersion.V2:
+        select_field_str = '+'.join(select_field_mapping[key] for key in enrollment_statuses)
+      else:
+        select_field_str = '+'.join(select_field_mapping[key] for key in select_field_mapping)
+
       sql = """
-        SELECT (SUM(registered_count) + SUM(participant_count) + SUM(consented_count) + SUM(core_count)) AS registered_count,
+        SELECT (""" + select_field_str + """) AS registered_count,
         date AS start_date
         FROM metrics_enrollment_status_cache
         WHERE %(filters_hpo)s
