@@ -34,7 +34,8 @@ def log_api_request(model_obj=None):
             log.resource = json.loads(request.data)
         except ValueError:
             log.resource = request.data
-    log.version = int(request.url.split('/')[4][1:])
+    parts = request.url.split('/')
+    log.version = int([4][1:]) if len(parts) > 4 else 0
 
     request.logged = True
 
@@ -73,7 +74,8 @@ def log_api_request(model_obj=None):
             pass
         except Exception:  # pylint: disable=broad-except
             pass
-        save_raw_request_record(log)
+
+    save_raw_request_record(log)
 
 
 class BaseApi(Resource):

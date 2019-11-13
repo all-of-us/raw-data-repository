@@ -697,14 +697,6 @@ def save_raw_request_record(log: RequestsLog):
     Save the request payload and possibly link it to a table record
     :param log: RequestsLog dao object
     """
-    log.resource = str(log.resource)
-    try:
-        log.resource = json.loads(log.resource)
-    except json.decoder.JSONDecodeError:
-        pass
-    except ValueError:
-        pass
-
     _dao = BaseDao(RequestsLog)
     with _dao.session() as session:
         session.add(log)
