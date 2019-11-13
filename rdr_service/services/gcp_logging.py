@@ -89,7 +89,7 @@ logging_resource_pb2 = setup_logging_resource()
 
 
 # pylint: disable=unused-argument
-def setup_log_line(record: logging.LogRecord, resource, method):
+def setup_log_line(record: logging.LogRecord, resource=None, method=None):
     """
     Prepare a log event for sending to GCP StackDriver.  Thread safe.
     :param record: Log event record.
@@ -521,8 +521,15 @@ def get_gcp_logger() -> GCPStackDriverLogger:
     :return: GCPStackDriverLogger object
     """
     if hasattr(_thread_store, 'logger'):
-        logger = getattr(_thread_store, 'logger')
-        return logger
+        _logger = getattr(_thread_store, 'logger')
+        return _logger
+
+    # We may need to initialize the logger for this thread.
+    if 'GAE_ENV' in os.environ:
+        _logger = GCPStackDriverLogger()
+        setattr(_thread_store, 'logger', _logger)
+        return _logger
+
     return None
 
 
@@ -534,15 +541,12 @@ class GCPLoggingHandler(logging.Handler):
         :param record: Python log record
         """
         _logger = get_gcp_logger()
-
-        # We may need to initialize the logger for this thread.
-        if 'GAE_ENV' in os.environ and not _logger:
-            _logger = GCPStackDriverLogger()
-            setattr(_thread_store, 'logger', _logger)
-
         if _logger:
             _logger.log_event(record)
             return
+
+        line = setup_log_line(record)
+        print(line)
 
 
 def initialize_logging(log_level=logging.INFO):
@@ -569,12 +573,6 @@ def begin_request_logging():
     Initialize logging for a new request.  Not guarantied to always be called.
     """
     _logger = get_gcp_logger()
-
-    # We may need to initialize the logger for this thread.
-    if 'GAE_ENV' in os.environ and not _logger:
-        _logger = GCPStackDriverLogger()
-        setattr(_thread_store, 'logger', _logger)
-
     if _logger:
         _logger.setup_from_request(_request=request, initial=True)
 
