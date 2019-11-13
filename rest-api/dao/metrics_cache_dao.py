@@ -137,18 +137,14 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
           'date': record.date.isoformat(),
           'hpo': record.hpoName,
           'metrics': {
-            'registered': record.registeredCount if not enrollment_statuses
-                                                    or str(EnrollmentStatusV2.REGISTERED)
-                                                    in enrollment_statuses else 0,
-            'participant': record.participantCount if not enrollment_statuses
-                                                      or str(EnrollmentStatusV2.PARTICIPANT)
-                                                      in enrollment_statuses else 0,
-            'consented': record.consentedCount if not enrollment_statuses
-                                                  or str(EnrollmentStatusV2.FULLY_CONSENTED)
-                                                  in enrollment_statuses else 0,
-            'core': record.coreCount if not enrollment_statuses
-                                        or str(EnrollmentStatusV2.CORE_PARTICIPANT)
-                                        in enrollment_statuses else 0,
+            'registered': record.registeredCount if not enrollment_statuses or str(
+              EnrollmentStatusV2.REGISTERED) in enrollment_statuses else 0,
+            'participant': record.participantCount if not enrollment_statuses or str(
+              EnrollmentStatusV2.PARTICIPANT) in enrollment_statuses else 0,
+            'consented': record.consentedCount if not enrollment_statuses or str(
+              EnrollmentStatusV2.FULLY_CONSENTED) in enrollment_statuses else 0,
+            'core': record.coreCount if not enrollment_statuses or str(
+              EnrollmentStatusV2.CORE_PARTICIPANT) in enrollment_statuses else 0,
           }
         }
         client_json.append(new_item)
