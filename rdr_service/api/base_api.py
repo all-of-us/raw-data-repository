@@ -35,7 +35,7 @@ def log_api_request(model_obj=None):
         except ValueError:
             log.resource = request.data
     parts = request.url.split('/')
-    log.version = int([4][1:]) if len(parts) > 4 else 0
+    log.version = int(parts[4][1:]) if len(parts) > 4 else 0
 
     request.logged = True
 
