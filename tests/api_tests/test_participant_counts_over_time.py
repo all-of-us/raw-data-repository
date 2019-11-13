@@ -1587,6 +1587,32 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             response,
         )
 
+        qs = """
+            &stratification=ENROLLMENT_STATUS
+            &startDate=2018-01-01
+            &endDate=2018-01-08
+            &history=TRUE
+            &version=2
+            &enrollmentStatus=FULLY_CONSENTED
+            """
+
+        qs = ''.join(qs.split())  # Remove all whitespace
+
+        response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+        self.assertIn({u'date': u'2018-01-01', u'metrics': {u'consented': 0, u'core': 0,
+                                                            u'registered': 0, u'participant': 0},
+                       u'hpo': u'AZ_TUCSON'}, response)
+        self.assertIn({u'date': u'2018-01-02', u'metrics': {u'consented': 1, u'core': 0,
+                                                            u'registered': 0, u'participant': 0},
+                       u'hpo': u'AZ_TUCSON'}, response)
+        self.assertIn({u'date': u'2018-01-03', u'metrics': {u'consented': 0, u'core': 0,
+                                                            u'registered': 0, u'participant': 0},
+                       u'hpo': u'AZ_TUCSON'}, response)
+        self.assertIn({u'date': u'2018-01-04', u'metrics': {u'consented': 0, u'core': 0,
+                                                            u'registered': 0, u'participant': 0},
+                       u'hpo': u'AZ_TUCSON'}, response)
+
     def test_get_history_enrollment_status_api_filtered_by_awardee(self):
 
         p1 = Participant(participantId=1, biobankId=4)
@@ -1766,6 +1792,39 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             },
             response,
         )
+
+        qs = """
+                      &stratification=ENROLLMENT_STATUS
+                      &startDate=2018-01-01
+                      &endDate=2018-01-08
+                      &history=TRUE
+                      &awardee=AZ_TUCSON,PITT
+                      &version=2
+                      &enrollmentStatus=FULLY_CONSENTED, PARTICIPANT
+                      """
+
+        qs = ''.join(qs.split())  # Remove all whitespace
+
+        response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+        self.assertNotIn({'date': '2018-01-01',
+                          'metrics': {'consented': 0, 'core': 0, 'registered': 1, 'participant': 0},
+                          'hpo': u'UNSET'}, response)
+        self.assertNotIn({'date': '2018-01-06',
+                          'metrics': {'consented': 0, 'core': 0, 'registered': 1, 'participant': 0},
+                          'hpo': u'UNSET'}, response)
+        self.assertIn({u'date': u'2018-01-02', u'metrics': {u'consented': 0, u'core': 0,
+                                                            u'registered': 0, u'participant': 1},
+                       u'hpo': u'PITT'}, response)
+        self.assertIn({u'date': u'2018-01-03', u'metrics': {u'consented': 1, u'core': 0,
+                                                            u'registered': 0, u'participant': 0},
+                       u'hpo': u'PITT'}, response)
+        self.assertIn({u'date': u'2018-01-04', u'metrics': {u'consented': 0, u'core': 0,
+                                                            u'registered': 0, u'participant': 0},
+                       u'hpo': u'PITT'}, response)
+        self.assertIn({u'date': u'2018-01-01', u'metrics': {u'consented': 0, u'core': 0,
+                                                            u'registered': 0, u'participant': 0},
+                       u'hpo': u'AZ_TUCSON'}, response)
 
     def test_refresh_metrics_gender_cache_data(self):
 
@@ -3093,6 +3152,46 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self.assertIn({"date": "2018-01-07", "metrics": {"TOTAL": 3}}, response)
         self.assertIn({"date": "2018-01-08", "metrics": {"TOTAL": 3}}, response)
 
+    def test_get_history_total_api_v2(self):
+
+        p1 = Participant(participantId=1, biobankId=4)
+        self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
+
+        p2 = Participant(participantId=2, biobankId=5)
+        self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
+
+        p3 = Participant(participantId=3, biobankId=6)
+        self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time3,
+                     time_mem=self.time4, time_fp_stored=self.time5)
+
+        # ghost participant should be filtered out
+        p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+        self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time4,
+                     time_fp_stored=self.time5)
+
+        service = ParticipantCountsOverTimeService()
+        dao = MetricsEnrollmentStatusCacheDao()
+        service.init_tmp_table()
+        service.refresh_data_for_metrics_cache(dao)
+
+        qs = """
+              &stratification=TOTAL
+              &startDate=2018-01-01
+              &endDate=2018-01-08
+              &history=TRUE
+              &version=2
+              &enrollmentStatus=FULLY_CONSENTED
+              """
+
+        qs = ''.join(qs.split())  # Remove all whitespace
+
+        response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+        self.assertIn({u'date': u'2018-01-01', u'metrics': {u'TOTAL': 0}}, response)
+        self.assertIn({u'date': u'2018-01-02', u'metrics': {u'TOTAL': 0}}, response)
+        self.assertIn({u'date': u'2018-01-03', u'metrics': {u'TOTAL': 1}}, response)
+        self.assertIn({u'date': u'2018-01-04', u'metrics': {u'TOTAL': 0}}, response)
+
     def test_get_history_total_api_filter_by_awardees(self):
         p1 = Participant(participantId=1, biobankId=4)
         self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1)
@@ -3139,6 +3238,46 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self.assertIn({"date": "2018-01-02", "metrics": {"TOTAL": 2}}, response)
         self.assertIn({"date": "2018-01-07", "metrics": {"TOTAL": 2}}, response)
         self.assertIn({"date": "2018-01-08", "metrics": {"TOTAL": 2}}, response)
+
+    def test_get_history_total_api_filter_by_awardees_v2(self):
+        p1 = Participant(participantId=1, biobankId=4)
+        self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
+
+        p2 = Participant(participantId=2, biobankId=5)
+        self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
+
+        p3 = Participant(participantId=3, biobankId=6)
+        self._insert(p3, 'Chad', 'Caterpillar', 'PITT', time_int=self.time3, time_study=self.time3,
+                     time_mem=self.time4, time_fp_stored=self.time5)
+
+        # ghost participant should be filtered out
+        p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+        self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time4,
+                     time_fp_stored=self.time5)
+
+        service = ParticipantCountsOverTimeService()
+        dao = MetricsEnrollmentStatusCacheDao()
+        service.init_tmp_table()
+        service.refresh_data_for_metrics_cache(dao)
+
+        qs = """
+              &stratification=TOTAL
+              &startDate=2018-01-01
+              &endDate=2018-01-08
+              &history=TRUE
+              &awardee=AZ_TUCSON,PITT
+              &version=2
+              &enrollmentStatus=FULLY_CONSENTED
+              """
+
+        qs = ''.join(qs.split())  # Remove all whitespace
+
+        response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+        self.assertIn({u'date': u'2018-01-01', u'metrics': {u'TOTAL': 0}}, response)
+        self.assertIn({u'date': u'2018-01-02', u'metrics': {u'TOTAL': 0}}, response)
+        self.assertIn({u'date': u'2018-01-03', u'metrics': {u'TOTAL': 1}}, response)
+        self.assertIn({u'date': u'2018-01-04', u'metrics': {u'TOTAL': 0}}, response)
 
     def test_refresh_metrics_race_cache_data(self):
 
