@@ -8,7 +8,7 @@ from rdr_service.api_util import PTC_AND_HEALTHPRO
 from rdr_service.app_util import auth_required
 from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
 from rdr_service.dao.code_dao import CodeBookDao
-from rdr_service.services.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 
 _CODEBOOK_URL_BASE = "https://raw.githubusercontent.com/all-of-us-terminology/codebook-to-fhir/"
 _CODEBOOK_ERRORS_URL = _CODEBOOK_URL_BASE + "gh-pages/CodeSystem/ppi.issues.json"

@@ -25,7 +25,7 @@ class GCPCloudTask(object):
         Initialize a GCP Cloud Task call.
         :param endpoint: Flask API endpoint to call.
         :param payload: dict containing data to send to task.
-        :param in_seconds: delay before starting task in seconds.
+        :param in_seconds: delay before starting task in seconds, default to run immediately.
         :param project_id: target project id.
         :param location: target location.
         :param queue: target cloud task queue.

@@ -1,8 +1,9 @@
 import datetime
-import time
+import logging
 
 from dateutil import parser, tz
 from sqlalchemy import func, desc
+from werkzeug.exceptions import NotFound
 
 from rdr_service import config
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
@@ -63,17 +64,13 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :param ro_session: Readonly DAO session object
         :return: dict
         """
-        count = 24
-        p = None
-        while count:
-            p = ro_session.query(Participant).filter(Participant.participantId == p_id).first()
-            if p:
-                break
-            time.sleep(5.0)
-            count -= 1
-
+        # Note: We need to be careful here, there is a delay from when a participant is inserted in the primary DB
+        # and when it shows up in the replica DB instance.
+        p = ro_session.query(Participant).filter(Participant.participantId == p_id).first()
         if not p:
-            raise LookupError('participant lookup for P{0} failed.'.format(p_id))
+            msg = f'Participant lookup for P{p_id} failed.'
+            logging.error(msg)
+            raise NotFound(msg)
 
         hpo = ro_session.query(HPO.name).filter(HPO.hpoId == p.hpoId).first()
         organization = ro_session.query(Organization.externalId). \
@@ -176,7 +173,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             QuestionnaireResponse.created, QuestionnaireResponse.language, code_id_query). \
             filter(QuestionnaireResponse.participantId == p_id). \
             order_by(QuestionnaireResponse.questionnaireResponseId)
-        # sql = self.dao.query_to_text(query)
+        # sql = self.ro_dao.query_to_text(query)
         results = query.all()
 
         data = dict()
