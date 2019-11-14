@@ -1,4 +1,5 @@
 import io
+import logging
 import os
 import glob
 import shutil
@@ -12,6 +13,7 @@ from abc import ABC, abstractmethod
 
 from google.api_core.exceptions import RequestRangeNotSatisfiable
 from google.cloud import storage
+from google.cloud.exceptions import GatewayTimeout
 from google.cloud.storage import Blob
 from google.cloud._helpers import UTC
 from google.cloud._helpers import _RFC3339_MICROS
@@ -267,20 +269,22 @@ class GoogleCloudStorageProvider(StorageProvider):
         bucket_name, blob_name = self._parse_path(path)
         bucket = client.get_bucket(bucket_name)
         blob = storage.blob.Blob(blob_name, bucket)
-
         return GoogleCloudStorageFile(self, blob)
 
     def lookup(self, bucket_name):
         client = storage.Client()
-        return client.lookup_bucket(bucket_name)
+        _bucket_name = self._parse_bucket(bucket_name)
+        return client.lookup_bucket(_bucket_name)
 
     def list(self, bucket_name, prefix):
         client = storage.Client()
-        return client.list_blobs(bucket_name, prefix=prefix)
+        _bucket_name = self._parse_bucket(bucket_name)
+        return client.list_blobs(_bucket_name, prefix=prefix)
 
     def get_blob(self, bucket_name, blob_name):
         client = storage.Client()
-        bucket = client.get_bucket(bucket_name)
+        _bucket_name = self._parse_bucket(bucket_name)
+        bucket = client.get_bucket(_bucket_name)
         return bucket.get_blob(blob_name)
 
     def upload_from_file(self, source_file, path):
@@ -318,14 +322,29 @@ class GoogleCloudStorageProvider(StorageProvider):
         bucket_name, blob_name = self._parse_path(path)
         client = storage.Client()
         bucket = client.bucket(bucket_name)
-        gcs_stat = storage.Blob(bucket=bucket, name=blob_name).exists(client)
-        return gcs_stat
+        blob = storage.Blob(bucket=bucket, name=blob_name)
+
+        retry = 3
+        while retry:
+            try:
+                gcs_stat = blob.exists(client)
+                return gcs_stat
+            except GatewayTimeout:
+                retry -= 1
+                logging.warning(f"Google Storage timeout error, {retry} retry attempts left.")
+
+        raise ConnectionRefusedError(f"Connection to Google Storage failed. ({path})")
 
     @staticmethod
     def _parse_path(path):
         path = path if path[0:1] != '/' else path[1:]
         bucket_name, _, blob_name = path.partition('/')
         return bucket_name, blob_name
+
+    @staticmethod
+    def _parse_bucket(bucket):
+        bucket = bucket if bucket[0:1] != '/' else bucket[1:]
+        return bucket
 
 
 def get_storage_provider():
