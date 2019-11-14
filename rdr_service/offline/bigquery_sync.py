@@ -34,9 +34,10 @@ class BigQueryJobError(BaseException):
 
 def rebuild_bigquery_handler():
     """
-    Cron job handler, setup queued tasks to rebuild bigquery data
+    Cron job handler, setup queued tasks to rebuild bigquery data.
+    Tasks call the default API service, so we want to use small batch sizes.
     """
-    batch_size = 300
+    batch_size = 10
 
     ro_dao = BigQuerySyncDao(backup=True)
     with ro_dao.session() as ro_session:
