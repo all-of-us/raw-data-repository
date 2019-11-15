@@ -13,6 +13,8 @@ import contextlib
 import csv
 
 from tempfile import mkdtemp
+
+from rdr_service import api_util
 from rdr_service.storage import LocalFilesystemStorageProvider
 from rdr_service import config
 from tests.test_data import data_path
@@ -170,6 +172,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             "hpoId": UNSET_HPO_ID,
             "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
             "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
+            "participantOrigin": "example"
         }
         common_args.update(kwargs)
         return Participant(**common_args)
@@ -185,6 +188,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
             "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
             "enrollmentStatus": EnrollmentStatus.INTERESTED,
+            "participantOrigin": "example"
         }
         common_args.update(kwargs)
         return ParticipantSummary(**common_args)
@@ -196,6 +200,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             "version": 1,
             "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
             "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
+            "participantOrigin": "example"
         }
         common_args.update(kwargs)
         return ParticipantHistory(**common_args)
@@ -437,6 +442,17 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
                 os.mkdir(root_path + os.sep + path)
         except OSError:
             print("Creation mock buckets failed")
+
+    @staticmethod
+    def switch_auth_user(new_auth_user, client_id=None):
+        config.LOCAL_AUTH_USER = new_auth_user
+        config_user_info = {
+            new_auth_user: {
+                'roles': api_util.ALL_ROLES,
+                'clientId': client_id
+            }
+        }
+        config.override_setting("user_info", config_user_info)
 
 
 class InMemorySqlExporter(sql_exporter.SqlExporter):

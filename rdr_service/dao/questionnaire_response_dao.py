@@ -3,11 +3,11 @@ import logging
 import os
 from datetime import datetime
 
-from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 import pytz
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
+from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 from rdr_service import storage
 from rdr_service import clock, config
 from rdr_service.code_constants import (
@@ -71,6 +71,8 @@ def count_completed_ppi_modules(participant_summary):
     return sum(
         1 for field in ppi_module_fields if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED
     )
+
+
 
 
 class QuestionnaireResponseDao(BaseDao):
@@ -162,6 +164,7 @@ class QuestionnaireResponseDao(BaseDao):
         resource_json = json.loads(questionnaire_response.resource)
         resource_json["id"] = str(questionnaire_response.questionnaireResponseId)
         questionnaire_response.resource = json.dumps(resource_json)
+        super().validate_origin(questionnaire_response)
 
         # Gather the question ids and records that match the questions in the response
         question_ids = [answer.questionId for answer in questionnaire_response.answers]
@@ -197,6 +200,7 @@ class QuestionnaireResponseDao(BaseDao):
             session.merge(answer)
 
         return questionnaire_response
+
 
     def _get_field_value(self, field_type, answer):
         if field_type == FieldType.CODE:

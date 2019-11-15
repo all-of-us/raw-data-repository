@@ -14,7 +14,8 @@
       "roles": ["exporter"]
     },
     "pmi-hpo-dev@appspot.gserviceaccount.com": {
-      "roles": ["healthpro"]
+      "roles": ["healthpro"],
+      "clientId": "hpro"
     }
   },
   "biobank_samples_bucket_name": [

@@ -114,3 +114,6 @@ LANGUAGE_OF_CONSENT = ["en", "es"]
 
 # genome type values
 GENOME_TYPE = ["aou_array", "aou_wgs"]
+
+# Source of a created participant
+ORIGINATING_SOURCES = ['vibrent', 'careevolution', 'example']

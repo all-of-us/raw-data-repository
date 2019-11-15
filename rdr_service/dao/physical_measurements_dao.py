@@ -261,6 +261,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
         obj.final = True
         obj.created = clock.CLOCK.now()
         resource_json = json.loads(obj.resource)
+        super().validate_origin(obj)
         finalized_date = resource_json["entry"][0]["resource"].get("date")
         if finalized_date:
             obj.finalized = parse_date(finalized_date)
@@ -302,6 +303,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
         resource_json["id"] = str(obj.physicalMeasurementsId)
         obj.resource = json.dumps(resource_json)
         return obj
+
 
     def _update_participant_summary(self, session, obj, is_amendment=False):
         participant_id = obj.participantId

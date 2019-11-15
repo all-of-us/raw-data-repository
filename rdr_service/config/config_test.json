@@ -7,6 +7,7 @@
   "user_info": {
     "pmi-hpo-dev@appspot.gserviceaccount.com": {
       "roles": ["healthpro"],
+      "clientId": "hpro",
       "comment": "for HealthPro testing"
     },
     "awardee-pitt@pmi-drc-api-test.iam.gserviceaccount.com": {
@@ -15,10 +16,12 @@
       "comment": "for testing service account access to participant summary api"
     },
     "vibrent-drc-qa@vibrent-drc-qa-165017.iam.gserviceaccount.com": {
+      "clientId": "vibrent",
       "roles": ["ptc"]
     },
     "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"],
+      "clientId": "vibrent",
       "whitelisted_ip_ranges": {
         "ip6": ["::0/0"],
         "ip4": ["0.0.0.0/0"]

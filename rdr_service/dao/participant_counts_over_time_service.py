@@ -62,7 +62,7 @@ class ParticipantCountsOverTimeService(BaseDao):
             columns_cursor = session.execute('SELECT * FROM metrics_tmp_participant LIMIT 0')
 
             participant_fields = ['participant_id', 'biobank_id', 'sign_up_time', 'withdrawal_status',
-                                  'hpo_id', 'organization_id', 'site_id']
+                                  'hpo_id', 'organization_id', 'site_id', 'participant_origin']
 
             def get_field_name(name):
                 if name in participant_fields:
