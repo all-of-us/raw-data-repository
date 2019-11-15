@@ -158,8 +158,8 @@ class LocalFilesystemConfigProvider(ConfigProvider):
 
 class GoogleCloudDatastoreConfigProvider(ConfigProvider):
 
-    def load(self, name=CONFIG_SINGLETON_KEY, date=None):
-        datastore_client = datastore.Client(project=GAE_PROJECT)
+    def load(self, name=CONFIG_SINGLETON_KEY, date=None, project=None):
+        datastore_client = datastore.Client(project=project if project else GAE_PROJECT)
         kind = 'Configuration'
         key = datastore_client.key(kind, name)
         if date is not None:
