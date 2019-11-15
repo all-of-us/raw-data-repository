@@ -25,8 +25,7 @@ class _BQModuleSchema(BQSchema):
 
     def get_fields(self):
         """
-        Look up a participant id who has submitted this module and then get the module response answers to use
-        for creating the schema.
+        Look up questionnaire concept to get fields.
         :return: list of fields
         """
         fields = list()
@@ -45,16 +44,28 @@ class _BQModuleSchema(BQSchema):
         fields.append({'name': 'questionnaire_response_id', 'type': BQFieldTypeEnum.INTEGER.name,
                        'mode': BQFieldModeEnum.REQUIRED.name})
 
-        dao = BigQuerySyncDao()
+        dao = BigQuerySyncDao(backup=True)
 
+        # _sql_term = text("""
+        #     select convert(qh.resource using utf8) as resource
+        #       from questionnaire_concept qc inner join code c on qc.code_id = c.code_id
+        #            inner join questionnaire_history qh on qc.questionnaire_id = qh.questionnaire_id and
+        #                       qc.questionnaire_version = qh.version
+        #     where qc.code_id = (select c1.code_id from code c1 where c1.value = :mod)
+        #     order by qh.created desc limit 1;
+        # """)
+
+        # This query makes better use of the indexes.
         _sql_term = text("""
-        select convert(qh.resource using utf8) as resource 
-          from questionnaire_concept qc inner join code c on qc.code_id = c.code_id
-               inner join questionnaire_history qh on qc.questionnaire_id = qh.questionnaire_id and 
-                          qc.questionnaire_version = qh.version
-        where c.value = :mod
-        order by qh.created desc limit 1;
-    """)
+            select convert(qh.resource using utf8) as resource
+                from questionnaire_history qh
+                where qh.questionnaire_id = (
+                    select max(questionnaire_id) as questionnaire_id
+                    from questionnaire_concept qc
+                             inner join code c on qc.code_id = c.code_id
+                    where qc.code_id = (select c1.code_id from code c1 where c1.value = :mod)
+                );
+        """)
 
         with dao.session() as session:
 
@@ -113,7 +124,8 @@ class BQPDRConsentPIISchema(_BQModuleSchema):
         'ConsentPII_HelpWithConsentSignature',
         'PIIContactInformation_VerifiedPrimaryPhoneNumber',
         'PIIContactInformation_Email',
-        'PIIBirthInformation_BirthDate'
+        'PIIBirthInformation_BirthDate',
+        'ConsentPII_VerifiedPrimaryPhoneNumber'
     )
 
 
@@ -180,7 +192,8 @@ class BQPDRTheBasicsSchema(_BQModuleSchema):
         'PersonOneAddress_PersonOneAddressZipCode',
         'SecondContactsAddress_SecondContactZipCode',
         'PersonOneAddress_PersonOneAddressZipCode',
-        'SecondContactsAddress_SecondContactZipCode'
+        'SecondContactsAddress_SecondContactZipCode',
+        'OtherHealthPlan_FreeText'
     )
 
 
