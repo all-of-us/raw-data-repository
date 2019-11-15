@@ -756,7 +756,7 @@ LEFT JOIN voc.concept vc3
     AND vc3.vocabulary_id = 'PPI'
 LEFT JOIN voc.concept_relationship vcr2
     ON  vc3.concept_id = vcr2.concept_id_1
-    AND vcr2.relationship_id = 'Maps to'
+    AND vcr2.relationship_id = 'Maps to value'
     AND vcr2.invalid_reason IS NULL
 LEFT JOIN voc.concept vc4
     ON  vcr2.concept_id_2 = vc4.concept_id
