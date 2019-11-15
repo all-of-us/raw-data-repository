@@ -43,7 +43,6 @@ class BQPDRParticipantSummarySchema(BQSchema):
     modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
 
     participant_id = BQField('participant_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
-    addr_city = BQField('addr_city', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     addr_state = BQField('addr_state', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     addr_zip = BQField('addr_zip', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
@@ -126,8 +125,7 @@ class BQPDRParticipantSummaryView(BQView):
     # Manually define the fields, because we need to break out the sub-tables.
     __sql__ = """
     SELECT 
-      ps.participant_id,
-      ps.addr_city,
+      ps.participant_id,      
       ps.addr_state,
       ps.addr_zip,
       ps.is_ghost_id,
