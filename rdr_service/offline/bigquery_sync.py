@@ -22,7 +22,7 @@ from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
     BQPDREHRConsentPII, BQPDRDVEHRSharing
 from rdr_service.model.participant import Participant
-from rdr_service.services.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 
 
 # disable pylint warning for 'Exception':
@@ -34,9 +34,10 @@ class BigQueryJobError(BaseException):
 
 def rebuild_bigquery_handler():
     """
-    Cron job handler, setup queued tasks to rebuild bigquery data
+    Cron job handler, setup queued tasks to rebuild bigquery data.
+    Tasks call the default API service, so we want to use small batch sizes.
     """
-    batch_size = 300
+    batch_size = 50
 
     ro_dao = BigQuerySyncDao(backup=True)
     with ro_dao.session() as ro_session:

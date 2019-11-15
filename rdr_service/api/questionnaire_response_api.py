@@ -12,7 +12,7 @@ from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
-from rdr_service.services.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 
 
 class QuestionnaireResponseApi(BaseApi):
@@ -34,7 +34,7 @@ class QuestionnaireResponseApi(BaseApi):
                 bq_questionnaire_update_task(p_id, qr_id)
             else:
                 params = {'p_id': p_id, 'qr_id': qr_id}
-                task = GCPCloudTask('bq_rebuild_questionnaire_task', payload=params)
+                task = GCPCloudTask('bq_rebuild_questionnaire_task', payload=params, in_seconds=5)
                 task.execute()
 
         return resp

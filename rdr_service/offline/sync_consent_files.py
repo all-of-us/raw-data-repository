@@ -12,7 +12,7 @@ from rdr_service.config import GAE_PROJECT
 from rdr_service.api_util import open_cloud_file, list_blobs, copy_cloud_file, get_blob
 from rdr_service.cloud_utils.google_sheets import GoogleSheetCSVReader
 from rdr_service.dao import database_factory
-from rdr_service.services.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 
 HPO_REPORT_CONFIG_GCS_PATH = "/all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
 
