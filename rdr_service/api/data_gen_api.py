@@ -21,7 +21,7 @@ from rdr_service.data_gen.fake_participant_generator import FakeParticipantGener
 from rdr_service.data_gen.in_process_client import InProcessClient
 from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.offline.biobank_samples_pipeline import CsvColumns, INPUT_CSV_TIME_FORMAT
-from rdr_service.services.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 
 # 10% of individual stored samples are missing by default.
 # 1% of participants have samples with no associated order

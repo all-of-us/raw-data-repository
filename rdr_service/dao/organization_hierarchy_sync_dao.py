@@ -322,14 +322,15 @@ class OrganizationHierarchySyncDao(BaseDao):
             return None
 
     def _get_contact_point(self, hierarchy_org_obj, code):
+        if not hierarchy_org_obj.contact:
+            return None
         contact_arr = hierarchy_org_obj.contact
         for contact in contact_arr:
             telecom_arr = contact.telecom
             for telecom in telecom_arr:
                 if telecom.system == code:
                     return telecom.value
-        else:
-            return None
+
 
     def _get_address(self, hierarchy_org_obj):
         address = hierarchy_org_obj.address[0]

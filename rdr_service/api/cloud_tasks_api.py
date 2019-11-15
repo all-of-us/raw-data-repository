@@ -47,8 +47,9 @@ class BQRebuildOneParticipantTaskApi(Resource):
         p_id = int(data.get('p_id', 0))
         if not p_id:
             raise NotFound('Invalid participant id')
-
+        logging.info(f'Rebuilding participant summary for P{p_id}.')
         bq_participant_summary_update_task(p_id)
+        logging.info('Complete.')
         return '{"success": "true"}'
 
 
@@ -59,7 +60,9 @@ class RebuildCodebookBQTaskApi(Resource):
     @task_auth_required
     def post(self):
         log_task_headers()
+        logging.info('Rebuilding Codebook.')
         rebuild_bq_codebook_task()
+        logging.info('Complete.')
         return '{"success": "true"}'
 
 
@@ -77,7 +80,9 @@ class CopyCloudStorageObjectTaskApi(Resource):
         if not source or not destination:
             raise NotFound('Invalid cloud storage path: Copy {0} to {1}.'.format(source, destination))
 
+        logging.info('Copying cloud object.')
         cloudstorage_copy_objects_task(source, destination)
+        logging.info('Complete.')
         return '{"success": "true"}'
 
 
@@ -96,7 +101,9 @@ class BQRebuildQuestionnaireTaskApi(Resource):
         if not qr_id:
             raise NotFound('Invalid questionnaire response id.')
 
+        logging.info(f'Rebuilding Questionnaire {qr_id} for P{p_id}.')
         bq_questionnaire_update_task(p_id, qr_id)
+        logging.info('Complete')
         return '{"success": "true"}'
 
 
@@ -109,5 +116,7 @@ class GenerateBiobankSamplesTaskApi(Resource):
         log_task_headers()
         data = request.get_json(force=True)
         fraction = float(data.get('fraction', 0.0))
+        logging.info('Generating Biobank sample record.')
         generate_samples_task(fraction)
+        logging.info('Complete.')
         return '{"success": "true"}'
