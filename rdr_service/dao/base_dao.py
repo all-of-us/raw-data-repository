@@ -8,6 +8,7 @@ from collections import OrderedDict
 from contextlib import closing
 
 import sqlparse
+
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainResource
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirabstractbase import FHIRValidationError
 from protorpc import messages
@@ -18,6 +19,7 @@ from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, Servic
 
 from rdr_service import api_util
 from rdr_service.dao import database_factory
+from rdr_service.model.participant import Participant
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import get_property_type
 from rdr_service.query import FieldFilter, Operator, PropertyType, Results
@@ -156,9 +158,27 @@ class BaseDao(object):
         """Override to validate a model before any db write (insert or update)."""
         pass
 
+
     def _validate_insert(self, session, obj):
         """Override to validate a new model before inserting it (not applied to updates)."""
         self._validate_model(session, obj)
+
+    def validate_origin(self, obj):
+        from rdr_service import app_util
+        pid = obj.participantId
+        email = app_util.get_oauth_id()
+        user_info = app_util.lookup_user_info(email)
+        base_name = user_info.get('clientId')
+        if email == api_util.DEV_MAIL and base_name is None:
+            base_name = 'example'  # account for temp configs that dont create the key
+        with self.session() as session:
+            result = session.query(Participant.participantOrigin).filter(
+                Participant.participantId == pid).first()
+            if result:
+                result = result[0]
+        if base_name != result:
+            raise BadRequest(f"{base_name} can not submit questionnaire response for participant with an origin from "
+                             f"{result}")
 
     def insert_with_session(self, session, obj):
         """Adds the object into the session to be inserted."""

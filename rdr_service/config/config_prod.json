@@ -48,6 +48,10 @@
   ],
   "user_info": {
     "healthpro-prod@appspot.gserviceaccount.com": {
+      "clientId": "hpro",
+      "whitelisted_appids": [
+        "healthpro-prod"
+      ],
       "roles": ["healthpro"]
     },
     "aou-res-storefront-prod@appspot.gserviceaccount.com": {
@@ -57,6 +61,7 @@
       "roles": [
         "ptc"
       ],
+      "clientId": "vibrent",
       "whitelisted_ip_ranges": {
         "ip4": [
           "34.204.157.148",

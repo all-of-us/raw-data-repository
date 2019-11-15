@@ -35,6 +35,7 @@ class AppUtilTest(BaseTestCase):
             "example@example.com": {
                 "roles": ["role1", "role2"],
                 "whitelisted_ip_ranges": {"ip6": ["1234:5678::/32"], "ip4": ["123.210.0.1/16"]},
+                "clientId": "example"
             }
         }
 
