@@ -1,6 +1,6 @@
 """add participant_flag to metrics_race_cache table
 
-Revision ID: efe2c250620c
+Revision ID: bce6d443874f
 Revises: 11d18d04d1e1
 Create Date: 2019-11-07 11:03:28.339841
 
@@ -20,7 +20,7 @@ from rdr_service.model.code import CodeType
 from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 
 # revision identifiers, used by Alembic.
-revision = 'efe2c250620c'
+revision = 'bce6d443874f'
 down_revision = '11d18d04d1e1'
 branch_labels = None
 depends_on = None
