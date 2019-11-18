@@ -3,6 +3,7 @@
 # Tool to deploy app to Google App Engine.
 #
 import argparse
+import json
 import logging
 import os
 import sys
@@ -12,7 +13,7 @@ from yaml import Loader as yaml_loader
 from rdr_service.services.system_utils import setup_logging, setup_i18n, git_project_root, git_current_branch, \
     git_checkout_branch, is_git_branch_clean
 from rdr_service.tools.tool_libs import GCPProcessContext
-from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP
+from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, GCP_APP_CONFIG_MAP
 from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic
 
 _logger = logging.getLogger("rdr_logger")
@@ -326,6 +327,62 @@ class SplitTrafficClass(object):
 
         return 0
 
+class AppConfigClass(object):
+
+    _config_dir = None
+    _provider = None
+
+    def __init__(self, args, gcp_env):
+        """
+        :param args: command line arguments.
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        """
+        self.args = args
+        self.gcp_env = gcp_env
+
+        self._config_dir =  os.path.join(self.args.git_project, 'rdr_service/config')
+        if not os.path.exists(self._config_dir):
+            raise FileNotFoundError('Unable to locate the app config directory.')
+
+        from rdr_service.config import GoogleCloudDatastoreConfigProvider
+        self._provider = GoogleCloudDatastoreConfigProvider()
+
+    def update_app_config(self):
+        """
+        Put the local config into the cloud datastore.
+        """
+        base_config_file = os.path.join(self._config_dir, 'base_config.json')
+        base_config = json.loads(open(base_config_file, 'r').read())
+
+        proj_config_file = os.path.join(self._config_dir, GCP_APP_CONFIG_MAP[self.gcp_env.project])
+        proj_config = json.loads(open(proj_config_file, 'r').read())
+
+        config = {**base_config, **proj_config}
+        self._provider.store(self.args.key, config, project=self.gcp_env.project)
+
+        _logger.info('Successfully updated app configuration.')
+
+
+    def get_app_config(self):
+        """
+        Get the cloud datastore config
+        """
+        config = self._provider.load(self.args.key, project=self.gcp_env.project)
+        print(json.dumps(config, indent=2, sort_keys=True))
+
+    def run(self):
+
+        if self.args.update:
+            if self.args.key == 'current_config':
+                self.update_app_config()
+            elif self.args.key == 'db_config':
+                raise NotImplementedError('Updating DB config not implemented yet.')
+        elif self.args.compare:
+            raise NotImplementedError('Comparing configs not implemented yet.')
+        else:
+            self.get_app_config()
+
+        return 0
 
 
 def run():
@@ -342,14 +399,14 @@ def run():
     parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
+    parser.add_argument("--git-project", help="path to git project root directory", default=None)  # noqa
 
     subparser = parser.add_subparsers(help='app engine services')
 
     deploy_parser = subparser.add_parser("deploy")
-    deploy_parser.add_argument("--quiet", help="do not ask for user input.", default=False)  # noqa
+    deploy_parser.add_argument("--quiet", help="do not ask for user input.", default=False, action="store_true") # noqa
     deploy_parser.add_argument("--git-branch", help="git branch/tag to deploy.", required=True)  # noqa
     deploy_parser.add_argument("--deploy-as", help="deploy as version", default=None)  #noqa
-    deploy_parser.add_argument("--git-project", help="path to git project root directory", default=None)  # noqa
     deploy_parser.add_argument("--services", help="comma delimited list of service names to deploy",
                                default=None)  # noqa
     deploy_parser.add_argument("--promote", help="promote version to serving state.",
@@ -360,33 +417,42 @@ def run():
                                      default=False, action='store_true')  # noqa
 
     split_parser = subparser.add_parser("split-traffic")
-    split_parser.add_argument("--quiet", help="do not ask for user input.", default=False)  # noqa
+    split_parser.add_argument("--quiet", help="do not ask for user input.", default=False, action="store_true") # noqa
     split_parser.add_argument('--service', help='name of service to split traffic on.', required=True)
     split_parser.add_argument('--versions', required=True,
                               help='a list of versions and split ratios, ex: service_a:0.4,service_b:0.6 ')
     split_parser.add_argument('--split-by', help='split traffic by', choices=['random', 'ip', 'cookie'],
                               default='random')
 
+    config_parser = subparser.add_parser("config")
+    config_parser.add_argument('--key', help='datastore config key.', default='current_config', type=str)  # noqa
+    config_parser.add_argument('--compare', help='Compare app config to local config.', default=False,
+                               action="store_true")  # noqa
+    config_parser.add_argument('--update', help='update cloud app config.', default=False, action="store_true")  # noqa
+    config_parser.add_argument('--to-file', help='export to file', default='', type=str)  # noqa
+
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
 
-        if hasattr(args, 'git_branch'):
-            if not args.project or args.project == 'localhost':
-                _logger.error('unable to deploy without a project.')
+        if not args.project or args.project == 'localhost':
+            _logger.error('unable to deploy without a project.')
+            exit(1)
+
+        # determine the git project root directory.
+        if not args.git_project:
+            envron_path = os.environ.get('RDR_PROJECT', None)
+            git_root_path = git_project_root()
+            if envron_path:
+                args.git_project = envron_path
+            elif git_root_path:
+                args.git_project = git_root_path
+            else:
+                _logger.error("No project root found, set '--git-project' arg or set RDR_PROJECT environment var.")
                 exit(1)
 
-            if not args.git_project:
-                envron_path = os.environ.get('RDR_PROJECT', None)
-                git_root_path = git_project_root()
-                if envron_path:
-                    args.git_project = envron_path
-                elif git_root_path:
-                    args.git_project = git_root_path
-                else:
-                    _logger.error("No project root found, set '--git-project' arg or set RDR_PROJECT environment var.")
-                    exit(1)
-
+        if hasattr(args, 'git_branch'):
             process = DeployAppClass(args, gcp_env)
             exit_code = process.run()
 
@@ -396,6 +462,16 @@ def run():
 
         elif hasattr(args, 'split_by'):
             process = SplitTrafficClass(args, gcp_env)
+            exit_code = process.run()
+
+        elif hasattr(args, 'key'):
+            if args.key not in {'current_config', 'db_config'}:
+                _logger.error('Invalid configuration key argument.')
+                return 1
+            if args.compare and args.update:
+                _logger.error('Compare and Update args may not be used at the same time.')
+                return 1
+            process = AppConfigClass(args, gcp_env)
             exit_code = process.run()
 
         else:
