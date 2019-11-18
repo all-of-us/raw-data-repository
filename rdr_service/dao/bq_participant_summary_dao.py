@@ -116,11 +116,12 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :param ro_session: Readonly DAO session object
         :return: dict
         """
-        qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=['ConsentPII', p_id])
-        if not qnans or len(qnans) == 0:
+        # qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=['ConsentPII', p_id])
+        qnans = self._get_module_answers('ConsentPII', p_id)
+        if not qnans:
             # return the minimum data required when we don't have the questionnaire data.
             return {'email': None, 'is_ghost_id': 0}
-        qnan = BQRecord(schema=None, data=qnans[0])  # use only most recent response.
+        qnan = BQRecord(schema=None, data=qnans)  # use only most recent response.
         # TODO: We may need to use the first response to set consent dates,
         #  unless the consent value changed across response records.
 
@@ -203,13 +204,14 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 # check if this is a module with consents.
                 if module_name not in consent_modules:
                     continue
-                qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=[module_name, p_id])
-                if qnans and len(qnans) > 0:
-                    qnan = BQRecord(schema=None, data=qnans[0])  # use only most recent questionnaire.
+                # qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=[module_name, p_id])
+                qnans = self._get_module_answers(module_name, p_id)
+                if qnans:
+                    qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
                     consents.append({
                         'consent': consent_modules[module_name],
                         'consent_id': self._lookup_code_id(consent_modules[module_name], ro_session),
-                        'consent_date': parser.parse(qnan.authored).date() if qnan.authored else None,
+                        'consent_date': parser.parse(qnan['authored']).date() if qnan['authored'] else None,
                         'consent_value': qnan[consent_modules[module_name]],
                         'consent_value_id': self._lookup_code_id(qnan[consent_modules[module_name]], ro_session),
                     })
@@ -474,6 +476,63 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         dates = list(set(dates))  # de-dup list
         data['distinct_visits'] = len(dates)
         return data
+
+    def _get_module_answers(self, module, p_id):
+        """
+
+        :param module:
+        :param p_id:
+        :return:
+        """
+        _module_info_sql = """
+                    SELECT qr.questionnaire_id,
+                           qr.questionnaire_response_id,
+                           qr.created,
+                           q.version,
+                           qr.authored,
+                           qr.language,
+                           qr.participant_id
+                    FROM questionnaire_response qr
+                            INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
+                            INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
+                    WHERE qr.participant_id = :p_id and qc.code_id = (select c1.code_id from code c1 where c1.value = :mod)
+                    ORDER BY qr.created DESC;
+                """
+
+        _answers_sql = """
+            SELECT qr.questionnaire_id,
+                   qq.code_id,
+                   (select c.value from code c where c.code_id = qq.code_id) as code_name,
+                   COALESCE((SELECT c.value from code c where c.code_id = qra.value_code_id),
+                            qra.value_integer, qra.value_decimal,
+                            qra.value_boolean, qra.value_string, qra.value_system,
+                            qra.value_uri, qra.value_date, qra.value_datetime) as answer
+            FROM questionnaire_response qr
+                     INNER JOIN questionnaire_response_answer qra
+                                ON qra.questionnaire_response_id = qr.questionnaire_response_id
+                     INNER JOIN questionnaire_question qq
+                                ON qra.question_id = qq.questionnaire_question_id
+                     INNER JOIN questionnaire q
+                                ON qq.questionnaire_id = q.questionnaire_id
+            WHERE qr.questionnaire_response_id = :qr_id;
+        """
+
+        self.ro_dao = BigQuerySyncDao(backup=True)
+        with self.ro_dao.session() as session:
+            results = session.execute(_module_info_sql, {"p_id": p_id, "mod": module})
+            if not results:
+                return None
+
+            for row in results:
+                data = self.ro_dao.to_dict(row, result_proxy=results)
+
+                answers = session.execute(_answers_sql, {'qr_id': row.questionnaire_response_id})
+
+                for answer in answers:
+                    data[answer.code_name] = answer.answer
+                return data
+
+        return None
 
 
 def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None):
