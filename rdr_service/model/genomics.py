@@ -52,6 +52,24 @@ class GenomicValidationFlag(messages.Enum):
     INVALID_DUP_PARTICIPANT = 9
 
 
+class GenomicSubProcessStatus(messages.Enum):
+    """The status of a Genomics Sub-Process"""
+    QUEUED = 0
+    COMPLETED = 1
+    RUNNING = 2
+    ABORTED = 3
+
+
+class GenomicSubProcessResult(messages.Enum):
+    """The result codes for a particular run of a sub-process"""
+    UNSET = 0
+    SUCCESS = 1
+    NO_FILES = 2
+    INVALID_FILE_NAME = 3
+    INVALID_FILE_STRUCTURE = 4
+    ERROR = 5
+
+
 class GenomicSet(Base):
     """
   Genomic Set model
@@ -129,3 +147,119 @@ class GenomicSetMember(Base):
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
 event.listen(GenomicSetMember, "before_update", model_update_listener)
+
+
+class GenomicJob(Base):
+    """Genomic Job model.
+    The Genomics system includes several workflows that involve data transfer.
+    This model represents a genomics data transfer job."""
+    __tablename__ = 'genomic_job'
+
+    # Primary Key
+    id = Column('id', Integer,
+                primary_key=True,
+                autoincrement=True,
+                nullable=False)
+
+    # Auto-Timestamps
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    name = Column('name', String(80), nullable=False)
+    activeFlag = Column('active_flag', Integer, nullable=False)
+
+
+event.listen(GenomicJob, 'before_insert', model_insert_listener)
+event.listen(GenomicJob, 'before_update', model_update_listener)
+
+
+class GenomicJobRun(Base):
+    """Genomic Job Run model.
+    This model represents a 'run' of a genomics job,
+    And tracks the results of a run."""
+    __tablename__ = 'genomic_job_run'
+
+    # Primary Key
+    id = Column('id', Integer,
+              primary_key=True,
+              autoincrement=True,
+              nullable=False)
+
+    jobId = Column('job_id', Integer,
+                   ForeignKey('genomic_job.id'), nullable=False)
+    startTime = Column('start_time', DateTime, nullable=False)
+    endTime = Column('end_time', DateTime, nullable=True)
+    runStatus = Column('run_status',
+                     Enum(GenomicSubProcessStatus),
+                     default=GenomicSubProcessStatus.RUNNING)
+    runResult = Column('run_result',
+                     Enum(GenomicSubProcessResult),
+                     default=GenomicSubProcessResult.UNSET)
+    resultMessage = Column('result_message', String(150), nullable=True)
+
+
+class GenomicFileProcessed(Base):
+    """Genomic File Processed model.
+    This model represents the file(s) processed during a genomics run."""
+    __tablename__ = 'genomic_file_processed'
+
+    # Primary Key
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+
+    runId = Column('run_id', Integer,
+                   ForeignKey('genomic_job_run.id'), nullable=False)
+    startTime = Column('start_time', DateTime, nullable=False)
+    endTime = Column('end_time', DateTime, nullable=True)
+    filePath = Column('file_path', String(255), nullable=False)
+    bucketName = Column('bucket_name', String(128), nullable=False)
+    fileName = Column('file_name', String(128), nullable=False)
+    fileStatus = Column('file_status',
+                        Enum(GenomicSubProcessStatus),
+                        default=GenomicSubProcessStatus.QUEUED)
+    fileResult = Column('file_result',
+                        Enum(GenomicSubProcessResult),
+                        default=GenomicSubProcessResult.UNSET)
+
+
+class GenomicGCValidationMetrics(Base):
+    """Genomic Sequencing Metrics model.
+    This is the data ingested from
+    Genome Centers' validation result metrics files."""
+    __tablename__ = 'genomic_gc_validation_metrics'
+
+    # Primary Key
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    genomicSetMemberId = Column('genomic_set_member_id',
+                                ForeignKey('genomic_set_member.id'),
+                                nullable=False)
+    genomicFileProcessedId = Column('genomic_file_processed_id',
+                                    ForeignKey('genomic_file_processed.id'))
+    # Auto-Timestamps
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    # TODO: This should be removed since in genomic_set_member,
+    #  but that table's pid can't be trusted yet
+    participantId = Column('participant_id', Integer,
+                           ForeignKey('participant.participant_id'),
+                           nullable=False)
+    # Ingested Data
+    sampleId = Column('sample_id', String(80), nullable=True)
+    limsId = Column('lims_id', String(80), nullable=True)
+    callRate = Column('call_rate', Integer, nullable=True)
+    meanCoverage = Column('mean_coverage', Integer, nullable=True)
+    genomeCoverage = Column('genome_coverage', Integer, nullable=True)
+    contamination = Column('contamination', Integer, nullable=True)
+    sexConcordance = Column('sex_concordance', String(10), nullable=True)
+    alignedQ20Bases = Column('aligned_q20_bases', Integer, nullable=True)
+    processingStatus = Column('processing_status', String(15), nullable=True)
+    notes = Column('notes', String(128), nullable=True)
+    consentForRor = Column('consent_for_ror', String(10), nullable=True)
+    withdrawnStatus = Column('withdrawn_status', Integer, nullable=True)
+    siteId = Column('site_id', Integer, nullable=True)
+
+
+event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
+event.listen(GenomicGCValidationMetrics, 'before_update', model_update_listener)
