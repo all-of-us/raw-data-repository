@@ -1,7 +1,7 @@
 """add participant origin
 
 Revision ID: 2a9c885158ac
-Revises: efe2c250620c
+Revises: bce6d443874f
 Create Date: 2019-11-13 10:20:37.557338
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = '2a9c885158ac'
-down_revision = 'efe2c250620c'
+down_revision = 'bce6d443874f'
 branch_labels = None
 depends_on = None
 
