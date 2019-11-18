@@ -379,6 +379,9 @@ class AppConfigClass(object):
         config = self._provider.load(self.args.key, project=self.gcp_env.project)
         print(json.dumps(config, indent=2, sort_keys=True))
 
+        if self.args.to_file:
+            raise NotImplementedError('Writing config to file is not implemented yet.')
+
     def run(self):
 
         if self.args.update:
