@@ -219,6 +219,11 @@ class DeployAppClass(object):
         _logger.info('Cleaning up...')
         self.clean_up_config_files(config_files)
 
+        # Install config
+        _logger.info('Installing app configuration into datastore...')
+        app_config = AppConfigClass(self.args, self.gcp_env)
+        app_config.update_app_config()
+
         _logger.info('Switching back to git branch/tag: {0}...'.format(self._current_git_branch))
         git_checkout_branch(self._current_git_branch)
 
@@ -346,6 +351,9 @@ class AppConfigClass(object):
 
         from rdr_service.config import GoogleCloudDatastoreConfigProvider
         self._provider = GoogleCloudDatastoreConfigProvider()
+
+        if not hasattr(self.args, 'key'):
+            setattr(self.args, 'key', 'current_config')
 
     def update_app_config(self):
         """
