@@ -74,6 +74,7 @@
       }
     },
     "configurator@all-of-us-rdr-prod.iam.gserviceaccount.com": {
+      "clientId": "configurator",
       "roles": [
         "ptc",
         "healthpro",

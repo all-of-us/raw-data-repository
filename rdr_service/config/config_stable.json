@@ -142,6 +142,7 @@
     },
     "care-evolution@all-of-us-rdr-stable.iam.gserviceaccount.com": {
       "roles": ["ptc"],
+      "clientId": "careevolution",
       "whitelisted_ip_ranges": {
         "ip6": [],
         "ip4": ["52.86.97.51", "52.54.134.172"]
@@ -155,6 +156,7 @@
       }
     },
     "configurator@all-of-us-rdr-stable.iam.gserviceaccount.com": {
+      "clientId": "configurator",
       "roles": ["ptc", "healthpro", "rdr"]
     },
     "security-testing@pmi-hpo-test.iam.gserviceaccount.com": {
