@@ -181,7 +181,11 @@ class GoogleCloudDatastoreConfigProvider(ConfigProvider):
         if entity:
             cdata = entity['configuration']
             if isinstance(cdata, bytes):
-                cdata = base64.b64decode(cdata).decode('utf-8')
+                try:
+                    cdata = base64.b64decode(cdata).decode('utf-8')
+                except UnicodeDecodeError:
+                    # see if it was just a regular byte string and not encoded in base64.
+                    cdata = cdata.decode('utf-8')
             config_data = json.loads(cdata)
         else:
             if name == CONFIG_SINGLETON_KEY:

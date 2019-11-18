@@ -214,15 +214,16 @@ class DeployAppClass(object):
 
         _logger.info('Preparing configuration files...')
         config_files = self.setup_config_files()
+
+        # Install app config
+        _logger.info('Installing app configuration into datastore...')
+        app_config = AppConfigClass(self.args, self.gcp_env)
+        app_config.update_app_config()
+
         _logger.info('Deploying app...')
         result = gcp_deploy_app(self.gcp_env.project, config_files, self.deploy_version, self.args.promote)
         _logger.info('Cleaning up...')
         self.clean_up_config_files(config_files)
-
-        # Install config
-        _logger.info('Installing app configuration into datastore...')
-        app_config = AppConfigClass(self.args, self.gcp_env)
-        app_config.update_app_config()
 
         _logger.info('Switching back to git branch/tag: {0}...'.format(self._current_git_branch))
         git_checkout_branch(self._current_git_branch)
