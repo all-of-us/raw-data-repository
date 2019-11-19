@@ -6,7 +6,8 @@
   ],
   "user_info": {
     "pmi-hpo-test@appspot.gserviceaccount.com": {
-      "roles": ["healthpro"]
+      "roles": ["healthpro"],
+      "clientId": "hpro"
     },
     "awardee-pitt@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
@@ -61,6 +62,7 @@
         "whitelisted_ip_ranges" : {
           "ip4": [
             "150.198.1.0/24",
+            "150.198.62.92",
             "150.198.138.127",
             "161.249.83.116",
             "161.249.147.132",
@@ -134,6 +136,7 @@
     },
     "vibrent-drc-stable@vibrent-drc-stable-165017.iam.gserviceaccount.com": {
       "roles": ["ptc"],
+      "clientId": "vibrent",
       "whitelisted_ip_ranges": {
         "ip4": ["52.4.219.3", "52.206.129.31", "174.64.55.14/32"],
         "ip6": []
