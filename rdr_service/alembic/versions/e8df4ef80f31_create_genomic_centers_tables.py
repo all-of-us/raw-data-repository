@@ -1,8 +1,8 @@
-"""Create Genomic tables
+"""create_genomic_centers_tables
 
-Revision ID: 96999791b48b
-Revises: bce6d443874f
-Create Date: 2019-11-08 10:55:36.443187
+Revision ID: e8df4ef80f31
+Revises: 2a9c885158ac
+Create Date: 2019-11-19 13:39:55.623119
 
 """
 from alembic import op
@@ -13,8 +13,8 @@ from rdr_service.model import utils
 from rdr_service.model.genomics import GenomicSubProcessStatus, GenomicSubProcessResult
 
 # revision identifiers, used by Alembic.
-revision = '96999791b48b'
-down_revision = 'bce6d443874f'
+revision = 'e8df4ef80f31'
+down_revision = '2a9c885158ac'
 branch_labels = None
 depends_on = None
 
@@ -37,7 +37,7 @@ def upgrade_rdr():
                     sa.Column('name', sa.String(length=80), nullable=False),
                     sa.Column('active_flag', sa.Integer(), nullable=False),
                     sa.PrimaryKeyConstraint('id')
-    )
+                    )
     op.create_table('genomic_job_run',
                     sa.Column('id', sa.Integer(),
                               autoincrement=True, nullable=False),
@@ -54,7 +54,7 @@ def upgrade_rdr():
                               nullable=True),
                     sa.ForeignKeyConstraint(['job_id'], ['genomic_job.id'], ),
                     sa.PrimaryKeyConstraint('id')
-    )
+                    )
     op.create_table('genomic_file_processed',
                     sa.Column('id', sa.Integer(),
                               autoincrement=True, nullable=False),
@@ -77,12 +77,12 @@ def upgrade_rdr():
                     sa.ForeignKeyConstraint(['run_id'],
                                             ['genomic_job_run.id'], ),
                     sa.PrimaryKeyConstraint('id')
-    )
+                    )
     op.create_table('genomic_gc_validation_metrics',
                     sa.Column('id', sa.Integer(), autoincrement=True,
                               nullable=False),
                     sa.Column('genomic_set_member_id', sa.Integer(),
-                              nullable=False),
+                              nullable=True),
                     sa.Column('genomic_file_processed_id', sa.Integer(),
                               nullable=True),
                     sa.Column('created', sa.DateTime(), nullable=True),
@@ -106,12 +106,10 @@ def upgrade_rdr():
                     sa.Column('site_id', sa.Integer(), nullable=True),
                     sa.ForeignKeyConstraint(['genomic_file_processed_id'],
                                             ['genomic_file_processed.id'], ),
-                    sa.ForeignKeyConstraint(['genomic_set_member_id'],
-                                            ['genomic_set_member.id'], ),
                     sa.ForeignKeyConstraint(['participant_id'],
                                             ['participant.participant_id'], ),
                     sa.PrimaryKeyConstraint('id')
-    )
+                    )
     # ### end Alembic commands ###
 
     # Timestamp columns
@@ -123,7 +121,7 @@ def upgrade_rdr():
                     existing_type=mysql.DATETIME(fsp=6),
                     nullable=True,
                     existing_server_default=sa.text(
-                      u'current_timestamp(6) ON UPDATE current_timestamp(6)'))
+                        u'current_timestamp(6) ON UPDATE current_timestamp(6)'))
 
     op.alter_column('genomic_gc_validation_metrics', 'created',
                     existing_type=mysql.DATETIME(fsp=6),
@@ -132,7 +130,7 @@ def upgrade_rdr():
     op.alter_column('genomic_gc_validation_metrics', 'modified',
                     existing_type=mysql.DATETIME(fsp=6), nullable=True,
                     existing_server_default=sa.text(
-                      u'current_timestamp(6) ON UPDATE current_timestamp(6)'))
+                        u'current_timestamp(6) ON UPDATE current_timestamp(6)'))
 
     # create jobs
     op.execute(

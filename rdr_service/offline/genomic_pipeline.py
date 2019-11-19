@@ -42,20 +42,15 @@ def ingest_genomic_centers_metrics_files():
     """
     Entrypoint for GC Metrics File Ingestion subprocess of genomic_pipeline.
     """
-    # Setup Run
-    # TODO: setup run_controller as a context manager
     run_controller = genomic_job_controller.GenomicJobController()
-    # Generate list of files to ingest
     file_queue_result = run_controller.generate_file_processing_queue()
 
     if file_queue_result == GenomicSubProcessResult.NO_FILES:
         logging.info('No files to process.')
         run_controller.end_run(file_queue_result)
     else:
-        # Process Data
         while len(run_controller.file_queue) > 0:
             try:
-                # This ingests the file in the queue and returns a result code.
                 ingestion_result = run_controller.process_file_using_ingestor(
                     run_controller.file_queue[0])
                 file_ingested = run_controller.file_queue.popleft()
@@ -67,9 +62,5 @@ def ingest_genomic_centers_metrics_files():
             except IndexError:
                 logging.info('No files left in file queue.')
 
-        # Validate Run
-        # TODO: validate files were ingested
         run_result = run_controller.aggregate_run_results()
-
-        # Finalize Run
         run_controller.end_run(run_result)

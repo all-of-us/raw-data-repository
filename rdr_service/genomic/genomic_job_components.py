@@ -5,13 +5,11 @@ Components are assembled by the JobController for a particular Genomic Job
 
 import csv
 import logging
+import re
 
-from rdr_service.api_util import open_cloud_file
+from rdr_service.api_util import open_cloud_file, copy_cloud_file, delete_cloud_file
 from rdr_service.model.genomics import GenomicSubProcessResult
 from rdr_service.dao.genomics_dao import GenomicGCValidationMetricsDao
-from rdr_service.genomic.genomic_set_file_handler import (
-    FileNotFoundError
-)
 
 
 class GenomicFileIngester:
@@ -27,9 +25,7 @@ class GenomicFileIngester:
         self.file_validator = None
         self.dao = GenomicGCValidationMetricsDao()
 
-    def ingest_gc_validation_metrics_file(self,
-                                          file_obj,
-                                          genomic_set_member_id=None):
+    def ingest_gc_validation_metrics_file(self, file_obj):
         """
         Process to ingest the cell line data from
         the GC bucket and write to the database
@@ -58,12 +54,11 @@ class GenomicFileIngester:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
 
-    def _retrieve_data_from_path(self, path, archive_folder=None):
+    def _retrieve_data_from_path(self, path):
         """
         Retrieves the last genomic data file from a bucket
         :param path: The source file to ingest
-        :param archive_folder: subfolder in GC bucket to move processed files
-        :return: (csv filename, csv file data as a DictReader)
+        :return: CSV data as a dicitonary
         """
         try:
             filename = path.split('/')[2]
@@ -113,7 +108,7 @@ class GenomicFileIngester:
 
 class GenomicFileValidator:
     """
-    This module validates the Genomic Centers files
+    This class validates the Genomic Centers files
     Validates data structure against a schema, or validates the data.
     """
 
@@ -175,8 +170,15 @@ class GenomicFileValidator:
         return GenomicSubProcessResult.SUCCESS
 
     def _check_filename_valid(self, filename):
-        # TODO: once naming convention is finalized
-        return True
+        # TODO: revisit this once naming convention is finalized for other jobs
+        filename_components = filename.split('_')
+        return (
+            len(filename_components) == 5 and
+            filename_components[1].lower() == 'aou' and
+            filename_components[2].lower() in self.GC_CSV_SCHEMAS.keys() and
+            re.search(r"[0-1][0-9][0-3][0-9]20[1-9][0-9]\.csv",
+                      filename_components[4]) is not None
+        )
 
     def _check_file_structure_valid(self, fields):
         """
@@ -208,3 +210,29 @@ class GenomicFileValidator:
         except (IndexError, KeyError):
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
+
+class GenomicFileMover:
+    """
+    This utility class moves files in the bucket by copying into an archive folder
+    and deleting the old instance.
+    """
+
+    def __init__(self, archive_folder=None):
+        self.archive_folder = archive_folder
+
+    def archive_file(self, file_obj):
+        """
+        This method moves a file to an archive
+        by copy and delete
+        :param file_obj: a genomic_file_processed object to move
+        :return:
+        """
+        source_path = file_obj.filePath
+        archive_path = source_path.replace(file_obj.fileName,
+                                           f"{self.archive_folder}/"
+                                           f"{file_obj.fileName}")
+        try:
+            copy_cloud_file(source_path, archive_path)
+            delete_cloud_file(source_path)
+        except FileNotFoundError:
+            logging.ERROR(f"No file found at '{file_obj.filePath}'")

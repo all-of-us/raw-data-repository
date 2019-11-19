@@ -350,7 +350,7 @@ class GenomicJobRunDao(UpdatableDao):
 
     def update_run_record(self, run_id, result):
         with self.session() as session:
-           return self._update_run_record_with_session(session, run_id, result)
+            return self._update_run_record_with_session(session, run_id, result)
 
     def _update_run_record_with_session(self, session, run_id, result):
         """

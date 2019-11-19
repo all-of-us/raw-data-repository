@@ -4,10 +4,13 @@ This module tracks and validates the status of Genomics Pipeline Subprocesses.
 from collections import deque
 import logging
 
-from rdr_service.api_util import open_cloud_file, list_blobs
+from rdr_service.api_util import list_blobs
 from rdr_service.config import GENOMIC_GC_METRICS_BUCKET_NAME, getSetting
 from rdr_service.model.genomics import GenomicSubProcessResult
-from rdr_service.genomic.genomic_job_components import GenomicFileIngester
+from rdr_service.genomic.genomic_job_components import (
+    GenomicFileIngester,
+    GenomicFileMover
+)
 from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicJobRunDao
@@ -24,28 +27,22 @@ class GenomicJobController:
                  ):
 
         self.bucket_name = getSetting(bucket_name)
+        self.archive_folder_name = 'processed_by_rdr'
         self.file_queue = file_queue
         self.job_name = job_name
 
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET
 
-        # Ingester component
+        # Components
         self.ingester = None
-
-        # Dao Components
+        self.file_mover = None
         self.job_run_dao = GenomicJobRunDao()
         self.file_processed_dao = GenomicFileProcessedDao()
 
         # TODO: currently set up for only gc metrics ingestion;
         #  need to make more generic
         self.job_run = self._create_run(1)
-
-    def __enter__(self):
-        pass
-
-    def __exit__(self):
-        pass
 
     def generate_file_processing_queue(self):
         """Creates the list of files to be ingested in this run.
@@ -54,7 +51,9 @@ class GenomicJobController:
 
         # last_run_time = self._get_last_successful_run_time(self.job_name)
         files = self._get_uningested_file_names_from_bucket(self.bucket_name)
-        if files:
+        if files == GenomicSubProcessResult.NO_FILES:
+            return files
+        else:
             for file_name in files:
                 file_path = "/" + self.bucket_name + "/" + file_name
                 self._create_file_record(self.job_run.id,
@@ -62,18 +61,22 @@ class GenomicJobController:
                                          self.bucket_name,
                                          file_name)
             self.file_queue = deque(self._get_file_queue_for_run(self.job_run.id))
-        else:
-            return GenomicSubProcessResult.NO_FILES
+
 
     def process_file_using_ingestor(self, file_obj):
         """
-        Runs ingestor's main method
+        Runs Ingester's main method. Move file to archive when done.
         :param file_obj:
-        :return: result code of file ingestion
+        :return: result code of file ingestion task
         """
         self.ingester = GenomicFileIngester()
+        self.file_mover = GenomicFileMover(archive_folder=self.archive_folder_name)
+
         result = self.ingester.ingest_gc_validation_metrics_file(file_obj)
         self.subprocess_results.add(result)
+
+        self.file_mover.archive_file(file_obj)
+
         return result
 
     def update_file_processed(self, file_id, status, result):
@@ -100,19 +103,23 @@ class GenomicJobController:
         return GenomicSubProcessResult.SUCCESS
 
     def _get_uningested_file_names_from_bucket(self, bucket_name):
-        # TODO: get list of ingested files from DB and check against those in the bucket
-        # ingested_files = from database
-        # files = [f for file in bucket_name if file not in ingested_files]
+        """
+        Get's the files in the bucket that have not been processed
+        :param bucket_name:
+        :return: list of filenames or
+        """
         files = list_blobs('/' + bucket_name)
+        files = [s.name for s in files
+                 if self.archive_folder_name not in s.name.lower()]
         if not files:
             logging.info('No files in cloud bucket {}'.format(bucket_name))
             return GenomicSubProcessResult.NO_FILES
-        files = [s.name for s in files
-                 if s.name.lower().endswith('.csv')]
         return files
 
     def _get_last_successful_run_time(self, job_name):
         """Return last successful run's starttime from `genomics_job_runs`"""
+        # TODO: implement once 'Cell Line' test runs are complete
+        # pylint: disable=unused-argument
         last_run_time = "2019-11-05"
         return last_run_time
 

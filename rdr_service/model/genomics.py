@@ -231,9 +231,8 @@ class GenomicGCValidationMetrics(Base):
     # Primary Key
     id = Column('id', Integer,
                 primary_key=True, autoincrement=True, nullable=False)
-    genomicSetMemberId = Column('genomic_set_member_id',
-                                ForeignKey('genomic_set_member.id'),
-                                nullable=False)
+    genomicSetMemberId = Column('genomic_set_member_id', Integer,
+                                nullable=True)
     genomicFileProcessedId = Column('genomic_file_processed_id',
                                     ForeignKey('genomic_file_processed.id'))
     # Auto-Timestamps
