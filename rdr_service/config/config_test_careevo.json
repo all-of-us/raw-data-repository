@@ -6,6 +6,7 @@
   ],
   "user_info": {
     "configurator@all-of-us-rdr-careevo-test.iam.gserviceaccount.com": {
+      "clientId": "configurator",
       "roles": ["ptc", "healthpro", "rdr"]
     },
     "exporter@all-of-us-rdr-careevo-test.iam.gserviceaccount.com": {
@@ -20,6 +21,7 @@
       }
     },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
+      "clientId": "configurator",
       "roles": ["ptc", "healthpro", "rdr"]
     }
   },

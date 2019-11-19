@@ -35,12 +35,14 @@
     },
     "care-evolution@all-of-us-rdr-staging.iam.gserviceaccount.com": {
       "roles": ["ptc"],
+      "clientId": "careevolution",
       "whitelisted_ip_ranges": {
         "ip6": [],
         "ip4": ["52.86.97.51", "52.54.134.172"]
       }
     },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
+      "clientId": "configurator",
       "roles": ["ptc", "healthpro", "rdr"]
     },
     "exporter@all-of-us-rdr-staging.iam.gserviceaccount.com": {

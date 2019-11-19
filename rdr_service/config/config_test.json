@@ -35,6 +35,7 @@
       }
     },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
+      "clientId": "configurator",
       "roles": ["ptc", "healthpro", "rdr"]
     },
     "exporter@pmi-drc-api-test.iam.gserviceaccount.com": {

@@ -54,7 +54,7 @@ class GCPCloudTask(object):
             self._payload = json.dumps(payload).encode()
         self._in_seconds = in_seconds
 
-    def execute(self):
+    def execute(self, quiet=False):
         """
         Make GCP Cloud Task API request to run task later.
         """
@@ -81,4 +81,5 @@ class GCPCloudTask(object):
 
         # Use the client to build and send the task.
         response = client.create_task(parent, task)
-        logging.info('Created task {0}'.format(response.name))
+        if not quiet:
+            logging.info('Created task {0}'.format(response.name))

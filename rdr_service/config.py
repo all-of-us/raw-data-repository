@@ -2,6 +2,7 @@
 
 Contains things such as the accounts allowed access to the system.
 """
+import base64
 import logging  # pylint: disable=unused-import
 
 import json
@@ -178,7 +179,14 @@ class GoogleCloudDatastoreConfigProvider(ConfigProvider):
                 return None
         entity = datastore_client.get(key=key)
         if entity:
-            config_data = json.loads(entity['configuration'])
+            cdata = entity['configuration']
+            if isinstance(cdata, bytes):
+                try:
+                    cdata = base64.b64decode(cdata).decode('utf-8')
+                except UnicodeDecodeError:
+                    # see if it was just a regular byte string and not encoded in base64.
+                    cdata = cdata.decode('utf-8')
+            config_data = json.loads(cdata)
         else:
             if name == CONFIG_SINGLETON_KEY:
                 entity = datastore.Entity(key=key)
@@ -190,8 +198,8 @@ class GoogleCloudDatastoreConfigProvider(ConfigProvider):
 
         return config_data
 
-    def store(self, name, config_dict, **kwargs):
-        datastore_client = datastore.Client(project=GAE_PROJECT)
+    def store(self, name, config_dict, project=None, **kwargs):
+        datastore_client = datastore.Client(project=project if project else GAE_PROJECT)
         date = clock.CLOCK.now()
         with datastore_client.transaction():
             key = datastore_client.key('Configuration', name)
@@ -203,7 +211,8 @@ class GoogleCloudDatastoreConfigProvider(ConfigProvider):
             for k, v in kwargs.items():
                 history_entity[k] = v
             datastore_client.put(entity=history_entity)
-            entity['configuration'] = config_dict
+            cdata = base64.b64encode(json.dumps(config_dict).encode())
+            entity['configuration'] = cdata
             datastore_client.put(entity=entity)
 
 
