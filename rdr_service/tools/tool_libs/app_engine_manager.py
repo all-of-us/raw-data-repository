@@ -7,6 +7,8 @@ import json
 import logging
 import os
 import sys
+import difflib
+
 import yaml
 from yaml import Loader as yaml_loader
 
@@ -406,6 +408,9 @@ class AppConfigClass(object):
 
         # Mask passwords when writing to stdout.
         for k, v in config.items():
+            if 'db_connection_string' in k:
+                parts = config[k].split('@')
+                config[k] = parts[0][:parts[0].rfind(':') + 1] + '*********@' + parts[1]
             if 'password' in k:
                 config[k] = '********'
 
@@ -429,31 +434,44 @@ class AppConfigClass(object):
             if k not in local_config:
                 local_config[k] = ''
 
-        diff_set = set(remote_config.items()) - set(local_config.items())
+        lc_str = json.dumps(local_config, indent=2, sort_keys=True)
+        rc_str = json.dumps(remote_config, indent=2, sort_keys=True)
 
-        if not diff_set:
+        if lc_str == rc_str:
             print('\nNo configuration changes detected.\n')
             return
 
-        print('\nShow configuration changes:\n')
+        print('\nShowing configuration changes:\n')
 
-        keys = []
-        for item in diff_set:
-            keys.append(item[0])
-
-        def safe_print(target, k, v):
-            tmp_v = v
-            if 'db_connection_string' in k:
+        for line in difflib.context_diff(rc_str.splitlines(keepends=True), lc_str.splitlines(keepends=True),
+                                         fromfile='remote_config', tofile='local_config', n=2):
+            tmp_v = line
+            if 'db_connection_string' in line:
                 parts = tmp_v.split('@')
-                tmp_v = parts[0][:parts[0].rfind(':')+1] + '*********' + parts[1]
-            elif 'password' in k:
-                tmp_v = '********'
-            print(f'     {target:6} : {tmp_v}')
+                tmp_v = parts[0][:parts[0].rfind(':') + 1] + '*********@' + parts[1] + "\n"
+            elif 'password' in line:
+                parts = tmp_v.split(':')
+                tmp_v = parts[0] + ': "*********"' + '\n'
 
-        for key in keys:
-            print(f'  Key: {key}')
-            safe_print('remote', key, remote_config[key])
-            safe_print('local', key, local_config[key])
+            sys.stdout.write(tmp_v)
+
+        # keys = []
+        # for item in diff_set:
+        #     keys.append(item[0])
+        #
+        # def safe_print(target, k, v):
+        #     tmp_v = v
+        #     if 'db_connection_string' in k:
+        #         parts = tmp_v.split('@')
+        #         tmp_v = parts[0][:parts[0].rfind(':')+1] + '*********' + parts[1]
+        #     elif 'password' in k:
+        #         tmp_v = '********'
+        #     print(f'     {target:6} : {tmp_v}')
+        #
+        # for key in keys:
+        #     print(f'  Key: {key}')
+        #     safe_print('remote', key, remote_config[key])
+        #     safe_print('local', key, local_config[key])
 
         print('')
 
@@ -472,9 +490,10 @@ class AppConfigClass(object):
         if (not self.args.update and not self.args.compare) and self.args.from_file:
             _logger.error('\nConflict: --from-file argument may not be used without --update or --compare.\n')
             return 1
-        if self.args.key == 'db_config' and self.args.update and not self.args.from_file:
-            _logger.error('\nMissing: When updating db_config key, the --from-file arg must be set.\n')
-            return 1
+        if self.args.key == 'db_config':
+            if (self.args.update or self.args.compare) and not self.args.from_file:
+                _logger.error('\nRequired: The --from-file arg must be set.\n')
+                return 1
 
         # https://github.com/googleapis/google-auth-library-python/issues/271
         import warnings
