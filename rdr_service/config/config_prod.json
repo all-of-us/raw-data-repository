@@ -100,6 +100,7 @@
             "150.198.1.0/24",
             "150.198.64.0/24",
             "150.198.124.0/24",
+            "150.198.138.127",
             "150.198.204.0/24",
             "216.70.11.254",
             "208.72.48.248/22",
@@ -114,7 +115,7 @@
           ]
       }
     },
-    "awardee-seec@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+    "awardee-seec@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "SEEC",
       "whitelisted_ip_ranges" : {
