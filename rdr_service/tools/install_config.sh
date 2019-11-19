@@ -1,7 +1,7 @@
 #!/bin/bash -e
-
-echo -e "\nDepreciated tool, use 'python -m tools app-engine config' tool instead.\n"
-exit 1
+#
+#echo -e "\nDepreciated tool, use 'python -m tools app-engine config' tool instead.\n"
+#exit 1
 
 
 . tools/set_path.sh

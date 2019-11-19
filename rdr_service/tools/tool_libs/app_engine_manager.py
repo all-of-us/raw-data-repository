@@ -389,7 +389,7 @@ class AppConfigClass(object):
         """
         Put the local config into the cloud datastore.
         """
-        if not self.args.from_file:
+        if not hasattr(self.args, 'from_file') or not self.args.from_file:
             config = self.get_local_app_config()
         else:
             config = self.get_config_from_file()
@@ -407,7 +407,7 @@ class AppConfigClass(object):
             open(self.args.to_file, 'w').write(json.dumps(config, indent=2, sort_keys=True))
 
         # Mask passwords when writing to stdout.
-        for k, v in config.items():
+        for k, v in config.items():  # pylint: disable=unused-variable
             if 'db_connection_string' in k:
                 parts = config[k].split('@')
                 config[k] = parts[0][:parts[0].rfind(':') + 1] + '*********@' + parts[1]
@@ -427,7 +427,7 @@ class AppConfigClass(object):
 
         remote_config = self._provider.load(self.args.key, project=self.gcp_env.project)
 
-        for k, v in local_config.items():
+        for k, v in local_config.items():  # pylint: disable=unused-variable
             if k not in remote_config:
                 remote_config[k] = ''
         for k, v in remote_config.items():
