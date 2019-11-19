@@ -83,7 +83,6 @@ class _BQModuleSchema(BQSchema):
                 if name in self._excluded_fields:
                     continue
 
-                name = name.replace('/', '_')
                 # Check and make sure there are no other characters that are not allowed.
                 # Fields must contain only letters, numbers, and underscores, start with a letter or underscore,
                 # and be at most 128 characters long.
