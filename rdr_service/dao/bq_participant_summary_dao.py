@@ -212,8 +212,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                         'consent': consent_modules[module_name],
                         'consent_id': self._lookup_code_id(consent_modules[module_name], ro_session),
                         'consent_date': parser.parse(qnan['authored']).date() if qnan['authored'] else None,
-                        'consent_value': qnan[consent_modules[module_name]],
-                        'consent_value_id': self._lookup_code_id(qnan[consent_modules[module_name]], ro_session),
+                        'consent_value': qnan.get(consent_modules[module_name], None),
+                        'consent_value_id':
+                            self._lookup_code_id(qnan.get(consent_modules[module_name], None), ro_session),
                     })
 
         if len(modules) > 0:

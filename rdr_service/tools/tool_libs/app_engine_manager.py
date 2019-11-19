@@ -346,7 +346,7 @@ class AppConfigClass(object):
         self.args = args
         self.gcp_env = gcp_env
 
-        self._config_dir =  os.path.join(self.args.git_project, 'rdr_service/config')
+        self._config_dir = os.path.join(self.args.git_project, 'rdr_service/config')
         if not os.path.exists(self._config_dir):
             raise FileNotFoundError('Unable to locate the app config directory.')
 
