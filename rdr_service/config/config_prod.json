@@ -93,6 +93,7 @@
       "awardee": "TRANS_AM",
       "whitelisted_ip_ranges": {
           "ip4": [
+            "150.198.62.92",
             "161.249.83.116",
             "161.249.147.132",
             "161.249.241.64/26",
@@ -100,6 +101,7 @@
             "150.198.1.0/24",
             "150.198.64.0/24",
             "150.198.124.0/24",
+            "150.198.138.127",
             "150.198.204.0/24",
             "216.70.11.254",
             "208.72.48.248/22",
@@ -114,7 +116,7 @@
           ]
       }
     },
-    "awardee-seec@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+    "awardee-seec@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "SEEC",
       "whitelisted_ip_ranges" : {
@@ -134,7 +136,8 @@
         "ip4": [
           "130.49.241.192/28",
           "136.142.111.123",
-          "136.142.111.122"
+          "136.142.111.122",
+          "155.247.164.243"
         ]
       }
     },
