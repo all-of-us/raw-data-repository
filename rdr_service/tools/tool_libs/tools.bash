@@ -51,14 +51,14 @@ _python()
             ;;
         app-engine)
             # These are options specific to this tool.
-            local toolopts="list deploy split-traffic"
+            local toolopts="--git-project list deploy split-traffic config"
             COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
             return 0
             ;;
         deploy)
             # app-engine deploy command
             if echo ${COMP_WORDS[@]} | grep -w "app-engine" > /dev/null; then
-              local toolopts="--git-branch --deploy-as --git-project --services --promote --quiet"
+              local toolopts="--git-branch --deploy-as --services --promote --quiet"
               COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
             else
               COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
@@ -79,6 +79,16 @@ _python()
             # app-engine split-traffic command
             if echo ${COMP_WORDS[@]} | grep -w "app-engine" > /dev/null; then
               local toolopts="--quiet --service --versions --split-by"
+              COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
+            else
+              COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
+            fi
+            return 0
+            ;;
+        config)
+            # app-engine split-traffic command
+            if echo ${COMP_WORDS[@]} | grep -w "app-engine" > /dev/null; then
+              local toolopts="--key --compare --update --to-file"
               COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
             else
               COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )

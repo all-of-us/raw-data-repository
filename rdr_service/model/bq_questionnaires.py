@@ -1,4 +1,6 @@
 import json
+import logging
+import string
 
 from sqlalchemy.sql import text
 
@@ -12,6 +14,7 @@ class _BQModuleSchema(BQSchema):
     """
     _module = ''
     _excluded_fields = ()
+    _allowed_chars = string.ascii_letters + string.digits + '_'
 
     def __init__(self):
         """ add the field list to our self. """
@@ -46,15 +49,6 @@ class _BQModuleSchema(BQSchema):
 
         dao = BigQuerySyncDao(backup=True)
 
-        # _sql_term = text("""
-        #     select convert(qh.resource using utf8) as resource
-        #       from questionnaire_concept qc inner join code c on qc.code_id = c.code_id
-        #            inner join questionnaire_history qh on qc.questionnaire_id = qh.questionnaire_id and
-        #                       qc.questionnaire_version = qh.version
-        #     where qc.code_id = (select c1.code_id from code c1 where c1.value = :mod)
-        #     order by qh.created desc limit 1;
-        # """)
-
         # This query makes better use of the indexes.
         _sql_term = text("""
             select convert(qh.resource using utf8) as resource
@@ -68,8 +62,6 @@ class _BQModuleSchema(BQSchema):
         """)
 
         with dao.session() as session:
-
-            # get a participant id that has submitted the module
             result = session.execute(_sql_term, {'mod': self._module}).first()
             if not result:
                 return fields
@@ -90,6 +82,18 @@ class _BQModuleSchema(BQSchema):
                 name = qn['concept'][0]['code']
                 if name in self._excluded_fields:
                     continue
+
+                # Check and make sure there are no other characters that are not allowed.
+                # Fields must contain only letters, numbers, and underscores, start with a letter or underscore,
+                # and be at most 128 characters long.
+                if not all(c in self._allowed_chars for c in name):
+                    logging.warning(f'Field {name} contains invalid characters, skipping.')
+                    continue
+                if len(name) > 128:
+                    logging.warning(f'Field {name} must be less than 128 characters, skipping.')
+                    continue
+                if name[:1] not in string.ascii_letters and name[:1] != '_':
+                    logging.warning(f'Field {name} must start with a character or underscore, skipping.')
 
                 field = dict()
                 field['name'] = name

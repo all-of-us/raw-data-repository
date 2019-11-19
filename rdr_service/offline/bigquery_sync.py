@@ -37,7 +37,7 @@ def rebuild_bigquery_handler():
     Cron job handler, setup queued tasks to rebuild bigquery data.
     Tasks call the default API service, so we want to use small batch sizes.
     """
-    batch_size = 50
+    batch_size = 250
 
     ro_dao = BigQuerySyncDao(backup=True)
     with ro_dao.session() as ro_session:
@@ -49,6 +49,7 @@ def rebuild_bigquery_handler():
         participants = ro_session.query(Participant.participantId).all()
 
         count = 0
+        batch_count = 0
         batch = list()
 
         # queue up a batch of participant ids and send them to be rebuilt.
@@ -65,7 +66,8 @@ def rebuild_bigquery_handler():
                 else:
                     task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
                                         queue='bigquery-rebuild')
-                    task.execute()
+                    task.execute(quiet=True)
+                batch_count += 1
                 # reset for next batch
                 batch = list()
                 count = 0
@@ -73,13 +75,15 @@ def rebuild_bigquery_handler():
         # send last batch if needed.
         if count:
             payload = {'batch': batch}
+            batch_count += 1
             if config.GAE_PROJECT == 'localhost':
                 rebuild_bq_participant_task(payload)
             else:
                 task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
                                     queue='bigquery-rebuild')
-                task.execute()
+                task.execute(quiet=True)
 
+        logging.info(f'Submitted {batch_count} tasks.')
 
     #
     # Process tables that don't need to be broken up into smaller tasks.
