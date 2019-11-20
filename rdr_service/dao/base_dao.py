@@ -18,6 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 
 from rdr_service import api_util
+from rdr_service.code_constants import ORIGINATING_SOURCES
 from rdr_service.dao import database_factory
 from rdr_service.model.participant import Participant
 from rdr_service.model.requests_log import RequestsLog
@@ -176,7 +177,7 @@ class BaseDao(object):
                 Participant.participantId == pid).first()
             if result:
                 result = result[0]
-        if base_name != result:
+        if base_name in ORIGINATING_SOURCES and base_name != result:
             raise BadRequest(f"{base_name} can not submit questionnaire response for participant with an origin from "
                              f"{result}")
 
