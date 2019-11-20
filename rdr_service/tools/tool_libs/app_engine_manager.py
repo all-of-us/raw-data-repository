@@ -7,6 +7,8 @@ import json
 import logging
 import os
 import sys
+import difflib
+
 import yaml
 from yaml import Loader as yaml_loader
 
@@ -333,6 +335,7 @@ class SplitTrafficClass(object):
 
         return 0
 
+
 class AppConfigClass(object):
 
     _config_dir = None
@@ -356,9 +359,10 @@ class AppConfigClass(object):
         if not hasattr(self.args, 'key'):
             setattr(self.args, 'key', 'current_config')
 
-    def update_app_config(self):
+    def get_local_app_config(self):
         """
-        Put the local config into the cloud datastore.
+        Combine local app config files and return it.
+        :return: dict
         """
         base_config_file = os.path.join(self._config_dir, 'base_config.json')
         base_config = json.loads(open(base_config_file, 'r').read())
@@ -367,30 +371,138 @@ class AppConfigClass(object):
         proj_config = json.loads(open(proj_config_file, 'r').read())
 
         config = {**base_config, **proj_config}
+        return config
+
+    def get_config_from_file(self):
+        """
+        Load a config from a local file.
+        :return: dict
+        """
+        if not os.path.exists(self.args.from_file):
+            raise FileNotFoundError(f'Unable to find {self.args.from_file}.')
+
+        data = open(self.args.from_file, 'r').read()
+        config = json.loads(data)
+        return config
+
+    def update_app_config(self):
+        """
+        Put the local config into the cloud datastore.
+        """
+        if not hasattr(self.args, 'from_file') or not self.args.from_file:
+            config = self.get_local_app_config()
+        else:
+            config = self.get_config_from_file()
+
         self._provider.store(self.args.key, config, project=self.gcp_env.project)
-
-        _logger.info('Successfully updated app configuration.')
-
+        _logger.info(f'Successfully updated {self.args.key} configuration.')
 
     def get_app_config(self):
         """
         Get the cloud datastore config
         """
         config = self._provider.load(self.args.key, project=self.gcp_env.project)
-        print(json.dumps(config, indent=2, sort_keys=True))
 
         if self.args.to_file:
-            raise NotImplementedError('Writing config to file is not implemented yet.')
+            open(self.args.to_file, 'w').write(json.dumps(config, indent=2, sort_keys=True))
+
+        # Mask passwords when writing to stdout.
+        for k, v in config.items():  # pylint: disable=unused-variable
+            if 'db_connection_string' in k:
+                parts = config[k].split('@')
+                config[k] = parts[0][:parts[0].rfind(':') + 1] + '*********@' + parts[1]
+            if 'password' in k:
+                config[k] = '********'
+
+        print(json.dumps(config, indent=2, sort_keys=True))
+
+    def compare_configs(self):
+        """
+        Compare the remote and local configs for changes.
+        """
+        if not self.args.from_file:
+            local_config = self.get_local_app_config()
+        else:
+            local_config = self.get_config_from_file()
+
+        remote_config = self._provider.load(self.args.key, project=self.gcp_env.project)
+
+        for k, v in local_config.items():  # pylint: disable=unused-variable
+            if k not in remote_config:
+                remote_config[k] = ''
+        for k, v in remote_config.items():
+            if k not in local_config:
+                local_config[k] = ''
+
+        lc_str = json.dumps(local_config, indent=2, sort_keys=True)
+        rc_str = json.dumps(remote_config, indent=2, sort_keys=True)
+
+        if lc_str == rc_str:
+            print('\nNo configuration changes detected.\n')
+            return
+
+        print('\nShowing configuration changes:\n')
+
+        for line in difflib.context_diff(rc_str.splitlines(keepends=True), lc_str.splitlines(keepends=True),
+                                         fromfile='remote_config', tofile='local_config', n=2):
+            tmp_v = line
+            if 'db_connection_string' in line:
+                parts = tmp_v.split('@')
+                tmp_v = parts[0][:parts[0].rfind(':') + 1] + '*********@' + parts[1] + "\n"
+            elif 'password' in line:
+                parts = tmp_v.split(':')
+                tmp_v = parts[0] + ': "*********"' + '\n'
+
+            sys.stdout.write(tmp_v)
+
+        # keys = []
+        # for item in diff_set:
+        #     keys.append(item[0])
+        #
+        # def safe_print(target, k, v):
+        #     tmp_v = v
+        #     if 'db_connection_string' in k:
+        #         parts = tmp_v.split('@')
+        #         tmp_v = parts[0][:parts[0].rfind(':')+1] + '*********' + parts[1]
+        #     elif 'password' in k:
+        #         tmp_v = '********'
+        #     print(f'     {target:6} : {tmp_v}')
+        #
+        # for key in keys:
+        #     print(f'  Key: {key}')
+        #     safe_print('remote', key, remote_config[key])
+        #     safe_print('local', key, local_config[key])
+
+        print('')
 
     def run(self):
 
+        # Argument checks.
+        if self.args.key not in {'current_config', 'db_config'}:
+            _logger.error('\nInvalid --key argument.\n')
+            return 1
+        if self.args.compare and self.args.update:
+            _logger.error('\nConflict: --compare and --update args may not be used together.\n')
+            return 1
+        if (self.args.update or self.args.compare) and self.args.to_file:
+            _logger.error('\nConflict: --to-file argument may not be used with --update or --compare.\n')
+            return 1
+        if (not self.args.update and not self.args.compare) and self.args.from_file:
+            _logger.error('\nConflict: --from-file argument may not be used without --update or --compare.\n')
+            return 1
+        if self.args.key == 'db_config':
+            if (self.args.update or self.args.compare) and not self.args.from_file:
+                _logger.error('\nRequired: The --from-file arg must be set.\n')
+                return 1
+
+        # https://github.com/googleapis/google-auth-library-python/issues/271
+        import warnings
+        warnings.filterwarnings("ignore", "Your application has authenticated using end user credentials")
+
         if self.args.update:
-            if self.args.key == 'current_config':
-                self.update_app_config()
-            elif self.args.key == 'db_config':
-                raise NotImplementedError('Updating DB config not implemented yet.')
+            self.update_app_config()
         elif self.args.compare:
-            raise NotImplementedError('Comparing configs not implemented yet.')
+            self.compare_configs()
         else:
             self.get_app_config()
 
@@ -415,6 +527,7 @@ def run():
 
     subparser = parser.add_subparsers(help='app engine services')
 
+    # Deploy app
     deploy_parser = subparser.add_parser("deploy")
     deploy_parser.add_argument("--quiet", help="do not ask for user input.", default=False, action="store_true") # noqa
     deploy_parser.add_argument("--git-branch", help="git branch/tag to deploy.", required=True)  # noqa
@@ -424,10 +537,12 @@ def run():
     deploy_parser.add_argument("--promote", help="promote version to serving state.",
                         default=False, action="store_true")  # noqa
 
+    # List app engine services
     service_list_parser = subparser.add_parser("list")
     service_list_parser.add_argument('--running-only', help="show only services that are actively serving",
                                      default=False, action='store_true')  # noqa
 
+    # Manage service traffic.
     split_parser = subparser.add_parser("split-traffic")
     split_parser.add_argument("--quiet", help="do not ask for user input.", default=False, action="store_true") # noqa
     split_parser.add_argument('--service', help='name of service to split traffic on.', required=True)
@@ -436,13 +551,14 @@ def run():
     split_parser.add_argument('--split-by', help='split traffic by', choices=['random', 'ip', 'cookie'],
                               default='random')
 
+    # Manage app datastore configs
     config_parser = subparser.add_parser("config")
     config_parser.add_argument('--key', help='datastore config key.', default='current_config', type=str)  # noqa
     config_parser.add_argument('--compare', help='Compare app config to local config.', default=False,
                                action="store_true")  # noqa
     config_parser.add_argument('--update', help='update cloud app config.', default=False, action="store_true")  # noqa
-    config_parser.add_argument('--to-file', help='export to file', default='', type=str)  # noqa
-
+    config_parser.add_argument('--to-file', help='export config to file', default='', type=str)  # noqa
+    config_parser.add_argument('--from-file', help='import config from file', default='', type=str)  # noqa
 
     args = parser.parse_args()
 
@@ -477,12 +593,6 @@ def run():
             exit_code = process.run()
 
         elif hasattr(args, 'key'):
-            if args.key not in {'current_config', 'db_config'}:
-                _logger.error('Invalid configuration key argument.')
-                return 1
-            if args.compare and args.update:
-                _logger.error('Compare and Update args may not be used at the same time.')
-                return 1
             process = AppConfigClass(args, gcp_env)
             exit_code = process.run()
 

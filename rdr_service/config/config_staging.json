@@ -6,51 +6,88 @@
   ],
   "user_info": {
     "healthpro-staging@appspot.gserviceaccount.com": {
-      "roles": ["healthpro"],
-      "whitelisted_appids": ["healthpro-staging", "healthpro-beta"],
+      "roles": [
+        "healthpro"
+      ],
+      "whitelisted_appids": [
+        "healthpro-staging",
+        "healthpro-beta"
+      ],
       "clientId": "hpro"
     },
     "pmi-hpo-dev@appspot.gserviceaccount.com": {
-      "roles": ["healthpro"],
+      "roles": [
+        "healthpro"
+      ],
       "comment": "for HealthPro testing",
-      "whitelisted_appids": ["pmi-hpo-dev"],
+      "whitelisted_appids": [
+        "pmi-hpo-dev"
+      ],
       "clientId": "hpro"
-    }
     },
     "vibrent-drc-staging@vibrent-drc-staging-165017.iam.gserviceaccount.com": {
-      "roles": ["ptc"],
+      "roles": [
+        "ptc"
+      ],
       "clientId": "vibrent",
       "whitelisted_ip_ranges": {
-        "ip4": ["52.203.93.76", "35.169.80.249", "34.205.219.39", "174.64.55.14/32", "54.88.38.181"],
+        "ip4": [
+          "52.203.93.76",
+          "35.169.80.249",
+          "34.205.219.39",
+          "174.64.55.14/32",
+          "54.88.38.181"
+        ],
         "ip6": []
       }
     },
     "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro"],
+      "roles": [
+        "ptc",
+        "healthpro"
+      ],
       "clientId": "vibrent",
       "whitelisted_ip_ranges": {
-        "ip6": ["::0/0"],
-        "ip4": ["0.0.0.0/0"]
+        "ip6": [
+          "::0/0"
+        ],
+        "ip4": [
+          "0.0.0.0/0"
+        ]
       }
     },
     "care-evolution@all-of-us-rdr-staging.iam.gserviceaccount.com": {
-      "roles": ["ptc"],
+      "roles": [
+        "ptc"
+      ],
       "clientId": "careevolution",
       "whitelisted_ip_ranges": {
         "ip6": [],
-        "ip4": ["52.86.97.51", "52.54.134.172"]
+        "ip4": [
+          "52.86.97.51",
+          "52.54.134.172"
+        ]
       }
     },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
       "clientId": "configurator",
-      "roles": ["ptc", "healthpro", "rdr"]
+      "roles": [
+        "ptc",
+        "healthpro",
+        "rdr"
+      ]
     },
     "exporter@all-of-us-rdr-staging.iam.gserviceaccount.com": {
-      "roles": ["exporter"]
+      "roles": [
+        "exporter"
+      ]
     },
     "aou-res-storefront-staging@appspot.gserviceaccount.com": {
-      "roles": ["storefront"]
-    },
+      "roles": [
+        "storefront"
+      ]
+    }
+  },
   "biobank_samples_bucket_name": [
     "staging_biobank_samples_upload_bucket"
   ],
