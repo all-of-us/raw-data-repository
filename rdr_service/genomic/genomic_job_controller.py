@@ -45,9 +45,11 @@ class GenomicJobController:
         self.job_run = self._create_run(1)
 
     def generate_file_processing_queue(self):
-        """Creates the list of files to be ingested in this run.
-        TODO: Ordered by timestamp.
-        They are written to the DB in `genomic_files_processed` with the current run ID"""
+        """
+        Creates the list of files to be ingested in this run.
+        Ordering is currently arbitrary; may need to be defined explicitly at some point
+        They are written to the DB in `genomic_files_processed` with the current run ID
+        """
 
         # last_run_time = self._get_last_successful_run_time(self.job_name)
         files = self._get_uningested_file_names_from_bucket(self.bucket_name)
@@ -62,8 +64,7 @@ class GenomicJobController:
                                          file_name)
             self.file_queue = deque(self._get_file_queue_for_run(self.job_run.id))
 
-
-    def process_file_using_ingestor(self, file_obj):
+    def process_file_using_ingester(self, file_obj):
         """
         Runs Ingester's main method. Move file to archive when done.
         :param file_obj:
@@ -88,11 +89,12 @@ class GenomicJobController:
         self.job_run_dao.update_run_record(self.job_run.id, result)
 
     def aggregate_run_results(self):
-        """This method aggregates the run results based on a priority of
-        sub-process results
-        :return: result of run
         """
-        # Prioritize errors over validation failures
+        This method aggregates the run results based on a priority of
+        sub-process results
+        :return: result code
+        """
+        # Any Validation Failure = a job result of an error
         if GenomicSubProcessResult.ERROR in self.subprocess_results:
             return GenomicSubProcessResult.ERROR
         if GenomicSubProcessResult.INVALID_FILE_NAME in self.subprocess_results:
@@ -104,9 +106,9 @@ class GenomicJobController:
 
     def _get_uningested_file_names_from_bucket(self, bucket_name):
         """
-        Get's the files in the bucket that have not been processed
+        Searches the bucket for un-processed files.
         :param bucket_name:
-        :return: list of filenames or
+        :return: list of filenames or NO_FILES result code
         """
         files = list_blobs('/' + bucket_name)
         files = [s.name for s in files

@@ -583,7 +583,6 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(len(files_processed), 2)
         self._gc_files_processed_test_cases(files_processed, bucket_name)
 
-        # TODO: Test data ingested
         # Test the fields against the DB
         gc_metrics = self.genomic_gc_validation_metrics_dao.get_all()
         self.assertEqual(len(gc_metrics), 10)

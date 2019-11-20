@@ -51,7 +51,7 @@ def ingest_genomic_centers_metrics_files():
     else:
         while len(run_controller.file_queue) > 0:
             try:
-                ingestion_result = run_controller.process_file_using_ingestor(
+                ingestion_result = run_controller.process_file_using_ingester(
                     run_controller.file_queue[0])
                 file_ingested = run_controller.file_queue.popleft()
                 run_controller.update_file_processed(

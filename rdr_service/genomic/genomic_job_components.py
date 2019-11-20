@@ -82,7 +82,7 @@ class GenomicFileIngester:
         """ Since input files vary in column names,
         this standardizes the field-names before passing to the bulk inserter
         :param data_to_ingest: stream of data in dict format
-        :return cleaned data
+        :return result code
         """
         gc_metrics_batch = []
 
@@ -109,7 +109,6 @@ class GenomicFileIngester:
 class GenomicFileValidator:
     """
     This class validates the Genomic Centers files
-    Validates data structure against a schema, or validates the data.
     """
 
     def __init__(self, filename=None, data=None, schema=None):
@@ -151,7 +150,7 @@ class GenomicFileValidator:
         Procedure to validate an ingestion file
         :param filename:
         :param data_to_validate:
-        :return: validation_result: Enum(GenomicSubProcessResult)
+        :return: result code
         """
         self.filename = filename
         if not self._check_filename_valid(filename):

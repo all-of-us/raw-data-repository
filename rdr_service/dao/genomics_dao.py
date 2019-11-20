@@ -302,6 +302,7 @@ class GenomicJobDao(UpdatableDao):
     """ Stub for GenomicJob model """
 
     def from_client_json(self):
+        """As of 2019-11-15 There is no API requirement"""
         pass
 
     validate_version_match = False
@@ -325,6 +326,7 @@ class GenomicJobRunDao(UpdatableDao):
     """ Stub for GenomicJobRun model """
 
     def from_client_json(self):
+        """As of 2019-11-15 There is no API requirement"""
         pass
 
     validate_version_match = False
@@ -354,7 +356,6 @@ class GenomicJobRunDao(UpdatableDao):
 
     def _update_run_record_with_session(self, session, run_id, result):
         """
-        TODO: implement with result/status
         UPDATES the job_run record.
         :param run_id: the ID of the current genomic's job
         :param result: the result dict of the run.
@@ -382,6 +383,7 @@ class GenomicFileProcessedDao(UpdatableDao):
     """ Stub for GenomicFileProcessed model """
 
     def from_client_json(self):
+        """As of 2019-11-15 There is no API requirement"""
         pass
 
     validate_version_match = False
@@ -496,9 +498,9 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
 
     def insert_gc_validation_metrics_batch(self, data_to_insert):
         """
-        Insertsa batch of GC validation metrics
+        Inserts a batch of GC validation metrics
         :param data_to_insert: list of dictionary rows to insert
-        :return:
+        :return: result code
         """
         try:
             for row in data_to_insert:
