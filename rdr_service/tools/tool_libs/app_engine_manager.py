@@ -462,7 +462,7 @@ class AppConfigClass(object):
                 parts = tmp_v.split(':')
                 tmp_v = parts[0] + ': "*********"\n'
 
-            print(tmp_v)
+            print(tmp_v.replace('\n', ''))
 
         print('')
 
