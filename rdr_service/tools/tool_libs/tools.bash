@@ -33,6 +33,10 @@ _python()
             COMPREPLY=( $(compgen -W "${tools}" -- ${cur}) )
             return 0
             ;;
+        rtool)
+            COMPREPLY=( $(compgen -W "${tools}" -- ${cur}) )
+            return 0
+            ;;
         verify)
             COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
             return 0
@@ -109,4 +113,5 @@ _python()
    return 0
 }
 complete -F _python python
+complete -F _python rtool
 

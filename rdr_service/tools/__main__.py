@@ -30,6 +30,15 @@ def _grep_prop(filename, prop_name):
 
 
 def run():
+
+    # We need to run from the `rdr_service` directory, save the current directory
+    cwd = os.path.abspath(os.curdir)
+    if not cwd.endswith('rdr_service'):
+        tmp_cwd = os.path.join(cwd, 'rdr_service')
+        if not os.path.exists(tmp_cwd):
+            raise FileNotFoundError('Unable to locate "rdr_service" directory.')
+        os.chdir(tmp_cwd)
+
     args = copy.deepcopy(sys.argv)
 
     show_usage = False
@@ -51,6 +60,7 @@ def run():
 
     if not lp:
         print("ERROR: tool library path not found, aborting.")
+        os.chdir(cwd)
         exit(1)
 
     command_names = list()
@@ -71,6 +81,7 @@ def run():
                 mod = importlib.import_module("{0}.{1}".format(import_path, mod_name))
                 exit_code = mod.run()
                 print("finished.")
+                os.chdir(cwd)
                 return exit_code
 
     if show_usage:
@@ -81,6 +92,8 @@ def run():
             print(gn)
 
         print("")
+
+    os.chdir(cwd)
 
 
 # --- Main Program Call ---
