@@ -85,7 +85,10 @@ def run():
                 return exit_code
 
     if show_usage:
-        print("\nusage: python -m tools command [-h|--help] [args]\n\navailable commands:")
+        if 'rtool' in sys.argv[0]:
+            print("\nusage: rtool command [-h|--help] [args]\n\navailable commands:")
+        else:
+            print("\nusage: python -m tools command [-h|--help] [args]\n\navailable commands:")
 
         command_names.sort()
         for gn in command_names:
