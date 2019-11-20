@@ -14,7 +14,6 @@ import tempfile
 
 import argparse
 
-from config import GoogleCloudDatastoreConfigProvider
 from rdr_service.model import BQ_TABLES, BQ_VIEWS
 from rdr_service.model.bq_base import BQDuplicateFieldException, BQInvalidSchemaException, BQInvalidModeException, \
     BQSchemaStructureException, BQException, BQSchema

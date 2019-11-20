@@ -89,7 +89,8 @@ def run():
     parser.add_argument("--quiet", help="do not ask for user input", default=False, action="store_true")  # noqa
     parser.add_argument('args', metavar="alembic command", help="alembic command and args", nargs=argparse.REMAINDER)
 
-    parser.epilog = """  Alembic commands: {-h, branches,current,downgrade,edit,heads,history,init,list_templates,merge,revision,show,stamp,upgrade}"""
+    parser.epilog = "  Alembic commands: {-h, branches,current,downgrade,edit,heads,history,init,list_templates," + \
+                    "merge,revision,show,stamp,upgrade}"
 
     args = parser.parse_args()
     alembic_args = args.args
