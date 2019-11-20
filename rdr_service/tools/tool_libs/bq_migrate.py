@@ -14,14 +14,12 @@ import tempfile
 
 import argparse
 
-from config import GoogleCloudDatastoreConfigProvider
 from rdr_service.model import BQ_TABLES, BQ_VIEWS
 from rdr_service.model.bq_base import BQDuplicateFieldException, BQInvalidSchemaException, BQInvalidModeException, \
     BQSchemaStructureException, BQException, BQSchema
 from rdr_service.services.gcp_utils import gcp_bq_command
 from rdr_service.services.system_utils import setup_logging, setup_i18n
-from rdr_service.tools.tool_libs import GCPProcessContext
-from rdr_service.services.gcp_config import GCP_INSTANCES
+from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 
 _logger = logging.getLogger('rdr_logger')
 
@@ -37,7 +35,7 @@ class BQMigration(object):
 
     _db_config = None
 
-    def __init__(self, args, gcp_env):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
@@ -224,36 +222,12 @@ class BQMigration(object):
 
         return so
 
-    def activate_sql_proxy(self):
-        """
-        Connect to the project sql server instance.  The Context Manager will close the DB connection.
-        :return: True if connected, otherwise false.
-        """
-        instance_name = GCP_INSTANCES.get(self.gcp_env.project, None)
-
-        if instance_name:
-            # We need the db config information.
-            provider = GoogleCloudDatastoreConfigProvider()
-            self._db_config = provider.load('db_config', project=self.gcp_env.project)
-
-            instance = f'{instance_name}=tcp:9889'
-            self.gcp_env.activate_sql_proxy(instance)
-
-            os.environ['DB_CONNECTION_STRING'] = \
-                'mysql+mysqldb://rdr:{0}@127.0.0.1:9889/rdr?charset=utf8'.format(self._db_config['rdr_db_password'])
-        else:
-            _logger.error('No DB instance config found for this project.')
-            return False
-
-        return True
-
-
     def run(self):
         """
         Main program process
         :return: Exit code value
         """
-        if not self.activate_sql_proxy():
+        if not self.gcp_env.activate_sql_proxy():
             return 1
 
         # TODO: Validate dataset name exists in BigQuery
