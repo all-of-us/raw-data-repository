@@ -261,7 +261,6 @@ class PhysicalMeasurementsDao(UpdatableDao):
         obj.final = True
         obj.created = clock.CLOCK.now()
         resource_json = json.loads(obj.resource)
-        super().validate_origin(obj)
         finalized_date = resource_json["entry"][0]["resource"].get("date")
         if finalized_date:
             obj.finalized = parse_date(finalized_date)
