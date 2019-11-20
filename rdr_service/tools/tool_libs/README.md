@@ -75,3 +75,11 @@ The BigQuery migration tool will look for any schema changes to BigQuery models 
 ### sync-consents
 
 This tool will copy participant consent files to an organization's AOU google bucket.
+
+### app-engine
+
+This tool manages app-engine service deployments.  It can do the following, deploy the RDR to app-engine, list services, manage traffic between service versions, get/update app configs.
+
+### alembic
+
+This tool is a thin wrapper around the Alembic cli and can be used to manage database migrations locally or in GCP.   
