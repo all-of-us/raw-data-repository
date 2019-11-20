@@ -14,9 +14,10 @@ from yaml import Loader as yaml_loader
 
 from rdr_service.services.system_utils import setup_logging, setup_i18n, git_project_root, git_current_branch, \
     git_checkout_branch, is_git_branch_clean
-from rdr_service.tools.tool_libs import GCPProcessContext
+from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, GCP_APP_CONFIG_MAP
 from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic
+from tools.tool_libs.alembic import AlembicManagerClass
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -37,7 +38,7 @@ class DeployAppClass(object):
 
     _current_git_branch = None
 
-    def __init__(self, args, gcp_env):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
@@ -209,10 +210,18 @@ class DeployAppClass(object):
                 _logger.warning('Aborting deployment.')
                 return 1
 
+        # Disable any other user prompts.
+        self.args.quiet = True
+
         # Attempt to switch to the git branch we need to deploy.
         _logger.info('Switching to git branch/tag: {0}...'.format(self.args.git_branch))
         if not git_checkout_branch(self.args.git_branch):
             return 1
+
+        # Run database migration
+        _logger.info('Applying database migrations...')
+        alembic = AlembicManagerClass(self.args, self.gcp_env, ['upgrade', 'head'])
+        alembic.run()
 
         _logger.info('Preparing configuration files...')
         config_files = self.setup_config_files()
@@ -234,7 +243,7 @@ class DeployAppClass(object):
 
 
 class ListServicesClass(object):
-    def __init__(self, args, gcp_env):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
@@ -273,7 +282,7 @@ class ListServicesClass(object):
 
 
 class SplitTrafficClass(object):
-    def __init__(self, args, gcp_env):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
@@ -341,7 +350,7 @@ class AppConfigClass(object):
     _config_dir = None
     _provider = None
 
-    def __init__(self, args, gcp_env):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
@@ -451,27 +460,9 @@ class AppConfigClass(object):
                 tmp_v = parts[0][:parts[0].rfind(':') + 1] + '*********@' + parts[1] + "\n"
             elif 'password' in line:
                 parts = tmp_v.split(':')
-                tmp_v = parts[0] + ': "*********"' + '\n'
+                tmp_v = parts[0] + ': "*********"\n'
 
-            sys.stdout.write(tmp_v)
-
-        # keys = []
-        # for item in diff_set:
-        #     keys.append(item[0])
-        #
-        # def safe_print(target, k, v):
-        #     tmp_v = v
-        #     if 'db_connection_string' in k:
-        #         parts = tmp_v.split('@')
-        #         tmp_v = parts[0][:parts[0].rfind(':')+1] + '*********' + parts[1]
-        #     elif 'password' in k:
-        #         tmp_v = '********'
-        #     print(f'     {target:6} : {tmp_v}')
-        #
-        # for key in keys:
-        #     print(f'  Key: {key}')
-        #     safe_print('remote', key, remote_config[key])
-        #     safe_print('local', key, local_config[key])
+            print(tmp_v)
 
         print('')
 
@@ -529,7 +520,7 @@ def run():
 
     # Deploy app
     deploy_parser = subparser.add_parser("deploy")
-    deploy_parser.add_argument("--quiet", help="do not ask for user input.", default=False, action="store_true") # noqa
+    deploy_parser.add_argument("--quiet", help="do not ask for user input", default=False, action="store_true") # noqa
     deploy_parser.add_argument("--git-branch", help="git branch/tag to deploy.", required=True)  # noqa
     deploy_parser.add_argument("--deploy-as", help="deploy as version", default=None)  #noqa
     deploy_parser.add_argument("--services", help="comma delimited list of service names to deploy",
@@ -544,7 +535,7 @@ def run():
 
     # Manage service traffic.
     split_parser = subparser.add_parser("split-traffic")
-    split_parser.add_argument("--quiet", help="do not ask for user input.", default=False, action="store_true") # noqa
+    split_parser.add_argument("--quiet", help="do not ask for user input", default=False, action="store_true") # noqa
     split_parser.add_argument('--service', help='name of service to split traffic on.', required=True)
     split_parser.add_argument('--versions', required=True,
                               help='a list of versions and split ratios, ex: service_a:0.4,service_b:0.6 ')
