@@ -17,7 +17,6 @@ class ParticipantSummaryApi(BaseApi):
     def get(self, p_id=None):
         auth_awardee = None
         user_email, user_info = get_validated_user_info()
-        self.client_id = user_info["clientId"]
         if AWARDEE in user_info["roles"]:
             if user_email == DEV_MAIL:
                 auth_awardee = request.args.get("awardee")

@@ -2972,8 +2972,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         response = self.send_get("ParticipantSummary?_includeTotal=true")
         self.assertEqual(response['total'], 1)
-        BaseTestCase.switch_auth_user("example@example.com", "example")
+        BaseTestCase.switch_auth_user("example@example.com", None)  # simulate an awardee GET
         response = self.send_get("ParticipantSummary?_includeTotal=true")
+        BaseTestCase.switch_auth_user("example@example.com", "example")
         self.assertEqual(response['total'], 1)
 
 def _add_code_answer(code_answers, link_id, code):
