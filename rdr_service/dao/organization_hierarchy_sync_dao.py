@@ -196,8 +196,8 @@ class OrganizationHierarchySyncDao(BaseDao):
 
         site_status_bool = self._get_value_from_extention(hierarchy_org_obj,
                                                           HIERARCHY_CONTENT_SYSTEM_PREFIX +
-                                                          'schedulingStatusActive',
-                                                          'valueBoolean')
+                                                          'ptsc-scheduling-status',
+                                                          'valueString')
         try:
             site_status = SiteStatus('ACTIVE' if site_status_bool else 'INACTIVE')
         except TypeError:
