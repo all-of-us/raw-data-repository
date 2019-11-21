@@ -6,7 +6,7 @@ import logging
 
 from rdr_service.api_util import list_blobs
 from rdr_service.config import GENOMIC_GC_METRICS_BUCKET_NAME, getSetting
-from rdr_service.model.genomics import GenomicSubProcessResult
+from rdr_service.participant_enums import GenomicSubProcessResult
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
     GenomicFileMover

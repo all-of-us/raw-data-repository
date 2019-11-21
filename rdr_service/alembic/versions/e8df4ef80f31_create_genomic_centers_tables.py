@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
 
 from rdr_service.model import utils
-from rdr_service.model.genomics import GenomicSubProcessStatus, GenomicSubProcessResult
+from rdr_service.participant_enums import GenomicSubProcessStatus, GenomicSubProcessResult
 
 # revision identifiers, used by Alembic.
 revision = 'e8df4ef80f31'

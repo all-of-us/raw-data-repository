@@ -1,73 +1,10 @@
-from protorpc import messages
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, UniqueConstraint, event
 from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, MultiEnum
-
-
-class GenomicSetStatus(messages.Enum):
-    """Status of Genomic Set"""
-
-    UNSET = 0
-    VALID = 1
-    INVALID = 2
-
-
-class GenomicValidationStatus(messages.Enum):
-    """Original Specification needed by older database migrations"""
-
-    UNSET = 0
-    VALID = 1
-    INVALID_BIOBANK_ORDER = 2
-    INVALID_NY_ZIPCODE = 3
-    INVALID_SEX_AT_BIRTH = 4
-    INVALID_GENOME_TYPE = 5
-    INVALID_CONSENT = 6
-    INVALID_WITHDRAW_STATUS = 7
-    INVALID_AGE = 8
-    INVALID_DUP_PARTICIPANT = 9
-
-
-class GenomicSetMemberStatus(messages.Enum):
-    """Status of Genomic Set Member"""
-
-    UNSET = 0
-    VALID = 1
-    INVALID = 2
-
-
-class GenomicValidationFlag(messages.Enum):
-    """Validation Status Flags"""
-
-    UNSET = 0
-    # VALID = 1
-    INVALID_BIOBANK_ORDER = 2
-    INVALID_NY_ZIPCODE = 3
-    INVALID_SEX_AT_BIRTH = 4
-    INVALID_GENOME_TYPE = 5
-    INVALID_CONSENT = 6
-    INVALID_WITHDRAW_STATUS = 7
-    INVALID_AGE = 8
-    INVALID_DUP_PARTICIPANT = 9
-
-
-class GenomicSubProcessStatus(messages.Enum):
-    """The status of a Genomics Sub-Process"""
-    QUEUED = 0
-    COMPLETED = 1
-    RUNNING = 2
-    ABORTED = 3
-
-
-class GenomicSubProcessResult(messages.Enum):
-    """The result codes for a particular run of a sub-process"""
-    UNSET = 0
-    SUCCESS = 1
-    NO_FILES = 2
-    INVALID_FILE_NAME = 3
-    INVALID_FILE_STRUCTURE = 4
-    ERROR = 5
+from rdr_service.participant_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, \
+    GenomicSubProcessStatus, GenomicSubProcessResult
 
 
 class GenomicSet(Base):
@@ -190,11 +127,11 @@ class GenomicJobRun(Base):
     startTime = Column('start_time', DateTime, nullable=False)
     endTime = Column('end_time', DateTime, nullable=True)
     runStatus = Column('run_status',
-                     Enum(GenomicSubProcessStatus),
-                     default=GenomicSubProcessStatus.RUNNING)
+                       Enum(GenomicSubProcessStatus),
+                       default=GenomicSubProcessStatus.RUNNING)
     runResult = Column('run_result',
-                     Enum(GenomicSubProcessResult),
-                     default=GenomicSubProcessResult.UNSET)
+                       Enum(GenomicSubProcessResult),
+                       default=GenomicSubProcessResult.UNSET)
     resultMessage = Column('result_message', String(150), nullable=True)
 
 

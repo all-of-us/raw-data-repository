@@ -7,14 +7,12 @@ from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
-    GenomicSetMemberStatus,
-    GenomicSetStatus,
-    GenomicSubProcessResult,
     GenomicJob,
     GenomicJobRun,
     GenomicFileProcessed,
     GenomicGCValidationMetrics
 )
+from rdr_service.participant_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicSubProcessResult
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query

@@ -18,10 +18,8 @@ from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
-    GenomicSetMemberStatus,
-    GenomicSetStatus,
-    GenomicValidationFlag,
 )
+from rdr_service.participant_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag
 from rdr_service.model.participant import Participant
 from rdr_service.test import test_data
 from rdr_service.test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase

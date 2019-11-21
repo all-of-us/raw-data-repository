@@ -8,7 +8,7 @@ import logging
 import re
 
 from rdr_service.api_util import open_cloud_file, copy_cloud_file, delete_cloud_file
-from rdr_service.model.genomics import GenomicSubProcessResult
+from rdr_service.participant_enums import GenomicSubProcessResult
 from rdr_service.dao.genomics_dao import GenomicGCValidationMetricsDao
 
 

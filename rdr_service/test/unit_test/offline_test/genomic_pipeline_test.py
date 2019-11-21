@@ -14,10 +14,10 @@ from rdr_service.genomic import genomic_set_file_handler
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.model.biobank_dv_order import BiobankDVOrder
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
-from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetMemberStatus, GenomicSetStatus
+from rdr_service.model.genomics import GenomicSet, GenomicSetMember
 from rdr_service.model.participant import Participant
 from rdr_service.offline import genomic_pipeline
-from rdr_service.participant_enums import SampleStatus
+from rdr_service.participant_enums import SampleStatus, GenomicSetStatus, GenomicSetMemberStatus
 from rdr_service.test import test_data
 from rdr_service.test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
 

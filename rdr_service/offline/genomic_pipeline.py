@@ -8,11 +8,7 @@ from rdr_service.genomic import (
     genomic_center_menifest_handler,
     genomic_job_controller
 )
-from rdr_service.model.genomics import (
-    GenomicSetStatus,
-    GenomicSubProcessResult,
-    GenomicSubProcessStatus
-)
+from rdr_service.participant_enums import GenomicSetStatus, GenomicSubProcessStatus, GenomicSubProcessResult
 
 
 def process_genomic_water_line():
