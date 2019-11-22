@@ -9,10 +9,6 @@
       "roles": [
         "healthpro"
       ],
-      "whitelisted_appids": [
-        "healthpro-staging",
-        "healthpro-beta"
-      ],
       "clientId": "hpro"
     },
     "pmi-hpo-dev@appspot.gserviceaccount.com": {
@@ -20,9 +16,6 @@
         "healthpro"
       ],
       "comment": "for HealthPro testing",
-      "whitelisted_appids": [
-        "pmi-hpo-dev"
-      ],
       "clientId": "hpro"
     },
     "vibrent-drc-staging@vibrent-drc-staging-165017.iam.gserviceaccount.com": {
