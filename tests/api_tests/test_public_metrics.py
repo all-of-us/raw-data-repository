@@ -26,10 +26,12 @@ from rdr_service.dao.metrics_cache_dao import (
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantSummaryDao
 from rdr_service.model.calendar import Calendar
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.hpo import HPO
+from rdr_service.model.site import Site
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantGenderAnswers, ParticipantSummary
 from rdr_service.participant_enums import (
@@ -41,6 +43,7 @@ from rdr_service.participant_enums import (
     make_primary_provider_link_for_name,
 )
 from tests.helpers.unittest_base import BaseTestCase, QuestionnaireTestMixin
+from tests.helpers.mysql_helper_data import PITT_HPO_ID
 
 TIME_1 = datetime.datetime(2017, 12, 31)
 
@@ -2515,6 +2518,22 @@ class PublicMetricsApiTest(BaseTestCase):
             {"date": "2018-01-06", "metrics": {"ORGANIZATIONS_ACTIVE": 0, "EHR_RECEIVED": 0, "EHR_CONSENTED": 4}},
             results,
         )
+
+    def test_public_metrics_get_sites_count_api(self):
+        site = Site(siteName='site', googleGroup='site@googlegroups.com',
+                    mayolinkClientNumber=12345, hpoId=PITT_HPO_ID, siteStatus=1, enrollingStatus=1)
+
+        site2 = Site(siteName='site2', googleGroup='site2@googlegroups.com',
+                     mayolinkClientNumber=12346, hpoId=PITT_HPO_ID, siteStatus=1, enrollingStatus=1)
+
+        site_dao = SiteDao()
+        site_dao.insert(site)
+        site_dao.insert(site2)
+
+        qs = '&stratification=SITES_COUNT'
+        results = self.send_get('PublicMetrics', query_string=qs)
+        result_json = {'sites_count': results[0]}
+        self.assertEqual(result_json, {'sites_count': 2})
 
     def create_demographics_questionnaire(self):
         """Uses the demographics test data questionnaire.  Returns the questionnaire id"""

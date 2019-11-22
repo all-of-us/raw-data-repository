@@ -16,6 +16,7 @@ from rdr_service.dao.metrics_cache_dao import (
     MetricsLifecycleCacheDao,
     MetricsRaceCacheDao,
     MetricsRegionCacheDao,
+    MetricsSitesCacheDao
 )
 from rdr_service.dao.metrics_ehr_service import MetricsEhrService
 from rdr_service.participant_enums import EnrollmentStatus, MetricsAPIVersion, MetricsCacheType, Stratifications
@@ -94,6 +95,9 @@ class PublicMetricsApi(Resource):
                 return result_set["metrics_over_time"]
             else:
                 return []
+        elif stratification == Stratifications.SITES_COUNT:
+            dao = MetricsSitesCacheDao()
+            return dao.get_sites_count()
         else:
             raise BadRequest(f"Invalid stratification: {str(stratification)}")
 
@@ -125,6 +129,10 @@ class PublicMetricsApi(Resource):
 
             filters["start_date"] = start_date
             filters["end_date"] = end_date
+        elif filters['stratification'] == Stratifications.SITES_COUNT:
+            # no date needed
+            filters['start_date'] = None
+            filters['end_date'] = None
         else:
             # Validate dates
             if not params["start_date"] or not params["end_date"]:
