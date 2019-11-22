@@ -8,6 +8,7 @@ from rdr_service.census_regions import census_regions
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.model.site import Site
 from rdr_service.model.metrics_cache import (
     MetricsAgeCache,
     MetricsCacheJobStatus,
@@ -2656,3 +2657,14 @@ class MetricsLanguageCacheDao(BaseDao):
         sql = sql + ' UNION '.join(sub_queries)
 
         return [sql]
+
+
+class MetricsSitesCacheDao(BaseDao):
+    def __init__(self):
+        super(MetricsSitesCacheDao, self).__init__(Site)
+
+    def get_sites_count(self):
+        with self.session() as session:
+            query = session.query(func.count(Site.googleGroup))
+            query = query.filter(Site.enrollingStatus == 1)
+            return query.first()
