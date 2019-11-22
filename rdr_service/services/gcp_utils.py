@@ -316,7 +316,7 @@ def gcp_activate_account(account, flags=None):
   :param flags: additional flags to pass to gcloud command
   :return: True if successful otherwise False
   """
-    _logger.debug("setting activate gcp account to {0}.".format(account))
+    _logger.debug("setting active gcp account to {0}.".format(account))
 
     if not account:
         _logger.error("no GCP account given, aborting.")
@@ -338,6 +338,15 @@ def gcp_activate_account(account, flags=None):
             _logger.debug(line)
 
     return True
+
+
+def gcp_application_default_creds_exist():
+    """
+    Return true if the application default credentials file exists.
+    :return: True if we can find app default creds file otherwise False.
+    """
+    cred_file = os.path.expanduser('~/.config/gcloud/application_default_credentials.json')
+    return os.path.exists(cred_file)
 
 
 def gcp_get_app_host_name(project=None):

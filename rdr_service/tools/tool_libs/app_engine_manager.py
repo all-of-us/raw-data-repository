@@ -16,7 +16,8 @@ from rdr_service.services.system_utils import setup_logging, setup_i18n, git_pro
     git_checkout_branch, is_git_branch_clean
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, GCP_APP_CONFIG_MAP
-from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic
+from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
+    gcp_application_default_creds_exist
 from tools.tool_libs.alembic import AlembicManagerClass
 
 _logger = logging.getLogger("rdr_logger")
@@ -164,6 +165,12 @@ class DeployAppClass(object):
         :return: Exit code value
         """
         _logger.info('')
+
+        # Installing the app config makes API calls and needs an oauth token to succeed.
+        if not gcp_application_default_creds_exist() and not self.args.service_account:
+            _logger.error('\n*** Google application default credentials were not found. ***')
+            _logger.error("Run 'gcloud auth application-default login' and then try deploying again.\n")
+            return 1
 
         if not is_git_branch_clean():
             _logger.error('Error: there are uncommitted changes in current branch, aborting.\n')
@@ -467,6 +474,14 @@ class AppConfigClass(object):
         print('')
 
     def run(self):
+
+        # this tool makes API calls and needs an oauth token to succeed.
+        if not gcp_application_default_creds_exist() and not self.args.service_account:
+            _logger.error(
+                '\n*** Google application default credentials were not found. ***')
+            _logger.error(
+                "Run 'gcloud auth application-default login' to create credentials or add '--service-account' arg.\n")
+            return 1
 
         # Argument checks.
         if self.args.key not in {'current_config', 'db_config'}:
