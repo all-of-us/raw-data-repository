@@ -13,7 +13,7 @@ import yaml
 from yaml import Loader as yaml_loader
 
 from rdr_service.services.system_utils import setup_logging, setup_i18n, git_project_root, git_current_branch, \
-    git_checkout_branch, is_git_branch_clean
+    git_checkout_branch, is_git_branch_clean, TerminalColors
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, GCP_APP_CONFIG_MAP
 from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
@@ -164,6 +164,7 @@ class DeployAppClass(object):
         Main program process
         :return: Exit code value
         """
+        clr = TerminalColors()
         _logger.info('')
 
         # Installing the app config makes API calls and needs an oauth token to succeed.
@@ -173,7 +174,7 @@ class DeployAppClass(object):
             return 1
 
         if not is_git_branch_clean():
-            _logger.error('Error: there are uncommitted changes in current branch, aborting.\n')
+            _logger.error('*** There are uncommitted changes in current branch, aborting. ***\n')
             return 1
 
         if not self.setup_services():
@@ -183,19 +184,23 @@ class DeployAppClass(object):
 
         running_services = gcp_get_app_versions(running_only=True)
 
-        _logger.info('Deployment Information:')
+        clr.set_default_formatting(clr.bold, clr.custom_fg_color(43))
+        clr.set_default_foreground(clr.custom_fg_color(152))
+
+        _logger.info(clr.fmt('Deployment Information:', clr.custom_fg_color(156)))
+        _logger.info(clr.fmt(''))
         _logger.info('=' * 90)
-        _logger.info('  Target Project : {0}'.format(self.gcp_env.project))
-        _logger.info('  Branch/Tag To Deploy : {0}'.format(self.args.git_branch))
-        _logger.info('  App Source Path : {0}'.format(self.deploy_root))
-        _logger.info('  Promote : {0}'.format('Yes' if self.args.promote else 'No'))
+        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+        _logger.info('  Branch/Tag To Deploy  : {0}'.format(clr.fmt(self.args.git_branch)))
+        _logger.info('  App Source Path       : {0}'.format(clr.fmt(self.deploy_root)))
+        _logger.info('  Promote               : {0}'.format(clr.fmt('Yes' if self.args.promote else 'No')))
 
         if self.gcp_env.project in ('all-of-us-rdr-prod', 'all-of-us-rdr-stable'):
             if 'JIRA_API_USER_NAME' in os.environ and 'JIRA_API_USER_PASSWORD' in os.environ:
                 self.jira_ready = True
-                _logger.info('  JIRA Credentials: Set')
+                _logger.info('  JIRA Credentials      : {0}'.format(clr.fmt('Set')))
             else:
-                _logger.warning('  JIRA Credentials: !!! Not Set !!!')
+                _logger.info('  JIRA Credentials      : {0}'.format(clr.fmt('*** Not Set ***', clr.fg_bright_red)))
 
         for service in self.services:
             _logger.info('\n  Service : {0}'.format(service))
@@ -203,13 +208,18 @@ class DeployAppClass(object):
             if service in running_services:
                 cur_services = running_services[service]
                 for cur_service in cur_services:
-                    _logger.info('    Deployed Version  : {0}, split : {1}, deployed : {2}'.
-                                 format(cur_service['version'], cur_service['split'], cur_service['deployed']))
+                    _logger.info('    Deployed Version    : {0}, split : {1}, deployed : {2}'.
+                                 format(clr.fmt(cur_service['version'], clr.bold, clr.fg_bright_blue),
+                                        clr.fmt(cur_service['split'], clr.bold, clr.fg_bright_blue),
+                                        clr.fmt(cur_service['deployed'], clr.bold, clr.fg_bright_blue)))
 
-                _logger.info('    Target Version    : {0}'.format(self.deploy_version))
+                _logger.info('    Target Version      : {0}'.format(clr.fmt(self.deploy_version)))
 
         _logger.info('')
         _logger.info('=' * 90)
+
+        # Reset all colors.
+        _logger.info(clr.reset)
 
         if not self.args.quiet:
             confirm = input('\nStart deployment (Y/n)? : ')
