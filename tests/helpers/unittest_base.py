@@ -446,12 +446,19 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
     @staticmethod
     def switch_auth_user(new_auth_user, client_id=None):
         config.LOCAL_AUTH_USER = new_auth_user
-        config_user_info = {
-            new_auth_user: {
-                'roles': api_util.ALL_ROLES,
-                'clientId': client_id
+        if client_id:
+            config_user_info = {
+                new_auth_user: {
+                    'roles': api_util.ALL_ROLES,
+                    'clientId': client_id
+                }
             }
-        }
+        else:
+            config_user_info = {
+                new_auth_user: {
+                    'roles': api_util.ALL_ROLES,
+                }
+            }
         config.override_setting("user_info", config_user_info)
 
 
