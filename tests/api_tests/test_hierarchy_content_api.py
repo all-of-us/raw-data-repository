@@ -322,7 +322,7 @@ class HierarchyContentApiTest(BaseTestCase):
                 },
                 {
                     "url": "http://all-of-us.org/fhir/sites/anticipated-launch-date",
-                    "valueString": "1527552000"
+                    "valueString": "1527662000"
                 },
                 {
                     "url": "http://all-of-us.org/fhir/sites/ptsc-scheduling-status",
@@ -399,7 +399,7 @@ class HierarchyContentApiTest(BaseTestCase):
                                 u'id': u'AZ_TUCSON_BANNER_HEALTH',
                                 u'sites': [{'mayolinkClientNumber': 7036694, 'timeZoneId': u'America/Los_Angeles',
                                             'displayName': u'Banner Baywood Medical Center',
-                                            'launchDate': u'2018-05-28', 'enrollingStatus': u'ACTIVE',
+                                            'launchDate': u'2018-05-30', 'enrollingStatus': u'ACTIVE',
                                             'longitude': 110.0,
                                             'schedulingInstructions': 'Someone from the All of Us Research Program '
                                                                       'may contact you by phone and/or email to '
