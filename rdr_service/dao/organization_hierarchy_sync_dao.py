@@ -1,5 +1,7 @@
 import os
 import logging
+import time
+
 import googlemaps
 import rdr_service.lib_fhir.fhirclient_3_0_0.models.organization
 
@@ -178,13 +180,17 @@ class OrganizationHierarchySyncDao(BaseDao):
             try:
                 launch_date = parse(launch_date_str).date()
             except ValueError:
-                raise BadRequest('Invalid launch date {} for site {}'.format(launch_date_str, google_group))
+                try:
+                    # Sometime they send a human readable date, sometimes they send epoch time.
+                    launch_date = time.strftime('%Y-%m-%d', time.localtime(int(launch_date_str)))
+                except ValueError:
+                    raise BadRequest('Invalid launch date {} for site {}'.format(launch_date_str, google_group))
 
         name = hierarchy_org_obj.name
         mayolink_client_number = None
-        mayolink_client_number_str = self._get_value_from_identifier(hierarchy_org_obj,
+        mayolink_client_number_str = self._get_value_from_extention(hierarchy_org_obj,
                                                                      HIERARCHY_CONTENT_SYSTEM_PREFIX +
-                                                                     'mayo-link-identifier')
+                                                                     'mayolink-client-#')
         if mayolink_client_number_str:
             try:
                 mayolink_client_number = int(mayolink_client_number_str)
@@ -205,18 +211,19 @@ class OrganizationHierarchySyncDao(BaseDao):
 
         enrolling_status_bool = self._get_value_from_extention(hierarchy_org_obj,
                                                                HIERARCHY_CONTENT_SYSTEM_PREFIX +
-                                                               'enrollment-status',
-                                                               'valueBoolean')
+                                                               'enrolling-status')
+
         try:
             enrolling_status = EnrollingStatus('ACTIVE' if enrolling_status_bool else 'INACTIVE')
         except TypeError:
             raise BadRequest('Invalid enrollment site status {} for site {}'
                              .format(enrolling_status_bool, google_group))
 
-        digital_scheduling_bool = self._get_value_from_extention(hierarchy_org_obj,
+        digital_scheduling = self._get_value_from_extention(hierarchy_org_obj,
                                                                  HIERARCHY_CONTENT_SYSTEM_PREFIX +
-                                                                 'digital-scheduling-Status',
-                                                                 'valueBoolean')
+                                                                 'digital-scheduling-status',
+                                                                 'valueString')
+        digital_scheduling_bool = True if digital_scheduling == 'true' else False
         try:
             digital_scheduling_status = DigitalSchedulingStatus('ACTIVE' if digital_scheduling_bool
                                                                 else 'INACTIVE')
@@ -227,7 +234,7 @@ class OrganizationHierarchySyncDao(BaseDao):
         directions = self._get_value_from_extention(hierarchy_org_obj,
                                                     HIERARCHY_CONTENT_SYSTEM_PREFIX + 'directions')
         physical_location_name = self._get_value_from_extention(hierarchy_org_obj,
-                                                                HIERARCHY_CONTENT_SYSTEM_PREFIX + 'locationName')
+                                                                HIERARCHY_CONTENT_SYSTEM_PREFIX + 'location-name')
         address_1, address_2, city, state, zip_code = self._get_address(hierarchy_org_obj)
 
         phone = self._get_contact_point(hierarchy_org_obj, 'phone')
@@ -237,6 +244,9 @@ class OrganizationHierarchySyncDao(BaseDao):
         schedule_instructions = self._get_value_from_extention(hierarchy_org_obj,
                                                                HIERARCHY_CONTENT_SYSTEM_PREFIX
                                                                + 'scheduling-instructions')
+        notes_spanish = self._get_value_from_extention(hierarchy_org_obj,
+                                                               HIERARCHY_CONTENT_SYSTEM_PREFIX
+                                                               + 'notes-spanish')
 
         entity = Site(siteName=name,
                       googleGroup=google_group,
@@ -250,7 +260,7 @@ class OrganizationHierarchySyncDao(BaseDao):
                       scheduleInstructions_ES='',
                       launchDate=launch_date,
                       notes=notes,
-                      notes_ES='',
+                      notes_ES=notes_spanish,
                       directions=directions,
                       physicalLocationName=physical_location_name,
                       address1=address_1,
