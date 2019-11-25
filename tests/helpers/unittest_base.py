@@ -124,7 +124,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         stream_handler = logging.StreamHandler(sys.stdout)
         logger.addHandler(stream_handler)
 
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(logging.CRITICAL)
 
         self.setup_config()
         self.setup_storage()
