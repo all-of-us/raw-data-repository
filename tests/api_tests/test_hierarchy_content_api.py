@@ -305,7 +305,16 @@ class HierarchyContentApiTest(BaseTestCase):
                 },
                 {
                     "url": "http://all-of-us.org/fhir/sites/scheduling-instructions",
-                    "valueString": "Someone from the All of Us Research Program may contact you by phone and/or email to schedule an appointment and to share more information about the Program. You may already have an appointment scheduled. To contact us directly, please call 877-268-2684 or email AllofUsAZ@email.arizona.edu. For a list of our locations, visit AllofUsAZ.org.<br><br>El personal del Programa Científico All of Us se comunicará con usted por teléfono y/o correo electrónico para hacer una cita y compartir más información acerca del programa. Quizás, usted ya tiene una cita. Para comunicarse directamente con nosotros, por favor llame al 877-268-2684 o envíe un correo electrónico a AllofUsAZ@email.arizona.edu. Para ver la lista de nuestras clínicas, visite AllofUsAZ.org."
+                    "valueString": "Someone from the All of Us Research Program may contact you by phone and/or email "
+                                   "to schedule an appointment and to share more information about the Program. You "
+                                   "may already have an appointment scheduled. To contact us directly, please call "
+                                   "877-268-2684 or email AllofUsAZ@email.arizona.edu. For a list of our locations, "
+                                   "visit AllofUsAZ.org.<br><br>El personal del Programa Científico All of Us se "
+                                   "comunicará con usted por teléfono y/o correo electrónico para hacer una cita y "
+                                   "compartir más información acerca del programa. Quizás, usted ya tiene una cita. "
+                                   "Para comunicarse directamente con nosotros, por favor llame al 877-268-2684 o "
+                                   "envíe un correo electrónico a AllofUsAZ@email.arizona.edu. Para ver la lista de "
+                                   "nuestras clínicas, visite AllofUsAZ.org. "
                 },
                 {
                     "url": "http://all-of-us.org/fhir/sites/enrolling-status",
@@ -388,30 +397,38 @@ class HierarchyContentApiTest(BaseTestCase):
             u'id': u'AZ_TUCSON',
             u'organizations': [{u'displayName': u'Banner Health',
                                 u'id': u'AZ_TUCSON_BANNER_HEALTH',
-                                u'sites': [{u'mayolinkClientNumber': 7036694,
-                                            u'timeZoneId': u'America/Los_Angeles',
-                                            u'displayName': u'Banner Baywood Medical Center',
-                                            u'launchDate': u'2018-05-28',
-                                            u'enrollingStatus': u'ACTIVE',
-                                            u'longitude': 110.0,
-                                            u'schedulingInstructions': 'Someone from the All of Us Research Program may contact you by phone and/or email to schedule an appointment and to share '
-                                                                       'more information about the Program. You may already have an appointment scheduled. To contact us directly, please call '
-                                                                       '877-268-2684 or email AllofUsAZ@email.arizona.edu. For a list of our locations, visit AllofUsAZ.org.'
-                                                                       '<br><br>El personal del Programa Científico All of Us se comunicará con usted por teléfono y/o correo electrónico para hacer '
-                                                                       'una cita y compartir más información acerca del programa. Quizás, usted ya tiene una cita. Para comunicarse directamente con '
-                                                                       'nosotros, por favor llame al 877-268-2684 o envíe un correo electrónico a AllofUsAZ@email.arizona.edu. Para ver la lista de nuestras clínicas, visite AllofUsAZ.org.',
-
-                                            u'latitude': 100.0,
-                                            u'phoneNumber': u'8772682684',
-                                            u'siteStatus': u'ACTIVE',
-                                            u'address': {
+                                u'sites': [{'mayolinkClientNumber': 7036694, 'timeZoneId': u'America/Los_Angeles',
+                                            'displayName': u'Banner Baywood Medical Center',
+                                            'launchDate': u'2018-05-28', 'enrollingStatus': u'ACTIVE',
+                                            'longitude': 110.0,
+                                            'schedulingInstructions': 'Someone from the All of Us Research Program '
+                                                                      'may contact you by phone and/or email to '
+                                                                      'schedule an appointment and to share '
+                                                                      'more information about the Program. '
+                                                                      'You may already '
+                                                                      'have an appointment scheduled. '
+                                                                      'To contact us directly, please call '
+                                                                      '877-268-2684 or email '
+                                                                      'AllofUsAZ@email.arizona.edu. '
+                                                                      'For a list of our locations, '
+                                                                      'visit AllofUsAZ.org.'
+                                                                      '<br><br>El personal del Programa Científico'
+                                                                      ' All of Us se comunicará con usted por '
+                                                                      'teléfono y/o correo electrónico para hacer '
+                                                                      'una cita y compartir más información acerca '
+                                                                      'del programa. Quizás, usted ya tiene una cita. '
+                                                                      'Para comunicarse directamente con '
+                                                                      'nosotros, por favor llame al 877-268-2684 '
+                                                                      'o envíe un correo electrónico a '
+                                                                      'AllofUsAZ@email.arizona.edu. Para ver la '
+                                                                      'lista de nuestras clínicas, '
+                                                                      'visite AllofUsAZ.org. ', 'latitude': 100.0,
+                                            'phoneNumber': u'8772682684', 'siteStatus': u'ACTIVE', 'address': {
                                                 u'postalCode': u'85206', u'city': u'Mesa',
                                                 u'line': ['6644 E. Baywood Ave.'], u'state': u'AZ'
-                                            },
-                                            u'id': u'hpo-site-bannerbaywood',
-                                            u'adminEmails': [u'jennifer.craig-muller@bannerhealth.com','mcoury@email.arizona.edu'],
-                                            u'digitalSchedulingStatus': u'INACTIVE'
-                                            }]
+                                    }, 'id': u'hpo-site-bannerbaywood',
+                                            'adminEmails': [u'jennifer.craig-muller@bannerhealth.com'
+                                                , 'mcoury@email.arizona.edu'], 'digitalSchedulingStatus': u'INACTIVE'}]
                                 }]
         }, result)
 
@@ -809,7 +826,19 @@ class HierarchyContentApiTest(BaseTestCase):
                 },
                 {
                     "url": "http://all-of-us.org/fhir/sites/scheduling-instructions",
-                    "valueString": "Someone from the All of Us Research Program may contact you by phone and/or email to schedule an appointment and to share more information about the Program. You may already have an appointment scheduled. To contact us directly, please call 877-268-2684 or email AllofUsAZ@email.arizona.edu. For a list of our locations, visit AllofUsAZ.org.<br><br>El personal del Programa Científico All of Us se comunicará con usted por teléfono y/o correo electrónico para hacer una cita y compartir más información acerca del programa. Quizás, usted ya tiene una cita. Para comunicarse directamente con nosotros, por favor llame al 877-268-2684 o envíe un correo electrónico a AllofUsAZ@email.arizona.edu. Para ver la lista de nuestras clínicas, visite AllofUsAZ.org."
+                    "valueString": "Someone from the All of Us Research Program may contact you by phone and/or "
+                                   "email to schedule an appointment and to share more information about the Program."
+                                   " You may already have an appointment scheduled. "
+                                   "To contact us directly, please call 877-268-2684 or email "
+                                   "AllofUsAZ@email.arizona.edu. For a list of our locations, "
+                                   "visit AllofUsAZ.org.<br><br>El personal del Programa Científico All of Us "
+                                   "se comunicará con usted por teléfono y/o "
+                                   "correo electrónico para hacer una cita y compartir más información acerca del "
+                                   "programa. Quizás, usted ya tiene una cita."
+                                   " Para comunicarse directamente con nosotros, por favor llame al 877-268-2684 "
+                                   "o envíe un correo electrónico a "
+                                   "AllofUsAZ@email.arizona.edu. Para ver la lista de nuestras clínicas, "
+                                   "visite AllofUsAZ.org."
                 },
                 {
                     "url": "http://all-of-us.org/fhir/sites/enrolling-status",
@@ -931,7 +960,7 @@ class HierarchyContentApiTest(BaseTestCase):
         self.send_put('organization/hierarchy', request_data=request_json)
         result = self.send_get('Awardee/AZ_TUCSON')
         self.assertEqual(_make_awardee_resource('AZ_TUCSON', 'Arizona', 'HPO'),
-                          result)
+                         result)
         truthiness = self.send_get('Awardee/AZ_TUCSON')
         self.assertEqual(truthiness['type'], 'HPO')
         self.assertEqual(truthiness['id'], 'AZ_TUCSON')
@@ -975,7 +1004,8 @@ class HierarchyContentApiTest(BaseTestCase):
 
         result_after = self.send_get('Awardee/AZ_TUCSON')
         self.assertEqual(1, len(result_after['organizations']))
-        self.assertEqual({'displayName':'Banner Health', 'id':'AZ_TUCSON_BANNER_HEALTH'}, result_after['organizations'][0])
+        self.assertEqual({'displayName': 'Banner Health', 'id': 'AZ_TUCSON_BANNER_HEALTH'},
+                         result_after['organizations'][0])
 
     def _setup_data(self):
         organization_dao = OrganizationDao()
