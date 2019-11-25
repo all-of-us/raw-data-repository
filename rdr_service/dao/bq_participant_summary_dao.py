@@ -83,6 +83,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         data = {
             'participant_id': p_id,
             'biobank_id': p.biobankId,
+            'participant_origin': p.participantOrigin,
             'last_modified': p.lastModified,
             'sign_up_time': p.signUpTime,
             'hpo': hpo.name if hpo else None,

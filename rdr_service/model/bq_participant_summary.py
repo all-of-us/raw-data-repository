@@ -146,6 +146,7 @@ class BQParticipantSummarySchema(BQSchema):
 
     participant_id = BQField('participant_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     biobank_id = BQField('biobank_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    participant_origin = BQField('participant_origin', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
     first_name = BQField('first_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     middle_name = BQField('middle_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
