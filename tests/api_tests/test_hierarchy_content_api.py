@@ -304,31 +304,31 @@ class HierarchyContentApiTest(BaseTestCase):
             },
             "extension": [
                 {
-                    "url": "http://all-of-us.org/fhir/sites/enrollmentStatusActive",
+                    "url": "http://all-of-us.org/fhir/sites/enrollment-status",
                     "valueBoolean": True
                 },
                 {
-                    "url": "http://all-of-us.org/fhir/sites/digitalSchedulingStatusActive",
+                    "url": "http://all-of-us.org/fhir/sites/digital-scheduling-status",
                     "valueBoolean": True
                 },
                 {
-                    "url": "http://all-of-us.org/fhir/sites/schedulingStatusActive",
-                    "valueBoolean": True
+                    "url": "http://all-of-us.org/fhir/sites/ptsc-scheduling-status",
+                    "valueString": True
                 },
                 {
                     "url": "http://all-of-us.org/fhir/sites/notes",
                     "valueString": "This is a note about an organization"
                 },
                 {
-                    "url": "http://all-of-us.org/fhir/sites/schedulingInstructions",
+                    "url": "http://all-of-us.org/fhir/sites/scheduling-instructions",
                     "valueString": "Please schedule appointments up to a week before intended date."
                 },
                 {
-                    "url": "http://all-of-us.org/fhir/sites/anticipatedLaunchDate",
+                    "url": "http://all-of-us.org/fhir/sites/anticipated-launch-date",
                     "valueDate": "07-02-2010"
                 },
                 {
-                    "url": "http://all-of-us.org/fhir/sites/locationName",
+                    "url": "http://all-of-us.org/fhir/sites/location-name",
                     "valueString": "Thompson Building"
                 },
                 {
@@ -470,7 +470,7 @@ class HierarchyContentApiTest(BaseTestCase):
                 },
                 {
                     "url": "http://all-of-us.org/fhir/sites/anticipated-launch-date",
-                    "valueString": "0702201022"
+                    "valueString": "07-22-2019"
                 },
                 {
                     "url": "http://all-of-us.org/fhir/sites/locationName",
@@ -734,7 +734,7 @@ class HierarchyContentApiTest(BaseTestCase):
                 },
                 {
                     "url": "http://all-of-us.org/fhir/sites/anticipated-launch-date",
-                    "valueString": "1533081600"
+                    "valueString": "09-30-2008"
                 },
                 {
                     "url": "http://all-of-us.org/fhir/sites/ptsc-scheduling-status",
@@ -804,8 +804,8 @@ class HierarchyContentApiTest(BaseTestCase):
         self.assertEqual(existing_entity.adminEmails, 'alice@example.com, bob@example.com')
         self.assertEqual(existing_entity.siteStatus, SiteStatus('ACTIVE'))
         self.assertEqual(existing_entity.isObsolete, None)
-        self.assertEqual(existing_entity.enrollingStatus, EnrollingStatus(ACTIVE))
-        self.assertEqual(existing_entity.schedulingInstructions, "<p>Good job! Now that you've finished \"The Basics\" ")
+        self.assertEqual(existing_entity.enrollingStatus, EnrollingStatus.ACTIVE)
+        self.assertEqual(existing_entity.schedulingInstructions, "<p>Good job! Now that you've finished \"The Basics\"")
         self.assertEqual(existing_entity.mayolinkClientNumber, "7035772")
         self.assertEqual(existing_entity.notes_ES, "<p>Addisu Testing update&nbsp;</p>\n")
 
@@ -838,7 +838,7 @@ class HierarchyContentApiTest(BaseTestCase):
                 },
                 {
                     "url": "http://all-of-us.org/fhir/sites/anticipated-launch-date",
-                    "valueString": "1527552000"
+                    "valueString": "09-30-2008"
                 },
                 {
                     "url": "http://all-of-us.org/fhir/sites/ptsc-scheduling-status",
@@ -951,7 +951,7 @@ class HierarchyContentApiTest(BaseTestCase):
         }
         self.send_put('organization/hierarchy', request_data=request_json)
         result = self.send_get('Awardee/AZ_TUCSON')
-        self.assertEquals(_make_awardee_resource('AZ_TUCSON', 'Arizona', 'HPO'),
+        self.assertEqual(_make_awardee_resource('AZ_TUCSON', 'Arizona', 'HPO'),
                           result)
         truthiness = self.send_get('Awardee/AZ_TUCSON')
         self.assertEqual(truthiness['type'], 'HPO')
