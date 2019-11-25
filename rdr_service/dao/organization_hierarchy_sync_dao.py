@@ -172,8 +172,8 @@ class OrganizationHierarchySyncDao(BaseDao):
 
         launch_date = None
         launch_date_str = self._get_value_from_extention(hierarchy_org_obj,
-                                                         HIERARCHY_CONTENT_SYSTEM_PREFIX + 'anticipatedLaunchDate',
-                                                         'valueDate')
+                                                         HIERARCHY_CONTENT_SYSTEM_PREFIX + 'anticipated-launch-date',
+                                                         'valueString')
         if launch_date_str:
             try:
                 launch_date = parse(launch_date_str).date()
@@ -205,7 +205,7 @@ class OrganizationHierarchySyncDao(BaseDao):
 
         enrolling_status_bool = self._get_value_from_extention(hierarchy_org_obj,
                                                                HIERARCHY_CONTENT_SYSTEM_PREFIX +
-                                                               'enrollmentStatusActive',
+                                                               'enrollment-status',
                                                                'valueBoolean')
         try:
             enrolling_status = EnrollingStatus('ACTIVE' if enrolling_status_bool else 'INACTIVE')
@@ -215,7 +215,7 @@ class OrganizationHierarchySyncDao(BaseDao):
 
         digital_scheduling_bool = self._get_value_from_extention(hierarchy_org_obj,
                                                                  HIERARCHY_CONTENT_SYSTEM_PREFIX +
-                                                                 'digitalSchedulingStatusActive',
+                                                                 'digital-scheduling-Status',
                                                                  'valueBoolean')
         try:
             digital_scheduling_status = DigitalSchedulingStatus('ACTIVE' if digital_scheduling_bool
@@ -236,7 +236,7 @@ class OrganizationHierarchySyncDao(BaseDao):
 
         schedule_instructions = self._get_value_from_extention(hierarchy_org_obj,
                                                                HIERARCHY_CONTENT_SYSTEM_PREFIX
-                                                               + 'schedulingInstructions')
+                                                               + 'scheduling-instructions')
 
         entity = Site(siteName=name,
                       googleGroup=google_group,
