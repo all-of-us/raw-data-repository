@@ -31,9 +31,9 @@
   "ghost_id_bucket": [
     "all-of-us-rdr-careevo-test-ghost-id"
   ],
-  "consent_pdf_bucket": [
-    "all-of-us-rdr-careevo-test-consent-pdf"
-  ],
+  "consent_pdf_bucket": {
+    "careevolution": "all-of-us-rdr-careevo-test-consent-pdf"
+  },
   "metrics_shards": [
     "10"
   ],
