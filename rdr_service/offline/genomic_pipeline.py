@@ -8,7 +8,12 @@ from rdr_service.genomic import (
     genomic_center_menifest_handler,
     genomic_job_controller
 )
-from rdr_service.participant_enums import GenomicSetStatus, GenomicSubProcessStatus, GenomicSubProcessResult
+from rdr_service.participant_enums import (
+    GenomicSetStatus,
+    GenomicSubProcessStatus,
+    GenomicSubProcessResult,
+    GenomicJob
+)
 
 
 def process_genomic_water_line():
@@ -38,7 +43,9 @@ def ingest_genomic_centers_metrics_files():
     """
     Entrypoint for GC Metrics File Ingestion subprocess of genomic_pipeline.
     """
-    run_controller = genomic_job_controller.GenomicJobController()
+    job_id = GenomicJob.METRICS_INGESTION
+
+    run_controller = genomic_job_controller.GenomicJobController(job_id)
     file_queue_result = run_controller.generate_file_processing_queue()
 
     if file_queue_result == GenomicSubProcessResult.NO_FILES:
@@ -60,3 +67,13 @@ def ingest_genomic_centers_metrics_files():
 
         run_result = run_controller.aggregate_run_results()
         run_controller.end_run(run_result)
+
+
+def reconcile_metrics():
+    """
+    Entrypoint for GC Metrics File reconciliation
+    against Manifest subprocess of genomic_pipeline.
+    """
+    job_id = GenomicJob.RECONCILE_MANIFEST
+    run_controller = genomic_job_controller.GenomicJobController(job_id)
+    run_controller.run_reconciliation_to_manifest()

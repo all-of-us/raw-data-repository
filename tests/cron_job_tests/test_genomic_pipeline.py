@@ -10,11 +10,9 @@ from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.genomics_dao import (
     GenomicSetDao,
     GenomicSetMemberDao,
-    GenomicJobDao,
     GenomicJobRunDao,
     GenomicFileProcessedDao,
     GenomicGCValidationMetricsDao,
-    GenomicReconciliationDao
 )
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -65,11 +63,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
-        self.job_dao = GenomicJobDao()
         self.job_run_dao = GenomicJobRunDao()
         self.file_processed_dao = GenomicFileProcessedDao()
-        self.gc_validation_metrics_dao = GenomicGCValidationMetricsDao()
-        self.reconciliation_dao = GenomicReconciliationDao()
+        self.member_dao = GenomicSetMemberDao()
+        self.metrics_dao = GenomicGCValidationMetricsDao()
         self._participant_i = 1
 
     mock_bucket_paths = [_FAKE_BUCKET,
@@ -78,7 +75,6 @@ class GenomicPipelineTest(BaseTestCase):
                          _FAKE_BIOBANK_SAMPLE_BUCKET + os.sep + _FAKE_BUCKET_RESULT_FOLDER
                          ]
 
-        fake_participants =
 
     def _write_cloud_csv(self, file_name, contents_str, bucket=None, folder=None):
         bucket = _FAKE_BUCKET if bucket is None else bucket
@@ -531,8 +527,6 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(rows[2][ResultCsvColumns.SEX_AT_BIRTH], "M")
 
     def test_gc_validation_metrics_end_to_end(self):
-        # Create the fake data needed for GCs Metrics Ingestion
-        self.genomic_job_dao.insert_job('test_gc_metrics_ingestion_end_to_end')
         # fake genomic_set
         self._create_fake_genomic_set(
             genomic_set_name="genomic-test-set-cell-line",
@@ -555,23 +549,11 @@ class GenomicPipelineTest(BaseTestCase):
                         new_participant.participantId))]
             )
 
-            # Fake genomic set members.
-            # Not currently needed, but probably will be once
-            # later phases are implemented
-            # self._create_fake_genomic_member(
-            #     genomic_set_id=genomic_test_set.id,
-            #     participant_id=new_participant.participantId,
-            #     biobank_order_id=new_biobank_order.biobankOrderId,
-            #     validation_status=GenomicSetMemberStatus.VALID,
-            #     validation_flags=None,
-            #     sex_at_birth='F', genome_type='aou_array', ny_flag='Y'
-            # )
-
         # Create the fake Google Cloud CSV files to ingest
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         end_to_end_test_files = (
-            'GC_AoU_SEQ_TestDataManifest.csv',
-            'GC_AoU_GEN_TestDataManifest.csv'
+            'GC_AoU_GEN_TestDataManifest.csv',
+            'GC_AoU_SEQ_TestDataManifest.csv'
         )
         for test_file in end_to_end_test_files:
             self._create_ingestion_test_file(test_file, bucket_name)
@@ -580,19 +562,20 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.ingest_genomic_centers_metrics_files()
 
         # test file processing queue
-        files_processed = self.genomic_file_processed_dao.get_all()
+        files_processed = self.file_processed_dao.get_all()
+        files_processed = sorted(files_processed, key=lambda x: x.fileName, reverse=True)
         self.assertEqual(len(files_processed), 2)
         self._gc_files_processed_test_cases(files_processed, bucket_name)
 
         # Test the fields against the DB
-        gc_metrics = self.genomic_gc_validation_metrics_dao.get_all()
+        gc_metrics = self.metrics_dao.get_all()
         self.assertEqual(len(gc_metrics), 10)
-        self._gc_metrics_ingested_data_test_cases(bucket_name,
-                                                  files_processed,
-                                                  gc_metrics)
+        # self._gc_metrics_ingested_data_test_cases(bucket_name,
+        #                                           files_processed,
+        #                                           gc_metrics)
 
         # Test successful run result
-        run_obj = self.genomic_job_run_dao.get_all()
+        run_obj = self.job_run_dao.get_all()
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj[0].runResult)
 
     def _gc_files_processed_test_cases(self, files_processed, bucket_name):
@@ -648,7 +631,7 @@ class GenomicPipelineTest(BaseTestCase):
             csv_reader = csv.DictReader(csv_file, delimiter=",")
             rows = list(csv_reader)
             for i in range(0, 5):
-                self.assertEqual(int(rows[i]['Biobank ID'][1:]), gc_metrics[i].participantId)
+                self.assertEqual(int(rows[i]['Biobank ID'][1:]), gc_metrics[i].biobankId)
                 self.assertEqual(rows[i]['BiobankidSampleid'], gc_metrics[i].sampleId)
                 self.assertEqual(rows[i]['LIMS ID'], gc_metrics[i].limsId)
                 self.assertEqual(int(rows[i]['Mean Coverage']), gc_metrics[i].meanCoverage)
@@ -669,7 +652,7 @@ class GenomicPipelineTest(BaseTestCase):
             csv_reader = csv.DictReader(csv_file, delimiter=",")
             rows = list(csv_reader)
             for i in range(5, 10):
-                self.assertEqual(int(rows[i-5]['Biobank ID'][1:]), gc_metrics[i].participantId)
+                self.assertEqual(int(rows[i-5]['Biobank ID'][1:]), gc_metrics[i].biobankId)
                 self.assertEqual(rows[i-5]['BiobankidSampleid'], gc_metrics[i].sampleId)
                 self.assertEqual(rows[i-5]['LIMS ID'], gc_metrics[i].limsId)
                 self.assertEqual(int(rows[i-5]['Call Rate']), gc_metrics[i].callRate)
@@ -680,9 +663,6 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(int(rows[i-5]['site_id']), gc_metrics[i].siteId)
 
     def test_gc_metrics_ingestion_bad_files(self):
-        # Create the fake data needed for GCs Metrics Ingestion
-        self.genomic_job_dao.insert_job('test_gc_metrics_ingestion_bad_files')
-
         # Create the fake Google Cloud CSV files to ingest
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         end_to_end_test_files = (
@@ -696,7 +676,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.ingest_genomic_centers_metrics_files()
 
         # test file processing queue
-        files_processed = self.genomic_file_processed_dao.get_all()
+        files_processed = self.file_processed_dao.get_all()
 
         # Test bad filename, invalid columns
         for f in files_processed:
@@ -707,17 +687,15 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(f.fileResult,
                                  GenomicSubProcessResult.INVALID_FILE_STRUCTURE)
         # Test Unsuccessful run
-        run_obj = self.genomic_job_run_dao.get(1)
+        run_obj = self.job_run_dao.get(1)
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
     def test_gc_metrics_ingestion_no_files(self):
-        self.genomic_job_dao.insert_job('test_gc_metrics_ingestion_no_files')
-
         # run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()
 
         # Test Unsuccessful run
-        run_obj = self.genomic_job_run_dao.get(1)
+        run_obj = self.job_run_dao.get(1)
         self.assertEqual(GenomicSubProcessResult.NO_FILES, run_obj.runResult)
 
     def _create_ingestion_test_file(self,
@@ -762,6 +740,7 @@ class GenomicPipelineTest(BaseTestCase):
         validation_status=GenomicSetMemberStatus.VALID,
         validation_flags=None,
         sex_at_birth="F",
+        biobankId=None,
         genome_type="aou_array",
         ny_flag="Y",
     ):
@@ -771,6 +750,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.validationFlags = validation_flags
         genomic_set_member.participantId = participant_id
         genomic_set_member.sexAtBirth = sex_at_birth
+        genomic_set_member.biobankId = biobankId
         genomic_set_member.genomeType = genome_type
         genomic_set_member.nyFlag = 1 if ny_flag == "Y" else 0
         genomic_set_member.biobankOrderId = biobank_order_id
@@ -814,13 +794,12 @@ class GenomicPipelineTest(BaseTestCase):
             genomic_set_filename="genomic-test-set-cell-line.csv"
         )
         # make necessary fake participant data
-        test_participants = [self._make_participant() for i in range(0, count)]
-
-        for participant in test_participants:
+        for p in range(1, count+1):
+            participant = self._make_participant()
             self._make_summary(participant)
-            self._make_biobank_order(
+            biobank_order = self._make_biobank_order(
                 participantId=participant.participantId,
-                biobankOrderId=participant.participantId,
+                biobankOrderId=p,
                 identifiers=[BiobankOrderIdentifier(
                     system=u'c', value=u'e{}'.format(
                         participant.participantId))]
@@ -830,18 +809,35 @@ class GenomicPipelineTest(BaseTestCase):
             self._create_fake_genomic_member(
                 genomic_set_id=genomic_test_set.id,
                 participant_id=participant.participantId,
-                biobank_order_id=participant.biobankOrderId,
+                biobank_order_id=biobank_order.biobankOrderId,
                 validation_status=GenomicSetMemberStatus.VALID,
                 validation_flags=None,
+                biobankId=f'{p}',
                 sex_at_birth='F', genome_type='aou_array', ny_flag='Y'
             )
 
-    def test_gc_metrics_reconciliation_vs_manifest(self):
-        # Create the fake data needed for GCs Metrics Ingestion
-        self.genomic_job_dao.insert_job('test_gc_metrics_reconciliation')
-
-        self._create_fake_datasets_for_gc_tests(3)
-
-        for participant in test_participants:
-            gc_metrics_reconciled = self.reconciliation_dao.get_reconciled_metrics(participant)
-            self.assertIn(participant.biobankId, gc_metrics_reconciled)
+    # def test_gc_metrics_reconciliation_vs_manifest(self):
+    #     self._create_fake_datasets_for_gc_tests(5)
+    #
+    #     # Ingest the fake metrics
+    #     # Create the fake Google Cloud CSV files to ingest
+    #     bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+    #     self._create_ingestion_test_file('GC_AoU_GEN_TestDataManifest.csv',
+    #                                      bucket_name)
+    #
+    #     # Run the GC Metrics Ingestion workflow
+    #     genomic_pipeline.ingest_genomic_centers_metrics_files()
+    #
+    #     test_set_members = self.member_dao.get_all()
+    #
+    #     # Run the GC Metrics Reconciliation
+    #     genomic_pipeline.reconcile_metrics()
+    #
+    #     gc_metrics = self.metrics_dao.get_all()
+    #
+    #     for set_member in test_set_members:
+    #         metric_record = gc_metrics[int(set_member.biobankId) - 1]
+    #         self.assertEqual(set_member.biobankId, metric_record.biobankId)
+    #         self.assertEqual(set_member.id, metric_record.genomicSetMemberId)
+    #         self.assertEqual(2, metric_record.reconcileManifestJobRunId)
+    #         # print(f'{set_member.biobankId} : {metric_record.biobankId}')

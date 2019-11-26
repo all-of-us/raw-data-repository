@@ -1,13 +1,14 @@
 import collections
 
 import sqlalchemy
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import load_only
 
 from rdr_service import clock
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
-    GenomicJob,
     GenomicJobRun,
     GenomicFileProcessed,
     GenomicGCValidationMetrics
@@ -295,29 +296,17 @@ class GenomicSetMemberDao(UpdatableDao):
         ]
         return session.execute(query, parameter_sets)
 
-
-class GenomicJobDao(UpdatableDao):
-    """ Stub for GenomicJob model """
-
-    def from_client_json(self):
-        """As of 2019-11-15 There is no API requirement"""
-        pass
-
-    validate_version_match = False
-
-    def __init__(self):
-        super(GenomicJobDao, self).__init__(GenomicJob, order_by_ending=['id'])
-        self.member_dao = GenomicSetMemberDao()
-
-    def get_id(self, obj):
-        return obj.id
-
-    def insert_job(self, job_name, active_flag=1):
-        job = GenomicJob()
-        job.name = job_name
-        job.activeFlag = active_flag
-
-        self.insert(job)
+    def get_id_with_biobank_id(self, biobank_id):
+        """
+        Retrieves a genomic set member record matching the biobank Id
+        :param biobank_id:
+        :return: a GenomicSetMember.id for the object
+        """
+        with self.session() as session:
+            member_id = session.query(GenomicSetMember).filter(
+                GenomicSetMember.biobankId == biobank_id). \
+                options(load_only("id")).first()
+        return member_id
 
 
 class GenomicJobRunDao(UpdatableDao):
@@ -475,7 +464,7 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
         self.data_mappings = {
             'genomicSetMemberId': 'member_id',
             'genomicFileProcessedId': 'file_id',
-            'participantId': 'biobank id',
+            'biobankId': 'biobank id',
             'sampleId': 'biobankidsampleid',
             'limsId': 'lims id',
             'callRate': 'call rate',
@@ -513,5 +502,42 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
-class GenomicReconciliationDao:
-    pass
+    def get_null_set_members(self):
+        """
+        Retrieves all gc metrics with a null genomic_set_member_id
+        :return: list of returned GenomicGCValidationMetrics objects
+        """
+        with self.session() as session:
+            metrics_list = session.query(GenomicGCValidationMetrics).filter(
+                GenomicGCValidationMetrics.genomicSetMemberId == None)
+        return list(metrics_list)
+
+    def update_reconciled(self, metric_obj, member_id, run_id):
+        with self.session() as session:
+            return self._update_reconciled_with_session(session, metric_obj,
+                                                        member_id, run_id)
+
+    def _update_reconciled_with_session(self, session, metric_obj,
+                                        member_id, run_id):
+        """
+        Updates the record with the reconciliation data.
+        :param metric_obj:
+        :param member_id:
+        :param run_id:
+        :return: result code of success
+        """
+        try:
+            with self.session() as session:
+                query = (
+                    sqlalchemy.update(GenomicGCValidationMetrics)
+                        .where(GenomicGCValidationMetrics.id == metric_obj.id)
+                        .values(
+                        {
+                            GenomicGCValidationMetrics.genomicSetMemberId: member_id,
+                            GenomicGCValidationMetrics.reconcileManifestJobRunId: run_id,
+                        }
+                    )
+                )
+                return session.execute(query)
+        except OperationalError:
+            return GenomicSubProcessResult.ERROR

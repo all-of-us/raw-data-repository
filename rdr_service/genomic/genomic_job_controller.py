@@ -9,7 +9,8 @@ from rdr_service.config import GENOMIC_GC_METRICS_BUCKET_NAME, getSetting
 from rdr_service.participant_enums import GenomicSubProcessResult
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
-    GenomicFileMover
+    GenomicFileMover,
+    GenomicReconciler
 )
 from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
@@ -20,12 +21,13 @@ from rdr_service.dao.genomics_dao import (
 class GenomicJobController:
     """This class controlls the tracking of Genomics subprocesses"""
 
-    def __init__(self,
+    def __init__(self, job_id,
                  bucket_name=GENOMIC_GC_METRICS_BUCKET_NAME,
                  file_queue=None,
                  job_name="genomic_cell_line_metrics"
                  ):
 
+        self.job_id = job_id
         self.bucket_name = getSetting(bucket_name)
         self.archive_folder_name = 'processed_by_rdr'
         self.file_queue = file_queue
@@ -35,14 +37,15 @@ class GenomicJobController:
         self.job_result = GenomicSubProcessResult.UNSET
 
         # Components
-        self.ingester = None
-        self.file_mover = None
         self.job_run_dao = GenomicJobRunDao()
         self.file_processed_dao = GenomicFileProcessedDao()
+        self.ingester = None
+        self.file_mover = None
+        self.reconciler = None
 
         # TODO: currently set up for only gc metrics ingestion;
         #  need to make more generic
-        self.job_run = self._create_run(1)
+        self.job_run = self._create_run(job_id)
 
     def generate_file_processing_queue(self):
         """
@@ -79,6 +82,13 @@ class GenomicJobController:
         self.file_mover.archive_file(file_obj)
 
         return result
+
+    def run_reconciliation_to_manifest(self):
+        self.reconciler = GenomicReconciler(self.job_run.id)
+        try:
+            return self.reconciler.reconcile_metrics_to_manifest()
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR
 
     def update_file_processed(self, file_id, status, result):
         """Updates the genomic_file_processed record """

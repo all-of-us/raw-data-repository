@@ -9,7 +9,10 @@ import re
 
 from rdr_service.api_util import open_cloud_file, copy_cloud_file, delete_cloud_file
 from rdr_service.participant_enums import GenomicSubProcessResult
-from rdr_service.dao.genomics_dao import GenomicGCValidationMetricsDao
+from rdr_service.dao.genomics_dao import (
+    GenomicGCValidationMetricsDao,
+    GenomicSetMemberDao
+)
 
 
 class GenomicFileIngester:
@@ -96,7 +99,7 @@ class GenomicFileIngester:
                 key_lower = key.lower()
                 row_copy[key_lower] = val
 
-            row_copy['member_id'] = 1
+            # row_copy['member_id'] = 1
             row_copy['file_id'] = self.file_obj.id
             row_copy['biobank id'] = row_copy['biobank id'].replace('T', '')
 
@@ -235,3 +238,34 @@ class GenomicFileMover:
             delete_cloud_file(source_path)
         except FileNotFoundError:
             logging.ERROR(f"No file found at '{file_obj.filePath}'")
+
+
+class GenomicReconciler:
+    """ This component handles reconciliation between genomic datasets """
+    def __init__(self, run_id):
+
+        self.run_id = run_id
+
+        # Dao components
+        self.member_dao = GenomicSetMemberDao()
+        self.metrics_dao = GenomicGCValidationMetricsDao()
+
+    def reconcile_metrics_to_manifest(self):
+        """ The main method for the metrics vs. manifest reconciliation """
+        try:
+            unreconciled_metrics = self.metrics_dao.get_null_set_members()
+            results = []
+            for metric in unreconciled_metrics:
+                member = self._lookup_member(metric.biobankId)
+                results.append(
+                    self.metrics_dao.update_reconciled(
+                        metric, member.id, self.run_id)
+                )
+            return GenomicSubProcessResult.SUCCESS \
+                if GenomicSubProcessResult.ERROR not in results \
+                else GenomicSubProcessResult.ERROR
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR
+
+    def _lookup_member(self, biobank_id):
+        return self.member_dao.get_id_with_biobank_id(biobank_id)
