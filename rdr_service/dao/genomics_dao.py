@@ -512,3 +512,6 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
+
+class GenomicReconciliationDao:
+    pass

@@ -13,7 +13,8 @@ from rdr_service.dao.genomics_dao import (
     GenomicJobDao,
     GenomicJobRunDao,
     GenomicFileProcessedDao,
-    GenomicGCValidationMetricsDao
+    GenomicGCValidationMetricsDao,
+    GenomicReconciliationDao
 )
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -64,10 +65,11 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
-        self.genomic_job_dao = GenomicJobDao()
-        self.genomic_job_run_dao = GenomicJobRunDao()
-        self.genomic_file_processed_dao = GenomicFileProcessedDao()
-        self.genomic_gc_validation_metrics_dao = GenomicGCValidationMetricsDao()
+        self.job_dao = GenomicJobDao()
+        self.job_run_dao = GenomicJobRunDao()
+        self.file_processed_dao = GenomicFileProcessedDao()
+        self.gc_validation_metrics_dao = GenomicGCValidationMetricsDao()
+        self.reconciliation_dao = GenomicReconciliationDao()
         self._participant_i = 1
 
     mock_bucket_paths = [_FAKE_BUCKET,
@@ -75,6 +77,8 @@ class GenomicPipelineTest(BaseTestCase):
                          _FAKE_BIOBANK_SAMPLE_BUCKET + os.sep + _FAKE_BUCKET_FOLDER,
                          _FAKE_BIOBANK_SAMPLE_BUCKET + os.sep + _FAKE_BUCKET_RESULT_FOLDER
                          ]
+
+        fake_participants =
 
     def _write_cloud_csv(self, file_name, contents_str, bucket=None, folder=None):
         bucket = _FAKE_BUCKET if bucket is None else bucket
@@ -801,3 +805,43 @@ class GenomicPipelineTest(BaseTestCase):
                 )
         bucket_stat_list.sort(key=lambda s: s.updated)
         return bucket_stat_list[-1].name
+
+    def _create_fake_datasets_for_gc_tests(self, count):
+        # fake genomic_set
+        genomic_test_set = self._create_fake_genomic_set(
+            genomic_set_name="genomic-test-set-cell-line",
+            genomic_set_criteria=".",
+            genomic_set_filename="genomic-test-set-cell-line.csv"
+        )
+        # make necessary fake participant data
+        test_participants = [self._make_participant() for i in range(0, count)]
+
+        for participant in test_participants:
+            self._make_summary(participant)
+            self._make_biobank_order(
+                participantId=participant.participantId,
+                biobankOrderId=participant.participantId,
+                identifiers=[BiobankOrderIdentifier(
+                    system=u'c', value=u'e{}'.format(
+                        participant.participantId))]
+            )
+
+            # Fake genomic set members.
+            self._create_fake_genomic_member(
+                genomic_set_id=genomic_test_set.id,
+                participant_id=participant.participantId,
+                biobank_order_id=participant.biobankOrderId,
+                validation_status=GenomicSetMemberStatus.VALID,
+                validation_flags=None,
+                sex_at_birth='F', genome_type='aou_array', ny_flag='Y'
+            )
+
+    def test_gc_metrics_reconciliation_vs_manifest(self):
+        # Create the fake data needed for GCs Metrics Ingestion
+        self.genomic_job_dao.insert_job('test_gc_metrics_reconciliation')
+
+        self._create_fake_datasets_for_gc_tests(3)
+
+        for participant in test_participants:
+            gc_metrics_reconciled = self.reconciliation_dao.get_reconciled_metrics(participant)
+            self.assertIn(participant.biobankId, gc_metrics_reconciled)
