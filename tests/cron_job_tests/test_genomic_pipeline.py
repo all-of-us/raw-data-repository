@@ -577,6 +577,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # test file processing queue
         files_processed = self.genomic_file_processed_dao.get_all()
+        files_processed.sort(key=lambda x: x.fileName, reverse=True)
         self.assertEqual(len(files_processed), 2)
         self._gc_files_processed_test_cases(files_processed, bucket_name)
 
