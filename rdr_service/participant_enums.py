@@ -536,3 +536,20 @@ class GenomicSubProcessResult(messages.Enum):
     INVALID_FILE_NAME = 3
     INVALID_FILE_STRUCTURE = 4
     ERROR = 5
+
+
+class WorkbenchWorkspaceStatus(messages.Enum):
+    """Status of Workbench Workspace"""
+
+    UNSET = 0
+    ACTIVE = 1
+    INACTIVE = 2
+
+
+class WorkbenchWorkspaceUserRole(messages.Enum):
+    """Status of Workbench Workspace User Role"""
+
+    UNSET = 0
+    READER = 1
+    WRITER = 2
+    OWNER = 3
