@@ -8,6 +8,8 @@ from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
+
+from rdr_service.app_util import get_participant_origin_id
 from rdr_service import storage
 from rdr_service import clock, config
 from rdr_service.code_constants import (
@@ -589,7 +591,16 @@ def _validate_consent_pdfs(resource):
     """Checks for any consent-form-signed-pdf extensions and validates their PDFs in GCS."""
     if resource.get("resourceType") != "QuestionnaireResponse":
         raise ValueError(f'Expected QuestionnaireResponse for "resourceType" in {resource}.')
-    consent_bucket = config.getSetting(config.CONSENT_PDF_BUCKET)
+
+    # We now lookup up consent bucket names by participant origin id.
+    p_origin = get_participant_origin_id()
+    consent_bucket_config = config.getSettingJson(config.CONSENT_PDF_BUCKET)
+    # If we don't match the origin id, just return the first bucket in the dict.
+    try:
+        consent_bucket = consent_bucket_config.get(p_origin, consent_bucket_config[next(iter(consent_bucket_config))])
+    except AttributeError:
+        pass
+
     for extension in resource.get("extension", []):
         if extension["url"] != _SIGNED_CONSENT_EXTENSION:
             continue

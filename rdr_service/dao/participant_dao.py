@@ -18,7 +18,7 @@ from rdr_service.api_util import (
     get_site_id_from_google_group,
     parse_json_enum,
     DEV_MAIL)
-from rdr_service.app_util import get_oauth_id, lookup_user_info
+from rdr_service.app_util import get_oauth_id, lookup_user_info, get_participant_origin_id
 from rdr_service.code_constants import UNSET, ORIGINATING_SOURCES
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.dao.hpo_dao import HPODao
@@ -75,14 +75,7 @@ class ParticipantDao(UpdatableDao):
         obj.version = 1
         obj.signUpTime = clock.CLOCK.now().replace(microsecond=0)
         obj.lastModified = obj.signUpTime
-        email = get_oauth_id()
-        user_info = lookup_user_info(email)
-        base_name = user_info.get('clientId')
-        if not base_name:
-            if email == DEV_MAIL:
-                base_name = "example"  # TODO: This is a hack because something sets up configs different
-                # when running all tests and it doesnt have the clientId key.
-        obj.participantOrigin = base_name
+        obj.participantOrigin = get_participant_origin_id()
         if obj.withdrawalStatus is None:
             obj.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
         if obj.suspensionStatus is None:
