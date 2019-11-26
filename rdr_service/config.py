@@ -47,6 +47,7 @@ BIOBANK_SAMPLES_SHARDS = "biobank_samples_shards"
 BIOBANK_SAMPLES_BUCKET_NAME = "biobank_samples_bucket_name"
 GENOMIC_CENTER_BUCKET_NAME = 'genomic_center_bucket_name'
 GENOMIC_SET_BUCKET_NAME = "genomic_set_bucket_name"
+GENOMIC_GC_METRICS_BUCKET_NAME = 'genomic_gc_metrics_bucket_name'
 GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME = "genomic_biobank_manifest_folder_name"
 GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME = "genomic_biobank_manifest_result_folder_name"
 GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME = 'genotyping_sample_manifest_folder_name'

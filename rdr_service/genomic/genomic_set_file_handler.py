@@ -12,7 +12,8 @@ import pytz
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file, list_blobs
 from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
-from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetMemberStatus, GenomicSetStatus
+from rdr_service.model.genomics import GenomicSet, GenomicSetMember
+from rdr_service.participant_enums import GenomicSetStatus, GenomicSetMemberStatus
 from rdr_service.offline.sql_exporter import SqlExporter
 
 _US_CENTRAL = pytz.timezone("US/Central")

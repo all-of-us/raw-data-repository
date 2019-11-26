@@ -10,12 +10,10 @@ from rdr_service.genomic.validation import validate_and_update_genomic_set_by_id
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
-    GenomicSetMemberStatus,
-    GenomicSetStatus,
-    GenomicValidationFlag,
 )
 from rdr_service.model.participant import Participant
-from rdr_service.participant_enums import SampleStatus, WithdrawalStatus
+from rdr_service.participant_enums import SampleStatus, WithdrawalStatus, GenomicSetStatus, GenomicSetMemberStatus, \
+    GenomicValidationFlag
 from rdr_service.test.unit_test.unit_test_util import SqlTestBase
 
 
