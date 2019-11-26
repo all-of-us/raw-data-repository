@@ -140,12 +140,12 @@ def get_participant_origin_id():
     Returns the clientId value set in the config for the user.
     :return: Client Id
     """
-    email = get_oauth_id()
-    user_info = lookup_user_info(email)
+    auth_email = get_oauth_id()
+    user_info = lookup_user_info(auth_email)
     client_id = user_info.get('clientId')
     from rdr_service.api_util import DEV_MAIL
     if not client_id:
-        if email == DEV_MAIL:
+        if auth_email == DEV_MAIL:
             client_id = "example"  # TODO: This is a hack because something sets up configs different
             # when running all tests and it doesnt have the clientId key.
     return client_id
