@@ -30,4 +30,5 @@ class BQOrganization(BQTable):
 class BQOrganizationView(BQView):
     __viewname__ = 'v_organization'
     __viewdescr__ = 'Organization View'
+    __pk_id__ = 'organization_id'
     __table__ = BQOrganization

@@ -380,6 +380,7 @@ class BQView(object):
     __viewname__ = None  # type: str
     __viewdescr__ = None  # type: str
     __table__ = None  # type: BQTable
+    __pk_id__ = 'id'  # type: str
     __sql__ = None  # type: str
     _show_created = False
     _show_modified = False
@@ -407,12 +408,12 @@ class BQView(object):
       """.format(fields=', '.join(fld_list))
 
             self.__sql__ += """
-        FROM (
-          SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
-            FROM `{project}`.{dataset}.%%table%% 
-        ) c
-        WHERE c.modified = c.max_timestamp 
-      """.replace('%%table%%', tbl.get_name())
+                FROM (
+                  SELECT *, MAX(modified) OVER (PARTITION BY %%pk_id%%) AS max_timestamp
+                    FROM `{project}`.{dataset}.%%table%% 
+                ) c
+                WHERE c.modified = c.max_timestamp 
+              """.replace('%%table%%', tbl.get_name()).replace('%%pk_id%%', self.__pk_id__)
 
     def get_table(self):
         return self.__table__
