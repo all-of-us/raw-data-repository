@@ -124,6 +124,7 @@ class BQPDRParticipantSummaryView(BQView):
     __viewname__ = 'v_pdr_participant'
     __viewdescr__ = 'PDR Participant Summary View'
     __table__ = BQPDRParticipantSummary
+    __pk_id__ = 'participant_id'
     # Manually define the fields, because we need to break out the sub-tables.
     __sql__ = """
     SELECT 
@@ -173,7 +174,7 @@ class BQPDRParticipantSummaryView(BQView):
       ps.ubr_sexual_gender_minority,
       ps.ubr_overall    
     FROM (
-        SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+        SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
           FROM `{project}`.{dataset}.pdr_participant 
       ) ps
       WHERE ps.modified = ps.max_timestamp and ps.withdrawal_status_id = 1
@@ -195,7 +196,7 @@ class BQPDRPMView(BQView):
     __sql__ = """
     SELECT ps.participant_id, nt.*
       FROM (
-        SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+        SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
           FROM `{project}`.{dataset}.pdr_participant 
       ) ps cross join unnest(pm) as nt
       WHERE ps.modified = ps.max_timestamp
@@ -206,10 +207,11 @@ class BQPDRGenderView(BQView):
     __viewname__ = 'v_pdr_participant_gender'
     __viewdescr__ = 'PDR Participant Gender View'
     __table__ = BQPDRParticipantSummary
+    __pk_id__ = 'participant_id'
     __sql__ = """
     SELECT ps.participant_id, nt.*
       FROM (
-        SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+        SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
           FROM `{project}`.{dataset}.pdr_participant 
       ) ps cross join unnest(genders) as nt
       WHERE ps.modified = ps.max_timestamp  
@@ -223,7 +225,7 @@ class BQPDRRaceView(BQView):
     __sql__ = """
     SELECT ps.participant_id, nt.*
       FROM (
-        SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+        SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
           FROM `{project}`.{dataset}.pdr_participant 
       ) ps cross join unnest(races) as nt
       WHERE ps.modified = ps.max_timestamp
@@ -237,7 +239,7 @@ class BQPDRModuleView(BQView):
     __sql__ = """
     SELECT ps.participant_id, nt.*
       FROM (
-        SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+        SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
           FROM `{project}`.{dataset}.pdr_participant 
       ) ps cross join unnest(modules) as nt
       WHERE ps.modified = ps.max_timestamp 
@@ -251,7 +253,7 @@ class BQPDRConsentView(BQView):
     __sql__ = """
     SELECT ps.participant_id, nt.*
       FROM (
-        SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+        SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
           FROM `{project}`.{dataset}.pdr_participant 
       ) ps cross join unnest(consents) as nt
       WHERE ps.modified = ps.max_timestamp 
@@ -265,7 +267,7 @@ class BQPDRBioSpecView(BQView):
     __sql__ = """
     SELECT ps.participant_id, nt.*
       FROM (
-        SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+        SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
           FROM `{project}`.{dataset}.pdr_participant 
       ) ps cross join unnest(biospec) as nt
       WHERE ps.modified = ps.max_timestamp 

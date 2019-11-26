@@ -87,3 +87,4 @@ class BQSiteView(BQView):
     __viewname__ = 'v_site'
     __viewdescr__ = 'Site View'
     __table__ = BQSite
+    __pk_id__ = 'site_id'

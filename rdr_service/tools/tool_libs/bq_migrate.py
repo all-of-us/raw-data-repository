@@ -227,7 +227,7 @@ class BQMigration(object):
         Main program process
         :return: Exit code value
         """
-        if not self.gcp_env.activate_sql_proxy():
+        if not self.args.delete and not self.gcp_env.activate_sql_proxy():
             return 1
 
         # TODO: Validate dataset name exists in BigQuery
@@ -334,7 +334,7 @@ def run():
     parser.add_argument('--log-file', help='write output to a log file', default=False, action='store_true')  # noqa
     parser.add_argument('--project', help='gcp project name', default='localhost')  # noqa
     parser.add_argument('--account', help='pmi-ops account', default=None)  # noqa
-    parser.add_argument('--service-account', help='gcp iam service account', required=True)  # noqa
+    parser.add_argument('--service-account', help='gcp iam service account', required=False)  # noqa
     parser.add_argument('--delete', help="delete schemas from BigQuery", default=False, action='store_true')  # noqa
     parser.add_argument('--show-schemas', help='print schemas to stdout', default=False, action='store_true')  # noqa
     parser.add_argument('--names', help="a comma delimited list of table/view names.",

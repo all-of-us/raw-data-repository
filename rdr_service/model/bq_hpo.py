@@ -40,4 +40,5 @@ class BQHPO(BQTable):
 class BQHPOView(BQView):
     __viewname__ = 'v_hpo'
     __viewdescr__ = 'HPO View'
+    __pk_id__ = 'hpo_id'
     __table__ = BQHPO
