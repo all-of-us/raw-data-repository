@@ -1,40 +1,42 @@
+import atexit
+import collections
+import contextlib
 import copy
+import csv
+import http.client
+import io
 import json
 import logging
 import os
-import faker
-import sys
-import unittest
-import http.client
 import shutil
-import io
-import collections
-import contextlib
-import csv
-
+import sys
+import tempfile
+import unittest
 from tempfile import mkdtemp
 
+import faker
+
 from rdr_service import api_util
-from rdr_service.storage import LocalFilesystemStorageProvider
 from rdr_service import config
-from tests.test_data import data_path
+from rdr_service import main
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
 from rdr_service.dao import questionnaire_dao, questionnaire_response_dao
-from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.code_dao import CodeDao
-from rdr_service import main
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.code import Code
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.offline import sql_exporter
 from rdr_service.participant_enums import (
     EnrollmentStatus,
     SuspensionStatus,
     UNSET_HPO_ID,
     WithdrawalStatus,
 )
+from rdr_service.storage import LocalFilesystemStorageProvider
 from tests.helpers.mysql_helper import reset_mysql_instance
-from rdr_service.offline import sql_exporter
+from tests.test_data import data_path
 
 
 class CodebookTestMixin:
@@ -114,6 +116,8 @@ class QuestionnaireTestMixin:
 class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin):
     """ Base class for unit tests."""
 
+    _configs_dir = os.path.join(tempfile.gettempdir(), 'configs')
+
     def __init__(self, *args, **kwargs):
         super(BaseTestCase, self).__init__(*args, **kwargs)
         self.fake = faker.Faker()
@@ -145,16 +149,24 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         os.environ['RDR_STORAGE_ROOT'] = temp_folder_path
 
     def setup_config(self):
-        data = read_dev_config(os.path.join(os.path.dirname(__file__), "..", "..",
-                                            "rdr_service", "config", "base_config.json"),
-                               os.path.join(os.path.dirname(__file__), "..", "..",
-                                            "rdr_service", "config", "config_dev.json"))
+        os.environ['RDR_CONFIG_ROOT'] = self._configs_dir
+        if not os.path.exists(self._configs_dir) or \
+                not os.path.exists(os.path.join(self._configs_dir, 'current_config.json')) or \
+                not os.path.exists(os.path.join(self._configs_dir, 'db_config.json')):
+            os.mkdir(self._configs_dir)
+            data = read_dev_config(os.path.join(os.path.dirname(__file__), "..", "..",
+                                                "rdr_service", "config", "base_config.json"),
+                                   os.path.join(os.path.dirname(__file__), "..", "..",
+                                                "rdr_service", "config", "config_dev.json"))
 
-        test_configs_dir = mkdtemp()
-        shutil.copy(os.path.join(os.path.dirname(__file__), "..", ".test_configs", "db_config.json"), test_configs_dir)
-        self.addCleanup(shutil.rmtree, test_configs_dir)
-        os.environ['RDR_CONFIG_ROOT'] = test_configs_dir
-        config.store_current_config(data)
+            shutil.copy(os.path.join(os.path.dirname(__file__), "..", ".test_configs", "db_config.json"),
+                        self._configs_dir)
+            config.store_current_config(data)
+            atexit.register(self.remove_config)
+
+    def remove_config(self):
+        if os.path.exists(self._configs_dir):
+            shutil.rmtree(self._configs_dir)
 
     def load_test_storage_fixture(self, test_file_name, bucket_name):
         bucket_dir = os.path.join(os.environ.get("RDR_STORAGE_ROOT"), bucket_name)
