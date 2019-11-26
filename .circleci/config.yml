@@ -462,7 +462,3 @@ workflows:
           <<: *only_devel
           requires:
             - test_python3_branches
-  test_python3_branches:
-    jobs:
-      - test_python3_branches:
-          <<: *filter_python3_branches
