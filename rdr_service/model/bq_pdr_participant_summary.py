@@ -43,6 +43,8 @@ class BQPDRParticipantSummarySchema(BQSchema):
     modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
 
     participant_id = BQField('participant_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    participant_origin = BQField('participant_origin', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+
     addr_state = BQField('addr_state', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     addr_zip = BQField('addr_zip', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
@@ -126,6 +128,7 @@ class BQPDRParticipantSummaryView(BQView):
     __sql__ = """
     SELECT 
       ps.participant_id,      
+      ps.participant_origin,
       ps.addr_state,
       ps.addr_zip,
       ps.is_ghost_id,

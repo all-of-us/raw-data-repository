@@ -24,6 +24,9 @@
     "vibrent": "ptc-uploads-all-of-us-rdr-prod",
     "careevolution": "ce-uploads-all-of-us-rdr-prod"
   },
+  "genomic_gc_metrics_bucket_name": [
+    "prod_genomics_cell_line_validation"
+  ],
   "metrics_shards": [
     "10"
   ],
