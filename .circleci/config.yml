@@ -10,7 +10,7 @@ defaults: &defaults
   parallelism: 1
   shell: /bin/bash --login
   environment:
-    IS_AUTOMATED_TESTING_ENVIRONMENT: true
+    IS_AUTOMATED_TESTING_ENVIRONMENT: "true"
     CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
     CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
 
@@ -138,7 +138,7 @@ jobs:
     parallelism: 1
     shell: /bin/bash --login
     environment:
-      IS_AUTOMATED_TESTING_ENVIRONMENT: true
+      IS_AUTOMATED_TESTING_ENVIRONMENT: "true"
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
     steps:
@@ -205,6 +205,160 @@ jobs:
          path: /tmp/circleci-artifacts
       - store_artifacts:
          path: /tmp/circleci-test-results
+
+
+  deploy_test_py3:
+    machine:
+      image: ubuntu-1604:201903-01
+    working_directory: ~/all-of-us/raw-data-repository
+    parallelism: 1
+    shell: /bin/bash --login
+    environment:
+      IS_AUTOMATED_TESTING_ENVIRONMENT: "true"
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+    steps:
+      - checkout
+      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+      - run:
+          name: install mysql
+          command: |
+            export DEBIAN_FRONTEND=noninteractive
+            sudo apt-get update
+            mkdir ~/tmp_mysql && cd ~/tmp_mysql/
+            curl -LO https://dev.mysql.com/get/mysql-apt-config_0.8.13-1_all.deb
+            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-preview select '
+            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-product select Ok'
+            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-server select mysql-5.7'
+            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-tools select '
+            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/unsupported-platform select abort'
+            sudo -E dpkg -i mysql-apt-config_0.8.13-1_all.deb
+            sudo apt-get update
+            sudo debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password root"
+            sudo debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password root"
+            sudo -E apt-get -y install mysql-community-server
+            sudo chmod 660 /var/log/mysql/error.log
+            sudo chmod 750 /var/log/mysql
+            sudo chmod 775 /var/log
+            sudo chmod 755 /var
+            export MYSQL_ROOT_PASSWORD=root
+      - restore_cache:
+          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
+      - run:
+          name: setup python
+          working_directory: ~/all-of-us/raw-data-repository
+          command: |
+            DEBIAN_FRONTEND=noninteractive
+            sudo apt-get -y install software-properties-common build-essential python-dev libmysqlclient-dev
+            pyenv global 3.7.0
+            sudo chmod o+w /opt
+      - run: pip install --upgrade pip
+      - run: pip install --upgrade httplib2 jira oauth2client pylint isort==4.3.8
+      - run: pip install -I alembic==0.9.1
+      - run: ./ci/setup.sh
+      - run:
+          name: activate credentials
+          working_directory: ~/all-of-us/raw-data-repository/
+          command: |
+            pyenv local 2.7.12
+            ./ci/activate_creds.sh ~/gcloud-credentials.key
+            pyenv local 3.7.0
+      - run:
+          working_directory: ~/all-of-us/raw-data-repository/rdr_service/
+          command: ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key
+      - save_cache:
+          working_directory: ~/all-of-us/raw-data-repository
+          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          paths:
+          - "venv"
+      - run: ./ci/deploy.sh pmi-drc-api-test config/config_test.json ~/gcloud-credentials.key
+      - run: ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.appspot.com -c ~/gcloud-credentials.key
+      # Save test results
+      - store_test_results:
+         path: /tmp/circleci-test-results
+      # Save artifacts
+      - store_artifacts:
+         path: /tmp/circleci-artifacts
+      - store_artifacts:
+         path: /tmp/circleci-test-results
+
+
+  deploy_staging_py3:
+    machine:
+      image: ubuntu-1604:201903-01
+    working_directory: ~/all-of-us/raw-data-repository
+    parallelism: 1
+    shell: /bin/bash --login
+    environment:
+      IS_AUTOMATED_TESTING_ENVIRONMENT: "true"
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+    steps:
+      - checkout
+      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+      - run:
+          name: install mysql
+          command: |
+            export DEBIAN_FRONTEND=noninteractive
+            sudo apt-get update
+            mkdir ~/tmp_mysql && cd ~/tmp_mysql/
+            curl -LO https://dev.mysql.com/get/mysql-apt-config_0.8.13-1_all.deb
+            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-preview select '
+            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-product select Ok'
+            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-server select mysql-5.7'
+            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-tools select '
+            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/unsupported-platform select abort'
+            sudo -E dpkg -i mysql-apt-config_0.8.13-1_all.deb
+            sudo apt-get update
+            sudo debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password root"
+            sudo debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password root"
+            sudo -E apt-get -y install mysql-community-server
+            sudo chmod 660 /var/log/mysql/error.log
+            sudo chmod 750 /var/log/mysql
+            sudo chmod 775 /var/log
+            sudo chmod 755 /var
+            export MYSQL_ROOT_PASSWORD=root
+      - restore_cache:
+          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
+      - run:
+          name: setup python
+          working_directory: ~/all-of-us/raw-data-repository
+          command: |
+            DEBIAN_FRONTEND=noninteractive
+            sudo apt-get -y install software-properties-common build-essential python-dev libmysqlclient-dev
+            pyenv global 3.7.0
+            sudo chmod o+w /opt
+      - run: pip install --upgrade pip
+      - run: pip install --upgrade httplib2 jira oauth2client pylint isort==4.3.8
+      - run: pip install -I alembic==0.9.1
+      - run: ./ci/setup.sh
+      - run:
+          name: activate credentials
+          working_directory: ~/all-of-us/raw-data-repository/
+          command: |
+            pyenv local 2.7.12
+            ./ci/activate_creds.sh ~/gcloud-credentials.key
+            pyenv local 3.7.0
+      - run:
+          working_directory: ~/all-of-us/raw-data-repository/rdr_service/
+          command: ./tools/upgrade_database.sh -i https://all-of-us-rdr-staging.appspot.com --creds_file ~/gcloud-credentials.key
+      - save_cache:
+          working_directory: ~/all-of-us/raw-data-repository
+          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          paths:
+          - "venv"
+      - run: ./ci/deploy.sh pmi-drc-api-test config/config_test.json ~/gcloud-credentials.key
+      - run: ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.staging.com -c ~/gcloud-credentials.key
+      # Save test results
+      - store_test_results:
+         path: /tmp/circleci-test-results
+      # Save artifacts
+      - store_artifacts:
+         path: /tmp/circleci-artifacts
+      - store_artifacts:
+         path: /tmp/circleci-test-results
+
+
     # Stable and production deployments are not done automatically but can be
     # manually executed with the test.sh and deploy.sh pair, e.g.:
     # ./ci/deploy.sh all-of-us-rdr-stable config/config_stable.json <configurator key file>
@@ -219,7 +373,7 @@ jobs:
     parallelism: 1
     shell: /bin/bash --login
     environment:
-      IS_AUTOMATED_TESTING_ENVIRONMENT: true
+      IS_AUTOMATED_TESTING_ENVIRONMENT: "true"
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
     steps:
@@ -280,33 +434,31 @@ workflows:
   version: 2
   build_and_test:
     jobs:
-      - build_and_test:
-          <<: *filter_no_python3
-  deploy_to_test:
-    jobs:
-      - build_and_test:
-          <<: *filter_master
-      - deploy_test:
-          <<: *filter_master
-          requires:
-            - build_and_test
-  deploy_to_staging:
-    jobs:
-      - build_and_test:
-          <<: *filter_releases
-      - deploy_staging:
-          <<: *filter_releases
-          requires:
-            - build_and_test
-  test_python3_branches:
-    jobs:
       - test_python3_branches:
           <<: *filter_python3_branches
-#  deploy_to_sandbox:
-#    jobs:
-#      - test_python3_branches:
-#          <<: *only_devel
-#      - deploy_sandbox_py3:
-#          <<: *only_devel
-#          requires:
-#            - test_python3_branches
+  deploy_to_test:
+    jobs:
+      - test_python3_branches:
+          <<: *only_devel
+      - deploy_test_py3:
+          <<: *only_devel
+          requires:
+            - test_python3_branches
+  deploy_to_staging:
+    jobs:
+      - test_python3_branches:
+          <<: *only_devel
+          <<: *filter_releases
+      - deploy_staging_py3:
+          <<: *only_devel
+          <<: *filter_releases
+          requires:
+            - test_python3_branches
+  deploy_to_sandbox:
+    jobs:
+      - test_python3_branches:
+          <<: *only_devel
+      - deploy_sandbox_py3:
+          <<: *only_devel
+          requires:
+            - test_python3_branches
