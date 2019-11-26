@@ -26,6 +26,142 @@ except ImportError:
 _logger = logging.getLogger("rdr_logger")
 
 
+class TerminalColors(object):
+    """
+    Simple class for setting terminal colors.
+    https://en.wikipedia.org/wiki/ANSI_escape_code
+    """
+
+    reset = '\033[0m'
+    bold = '\033[1m'
+    underline = '\033[4m'
+
+    fg_black = '\033[38;5;0m'
+    fg_red = '\033[38;5;1m'
+    fg_green = '\033[38;5;2m'
+    fg_yellow = '\033[38;5;3m'
+    fg_blue = '\033[38;5;4m'
+    fg_magenta = '\033[38;5;5m'
+    fg_cyan = '\033[38;5;6m'
+    fg_white = '\033[38;5;7m'
+
+    fg_bright_black = '\033[38;5;8m'
+    fg_bright_red = '\033[38;5;9m'
+    fg_bright_green = '\033[38;5;10m'
+    fg_bright_yellow = '\033[38;5;11m'
+    fg_bright_blue = '\033[38;5;12m'
+    fg_bright_magenta = '\033[38;5;13m'
+    fg_bright_cyan = '\033[38;5;14m'
+    fg_bright_white = '\033[38;5;15m'
+
+    bg_black = '\033[48;5;0m'
+    bg_red = '\033[48;5;1m'
+    bg_green = '\033[48;5;2m'
+    bg_yellow = '\033[48;5;3m'
+    bg_blue = '\033[48;5;4m'
+    bg_magenta = '\033[48;5;5m'
+    bg_cyan = '\033[48;5;6m'
+    bg_white = '\033[48;5;7m'
+
+    bg_bright_black = '\033[48;5;8m'
+    bg_bright_red = '\033[48;5;9m'
+    bg_bright_green = '\033[48;5;10m'
+    bg_bright_yellow = '\033[48;5;11m'
+    bg_bright_blue = '\033[48;5;12m'
+    bg_bright_magenta = '\033[48;5;13m'
+    bg_bright_cyan = '\033[48;5;14m'
+    bg_bright_white = '\033[48;5;15m'
+
+    _default_format = ''
+    _default_background = ''
+    _default_foreground = ''
+
+    def custom_fg_color(self, index: int) -> str:
+        """
+        Get a custom color seq
+        :param index: intger 0 - 255
+        :return: string
+        """
+        return f'\033[38;5;{index}m'
+
+    def custom_bg_color(self, index: int) -> str:
+        """
+        Get a custom color seq
+        :param index: intger 0 - 255
+        :return: string
+        """
+        return f'\033[48;5;{index}m'
+
+    def set_default_formatting(self, *args):
+        """
+        Set the default colors for formatting.
+        :param args: list of colors.
+        """
+        self._default_format = ''
+        for arg in args:
+            self._default_format += arg
+
+    def set_default_background(self, *args):
+        """
+        Set default background colors
+        :param args: list of colors
+        """
+        self._default_background = ''
+        for arg in args:
+            self._default_background += arg
+
+    def set_default_foreground(self, *args):
+        """
+        Set default foreground colors
+        :param args: list of colors
+        """
+        self._default_foreground = ''
+        for arg in args:
+            self._default_foreground += arg
+
+
+    def fmt(self, line: str, *args) -> str:
+        """
+        Color a line of text
+        :param line: string
+        :param args: list of colors.
+        :return: string
+        """
+        if not args:
+            l = self._default_format
+        else:
+            l = ''
+            for arg in args:
+                l += arg
+
+        l += str(line)
+        l += self.reset
+
+        l += self._default_background
+        l += self._default_foreground
+
+        return l
+
+
+class _ToolLoggingFormatter(logging.Formatter):
+    """
+    Add colorization to logging messages.
+    """
+
+    _color = TerminalColors()
+
+    def format(self, record):
+        msg = super(_ToolLoggingFormatter, self).format(record)
+        if record.levelno == logging.DEBUG:
+            msg = self._color.fmt(msg, self._color.fg_cyan)
+        elif record.levelno == logging.ERROR:
+            msg = self._color.fmt(msg, self._color.fg_bright_red)
+        elif record.levelno == logging.WARNING:
+            msg = self._color.fmt(msg, self._color.fg_bright_yellow)
+
+        return msg
+
+
 def setup_logging(logger, progname, debug=False, logfile=None):
     """
   Setup Python logging
@@ -41,11 +177,11 @@ def setup_logging(logger, progname, debug=False, logfile=None):
     # Set our logging options and formatter now that we have the program arguments.
     if debug:
         logging.basicConfig(filename=os.devnull, datefmt="%Y-%m-%d %H:%M:%S", level=logging.DEBUG)
-        formatter = logging.Formatter("%(asctime)s {0}: %(levelname)s: %(message)s".format(progname))
+        formatter = _ToolLoggingFormatter("%(asctime)s {0}: %(levelname)s: %(message)s".format(progname))
     else:
         logging.basicConfig(filename=os.devnull, datefmt="%Y-%m-%d %H:%M:%S", level=logging.INFO)
         # formatter = logging.Formatter('%(levelname)s: {0}: %(message)s'.format(progname))
-        formatter = logging.Formatter("%(message)s")
+        formatter = _ToolLoggingFormatter("%(message)s")
 
     # Setup stream logging handler
     handler = logging.StreamHandler(sys.stdout)
@@ -64,7 +200,7 @@ def setup_logging(logger, progname, debug=False, logfile=None):
             os.makedirs(logpath)
 
         handler = logging.FileHandler(logfile)
-        handler.setFormatter(formatter)
+        handler.setFormatter(logging.Formatter("%(asctime)s {0}: %(levelname)s: %(message)s".format(progname)))
 
         logger.addHandler(handler)
 
@@ -517,4 +653,3 @@ def is_git_branch_clean():
         return True
 
     return False
-

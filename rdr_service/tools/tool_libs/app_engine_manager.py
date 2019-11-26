@@ -13,10 +13,12 @@ import yaml
 from yaml import Loader as yaml_loader
 
 from rdr_service.services.system_utils import setup_logging, setup_i18n, git_project_root, git_current_branch, \
-    git_checkout_branch, is_git_branch_clean
-from rdr_service.tools.tool_libs import GCPProcessContext
+    git_checkout_branch, is_git_branch_clean, TerminalColors
+from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, GCP_APP_CONFIG_MAP
-from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic
+from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
+    gcp_application_default_creds_exist
+from tools.tool_libs.alembic import AlembicManagerClass
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -37,7 +39,7 @@ class DeployAppClass(object):
 
     _current_git_branch = None
 
-    def __init__(self, args, gcp_env):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
@@ -162,10 +164,17 @@ class DeployAppClass(object):
         Main program process
         :return: Exit code value
         """
+        clr = TerminalColors()
         _logger.info('')
 
+        # Installing the app config makes API calls and needs an oauth token to succeed.
+        if not gcp_application_default_creds_exist() and not self.args.service_account:
+            _logger.error('\n*** Google application default credentials were not found. ***')
+            _logger.error("Run 'gcloud auth application-default login' and then try deploying again.\n")
+            return 1
+
         if not is_git_branch_clean():
-            _logger.error('Error: there are uncommitted changes in current branch, aborting.\n')
+            _logger.error('*** There are uncommitted changes in current branch, aborting. ***\n')
             return 1
 
         if not self.setup_services():
@@ -175,19 +184,23 @@ class DeployAppClass(object):
 
         running_services = gcp_get_app_versions(running_only=True)
 
-        _logger.info('Deployment Information:')
+        clr.set_default_formatting(clr.bold, clr.custom_fg_color(43))
+        clr.set_default_foreground(clr.custom_fg_color(152))
+
+        _logger.info(clr.fmt('Deployment Information:', clr.custom_fg_color(156)))
+        _logger.info(clr.fmt(''))
         _logger.info('=' * 90)
-        _logger.info('  Target Project : {0}'.format(self.gcp_env.project))
-        _logger.info('  Branch/Tag To Deploy : {0}'.format(self.args.git_branch))
-        _logger.info('  App Source Path : {0}'.format(self.deploy_root))
-        _logger.info('  Promote : {0}'.format('Yes' if self.args.promote else 'No'))
+        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+        _logger.info('  Branch/Tag To Deploy  : {0}'.format(clr.fmt(self.args.git_branch)))
+        _logger.info('  App Source Path       : {0}'.format(clr.fmt(self.deploy_root)))
+        _logger.info('  Promote               : {0}'.format(clr.fmt('Yes' if self.args.promote else 'No')))
 
         if self.gcp_env.project in ('all-of-us-rdr-prod', 'all-of-us-rdr-stable'):
             if 'JIRA_API_USER_NAME' in os.environ and 'JIRA_API_USER_PASSWORD' in os.environ:
                 self.jira_ready = True
-                _logger.info('  JIRA Credentials: Set')
+                _logger.info('  JIRA Credentials      : {0}'.format(clr.fmt('Set')))
             else:
-                _logger.warning('  JIRA Credentials: !!! Not Set !!!')
+                _logger.info('  JIRA Credentials      : {0}'.format(clr.fmt('*** Not Set ***', clr.fg_bright_red)))
 
         for service in self.services:
             _logger.info('\n  Service : {0}'.format(service))
@@ -195,13 +208,18 @@ class DeployAppClass(object):
             if service in running_services:
                 cur_services = running_services[service]
                 for cur_service in cur_services:
-                    _logger.info('    Deployed Version  : {0}, split : {1}, deployed : {2}'.
-                                 format(cur_service['version'], cur_service['split'], cur_service['deployed']))
+                    _logger.info('    Deployed Version    : {0}, split : {1}, deployed : {2}'.
+                                 format(clr.fmt(cur_service['version'], clr.bold, clr.fg_bright_blue),
+                                        clr.fmt(cur_service['split'], clr.bold, clr.fg_bright_blue),
+                                        clr.fmt(cur_service['deployed'], clr.bold, clr.fg_bright_blue)))
 
-                _logger.info('    Target Version    : {0}'.format(self.deploy_version))
+                _logger.info('    Target Version      : {0}'.format(clr.fmt(self.deploy_version)))
 
         _logger.info('')
         _logger.info('=' * 90)
+
+        # Reset all colors.
+        _logger.info(clr.reset)
 
         if not self.args.quiet:
             confirm = input('\nStart deployment (Y/n)? : ')
@@ -209,10 +227,18 @@ class DeployAppClass(object):
                 _logger.warning('Aborting deployment.')
                 return 1
 
+        # Disable any other user prompts.
+        self.args.quiet = True
+
         # Attempt to switch to the git branch we need to deploy.
         _logger.info('Switching to git branch/tag: {0}...'.format(self.args.git_branch))
         if not git_checkout_branch(self.args.git_branch):
             return 1
+
+        # Run database migration
+        _logger.info('Applying database migrations...')
+        alembic = AlembicManagerClass(self.args, self.gcp_env, ['upgrade', 'head'])
+        alembic.run()
 
         _logger.info('Preparing configuration files...')
         config_files = self.setup_config_files()
@@ -234,7 +260,7 @@ class DeployAppClass(object):
 
 
 class ListServicesClass(object):
-    def __init__(self, args, gcp_env):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
@@ -273,7 +299,7 @@ class ListServicesClass(object):
 
 
 class SplitTrafficClass(object):
-    def __init__(self, args, gcp_env):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
@@ -341,7 +367,7 @@ class AppConfigClass(object):
     _config_dir = None
     _provider = None
 
-    def __init__(self, args, gcp_env):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
@@ -451,31 +477,21 @@ class AppConfigClass(object):
                 tmp_v = parts[0][:parts[0].rfind(':') + 1] + '*********@' + parts[1] + "\n"
             elif 'password' in line:
                 parts = tmp_v.split(':')
-                tmp_v = parts[0] + ': "*********"' + '\n'
+                tmp_v = parts[0] + ': "*********"\n'
 
-            sys.stdout.write(tmp_v)
-
-        # keys = []
-        # for item in diff_set:
-        #     keys.append(item[0])
-        #
-        # def safe_print(target, k, v):
-        #     tmp_v = v
-        #     if 'db_connection_string' in k:
-        #         parts = tmp_v.split('@')
-        #         tmp_v = parts[0][:parts[0].rfind(':')+1] + '*********' + parts[1]
-        #     elif 'password' in k:
-        #         tmp_v = '********'
-        #     print(f'     {target:6} : {tmp_v}')
-        #
-        # for key in keys:
-        #     print(f'  Key: {key}')
-        #     safe_print('remote', key, remote_config[key])
-        #     safe_print('local', key, local_config[key])
+            print(tmp_v.replace('\n', ''))
 
         print('')
 
     def run(self):
+
+        # this tool makes API calls and needs an oauth token to succeed.
+        if not gcp_application_default_creds_exist() and not self.args.service_account:
+            _logger.error(
+                '\n*** Google application default credentials were not found. ***')
+            _logger.error(
+                "Run 'gcloud auth application-default login' to create credentials or add '--service-account' arg.\n")
+            return 1
 
         # Argument checks.
         if self.args.key not in {'current_config', 'db_config'}:
@@ -529,7 +545,7 @@ def run():
 
     # Deploy app
     deploy_parser = subparser.add_parser("deploy")
-    deploy_parser.add_argument("--quiet", help="do not ask for user input.", default=False, action="store_true") # noqa
+    deploy_parser.add_argument("--quiet", help="do not ask for user input", default=False, action="store_true") # noqa
     deploy_parser.add_argument("--git-branch", help="git branch/tag to deploy.", required=True)  # noqa
     deploy_parser.add_argument("--deploy-as", help="deploy as version", default=None)  #noqa
     deploy_parser.add_argument("--services", help="comma delimited list of service names to deploy",
@@ -544,7 +560,7 @@ def run():
 
     # Manage service traffic.
     split_parser = subparser.add_parser("split-traffic")
-    split_parser.add_argument("--quiet", help="do not ask for user input.", default=False, action="store_true") # noqa
+    split_parser.add_argument("--quiet", help="do not ask for user input", default=False, action="store_true") # noqa
     split_parser.add_argument('--service', help='name of service to split traffic on.', required=True)
     split_parser.add_argument('--versions', required=True,
                               help='a list of versions and split ratios, ex: service_a:0.4,service_b:0.6 ')

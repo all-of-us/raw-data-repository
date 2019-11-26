@@ -13,7 +13,7 @@ _python()
 
 
     # These are the specific tools we support
-    tools="--help migrate-bq verify oauth-token mysql app-engine"
+    tools="--help migrate-bq verify oauth-token mysql app-engine alembic"
     # These are the standard options all tools support.
     stdopts="--help --debug --log-file --project --account --service-account"
 
@@ -33,6 +33,10 @@ _python()
             COMPREPLY=( $(compgen -W "${tools}" -- ${cur}) )
             return 0
             ;;
+        rtool)
+            COMPREPLY=( $(compgen -W "${tools}" -- ${cur}) )
+            return 0
+            ;;
         verify)
             COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
             return 0
@@ -46,6 +50,12 @@ _python()
         mysql)
             # These are options specific to this tool.
             local toolopts="--create-cloud-instance --change-passwords"
+            COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
+            return 0
+            ;;
+        alembic)
+            # These are options specific to this tool.
+            local toolopts="--quiet"
             COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
             return 0
             ;;
@@ -103,4 +113,5 @@ _python()
    return 0
 }
 complete -F _python python
+complete -F _python rtool
 
