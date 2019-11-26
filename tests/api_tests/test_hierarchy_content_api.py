@@ -91,8 +91,7 @@ class HierarchyContentApiTest(BaseTestCase):
         }
         self.send_put('organization/hierarchy', request_data=request_json)
         result = self.send_get('Awardee/TEST_HPO_NAME')
-        self.assertEquals(_make_awardee_resource('TEST_HPO_NAME', 'Test new HPO display name', 'DV'),
-                          result)
+        self.assertEqual(_make_awardee_resource('TEST_HPO_NAME', 'Test new HPO display name', 'DV'), result)
 
     def test_update_existing_hpo(self):
         self._setup_data()
