@@ -454,15 +454,15 @@ workflows:
           <<: *filter_releases
           requires:
             - test_python3_branches
+  deploy_to_sandbox:
+    jobs:
+      - test_python3_branches:
+          <<: *only_devel
+      - deploy_sandbox_py3:
+          <<: *only_devel
+          requires:
+            - test_python3_branches
   test_python3_branches:
     jobs:
       - test_python3_branches:
           <<: *filter_python3_branches
-#  deploy_to_sandbox:
-#    jobs:
-#      - test_python3_branches:
-#          <<: *only_devel
-#      - deploy_sandbox_py3:
-#          <<: *only_devel
-#          requires:
-#            - test_python3_branches
