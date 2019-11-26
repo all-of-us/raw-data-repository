@@ -38,6 +38,9 @@
   "consent_pdf_bucket": {
     "example": "app_default_bucket"
   },
+  "genomic_gc_metrics_bucket_name": [
+    "dev_genomics_cell_line_validation"
+  ],
   "metrics_shards": [
     "10"
   ],
