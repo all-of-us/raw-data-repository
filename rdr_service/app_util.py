@@ -71,7 +71,7 @@ def check_auth(role_whitelist):
     if set(user_info.get("roles", [])) & set(role_whitelist):
         return
 
-    print(f"User {user_email} has roles {user_info.get('roles')}, but {role_whitelist} is required")
+    logging.warning(f"User {user_email} has roles {user_info.get('roles')}, but {role_whitelist} is required")
     raise Forbidden()
 
 
@@ -134,6 +134,21 @@ def check_cron():
 
 def lookup_user_info(user_email):
     return config.getSettingJson(config.USER_INFO, {}).get(user_email)
+
+def get_participant_origin_id():
+    """
+    Returns the clientId value set in the config for the user.
+    :return: Client Id
+    """
+    auth_email = get_oauth_id()
+    user_info = lookup_user_info(auth_email)
+    client_id = user_info.get('clientId')
+    from rdr_service.api_util import DEV_MAIL
+    if not client_id:
+        if auth_email == DEV_MAIL:
+            client_id = "example"  # TODO: This is a hack because something sets up configs different
+            # when running all tests and it doesnt have the clientId key.
+    return client_id
 
 
 def _is_self_request():

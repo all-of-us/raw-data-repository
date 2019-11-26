@@ -20,11 +20,12 @@
   "genomic_biobank_manifest_result_folder_name": [
     "genomic_water_line_test_results"
   ],
+  "consent_pdf_bucket": {
+    "vibrent": "ptc-uploads-all-of-us-rdr-prod",
+    "careevolution": "ce-uploads-all-of-us-rdr-prod"
+  },
   "genomic_gc_metrics_bucket_name": [
     "prod_genomics_cell_line_validation"
-  ],
-  "consent_pdf_bucket": [
-    "ptc-uploads-all-of-us-rdr-prod"
   ],
   "metrics_shards": [
     "10"
