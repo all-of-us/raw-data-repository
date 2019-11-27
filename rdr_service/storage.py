@@ -6,9 +6,9 @@ import shutil
 import datetime
 import hashlib
 import pathlib
+import tempfile
 
 from contextlib import ContextDecorator
-from tempfile import mkstemp
 from abc import ABC, abstractmethod
 
 from google.api_core.exceptions import RequestRangeNotSatisfiable
@@ -170,14 +170,13 @@ class GoogleCloudStorageFile(ContextDecorator):
 
     _lines = None
     _line = 0
+    _w_temp_file = None
 
     def __init__(self, provider=None, blob=None):
         self.provider = provider
         self.blob = blob
         self.position = 0
         self.dirty = False
-        self.temp_file = None
-        self.temp_file_path = None
 
     def read(self, size=None):
         kwargs = {'start': self.position}
@@ -190,12 +189,12 @@ class GoogleCloudStorageFile(ContextDecorator):
 
     def write(self, content):
         self.dirty = True
-        if self.temp_file is None:
-            _, path = mkstemp()
-            self.temp_file_path = path
-            self.temp_file = open(path, 'w')
-
-        self.temp_file.write(content)
+        if self._w_temp_file is None:
+            self._w_temp_file = tempfile.NamedTemporaryFile(delete=False)
+        if isinstance(content, str):
+            content = content.encode()
+        self._w_temp_file.write(content)
+        self._w_temp_file.flush()
 
     def seek(self, offset=0, whence=0):
         if whence == 0:
@@ -206,9 +205,12 @@ class GoogleCloudStorageFile(ContextDecorator):
             self.position = self.blob.size + offset
 
     def close(self):
-        if self.temp_file is not None:
-            self.blob.upload_from_filename(self.temp_file_path)
-            self.temp_file.close()
+        if self._w_temp_file is not None:
+            self._w_temp_file.close()
+            self.blob.upload_from_filename(self._w_temp_file.name)
+            os.unlink(self._w_temp_file.name)
+            self._w_temp_file = None
+        self.dirty = False
 
     def __next__(self):
         if not self._lines:
@@ -259,7 +261,6 @@ class GoogleCloudStorageFile(ContextDecorator):
         if buffer.tell() > 0:
             buffer.seek(0)
             yield buffer.read()
-
 
 
 class GoogleCloudStorageProvider(StorageProvider):
