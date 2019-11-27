@@ -1,4 +1,3 @@
-import os
 import logging
 import time
 
@@ -7,6 +6,8 @@ import rdr_service.lib_fhir.fhirclient_3_0_0.models.organization
 
 from rdr_service.lib_fhir.fhirclient_3_0_0.models.fhirabstractbase import FHIRValidationError
 from werkzeug.exceptions import BadRequest
+
+from rdr_service import config
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
@@ -383,7 +384,11 @@ class OrganizationHierarchySyncDao(BaseDao):
     def _get_lat_long_for_site(self, address_1, city, state):
         self.full_address = address_1 + ' ' + city + ' ' + state
         try:
-            self.api_key = os.environ.get('API_KEY')
+            self.api_key = config.getSetting('geocode_api_key', None)
+            if not self.api_key:
+                logging.error('Geocode key not set')
+                return None, None
+
             self.gmaps = googlemaps.Client(key=self.api_key)
             try:
                 geocode_result = self.gmaps.geocode(address_1 + '' + city + ' ' + state)[0]
