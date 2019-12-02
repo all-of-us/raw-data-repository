@@ -112,7 +112,8 @@ class GenomicJobController:
         """
         files = list_blobs('/' + bucket_name)
         files = [s.name for s in files
-                 if self.archive_folder_name not in s.name.lower()]
+                 if self.archive_folder_name not in s.name.lower()
+                 if 'datamanifest' in s.name.lower()]
         if not files:
             logging.info('No files in cloud bucket {}'.format(bucket_name))
             return GenomicSubProcessResult.NO_FILES
