@@ -221,6 +221,15 @@
           "156.145.115.105"
         ]
       }
+    },
+    "awardee-illinois@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "ILLINOIS",
+      "whitelisted_ip_ranges" : {
+        "ip4": [
+          "10.105.197.20"
+        ]
+      }
     }
   }
 }
