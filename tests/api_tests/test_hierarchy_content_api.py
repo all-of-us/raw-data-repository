@@ -993,16 +993,6 @@ class HierarchyContentApiTest(BaseTestCase):
                 }
             ],
             "name": "Banner Baywood Medical Center",
-            "address": [
-                {
-                    "line": [
-                        "6644 E. Baywood Ave."
-                    ],
-                    "city": "Mesa",
-                    "state": "AZ",
-                    "postalCode": "85206"
-                }
-            ],
             "partOf": {
                 "reference": "Organization/o123457"
             },
@@ -1026,18 +1016,21 @@ class HierarchyContentApiTest(BaseTestCase):
             ]
         }
 
-        import ipdb; ipdb.set_trace()
         self.send_put('organization/hierarchy', request_data=request_json)
 
         existing_map = {entity.googleGroup: entity for entity in self.site_dao.get_all()}
         existing_entity = existing_map.get('hpo-site-bannerbaywood')
 
         self.assertEqual(existing_entity.adminEmails, 'jennifer.craig-muller@bannerhealth.com,mcoury@email.arizona.edu')
-        self.assertEqual(existing_entity.siteStatus, SiteStatus('ACTIVE'))
+        self.assertEqual(existing_entity.siteStatus, SiteStatus('INACTIVE'))
         self.assertEqual(existing_entity.isObsolete, None)
         self.assertEqual(existing_entity.hpoId, 2)
         self.assertEqual(existing_entity.resourceId, '7d011d52-5de1-43e6-afa8-0943b15dc639')
         self.assertEqual(existing_entity.siteName, 'Banner Baywood Medical Center')
+        self.assertEqual(existing_entity.timeZoneId, None)
+        self.assertEqual(existing_entity.latitude, None)
+        self.assertEqual(existing_entity.longitude, None)
+        self.assertEqual(existing_entity.address, None)
 
     def test_create_hpo_new_payload(self):
         self._setup_data()
