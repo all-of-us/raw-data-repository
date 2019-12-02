@@ -923,6 +923,122 @@ class HierarchyContentApiTest(BaseTestCase):
         self.assertEqual(existing_entity.resourceId, '7d011d52-5de1-43e6-afa8-0943b15dc639')
         self.assertEqual(existing_entity.siteName, 'Banner Baywood Medical Center')
 
+    @mock.patch('rdr_service.dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao._get_time_zone')
+    def test_insert_site_no_address_inactive(self, time_zone):
+        self._setup_data()
+        time_zone.return_value = 'America/Los_Angeles'
+        request_json = {
+            "resourceType": "Organization",
+            "id": "7d011d52-5de1-43e6-afa8-0943b15dc639",
+            "meta": {
+                "versionId": "27"
+            },
+            "extension": [
+                {
+                    "url": "http://all-of-us.org/fhir/sites/mayolink-client-#",
+                    "valueString": "7036694"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/scheduling-instructions",
+                    "valueString": "Someone from the All of Us Research Program may contact you by phone and/or "
+                                   "email to schedule an appointment and to share more information about the Program."
+                                   " You may already have an appointment scheduled. "
+                                   "To contact us directly, please call 877-268-2684 or email "
+                                   "AllofUsAZ@email.arizona.edu. For a list of our locations, "
+                                   "visit AllofUsAZ.org.<br><br>El personal del Programa Científico All of Us "
+                                   "se comunicará con usted por teléfono y/o "
+                                   "correo electrónico para hacer una cita y compartir más información acerca del "
+                                   "programa. Quizás, usted ya tiene una cita."
+                                   " Para comunicarse directamente con nosotros, por favor llame al 877-268-2684 "
+                                   "o envíe un correo electrónico a "
+                                   "AllofUsAZ@email.arizona.edu. Para ver la lista de nuestras clínicas, "
+                                   "visite AllofUsAZ.org."
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/enrolling-status",
+                    "valueString": "true"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/anticipated-launch-date",
+                    "valueString": "09-30-2008"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/ptsc-scheduling-status",
+                    "valueString": "false"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/google-group-name",
+                    "valueString": "HPO Banner Baywood"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/digital-scheduling-status",
+                    "valueString": "false"
+                }
+            ],
+            "identifier": [
+                {
+                    "system": "http://all-of-us.org/fhir/sites/site-id",
+                    "value": "hpo-site-bannerbaywood"
+                }
+            ],
+            "active": True,
+            "type": [
+                {
+                    "coding": [
+                        {
+                            "system": "http://all-of-us.org/fhir/sites/type",
+                            "code": "SITE"
+                        }
+                    ]
+                }
+            ],
+            "name": "Banner Baywood Medical Center",
+            "address": [
+                {
+                    "line": [
+                        "6644 E. Baywood Ave."
+                    ],
+                    "city": "Mesa",
+                    "state": "AZ",
+                    "postalCode": "85206"
+                }
+            ],
+            "partOf": {
+                "reference": "Organization/o123457"
+            },
+            "contact": [
+                {
+                    "telecom": [
+                        {
+                            "system": "phone",
+                            "value": "8772682684"
+                        }
+                    ]
+                },
+                {
+                    "telecom": [
+                        {
+                            "system": "email",
+                            "value": "jennifer.craig-muller@bannerhealth.com,mcoury@email.arizona.edu"
+                        }
+                    ]
+                }
+            ]
+        }
+
+        import ipdb; ipdb.set_trace()
+        self.send_put('organization/hierarchy', request_data=request_json)
+
+        existing_map = {entity.googleGroup: entity for entity in self.site_dao.get_all()}
+        existing_entity = existing_map.get('hpo-site-bannerbaywood')
+
+        self.assertEqual(existing_entity.adminEmails, 'jennifer.craig-muller@bannerhealth.com,mcoury@email.arizona.edu')
+        self.assertEqual(existing_entity.siteStatus, SiteStatus('ACTIVE'))
+        self.assertEqual(existing_entity.isObsolete, None)
+        self.assertEqual(existing_entity.hpoId, 2)
+        self.assertEqual(existing_entity.resourceId, '7d011d52-5de1-43e6-afa8-0943b15dc639')
+        self.assertEqual(existing_entity.siteName, 'Banner Baywood Medical Center')
+
     def test_create_hpo_new_payload(self):
         self._setup_data()
         request_json = {
