@@ -402,7 +402,7 @@ class AppConfigClass(object):
             # insert the geocode key from 'pmi-drc-api-test' into this config.
             geocode_config = self._provider.load('geocode_key', project='pmi-drc-api-test')
             if geocode_config:
-                config['geocode_api_key'] = geocode_config['api_key']
+                config['geocode_api_key'] = [geocode_config['api_key']]
 
         return config
 
