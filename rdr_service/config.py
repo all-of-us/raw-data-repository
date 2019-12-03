@@ -181,7 +181,7 @@ class GoogleCloudDatastoreConfigProvider(ConfigProvider):
         entity = datastore_client.get(key=key)
         if entity:
             cdata = entity['configuration']
-            if isinstance(cdata, bytes):
+            if isinstance(cdata, (str, bytes)):
                 try:
                     cdata = base64.b64decode(cdata).decode('utf-8')
                 except UnicodeDecodeError:
@@ -212,7 +212,8 @@ class GoogleCloudDatastoreConfigProvider(ConfigProvider):
             for k, v in kwargs.items():
                 history_entity[k] = v
             datastore_client.put(entity=history_entity)
-            cdata = base64.b64encode(json.dumps(config_dict).encode())
+            # https://stackoverflow.com/questions/56067244/encoding-a-string-to-base64-in-python-2-x-vs-python-3-x
+            cdata = base64.b64encode(json.dumps(config_dict).encode()).decode()
             entity['configuration'] = cdata
             datastore_client.put(entity=entity)
 
