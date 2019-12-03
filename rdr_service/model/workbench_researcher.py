@@ -25,7 +25,7 @@ class WorkbenchResearcherBase(object):
 class WorkbenchResearcher(WorkbenchResearcherBase, Base):
     __tablename__ = "workbench_researcher"
 
-    WorkbenchInstitutionalAffiliations = relationship("WorkbenchInstitutionalAffiliations",
+    workbenchInstitutionalAffiliations = relationship("WorkbenchInstitutionalAffiliations",
                                                       cascade="all, delete-orphan")
 
     # Primary Key
@@ -35,7 +35,7 @@ class WorkbenchResearcher(WorkbenchResearcherBase, Base):
     # have mysql always update the modified data when the record is changed
     modified = Column("modified", DateTime, nullable=True)
 
-    __table_args__ = (UniqueConstraint("workbench_researcher", "user_source_id"))
+    __table_args__ = (UniqueConstraint("user_source_id", name="uniqe_user_source_id"),)
 
 
 class WorkbenchInstitutionalAffiliations(Base):
@@ -57,6 +57,8 @@ class WorkbenchInstitutionalAffiliations(Base):
 class WorkbenchResearcherHistory(WorkbenchResearcherBase, Base):
     __tablename__ = "workbench_researcher_history"
 
+    workbenchInstitutionalAffiliations = relationship("WorkbenchInstitutionalAffiliationsHistory",
+                                                      cascade="all, delete-orphan")
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
     # have mysql set the creation data for each new order

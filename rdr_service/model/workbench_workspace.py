@@ -31,7 +31,7 @@ class WorkbenchWorkspaceBase(object):
 class WorkbenchWorkspace(WorkbenchWorkspaceBase, Base):
     __tablename__ = "workbench_workspace"
 
-    WorkbenchWorkspaceUser = relationship("WorkbenchWorkspaceUser", cascade="all, delete-orphan")
+    workbenchWorkspaceUser = relationship("WorkbenchWorkspaceUser", cascade="all, delete-orphan")
 
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
@@ -40,7 +40,7 @@ class WorkbenchWorkspace(WorkbenchWorkspaceBase, Base):
     # have mysql always update the modified data when the record is changed
     modified = Column("modified", DateTime, nullable=True)
 
-    __table_args__ = (UniqueConstraint("workbench_workspace", "workspace_source_id"))
+    __table_args__ = (UniqueConstraint("workspace_source_id", name="uniqe_workspace_source_id"),)
 
 
 class WorkbenchWorkspaceUser(Base):
@@ -54,13 +54,16 @@ class WorkbenchWorkspaceUser(Base):
     modified = Column("modified", DateTime, nullable=True)
 
     workspaceId = Column("workspace_id", Integer, ForeignKey("workbench_workspace.id"), nullable=False)
-    userId = Column("user_id", Integer, ForeignKey("workbench_researcher.id"), nullable=False)
+    researcherId = Column("researcher_Id", Integer, ForeignKey("workbench_researcher.id"), nullable=False)
+    userId = Column("user_id", Integer, nullable=False)
     role = Column("role", Enum(WorkbenchWorkspaceUserRole), default=WorkbenchWorkspaceUserRole.UNSET)
     status = Column("status", Enum(WorkbenchWorkspaceStatus), default=WorkbenchWorkspaceStatus.UNSET)
 
 
 class WorkbenchWorkspaceHistory(WorkbenchWorkspaceBase, Base):
     __tablename__ = "workbench_workspace_history"
+
+    workbenchWorkspaceUser = relationship("WorkbenchWorkspaceUserHistory", cascade="all, delete-orphan")
 
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
@@ -71,7 +74,7 @@ class WorkbenchWorkspaceHistory(WorkbenchWorkspaceBase, Base):
 
 
 class WorkbenchWorkspaceUserHistory(Base):
-    __tablename__ = "workbench_workspace_user"
+    __tablename__ = "workbench_workspace_user_history"
 
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
@@ -81,6 +84,7 @@ class WorkbenchWorkspaceUserHistory(Base):
     modified = Column("modified", DateTime, nullable=True)
 
     workspaceId = Column("workspace_id", Integer, ForeignKey("workbench_workspace_history.id"), nullable=False)
-    userId = Column("user_id", Integer, ForeignKey("workbench_researcher_history.id"), nullable=False)
+    researcherId = Column("researcher_Id", Integer, ForeignKey("workbench_researcher_history.id"), nullable=False)
+    userId = Column("user_id", Integer, nullable=False)
     role = Column("role", Enum(WorkbenchWorkspaceUserRole), default=WorkbenchWorkspaceUserRole.UNSET)
     status = Column("status", Enum(WorkbenchWorkspaceStatus), default=WorkbenchWorkspaceStatus.UNSET)

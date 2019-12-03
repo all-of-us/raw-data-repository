@@ -2532,8 +2532,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         qs = '&stratification=SITES_COUNT'
         results = self.send_get('PublicMetrics', query_string=qs)
-        result_json = {'sites_count': results[0]}
-        self.assertEqual(result_json, {'sites_count': 2})
+        self.assertEqual(results, {'sites_count': 2})
 
     def create_demographics_questionnaire(self):
         """Uses the demographics test data questionnaire.  Returns the questionnaire id"""
