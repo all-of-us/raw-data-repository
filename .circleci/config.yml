@@ -43,7 +43,7 @@ filter_releases: &filter_releases
     branches:
       ignore: /.*/
     tags:
-      only: /v[0-9]+(-[0-9]+)*-rc[0-9]+[a-z]*/
+      only: /v[0-9]+(\.[0-9]+)*\.[0-9]+[a-z]*/
 
 jobs:
   build_and_test:
