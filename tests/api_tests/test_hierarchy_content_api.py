@@ -1030,7 +1030,6 @@ class HierarchyContentApiTest(BaseTestCase):
         self.assertEqual(existing_entity.timeZoneId, None)
         self.assertEqual(existing_entity.latitude, None)
         self.assertEqual(existing_entity.longitude, None)
-        self.assertEqual(existing_entity.address, None)
 
     def test_create_hpo_new_payload(self):
         self._setup_data()
