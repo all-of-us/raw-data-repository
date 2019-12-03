@@ -553,7 +553,8 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         end_to_end_test_files = (
             'GC_AoU_GEN_TestDataManifest.csv',
-            'GC_AoU_SEQ_TestDataManifest.csv'
+            'GC_AoU_SEQ_TestDataManifest.csv',
+            'test_empty_wells.csv'
         )
         for test_file in end_to_end_test_files:
             self._create_ingestion_test_file(test_file, bucket_name)
@@ -563,16 +564,16 @@ class GenomicPipelineTest(BaseTestCase):
 
         # test file processing queue
         files_processed = self.file_processed_dao.get_all()
-        files_processed = sorted(files_processed, key=lambda x: x.fileName, reverse=True)
+        files_processed.sort(key=lambda x: x.fileName, reverse=True)
         self.assertEqual(len(files_processed), 2)
         self._gc_files_processed_test_cases(files_processed, bucket_name)
 
         # Test the fields against the DB
         gc_metrics = self.metrics_dao.get_all()
         self.assertEqual(len(gc_metrics), 10)
-        # self._gc_metrics_ingested_data_test_cases(bucket_name,
-        #                                           files_processed,
-        #                                           gc_metrics)
+        self._gc_metrics_ingested_data_test_cases(bucket_name,
+                                                  files_processed,
+                                                  gc_metrics)
 
         # Test successful run result
         run_obj = self.job_run_dao.get_all()
@@ -631,7 +632,7 @@ class GenomicPipelineTest(BaseTestCase):
             csv_reader = csv.DictReader(csv_file, delimiter=",")
             rows = list(csv_reader)
             for i in range(0, 5):
-                self.assertEqual(int(rows[i]['Biobank ID'][1:]), gc_metrics[i].biobankId)
+                self.assertEqual(rows[i]['Biobank ID'][1:], gc_metrics[i].biobankId)
                 self.assertEqual(rows[i]['BiobankidSampleid'], gc_metrics[i].sampleId)
                 self.assertEqual(rows[i]['LIMS ID'], gc_metrics[i].limsId)
                 self.assertEqual(int(rows[i]['Mean Coverage']), gc_metrics[i].meanCoverage)
@@ -652,7 +653,7 @@ class GenomicPipelineTest(BaseTestCase):
             csv_reader = csv.DictReader(csv_file, delimiter=",")
             rows = list(csv_reader)
             for i in range(5, 10):
-                self.assertEqual(int(rows[i-5]['Biobank ID'][1:]), gc_metrics[i].biobankId)
+                self.assertEqual(rows[i-5]['Biobank ID'][1:], gc_metrics[i].biobankId)
                 self.assertEqual(rows[i-5]['BiobankidSampleid'], gc_metrics[i].sampleId)
                 self.assertEqual(rows[i-5]['LIMS ID'], gc_metrics[i].limsId)
                 self.assertEqual(int(rows[i-5]['Call Rate']), gc_metrics[i].callRate)
@@ -666,8 +667,9 @@ class GenomicPipelineTest(BaseTestCase):
         # Create the fake Google Cloud CSV files to ingest
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         end_to_end_test_files = (
-            'GC_AoU_SEQ_TestBadStructure.csv',
-            'GC-AoU-TestBadFilename.csv',
+            'GC_AoU_SEQ_TestBadStructureDataManifest.csv',
+            'GC-AoU-TestBadFilenameDataManifest.csv',
+            'test_empty_wells.csv'
         )
         for test_file in end_to_end_test_files:
             self._create_ingestion_test_file(test_file, bucket_name)

@@ -46,27 +46,8 @@ def ingest_genomic_centers_metrics_files():
     job_id = GenomicJob.METRICS_INGESTION
 
     run_controller = genomic_job_controller.GenomicJobController(job_id)
-    file_queue_result = run_controller.generate_file_processing_queue()
-
-    if file_queue_result == GenomicSubProcessResult.NO_FILES:
-        logging.info('No files to process.')
-        run_controller.end_run(file_queue_result)
-    else:
-        while len(run_controller.file_queue) > 0:
-            try:
-                ingestion_result = run_controller.process_file_using_ingester(
-                    run_controller.file_queue[0])
-                file_ingested = run_controller.file_queue.popleft()
-                run_controller.update_file_processed(
-                    file_ingested.id,
-                    GenomicSubProcessStatus.COMPLETED,
-                    ingestion_result
-                )
-            except IndexError:
-                logging.info('No files left in file queue.')
-
-        run_result = run_controller.aggregate_run_results()
-        run_controller.end_run(run_result)
+    result = run_controller.ingest_gc_metrics()
+    run_controller.end_run(result)
 
 
 def reconcile_metrics():

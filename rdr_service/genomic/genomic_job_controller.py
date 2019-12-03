@@ -1,12 +1,11 @@
 """
 This module tracks and validates the status of Genomics Pipeline Subprocesses.
 """
-from collections import deque
+
 import logging
 
-from rdr_service.api_util import list_blobs
 from rdr_service.config import GENOMIC_GC_METRICS_BUCKET_NAME, getSetting
-from rdr_service.participant_enums import GenomicSubProcessResult
+from rdr_service.participant_enums import GenomicSubProcessResult, GenomicSubProcessStatus
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
     GenomicFileMover,
@@ -23,14 +22,12 @@ class GenomicJobController:
 
     def __init__(self, job_id,
                  bucket_name=GENOMIC_GC_METRICS_BUCKET_NAME,
-                 file_queue=None,
                  job_name="genomic_cell_line_metrics"
                  ):
 
         self.job_id = job_id
         self.bucket_name = getSetting(bucket_name)
         self.archive_folder_name = 'processed_by_rdr'
-        self.file_queue = file_queue
         self.job_name = job_name
 
         self.subprocess_results = set()
@@ -45,40 +42,41 @@ class GenomicJobController:
 
         self.job_run = self._create_run(job_id)
 
-    def generate_file_processing_queue(self):
+    def ingest_gc_metrics(self):
         """
-        Creates the list of files to be ingested in this run.
-        Ordering is currently arbitrary;
-        """
-
-        # last_run_time = self._get_last_successful_run_time(self.job_name)
-        files = self._get_uningested_file_names_from_bucket(self.bucket_name)
-        if files == GenomicSubProcessResult.NO_FILES:
-            return files
-        else:
-            for file_name in files:
-                file_path = "/" + self.bucket_name + "/" + file_name
-                self._create_file_record(self.job_run.id,
-                                         file_path,
-                                         self.bucket_name,
-                                         file_name)
-            self.file_queue = deque(self._get_file_queue_for_run(self.job_run.id))
-
-    def process_file_using_ingester(self, file_obj):
-        """
-        Runs Ingester's main method. Move file to archive when done.
-        :param file_obj:
-        :return: result code of file ingestion task
+        Uses ingester to ingest files. Moves file to archive when done.
+        :return: result code of file ingestion subprocess
         """
         self.ingester = GenomicFileIngester()
         self.file_mover = GenomicFileMover(archive_folder=self.archive_folder_name)
 
-        result = self.ingester.ingest_gc_validation_metrics_file(file_obj)
-        self.subprocess_results.add(result)
+        file_queue_result = self.ingester.generate_file_processing_queue(self.bucket_name,
+                                                                         self.archive_folder_name,
+                                                                         self.job_run.id)
 
-        self.file_mover.archive_file(file_obj)
+        if file_queue_result == GenomicSubProcessResult.NO_FILES:
+            logging.info('No files to process.')
+            return file_queue_result
+        else:
+            logging.info('Processing files in queue.')
+            while len(self.ingester.file_queue) > 0:
+                try:
+                    ingestion_result = self.ingester.ingest_gc_validation_metrics_file(
+                        self.ingester.file_queue[0])
+                    file_ingested = self.ingester.file_queue.popleft()
+                    logging.info(f'Ingestion attempt for {file_ingested.fileName}: {ingestion_result}')
+                    self.ingester.update_file_processed(
+                        file_ingested.id,
+                        GenomicSubProcessStatus.COMPLETED,
+                        ingestion_result
+                    )
+                    self.subprocess_results.add(ingestion_result)
+                    self.file_mover.archive_file(file_ingested)
+                except IndexError:
+                    logging.info('No files left in file queue.')
 
-        return result
+            run_result = self.aggregate_run_results()
+            return run_result
 
     def run_reconciliation_to_manifest(self):
         self.reconciler = GenomicReconciler(self.job_run.id)
@@ -86,10 +84,6 @@ class GenomicJobController:
             return self.reconciler.reconcile_metrics_to_manifest()
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
-
-    def update_file_processed(self, file_id, status, result):
-        """Updates the genomic_file_processed record """
-        self.file_processed_dao.update_file_record(file_id, status, result)
 
     def end_run(self, result):
         """Updates the genomic_job_run table with end result"""
@@ -111,20 +105,6 @@ class GenomicJobController:
 
         return GenomicSubProcessResult.SUCCESS
 
-    def _get_uningested_file_names_from_bucket(self, bucket_name):
-        """
-        Searches the bucket for un-processed files.
-        :param bucket_name:
-        :return: list of filenames or NO_FILES result code
-        """
-        files = list_blobs('/' + bucket_name)
-        files = [s.name for s in files
-                 if self.archive_folder_name not in s.name.lower()]
-        if not files:
-            logging.info('No files in cloud bucket {}'.format(bucket_name))
-            return GenomicSubProcessResult.NO_FILES
-        return files
-
     def _get_last_successful_run_time(self, job_name):
         """Return last successful run's starttime from `genomics_job_runs`"""
         # TODO: implement once 'Cell Line' test runs are complete
@@ -132,13 +112,6 @@ class GenomicJobController:
         last_run_time = "2019-11-05"
         return last_run_time
 
-    def _create_file_record(self, run_id, path, bucket_name, file_name):
-        self.file_processed_dao.insert_file_record(run_id, path,
-                                                   bucket_name, file_name)
-
     def _create_run(self, job_id):
         return self.job_run_dao.insert_run_record(job_id)
-
-    def _get_file_queue_for_run(self, run_id):
-        return self.file_processed_dao.get_files_for_run(run_id)
 
