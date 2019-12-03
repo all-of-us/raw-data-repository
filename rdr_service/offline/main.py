@@ -1,11 +1,13 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
 import json
 import logging
+import os
+import signal
 import time
 import traceback
 from datetime import datetime
 
-from flask import Flask, request
+from flask import Flask, request, got_request_exception, Response
 from rdr_service.config import GAE_PROJECT  # pylint: disable=unused-import
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import BadRequest
@@ -25,6 +27,9 @@ from rdr_service.offline.patient_status_backfill import backfill_patient_status
 from rdr_service.offline.public_metrics_export import LIVE_METRIC_SET_ID, PublicMetricsExport
 from rdr_service.offline.sa_key_remove import delete_service_account_keys
 from rdr_service.offline.table_exporter import TableExporter
+
+from rdr_service.services.gcp_logging import flask_restful_log_exception_error, end_request_logging, \
+    begin_request_logging
 
 PREFIX = "/offline/"
 
@@ -191,8 +196,9 @@ def update_ehr_status():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
-def genomic_pipeline():
+def genomic_pipeline_handler():
     genomic_pipeline.process_genomic_water_line()
+    genomic_pipeline.ingest_genomic_centers_metrics_files()
     return '{"success": "true"}'
 
 
@@ -228,6 +234,22 @@ def patient_status_backfill():
 
 def start():
     return '{"success": "true"}'
+
+def _stop():
+    pid_file = '/tmp/supervisord.pid'
+    if os.path.exists(pid_file):
+        try:
+            pid = int(open(pid_file).read())
+            if pid:
+                logging.info('******** Shutting down, sent supervisor the termination signal. ********')
+                response = Response()
+                response.status_code = 200
+                end_request_logging(response)
+                os.kill(pid, signal.SIGTERM)
+        except TypeError:
+            logging.warning('******** Shutting down, supervisor pid file is invalid. ********')
+            pass
+    return '{ "success": "true" }'
 
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
@@ -290,7 +312,7 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        PREFIX + "GenomicPipeline", endpoint="genomic_pipeline", view_func=genomic_pipeline, methods=["GET"]
+        PREFIX + "GenomicPipeline", endpoint="genomic_pipeline", view_func=genomic_pipeline_handler, methods=["GET"]
     )
 
     offline_app.add_url_rule(
@@ -309,10 +331,17 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule('/_ah/start', endpoint='start', view_func=start, methods=["GET"])
+    offline_app.add_url_rule("/_ah/stop", endpoint="stop", view_func=_stop, methods=["GET"])
+
+    offline_app.before_request(begin_request_logging)  # Must be first before_request() call.
+    offline_app.before_request(app_util.request_logging)
 
     offline_app.after_request(app_util.add_headers)
-    offline_app.before_request(app_util.request_logging)
+    offline_app.after_request(end_request_logging)  # Must be last after_request() call.
+
     offline_app.register_error_handler(DBAPIError, app_util.handle_database_disconnect)
+
+    got_request_exception.connect(flask_restful_log_exception_error, offline_app)
 
     return offline_app
 

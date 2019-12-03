@@ -6,15 +6,18 @@
   ],
   "user_info": {
     "configurator@all-of-us-rdr-ptsc-3-test.iam.gserviceaccount.com": {
+      "clientId": "configurator",
       "roles": ["ptc", "healthpro", "rdr"]
     },
     "exporter@all-of-us-rdr-ptsc-3-test.iam.gserviceaccount.com": {
       "roles": ["exporter"]
     },
     "vibrent-drc-qa@vibrent-drc-qa-165017.iam.gserviceaccount.com": {
+      "clientId": "vibrent",
       "roles": ["ptc"]
     },
     "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
+      "clientId": "vibrent",
       "roles": ["ptc", "healthpro"],
       "whitelisted_ip_ranges": {
         "ip6": ["::0/0"],
@@ -22,6 +25,7 @@
       }
     },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
+      "clientId": "configurator",
       "roles": ["ptc", "healthpro", "rdr"]
     }
   },
@@ -31,9 +35,9 @@
   "ghost_id_bucket": [
     "all-of-us-rdr-ptsc-3-test-ghost-id"
   ],
-  "consent_pdf_bucket": [
-    "all-of-us-rdr-ptsc-3-test-consent-uploads"
-  ],
+  "consent_pdf_bucket": {
+    "vibrent": "all-of-us-rdr-ptsc-3-test-consent-uploads"
+  },
   "metrics_shards": [
     "10"
   ],

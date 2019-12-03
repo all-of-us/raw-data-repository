@@ -3,11 +3,13 @@ import logging
 import os
 from datetime import datetime
 
-from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 import pytz
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
+from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
+
+from rdr_service.app_util import get_participant_origin_id
 from rdr_service import storage
 from rdr_service import clock, config
 from rdr_service.code_constants import (
@@ -50,7 +52,7 @@ from rdr_service.participant_enums import (
 
 _QUESTIONNAIRE_PREFIX = "Questionnaire/"
 _QUESTIONNAIRE_HISTORY_SEGMENT = "/_history/"
-_QUESTIONNAIRE_REFERENCE_FORMAT = _QUESTIONNAIRE_PREFIX + "%d" + _QUESTIONNAIRE_HISTORY_SEGMENT + "%d"
+_QUESTIONNAIRE_REFERENCE_FORMAT = _QUESTIONNAIRE_PREFIX + "{}" + _QUESTIONNAIRE_HISTORY_SEGMENT + "{}"
 
 _SIGNED_CONSENT_EXTENSION = "http://terminology.pmi-ops.org/StructureDefinition/consent-form-signed-pdf"
 
@@ -71,6 +73,8 @@ def count_completed_ppi_modules(participant_summary):
     return sum(
         1 for field in ppi_module_fields if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED
     )
+
+
 
 
 class QuestionnaireResponseDao(BaseDao):
@@ -131,7 +135,7 @@ class QuestionnaireResponseDao(BaseDao):
                     and section["linkId"].lower() != "ignorethis"
                     and section["linkId"] not in link_ids
                 ):
-                    logging.error("Questionnaire response contains invalid link ID %s." % section["linkId"])
+                    logging.error(f"Questionnaire response contains invalid link ID {section['linkId']}.")
 
     def insert_with_session(self, session, questionnaire_response):
 
@@ -142,8 +146,8 @@ class QuestionnaireResponseDao(BaseDao):
 
         if not questionnaire_history:
             raise BadRequest(
-                "Questionnaire with ID %s, version %s is not found"
-                % (questionnaire_response.questionnaireId, questionnaire_response.questionnaireVersion)
+                f"Questionnaire with ID {questionnaire_response.questionnaireId}, \
+                version {questionnaire_response.questionnaireVersion} is not found"
             )
 
         # Get the questions from the questionnaire history record.
@@ -151,7 +155,7 @@ class QuestionnaireResponseDao(BaseDao):
         for answer in questionnaire_response.answers:
             if answer.questionId not in q_question_ids:
                 raise BadRequest(
-                    "Questionnaire response contains question ID %s not in questionnaire." % answer.questionId
+                    f"Questionnaire response contains question ID {answer.questionId} not in questionnaire."
                 )
 
         questionnaire_response.created = clock.CLOCK.now()
@@ -162,6 +166,7 @@ class QuestionnaireResponseDao(BaseDao):
         resource_json = json.loads(questionnaire_response.resource)
         resource_json["id"] = str(questionnaire_response.questionnaireResponseId)
         questionnaire_response.resource = json.dumps(resource_json)
+        super().validate_origin(questionnaire_response)
 
         # Gather the question ids and records that match the questions in the response
         question_ids = [answer.questionId for answer in questionnaire_response.answers]
@@ -198,6 +203,7 @@ class QuestionnaireResponseDao(BaseDao):
 
         return questionnaire_response
 
+
     def _get_field_value(self, field_type, answer):
         if field_type == FieldType.CODE:
             return answer.valueCodeId
@@ -205,7 +211,7 @@ class QuestionnaireResponseDao(BaseDao):
             return answer.valueString
         if field_type == FieldType.DATE:
             return answer.valueDate
-        raise BadRequest("Don't know how to map field of type %s" % field_type)
+        raise BadRequest(f"Don't know how to map field of type {field_type}")
 
     def _update_field(self, participant_summary, field_name, field_type, answer):
         value = getattr(participant_summary, field_name)
@@ -229,7 +235,7 @@ class QuestionnaireResponseDao(BaseDao):
         participant = ParticipantDao().get_for_update(session, questionnaire_response.participantId)
 
         if participant is None:
-            raise BadRequest("Participant with ID %d is not found." % questionnaire_response.participantId)
+            raise BadRequest(f"Participant with ID {questionnaire_response.participantId} is not found.")
 
         participant_summary = participant.participantSummary
 
@@ -251,7 +257,7 @@ class QuestionnaireResponseDao(BaseDao):
                 raise BadRequest("No study enrollment consent code found; import codebook.")
             if not consent_code.codeId in code_ids:
                 raise BadRequest(
-                    "Can't submit order for participant %s without consent" % questionnaire_response.participantId
+                    f"Can't submit order for participant {questionnaire_response.participantId} without consent"
                 )
             raise_if_withdrawn(participant)
             participant_summary = ParticipantDao.create_summary_for_participant(participant)
@@ -350,7 +356,7 @@ class QuestionnaireResponseDao(BaseDao):
                                 extension.get("url") == _LANGUAGE_EXTENSION
                                 and extension.get("valueCode") not in LANGUAGE_OF_CONSENT
                             ):
-                                logging.warn("consent language %s not recognized." % extension.get("valueCode"))
+                                logging.warning(f"consent language {extension.get('valueCode')} not recognized.")
                     if getattr(participant_summary, summary_field) != new_status:
                         setattr(participant_summary, summary_field, new_status)
                         setattr(participant_summary, summary_field + "Time", questionnaire_response.created)
@@ -369,13 +375,13 @@ class QuestionnaireResponseDao(BaseDao):
             email_phone = (participant_summary.email, participant_summary.loginPhoneNumber)
             if not all(first_last):
                 raise BadRequest(
-                    "First name (%s), and last name (%s) required for consenting."
-                    % tuple(["present" if part else "missing" for part in first_last])
+                    "First name ({:s}), and last name ({:s}) required for consenting."
+                    .format(*["present" if part else "missing" for part in first_last])
                 )
             if not any(email_phone):
                 raise BadRequest(
-                    "Email address (%s), or phone number (%s) required for consenting."
-                    % tuple(["present" if part else "missing" for part in email_phone])
+                    "Email address ({:s}), or phone number ({:s}) required for consenting."
+                    .format(*["present" if part else "missing" for part in email_phone])
                 )
 
             ParticipantSummaryDao().update_enrollment_status(participant_summary)
@@ -412,13 +418,12 @@ class QuestionnaireResponseDao(BaseDao):
         fhir_qr = fhir_questionnaireresponse.QuestionnaireResponse(resource_json)
         patient_id = fhir_qr.subject.reference
         if patient_id != "Patient/P{}".format(participant_id):
-            msg = "Questionnaire response subject reference does not match participant_id %r"
-            raise BadRequest(msg % participant_id)
+            msg = "Questionnaire response subject reference does not match participant_id {}"
+            raise BadRequest(msg.format(participant_id))
         questionnaire = self._get_questionnaire(fhir_qr.questionnaire, resource_json)
         if questionnaire.status == QuestionnaireDefinitionStatus.INVALID:
             raise BadRequest(
-                "Submitted questionnaire that is marked as invalid: questionnaire ID %s"
-                % questionnaire.questionnaireId
+                f"Submitted questionnaire that is marked as invalid: questionnaire ID {questionnaire.questionnaireId}"
             )
         authored = None
         if fhir_qr.authored and fhir_qr.authored.date:
@@ -458,22 +463,22 @@ class QuestionnaireResponseDao(BaseDao):
     If a questionnaire has a history element it goes into the if block here."""
         # if history...
         if not questionnaire.reference.startswith(_QUESTIONNAIRE_PREFIX):
-            raise BadRequest("Questionnaire reference %s is invalid" % questionnaire.reference)
-        questionnaire_reference = questionnaire.reference[len(_QUESTIONNAIRE_PREFIX) :]
+            raise BadRequest(f"Questionnaire reference {questionnaire.reference} is invalid")
+        questionnaire_reference = questionnaire.reference[len(_QUESTIONNAIRE_PREFIX):]
         # If the questionnaire response specifies the version of the questionnaire it's for, use it.
         if _QUESTIONNAIRE_HISTORY_SEGMENT in questionnaire_reference:
             questionnaire_ref_parts = questionnaire_reference.split(_QUESTIONNAIRE_HISTORY_SEGMENT)
             if len(questionnaire_ref_parts) != 2:
-                raise BadRequest("Questionnaire id %s is invalid" % questionnaire_reference)
+                raise BadRequest(f"Questionnaire id {questionnaire_reference} is invalid")
             try:
                 questionnaire_id = int(questionnaire_ref_parts[0])
                 version = int(questionnaire_ref_parts[1])
                 q = QuestionnaireHistoryDao().get_with_children((questionnaire_id, version))
                 if not q:
-                    raise BadRequest("Questionnaire with id %d, version %d is not found" % (questionnaire_id, version))
+                    raise BadRequest(f"Questionnaire with id {questionnaire_id}, version {version} is not found")
                 return q
             except ValueError:
-                raise BadRequest("Questionnaire id %s is invalid" % questionnaire_reference)
+                raise BadRequest(f"Questionnaire id {questionnaire_reference} is invalid")
         else:
             # if no questionnaire/history...
             try:
@@ -482,13 +487,13 @@ class QuestionnaireResponseDao(BaseDao):
 
                 q = QuestionnaireDao().get_with_children(questionnaire_id)
                 if not q:
-                    raise BadRequest("Questionnaire with id %d is not found" % questionnaire_id)
+                    raise BadRequest(f"Questionnaire with id {questionnaire_id} is not found")
                 # Mutate the questionnaire reference to include the version.
-                questionnaire_reference = _QUESTIONNAIRE_REFERENCE_FORMAT % (questionnaire_id, q.version)
+                questionnaire_reference = _QUESTIONNAIRE_REFERENCE_FORMAT.format(questionnaire_id, q.version)
                 resource_json["questionnaire"]["reference"] = questionnaire_reference
                 return q
             except ValueError:
-                raise BadRequest("Questionnaire id %s is invalid" % questionnaire_reference)
+                raise BadRequest(f"Questionnaire id {questionnaire_reference} is invalid")
 
     @classmethod
     def _extract_codes_and_answers(cls, group, q):
@@ -518,9 +523,9 @@ class QuestionnaireResponseDao(BaseDao):
                             ignore_answer = False
                             if answer.valueCoding:
                                 if not answer.valueCoding.system:
-                                    raise BadRequest("No system provided for valueCoding: %s" % question.linkId)
+                                    raise BadRequest(f"No system provided for valueCoding: {question.linkId}")
                                 if not answer.valueCoding.code:
-                                    raise BadRequest("No code provided for valueCoding: %s" % question.linkId)
+                                    raise BadRequest(f"No code provided for valueCoding: {question.linkId}")
                                 if answer.valueCoding.system == PPI_EXTRA_SYSTEM:
                                     # Ignore answers from the ppi-extra system, as they aren't used for analysis.
                                     ignore_answer = True
@@ -541,8 +546,10 @@ class QuestionnaireResponseDao(BaseDao):
                                     answer_length = len(answer.valueString)
                                     max_length = QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN
                                     if answer_length > max_length:
-                                        err_msg = "String value too long (len=%d); must be less than %d"
-                                        raise BadRequest(err_msg % (answer_length, max_length))
+                                        raise BadRequest(
+                                            f"String value too long (len={answer_length}); "
+                                            f"must be less than {max_length}"
+                                        )
                                     qr_answer.valueString = answer.valueString
                                 if answer.valueDate is not None:
                                     qr_answer.valueDate = answer.valueDate.date
@@ -583,19 +590,28 @@ def _add_codes_if_missing(client_id):
 def _validate_consent_pdfs(resource):
     """Checks for any consent-form-signed-pdf extensions and validates their PDFs in GCS."""
     if resource.get("resourceType") != "QuestionnaireResponse":
-        raise ValueError('Expected QuestionnaireResponse for "resourceType" in %r.' % resource)
-    consent_bucket = config.getSetting(config.CONSENT_PDF_BUCKET)
+        raise ValueError(f'Expected QuestionnaireResponse for "resourceType" in {resource}.')
+
+    # We now lookup up consent bucket names by participant origin id.
+    p_origin = get_participant_origin_id()
+    consent_bucket_config = config.getSettingJson(config.CONSENT_PDF_BUCKET)
+    # If we don't match the origin id, just return the first bucket in the dict.
+    try:
+        consent_bucket = consent_bucket_config.get(p_origin, consent_bucket_config[next(iter(consent_bucket_config))])
+    except AttributeError:
+        pass
+
     for extension in resource.get("extension", []):
         if extension["url"] != _SIGNED_CONSENT_EXTENSION:
             continue
         local_pdf_path = extension["valueString"]
         _, ext = os.path.splitext(local_pdf_path)
         if ext.lower() != ".pdf":
-            raise BadRequest("Signed PDF must end in .pdf, found %r (from %r)." % (ext, local_pdf_path))
+            raise BadRequest(f"Signed PDF must end in .pdf, found {ext} (from {local_pdf_path}).")
         # Treat the value as a bucket-relative path, allowing a leading slash or not.
         if not local_pdf_path.startswith("/"):
             local_pdf_path = "/" + local_pdf_path
-        _raise_if_gcloud_file_missing("/%s%s" % (consent_bucket, local_pdf_path))
+        _raise_if_gcloud_file_missing("/{}{}".format(consent_bucket, local_pdf_path))
 
 
 def _raise_if_gcloud_file_missing(path):
@@ -608,7 +624,7 @@ def _raise_if_gcloud_file_missing(path):
   """
     storage_provier = storage.get_storage_provider()
     if not storage_provier.exists(path):
-        raise BadRequest("Google Cloud Storage file not found in %s." % (path))
+        raise BadRequest(f"Google Cloud Storage file not found in {path}.")
 
 
 class QuestionnaireResponseAnswerDao(BaseDao):

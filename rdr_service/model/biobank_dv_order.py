@@ -10,7 +10,12 @@ class BiobankDVOrder(Base):
   Direct Volunteer kit order shipment record
   """
 
-    _VIBRENT_ID_SYSTEM = "http://vibrenthealth.com"
+    _DV_ID_SYSTEM = {
+        'vibrent-drc-prod': "http://vibrenthealth.com",
+        'careevolution': "http://carevolution.be",
+        'example': "system-test"
+    }
+
     __tablename__ = "biobank_dv_order"
 
     # Primary Key
@@ -100,6 +105,7 @@ class BiobankDVOrder(Base):
         "biobank_order_id", String(80), ForeignKey("biobank_order.biobank_order_id"), unique=True, nullable=True
     )
 
+    # biobank_status is the response from Mayo Clinic API
     biobankStatus = Column("biobank_status", String(30), nullable=True)
     biobankReceived = Column("biobank_received", UTCDateTime6, nullable=True)
     biobankRequisition = Column("biobank_requisition", Text, nullable=True)

@@ -11,8 +11,8 @@ SCHEMA_TRANSLATE_MAP = None
 
 
 class _SqlDatabase(Database):
-    def __init__(self, db_name, backup=False, instance_name=None, **kwargs):
-        url = make_url(get_db_connection_string(backup, instance_name))
+    def __init__(self, db_name, backup=False, instance_name=None, alembic=False, **kwargs):
+        url = make_url(get_db_connection_string(backup, instance_name, alembic))
         if url.drivername != "sqlite" and not url.database:
             url.database = db_name
         super(_SqlDatabase, self).__init__(url, **kwargs)
@@ -23,9 +23,19 @@ class _BackupSqlDatabase(_SqlDatabase):
         super(_BackupSqlDatabase, self).__init__(db_name, backup=True, **kwargs)
 
 
+class _AlembicSqlDatabase(_SqlDatabase):
+    def __init__(self, db_name, **kwargs):
+        super(_AlembicSqlDatabase, self).__init__(db_name, alembic=True, **kwargs)
+
+
 def get_database(db_name="rdr") -> Database:
     """Returns a singleton _SqlDatabase which USEs the rdr DB."""
     return singletons.get(singletons.SQL_DATABASE_INDEX, _SqlDatabase, db_name=db_name)
+
+
+def get_database_with_alembic_user(db_name='rdr'):
+    """Returns a singleton _SqlDatabase which USEs the rdr DB."""
+    return singletons.get(singletons.ALEMBIC_SQL_DATABASE_INDEX, _AlembicSqlDatabase, db_name=db_name)
 
 
 def get_backup_database() -> Database:
@@ -49,11 +59,12 @@ def get_generic_database() -> Database:
     )
 
 
-def get_db_connection_string(backup=False, instance_name=None) -> str:
+def get_db_connection_string(backup=False, instance_name=None, alembic=False) -> str:
     """
     Return the database connection string we should use to connect with.
     :param backup: Use backup instance connection information.
     :param instance_name: Connect to specific named instance.
+    :param alembic: connect to database with alembic user
     :return: connection string.
     """
     # RDR tools define the connection string we should use in the environment var.
@@ -74,6 +85,11 @@ def get_db_connection_string(backup=False, instance_name=None) -> str:
         connection_string_key = "db_connection_string"
 
     result = config.get_db_config()[connection_string_key]
+    if alembic and not os.environ.get("UNITTEST_FLAG", None):
+        if backup:
+            raise Exception("backup and alembic should not be used together")
+        # rdr user and alembic user share the same password
+        result = result.replace('rdr', 'alembic', 1)
     if instance_name:
         if backup:
             raise Exception("backup and instance_name should not be used together")

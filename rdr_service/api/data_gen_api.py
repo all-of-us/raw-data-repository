@@ -13,6 +13,7 @@ from rdr_service import app_util, config, clock
 from rdr_service.api_util import HEALTHPRO, open_cloud_file
 from rdr_service.app_util import get_validated_user_info, nonprod
 from rdr_service.code_constants import BIOBANK_TESTS
+from rdr_service.config import GAE_PROJECT
 from rdr_service.config_api import is_config_admin
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -20,10 +21,9 @@ from rdr_service.data_gen.fake_participant_generator import FakeParticipantGener
 from rdr_service.data_gen.in_process_client import InProcessClient
 from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.offline.biobank_samples_pipeline import CsvColumns, INPUT_CSV_TIME_FORMAT
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 
 # 10% of individual stored samples are missing by default.
-from rdr_service.services.flask import celery
-
 # 1% of participants have samples with no associated order
 _SAMPLES_MISSING_FRACTION = 0.1
 
@@ -53,7 +53,7 @@ def _auth_required_healthpro_or_config_admin(func):
         if not is_config_admin(app_util.get_oauth_id()):
             _, user_info = get_validated_user_info()
             if not HEALTHPRO in user_info.get("roles", []):
-                logging.info("User has roles {}, but HEALTHPRO or admin is required".format(user_info.get("roles")))
+                logging.warning("User has roles {}, but HEALTHPRO or admin is required".format(user_info.get("roles")))
                 raise Forbidden()
         return func(*args, **kwargs)
 
@@ -92,12 +92,10 @@ def _new_row(sample_id, biobank_id, test, confirmed_time):
     return row
 
 
-@celery.task()
 def generate_samples_task(fraction_missing):
     """
-    Celery Task: Creates fake sample CSV data in GCS.
+    Cloud Task: Creates fake sample CSV data in GCS.
     :param fraction_missing:
-    :return:
     """
     bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
     now = clock.CLOCK.now()
@@ -105,7 +103,7 @@ def generate_samples_task(fraction_missing):
     num_rows = 0
     sample_id_start = random.randint(1000000, 10000000)
 
-    with open_cloud_file(file_name) as dest:
+    with open_cloud_file(file_name, mode='w') as dest:
         writer = csv.writer(dest, delimiter="\t")
         writer.writerow(CsvColumns.ALL)
 
@@ -115,7 +113,7 @@ def generate_samples_task(fraction_missing):
             rows = biobank_order_dao.get_ordered_samples_sample(session, 1 - fraction_missing, _BATCH_SIZE)
             for biobank_id, collected_time, test in rows:
                 if collected_time is None:
-                    logging.warning("biobank_id=%s test=%s skipped (collected=%s)", biobank_id, test, collected_time)
+                    logging.warning(f"biobank_id={biobank_id} test={test} skipped (collected={collected_time})")
                     continue
                 sample_id = sample_id_start + num_rows
                 minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_SAMPLE_COLLECTED_AND_CONFIRMED)
@@ -136,8 +134,7 @@ def generate_samples_task(fraction_missing):
                     writer.writerow(_new_row(sample_id, biobank_id, test, confirmed_time))
                     num_rows += 1
 
-    logging.info("Generated %d samples in %s.", num_rows, file_name)
-
+    logging.info(f"Generated {num_rows} samples in {file_name}.")
 
 
 class DataGenApi(Resource):
@@ -159,9 +156,14 @@ class DataGenApi(Resource):
                     include_physical_measurements, include_biobank_orders, requested_hpo
                 )
         if resource_json.get("create_biobank_samples"):
-            task = generate_samples_task.apply_async(queue='default', args=(
-                        resource_json.get("samples_missing_fraction", _SAMPLES_MISSING_FRACTION)))
-            task.forget()
+            fraction = resource_json.get("samples_missing_fraction", _SAMPLES_MISSING_FRACTION)
+            if GAE_PROJECT == 'localhost':
+                generate_samples_task(fraction)
+            else:
+                params = {'fraction': fraction}
+                task = GCPCloudTask('generate_bio_samples_task', payload=params)
+                task.execute()
+
 
     @nonprod
     def put(self):

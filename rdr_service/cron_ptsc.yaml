@@ -1,14 +1,8 @@
 cron:
-- description: Daily metrics
 - description: Monthly reconciliation report
-- description: Participant count metrics
+- description: Participant count metrics (Do not manually start)
 - description: Flag ghost participants
 - description: Genomic pipeline
-- description: Daily public metrics
-  url: /offline/PublicMetricsRecalculate
-  schedule: every day 05:00
-  timezone: America/New_York
-  target: offline
 - description: Daily Biobank sample import and order reconciliation
   url: /offline/BiobankSamplesImport
   schedule: every day 03:00

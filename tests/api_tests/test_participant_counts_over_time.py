@@ -45,7 +45,6 @@ from rdr_service.participant_enums import (
 )
 from tests.helpers.unittest_base import BaseTestCase, QuestionnaireTestMixin
 
-
 TIME_1 = datetime.datetime(2017, 12, 31)
 
 
@@ -54,7 +53,6 @@ def _questionnaire_response_url(participant_id):
 
 
 class ParticipantCountsOverTimeApiTest(BaseTestCase):
-
     provider_link = {"primary": True, "organization": {"display": None, "reference": "Organization/PITT"}}
 
     az_provider_link = {"primary": True, "organization": {"display": None, "reference": "Organization/AZ_TUCSON"}}
@@ -1237,6 +1235,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
         results = dao.get_latest_version_from_cache("2018-01-01", "2018-01-08")
 
@@ -1303,6 +1302,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao(version=MetricsAPIVersion.V2)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
         results = dao.get_latest_version_from_cache("2018-01-01", "2018-01-08")
 
@@ -1377,6 +1377,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
         results = dao.get_latest_version_from_cache("2018-01-01", "2018-01-08")
         self.assertIn({"date": "2018-01-01", "metrics": {"consented": 0, "core": 0, "registered": 3}}, results)
@@ -1411,6 +1412,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = """
@@ -1488,6 +1490,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = """
@@ -1584,6 +1587,32 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             response,
         )
 
+        qs = """
+            &stratification=ENROLLMENT_STATUS
+            &startDate=2018-01-01
+            &endDate=2018-01-08
+            &history=TRUE
+            &version=2
+            &enrollmentStatus=FULLY_CONSENTED
+            """
+
+        qs = ''.join(qs.split())  # Remove all whitespace
+
+        response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+        self.assertIn({u'date': u'2018-01-01', u'metrics': {u'consented': 0, u'core': 0,
+                                                            u'registered': 0, u'participant': 0},
+                       u'hpo': u'AZ_TUCSON'}, response)
+        self.assertIn({u'date': u'2018-01-02', u'metrics': {u'consented': 1, u'core': 0,
+                                                            u'registered': 0, u'participant': 0},
+                       u'hpo': u'AZ_TUCSON'}, response)
+        self.assertIn({u'date': u'2018-01-03', u'metrics': {u'consented': 0, u'core': 0,
+                                                            u'registered': 0, u'participant': 0},
+                       u'hpo': u'AZ_TUCSON'}, response)
+        self.assertIn({u'date': u'2018-01-04', u'metrics': {u'consented': 0, u'core': 0,
+                                                            u'registered': 0, u'participant': 0},
+                       u'hpo': u'AZ_TUCSON'}, response)
+
     def test_get_history_enrollment_status_api_filtered_by_awardee(self):
 
         p1 = Participant(participantId=1, biobankId=4)
@@ -1612,6 +1641,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = """
@@ -1682,6 +1712,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = """
@@ -1762,6 +1793,39 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             response,
         )
 
+        qs = """
+                      &stratification=ENROLLMENT_STATUS
+                      &startDate=2018-01-01
+                      &endDate=2018-01-08
+                      &history=TRUE
+                      &awardee=AZ_TUCSON,PITT
+                      &version=2
+                      &enrollmentStatus=FULLY_CONSENTED, PARTICIPANT
+                      """
+
+        qs = ''.join(qs.split())  # Remove all whitespace
+
+        response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+        self.assertNotIn({'date': '2018-01-01',
+                          'metrics': {'consented': 0, 'core': 0, 'registered': 1, 'participant': 0},
+                          'hpo': u'UNSET'}, response)
+        self.assertNotIn({'date': '2018-01-06',
+                          'metrics': {'consented': 0, 'core': 0, 'registered': 1, 'participant': 0},
+                          'hpo': u'UNSET'}, response)
+        self.assertIn({u'date': u'2018-01-02', u'metrics': {u'consented': 0, u'core': 0,
+                                                            u'registered': 0, u'participant': 1},
+                       u'hpo': u'PITT'}, response)
+        self.assertIn({u'date': u'2018-01-03', u'metrics': {u'consented': 1, u'core': 0,
+                                                            u'registered': 0, u'participant': 0},
+                       u'hpo': u'PITT'}, response)
+        self.assertIn({u'date': u'2018-01-04', u'metrics': {u'consented': 0, u'core': 0,
+                                                            u'registered': 0, u'participant': 0},
+                       u'hpo': u'PITT'}, response)
+        self.assertIn({u'date': u'2018-01-01', u'metrics': {u'consented': 0, u'core': 0,
+                                                            u'registered': 0, u'participant': 0},
+                       u'hpo': u'AZ_TUCSON'}, response)
+
     def test_refresh_metrics_gender_cache_data(self):
 
         p1 = Participant(participantId=1, biobankId=4)
@@ -1785,6 +1849,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsGenderCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
         results = dao.get_latest_version_from_cache("2017-12-31", "2018-01-08")
 
@@ -1925,6 +1990,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, gender_identity=5)
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
         service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
         dao = MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
@@ -2040,6 +2106,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, gender_identity=5)
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
 
         qs = """
@@ -2168,6 +2235,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, gender_identity=5)
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
 
         qs = """
@@ -2322,21 +2390,23 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, gender_identity=3)
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, time_mem=self.time3, gender_identity=2)
+        self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                     time_mem=self.time3, gender_identity=2)
 
         p3 = Participant(participantId=3, biobankId=6)
-        self._insert(
-            p3, "Chad", "Caterpillar", "AZ_TUCSON", time_int=self.time3, time_mem=self.time4, gender_identity=5
-        )
+        self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time3,
+                     time_mem=self.time4, gender_identity=5)
 
         p4 = Participant(participantId=4, biobankId=7)
-        self._insert(p4, "Chad2", "Caterpillar2", "PITT", time_int=self.time4, time_mem=self.time5, gender_identity=5)
+        self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time4, time_study=self.time4,
+                     time_mem=self.time5, gender_identity=5)
 
         # ghost participant should be filtered out
         p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
         self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, gender_identity=5)
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
 
         qs = """
@@ -2345,7 +2415,8 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
           &endDate=2018-01-08
           &history=TRUE
           &awardee=AZ_TUCSON,PITT
-          &enrollmentStatus=MEMBER
+          &enrollmentStatus=FULLY_CONSENTED
+          &version=2
           """
 
         qs = "".join(qs.split())  # Remove all whitespace
@@ -2406,25 +2477,6 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "More than one gender identity": 0,
                 },
                 "hpo": "AZ_TUCSON",
-            },
-            response,
-        )
-        self.assertIn(
-            {
-                "date": "2018-01-03",
-                "metrics": {
-                    "Woman": 0,
-                    "PMI_Skip": 0,
-                    "Other/Additional Options": 0,
-                    "Non-Binary": 0,
-                    "UNMAPPED": 0,
-                    "Transgender": 0,
-                    "Prefer not to say": 0,
-                    "UNSET": 0,
-                    "Man": 0,
-                    "More than one gender identity": 0,
-                },
-                "hpo": "PITT",
             },
             response,
         )
@@ -2491,6 +2543,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsAgeCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
         results = dao.get_latest_version_from_cache("2017-12-31", "2018-01-08")
 
@@ -2592,6 +2645,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         # test public metrics export cache
         dao = MetricsAgeCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
         results = dao.get_latest_version_from_cache("2017-12-31", "2018-01-08")
 
@@ -2688,6 +2742,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, dob=dob3)
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
 
         qs = """
@@ -2821,6 +2876,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, dob=dob3)
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
 
         qs = """
@@ -2955,6 +3011,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, dob=dob3)
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
 
         qs = """
@@ -2963,7 +3020,8 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
           &endDate=2018-01-08
           &history=TRUE
           &awardee=AZ_TUCSON,PITT
-          &enrollmentStatus=MEMBER
+          &enrollmentStatus=FULLY_CONSENTED
+          &version=2
           """
 
         qs = "".join(qs.split())  # Remove all whitespace
@@ -3075,6 +3133,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = """
@@ -3092,6 +3151,46 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self.assertIn({"date": "2018-01-02", "metrics": {"TOTAL": 3}}, response)
         self.assertIn({"date": "2018-01-07", "metrics": {"TOTAL": 3}}, response)
         self.assertIn({"date": "2018-01-08", "metrics": {"TOTAL": 3}}, response)
+
+    def test_get_history_total_api_v2(self):
+
+        p1 = Participant(participantId=1, biobankId=4)
+        self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
+
+        p2 = Participant(participantId=2, biobankId=5)
+        self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
+
+        p3 = Participant(participantId=3, biobankId=6)
+        self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time3,
+                     time_mem=self.time4, time_fp_stored=self.time5)
+
+        # ghost participant should be filtered out
+        p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+        self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time4,
+                     time_fp_stored=self.time5)
+
+        service = ParticipantCountsOverTimeService()
+        dao = MetricsEnrollmentStatusCacheDao()
+        service.init_tmp_table()
+        service.refresh_data_for_metrics_cache(dao)
+
+        qs = """
+              &stratification=TOTAL
+              &startDate=2018-01-01
+              &endDate=2018-01-08
+              &history=TRUE
+              &version=2
+              &enrollmentStatus=FULLY_CONSENTED
+              """
+
+        qs = ''.join(qs.split())  # Remove all whitespace
+
+        response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+        self.assertIn({u'date': u'2018-01-01', u'metrics': {u'TOTAL': 0}}, response)
+        self.assertIn({u'date': u'2018-01-02', u'metrics': {u'TOTAL': 0}}, response)
+        self.assertIn({u'date': u'2018-01-03', u'metrics': {u'TOTAL': 1}}, response)
+        self.assertIn({u'date': u'2018-01-04', u'metrics': {u'TOTAL': 0}}, response)
 
     def test_get_history_total_api_filter_by_awardees(self):
         p1 = Participant(participantId=1, biobankId=4)
@@ -3120,6 +3219,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = """
@@ -3138,6 +3238,46 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self.assertIn({"date": "2018-01-02", "metrics": {"TOTAL": 2}}, response)
         self.assertIn({"date": "2018-01-07", "metrics": {"TOTAL": 2}}, response)
         self.assertIn({"date": "2018-01-08", "metrics": {"TOTAL": 2}}, response)
+
+    def test_get_history_total_api_filter_by_awardees_v2(self):
+        p1 = Participant(participantId=1, biobankId=4)
+        self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
+
+        p2 = Participant(participantId=2, biobankId=5)
+        self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
+
+        p3 = Participant(participantId=3, biobankId=6)
+        self._insert(p3, 'Chad', 'Caterpillar', 'PITT', time_int=self.time3, time_study=self.time3,
+                     time_mem=self.time4, time_fp_stored=self.time5)
+
+        # ghost participant should be filtered out
+        p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+        self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time4,
+                     time_fp_stored=self.time5)
+
+        service = ParticipantCountsOverTimeService()
+        dao = MetricsEnrollmentStatusCacheDao()
+        service.init_tmp_table()
+        service.refresh_data_for_metrics_cache(dao)
+
+        qs = """
+              &stratification=TOTAL
+              &startDate=2018-01-01
+              &endDate=2018-01-08
+              &history=TRUE
+              &awardee=AZ_TUCSON,PITT
+              &version=2
+              &enrollmentStatus=FULLY_CONSENTED
+              """
+
+        qs = ''.join(qs.split())  # Remove all whitespace
+
+        response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+        self.assertIn({u'date': u'2018-01-01', u'metrics': {u'TOTAL': 0}}, response)
+        self.assertIn({u'date': u'2018-01-02', u'metrics': {u'TOTAL': 0}}, response)
+        self.assertIn({u'date': u'2018-01-03', u'metrics': {u'TOTAL': 1}}, response)
+        self.assertIn({u'date': u'2018-01-04', u'metrics': {u'TOTAL': 0}}, response)
 
     def test_refresh_metrics_race_cache_data(self):
 
@@ -3184,6 +3324,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRaceCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         results = dao.get_latest_version_from_cache("2017-12-31", "2018-01-08")
@@ -3316,6 +3457,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
         service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
         dao = MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
@@ -3423,6 +3565,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRaceCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = """
@@ -3565,6 +3708,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRaceCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = """
@@ -3671,6 +3815,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRaceCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = """
@@ -3679,7 +3824,8 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
               &endDate=2018-01-08
               &history=TRUE
               &awardee=PITT
-              &enrollmentStatus=MEMBER
+              &enrollmentStatus=FULLY_CONSENTED
+              &version=2
               """
 
         qs = "".join(qs.split())  # Remove all whitespace
@@ -3843,6 +3989,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRegionCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         results1 = dao.get_latest_version_from_cache("2017-12-31", "FULL_STATE")
@@ -4917,6 +5064,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRegionCacheDao(version=MetricsAPIVersion.V2)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         results1 = dao.get_latest_version_from_cache("2017-12-31", "GEO_STATE")
@@ -5577,6 +5725,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRegionCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         results1 = dao.get_latest_version_from_cache("2017-12-31", "GEO_STATE")
@@ -5763,6 +5912,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRegionCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs1 = """
@@ -6992,6 +7142,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRegionCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs1 = """
@@ -7703,6 +7854,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRegionCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = """
@@ -7884,6 +8036,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRegionCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = """
@@ -8167,6 +8320,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRegionCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs1 = """
@@ -9087,6 +9241,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRegionCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs1 = """
@@ -9644,6 +9799,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRegionCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         results1 = dao.get_latest_version_from_cache("2018-01-01", "FULL_STATE")
@@ -9799,361 +9955,203 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
     def test_refresh_metrics_lifecycle_cache_data(self):
 
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(
-            p1,
-            "Alice",
-            "Aardvark",
-            "UNSET",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time1,
-            time_fp=self.time1,
-            time_fp_stored=self.time1,
-        )
+        self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                     time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(
-            p2,
-            "Bob",
-            "Builder",
-            "AZ_TUCSON",
-            time_int=self.time2,
-            time_study=self.time2,
-            time_mem=self.time2,
-            time_fp=self.time3,
-            time_fp_stored=self.time3,
-        )
+        self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                     time_mem=self.time2, time_fp=self.time3, time_fp_stored=self.time3)
 
         p3 = Participant(participantId=3, biobankId=6)
-        self._insert(
-            p3,
-            "Chad",
-            "Caterpillar",
-            "AZ_TUCSON",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time4,
-            time_fp=self.time5,
-            time_fp_stored=self.time5,
-        )
+        self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time4,
+                     time_mem=self.time4, time_fp=self.time5, time_fp_stored=self.time5)
 
         p4 = Participant(participantId=4, biobankId=7)
-        self._insert(
-            p4,
-            "Chad2",
-            "Caterpillar2",
-            "PITT",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time5,
-            time_fp=self.time5,
-            time_fp_stored=self.time5,
-        )
+        self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time4,
+                     time_mem=self.time5, time_fp=self.time5, time_fp_stored=self.time5)
 
         p4 = Participant(participantId=6, biobankId=9)
-        self._insert(
-            p4,
-            "Chad3",
-            "Caterpillar3",
-            "PITT",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time4,
-            time_fp=self.time4,
-            time_fp_stored=self.time5,
-        )
+        self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time3, time_study=self.time4,
+                     time_mem=self.time4, time_fp=self.time4, time_fp_stored=self.time5)
 
         # ghost participant should be filtered out
         p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-        self._insert(
-            p_ghost,
-            "Ghost",
-            "G",
-            "AZ_TUCSON",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time1,
-            time_fp=self.time1,
-            time_fp_stored=self.time1,
-        )
+        self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                     time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsLifecycleCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
-        results = dao.get_latest_version_from_cache("2018-01-03")
-        self.assertEqual(
-            results,
-            [
-                {
-                    "date": "2018-01-03",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 0,
-                            "Baseline_PPI_Modules_Complete": 0,
-                            "PPI_Module_The_Basics": 0,
-                            "Consent_Complete": 0,
-                            "PPI_Module_Overall_Health": 0,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 0,
-                            "Physical_Measurements": 0,
-                            "Registered": 0,
-                            "Samples_Received": 0,
-                        },
-                        "completed": {
-                            "Full_Participant": 1,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 1,
-                            "PPI_Module_Overall_Health": 1,
-                            "Consent_Enrollment": 1,
-                            "PPI_Module_Lifestyle": 1,
-                            "Physical_Measurements": 1,
-                            "Registered": 1,
-                            "Samples_Received": 1,
-                        },
-                    },
-                    "hpo": "UNSET",
-                },
-                {
-                    "date": "2018-01-03",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 2,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 1,
-                            "PPI_Module_Overall_Health": 1,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 1,
-                            "Physical_Measurements": 1,
-                            "Registered": 0,
-                            "Samples_Received": 1,
-                        },
-                        "completed": {
-                            "Full_Participant": 0,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 1,
-                            "PPI_Module_Overall_Health": 1,
-                            "Consent_Enrollment": 2,
-                            "PPI_Module_Lifestyle": 1,
-                            "Physical_Measurements": 1,
-                            "Registered": 2,
-                            "Samples_Received": 1,
-                        },
-                    },
-                    "hpo": "PITT",
-                },
-                {
-                    "date": "2018-01-03",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 1,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 0,
-                            "PPI_Module_Overall_Health": 1,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 1,
-                            "Physical_Measurements": 1,
-                            "Registered": 0,
-                            "Samples_Received": 1,
-                        },
-                        "completed": {
-                            "Full_Participant": 1,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 2,
-                            "PPI_Module_Overall_Health": 1,
-                            "Consent_Enrollment": 2,
-                            "PPI_Module_Lifestyle": 1,
-                            "Physical_Measurements": 1,
-                            "Registered": 2,
-                            "Samples_Received": 1,
-                        },
-                    },
-                    "hpo": "AZ_TUCSON",
-                },
-            ],
-        )
+        results = dao.get_latest_version_from_cache('2018-01-03')
+        self.assertEqual(len(results), 3)
+        self.assertIn({'date': '2018-01-03',
+                       'metrics': {'not_completed': {'Full_Participant': 0,
+                                                     'Baseline_PPI_Modules_Complete': 0,
+                                                     'PPI_Module_The_Basics': 0,
+                                                     'Consent_Complete': 0,
+                                                     'PPI_Module_Overall_Health': 0,
+                                                     'Consent_Enrollment': 0,
+                                                     'PPI_Module_Lifestyle': 0,
+                                                     'Physical_Measurements': 0,
+                                                     'Registered': 0,
+                                                     'Samples_Received': 0},
+                                   'completed': {'Full_Participant': 1,
+                                                 'Baseline_PPI_Modules_Complete': 1,
+                                                 'PPI_Module_The_Basics': 1,
+                                                 'Consent_Complete': 1,
+                                                 'PPI_Module_Overall_Health': 1,
+                                                 'Consent_Enrollment': 1,
+                                                 'PPI_Module_Lifestyle': 1,
+                                                 'Physical_Measurements': 1,
+                                                 'Registered': 1,
+                                                 'Samples_Received': 1}
+                                   }, 'hpo': u'UNSET'},
+                      results)
+        self.assertIn({'date': '2018-01-03',
+                       'metrics': {'not_completed': {'Full_Participant': 2,
+                                                     'Baseline_PPI_Modules_Complete': 1,
+                                                     'PPI_Module_The_Basics': 1,
+                                                     'Consent_Complete': 1,
+                                                     'PPI_Module_Overall_Health': 1,
+                                                     'Consent_Enrollment': 0,
+                                                     'PPI_Module_Lifestyle': 1,
+                                                     'Physical_Measurements': 1,
+                                                     'Registered': 0,
+                                                     'Samples_Received': 1},
+                                   'completed': {'Full_Participant': 0,
+                                                 'Baseline_PPI_Modules_Complete': 1,
+                                                 'PPI_Module_The_Basics': 1,
+                                                 'Consent_Complete': 1,
+                                                 'PPI_Module_Overall_Health': 1,
+                                                 'Consent_Enrollment': 2,
+                                                 'PPI_Module_Lifestyle': 1,
+                                                 'Physical_Measurements': 1,
+                                                 'Registered': 2,
+                                                 'Samples_Received': 1}
+                                   }, 'hpo': u'PITT'},
+                      results)
+        self.assertIn({'date': '2018-01-03',
+                       'metrics': {'not_completed': {'Full_Participant': 1,
+                                                     'Baseline_PPI_Modules_Complete': 1,
+                                                     'PPI_Module_The_Basics': 1,
+                                                     'Consent_Complete': 0,
+                                                     'PPI_Module_Overall_Health': 1,
+                                                     'Consent_Enrollment': 0,
+                                                     'PPI_Module_Lifestyle': 1,
+                                                     'Physical_Measurements': 1,
+                                                     'Registered': 0,
+                                                     'Samples_Received': 1},
+                                   'completed': {'Full_Participant': 1,
+                                                 'Baseline_PPI_Modules_Complete': 1,
+                                                 'PPI_Module_The_Basics': 1,
+                                                 'Consent_Complete': 2,
+                                                 'PPI_Module_Overall_Health': 1,
+                                                 'Consent_Enrollment': 2,
+                                                 'PPI_Module_Lifestyle': 1,
+                                                 'Physical_Measurements': 1,
+                                                 'Registered': 2,
+                                                 'Samples_Received': 1}
+                                   }, 'hpo': u'AZ_TUCSON'},
+                      results)
 
-        results2 = dao.get_latest_version_from_cache("2018-01-08")
-        self.assertEqual(
-            results2,
-            [
-                {
-                    "date": "2018-01-08",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 0,
-                            "Baseline_PPI_Modules_Complete": 0,
-                            "PPI_Module_The_Basics": 0,
-                            "Consent_Complete": 0,
-                            "PPI_Module_Overall_Health": 0,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 0,
-                            "Physical_Measurements": 0,
-                            "Registered": 0,
-                            "Samples_Received": 0,
-                        },
-                        "completed": {
-                            "Full_Participant": 1,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 1,
-                            "PPI_Module_Overall_Health": 1,
-                            "Consent_Enrollment": 1,
-                            "PPI_Module_Lifestyle": 1,
-                            "Physical_Measurements": 1,
-                            "Registered": 1,
-                            "Samples_Received": 1,
-                        },
-                    },
-                    "hpo": "UNSET",
-                },
-                {
-                    "date": "2018-01-08",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 0,
-                            "Baseline_PPI_Modules_Complete": 0,
-                            "PPI_Module_The_Basics": 0,
-                            "Consent_Complete": 0,
-                            "PPI_Module_Overall_Health": 0,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 0,
-                            "Physical_Measurements": 0,
-                            "Registered": 0,
-                            "Samples_Received": 0,
-                        },
-                        "completed": {
-                            "Full_Participant": 2,
-                            "Baseline_PPI_Modules_Complete": 2,
-                            "PPI_Module_The_Basics": 2,
-                            "Consent_Complete": 2,
-                            "PPI_Module_Overall_Health": 2,
-                            "Consent_Enrollment": 2,
-                            "PPI_Module_Lifestyle": 2,
-                            "Physical_Measurements": 2,
-                            "Registered": 2,
-                            "Samples_Received": 2,
-                        },
-                    },
-                    "hpo": "PITT",
-                },
-                {
-                    "date": "2018-01-08",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 0,
-                            "Baseline_PPI_Modules_Complete": 0,
-                            "PPI_Module_The_Basics": 0,
-                            "Consent_Complete": 0,
-                            "PPI_Module_Overall_Health": 0,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 0,
-                            "Physical_Measurements": 0,
-                            "Registered": 0,
-                            "Samples_Received": 0,
-                        },
-                        "completed": {
-                            "Full_Participant": 2,
-                            "Baseline_PPI_Modules_Complete": 2,
-                            "PPI_Module_The_Basics": 2,
-                            "Consent_Complete": 2,
-                            "PPI_Module_Overall_Health": 2,
-                            "Consent_Enrollment": 2,
-                            "PPI_Module_Lifestyle": 2,
-                            "Physical_Measurements": 2,
-                            "Registered": 2,
-                            "Samples_Received": 2,
-                        },
-                    },
-                    "hpo": "AZ_TUCSON",
-                },
-            ],
-        )
+        results2 = dao.get_latest_version_from_cache('2018-01-08')
+        self.assertEqual(len(results2), 3)
+        self.assertIn({'date': '2018-01-08',
+                       'metrics': {'not_completed': {'Full_Participant': 0,
+                                                     'Baseline_PPI_Modules_Complete': 0,
+                                                     'PPI_Module_The_Basics': 0,
+                                                     'Consent_Complete': 0,
+                                                     'PPI_Module_Overall_Health': 0,
+                                                     'Consent_Enrollment': 0,
+                                                     'PPI_Module_Lifestyle': 0,
+                                                     'Physical_Measurements': 0,
+                                                     'Registered': 0,
+                                                     'Samples_Received': 0},
+                                   'completed': {'Full_Participant': 1,
+                                                 'Baseline_PPI_Modules_Complete': 1,
+                                                 'PPI_Module_The_Basics': 1,
+                                                 'Consent_Complete': 1,
+                                                 'PPI_Module_Overall_Health': 1,
+                                                 'Consent_Enrollment': 1,
+                                                 'PPI_Module_Lifestyle': 1,
+                                                 'Physical_Measurements': 1,
+                                                 'Registered': 1,
+                                                 'Samples_Received': 1}
+                                   }, 'hpo': u'UNSET'},
+                      results2)
+        self.assertIn({'date': '2018-01-08',
+                       'metrics': {'not_completed': {'Full_Participant': 0,
+                                                     'Baseline_PPI_Modules_Complete': 0,
+                                                     'PPI_Module_The_Basics': 0,
+                                                     'Consent_Complete': 0,
+                                                     'PPI_Module_Overall_Health': 0,
+                                                     'Consent_Enrollment': 0,
+                                                     'PPI_Module_Lifestyle': 0,
+                                                     'Physical_Measurements': 0,
+                                                     'Registered': 0,
+                                                     'Samples_Received': 0},
+                                   'completed': {'Full_Participant': 2,
+                                                 'Baseline_PPI_Modules_Complete': 2,
+                                                 'PPI_Module_The_Basics': 2,
+                                                 'Consent_Complete': 2,
+                                                 'PPI_Module_Overall_Health': 2,
+                                                 'Consent_Enrollment': 2,
+                                                 'PPI_Module_Lifestyle': 2,
+                                                 'Physical_Measurements': 2,
+                                                 'Registered': 2,
+                                                 'Samples_Received': 2}
+                                   }, 'hpo': u'PITT'},
+                      results2)
+        self.assertIn({'date': '2018-01-08',
+                       'metrics': {'not_completed': {'Full_Participant': 0,
+                                                     'Baseline_PPI_Modules_Complete': 0,
+                                                     'PPI_Module_The_Basics': 0,
+                                                     'Consent_Complete': 0,
+                                                     'PPI_Module_Overall_Health': 0,
+                                                     'Consent_Enrollment': 0,
+                                                     'PPI_Module_Lifestyle': 0,
+                                                     'Physical_Measurements': 0,
+                                                     'Registered': 0,
+                                                     'Samples_Received': 0},
+                                   'completed': {'Full_Participant': 2,
+                                                 'Baseline_PPI_Modules_Complete': 2,
+                                                 'PPI_Module_The_Basics': 2,
+                                                 'Consent_Complete': 2,
+                                                 'PPI_Module_Overall_Health': 2,
+                                                 'Consent_Enrollment': 2,
+                                                 'PPI_Module_Lifestyle': 2,
+                                                 'Physical_Measurements': 2,
+                                                 'Registered': 2, 'Samples_Received': 2}
+                                   }, 'hpo': u'AZ_TUCSON'},
+                      results2)
 
     def test_refresh_metrics_lifecycle_cache_data_v2(self):
 
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(
-            p1,
-            "Alice",
-            "Aardvark",
-            "UNSET",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time1,
-            time_fp=self.time1,
-            time_fp_stored=self.time1,
-        )
+        self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                     time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(
-            p2,
-            "Bob",
-            "Builder",
-            "AZ_TUCSON",
-            time_int=self.time2,
-            time_study=self.time2,
-            time_mem=self.time2,
-            time_fp=self.time3,
-            time_fp_stored=self.time3,
-        )
+        self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                     time_mem=self.time2, time_fp=self.time3, time_fp_stored=self.time3)
 
         p3 = Participant(participantId=3, biobankId=6)
-        self._insert(
-            p3,
-            "Chad",
-            "Caterpillar",
-            "AZ_TUCSON",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time4,
-            time_fp=self.time5,
-            time_fp_stored=self.time5,
-        )
+        self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time4,
+                     time_mem=self.time4, time_fp=self.time5, time_fp_stored=self.time5)
 
         p4 = Participant(participantId=4, biobankId=7)
-        self._insert(
-            p4,
-            "Chad2",
-            "Caterpillar2",
-            "PITT",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time5,
-            time_fp=self.time5,
-            time_fp_stored=self.time5,
-        )
+        self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time4,
+                     time_mem=self.time5, time_fp=self.time5, time_fp_stored=self.time5)
 
         p4 = Participant(participantId=6, biobankId=9)
-        self._insert(
-            p4,
-            "Chad3",
-            "Caterpillar3",
-            "PITT",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time4,
-            time_fp=self.time4,
-            time_fp_stored=self.time5,
-        )
+        self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time3, time_study=self.time4,
+                     time_mem=self.time4, time_fp=self.time4, time_fp_stored=self.time5)
 
         p5 = Participant(participantId=7, biobankId=10)
-        self._insert(
-            p5,
-            "Chad4",
-            "Caterpillar4",
-            "PITT",
-            time_int=self.time0,
-            time_study=self.time0,
-            time_mem=self.time0,
-            time_fp=self.time0,
-            time_fp_stored=self.time0,
-        )
+        self._insert(p5, 'Chad4', 'Caterpillar4', 'PITT', time_int=self.time0, time_study=self.time0,
+                     time_mem=self.time0, time_fp=self.time0, time_fp_stored=self.time0)
 
         p6 = Participant(participantId=8, biobankId=11)
         ppi_modules = dict(
@@ -10163,626 +10161,414 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             questionnaireOnHealthcareAccessTime=self.time0,
             questionnaireOnMedicalHistoryTime=self.time0,
             questionnaireOnMedicationsTime=self.time0,
-            questionnaireOnFamilyHealthTime=self.time5,
+            questionnaireOnFamilyHealthTime=self.time5
         )
-        self._insert(
-            p6,
-            "Chad5",
-            "Caterpillar5",
-            "PITT",
-            time_int=self.time0,
-            time_study=self.time0,
-            time_mem=self.time0,
-            time_fp=self.time0,
-            time_fp_stored=self.time0,
-            **ppi_modules,
-        )
+        self._insert(p6, 'Chad5', 'Caterpillar5', 'PITT', time_int=self.time0, time_study=self.time0,
+                     time_mem=self.time0, time_fp=self.time0, time_fp_stored=self.time0, **ppi_modules)
 
         # ghost participant should be filtered out
         p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-        self._insert(
-            p_ghost,
-            "Ghost",
-            "G",
-            "AZ_TUCSON",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time1,
-            time_fp=self.time1,
-            time_fp_stored=self.time1,
-        )
+        self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                     time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsLifecycleCacheDao(MetricsCacheType.METRICS_V2_API, MetricsAPIVersion.V2)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
-        results = dao.get_latest_version_from_cache("2018-01-01")
-        self.assertEqual(
-            results,
-            [
-                {
-                    "date": "2018-01-01",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 0,
-                            "PPI_Module_The_Basics": 0,
-                            "Consent_Complete": 0,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 0,
-                            "Baseline_PPI_Modules_Complete": 0,
-                            "PPI_Module_Family_Health": 0,
-                            "PPI_Module_Overall_Health": 0,
-                            "PPI_Retention_Modules_Complete": 0,
-                            "Physical_Measurements": 0,
-                            "Registered": 0,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 0,
-                        },
-                        "completed": {
-                            "Full_Participant": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 1,
-                            "Consent_Enrollment": 1,
-                            "PPI_Module_Lifestyle": 1,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_Family_Health": 0,
-                            "PPI_Module_Overall_Health": 1,
-                            "PPI_Retention_Modules_Complete": 0,
-                            "Physical_Measurements": 1,
-                            "Registered": 1,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 1,
-                        },
-                    },
-                    "hpo": "UNSET",
-                },
-                {
-                    "date": "2018-01-01",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 0,
-                            "PPI_Module_The_Basics": 0,
-                            "Consent_Complete": 0,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 0,
-                            "Baseline_PPI_Modules_Complete": 0,
-                            "PPI_Module_Family_Health": 0,
-                            "PPI_Module_Overall_Health": 0,
-                            "PPI_Retention_Modules_Complete": 0,
-                            "Physical_Measurements": 0,
-                            "Registered": 0,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 0,
-                        },
-                        "completed": {
-                            "Full_Participant": 2,
-                            "PPI_Module_The_Basics": 2,
-                            "Consent_Complete": 2,
-                            "Consent_Enrollment": 2,
-                            "PPI_Module_Lifestyle": 2,
-                            "Baseline_PPI_Modules_Complete": 2,
-                            "PPI_Module_Family_Health": 0,
-                            "PPI_Module_Overall_Health": 2,
-                            "PPI_Retention_Modules_Complete": 0,
-                            "Physical_Measurements": 2,
-                            "Registered": 2,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 2,
-                        },
-                    },
-                    "hpo": "PITT",
-                },
-                {
-                    "date": "2018-01-01",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 0,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 1,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_Family_Health": 0,
-                            "PPI_Module_Overall_Health": 1,
-                            "PPI_Retention_Modules_Complete": 0,
-                            "Physical_Measurements": 1,
-                            "Registered": 0,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 1,
-                        },
-                        "completed": {
-                            "Full_Participant": 0,
-                            "PPI_Module_The_Basics": 0,
-                            "Consent_Complete": 1,
-                            "Consent_Enrollment": 1,
-                            "PPI_Module_Lifestyle": 0,
-                            "Baseline_PPI_Modules_Complete": 0,
-                            "PPI_Module_Family_Health": 0,
-                            "PPI_Module_Overall_Health": 0,
-                            "PPI_Retention_Modules_Complete": 0,
-                            "Physical_Measurements": 0,
-                            "Registered": 1,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 0,
-                        },
-                    },
-                    "hpo": "AZ_TUCSON",
-                },
-            ],
-        )
+        results = dao.get_latest_version_from_cache('2018-01-01')
+        self.assertEqual(len(results), 3)
+        self.assertIn({'date': '2018-01-01',
+                       'metrics': {'not_completed':
+                                       {'Full_Participant': 0,
+                                        'PPI_Module_The_Basics': 0,
+                                        'Consent_Complete': 0,
+                                        'Consent_Enrollment': 0,
+                                        'PPI_Module_Lifestyle': 0,
+                                        'Baseline_PPI_Modules_Complete': 0,
+                                        'PPI_Module_Family_Health': 0,
+                                        'PPI_Module_Overall_Health': 0,
+                                        'PPI_Retention_Modules_Complete': 0,
+                                        'Physical_Measurements': 0,
+                                        'Registered': 0,
+                                        'PPI_Module_Medical_History': 0,
+                                        'PPI_Module_Healthcare_Access': 0,
+                                        'Samples_Received': 0},
+                                   'completed':
+                                       {'Full_Participant': 1,
+                                        'PPI_Module_The_Basics': 1,
+                                        'Consent_Complete': 1,
+                                        'Consent_Enrollment': 1,
+                                        'PPI_Module_Lifestyle': 1,
+                                        'Baseline_PPI_Modules_Complete': 1,
+                                        'PPI_Module_Family_Health': 0,
+                                        'PPI_Module_Overall_Health': 1,
+                                        'PPI_Retention_Modules_Complete': 0,
+                                        'Physical_Measurements': 1,
+                                        'Registered': 1,
+                                        'PPI_Module_Medical_History': 0,
+                                        'PPI_Module_Healthcare_Access': 0,
+                                        'Samples_Received': 1}}, 'hpo': u'UNSET'},
+                      results)
+        self.assertIn({'date': '2018-01-01',
+                       'metrics': {'not_completed':
+                                       {'Full_Participant': 0,
+                                        'PPI_Module_The_Basics': 0,
+                                        'Consent_Complete': 0,
+                                        'Consent_Enrollment': 0,
+                                        'PPI_Module_Lifestyle': 0,
+                                        'Baseline_PPI_Modules_Complete': 0,
+                                        'PPI_Module_Family_Health': 0,
+                                        'PPI_Module_Overall_Health': 0,
+                                        'PPI_Retention_Modules_Complete': 0,
+                                        'Physical_Measurements': 0,
+                                        'Registered': 0,
+                                        'PPI_Module_Medical_History': 0,
+                                        'PPI_Module_Healthcare_Access': 0,
+                                        'Samples_Received': 0},
+                                   'completed':
+                                       {'Full_Participant': 2,
+                                        'PPI_Module_The_Basics': 2,
+                                        'Consent_Complete': 2,
+                                        'Consent_Enrollment': 2,
+                                        'PPI_Module_Lifestyle': 2,
+                                        'Baseline_PPI_Modules_Complete': 2,
+                                        'PPI_Module_Family_Health': 0,
+                                        'PPI_Module_Overall_Health': 2,
+                                        'PPI_Retention_Modules_Complete': 0,
+                                        'Physical_Measurements': 2,
+                                        'Registered': 2,
+                                        'PPI_Module_Medical_History': 0,
+                                        'PPI_Module_Healthcare_Access': 0,
+                                        'Samples_Received': 2}}, 'hpo': u'PITT'},
+                      results)
+        self.assertIn({'date': '2018-01-01',
+                       'metrics': {'not_completed':
+                                       {'Full_Participant': 1,
+                                        'PPI_Module_The_Basics': 1,
+                                        'Consent_Complete': 0,
+                                        'Consent_Enrollment': 0,
+                                        'PPI_Module_Lifestyle': 1,
+                                        'Baseline_PPI_Modules_Complete': 1,
+                                        'PPI_Module_Family_Health': 0,
+                                        'PPI_Module_Overall_Health': 1,
+                                        'PPI_Retention_Modules_Complete': 0,
+                                        'Physical_Measurements': 1,
+                                        'Registered': 0,
+                                        'PPI_Module_Medical_History': 0,
+                                        'PPI_Module_Healthcare_Access': 0,
+                                        'Samples_Received': 1},
+                                   'completed':
+                                       {'Full_Participant': 0,
+                                        'PPI_Module_The_Basics': 0,
+                                        'Consent_Complete': 1,
+                                        'Consent_Enrollment': 1,
+                                        'PPI_Module_Lifestyle': 0,
+                                        'Baseline_PPI_Modules_Complete': 0,
+                                        'PPI_Module_Family_Health': 0,
+                                        'PPI_Module_Overall_Health': 0,
+                                        'PPI_Retention_Modules_Complete': 0,
+                                        'Physical_Measurements': 0,
+                                        'Registered': 1,
+                                        'PPI_Module_Medical_History': 0,
+                                        'PPI_Module_Healthcare_Access': 0,
+                                        'Samples_Received': 0}}, 'hpo': u'AZ_TUCSON'},
+                      results)
 
-        results2 = dao.get_latest_version_from_cache("2018-01-03")
-        self.assertEqual(
-            results2,
-            [
-                {
-                    "date": "2018-01-03",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 0,
-                            "PPI_Module_The_Basics": 0,
-                            "Consent_Complete": 0,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 0,
-                            "Baseline_PPI_Modules_Complete": 0,
-                            "PPI_Module_Family_Health": 0,
-                            "PPI_Module_Overall_Health": 0,
-                            "PPI_Retention_Modules_Complete": 0,
-                            "Physical_Measurements": 0,
-                            "Registered": 0,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 0,
-                        },
-                        "completed": {
-                            "Full_Participant": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 1,
-                            "Consent_Enrollment": 1,
-                            "PPI_Module_Lifestyle": 1,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_Family_Health": 0,
-                            "PPI_Module_Overall_Health": 1,
-                            "PPI_Retention_Modules_Complete": 0,
-                            "Physical_Measurements": 1,
-                            "Registered": 1,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 1,
-                        },
-                    },
-                    "hpo": "UNSET",
-                },
-                {
-                    "date": "2018-01-03",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 2,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 1,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 1,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_Family_Health": 1,
-                            "PPI_Module_Overall_Health": 1,
-                            "PPI_Retention_Modules_Complete": 1,
-                            "Physical_Measurements": 1,
-                            "Registered": 0,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 1,
-                        },
-                        "completed": {
-                            "Full_Participant": 2,
-                            "PPI_Module_The_Basics": 3,
-                            "Consent_Complete": 3,
-                            "Consent_Enrollment": 4,
-                            "PPI_Module_Lifestyle": 3,
-                            "Baseline_PPI_Modules_Complete": 3,
-                            "PPI_Module_Family_Health": 1,
-                            "PPI_Module_Overall_Health": 3,
-                            "PPI_Retention_Modules_Complete": 1,
-                            "Physical_Measurements": 3,
-                            "Registered": 4,
-                            "PPI_Module_Medical_History": 2,
-                            "PPI_Module_Healthcare_Access": 2,
-                            "Samples_Received": 3,
-                        },
-                    },
-                    "hpo": "PITT",
-                },
-                {
-                    "date": "2018-01-03",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 0,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 1,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_Family_Health": 0,
-                            "PPI_Module_Overall_Health": 1,
-                            "PPI_Retention_Modules_Complete": 0,
-                            "Physical_Measurements": 1,
-                            "Registered": 0,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 1,
-                        },
-                        "completed": {
-                            "Full_Participant": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 2,
-                            "Consent_Enrollment": 2,
-                            "PPI_Module_Lifestyle": 1,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_Family_Health": 0,
-                            "PPI_Module_Overall_Health": 1,
-                            "PPI_Retention_Modules_Complete": 0,
-                            "Physical_Measurements": 1,
-                            "Registered": 2,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 1,
-                        },
-                    },
-                    "hpo": "AZ_TUCSON",
-                },
-            ],
-        )
+        results2 = dao.get_latest_version_from_cache('2018-01-03')
+        self.assertEqual(len(results2), 3)
+        self.assertIn({'date': '2018-01-03',
+                       'metrics': {
+                           'not_completed':
+                               {'Full_Participant': 0,
+                                'PPI_Module_The_Basics': 0,
+                                'Consent_Complete': 0,
+                                'Consent_Enrollment': 0,
+                                'PPI_Module_Lifestyle': 0,
+                                'Baseline_PPI_Modules_Complete': 0,
+                                'PPI_Module_Family_Health': 0,
+                                'PPI_Module_Overall_Health': 0,
+                                'PPI_Retention_Modules_Complete': 0,
+                                'Physical_Measurements': 0,
+                                'Registered': 0,
+                                'PPI_Module_Medical_History': 0,
+                                'PPI_Module_Healthcare_Access': 0,
+                                'Samples_Received': 0},
+                           'completed':
+                               {'Full_Participant': 1,
+                                'PPI_Module_The_Basics': 1,
+                                'Consent_Complete': 1,
+                                'Consent_Enrollment': 1,
+                                'PPI_Module_Lifestyle': 1,
+                                'Baseline_PPI_Modules_Complete': 1,
+                                'PPI_Module_Family_Health': 0,
+                                'PPI_Module_Overall_Health': 1,
+                                'PPI_Retention_Modules_Complete': 0,
+                                'Physical_Measurements': 1,
+                                'Registered': 1,
+                                'PPI_Module_Medical_History': 0,
+                                'PPI_Module_Healthcare_Access': 0,
+                                'Samples_Received': 1}}, 'hpo': u'UNSET'},
+                      results2)
+        self.assertIn({'date': '2018-01-03',
+                       'metrics': {
+                           'not_completed':
+                               {'Full_Participant': 2,
+                                'PPI_Module_The_Basics': 1,
+                                'Consent_Complete': 1,
+                                'Consent_Enrollment': 0,
+                                'PPI_Module_Lifestyle': 1,
+                                'Baseline_PPI_Modules_Complete': 1,
+                                'PPI_Module_Family_Health': 1,
+                                'PPI_Module_Overall_Health': 1,
+                                'PPI_Retention_Modules_Complete': 1,
+                                'Physical_Measurements': 1,
+                                'Registered': 0,
+                                'PPI_Module_Medical_History': 0,
+                                'PPI_Module_Healthcare_Access': 0,
+                                'Samples_Received': 1},
+                           'completed':
+                               {'Full_Participant': 2,
+                                'PPI_Module_The_Basics': 3,
+                                'Consent_Complete': 3,
+                                'Consent_Enrollment': 4,
+                                'PPI_Module_Lifestyle': 3,
+                                'Baseline_PPI_Modules_Complete': 3,
+                                'PPI_Module_Family_Health': 1,
+                                'PPI_Module_Overall_Health': 3,
+                                'PPI_Retention_Modules_Complete': 1,
+                                'Physical_Measurements': 3,
+                                'Registered': 4,
+                                'PPI_Module_Medical_History': 2,
+                                'PPI_Module_Healthcare_Access': 2,
+                                'Samples_Received': 3}}, 'hpo': u'PITT'},
+                      results2)
+        self.assertIn({'date': '2018-01-03',
+                       'metrics':
+                           {'not_completed':
+                                {'Full_Participant': 1,
+                                 'PPI_Module_The_Basics': 1,
+                                 'Consent_Complete': 0,
+                                 'Consent_Enrollment': 0,
+                                 'PPI_Module_Lifestyle': 1,
+                                 'Baseline_PPI_Modules_Complete': 1,
+                                 'PPI_Module_Family_Health': 0,
+                                 'PPI_Module_Overall_Health': 1,
+                                 'PPI_Retention_Modules_Complete': 0,
+                                 'Physical_Measurements': 1,
+                                 'Registered': 0,
+                                 'PPI_Module_Medical_History': 0,
+                                 'PPI_Module_Healthcare_Access': 0,
+                                 'Samples_Received': 1},
+                            'completed':
+                                {'Full_Participant': 1,
+                                 'PPI_Module_The_Basics': 1,
+                                 'Consent_Complete': 2,
+                                 'Consent_Enrollment': 2,
+                                 'PPI_Module_Lifestyle': 1,
+                                 'Baseline_PPI_Modules_Complete': 1,
+                                 'PPI_Module_Family_Health': 0,
+                                 'PPI_Module_Overall_Health': 1,
+                                 'PPI_Retention_Modules_Complete': 0,
+                                 'Physical_Measurements': 1,
+                                 'Registered': 2,
+                                 'PPI_Module_Medical_History': 0,
+                                 'PPI_Module_Healthcare_Access': 0,
+                                 'Samples_Received': 1}}, 'hpo': u'AZ_TUCSON'},
+                      results2)
 
     def test_get_metrics_lifecycle_data_api(self):
 
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(
-            p1,
-            "Alice",
-            "Aardvark",
-            "UNSET",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time1,
-            time_fp=self.time1,
-            time_fp_stored=self.time1,
-        )
+        self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                     time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(
-            p2,
-            "Bob",
-            "Builder",
-            "AZ_TUCSON",
-            time_int=self.time2,
-            time_study=self.time2,
-            time_mem=self.time2,
-            time_fp=self.time3,
-            time_fp_stored=self.time3,
-        )
+        self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                     time_mem=self.time2, time_fp=self.time3, time_fp_stored=self.time3)
 
         p3 = Participant(participantId=3, biobankId=6)
-        self._insert(
-            p3,
-            "Chad",
-            "Caterpillar",
-            "AZ_TUCSON",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time4,
-            time_fp=self.time5,
-            time_fp_stored=self.time5,
-        )
+        self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time4,
+                     time_mem=self.time4, time_fp=self.time5, time_fp_stored=self.time5)
 
         p4 = Participant(participantId=4, biobankId=7)
-        self._insert(
-            p4,
-            "Chad2",
-            "Caterpillar2",
-            "PITT",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time5,
-            time_fp=self.time5,
-            time_fp_stored=self.time5,
-        )
+        self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time4,
+                     time_mem=self.time5, time_fp=self.time5, time_fp_stored=self.time5)
 
         p4 = Participant(participantId=6, biobankId=9)
-        self._insert(
-            p4,
-            "Chad3",
-            "Caterpillar3",
-            "PITT",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time4,
-            time_fp=self.time4,
-            time_fp_stored=self.time5,
-        )
+        self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time3, time_study=self.time4,
+                     time_mem=self.time4, time_fp=self.time4, time_fp_stored=self.time5)
 
         # ghost participant should be filtered out
         p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-        self._insert(
-            p_ghost,
-            "Ghost",
-            "G",
-            "AZ_TUCSON",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time1,
-            time_fp=self.time1,
-            time_fp_stored=self.time1,
-        )
+        self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                     time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
         service = ParticipantCountsOverTimeService()
-        service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType.METRICS_V2_API))
-        service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
+        service.init_tmp_table()
+        service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
+                                                                        .METRICS_V2_API))
+        service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
+                                                                        .PUBLIC_METRICS_EXPORT_API))
 
         qs1 = """
-                          &stratification=LIFECYCLE
-                          &endDate=2018-01-03
-                          &history=TRUE
-                          """
+                            &stratification=LIFECYCLE
+                            &endDate=2018-01-03
+                            &history=TRUE
+                            """
 
-        qs1 = "".join(qs1.split())
-        results = self.send_get("ParticipantCountsOverTime", query_string=qs1)
+        qs1 = ''.join(qs1.split())
+        results = self.send_get('ParticipantCountsOverTime', query_string=qs1)
 
         qs2 = """
-                              &stratification=LIFECYCLE
-                              &endDate=2018-01-08
-                              &history=TRUE
-                              &awardee=PITT,AZ_TUCSON
-                              """
+                                &stratification=LIFECYCLE
+                                &endDate=2018-01-08
+                                &history=TRUE
+                                &awardee=PITT,AZ_TUCSON
+                                """
 
-        qs2 = "".join(qs2.split())
+        qs2 = ''.join(qs2.split())
 
-        results2 = self.send_get("ParticipantCountsOverTime", query_string=qs2)
+        results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
 
-        self.assertEqual(
-            results,
-            [
-                {
-                    "date": "2018-01-03",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 0,
-                            "PPI_Module_The_Basics": 0,
-                            "Consent_Complete": 0,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 0,
-                            "Registered": 0,
-                            "Baseline_PPI_Modules_Complete": 0,
-                            "PPI_Module_Overall_Health": 0,
-                            "Physical_Measurements": 0,
-                            "Samples_Received": 0,
-                        },
-                        "completed": {
-                            "Full_Participant": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 1,
-                            "Consent_Enrollment": 1,
-                            "PPI_Module_Lifestyle": 1,
-                            "Registered": 1,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_Overall_Health": 1,
-                            "Physical_Measurements": 1,
-                            "Samples_Received": 1,
-                        },
-                    },
-                    "hpo": "UNSET",
-                },
-                {
-                    "date": "2018-01-03",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 2,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 1,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 1,
-                            "Registered": 0,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_Overall_Health": 1,
-                            "Physical_Measurements": 1,
-                            "Samples_Received": 1,
-                        },
-                        "completed": {
-                            "Full_Participant": 0,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 1,
-                            "Consent_Enrollment": 2,
-                            "PPI_Module_Lifestyle": 1,
-                            "Registered": 2,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_Overall_Health": 1,
-                            "Physical_Measurements": 1,
-                            "Samples_Received": 1,
-                        },
-                    },
-                    "hpo": "PITT",
-                },
-                {
-                    "date": "2018-01-03",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 0,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 1,
-                            "Registered": 0,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_Overall_Health": 1,
-                            "Physical_Measurements": 1,
-                            "Samples_Received": 1,
-                        },
-                        "completed": {
-                            "Full_Participant": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 2,
-                            "Consent_Enrollment": 2,
-                            "PPI_Module_Lifestyle": 1,
-                            "Registered": 2,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "PPI_Module_Overall_Health": 1,
-                            "Physical_Measurements": 1,
-                            "Samples_Received": 1,
-                        },
-                    },
-                    "hpo": "AZ_TUCSON",
-                },
-            ],
-        )
+        self.assertEqual(len(results), 3)
+        self.assertIn({u'date': u'2018-01-03',
+                       u'metrics': {u'not_completed': {u'Full_Participant': 0,
+                                                       u'PPI_Module_The_Basics': 0,
+                                                       u'Consent_Complete': 0,
+                                                       u'Consent_Enrollment': 0,
+                                                       u'PPI_Module_Lifestyle': 0,
+                                                       u'Registered': 0,
+                                                       u'Baseline_PPI_Modules_Complete': 0,
+                                                       u'PPI_Module_Overall_Health': 0,
+                                                       u'Physical_Measurements': 0,
+                                                       u'Samples_Received': 0},
+                                    u'completed': {u'Full_Participant': 1,
+                                                   u'PPI_Module_The_Basics': 1,
+                                                   u'Consent_Complete': 1,
+                                                   u'Consent_Enrollment': 1,
+                                                   u'PPI_Module_Lifestyle': 1,
+                                                   u'Registered': 1,
+                                                   u'Baseline_PPI_Modules_Complete': 1,
+                                                   u'PPI_Module_Overall_Health': 1,
+                                                   u'Physical_Measurements': 1,
+                                                   u'Samples_Received': 1}}, u'hpo': u'UNSET'},
+                      results)
+        self.assertIn({u'date': u'2018-01-03',
+                       u'metrics': {u'not_completed': {u'Full_Participant': 2,
+                                                       u'PPI_Module_The_Basics': 1,
+                                                       u'Consent_Complete': 1,
+                                                       u'Consent_Enrollment': 0,
+                                                       u'PPI_Module_Lifestyle': 1,
+                                                       u'Registered': 0,
+                                                       u'Baseline_PPI_Modules_Complete': 1,
+                                                       u'PPI_Module_Overall_Health': 1,
+                                                       u'Physical_Measurements': 1,
+                                                       u'Samples_Received': 1},
+                                    u'completed': {u'Full_Participant': 0,
+                                                   u'PPI_Module_The_Basics': 1,
+                                                   u'Consent_Complete': 1,
+                                                   u'Consent_Enrollment': 2,
+                                                   u'PPI_Module_Lifestyle': 1,
+                                                   u'Registered': 2,
+                                                   u'Baseline_PPI_Modules_Complete': 1,
+                                                   u'PPI_Module_Overall_Health': 1,
+                                                   u'Physical_Measurements': 1,
+                                                   u'Samples_Received': 1}}, u'hpo': u'PITT'},
+                      results)
+        self.assertIn({u'date': u'2018-01-03',
+                       u'metrics': {u'not_completed': {u'Full_Participant': 1,
+                                                       u'PPI_Module_The_Basics': 1,
+                                                       u'Consent_Complete': 0,
+                                                       u'Consent_Enrollment': 0,
+                                                       u'PPI_Module_Lifestyle': 1,
+                                                       u'Registered': 0,
+                                                       u'Baseline_PPI_Modules_Complete': 1,
+                                                       u'PPI_Module_Overall_Health': 1,
+                                                       u'Physical_Measurements': 1,
+                                                       u'Samples_Received': 1},
+                                    u'completed': {u'Full_Participant': 1,
+                                                   u'PPI_Module_The_Basics': 1,
+                                                   u'Consent_Complete': 2,
+                                                   u'Consent_Enrollment': 2,
+                                                   u'PPI_Module_Lifestyle': 1,
+                                                   u'Registered': 2,
+                                                   u'Baseline_PPI_Modules_Complete': 1,
+                                                   u'PPI_Module_Overall_Health': 1,
+                                                   u'Physical_Measurements': 1,
+                                                   u'Samples_Received': 1}}, u'hpo': u'AZ_TUCSON'},
+                      results)
 
-        self.assertEqual(
-            results2,
-            [
-                {
-                    "date": "2018-01-08",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 0,
-                            "PPI_Module_The_Basics": 0,
-                            "Consent_Complete": 0,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 0,
-                            "Registered": 0,
-                            "Baseline_PPI_Modules_Complete": 0,
-                            "PPI_Module_Overall_Health": 0,
-                            "Physical_Measurements": 0,
-                            "Samples_Received": 0,
-                        },
-                        "completed": {
-                            "Full_Participant": 2,
-                            "PPI_Module_The_Basics": 2,
-                            "Consent_Complete": 2,
-                            "Consent_Enrollment": 2,
-                            "PPI_Module_Lifestyle": 2,
-                            "Registered": 2,
-                            "Baseline_PPI_Modules_Complete": 2,
-                            "PPI_Module_Overall_Health": 2,
-                            "Physical_Measurements": 2,
-                            "Samples_Received": 2,
-                        },
-                    },
-                    "hpo": "PITT",
-                },
-                {
-                    "date": "2018-01-08",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 0,
-                            "PPI_Module_The_Basics": 0,
-                            "Consent_Complete": 0,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 0,
-                            "Registered": 0,
-                            "Baseline_PPI_Modules_Complete": 0,
-                            "PPI_Module_Overall_Health": 0,
-                            "Physical_Measurements": 0,
-                            "Samples_Received": 0,
-                        },
-                        "completed": {
-                            "Full_Participant": 2,
-                            "PPI_Module_The_Basics": 2,
-                            "Consent_Complete": 2,
-                            "Consent_Enrollment": 2,
-                            "PPI_Module_Lifestyle": 2,
-                            "Registered": 2,
-                            "Baseline_PPI_Modules_Complete": 2,
-                            "PPI_Module_Overall_Health": 2,
-                            "Physical_Measurements": 2,
-                            "Samples_Received": 2,
-                        },
-                    },
-                    "hpo": "AZ_TUCSON",
-                },
-            ],
-        )
+        self.assertEqual(len(results2), 2)
+        self.assertIn({u'date': u'2018-01-08',
+                       u'metrics': {u'not_completed': {u'Full_Participant': 0,
+                                                       u'PPI_Module_The_Basics': 0,
+                                                       u'Consent_Complete': 0,
+                                                       u'Consent_Enrollment': 0,
+                                                       u'PPI_Module_Lifestyle': 0,
+                                                       u'Registered': 0,
+                                                       u'Baseline_PPI_Modules_Complete': 0,
+                                                       u'PPI_Module_Overall_Health': 0,
+                                                       u'Physical_Measurements': 0,
+                                                       u'Samples_Received': 0},
+                                    u'completed': {u'Full_Participant': 2,
+                                                   u'PPI_Module_The_Basics': 2,
+                                                   u'Consent_Complete': 2,
+                                                   u'Consent_Enrollment': 2,
+                                                   u'PPI_Module_Lifestyle': 2,
+                                                   u'Registered': 2,
+                                                   u'Baseline_PPI_Modules_Complete': 2,
+                                                   u'PPI_Module_Overall_Health': 2,
+                                                   u'Physical_Measurements': 2,
+                                                   u'Samples_Received': 2}}, u'hpo': u'PITT'},
+                      results2)
+        self.assertIn({u'date': u'2018-01-08',
+                       u'metrics': {u'not_completed': {u'Full_Participant': 0,
+                                                       u'PPI_Module_The_Basics': 0,
+                                                       u'Consent_Complete': 0,
+                                                       u'Consent_Enrollment': 0,
+                                                       u'PPI_Module_Lifestyle': 0,
+                                                       u'Registered': 0,
+                                                       u'Baseline_PPI_Modules_Complete': 0,
+                                                       u'PPI_Module_Overall_Health': 0,
+                                                       u'Physical_Measurements': 0,
+                                                       u'Samples_Received': 0},
+                                    u'completed': {u'Full_Participant': 2,
+                                                   u'PPI_Module_The_Basics': 2,
+                                                   u'Consent_Complete': 2,
+                                                   u'Consent_Enrollment': 2,
+                                                   u'PPI_Module_Lifestyle': 2,
+                                                   u'Registered': 2,
+                                                   u'Baseline_PPI_Modules_Complete': 2,
+                                                   u'PPI_Module_Overall_Health': 2,
+                                                   u'Physical_Measurements': 2,
+                                                   u'Samples_Received': 2}}, u'hpo': u'AZ_TUCSON'},
+                      results2)
 
     def test_get_metrics_lifecycle_data_api_v2(self):
 
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(
-            p1,
-            "Alice",
-            "Aardvark",
-            "UNSET",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time1,
-            time_fp=self.time1,
-            time_fp_stored=self.time1,
-        )
+        self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                     time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(
-            p2,
-            "Bob",
-            "Builder",
-            "AZ_TUCSON",
-            time_int=self.time2,
-            time_study=self.time2,
-            time_mem=self.time2,
-            time_fp=self.time3,
-            time_fp_stored=self.time3,
-        )
+        self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                     time_mem=self.time2, time_fp=self.time3, time_fp_stored=self.time3)
 
         p3 = Participant(participantId=3, biobankId=6)
-        self._insert(
-            p3,
-            "Chad",
-            "Caterpillar",
-            "AZ_TUCSON",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time4,
-            time_fp=self.time5,
-            time_fp_stored=self.time5,
-        )
+        self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time4,
+                     time_mem=self.time4, time_fp=self.time5, time_fp_stored=self.time5)
 
         p4 = Participant(participantId=4, biobankId=7)
-        self._insert(
-            p4,
-            "Chad2",
-            "Caterpillar2",
-            "PITT",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time5,
-            time_fp=self.time5,
-            time_fp_stored=self.time5,
-        )
+        self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time4,
+                     time_mem=self.time5, time_fp=self.time5, time_fp_stored=self.time5)
 
         p4 = Participant(participantId=6, biobankId=9)
-        self._insert(
-            p4,
-            "Chad3",
-            "Caterpillar3",
-            "PITT",
-            time_int=self.time3,
-            time_study=self.time4,
-            time_mem=self.time4,
-            time_fp=self.time4,
-            time_fp_stored=self.time5,
-        )
+        self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time3, time_study=self.time4,
+                     time_mem=self.time4, time_fp=self.time4, time_fp_stored=self.time5)
         p5 = Participant(participantId=7, biobankId=10)
-        self._insert(
-            p5,
-            "Chad4",
-            "Caterpillar4",
-            "PITT",
-            time_int=self.time0,
-            time_study=self.time0,
-            time_mem=self.time0,
-            time_fp=self.time0,
-            time_fp_stored=self.time0,
-        )
+        self._insert(p5, 'Chad4', 'Caterpillar4', 'PITT', time_int=self.time0, time_study=self.time0,
+                     time_mem=self.time0, time_fp=self.time0, time_fp_stored=self.time0)
 
         p6 = Participant(participantId=8, biobankId=11)
         ppi_modules = dict(
@@ -10792,167 +10578,190 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             questionnaireOnHealthcareAccessTime=self.time0,
             questionnaireOnMedicalHistoryTime=self.time0,
             questionnaireOnMedicationsTime=self.time0,
-            questionnaireOnFamilyHealthTime=self.time5,
+            questionnaireOnFamilyHealthTime=self.time5
         )
-        self._insert(
-            p6,
-            "Chad5",
-            "Caterpillar5",
-            "PITT",
-            time_int=self.time0,
-            time_study=self.time0,
-            time_mem=self.time0,
-            time_fp=self.time0,
-            time_fp_stored=self.time0,
-            **ppi_modules,
-        )
+        self._insert(p6, 'Chad5', 'Caterpillar5', 'PITT', time_int=self.time0, time_study=self.time0,
+                     time_mem=self.time0, time_fp=self.time0, time_fp_stored=self.time0, **ppi_modules)
 
         # ghost participant should be filtered out
         p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-        self._insert(
-            p_ghost,
-            "Ghost",
-            "G",
-            "AZ_TUCSON",
-            time_int=self.time1,
-            time_study=self.time1,
-            time_mem=self.time1,
-            time_fp=self.time1,
-            time_fp_stored=self.time1,
-        )
+        self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                     time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
         service = ParticipantCountsOverTimeService()
-        service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType.METRICS_V2_API))
-        service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
+        service.init_tmp_table()
+        service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
+                                                                        .METRICS_V2_API))
+        service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
+                                                                        .PUBLIC_METRICS_EXPORT_API))
 
         qs1 = """
-                          &stratification=LIFECYCLE
-                          &endDate=2018-01-03
-                          &history=TRUE
-                          &version=2
-                          """
+                            &stratification=LIFECYCLE
+                            &endDate=2018-01-03
+                            &history=TRUE
+                            &version=2
+                            """
 
-        qs1 = "".join(qs1.split())
-        results = self.send_get("ParticipantCountsOverTime", query_string=qs1)
-        self.assertEqual(
-            results,
-            [
-                {
-                    "date": "2018-01-03",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 0,
-                            "PPI_Module_The_Basics": 0,
-                            "Consent_Complete": 0,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 0,
-                            "Registered": 0,
-                            "Baseline_PPI_Modules_Complete": 0,
-                            "Physical_Measurements": 0,
-                            "PPI_Module_Family_Health": 0,
-                            "PPI_Module_Overall_Health": 0,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Retention_Modules_Complete": 0,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 0,
-                        },
-                        "completed": {
-                            "Full_Participant": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 1,
-                            "Consent_Enrollment": 1,
-                            "PPI_Module_Lifestyle": 1,
-                            "Registered": 1,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "Physical_Measurements": 1,
-                            "PPI_Module_Family_Health": 0,
-                            "PPI_Module_Overall_Health": 1,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Retention_Modules_Complete": 0,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 1,
-                        },
-                    },
-                    "hpo": "UNSET",
-                },
-                {
-                    "date": "2018-01-03",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 2,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 1,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 1,
-                            "Registered": 0,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "Physical_Measurements": 1,
-                            "PPI_Module_Family_Health": 1,
-                            "PPI_Module_Overall_Health": 1,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Retention_Modules_Complete": 1,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 1,
-                        },
-                        "completed": {
-                            "Full_Participant": 2,
-                            "PPI_Module_The_Basics": 3,
-                            "Consent_Complete": 3,
-                            "Consent_Enrollment": 4,
-                            "PPI_Module_Lifestyle": 3,
-                            "Registered": 4,
-                            "Baseline_PPI_Modules_Complete": 3,
-                            "Physical_Measurements": 3,
-                            "PPI_Module_Family_Health": 1,
-                            "PPI_Module_Overall_Health": 3,
-                            "PPI_Module_Medical_History": 2,
-                            "PPI_Retention_Modules_Complete": 1,
-                            "PPI_Module_Healthcare_Access": 2,
-                            "Samples_Received": 3,
-                        },
-                    },
-                    "hpo": "PITT",
-                },
-                {
-                    "date": "2018-01-03",
-                    "metrics": {
-                        "not_completed": {
-                            "Full_Participant": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 0,
-                            "Consent_Enrollment": 0,
-                            "PPI_Module_Lifestyle": 1,
-                            "Registered": 0,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "Physical_Measurements": 1,
-                            "PPI_Module_Family_Health": 0,
-                            "PPI_Module_Overall_Health": 1,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Retention_Modules_Complete": 0,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 1,
-                        },
-                        "completed": {
-                            "Full_Participant": 1,
-                            "PPI_Module_The_Basics": 1,
-                            "Consent_Complete": 2,
-                            "Consent_Enrollment": 2,
-                            "PPI_Module_Lifestyle": 1,
-                            "Registered": 2,
-                            "Baseline_PPI_Modules_Complete": 1,
-                            "Physical_Measurements": 1,
-                            "PPI_Module_Family_Health": 0,
-                            "PPI_Module_Overall_Health": 1,
-                            "PPI_Module_Medical_History": 0,
-                            "PPI_Retention_Modules_Complete": 0,
-                            "PPI_Module_Healthcare_Access": 0,
-                            "Samples_Received": 1,
-                        },
-                    },
-                    "hpo": "AZ_TUCSON",
-                },
-            ],
-        )
+        qs1 = ''.join(qs1.split())
+        results = self.send_get('ParticipantCountsOverTime', query_string=qs1)
+        self.assertEqual(len(results), 3)
+        self.assertIn({u'date': u'2018-01-03',
+                       u'metrics':
+                           {u'not_completed':
+                                {u'Full_Participant': 0,
+                                 u'PPI_Module_The_Basics': 0,
+                                 u'Consent_Complete': 0,
+                                 u'Consent_Enrollment': 0,
+                                 u'PPI_Module_Lifestyle': 0,
+                                 u'Registered': 0,
+                                 u'Baseline_PPI_Modules_Complete': 0,
+                                 u'Physical_Measurements': 0,
+                                 u'PPI_Module_Family_Health': 0,
+                                 u'PPI_Module_Overall_Health': 0,
+                                 u'PPI_Module_Medical_History': 0,
+                                 u'PPI_Retention_Modules_Complete': 0,
+                                 u'PPI_Module_Healthcare_Access': 0,
+                                 u'Samples_Received': 0},
+                            u'completed':
+                                {u'Full_Participant': 1,
+                                 u'PPI_Module_The_Basics': 1,
+                                 u'Consent_Complete': 1,
+                                 u'Consent_Enrollment': 1,
+                                 u'PPI_Module_Lifestyle': 1,
+                                 u'Registered': 1,
+                                 u'Baseline_PPI_Modules_Complete': 1,
+                                 u'Physical_Measurements': 1,
+                                 u'PPI_Module_Family_Health': 0,
+                                 u'PPI_Module_Overall_Health': 1,
+                                 u'PPI_Module_Medical_History': 0,
+                                 u'PPI_Retention_Modules_Complete': 0,
+                                 u'PPI_Module_Healthcare_Access': 0,
+                                 u'Samples_Received': 1}}, u'hpo': u'UNSET'},
+                      results)
+        self.assertIn({u'date': u'2018-01-03',
+                       u'metrics':
+                           {u'not_completed':
+                                {u'Full_Participant': 2,
+                                 u'PPI_Module_The_Basics': 1,
+                                 u'Consent_Complete': 1,
+                                 u'Consent_Enrollment': 0,
+                                 u'PPI_Module_Lifestyle': 1,
+                                 u'Registered': 0,
+                                 u'Baseline_PPI_Modules_Complete': 1,
+                                 u'Physical_Measurements': 1,
+                                 u'PPI_Module_Family_Health': 1,
+                                 u'PPI_Module_Overall_Health': 1,
+                                 u'PPI_Module_Medical_History': 0,
+                                 u'PPI_Retention_Modules_Complete': 1,
+                                 u'PPI_Module_Healthcare_Access': 0,
+                                 u'Samples_Received': 1},
+                            u'completed':
+                                {u'Full_Participant': 2,
+                                 u'PPI_Module_The_Basics': 3,
+                                 u'Consent_Complete': 3,
+                                 u'Consent_Enrollment': 4,
+                                 u'PPI_Module_Lifestyle': 3,
+                                 u'Registered': 4,
+                                 u'Baseline_PPI_Modules_Complete': 3,
+                                 u'Physical_Measurements': 3,
+                                 u'PPI_Module_Family_Health': 1,
+                                 u'PPI_Module_Overall_Health': 3,
+                                 u'PPI_Module_Medical_History': 2,
+                                 u'PPI_Retention_Modules_Complete': 1,
+                                 u'PPI_Module_Healthcare_Access': 2,
+                                 u'Samples_Received': 3}}, u'hpo': u'PITT'},
+                      results)
+        self.assertIn({u'date': u'2018-01-03',
+                       u'metrics':
+                           {u'not_completed':
+                                {u'Full_Participant': 1,
+                                 u'PPI_Module_The_Basics': 1,
+                                 u'Consent_Complete': 0,
+                                 u'Consent_Enrollment': 0,
+                                 u'PPI_Module_Lifestyle': 1,
+                                 u'Registered': 0,
+                                 u'Baseline_PPI_Modules_Complete': 1,
+                                 u'Physical_Measurements': 1,
+                                 u'PPI_Module_Family_Health': 0,
+                                 u'PPI_Module_Overall_Health': 1,
+                                 u'PPI_Module_Medical_History': 0,
+                                 u'PPI_Retention_Modules_Complete': 0,
+                                 u'PPI_Module_Healthcare_Access': 0,
+                                 u'Samples_Received': 1},
+                            u'completed':
+                                {u'Full_Participant': 1,
+                                 u'PPI_Module_The_Basics': 1,
+                                 u'Consent_Complete': 2,
+                                 u'Consent_Enrollment': 2,
+                                 u'PPI_Module_Lifestyle': 1,
+                                 u'Registered': 2,
+                                 u'Baseline_PPI_Modules_Complete': 1,
+                                 u'Physical_Measurements': 1,
+                                 u'PPI_Module_Family_Health': 0,
+                                 u'PPI_Module_Overall_Health': 1,
+                                 u'PPI_Module_Medical_History': 0,
+                                 u'PPI_Retention_Modules_Complete': 0,
+                                 u'PPI_Module_Healthcare_Access': 0,
+                                 u'Samples_Received': 1}}, u'hpo': u'AZ_TUCSON'},
+                      results)
+
+        qs2 = ('&stratification=LIFECYCLE'
+               '&endDate=2018-01-03'
+               '&history=TRUE'
+               '&version=2'
+               '&enrollmentStatus=CORE_PARTICIPANT')
+
+        results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
+        self.assertEqual(len(results2), 3)
+
+        self.assertIn({u'date': u'2018-01-03', u'metrics': {
+            u'not_completed': {u'Full_Participant': 0, u'PPI_Module_The_Basics': 0,
+                               u'Consent_Complete': 0, u'Consent_Enrollment': 0,
+                               u'PPI_Module_Lifestyle': 0, u'Registered': 0,
+                               u'Baseline_PPI_Modules_Complete': 0, u'Physical_Measurements': 0,
+                               u'PPI_Module_Family_Health': 0, u'PPI_Module_Overall_Health': 0,
+                               u'PPI_Module_Medical_History': 0, u'PPI_Retention_Modules_Complete': 0,
+                               u'PPI_Module_Healthcare_Access': 0, u'Samples_Received': 0},
+            u'completed': {u'Full_Participant': 1, u'PPI_Module_The_Basics': 1, u'Consent_Complete': 1,
+                           u'Consent_Enrollment': 1, u'PPI_Module_Lifestyle': 1, u'Registered': 1,
+                           u'Baseline_PPI_Modules_Complete': 1, u'Physical_Measurements': 1,
+                           u'PPI_Module_Family_Health': 0, u'PPI_Module_Overall_Health': 1,
+                           u'PPI_Module_Medical_History': 0, u'PPI_Retention_Modules_Complete': 0,
+                           u'PPI_Module_Healthcare_Access': 0, u'Samples_Received': 1}
+        }, u'hpo': u'UNSET'},
+                      results2)
+        self.assertIn({u'date': u'2018-01-03', u'metrics': {
+            u'not_completed': {u'Full_Participant': 0, u'PPI_Module_The_Basics': 0,
+                               u'Consent_Complete': 0, u'Consent_Enrollment': 0,
+                               u'PPI_Module_Lifestyle': 0, u'Registered': 0,
+                               u'Baseline_PPI_Modules_Complete': 0, u'Physical_Measurements': 0,
+                               u'PPI_Module_Family_Health': 1, u'PPI_Module_Overall_Health': 0,
+                               u'PPI_Module_Medical_History': 0, u'PPI_Retention_Modules_Complete': 1,
+                               u'PPI_Module_Healthcare_Access': 0, u'Samples_Received': 0},
+            u'completed': {u'Full_Participant': 2, u'PPI_Module_The_Basics': 2, u'Consent_Complete': 2,
+                           u'Consent_Enrollment': 2, u'PPI_Module_Lifestyle': 2, u'Registered': 2,
+                           u'Baseline_PPI_Modules_Complete': 2, u'Physical_Measurements': 2,
+                           u'PPI_Module_Family_Health': 1, u'PPI_Module_Overall_Health': 2,
+                           u'PPI_Module_Medical_History': 2, u'PPI_Retention_Modules_Complete': 1,
+                           u'PPI_Module_Healthcare_Access': 2, u'Samples_Received': 2}
+        }, u'hpo': u'PITT'},
+                      results2)
+        self.assertIn({u'date': u'2018-01-03', u'metrics': {
+            u'not_completed': {u'Full_Participant': 0, u'PPI_Module_The_Basics': 0,
+                               u'Consent_Complete': 0, u'Consent_Enrollment': 0,
+                               u'PPI_Module_Lifestyle': 0, u'Registered': 0,
+                               u'Baseline_PPI_Modules_Complete': 0, u'Physical_Measurements': 0,
+                               u'PPI_Module_Family_Health': 0, u'PPI_Module_Overall_Health': 0,
+                               u'PPI_Module_Medical_History': 0, u'PPI_Retention_Modules_Complete': 0,
+                               u'PPI_Module_Healthcare_Access': 0, u'Samples_Received': 0},
+            u'completed': {u'Full_Participant': 1, u'PPI_Module_The_Basics': 1, u'Consent_Complete': 1,
+                           u'Consent_Enrollment': 1, u'PPI_Module_Lifestyle': 1, u'Registered': 1,
+                           u'Baseline_PPI_Modules_Complete': 1, u'Physical_Measurements': 1,
+                           u'PPI_Module_Family_Health': 0, u'PPI_Module_Overall_Health': 1,
+                           u'PPI_Module_Medical_History': 0, u'PPI_Retention_Modules_Complete': 0,
+                           u'PPI_Module_Healthcare_Access': 0, u'Samples_Received': 1}
+        }, u'hpo': u'AZ_TUCSON'},
+                      results2)
 
     def test_refresh_metrics_lifecycle_cache_data_for_public_metrics_api(self):
 
@@ -11036,6 +10845,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         )
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType.METRICS_V2_API))
         dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
         service.refresh_data_for_metrics_cache(dao)
@@ -11161,6 +10971,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsLanguageCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
         results = dao.get_latest_version_from_cache("2017-12-30", "2018-01-03")
 
@@ -11203,6 +11014,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsLanguageCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         # test API without awardee and enrollmentStatus parameters
@@ -11293,6 +11105,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsLanguageCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
         results = dao.get_latest_version_from_cache("2017-12-30", "2018-01-03")
 

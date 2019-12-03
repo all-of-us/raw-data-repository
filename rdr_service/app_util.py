@@ -1,5 +1,5 @@
-import datetime
 import calendar
+import datetime
 import email.utils
 import logging
 import urllib.parse
@@ -8,10 +8,11 @@ import netaddr
 import pytz
 import requests
 from flask import request
-from rdr_service.config import GAE_PROJECT
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from rdr_service import clock, config
+from rdr_service.api.base_api import log_api_request
+from rdr_service.config import GAE_PROJECT
 
 _GMT = pytz.timezone("GMT")
 SCOPE = "https://www.googleapis.com/auth/userinfo.email"
@@ -38,12 +39,14 @@ def auth_required_cron(func):
     return wrapped
 
 
-def auth_required_task(func):
+def task_auth_required(func):
     """A decorator that ensures that the user is a task job."""
 
     def wrapped(*args, **kwargs):
-        if request.headers.get("X-Appengine-Taskname") and "AppEngine-Google" in request.headers.get("User-Agent", ""):
-            logging.info("Appengine-Taskname ALLOWED for task endpoint.")
+        if GAE_PROJECT == "localhost" or (
+            request.headers.get("X-Appengine-Taskname") and "AppEngine-Google" in request.headers.get("User-Agent", "")
+        ):
+            logging.info("App Engine task request ALLOWED for task endpoint.")
             return func(*args, **kwargs)
         logging.info("User {} NOT ALLOWED for task endpoint".format(get_oauth_id()))
         raise Forbidden()
@@ -65,11 +68,10 @@ def nonprod(func):
 def check_auth(role_whitelist):
     """Raises Unauthorized or Forbidden if the current user is not allowed."""
     user_email, user_info = get_validated_user_info()
-
     if set(user_info.get("roles", [])) & set(role_whitelist):
         return
 
-    print(f"User {user_email} has roles {user_info.get('roles')}, but {role_whitelist} is required")
+    logging.warning(f"User {user_email} has roles {user_info.get('roles')}, but {role_whitelist} is required")
     raise Forbidden()
 
 
@@ -94,12 +96,12 @@ def get_oauth_id():
     NOTES: 2019-08-15 by tanner and mikey
     currently verifies that the provided token
     is legitimate via google API.
-    - perfomance
+    - performance
         - could be cached
         - could be validated locally instead of with API
     '''
     if GAE_PROJECT == 'localhost':  # NOTE: 2019-08-15 mimic devappserver.py behavior
-        return "example@example.com"
+        return config.LOCAL_AUTH_USER
     try:
         token = get_auth_token()
     except ValueError as e:
@@ -132,6 +134,21 @@ def check_cron():
 
 def lookup_user_info(user_email):
     return config.getSettingJson(config.USER_INFO, {}).get(user_email)
+
+def get_participant_origin_id():
+    """
+    Returns the clientId value set in the config for the user.
+    :return: Client Id
+    """
+    auth_email = get_oauth_id()
+    user_info = lookup_user_info(auth_email)
+    client_id = user_info.get('clientId')
+    from rdr_service.api_util import DEV_MAIL
+    if not client_id:
+        if auth_email == DEV_MAIL:
+            client_id = "example"  # TODO: This is a hack because something sets up configs different
+            # when running all tests and it doesnt have the clientId key.
+    return client_id
 
 
 def _is_self_request():
@@ -221,11 +238,20 @@ def auth_required(role_whitelist):
             # Only enforce HTTPS and auth for external requests; requests made for data generation
             # are allowed through (when enabled).
             acceptable_hosts = ("None", "testbed-test", "testapp", "localhost", "127.0.0.1")
+            # logging.info(str(request.headers))
             if not _is_self_request():
                 if request.scheme.lower() != "https" and appid not in acceptable_hosts:
-                    raise Unauthorized("HTTPS is required for %r" % appid, www_authenticate='Bearer realm="rdr"')
+                    raise Unauthorized(f"HTTPS is required for {appid}", www_authenticate='Bearer realm="rdr"')
                 check_auth(role_whitelist)
-            return func(*args, **kwargs)
+            request.logged = False
+            result = func(*args, **kwargs)
+            if request.logged is False:
+                try:
+                    log_api_request()
+                except RuntimeError:
+                    # Unittests don't always setup a valid flask request context.
+                    pass
+            return result
 
         return wrapped
 
@@ -237,7 +263,7 @@ def get_validated_user_info():
     user_email = get_oauth_id()
 
     # Allow clients to simulate an unauthentiated request (for testing)
-    # becaues we haven't found another way to create an unauthenticated request
+    # because we haven't found another way to create an unauthenticated request
     # when using dev_appserver. When client tests are checking to ensure that an
     # unauthenticated requests gets rejected, they helpfully add this header.
     # The `application_id` check ensures this feature only works in dev_appserver.
@@ -248,12 +274,17 @@ def get_validated_user_info():
 
     user_info = lookup_user_info(user_email)
     if user_info:
-        enforce_ip_whitelisted(request.remote_addr, get_whitelisted_ips(user_info))
+        if 'X-Appengine-User-Ip' in request.headers:
+            addr = request.headers.get('X-Appengine-User-Ip')
+        else:
+            addr = request.remote_addr
+        enforce_ip_whitelisted(addr, get_whitelisted_ips(user_info))
+        # TODO: Probably need to remove appid whitelisted if testing in staging works out. 11-6-2019
         enforce_appid_whitelisted(request.headers.get("X-Appengine-Inbound-Appid"), get_whitelisted_appids(user_info))
-        logging.info("User %r ALLOWED", user_email)
+        logging.info(f"User {user_email} ALLOWED")
         return (user_email, user_info)
 
-    logging.info("User %r NOT ALLOWED" % user_email)
+    logging.info(f"User {user_email} NOT ALLOWED")
     raise Forbidden()
 
 

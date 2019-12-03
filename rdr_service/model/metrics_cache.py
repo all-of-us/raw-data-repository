@@ -28,6 +28,7 @@ class MetricsRaceCache(Base):
     dateInserted = Column("date_inserted", UTCDateTime, default=clock.CLOCK.now, nullable=False, primary_key=True)
     type = Column("type", String(50), primary_key=True)
     registeredFlag = Column("registered_flag", Boolean, nullable=False, primary_key=True)
+    participantFlag = Column('participant_flag', Boolean, nullable=False, primary_key=True)
     consentedFlag = Column("consent_flag", Boolean, nullable=False, primary_key=True)
     coreFlag = Column("core_flag", Boolean, nullable=False, primary_key=True)
     hpoId = Column("hpo_id", String(20), primary_key=True)
@@ -110,6 +111,7 @@ class MetricsLifecycleCache(Base):
 
     __tablename__ = "metrics_lifecycle_cache"
     dateInserted = Column("date_inserted", UTCDateTime, default=clock.CLOCK.now, nullable=False, primary_key=True)
+    enrollmentStatus = Column('enrollment_status', String(50), primary_key=True, default='')
     type = Column("type", String(50), primary_key=True)
     hpoId = Column("hpo_id", String(20), primary_key=True)
     hpoName = Column("hpo_name", String(255), primary_key=True)

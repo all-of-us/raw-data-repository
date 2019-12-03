@@ -32,11 +32,15 @@ tool_cmd = "sync-consents"
 tool_desc = "manually sync consent files to sites"
 
 HPO_REPORT_CONFIG_GCS_PATH = "gs://all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
-SOURCE_BUCKET = "gs://ptc-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*"
+SOURCE_BUCKET = {
+    "vibrent": "gs://ptc-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*",
+    "careevolution": "gs://ce-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*"
+}
 DEST_BUCKET = "gs://{bucket_name}/Participant/{org_external_id}/{site_name}/P{p_id}/"
 
 PARTICIPANT_SQL = """
 select participant.participant_id,
+       participant.participant_origin,
        site.google_group,
        organization.external_id
 from participant
@@ -155,21 +159,22 @@ class SyncConsentClass(object):
                     )
 
                 p_id = rec[0]
-                site = rec[1]
+                origin_id = rec[1]
+                site = rec[2]
                 if self.args.destination_bucket is not None:
                     # override destination bucket lookup (the lookup table is incomplete)
                     bucket = self.args.destination_bucket
                 else:
-                    site_info = sites.get(rec[2])
+                    site_info = sites.get(rec[3])
                     if not site_info:
-                        _logger.warn("\nsite info not found for [{0}].".format(rec[2]))
+                        _logger.warning("\nsite info not found for [{0}].".format(rec[2]))
                         continue
                     bucket = site_info.get("bucket_name")
                 if not bucket:
-                    _logger.warn("\nno bucket name found for [{0}].".format(rec[2]))
+                    _logger.warning("\nno bucket name found for [{0}].".format(rec[2]))
                     continue
 
-                src_bucket = SOURCE_BUCKET.format(p_id=p_id)
+                src_bucket = SOURCE_BUCKET.get(origin_id, SOURCE_BUCKET[next(iter(SOURCE_BUCKET))]).format(p_id=p_id)
                 dest_bucket = DEST_BUCKET.format(
                     bucket_name=bucket,
                     org_external_id=self.args.org_id,
@@ -217,10 +222,10 @@ def run():
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
     parser.add_argument("--org-id", help="organization id", default=None)  # noqa
     parser.add_argument(
-        "--destination_bucket", default=None, help="Override the destination bucket lookup for the given organization."
+        "--destination-bucket", default=None, help="Override the destination bucket lookup for the given organization."
     )
     parser.add_argument(
-        "--dry_run", action="store_true", help="Do not copy files, only print the list of files that would be copied"
+        "--dry-run", action="store_true", help="Do not copy files, only print the list of files that would be copied"
     )
     args = parser.parse_args()
 

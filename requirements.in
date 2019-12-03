@@ -31,7 +31,10 @@ google-cloud-bigquery
 google-cloud-datastore
 google-cloud-firestore
 google-python-cloud-debugger
+google-cloud-logging
+google-cloud-tasks
 googlemaps   # Used in tools/import_organizations.py
+protobuf   # Google protobuffers
 
 ## database services
 mysqlclient
@@ -41,11 +44,6 @@ fhirclient
 protorpc
 dictalchemy
 sqlparse
-
-## Background Tasks
-celery
-librabbitmq
-amqp==2.1.1
 
 ## misc
 dnspython

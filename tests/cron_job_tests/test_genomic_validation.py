@@ -10,12 +10,10 @@ from rdr_service.genomic.validation import validate_and_update_genomic_set_by_id
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
-    GenomicSetMemberStatus,
-    GenomicSetStatus,
-    GenomicValidationFlag,
 )
 from rdr_service.model.participant import Participant
-from rdr_service.participant_enums import SampleStatus, WithdrawalStatus
+from rdr_service.participant_enums import SampleStatus, WithdrawalStatus, GenomicSetStatus, GenomicSetMemberStatus, \
+    GenomicValidationFlag
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -60,6 +58,7 @@ class GenomicSetValidationBaseTestCase(BaseTestCase):
             sampleStatus1SAL2=SampleStatus.RECEIVED,
             samplesToIsolateDNA=SampleStatus.RECEIVED,
             consentForStudyEnrollmentTime=datetime.datetime(2019, 1, 1),
+            participantOrigin='example'
         )
         kwargs = dict(valid_kwargs, **override_kwargs)
         summary = self._participant_summary_with_defaults(**kwargs)
@@ -122,10 +121,9 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
         member_b = self.make_genomic_member(genomic_set_b, participant)
         validate_and_update_genomic_set_by_id(genomic_set_b.id)
         current_member = self.genomic_member_dao.get(member_b.id)
-        self.assertEqual(current_member.validationStatus, GenomicSetMemberStatus.INVALID)
-        self.assertIn(GenomicValidationFlag.INVALID_DUP_PARTICIPANT, current_member.validationFlags)
+        self.assertEqual(current_member.validationStatus, GenomicSetMemberStatus.VALID)
         current_set = self.genomic_set_dao.get(genomic_set_b.id)
-        self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
+        self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.VALID)
 
     def test_consent(self):
         participant = self.make_participant()

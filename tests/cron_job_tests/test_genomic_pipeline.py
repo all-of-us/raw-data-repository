@@ -7,17 +7,32 @@ from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file, list_blobs
 from rdr_service.code_constants import BIOBANK_TESTS
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
-from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
+from rdr_service.dao.genomics_dao import (
+    GenomicSetDao,
+    GenomicSetMemberDao,
+    GenomicJobDao,
+    GenomicJobRunDao,
+    GenomicFileProcessedDao,
+    GenomicGCValidationMetricsDao
+)
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.genomic import genomic_set_file_handler
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.model.biobank_dv_order import BiobankDVOrder
-from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
-from rdr_service.model.genomics import GenomicSet, GenomicSetMember, GenomicSetMemberStatus, GenomicSetStatus
+from rdr_service.model.biobank_order import (
+    BiobankOrder,
+    BiobankOrderIdentifier,
+    BiobankOrderedSample
+)
+from rdr_service.model.genomics import (
+    GenomicSet,
+    GenomicSetMember
+)
 from rdr_service.model.participant import Participant
 from rdr_service.offline import genomic_pipeline
-from rdr_service.participant_enums import SampleStatus
+from rdr_service.participant_enums import SampleStatus, GenomicSetStatus, GenomicSetMemberStatus, \
+    GenomicSubProcessStatus, GenomicSubProcessResult
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -26,6 +41,9 @@ _FAKE_BUCKET = "rdr_fake_bucket"
 _FAKE_BIOBANK_SAMPLE_BUCKET = "rdr_fake_biobank_sample_bucket"
 _FAKE_BUCKET_FOLDER = "rdr_fake_sub_folder"
 _FAKE_BUCKET_RESULT_FOLDER = "rdr_fake_sub_result_folder"
+_FAKE_GENOMIC_CENTER_BUCKET_A = 'rdr_fake_genomic_center_a_bucket'
+_FAKE_GENOMIC_CENTER_BUCKET_B = 'rdr_fake_genomic_center_b_bucket'
+_FAKE_GENOTYPING_FOLDER = 'rdr_fake_genotyping_folder'
 _OUTPUT_CSV_TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
 _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
@@ -39,9 +57,17 @@ class GenomicPipelineTest(BaseTestCase):
         config.override_setting(config.BIOBANK_SAMPLES_BUCKET_NAME, [_FAKE_BIOBANK_SAMPLE_BUCKET])
         config.override_setting(config.GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME, [_FAKE_BUCKET_FOLDER])
         config.override_setting(config.GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME, [_FAKE_BUCKET_RESULT_FOLDER])
+        config.override_setting(config.GENOMIC_CENTER_BUCKET_NAME, [_FAKE_GENOMIC_CENTER_BUCKET_A,
+                                                                    _FAKE_GENOMIC_CENTER_BUCKET_B])
+        config.override_setting(config.GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME,
+                                [_FAKE_GENOTYPING_FOLDER])
 
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
+        self.genomic_job_dao = GenomicJobDao()
+        self.genomic_job_run_dao = GenomicJobRunDao()
+        self.genomic_file_processed_dao = GenomicFileProcessedDao()
+        self.genomic_gc_validation_metrics_dao = GenomicGCValidationMetricsDao()
         self._participant_i = 1
 
     mock_bucket_paths = [_FAKE_BUCKET,
@@ -169,6 +195,20 @@ class GenomicPipelineTest(BaseTestCase):
             bucket=_FAKE_BIOBANK_SAMPLE_BUCKET,
             folder=_FAKE_BUCKET_RESULT_FOLDER,
         )
+
+        genotyping_sample_manifest_file_1 = test_data.open_genomic_set_file(
+            'Genomic-Test-Genotyping-Sample-Manifest-1.csv')
+        genotyping_sample_manifest_filename_1 = 'CIDR_AoU_GEN_PKG-1907-120819.csv'
+        self._write_cloud_csv(genotyping_sample_manifest_filename_1, genotyping_sample_manifest_file_1,
+                              bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+                              folder=_FAKE_GENOTYPING_FOLDER)
+
+        genotyping_sample_manifest_file_2 = test_data.open_genomic_set_file(
+            'Genomic-Test-Genotyping-Sample-Manifest-2.csv')
+        genotyping_sample_manifest_filename_2 = 'CIDR_AoU_GEN_PKG-1907-120810.csv'
+        self._write_cloud_csv(genotyping_sample_manifest_filename_2, genotyping_sample_manifest_file_2,
+                              bucket=_FAKE_GENOMIC_CENTER_BUCKET_B,
+                              folder=_FAKE_GENOTYPING_FOLDER)
 
         genomic_pipeline.process_genomic_water_line()
 
@@ -316,12 +356,14 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(rows[2][ExpectedCsvColumns.NY_FLAG], "N")
             self.assertEqual(rows[2][ExpectedCsvColumns.PACKAGE_ID], "PKG-XXXX-XXXX3")
 
-        # verify package id in database
+        # verify package id and sample id in database
         member_dao = GenomicSetMemberDao()
         members = member_dao.get_all()
         for member in members:
             self.assertIn(member.packageId, ["PKG-XXXX-XXXX1", "PKG-XXXX-XXXX2", "PKG-XXXX-XXXX3"])
             self.assertIn(member.biobankOrderClientId, ["12345678", "12345679", "12345680"])
+            self.assertIn(member.sampleId, ['19224001502', '19224001510', '19224001518'])
+            self.assertIn(member.sampleType, ['DNA'])
 
     def test_wrong_file_name_case(self):
         self.clear_default_storage()
@@ -484,7 +526,218 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(rows[2][ResultCsvColumns.GENOME_TYPE], "aou_array")
             self.assertEqual(rows[2][ResultCsvColumns.SEX_AT_BIRTH], "M")
 
-    def _create_fake_genomic_set(self, genomic_set_name, genomic_set_criteria, genomic_set_filename):
+    def test_gc_validation_metrics_end_to_end(self):
+        # Create the fake data needed for GCs Metrics Ingestion
+        self.genomic_job_dao.insert_job('test_gc_metrics_ingestion_end_to_end')
+        # fake genomic_set
+        self._create_fake_genomic_set(
+            genomic_set_name="genomic-test-set-cell-line",
+            genomic_set_criteria=".",
+            genomic_set_filename="genomic-test-set-cell-line.csv"
+        )
+
+        # create 10 test participant set members
+        # pylint:disable=unused-variable
+        for p in range(1, 11):
+            # Fake participant_ids and biobank_orders
+            new_participant = self._make_participant()
+            self._make_summary(new_participant)
+
+            self._make_biobank_order(
+                participantId=new_participant.participantId,
+                biobankOrderId=new_participant.participantId,
+                identifiers=[BiobankOrderIdentifier(
+                    system=u'c', value=u'e{}'.format(
+                        new_participant.participantId))]
+            )
+
+            # Fake genomic set members.
+            # Not currently needed, but probably will be once
+            # later phases are implemented
+            # self._create_fake_genomic_member(
+            #     genomic_set_id=genomic_test_set.id,
+            #     participant_id=new_participant.participantId,
+            #     biobank_order_id=new_biobank_order.biobankOrderId,
+            #     validation_status=GenomicSetMemberStatus.VALID,
+            #     validation_flags=None,
+            #     sex_at_birth='F', genome_type='aou_array', ny_flag='Y'
+            # )
+
+        # Create the fake Google Cloud CSV files to ingest
+        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        end_to_end_test_files = (
+            'GC_AoU_SEQ_TestDataManifest.csv',
+            'GC_AoU_GEN_TestDataManifest.csv',
+            'test_empty_wells.csv'
+        )
+        for test_file in end_to_end_test_files:
+            self._create_ingestion_test_file(test_file, bucket_name)
+
+        # run the GC Metrics Ingestion workflow
+        genomic_pipeline.ingest_genomic_centers_metrics_files()
+
+        # test file processing queue
+        files_processed = self.genomic_file_processed_dao.get_all()
+        files_processed.sort(key=lambda x: x.fileName, reverse=True)
+        self.assertEqual(len(files_processed), 2)
+        self._gc_files_processed_test_cases(files_processed, bucket_name)
+
+        # Test the fields against the DB
+        gc_metrics = self.genomic_gc_validation_metrics_dao.get_all()
+        self.assertEqual(len(gc_metrics), 10)
+        self._gc_metrics_ingested_data_test_cases(bucket_name,
+                                                  files_processed,
+                                                  gc_metrics)
+
+        # Test successful run result
+        run_obj = self.genomic_job_run_dao.get_all()
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj[0].runResult)
+
+    def _gc_files_processed_test_cases(self, files_processed, bucket_name):
+        """
+        sub tests for the GC Metrics end to end test
+        :param files_processed:
+        :return:
+        """
+        self.assertEqual(
+            files_processed[0].fileName,
+            'GC_AoU_SEQ_TestDataManifest_11192019.csv'
+        )
+        self.assertEqual(
+            files_processed[0].filePath,
+            '/dev_genomics_cell_line_validation/'
+            'GC_AoU_SEQ_TestDataManifest_11192019.csv'
+        )
+
+        self.assertEqual(
+            files_processed[1].fileName,
+            'GC_AoU_GEN_TestDataManifest_11192019.csv'
+        )
+        self.assertEqual(
+            files_processed[1].filePath,
+            '/dev_genomics_cell_line_validation/'
+            'GC_AoU_GEN_TestDataManifest_11192019.csv'
+        )
+
+        self.assertEqual(files_processed[1].fileStatus,
+                         GenomicSubProcessStatus.COMPLETED)
+        self.assertEqual(files_processed[1].fileResult,
+                         GenomicSubProcessResult.SUCCESS)
+
+        # Test files were moved to archive OK
+        bucket_list = list_blobs('/' + bucket_name)
+        archive_files = [s.name.split('/')[1] for s in bucket_list
+                         if s.name.lower().startswith('processed_by_rdr')]
+        bucket_files = [s.name for s in bucket_list
+                        if s.name.lower().endswith('.csv')]
+
+        for f in files_processed:
+            self.assertNotIn(f.fileName, bucket_files)
+            self.assertIn(f.fileName, archive_files)
+
+    def _gc_metrics_ingested_data_test_cases(self, bucket_name,
+                                             files_processed, gc_metrics):
+        """Sub tests for the end-to-end metrics test"""
+
+        # Test SEQ file data inserted correctly
+        with open_cloud_file(
+            bucket_name + '/processed_by_rdr/' + files_processed[0].fileName
+        ) as csv_file:
+            csv_reader = csv.DictReader(csv_file, delimiter=",")
+            rows = list(csv_reader)
+            for i in range(0, 5):
+                self.assertEqual(int(rows[i]['Biobank ID'][1:]), gc_metrics[i].participantId)
+                self.assertEqual(rows[i]['BiobankidSampleid'], gc_metrics[i].sampleId)
+                self.assertEqual(rows[i]['LIMS ID'], gc_metrics[i].limsId)
+                self.assertEqual(int(rows[i]['Mean Coverage']), gc_metrics[i].meanCoverage)
+                self.assertEqual(int(rows[i]['Genome Coverage']), gc_metrics[i].genomeCoverage)
+                self.assertEqual(int(rows[i]['Contamination']), gc_metrics[i].contamination)
+                self.assertEqual(rows[i]['Sex Concordance'], gc_metrics[i].sexConcordance)
+                self.assertEqual(int(rows[i]['Aligned Q20 Bases']), gc_metrics[i].alignedQ20Bases)
+                self.assertEqual(rows[i]['Processing Status'], gc_metrics[i].processingStatus)
+                self.assertEqual(rows[i]['Notes'], gc_metrics[i].notes)
+                self.assertEqual(rows[i]['Consent for RoR'], gc_metrics[i].consentForRor)
+                self.assertEqual(int(rows[i]['Withdrawn_status']), gc_metrics[i].withdrawnStatus)
+                self.assertEqual(int(rows[i]['site_id']), gc_metrics[i].siteId)
+
+        # Test GEN file data inserted correctly
+        with open_cloud_file(
+            bucket_name + '/processed_by_rdr/' + files_processed[1].fileName
+        ) as csv_file:
+            csv_reader = csv.DictReader(csv_file, delimiter=",")
+            rows = list(csv_reader)
+            for i in range(5, 10):
+                self.assertEqual(int(rows[i-5]['Biobank ID'][1:]), gc_metrics[i].participantId)
+                self.assertEqual(rows[i-5]['BiobankidSampleid'], gc_metrics[i].sampleId)
+                self.assertEqual(rows[i-5]['LIMS ID'], gc_metrics[i].limsId)
+                self.assertEqual(int(rows[i-5]['Call Rate']), gc_metrics[i].callRate)
+                self.assertEqual(int(rows[i-5]['Contamination']), gc_metrics[i].contamination)
+                self.assertEqual(rows[i-5]['Sex Concordance'], gc_metrics[i].sexConcordance)
+                self.assertEqual(rows[i-5]['Processing Status'], gc_metrics[i].processingStatus)
+                self.assertEqual(rows[i-5]['Notes'], gc_metrics[i].notes)
+                self.assertEqual(int(rows[i-5]['site_id']), gc_metrics[i].siteId)
+
+    def test_gc_metrics_ingestion_bad_files(self):
+        # Create the fake data needed for GCs Metrics Ingestion
+        self.genomic_job_dao.insert_job('test_gc_metrics_ingestion_bad_files')
+
+        # Create the fake Google Cloud CSV files to ingest
+        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        end_to_end_test_files = (
+            'GC_AoU_SEQ_TestBadStructureDataManifest.csv',
+            'GC-AoU-TestBadFilename-DataManifest.csv',
+            'test_empty_wells.csv'
+        )
+        for test_file in end_to_end_test_files:
+            self._create_ingestion_test_file(test_file, bucket_name)
+
+        # run the GC Metrics Ingestion workflow
+        genomic_pipeline.ingest_genomic_centers_metrics_files()
+
+        # test file processing queue
+        files_processed = self.genomic_file_processed_dao.get_all()
+
+        # Test bad filename, invalid columns
+        for f in files_processed:
+            if "TestBadFilename" in f.fileName:
+                self.assertEqual(f.fileResult,
+                                 GenomicSubProcessResult.INVALID_FILE_NAME)
+            if "TestBadStructure" in f.fileName:
+                self.assertEqual(f.fileResult,
+                                 GenomicSubProcessResult.INVALID_FILE_STRUCTURE)
+        # Test Unsuccessful run
+        run_obj = self.genomic_job_run_dao.get(1)
+        self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
+
+    def test_gc_metrics_ingestion_no_files(self):
+        self.genomic_job_dao.insert_job('test_gc_metrics_ingestion_no_files')
+
+        # run the GC Metrics Ingestion workflow
+        genomic_pipeline.ingest_genomic_centers_metrics_files()
+
+        # Test Unsuccessful run
+        run_obj = self.genomic_job_run_dao.get(1)
+        self.assertEqual(GenomicSubProcessResult.NO_FILES, run_obj.runResult)
+
+    def _create_ingestion_test_file(self,
+                                    test_data_filename,
+                                    bucket_name):
+        test_data_file = test_data.open_genomic_set_file(test_data_filename)
+
+        input_filename = '{}{}.csv'.format(
+            test_data_filename.replace('.csv', ''),
+            '_11192019'
+        )
+
+        self._write_cloud_csv(input_filename,
+                              test_data_file,
+                              bucket=bucket_name)
+
+    def _create_fake_genomic_set(self,
+                                 genomic_set_name,
+                                 genomic_set_criteria,
+                                 genomic_set_filename
+                                 ):
         now = clock.CLOCK.now()
         genomic_set = GenomicSet()
         genomic_set.genomicSetName = genomic_set_name

@@ -19,7 +19,7 @@ from rdr_service.model.bq_base import BQDuplicateFieldException, BQInvalidSchema
     BQSchemaStructureException, BQException, BQSchema
 from rdr_service.services.gcp_utils import gcp_bq_command
 from rdr_service.services.system_utils import setup_logging, setup_i18n
-from rdr_service.tools.tool_libs import GCPProcessContext
+from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 
 _logger = logging.getLogger('rdr_logger')
 
@@ -33,7 +33,9 @@ LJUST_WIDTH = 75
 
 class BQMigration(object):
 
-    def __init__(self, args, gcp_env):
+    _db_config = None
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
@@ -225,6 +227,9 @@ class BQMigration(object):
         Main program process
         :return: Exit code value
         """
+        if not self.args.delete and not self.gcp_env.activate_sql_proxy():
+            return 1
+
         # TODO: Validate dataset name exists in BigQuery
         # Loop through table schemas
         for path, var_name in BQ_TABLES:
@@ -232,6 +237,10 @@ class BQMigration(object):
             mod_class = getattr(mod, var_name)
             bq_table = mod_class()
             ls_obj = bq_table.get_schema()
+
+            # See if we need to skip this table
+            if self.args.names.lower() != 'all' and bq_table.get_name().lower() not in self.args.names.lower():
+                continue
 
             if self.args.show_schemas:
                 print('Schema: {0}\n'.format(bq_table.get_name()))
@@ -242,15 +251,14 @@ class BQMigration(object):
             # Loop through the mappings.
             mappings = bq_table.get_project_map(self.args.project)
             for project_id, dataset_id, table_id in mappings:
+
                 if dataset_id is None:
                     _logger.info('  {0}: {1}'.format('{0}.{1}.{2}'.
-                                                     format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH, '.'),
-                                                     'disabled'))
+                                format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH, '.'), 'disabled'))
                     continue
 
                 if self.args.delete:
-                    if self.args.delete.lower() == 'all' or table_id.lower() in self.args.delete.lower():
-                        self.delete_table(project_id, dataset_id, table_id)
+                    self.delete_table(project_id, dataset_id, table_id)
                     continue
 
                 # _logger.info(' schema: {0}'.format(instance.to_json()))
@@ -266,16 +274,12 @@ class BQMigration(object):
                         # If this happens, the table can be reset by deleting it
                         # and then creating again it using this tool.
                         _logger.info('  {0}: {1}'.format('{0}.{1}.{2}'.
-                                                         format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH,
-                                                                                                        '.'),
-                                                         '!!! corrupt !!!'))
+                                format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH, '.'), '!!! corrupt !!!'))
                         continue
 
                     if rs_obj == ls_obj:
                         _logger.info('  {0}: {1}'.format('{0}.{1}.{2}'.
-                                                         format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH,
-                                                                                                        '.'),
-                                                         'unchanged'))
+                                format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH, '.'), 'unchanged'))
                     else:
                         self.modify_table(bq_table, project_id, dataset_id, table_id)
 
@@ -287,6 +291,11 @@ class BQMigration(object):
             if not bq_view:
                 raise ValueError('Invalid BQ View object [{0}.{1}]'.format(path, var_name))
             view_id = bq_view.get_name()
+
+            # See if we need to skip this view
+            if self.args.names.lower() != 'all' and view_id.lower() not in self.args.names.lower():
+                continue
+
             bq_table = bq_view.get_table()
 
             if self.args.show_schemas:
@@ -305,8 +314,7 @@ class BQMigration(object):
                     continue
 
                 if self.args.delete:
-                    if self.args.delete.lower() == 'all' or view_id in self.args.delete:
-                        self.delete_view(bq_view, project_id, dataset_id, view_id)
+                    self.delete_view(bq_view, project_id, dataset_id, view_id)
                     continue
 
                 self.create_view(bq_view, project_id, dataset_id, view_id)
@@ -322,14 +330,15 @@ def run():
 
     # Setup program arguments.
     parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
-    parser.add_argument('--debug', help='Enable debug output', default=False, action='store_true')  # noqa
+    parser.add_argument('--debug', help='enable debug output', default=False, action='store_true')  # noqa
     parser.add_argument('--log-file', help='write output to a log file', default=False, action='store_true')  # noqa
     parser.add_argument('--project', help='gcp project name', default='localhost')  # noqa
     parser.add_argument('--account', help='pmi-ops account', default=None)  # noqa
-    parser.add_argument('--service-account', help='gcp iam service account', default=None)  # noqa
-    parser.add_argument('--delete', help="a comma delimited list of schema names or 'all'",
-                        default=None, metavar='SCHEMAS')  # noqa
+    parser.add_argument('--service-account', help='gcp iam service account', required=False)  # noqa
+    parser.add_argument('--delete', help="delete schemas from BigQuery", default=False, action='store_true')  # noqa
     parser.add_argument('--show-schemas', help='print schemas to stdout', default=False, action='store_true')  # noqa
+    parser.add_argument('--names', help="a comma delimited list of table/view names.",
+                        default='all', metavar='[TABLE|VIEW]')  # noqa
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:

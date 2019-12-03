@@ -21,7 +21,7 @@ with open(CONFIG_ADMIN_FILE) as config_file:
     try:
         CONFIG_ADMIN_MAP = json.load(config_file)
     except IOError:
-        logging.error("Unable to load config admin file %r.", CONFIG_ADMIN_FILE)
+        logging.error(f"Unable to load config admin file {CONFIG_ADMIN_FILE}.")
         CONFIG_ADMIN_MAP = {}
 
 
@@ -55,9 +55,9 @@ def check_config_admin():
     """Raises Unauthorized unless the caller is a config admin."""
     user_email = app_util.get_oauth_id()
     if is_config_admin(user_email):
-        logging.info("User %r ALLOWED for config endpoint" % user_email)
+        logging.info(f"User {user_email} ALLOWED for config endpoint")
         return
-    logging.info("User %r NOT ALLOWED for config endpoint" % user_email)
+    logging.info(f"User {user_email} NOT ALLOWED for config endpoint")
     raise Forbidden()
 
 

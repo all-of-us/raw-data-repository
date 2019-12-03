@@ -112,7 +112,7 @@ class BiobankOrderDao(UpdatableDao):
     def insert_with_session(self, session, obj):
         obj.version = 1
         if obj.logPosition is not None:
-            raise BadRequest("%s.logPosition must be auto-generated." % self.model_type.__name__)
+            raise BadRequest(f"{self.model_type.__name__}.logPosition must be auto-generated.")
         obj.logPosition = LogPosition()
         if obj.biobankOrderId is None:
             raise BadRequest("Client must supply biobankOrderId.")
@@ -124,7 +124,7 @@ class BiobankOrderDao(UpdatableDao):
                 # If an existing matching order exists, just return it without trying to create it again.
                 return existing_order
             else:
-                raise Conflict("Order with ID %s already exists" % obj.biobankOrderId)
+                raise Conflict(f"Order with ID {obj.biobankOrderId} already exists")
         self._update_participant_summary(session, obj)
         inserted_obj = super(BiobankOrderDao, self).insert_with_session(session, obj)
         if inserted_obj.collectedSiteId is not None:
@@ -139,7 +139,7 @@ class BiobankOrderDao(UpdatableDao):
             raise BadRequest("participantId is required")
         participant_summary = ParticipantSummaryDao().get_with_session(session, obj.participantId)
         if not participant_summary:
-            raise BadRequest("Can't submit order for participant %s without consent" % obj.participantId)
+            raise BadRequest(f"Can't submit order for participant {obj.participantId} without consent")
         raise_if_withdrawn(participant_summary)
         for sample in obj.samples:
             self._validate_order_sample(sample)
@@ -152,12 +152,12 @@ class BiobankOrderDao(UpdatableDao):
                 .filter_by(value=identifier.value)
                 .filter(BiobankOrderIdentifier.biobankOrderId != obj.biobankOrderId)
             ):
-                raise BadRequest("Identifier %s is already in use by order %s" % (identifier, existing.biobankOrderId))
+                raise BadRequest(f"Identifier {identifier} is already in use by order {existing.biobankOrderId}")
 
     def _validate_order_sample(self, sample):
         # TODO(mwf) Make use of FHIR validation?
         if sample.test not in BIOBANK_TESTS_SET:
-            raise BadRequest("Invalid test value %r not in %s." % (sample.test, BIOBANK_TESTS_SET))
+            raise BadRequest(f"Invalid test value {sample.test} not in {BIOBANK_TESTS_SET}.")
 
     def get_with_session(self, session, obj_id, **kwargs):
         result = super(BiobankOrderDao, self).get_with_session(session, obj_id, **kwargs)
@@ -196,12 +196,14 @@ class BiobankOrderDao(UpdatableDao):
             )
 
     def get_ordered_samples_sample(self, session, percentage, batch_size):
-        """Retrieves the biobank ID, collected time, and test for a percentage of ordered samples.
-    Used in fake data generation."""
+        """
+        Retrieves the biobank ID, collected time, and test for a percentage of ordered samples.
+        Used in fake data generation.
+        """
         return (
             session.query(Participant.biobankId, BiobankOrderedSample.collected, BiobankOrderedSample.test)
-            .join(BiobankOrder)
-            .join(BiobankOrderedSample)
+            .join(BiobankOrder, Participant.participantId == BiobankOrder.participantId)
+            .join(BiobankOrderedSample, BiobankOrder.biobankOrderId == BiobankOrderedSample.biobankOrderId)
             .filter(Participant.biobankId % 100 < percentage * 100)
             .yield_per(batch_size)
         )
@@ -220,7 +222,7 @@ class BiobankOrderDao(UpdatableDao):
         participant_summary_dao = ParticipantSummaryDao()
         participant_summary = participant_summary_dao.get_for_update(session, obj.participantId)
         if not participant_summary:
-            raise BadRequest("Can't submit biospecimens for participant %s without consent" % obj.participantId)
+            raise BadRequest(f"Can't submit biospecimens for participant {obj.participantId} without consent")
         raise_if_withdrawn(participant_summary)
         self._set_participant_summary_fields(obj, participant_summary)
         participant_summary_dao.update_enrollment_status(participant_summary)
@@ -312,14 +314,14 @@ class BiobankOrderDao(UpdatableDao):
         username = None
         if handling_info.site:
             if handling_info.site.system != SITE_ID_SYSTEM:
-                raise BadRequest("Invalid site system: %s" % handling_info.site.system)
+                raise BadRequest(f"Invalid site system: {handling_info.site.system}")
             site = SiteDao().get_by_google_group(handling_info.site.value)
             if not site:
-                raise BadRequest("Unrecognized site: %s" % handling_info.site.value)
+                raise BadRequest(f"Unrecognized site: {handling_info.site.value}")
             site_id = site.siteId
         if handling_info.author:
             if handling_info.author.system != HEALTHPRO_USERNAME_SYSTEM:
-                raise BadRequest("Invalid author system: %s" % handling_info.author.system)
+                raise BadRequest(f"Invalid author system: {handling_info.author.system}")
             username = handling_info.author.value
         return username, site_id
 
@@ -342,7 +344,7 @@ class BiobankOrderDao(UpdatableDao):
     def from_client_json(self, resource_json, id_=None, expected_version=None, participant_id=None, client_id=None):
         resource = _FhirBiobankOrder(resource_json)
         if not resource.created.date:  # FHIR warns but does not error on bad date values.
-            raise BadRequest("Invalid created date %r." % resource.created.origval)
+            raise BadRequest(f"Invalid created date {resource.created.origval}.")
 
         order = BiobankOrder(participantId=participant_id, created=resource.created.date.replace(tzinfo=None))
 
@@ -361,11 +363,18 @@ class BiobankOrderDao(UpdatableDao):
             order.finalizedNote = resource.notes.finalized
         if resource.subject != self._participant_id_to_subject(participant_id):
             raise BadRequest(
-                "Participant ID %d from path and %r in request do not match, should be %r."
-                % (participant_id, resource.subject, self._participant_id_to_subject(participant_id))
+                f"Participant ID {participant_id} from path and {resource.subject} \
+                in request do not match, should be {self._participant_id_to_subject(participant_id)}."
             )
         self._add_identifiers_and_main_id(order, resource)
         self._add_samples(order, resource)
+
+        # order.finalizedTime uses the time from biobank_ordered_sample.finalized
+        try:
+            order.finalizedTime = self.get_random_sample_finalized_time(resource).date.replace(tzinfo=None)
+        except AttributeError:
+            order.finalizedTime = None
+
         if resource.amendedReason:
             order.amendedReason = resource.amendedReason
         if resource.amendedInfo:
@@ -382,13 +391,13 @@ class BiobankOrderDao(UpdatableDao):
                 order.biobankOrderId = i.value
                 found_main_id = True
         if not found_main_id:
-            raise BadRequest("No identifier for system %r, required for primary key." % BiobankOrder._MAIN_ID_SYSTEM)
+            raise BadRequest(f"No identifier for system {BiobankOrder._MAIN_ID_SYSTEM}, required for primary key.")
 
     @classmethod
     def _add_samples(cls, order, resource):
         all_tests = sorted([s.test for s in resource.samples])
         if len(set(all_tests)) != len(all_tests):
-            raise BadRequest("Duplicate test in sample list for order: %s." % (all_tests,))
+            raise BadRequest(f"Duplicate test in sample list for order: {all_tests}.")
         for s in resource.samples:
             order.samples.append(
                 BiobankOrderedSample(
@@ -519,7 +528,7 @@ class BiobankOrderDao(UpdatableDao):
     def _validate_patch_update(self, model, resource, expected_version):
         if expected_version != model.version:
             raise PreconditionFailed(
-                "Expected version was %s; stored version was %s" % (expected_version, model.version)
+                f"Expected version was {expected_version}; stored version was {model.version}"
             )
         required_cancelled_fields = ["amendedReason", "cancelledInfo", "status"]
         required_restored_fields = ["amendedReason", "restoredInfo", "status"]
@@ -531,7 +540,7 @@ class BiobankOrderDao(UpdatableDao):
                 raise BadRequest("Can not cancel an order that is already cancelled.")
             for field in required_cancelled_fields:
                 if field not in resource:
-                    raise BadRequest("%s is required for a cancelled biobank order" % field)
+                    raise BadRequest(f"{field} is required for a cancelled biobank order")
             if "site" not in resource["cancelledInfo"] or "author" not in resource["cancelledInfo"]:
                 raise BadRequest("author and site are required for cancelledInfo")
 
@@ -540,7 +549,7 @@ class BiobankOrderDao(UpdatableDao):
                 raise BadRequest("Can not restore an order that is not cancelled.")
             for field in required_restored_fields:
                 if field not in resource:
-                    raise BadRequest("%s is required for a restored biobank order" % field)
+                    raise BadRequest(f"{field} is required for a restored biobank order")
             if "site" not in resource["restoredInfo"] or "author" not in resource["restoredInfo"]:
                 raise BadRequest("author and site are required for restoredInfo")
 

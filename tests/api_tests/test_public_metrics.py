@@ -26,10 +26,12 @@ from rdr_service.dao.metrics_cache_dao import (
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantSummaryDao
 from rdr_service.model.calendar import Calendar
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.hpo import HPO
+from rdr_service.model.site import Site
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantGenderAnswers, ParticipantSummary
 from rdr_service.participant_enums import (
@@ -41,6 +43,7 @@ from rdr_service.participant_enums import (
     make_primary_provider_link_for_name,
 )
 from tests.helpers.unittest_base import BaseTestCase, QuestionnaireTestMixin
+from tests.helpers.mysql_helper_data import PITT_HPO_ID
 
 TIME_1 = datetime.datetime(2017, 12, 31)
 
@@ -287,6 +290,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = "&stratification=ENROLLMENT_STATUS" "&startDate=2018-01-01" "&endDate=2018-01-08"
@@ -338,8 +342,9 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time2,
+            time_study=self.time2,
             time_mem=self.time3,
-            gender_identity=2,
+            gender_identity=2
         )
         participant_gender_answer_dao.insert(
             ParticipantGenderAnswers(
@@ -360,8 +365,9 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time3,
+            time_study=self.time3,
             time_mem=self.time5,
-            gender_identity=5,
+            gender_identity=5
         )
         participant_gender_answer_dao.insert(
             ParticipantGenderAnswers(
@@ -382,8 +388,9 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time4,
+            time_study=self.time4,
             time_mem=self.time5,
-            gender_identity=5,
+            gender_identity=5
         )
         participant_gender_answer_dao.insert(
             ParticipantGenderAnswers(
@@ -404,8 +411,9 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time5,
+            time_study=self.time5,
             time_mem=self.time5,
-            gender_identity=7,
+            gender_identity=7
         )
         participant_gender_answer_dao.insert(
             ParticipantGenderAnswers(
@@ -445,6 +453,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
         service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
 
@@ -547,24 +556,6 @@ class PublicMetricsApiTest(BaseTestCase):
         results = self.send_get("PublicMetrics", query_string=qs)
         self.assertIn(
             {
-                "date": "2017-12-31",
-                "metrics": {
-                    "Woman": 0,
-                    "PMI_Skip": 0,
-                    "Other/Additional Options": 0,
-                    "Non-Binary": 0,
-                    "UNMAPPED": 0,
-                    "Transgender": 0,
-                    "Prefer not to say": 0,
-                    "UNSET": 0,
-                    "Man": 0,
-                    "More than one gender identity": 0,
-                },
-            },
-            results,
-        )
-        self.assertIn(
-            {
                 "date": "2018-01-01",
                 "metrics": {
                     "Woman": 0,
@@ -645,42 +636,6 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         results = self.send_get("PublicMetrics", query_string=qs)
-        self.assertIn(
-            {
-                "date": "2017-12-31",
-                "metrics": {
-                    "Woman": 0,
-                    "PMI_Skip": 0,
-                    "Other/Additional Options": 0,
-                    "Non-Binary": 0,
-                    "UNMAPPED": 0,
-                    "Transgender": 0,
-                    "Prefer not to say": 0,
-                    "UNSET": 0,
-                    "Man": 0,
-                    "More than one gender identity": 0,
-                },
-            },
-            results,
-        )
-        self.assertIn(
-            {
-                "date": "2018-01-01",
-                "metrics": {
-                    "Woman": 0,
-                    "PMI_Skip": 0,
-                    "Other/Additional Options": 0,
-                    "Non-Binary": 0,
-                    "UNMAPPED": 0,
-                    "Transgender": 0,
-                    "Prefer not to say": 0,
-                    "UNSET": 0,
-                    "Man": 0,
-                    "More than one gender identity": 0,
-                },
-            },
-            results,
-        )
         self.assertIn(
             {
                 "date": "2018-01-02",
@@ -859,6 +814,7 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
         service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
 
@@ -1156,8 +1112,9 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time2,
+            time_study=self.time2,
             time_mem=self.time3,
-            dob=dob2,
+            dob=dob2
         )
 
         p3 = Participant(participantId=3, biobankId=6)
@@ -1167,9 +1124,10 @@ class PublicMetricsApiTest(BaseTestCase):
             "Caterpillar",
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
+            time_study=self.time3,
             time_int=self.time3,
             time_mem=self.time5,
-            dob=dob3,
+            dob=dob3
         )
 
         p4 = Participant(participantId=4, biobankId=7)
@@ -1179,9 +1137,10 @@ class PublicMetricsApiTest(BaseTestCase):
             "Caterpillar2",
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
+            time_study=self.time4,
             time_int=self.time4,
             time_mem=self.time5,
-            dob=dob4,
+            dob=dob4
         )
 
         # ghost participant should be filtered out
@@ -1190,6 +1149,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsAgeCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = "&stratification=AGE_RANGE" "&startDate=2017-12-31" "&endDate=2018-01-08"
@@ -1472,6 +1432,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = "&stratification=TOTAL" "&startDate=2018-01-01" "&endDate=2018-01-08"
@@ -1540,6 +1501,7 @@ class PublicMetricsApiTest(BaseTestCase):
         setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
         service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
 
@@ -1742,6 +1704,7 @@ class PublicMetricsApiTest(BaseTestCase):
         setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
         service = ParticipantCountsOverTimeService()
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
         service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
 
@@ -2017,6 +1980,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsRegionCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs1 = "&stratification=GEO_STATE" "&endDate=2017-12-31"
@@ -2185,6 +2149,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs1 = "&stratification=LIFECYCLE" "&endDate=2018-01-03"
@@ -2316,6 +2281,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsLanguageCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
         qs = "&stratification=LANGUAGE" "&startDate=2017-12-30" "&endDate=2018-01-03"
 
@@ -2412,6 +2378,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = "&stratification=PRIMARY_CONSENT" "&startDate=2017-12-31" "&endDate=2018-01-08"
@@ -2509,6 +2476,7 @@ class PublicMetricsApiTest(BaseTestCase):
 
         service = ParticipantCountsOverTimeService()
         dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+        service.init_tmp_table()
         service.refresh_data_for_metrics_cache(dao)
 
         qs = "&stratification=EHR_METRICS" "&startDate=2017-12-31" "&endDate=2018-01-08"
@@ -2550,6 +2518,22 @@ class PublicMetricsApiTest(BaseTestCase):
             {"date": "2018-01-06", "metrics": {"ORGANIZATIONS_ACTIVE": 0, "EHR_RECEIVED": 0, "EHR_CONSENTED": 4}},
             results,
         )
+
+    def test_public_metrics_get_sites_count_api(self):
+        site = Site(siteName='site', googleGroup='site@googlegroups.com',
+                    mayolinkClientNumber=12345, hpoId=PITT_HPO_ID, siteStatus=1, enrollingStatus=1)
+
+        site2 = Site(siteName='site2', googleGroup='site2@googlegroups.com',
+                     mayolinkClientNumber=12346, hpoId=PITT_HPO_ID, siteStatus=1, enrollingStatus=1)
+
+        site_dao = SiteDao()
+        site_dao.insert(site)
+        site_dao.insert(site2)
+
+        qs = '&stratification=SITES_COUNT'
+        results = self.send_get('PublicMetrics', query_string=qs)
+        result_json = {'sites_count': results[0]}
+        self.assertEqual(result_json, {'sites_count': 2})
 
     def create_demographics_questionnaire(self):
         """Uses the demographics test data questionnaire.  Returns the questionnaire id"""

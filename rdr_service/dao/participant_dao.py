@@ -17,8 +17,9 @@ from rdr_service.api_util import (
     get_organization_id_from_external_id,
     get_site_id_from_google_group,
     parse_json_enum,
-)
-from rdr_service.code_constants import UNSET
+    DEV_MAIL)
+from rdr_service.app_util import get_oauth_id, lookup_user_info, get_participant_origin_id
+from rdr_service.code_constants import UNSET, ORIGINATING_SOURCES
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
@@ -74,6 +75,7 @@ class ParticipantDao(UpdatableDao):
         obj.version = 1
         obj.signUpTime = clock.CLOCK.now().replace(microsecond=0)
         obj.lastModified = obj.signUpTime
+        obj.participantOrigin = get_participant_origin_id()
         if obj.withdrawalStatus is None:
             obj.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
         if obj.suspensionStatus is None:
@@ -98,8 +100,8 @@ class ParticipantDao(UpdatableDao):
         participant = self.get_for_update(session, pid)
         if participant is None:
             logging.warning(
-                "Tried to mark participant with id: [%r] as ghost but participant does not"
-                "exist. Wrong environment?" % pid
+                f"Tried to mark participant with id: [{pid}] as ghost \
+                 but participant does not exist. Wrong environment?"
             )
         else:
             participant.isGhostId = 1
@@ -131,6 +133,20 @@ class ParticipantDao(UpdatableDao):
             and obj.withdrawalReasonJustification is None
         ):
             raise BadRequest("missing withdrawalReasonJustification in update")
+        if existing_obj:
+            email = get_oauth_id()
+            user_info = lookup_user_info(email)
+            base_name = user_info.get('clientId')
+            if not base_name:
+                if email == DEV_MAIL:
+                    base_name = "example"  # TODO: This is a hack because something sets up configs different
+                    # when running all tests and it doesnt have the clientId key.
+            base_name = base_name.lower()
+            if base_name in ORIGINATING_SOURCES and base_name != existing_obj.participantOrigin:
+                logging.warning(f"{base_name} tried to modify participant from \
+                        {existing_obj.participantOrigin}")
+                raise BadRequest(f"{base_name} not able to update participant from \
+                        {existing_obj.participantOrigin}")
         super(ParticipantDao, self)._validate_update(session, obj, existing_obj)
         # Once a participant marks their withdrawal status as NO_USE, it can't be changed back.
         # TODO: Consider the future ability to un-withdraw.
@@ -138,7 +154,7 @@ class ParticipantDao(UpdatableDao):
             existing_obj.withdrawalStatus == WithdrawalStatus.NO_USE
             and obj.withdrawalStatus != WithdrawalStatus.NO_USE
         ):
-            raise Forbidden("Participant %d has withdrawn, cannot unwithdraw" % obj.participantId)
+            raise Forbidden(f"Participant {obj.participantId} has withdrawn, cannot unwithdraw")
 
     def get_for_update(self, session, obj_id):
         # Fetch the participant summary at the same time as the participant, as we are potentially
@@ -155,6 +171,7 @@ class ParticipantDao(UpdatableDao):
         obj.biobankId = existing_obj.biobankId
         obj.withdrawalTime = existing_obj.withdrawalTime
         obj.suspensionTime = existing_obj.suspensionTime
+        obj.participantOrigin = existing_obj.participantOrigin
 
         need_new_summary = False
         if obj.withdrawalStatus != existing_obj.withdrawalStatus:
@@ -246,14 +263,14 @@ class ParticipantDao(UpdatableDao):
         if site_id != UNSET and site_id is not None:
             site = self.site_dao.get(site_id)
             if site is None:
-                raise BadRequest("Site with site id %s does not exist." % site_id)
+                raise BadRequest(f"Site with site id {site_id} does not exist.")
             organization_id = site.organizationId
             awardee_id = site.hpoId
             return site_id, organization_id, awardee_id
         elif organization_id != UNSET and organization_id is not None:
             organization = self.organization_dao.get(organization_id)
             if organization is None:
-                raise BadRequest("Organization with id %s does not exist." % organization_id)
+                raise BadRequest(f"Organization with id {organization_id} does not exist.")
             awardee_id = organization.hpoId
             return None, organization_id, awardee_id
         return None, None, awardee_id
@@ -274,6 +291,7 @@ class ParticipantDao(UpdatableDao):
             suspensionStatus=obj.suspensionStatus,
             enrollmentStatus=EnrollmentStatus.INTERESTED,
             ehrStatus=EhrStatus.NOT_PRESENT,
+            participantOrigin=obj.participantOrigin
         )
 
     @staticmethod
@@ -282,7 +300,7 @@ class ParticipantDao(UpdatableDao):
         if hpo_name:
             hpo = HPODao().get_by_name(hpo_name)
             if not hpo:
-                raise BadRequest("No HPO found with name %s" % hpo_name)
+                raise BadRequest(f"No HPO found with name {hpo_name}")
             return hpo.hpoId
         else:
             return UNSET_HPO_ID
@@ -291,7 +309,7 @@ class ParticipantDao(UpdatableDao):
         """Raises BadRequest if an object has a missing or invalid participantId reference,
     or if the participant has a withdrawal status of NO_USE."""
         if obj.participantId is None:
-            raise BadRequest("%s.participantId required." % obj.__class__.__name__)
+            raise BadRequest(f"{obj.__class__.__name__}.participantId required.")
         return self.validate_participant_id(session, obj.participantId)
 
     def validate_participant_id(self, session, participant_id):
@@ -299,7 +317,7 @@ class ParticipantDao(UpdatableDao):
     or if the participant has a withdrawal status of NO_USE."""
         participant = self.get_with_session(session, participant_id)
         if participant is None:
-            raise BadRequest("Participant with ID %d is not found." % participant_id)
+            raise BadRequest(f"Participant with ID {participant_id} is not found.")
         raise_if_withdrawn(participant)
         return participant
 
@@ -379,11 +397,11 @@ class ParticipantDao(UpdatableDao):
             raise BadRequest("No site ID given for auto-pairing participant.")
         site = SiteDao().get_with_session(session, site_id)
         if site is None:
-            raise BadRequest("Invalid siteId reference %r." % site_id)
+            raise BadRequest(f"Invalid siteId reference {site_id}.")
 
         participant = self.get_for_update(session, participant_id)
         if participant is None:
-            raise BadRequest("No participant %r for HPO ID udpate." % participant_id)
+            raise BadRequest(f"No participant {participant_id} for HPO ID udpate.")
 
         if participant.siteId == site.siteId:
             return
@@ -392,7 +410,7 @@ class ParticipantDao(UpdatableDao):
         participant.siteId = site.siteId
         participant.providerLink = make_primary_provider_link_for_id(site.hpoId)
         if participant.participantSummary is None:
-            raise RuntimeError("No ParticipantSummary available for P%d." % participant_id)
+            raise RuntimeError(f"No ParticipantSummary available for P{participant_id}.")
         participant.participantSummary.hpoId = site.hpoId
         participant.lastModified = clock.CLOCK.now()
         # Update the version and add history row
@@ -402,7 +420,7 @@ class ParticipantDao(UpdatableDao):
         test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
 
         if participant is None:
-            raise BadRequest("No participant %r for HPO ID udpate.")
+            raise BadRequest("No participant for HPO ID udpate.")
 
         if participant.hpoId == test_hpo_id:
             return
@@ -444,4 +462,4 @@ def _get_hpo_name_from_participant(participant):
 
 def raise_if_withdrawn(obj):
     if obj.withdrawalStatus == WithdrawalStatus.NO_USE:
-        raise Forbidden("Participant %d has withdrawn" % obj.participantId)
+        raise Forbidden(f"Participant {obj.participantId} has withdrawn")

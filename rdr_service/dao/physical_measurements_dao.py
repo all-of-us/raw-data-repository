@@ -70,6 +70,21 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
             return query
 
+    def get_date_from_pm_resource(self, pid, pm_id):
+        """ Retrieves a specific measurement and fetches the date from the measurement payload
+            which corresponds to 'finalized date'.
+            :param pid = participant id
+            :param pm_id = physical measurement id
+            :returns date from resource of measurement payload - UTC time"""
+        with self.session() as session:
+            pm = session.query(PhysicalMeasurements).filter(PhysicalMeasurements.participantId == pid)\
+                .filter(PhysicalMeasurements.physicalMeasurementsId == pm_id).first()
+
+            resource = json.loads(pm.resource)
+            measurement_date = resource['entry'][0]['resource']['date']
+            original_date = parse_date(measurement_date)
+            return original_date
+
     @staticmethod
     def handle_measurement(measurement_map, m):
         """Populating measurement_map with information extracted from measurement and its
@@ -127,7 +142,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
                         )
                     except AttributeError:
                         logging.warning(
-                            "Invalid physical measurement JSON with ID %s; skipping." % pms.physicalMeasurementsId
+                            f"Invalid physical measurement JSON with ID {pms.physicalMeasurementsId}; skipping."
                         )
                         continue
                     parsed_pms.physicalMeasurementsId = pms.physicalMeasurementsId
@@ -140,7 +155,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
                             session.merge(submeasurement)
                     num_updated += 1
                 except FHIRValidationError as e:
-                    logging.error("Could not parse measurements as FHIR: %s; exception = %s" % (pms.resource, e))
+                    logging.error(f"Could not parse measurements as FHIR: {pms.resource}; exception = {e}")
         return num_updated
 
     def get_distinct_measurements(self):
@@ -153,7 +168,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
                     for measurement in parsed_pms.measurements:
                         PhysicalMeasurementsDao.handle_measurement(measurement_map, measurement)
                 except FHIRValidationError as e:
-                    logging.error("Could not parse measurements as FHIR: %s; exception = %s" % (pms.resource, e))
+                    logging.error(f"Could not parse measurements as FHIR: {pms.resource}; exception = {e}")
             return measurement_map
 
     @staticmethod
@@ -253,9 +268,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
             url = extension.get("url")
             if url not in _ALL_EXTENSIONS:
                 logging.info(
-                    "Ignoring unsupported extension for PhysicalMeasurements: %r. Expected one of: %s",
-                    url,
-                    _ALL_EXTENSIONS,
+                    f"Ignoring unsupported extension for PhysicalMeasurements: {url}. \
+                    Expected one of: {_ALL_EXTENSIONS}"
                 )
                 continue
             if url == _AMENDMENT_URL:
@@ -289,6 +303,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
         obj.resource = json.dumps(resource_json)
         return obj
 
+
     def _update_participant_summary(self, session, obj, is_amendment=False):
         participant_id = obj.participantId
         if participant_id is None:
@@ -296,10 +311,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
         participant_summary_dao = ParticipantSummaryDao()
         participant = ParticipantDao().get_for_update(session, participant_id)
         if not participant:
-            raise BadRequest("Can't submit physical measurements for unknown participant %s" % participant_id)
+            raise BadRequest(f"Can't submit physical measurements for unknown participant {participant_id}")
         participant_summary = participant.participantSummary
         if not participant_summary:
-            raise BadRequest("Can't submit physical measurements for participant %s without consent" % participant_id)
+            raise BadRequest(f"Can't submit physical measurements for participant {participant_id} without consent")
         raise_if_withdrawn(participant_summary)
         participant_summary.lastModified = clock.CLOCK.now()
         is_distinct_visit = participant_summary_dao.calculate_distinct_visits(
@@ -322,6 +337,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
             participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.CANCELLED
             participant_summary.physicalMeasurementsTime = None
+            participant_summary.physicalMeasurementsFinalizedTime = None
+            participant_summary.physicalMeasurementsFinalizedSiteId = None
 
         # These fields set on any measurement not cancelled
         elif obj.status != PhysicalMeasurementsStatus.CANCELLED:
@@ -386,22 +403,22 @@ class PhysicalMeasurementsDao(UpdatableDao):
     its ID."""
         value_ref = extension.get("valueReference")
         if value_ref is None:
-            raise BadRequest("No valueReference in extension %r." % url)
+            raise BadRequest(f"No valueReference in extension {url}.")
         ref = value_ref.get("reference")
         if ref is None:
-            raise BadRequest("No reference in extension %r." % url)
+            raise BadRequest(f"No reference in extension {url}.")
         type_name, ref_id = ref.split("/")
         if type_name != "PhysicalMeasurements":
-            raise BadRequest("Bad reference type in extension %r: %r." % (url, ref))
+            raise BadRequest(f"Bad reference type in extension {url}: {ref}.")
 
         try:
             amended_measurement_id = int(ref_id)
         except ValueError:
-            raise BadRequest("Invalid ref id: %r" % ref_id)
+            raise BadRequest(f"Invalid ref id: {ref_id}")
 
         amended_measurement = self.get_with_session(session, amended_measurement_id)
         if amended_measurement is None:
-            raise BadRequest("Amendment references unknown PhysicalMeasurement %r." % ref_id)
+            raise BadRequest(f"Amendment references unknown PhysicalMeasurement {ref_id}.")
         amended_resource_json = json.loads(amended_measurement.resource)
         amended_resource = amended_resource_json["entry"][0]["resource"]
         amended_resource["status"] = "amended"
@@ -434,9 +451,11 @@ class PhysicalMeasurementsDao(UpdatableDao):
             measurement.createdSiteId = site_id
             measurement.finalizedSiteId = site_id
             measurement.finalizedUsername = author
-            measurement.finalized = clock.CLOCK.now()
+            # get original finalized time
+            measurement.finalized = self.get_date_from_pm_resource(measurement.participantId,
+                                                              measurement.physicalMeasurementsId)
 
-        logging.info("%s %s physical measuremnt %s.", author, resource["status"], measurement.physicalMeasurementsId)
+        logging.info(f"{author} {resource['status']} physical measurement {measurement.physicalMeasurementsId}.")
         payload = self.add_root_fields_to_resource(measurement)
         super(PhysicalMeasurementsDao, self)._do_update(session, payload, payload)
         self._update_participant_summary(session, payload)
@@ -464,14 +483,14 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 pm_coding = coding
             elif coding.system.startswith(_PM_SYSTEM_PREFIX):
                 if pm_coding.system.startswith(_PM_SYSTEM_PREFIX):
-                    raise BadRequest("Multiple measurement codes starting system %s" % _PM_SYSTEM_PREFIX)
+                    raise BadRequest(f"Multiple measurement codes starting system {_PM_SYSTEM_PREFIX}")
                 pm_coding = coding
         return pm_coding
 
     @staticmethod
     def from_component(observation, component):
         if not component.code or not component.code.coding:
-            logging.warning("Skipping component without coding: %s" % component.as_json())
+            logging.warning(f"Skipping component without coding: {component.as_json()}")
             return None
         value_string = None
         value_decimal = None
@@ -516,10 +535,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 # Skip anything *without* a related observation on the second pass.
                 return None
         if not observation.effectiveDateTime:
-            logging.warning("Skipping observation without effectiveDateTime: %s" % observation.as_json())
+            logging.warning(f"Skipping observation without effectiveDateTime: {observation.as_json()}")
             return None
         if not observation.code or not observation.code.coding:
-            logging.warning("Skipping observation without coding: %s" % observation.as_json())
+            logging.warning(f"Skipping observation without coding: {observation.as_json()}")
             return None
         body_site_code_system = None
         body_site_code_value = None
@@ -560,7 +579,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
                     if qualifier:
                         qualifiers.append(qualifier)
                     else:
-                        logging.warning("Could not find qualifier %s" % related.target.reference)
+                        logging.warning(f"Could not find qualifier {related.target.reference}")
         pm_coding = PhysicalMeasurementsDao.get_preferred_coding(observation.code)
         result = Measurement(
             codeSystem=pm_coding.system,
@@ -584,19 +603,19 @@ class PhysicalMeasurementsDao(UpdatableDao):
     @staticmethod
     def get_location_site_id(location_value):
         if not location_value.startswith(_LOCATION_PREFIX):
-            logging.warn("Invalid location: %s" % location_value)
+            logging.warning(f"Invalid location: {location_value}")
             return None
         google_group = location_value[len(_LOCATION_PREFIX) :]
         site = SiteDao().get_by_google_group(google_group)
         if not site:
-            logging.warning("Unknown site: %s" % google_group)
+            logging.warning(f"Unknown site: {google_group}")
             return None
         return site.siteId
 
     @staticmethod
     def get_author_username(author_value):
         if not author_value.startswith(_AUTHOR_PREFIX):
-            logging.warn("Invalid author: %s" % author_value)
+            logging.warning(f"Invalid author: {author_value}")
             return None
         return author_value[len(_AUTHOR_PREFIX) :]
 
@@ -637,10 +656,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
                                 finalized_site_id = PhysicalMeasurementsDao.get_location_site_id(value_reference)
                             elif url not in _ALL_EXTENSIONS:
                                 logging.warning(
-                                    "Unrecognized extension URL: %r (should be one of %s)", url, _ALL_EXTENSIONS
+                                    f"Unrecognized extension URL: {url} (should be one of {_ALL_EXTENSIONS})"
                                 )
                         else:
-                            logging.warning("No valueReference in extension, skipping: %r", extension)
+                            logging.warning(f"No valueReference in extension, skipping: {extension}")
                     authors = resource.get("author")
                     for author in authors:
                         author_extension = author.get("extension")
@@ -653,10 +672,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
                                 created_username = PhysicalMeasurementsDao.get_author_username(reference)
                 else:
                     logging.warning(
-                        "Unrecognized resource type (expected %r or %r), skipping: %r",
-                        _OBSERVATION_RESOURCE_TYPE,
-                        _COMPOSITION_RESOURCE_TYPE,
-                        resource_type,
+                        f"Unrecognized resource type (expected {_OBSERVATION_RESOURCE_TYPE} \
+                        or {_COMPOSITION_RESOURCE_TYPE}), skipping: {resource_type}"
                     )
 
         # Take two passes over the observations; once to find all the qualifiers and observations
@@ -688,14 +705,14 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 raise BadRequest("This order is already cancelled")
             for field in cancelled_required_fields:
                 if field not in resource:
-                    raise BadRequest("%s is required in cancel request." % field)
+                    raise BadRequest(f"{field} is required in cancel request.")
 
         elif resource.get("status").lower() == "restored":
             if measurement.status != PhysicalMeasurementsStatus.CANCELLED:
                 raise BadRequest("Can not restore an order that is not cancelled.")
             for field in restored_required_fields:
                 if field not in resource:
-                    raise BadRequest("%s is required in restore request." % field)
+                    raise BadRequest(f"{field} is required in restore request.")
         else:
             raise BadRequest("status is required in restore request.")
 

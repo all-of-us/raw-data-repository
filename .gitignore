@@ -26,10 +26,11 @@ htmlcov/
 
 # Local working cache files
 
-/rdr_service/data/**
+/rdr_service/data/*
 
 # Unit test configration
 /tests/.test_configs/*
+/tests/.test_storage/*
 
 # ignore old rest-api
 /rest-api

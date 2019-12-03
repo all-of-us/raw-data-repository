@@ -60,7 +60,7 @@ def check_ppi_data():
 
 def _sanity_check_codebook():
     if not CodeDao().get_code(PPI_SYSTEM, EMAIL_QUESTION_CODE):
-        raise RuntimeError("No question code found for %s; import codebook." % EMAIL_QUESTION_CODE)
+        raise RuntimeError(f"No question code found for {EMAIL_QUESTION_CODE}; import codebook.")
 
 
 class _ValidationResult(object):
@@ -89,10 +89,10 @@ def _get_validation_result(key, codes_to_answers):
             summaries = session.query(ParticipantSummary).filter(ParticipantSummary.email == key).all()
 
     if not summaries:
-        result.add_error("No ParticipantSummary found for %r." % key)
+        result.add_error(f"No ParticipantSummary found for {key}.")
         return result
     if len(summaries) > 1:
-        result.add_error("%d ParticipantSummary values found for %r." % (len(summaries), key))
+        result.add_error(f"{len(summaries)} ParticipantSummary values found for {key}.")
         return result
     participant_id = summaries[0].participantId
 
@@ -104,10 +104,10 @@ def _get_validation_result(key, codes_to_answers):
 
             question_code = code_dao.get_code(PPI_SYSTEM, code_string)
             if not question_code:
-                result.add_error("Could not find question code %r, skipping answer %r." % (code_string, answer_string))
+                result.add_error(f"Could not find question code {code_string}, skipping answer {answer_string}.")
                 continue
             if question_code.codeType != CodeType.QUESTION:
-                result.add_error("Code %r type is %s, not QUESTION; skipping." % (code_string, question_code.codeType))
+                result.add_error(f"Code {code_string} type is {question_code.codeType}, not QUESTION; skipping.")
                 continue
 
             qras = qra_dao.get_current_answers_for_concepts(session, participant_id, [question_code.codeId])
@@ -125,8 +125,8 @@ def _get_validation_result(key, codes_to_answers):
                 expected_values = set()
             if expected_values != qra_values:
                 result.add_error(
-                    "%s: Expected %s, found %s."
-                    % (question_code.value, _format_values(expected_values), _format_values(qra_values))
+                    f"{question_code.value}: Expected {_format_values(expected_values)}, \
+                    found {_format_values(qra_values)}."
                 )
     return result
 
@@ -154,11 +154,10 @@ def _get_value_for_qra(qra, question_code, code_dao, session):
         code = code_dao.get_with_session(session, qra.valueCodeId)
         if code.system != PPI_SYSTEM:
             raise ValueError(
-                "Unexpected value %r with non-PPI system %r for question %s."
-                % (code.value, code.system, question_code)
+                f"Unexpected value {code.value} with non-PPI system {code.system} for question {question_code}."
             )
         return code.value
-    raise ValueError("Answer for question %s has no value set." % question_code)
+    raise ValueError(f"Answer for question {question_code} has no value set.")
 
 
 def _boolean_to_lower(value):

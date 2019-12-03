@@ -7,6 +7,7 @@
   "user_info": {
     "pmi-hpo-dev@appspot.gserviceaccount.com": {
       "roles": ["healthpro"],
+      "clientId": "hpro",
       "comment": "for HealthPro testing"
     },
     "awardee-pitt@pmi-drc-api-test.iam.gserviceaccount.com": {
@@ -15,16 +16,27 @@
       "comment": "for testing service account access to participant summary api"
     },
     "vibrent-drc-qa@vibrent-drc-qa-165017.iam.gserviceaccount.com": {
+      "clientId": "vibrent",
       "roles": ["ptc"]
     },
     "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"],
+      "clientId": "vibrent",
+      "whitelisted_ip_ranges": {
+        "ip6": ["::0/0"],
+        "ip4": ["0.0.0.0/0"]
+      }
+    },
+    "care-evolution@pmi-drc-api-test.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro"],
+      "clientId": "careevolution",
       "whitelisted_ip_ranges": {
         "ip6": ["::0/0"],
         "ip4": ["0.0.0.0/0"]
       }
     },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
+      "clientId": "configurator",
       "roles": ["ptc", "healthpro", "rdr"]
     },
     "exporter@pmi-drc-api-test.iam.gserviceaccount.com": {
@@ -37,18 +49,28 @@
   "genomic_set_bucket_name": [
     "test_genomic_set_upload"
   ],
+  "genomic_center_bucket_name": [
+    "test-genomics-baylor-dryrun", "test-genomics-broad-dryrun", "test-genomics-northwest-dryrun", "test-genomics-color-dryrun"
+  ],
+  "genotyping_sample_manifest_folder_name": [
+    "genotyping_sample_manifests"
+  ],
   "genomic_biobank_manifest_folder_name": [
     "genomic_water_line_test"
   ],
   "genomic_biobank_manifest_result_folder_name": [
     "genomic_water_line_test_results"
   ],
+  "genomic_gc_metrics_bucket_name": [
+    "test_genomics_cell_line_validation"
+  ],
   "ghost_id_bucket": [
     "all-of-us-rdr-test-ghost-accounts"
   ],
-  "consent_pdf_bucket": [
-    "ptc-uploads-pmi-drc-api-test"
-  ],
+  "consent_pdf_bucket": {
+    "vibrent": "ptc-uploads-pmi-drc-api-test",
+    "careevolution": "ce-uploads-pmi-drc-api-test"
+  },
   "metrics_shards": [
     "10"
   ],

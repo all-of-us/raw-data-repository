@@ -5,9 +5,9 @@ import mock
 from werkzeug.exceptions import ServiceUnavailable
 
 from rdr_service.api_util import (
-    VIBRENT_FHIR_URL,
-    VIBRENT_FULFILLMENT_URL,
-    VIBRENT_ORDER_URL,
+    DV_FHIR_URL,
+    DV_FULFILLMENT_URL,
+    DV_ORDER_URL,
     parse_date,
     get_code_id,
 )
@@ -23,7 +23,6 @@ from tests.test_data import load_test_data_json
 from tests.helpers.unittest_base import BaseTestCase
 
 from collections import namedtuple
-
 
 class DvOrderDaoTestBase(BaseTestCase):
     def setUp(self):
@@ -46,7 +45,7 @@ class DvOrderDaoTestBase(BaseTestCase):
         self.mayolink_response = {
             "orders": {
                 "order": {
-                    "status": "finished",
+                    "status": "Queued",
                     "reference_number": "barcode",
                     "received": "2019-04-05 12:00:00",
                     "number": "12345",
@@ -65,7 +64,7 @@ class DvOrderDaoTestBase(BaseTestCase):
         payload = self.send_post("SupplyRequest", request_data=self.post_request, expected_status=http.client.CREATED)
         request_response = json.loads(payload.response[0])
         location = payload.location.rsplit("/", 1)[-1]
-        put_response = self.send_put("SupplyRequest/{}".format(location), request_data=self.put_request)
+        self.send_put("SupplyRequest/{}".format(location), request_data=self.put_request)
         payload = self.send_post(
             "SupplyDelivery", request_data=self.post_delivery, expected_status=http.client.CREATED
         )
@@ -78,8 +77,6 @@ class DvOrderDaoTestBase(BaseTestCase):
         self.assertEqual(put_response["version"], 4)
         self.assertEqual(put_response["meta"]["versionId"].strip("W/"), '"4"')
         self.assertEqual(put_response["barcode"], "SABR90160121INA")
-        # self.assertEqual(put_response["biobankOrderId"], "12345")
-        self.assertEqual(put_response["biobankStatus"], "Delivered")
         self.assertEqual(put_response["order_id"], 999999)
 
     def test_enumerate_shipping_status(self):
@@ -90,7 +87,7 @@ class DvOrderDaoTestBase(BaseTestCase):
     def test_enumerate_tracking_status(self):
         fhir_resource = SimpleFhirR4Reader(self.post_delivery)
         status = self.dao._enumerate_order_tracking_status(
-            fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "tracking-status").valueString
+            fhir_resource.extension.get(url=DV_FHIR_URL + "tracking-status").valueString
         )
         self.assertEqual(status, OrderShipmentTrackingStatus.IN_TRANSIT)
 
@@ -148,17 +145,17 @@ class DvOrderDaoTestBase(BaseTestCase):
         fhir_device = fhir_resource.contained.get(resourceType="Device")
         test_fields.update({
             'itemName': fhir_device.deviceName.get(type="manufacturer-name").name,
-            'orderType': fhir_resource.extension.get(url=VIBRENT_ORDER_URL).valueString
+            'orderType': fhir_resource.extension.get(url=DV_ORDER_URL).valueString
         })
 
         # add the fields to test for each resource type (SupplyRequest, SupplyDelivery)
         if resource_type == self.post_request:
             test_fields.update({
-                'order_id': int(fhir_resource.identifier.get(system=VIBRENT_FHIR_URL + "orderId").value),
+                'order_id': int(fhir_resource.identifier.get(system=DV_FHIR_URL + "orderId").value),
                 'supplier': fhir_resource.contained.get(resourceType="Organization").id,
-                'supplierStatus': fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString,
+                'supplierStatus': fhir_resource.extension.get(url=DV_FULFILLMENT_URL).valueString,
                 'itemQuantity': fhir_resource.quantity.value,
-                'itemSKUCode': fhir_device.identifier.get(system=VIBRENT_FHIR_URL + "SKU").value,
+                'itemSKUCode': fhir_device.identifier.get(system=DV_FHIR_URL + "SKU").value,
             })
             # Address Handling
             fhir_address = fhir_resource.contained.get(resourceType="Patient").address[0]
@@ -167,9 +164,9 @@ class DvOrderDaoTestBase(BaseTestCase):
             test_fields.update({
                 'order_id': int(fhir_resource.basedOn[0].identifier.value),
                 'shipmentEstArrival': parse_date(fhir_resource.extension.get(
-                    url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime),
-                'shipmentCarrier': fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "carrier").valueString,
-                'trackingId': fhir_resource.identifier.get(system=VIBRENT_FHIR_URL + "trackingId").value,
+                    url=DV_FHIR_URL + "expected-delivery-date").valueDateTime),
+                'shipmentCarrier': fhir_resource.extension.get(url=DV_FHIR_URL + "carrier").valueString,
+                'trackingId': fhir_resource.identifier.get(system=DV_FHIR_URL + "trackingId").value,
                 'shipmentLastUpdate': parse_date(fhir_resource.occurrenceDateTime),
             })
             # Address Handling

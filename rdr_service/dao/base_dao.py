@@ -8,6 +8,7 @@ from collections import OrderedDict
 from contextlib import closing
 
 import sqlparse
+
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainResource
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirabstractbase import FHIRValidationError
 from protorpc import messages
@@ -17,7 +18,9 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 
 from rdr_service import api_util
+from rdr_service.code_constants import ORIGINATING_SOURCES
 from rdr_service.dao import database_factory
+from rdr_service.model.participant import Participant
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import get_property_type
 from rdr_service.query import FieldFilter, Operator, PropertyType, Results
@@ -54,10 +57,12 @@ class BaseDao(object):
   If not specified, query() is not supported.
   """
 
-    def __init__(self, model_type, backup=False, order_by_ending=None, db=None):
+    def __init__(self, model_type, backup=False, alembic=False, order_by_ending=None, db=None):
         self.model_type = model_type
         if not db:
-            if backup:
+            if alembic:
+                db = database_factory.get_database_with_alembic_user()
+            elif backup:
                 db = database_factory.get_backup_database()
             else:
                 db = database_factory.get_database()
@@ -154,9 +159,27 @@ class BaseDao(object):
         """Override to validate a model before any db write (insert or update)."""
         pass
 
+
     def _validate_insert(self, session, obj):
         """Override to validate a new model before inserting it (not applied to updates)."""
         self._validate_model(session, obj)
+
+    def validate_origin(self, obj):
+        from rdr_service import app_util
+        pid = obj.participantId
+        email = app_util.get_oauth_id()
+        user_info = app_util.lookup_user_info(email)
+        base_name = user_info.get('clientId')
+        if email == api_util.DEV_MAIL and base_name is None:
+            base_name = 'example'  # account for temp configs that dont create the key
+        with self.session() as session:
+            result = session.query(Participant.participantOrigin).filter(
+                Participant.participantId == pid).first()
+            if result:
+                result = result[0]
+        if base_name in ORIGINATING_SOURCES and base_name != result:
+            raise BadRequest(f"{base_name} can not submit questionnaire response for participant with an origin from "
+                             f"{result}")
 
     def insert_with_session(self, session, obj):
         """Adds the object into the session to be inserted."""
@@ -281,7 +304,7 @@ class BaseDao(object):
             else:
                 return value
         except ValueError:
-            raise BadRequest("Invalid value for property of type %s: %r." % (property_type, value))
+            raise BadRequest(f"Invalid value for property of type {property_type}: {value}.")
 
     def _from_json_value(self, prop, value):
         property_type = get_property_type(prop)
@@ -290,7 +313,7 @@ class BaseDao(object):
 
     def query(self, query_def):
         if not self.order_by_ending:
-            raise BadRequest("Can't query on type %s -- no order by ending speciifed" % self.model_type)
+            raise BadRequest(f"Can't query on type {self.model_type} -- no order by ending speciifed")
 
         with self.session() as session:
             query, field_names = self._make_query(session, query_def)
@@ -357,7 +380,7 @@ class BaseDao(object):
             try:
                 f = getattr(self.model_type, field_filter.field_name)
             except AttributeError:
-                raise BadRequest("No field named %r found on %r." % (field_filter.field_name, self.model_type))
+                raise BadRequest(f"No field named {field_filter.field_name} found on {self.model_type}.")
             query = self._add_filter(query, field_filter, f)
         return query
 
@@ -399,9 +422,9 @@ class BaseDao(object):
         try:
             decoded_vals = json.loads(urlsafe_b64decode(pagination_token))
         except:
-            raise BadRequest("Invalid pagination token: %r." % pagination_token)
+            raise BadRequest(f"Invalid pagination token: {pagination_token}.")
         if not isinstance(decoded_vals, list) or len(decoded_vals) != len(fields):
-            raise BadRequest("Invalid pagination token: %r." % pagination_token)
+            raise BadRequest(f"Invalid pagination token: {pagination_token}.")
         for i in range(0, len(fields)):
             decoded_vals[i] = self._from_json_value(fields[i], decoded_vals[i])
         return decoded_vals
@@ -411,7 +434,7 @@ class BaseDao(object):
         try:
             f = getattr(self.model_type, order_by.field_name)
         except AttributeError:
-            raise BadRequest("No field named %r found on %r." % (order_by.field_name, self.model_type))
+            raise BadRequest(f"No field named {order_by.field_name} found on {self.model_type}.")
         field_names.append(order_by.field_name)
         fields.append(f)
         if order_by.ascending:
@@ -431,7 +454,7 @@ class BaseDao(object):
             try:
                 f = getattr(self.model_type, order_by_field)
             except AttributeError:
-                raise BadRequest("No field named %r found on %r." % (order_by_field, self.model_type))
+                raise BadRequest(f"No field named {order_by_field} found on {self.model_type}.")
             field_names.append(order_by_field)
             fields.append(f)
             query = query.order_by(f)
@@ -459,14 +482,14 @@ class BaseDao(object):
                 if result:
                     return result
         # We were unable to insert a participant (unlucky). Throw an error.
-        logging.warning("Giving up after %d insert attempts, tried %s." % (MAX_INSERT_ATTEMPTS, all_tried_ids))
-        raise ServiceUnavailable("Giving up after %d insert attempts." % MAX_INSERT_ATTEMPTS)
+        logging.warning(f"Giving up after {MAX_INSERT_ATTEMPTS} insert attempts, tried {all_tried_ids}.")
+        raise ServiceUnavailable(f"Giving up after {MAX_INSERT_ATTEMPTS} insert attempts.")
 
     def handle_integrity_error(self, tried_ids, e, obj):
         # pylint: disable=unused-argument
         # SQLite and MySQL variants of the error message, respectively.
         if "UNIQUE constraint failed" in str(e) or "Duplicate entry" in str(e):
-            logging.warning("Failed insert with %s: %s", tried_ids, str(e))
+            logging.warning(f"Failed insert with {tried_ids}: {str(e)}")
             return None
 
     def count(self):
@@ -596,10 +619,10 @@ class UpdatableDao(BaseDao):
     that it matches.
     """
         if not existing_obj:
-            raise NotFound("%s with id %s does not exist" % (self.model_type.__name__, id))
+            raise NotFound(f"{self.model_type.__name__} with id {id} does not exist")
         if self.validate_version_match and existing_obj.version != obj.version:
             raise PreconditionFailed(
-                "Expected version was %s; stored version was %s" % (obj.version, existing_obj.version)
+                f"Expected version was {obj.version}; stored version was {existing_obj.version}"
             )
         self._validate_model(session, obj)
 
@@ -695,14 +718,6 @@ def save_raw_request_record(log: RequestsLog):
     Save the request payload and possibly link it to a table record
     :param log: RequestsLog dao object
     """
-    log.resource = str(log.resource)
-    try:
-        log.resource = json.loads(log.resource)
-    except json.decoder.JSONDecodeError:
-        pass
-    except ValueError:
-        pass
-
     _dao = BaseDao(RequestsLog)
     with _dao.session() as session:
         session.add(log)

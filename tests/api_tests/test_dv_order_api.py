@@ -8,7 +8,14 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_dv_order import BiobankDVOrder
-from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrderedSample
+from rdr_service.model.biobank_order import (
+    BiobankOrderIdentifier,
+    BiobankOrderedSample,
+    BiobankOrder,
+    BiobankOrderIdentifierHistory,
+    BiobankOrderedSampleHistory,
+    BiobankOrderHistory
+)
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from tests.test_data import load_test_data_json
@@ -119,7 +126,7 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
             self.assertEqual(i.id, int(1))
             self.assertEqual(i.order_id, int(999999))
             self.assertEqual(i.biobankOrderId, "WEB1ABCD1234")
-            self.assertEqual(i.biobankStatus, "Delivered")
+            self.assertEqual(i.biobankStatus, "Queued")
             self.assertEqual(i.biobankTrackingId, "PAT-123-456")
 
         with self.dv_order_dao.session() as session:
@@ -139,6 +146,88 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
         self.assertEqual(1, len(order))
         self.assertEqual(post_response._status_code, 201)
 
+    def test_set_system_identifier_by_user(self):
+        system_from_user = {
+            'vibrent-drc-prod@test-bed.fake': "http://vibrenthealth.com",
+            'careevolution@test-bed.fake': "http://carevolution.be",
+            'example@example.com': "system-test"
+        }
+
+        # duplicate the test for each user (Vibrent and CE)
+        for user, expected_system_identifier in system_from_user.items():
+            BaseTestCase.switch_auth_user(user)
+
+            # Make the series of API calls to create DV orders and associated Biobank records
+            post_response = self.send_post(
+                'SupplyRequest',
+                request_data=self.get_payload('dv_order_api_post_supply_request.json'),
+                expected_status=http.client.CREATED
+            )
+            location_id = post_response.location.rsplit('/', 1)[-1]
+            self.send_put(
+                'SupplyRequest/{}'.format(location_id),
+                request_data=self.get_payload('dv_order_api_put_supply_request.json'),
+            )
+            self.send_post(
+                'SupplyDelivery',
+                request_data=self._set_mayo_address(
+                    self.get_payload('dv_order_api_post_supply_delivery.json')),
+                expected_status=http.client.CREATED
+            )
+
+            # Compare the results in the DB with the system identifiers defined above
+            with self.dv_order_dao.session() as session:
+                test_order_id = self.mayolink_response['orders']['order']['number']
+                identifiers = session.query(BiobankOrderIdentifier).filter_by(
+                    biobankOrderId=test_order_id
+                ).all()
+                for identifier in identifiers:
+                    if identifier.system.endswith('/trackingId'):
+                        self.assertEqual(identifier.system, expected_system_identifier + "/trackingId")
+                    else:
+                        self.assertEqual(identifier.system, expected_system_identifier)
+                    session.delete(identifier)
+
+            self._intra_test_clean_up_db()
+
+        # Resetting in case downstream tests require it
+        BaseTestCase.switch_auth_user("example@example.com")
+
+    def _intra_test_clean_up_db(self):
+        """DB clean-up to avoid duplicate key errors"""
+        test_order_id = self.mayolink_response['orders']['order']['number']
+
+        with self.dv_order_dao.session() as session:
+
+            identifier_history = session.query(BiobankOrderIdentifierHistory).filter_by(
+                biobankOrderId=test_order_id
+            ).all()
+            for record in identifier_history:
+                session.delete(record)
+
+            ordered_samples_history = session.query(BiobankOrderedSampleHistory).filter_by(
+                biobankOrderId=test_order_id
+            ).all()
+            for record in ordered_samples_history:
+                session.delete(record)
+
+            dv_orders = session.query(BiobankDVOrder).filter_by(
+                participantId=self.participant.participantId
+            ).all()
+            for dv_order in dv_orders:
+                session.delete(dv_order)
+
+            bb_order_history = session.query(BiobankOrderHistory).filter_by(
+                biobankOrderId=test_order_id
+            ).all()
+            for record in bb_order_history:
+                session.delete(record)
+
+            bb_orders = session.query(BiobankOrder).filter_by(
+                biobankOrderId=test_order_id
+            ).all()
+            for bb_order in bb_orders:
+                session.delete(bb_order)
 
 class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
     mayolink_response = {

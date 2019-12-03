@@ -6,36 +6,79 @@
   ],
   "user_info": {
     "healthpro-staging@appspot.gserviceaccount.com": {
-      "roles": ["healthpro"],
-      "whitelisted_appids": ["healthpro-staging", "healthpro-beta"]
+      "roles": [
+        "healthpro"
+      ],
+      "clientId": "hpro"
     },
     "pmi-hpo-dev@appspot.gserviceaccount.com": {
-      "roles": ["healthpro"],
+      "roles": [
+        "healthpro"
+      ],
       "comment": "for HealthPro testing",
-      "whitelisted_appids": ["pmi-hpo-dev"]
+      "clientId": "hpro"
     },
     "vibrent-drc-staging@vibrent-drc-staging-165017.iam.gserviceaccount.com": {
-      "roles": ["ptc"],
+      "roles": [
+        "ptc"
+      ],
+      "clientId": "vibrent",
       "whitelisted_ip_ranges": {
-        "ip4": ["52.203.93.76", "35.169.80.249", "34.205.219.39", "174.64.55.14/32", "54.88.38.181"],
+        "ip4": [
+          "52.203.93.76",
+          "35.169.80.249",
+          "34.205.219.39",
+          "174.64.55.14/32",
+          "54.88.38.181"
+        ],
         "ip6": []
       }
     },
     "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro"],
+      "roles": [
+        "ptc",
+        "healthpro"
+      ],
+      "clientId": "vibrent",
       "whitelisted_ip_ranges": {
-        "ip6": ["::0/0"],
-        "ip4": ["0.0.0.0/0"]
+        "ip6": [
+          "::0/0"
+        ],
+        "ip4": [
+          "0.0.0.0/0"
+        ]
+      }
+    },
+    "care-evolution@all-of-us-rdr-staging.iam.gserviceaccount.com": {
+      "roles": [
+        "ptc"
+      ],
+      "clientId": "careevolution",
+      "whitelisted_ip_ranges": {
+        "ip6": [],
+        "ip4": [
+          "52.86.97.51",
+          "52.54.134.172"
+        ]
       }
     },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro", "rdr"]
+      "clientId": "configurator",
+      "roles": [
+        "ptc",
+        "healthpro",
+        "rdr"
+      ]
     },
     "exporter@all-of-us-rdr-staging.iam.gserviceaccount.com": {
-      "roles": ["exporter"]
+      "roles": [
+        "exporter"
+      ]
     },
     "aou-res-storefront-staging@appspot.gserviceaccount.com": {
-      "roles": ["storefront"]
+      "roles": [
+        "storefront"
+      ]
     }
   },
   "biobank_samples_bucket_name": [
@@ -44,18 +87,28 @@
   "genomic_set_bucket_name": [
     "staging_genomic_set_upload"
   ],
+  "genomic_center_bucket_name": [
+    "staging-genomics-baylor-dryrun", "staging-genomics-broad-dryrun", "staging-genomics-northwest-dryrun", "staging-genomics-color-dryrun"
+  ],
+  "genotyping_sample_manifest_folder_name": [
+    "genotyping_sample_manifests"
+  ],
   "genomic_biobank_manifest_folder_name": [
     "genomic_water_line_test"
   ],
   "genomic_biobank_manifest_result_folder_name": [
     "genomic_water_line_test_results"
   ],
+  "genomic_gc_metrics_bucket_name": [
+    "staging_genomics_cell_line_validation"
+  ],
   "ghost_id_bucket": [
     "all-of-us-rdr-staging-ghost-accounts"
   ],
-  "consent_pdf_bucket": [
-    "ptc-uploads-all-of-us-rdr-staging"
-  ],
+  "consent_pdf_bucket": {
+    "vibrent": "ptc-uploads-all-of-us-rdr-staging",
+    "careevolution": "ce-uploads-all-of-us-rdr-staging"
+  },
   "metrics_shards": [
     "10"
   ],

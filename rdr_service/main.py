@@ -7,10 +7,10 @@ import os
 import signal
 
 # pylint: disable=unused-import
-from flask import got_request_exception
+from flask import got_request_exception, Response
 from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, InternalServerError
 
 from rdr_service import config_api
 from rdr_service import version_api
@@ -18,7 +18,9 @@ from rdr_service import app_util
 from rdr_service.api import metrics_ehr_api
 from rdr_service.api.awardee_api import AwardeeApi
 from rdr_service.api.bigquery_participant_summary_api import BQParticipantSummaryApi
-from rdr_service.api.bigquery_task_queue_api import BQRebuildTaskApi, rebuild_bigquery_core
+from rdr_service.api.cloud_tasks_api import RebuildParticipantsBQTaskApi, RebuildCodebookBQTaskApi, \
+    CopyCloudStorageObjectTaskApi, BQRebuildQuestionnaireTaskApi, GenerateBiobankSamplesTaskApi, \
+    BQRebuildOneParticipantTaskApi
 from rdr_service.api.biobank_order_api import BiobankOrderApi
 from rdr_service.api.check_ppi_data_api import check_ppi_data
 from rdr_service.api.data_gen_api import DataGenApi, SpecDataGenApi
@@ -35,9 +37,12 @@ from rdr_service.api.physical_measurements_api import PhysicalMeasurementsApi, s
 from rdr_service.api.public_metrics_api import PublicMetricsApi
 from rdr_service.api.questionnaire_api import QuestionnaireApi
 from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireAnswers, QuestionnaireResponseApi
+from rdr_service.api.organization_hierarchy_api import OrganizationHierarchyApi
 from rdr_service.config import get_config, get_db_config
-from rdr_service.services.flask import app, API_PREFIX
-from rdr_service.services.system_utils import run_external_program
+
+from rdr_service.services.flask import app, API_PREFIX, TASK_PREFIX
+from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
+    flask_restful_log_exception_error
 
 
 def _warmup():
@@ -58,8 +63,11 @@ def _stop():
         try:
             pid = int(open(pid_file).read())
             if pid:
-                os.kill(pid, signal.SIGTERM)
                 logging.info('******** Shutting down, sent supervisor the termination signal. ********')
+                response = Response()
+                response.status_code = 200
+                end_request_logging(response)
+                os.kill(pid, signal.SIGTERM)
         except TypeError:
             logging.warning('******** Shutting down, supervisor pid file is invalid. ********')
             pass
@@ -75,7 +83,7 @@ def _log_request_exception(sender, exception, **extra):  # pylint: disable=unuse
         # Log everything at error. This handles 400s which, since we have few/predefined clients,
         # we want to notice (and we don't see client-side logs); Stackdriver error reporting only
         # reports error logs with stack traces. (500s are logged with stacks by Flask automatically.)
-        logging.error("%s: %s", exception, exception.description, exc_info=True)
+        logging.error(f"{exception}: {exception.description}", exc_info=True)
 
 
 got_request_exception.connect(_log_request_exception, app)
@@ -140,7 +148,8 @@ api.add_resource(
     methods=["GET", "POST", "PATCH"],
 )
 
-api.add_resource(MetricsApi, API_PREFIX + "Metrics", endpoint="metrics", methods=["POST"])
+# TODO: remove commented metrics 1 endpoints after December 1 2020.
+#api.add_resource(MetricsApi, API_PREFIX + "Metrics", endpoint="metrics", methods=["POST"])
 
 api.add_resource(
     ParticipantCountsOverTimeApi,
@@ -149,16 +158,18 @@ api.add_resource(
     methods=["GET"],
 )
 
+# Returns fields in metrics configs. Used in dashboards.
 api.add_resource(MetricsFieldsApi, API_PREFIX + "MetricsFields", endpoint="metrics_fields", methods=["GET"])
 
-api.add_resource(
-    MetricSetsApi,
-    API_PREFIX + "MetricSets",
-    API_PREFIX + "MetricSets/<string:ms_id>/Metrics",
-    endpoint="metric_sets",
-    methods=["GET"],
-)
+#api.add_resource(
+#    MetricSetsApi,
+#    API_PREFIX + "MetricSets",
+#    API_PREFIX + "MetricSets/<string:ms_id>/Metrics",
+#    endpoint="metric_sets",
+#    methods=["GET"],
+#)
 
+# Used by participant_counts_over_time
 api.add_resource(metrics_ehr_api.MetricsEhrApi, API_PREFIX + "MetricsEHR", endpoint="metrics_ehr", methods=["GET"])
 
 api.add_resource(
@@ -221,6 +232,11 @@ api.add_resource(
 api.add_resource(AwardeeApi, API_PREFIX + "Awardee", API_PREFIX + "Awardee/<string:a_id>",
                         endpoint="awardee", methods=["GET"])
 
+api.add_resource(OrganizationHierarchyApi,
+                 API_PREFIX + 'organization/hierarchy',
+                 endpoint='hierarchy_content.organizations',
+                 methods=['PUT'])
+
 # Configuration API for admin use.  # note: temporarily disabled until decided
 api.add_resource(
     config_api.ConfigApi,
@@ -236,14 +252,32 @@ api.add_resource(version_api.VersionApi, "/", API_PREFIX, endpoint="version", me
 # Data generator API used to load fake data into the database.
 api.add_resource(DataGenApi, API_PREFIX + "DataGen", endpoint="datagen", methods=["POST", "PUT"])
 
+#
+# Cloud Tasks API endpoints
+#
+# Task Queue API endpoint to rebuild BQ participant summary records.
+api.add_resource(RebuildParticipantsBQTaskApi, TASK_PREFIX + "BQRebuildParticipantsTaskApi",
+                 endpoint="bq_rebuild_participants_task", methods=["POST"])
+# Task Queue API endpoint to rebuild ONE participant id.
+api.add_resource(BQRebuildOneParticipantTaskApi, TASK_PREFIX + "BQRebuildOneParticipantTaskApi",
+                 endpoint="bq_rebuild_one_participant_task", methods=["POST"])
+# Task Queue API endpoing to rebuild BQ codebook records.
+api.add_resource(RebuildCodebookBQTaskApi, TASK_PREFIX + "BQRebuildCodebookTaskApi",
+                 endpoint="bq_rebuild_codebook_task", methods=["POST"])
 
-# Task Queue API endpoing to rebuild BQ participant summary records.
-api.add_resource(BQRebuildTaskApi, API_PREFIX + "BQRebuildTaskApi", endpoint="bq_rebuilt_task", methods=["GET"])
+api.add_resource(CopyCloudStorageObjectTaskApi, TASK_PREFIX + "CopyCloudStorageObjectTaskApi",
+                 endpoint="copy_cloudstorage_object_task", methods=["POST"])
+
+api.add_resource(BQRebuildQuestionnaireTaskApi, TASK_PREFIX + "BQRebuildQuestionnaireTaskApi",
+                 endpoint="bq_rebuild_questionnaire_task", methods=["POST"])
+
+api.add_resource(GenerateBiobankSamplesTaskApi, TASK_PREFIX + "GenerateBiobankSamplesTaskApi",
+                 endpoint="generate_bio_samples_task", methods=["POST"])
+
 
 #
 # Non-resource endpoints
 #
-
 api.add_resource(SpecDataGenApi, API_PREFIX + "SpecDataGen", endpoint="specdatagen", methods=["POST"])
 
 app.add_url_rule(
@@ -258,15 +292,17 @@ app.add_url_rule(API_PREFIX + "CheckPpiData", endpoint="check_ppi_data", view_fu
 app.add_url_rule(API_PREFIX + "ImportCodebook", endpoint="import_codebook", view_func=import_codebook,
                  methods=["POST"])
 
-app.add_url_rule(API_PREFIX + 'RebuildBigQueryCore',
-                 endpoint='rebuildbigquerycore',
-                 view_func=rebuild_bigquery_core,
-                 methods=['POST'])
 
 app.add_url_rule("/_ah/warmup", endpoint="warmup", view_func=_warmup, methods=["GET"])
 app.add_url_rule("/_ah/start", endpoint="start", view_func=_start, methods=["GET"])
 app.add_url_rule("/_ah/stop", endpoint="stop", view_func=_stop, methods=["GET"])
 
-app.after_request(app_util.add_headers)
+app.before_request(begin_request_logging)  # Must be first before_request() call.
 app.before_request(app_util.request_logging)
+app.after_request(app_util.add_headers)
+app.after_request(end_request_logging)  # Must be last after_request() call.
+
 app.register_error_handler(DBAPIError, app_util.handle_database_disconnect)
+
+# https://github.com/flask-restful/flask-restful/issues/792
+got_request_exception.connect(flask_restful_log_exception_error, app)

@@ -1,15 +1,19 @@
 import io
+import logging
 import os
 import glob
 import shutil
 import datetime
 import hashlib
 import pathlib
+import tempfile
 
 from contextlib import ContextDecorator
-from tempfile import mkstemp
 from abc import ABC, abstractmethod
+
+from google.api_core.exceptions import RequestRangeNotSatisfiable
 from google.cloud import storage
+from google.cloud.exceptions import GatewayTimeout
 from google.cloud.storage import Blob
 from google.cloud._helpers import UTC
 from google.cloud._helpers import _RFC3339_MICROS
@@ -166,14 +170,13 @@ class GoogleCloudStorageFile(ContextDecorator):
 
     _lines = None
     _line = 0
+    _w_temp_file = None
 
     def __init__(self, provider=None, blob=None):
         self.provider = provider
         self.blob = blob
         self.position = 0
         self.dirty = False
-        self.temp_file = None
-        self.temp_file_path = None
 
     def read(self, size=None):
         kwargs = {'start': self.position}
@@ -186,12 +189,12 @@ class GoogleCloudStorageFile(ContextDecorator):
 
     def write(self, content):
         self.dirty = True
-        if self.temp_file is None:
-            _, path = mkstemp()
-            self.temp_file_path = path
-            self.temp_file = open(path, 'w')
-
-        self.temp_file.write(content)
+        if self._w_temp_file is None:
+            self._w_temp_file = tempfile.NamedTemporaryFile(delete=False)
+        if isinstance(content, str):
+            content = content.encode()
+        self._w_temp_file.write(content)
+        self._w_temp_file.flush()
 
     def seek(self, offset=0, whence=0):
         if whence == 0:
@@ -202,9 +205,12 @@ class GoogleCloudStorageFile(ContextDecorator):
             self.position = self.blob.size + offset
 
     def close(self):
-        if self.temp_file is not None:
-            self.blob.upload_from_filename(self.temp_file_path)
-            self.temp_file.close()
+        if self._w_temp_file is not None:
+            self._w_temp_file.close()
+            self.blob.upload_from_filename(self._w_temp_file.name)
+            os.unlink(self._w_temp_file.name)
+            self._w_temp_file = None
+        self.dirty = False
 
     def __next__(self):
         if not self._lines:
@@ -230,7 +236,10 @@ class GoogleCloudStorageFile(ContextDecorator):
     def iter_chunks(self, chunk_size=1024):
         i = 0
         while True:
-            chunk = self.blob.download_as_string(start=i, end=i+chunk_size)
+            try:
+                chunk = self.blob.download_as_string(start=i, end=i+chunk_size)
+            except RequestRangeNotSatisfiable:
+                break
             if chunk:
                 yield chunk
                 i += len(chunk)
@@ -241,7 +250,7 @@ class GoogleCloudStorageFile(ContextDecorator):
         buffer = io.StringIO()
         chunks = self.iter_chunks()
         for chunk in chunks:
-            for character in chunk:
+            for character in chunk.decode('utf-8'):
                 if character == '\n':
                     buffer.seek(0)
                     yield buffer.read()
@@ -254,7 +263,6 @@ class GoogleCloudStorageFile(ContextDecorator):
             yield buffer.read()
 
 
-
 class GoogleCloudStorageProvider(StorageProvider):
 
     def open(self, path, mode):
@@ -262,20 +270,22 @@ class GoogleCloudStorageProvider(StorageProvider):
         bucket_name, blob_name = self._parse_path(path)
         bucket = client.get_bucket(bucket_name)
         blob = storage.blob.Blob(blob_name, bucket)
-
         return GoogleCloudStorageFile(self, blob)
 
     def lookup(self, bucket_name):
         client = storage.Client()
-        return client.lookup_bucket(bucket_name)
+        _bucket_name = self._parse_bucket(bucket_name)
+        return client.lookup_bucket(_bucket_name)
 
     def list(self, bucket_name, prefix):
         client = storage.Client()
-        return client.list_blobs(bucket_name, prefix=prefix)
+        _bucket_name = self._parse_bucket(bucket_name)
+        return client.list_blobs(_bucket_name, prefix=prefix)
 
     def get_blob(self, bucket_name, blob_name):
         client = storage.Client()
-        bucket = client.get_bucket(bucket_name)
+        _bucket_name = self._parse_bucket(bucket_name)
+        bucket = client.get_bucket(_bucket_name)
         return bucket.get_blob(blob_name)
 
     def upload_from_file(self, source_file, path):
@@ -310,19 +320,32 @@ class GoogleCloudStorageProvider(StorageProvider):
         source_bucket.copy_blob(source_blob, destination_bucket, destination_blob_name)
 
     def exists(self, path):
-        bucket_path = path.split(os.sep)
-        bucket_name = bucket_path[0]
-        file_name = bucket_path[-1]
-        storage_client = storage.Client()
-        bucket = storage_client.bucket(bucket_name)
-        gcs_stat = storage.Blob(bucket=bucket, name=file_name).exists(storage_client)
-        return gcs_stat is not None
+        bucket_name, blob_name = self._parse_path(path)
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = storage.Blob(bucket=bucket, name=blob_name)
+
+        retry = 3
+        while retry:
+            try:
+                gcs_stat = blob.exists(client)
+                return gcs_stat
+            except GatewayTimeout:
+                retry -= 1
+                logging.warning(f"Google Storage timeout error, {retry} retry attempts left.")
+
+        raise ConnectionRefusedError(f"Connection to Google Storage failed. ({path})")
 
     @staticmethod
     def _parse_path(path):
         path = path if path[0:1] != '/' else path[1:]
         bucket_name, _, blob_name = path.partition('/')
         return bucket_name, blob_name
+
+    @staticmethod
+    def _parse_bucket(bucket):
+        bucket = bucket if bucket[0:1] != '/' else bucket[1:]
+        return bucket
 
 
 def get_storage_provider():

@@ -5,8 +5,8 @@ import operator
 
 from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicSetDao
-from rdr_service.model.genomics import GenomicSetMemberStatus, GenomicSetStatus, GenomicValidationFlag
-from rdr_service.participant_enums import SampleStatus, WithdrawalStatus
+from rdr_service.participant_enums import SampleStatus, WithdrawalStatus, GenomicSetStatus, GenomicSetMemberStatus, \
+    GenomicValidationFlag
 
 GENOMIC_VALID_SEX_AT_BIRTH_VALUES = ["F", "M"]
 GENOMIC_VALID_AGE = 18
@@ -59,8 +59,6 @@ def _iter_validation_flags(row, date_of_birth_cutoff):
               for this validation.
   :param date_of_birth_cutoff: any birth date before dob_cutoff will be invalid
   """
-    if row.existing_valid_genomic_count != 0:
-        yield GenomicValidationFlag.INVALID_DUP_PARTICIPANT
     if not row.consent_time or row.consent_time < GENOMIC_VALID_CONSENT_CUTOFF:
         yield GenomicValidationFlag.INVALID_CONSENT
     if row.withdrawal_status != WithdrawalStatus.NOT_WITHDRAWN:

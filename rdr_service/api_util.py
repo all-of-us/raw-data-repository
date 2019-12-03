@@ -18,10 +18,11 @@ RDR_AND_PTC = [RDR, PTC]
 PTC_AND_HEALTHPRO = [PTC, HEALTHPRO]
 PTC_HEALTHPRO_AWARDEE = [PTC, HEALTHPRO, AWARDEE]
 ALL_ROLES = [PTC, HEALTHPRO, STOREFRONT, EXPORTER]
-VIBRENT_FHIR_URL = "http://joinallofus.org/fhir/"
-VIBRENT_BARCODE_URL = VIBRENT_FHIR_URL + "barcode"
-VIBRENT_ORDER_URL = VIBRENT_FHIR_URL + "order-type"
-VIBRENT_FULFILLMENT_URL = VIBRENT_FHIR_URL + "fulfillment-status"
+DV_FHIR_URL = "http://joinallofus.org/fhir/"
+DV_BARCODE_URL = DV_FHIR_URL + "barcode"
+DV_ORDER_URL = DV_FHIR_URL + "order-type"
+DV_FULFILLMENT_URL = DV_FHIR_URL + "fulfillment-status"
+HIERARCHY_CONTENT_SYSTEM_PREFIX = 'http://all-of-us.org/fhir/sites/'
 
 
 def parse_date(date_str, date_format=None, date_only=False):

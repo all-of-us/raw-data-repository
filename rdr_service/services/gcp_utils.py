@@ -5,6 +5,7 @@
 #
 # superfluous-parens
 # pylint: disable=W0612
+from dateutil import parser
 import glob
 import logging
 import os
@@ -34,7 +35,7 @@ def gcp_test_environment():
 
     # TODO: Future: put additional checks here as needed, IE: required environment vars.
 
-    _logger.info("local environment is good.")
+    _logger.debug("Local Environment : Good.")
     return True
 
 
@@ -154,7 +155,7 @@ def gcp_initialize(project, account=None, service_account=None):
             return None
 
     for key, value in list(env.items()):
-        _logger.info("{0}: [{1}].".format(key, value))
+        _logger.debug("{0} : [{1}].".format(key, value))
 
     return env
 
@@ -246,9 +247,9 @@ def gcp_set_config(prop, value, flags=None):
     _logger.debug("successfully set gcp config property.")
 
     if prop.lower() == "project":
-        _logger.info("the current project is now [{0}].".format(value))
+        _logger.debug("current Project : {0}".format(value))
     else:
-        _logger.info("config: [{0}] is now [{1}].".format(prop, value))
+        _logger.debug("config : {0} is now {1}".format(prop, value))
 
     return True
 
@@ -315,7 +316,7 @@ def gcp_activate_account(account, flags=None):
   :param flags: additional flags to pass to gcloud command
   :return: True if successful otherwise False
   """
-    _logger.debug("setting activate gcp account to {0}.".format(account))
+    _logger.debug("setting active gcp account to {0}.".format(account))
 
     if not account:
         _logger.error("no GCP account given, aborting.")
@@ -337,6 +338,15 @@ def gcp_activate_account(account, flags=None):
             _logger.debug(line)
 
     return True
+
+
+def gcp_application_default_creds_exist():
+    """
+    Return true if the application default credentials file exists.
+    :return: True if we can find app default creds file otherwise False.
+    """
+    cred_file = os.path.expanduser('~/.config/gcloud/application_default_credentials.json')
+    return os.path.exists(cred_file)
 
 
 def gcp_get_app_host_name(project=None):
@@ -452,6 +462,23 @@ def gcp_create_iam_service_key(service_account, account=None):
 
     return service_key_id
 
+def gcp_get_iam_service_key_info(service_key_id):
+    """
+    Get information about the given service key file ID
+    :param service_key_id:
+    :return: dict with key info
+    """
+    service_key_file = "{0}.json".format(service_key_id)
+    service_key_path = os.path.join(GCP_SERVICE_KEY_STORE, service_key_file)
+
+    data = {
+        'key_id': service_key_id,
+        'key_file': service_key_file,
+        'key_path': service_key_path,
+        'exists': os.path.exists(service_key_path)
+    }
+
+    return data
 
 def gcp_delete_iam_service_key(service_key_id, account=None):
     """
@@ -644,5 +671,124 @@ def gcp_mv(src, dest, args=None, flags=None):
     if pcode != 0:
         _logger.error("failed to copy file. ({0}: {1}).".format(pcode, se))
         return False
+
+    return True
+
+
+def gcp_get_app_versions(running_only: bool = False):
+    """
+    Get the list of current App Engine services and versions.
+    :param running_only: Only showing running versions if True.
+    :return: dict(service_name: dict(version, split, deployed, status))
+    """
+
+    args = "versions list"
+    pcode, so, se = gcp_gcloud_command("app", args)
+
+    if pcode != 0 or not so:
+        _logger.error("failed to retrieve app services and versions. ({0}: {1}).".format(pcode, se))
+        return None
+
+    lines = so.split('\n')
+    if not lines or not lines[0].startswith('SERVICE'):
+        _logger.error("invalid response when trying retrieve app information. ({0}: {1}).".format(pcode, se))
+        return None
+
+    lines.pop(0)
+
+    services = OrderedDict()
+
+    for line in lines:
+        if not line:
+            continue
+        while '  ' in line:
+            line = line.replace('  ', ' ')
+        parts = line.split(' ')
+
+        name = parts[0]
+        if not services.get(name, None):
+            services[name] = list()
+
+        if not running_only or (parts[4] == 'SERVING' and float(parts[2]) > 0.0):
+            services[name].append({
+                'version': parts[1],
+                'split': float(parts[2]),
+                'deployed': parser.parse(parts[3]),
+                'status': parts[4]
+            })
+
+    return services
+
+
+def gcp_app_services_split_traffic(service: str, versions: list, split_by: str = 'random'):
+    """
+    Split App Engine traffic between two or more services.  The sum of the split ratios must equal 1.0.
+    :param service: Service name to apply traffic splits to.
+    :param versions: A list of tuples containing (service name, split ratio).
+    :param split_by: Must be one of "ip", "cookie" or "random".
+    :return: True if successful, otherwise False
+    """
+
+    if not versions or not isinstance(versions, list):
+        _logger.error('list of services invalid.')
+        return False
+
+    total = 0.0
+    splits = ""
+    for item in versions:
+        if not isinstance(item, tuple) or len(item) != 2:
+            _logger.error('service description must be a tuple containing service name and split ratio.')
+            return False
+        total += float(item[1])
+        splits += "{0}={1},".format(item[0], item[1])
+
+    if total != 1.0:
+        _logger.error('service splits do not equal 1.0, unable to continue.')
+        return False
+
+    args = "--quiet services set-traffic {0}".format(service)
+    flags = "--splits {0} --split-by={1}".format(splits[:-1], split_by)
+
+    pcode, so, se = gcp_gcloud_command("app", args, flags)
+
+    if pcode != 0:
+        _logger.error("failed to set traffic split. ({0}: {1}).".format(pcode, se))
+        return False
+
+    _logger.debug(so if so else se)
+
+    return True
+
+
+def gcp_deploy_app(project, config_files: list, version: str = None, promote: bool = False):
+    """
+    Deploy an app to App Engine.
+    :param project: project name
+    :param config_files: Path to app configuration yaml file.
+    :param version: Deploy as different version if needed.
+    :param promote: Promote version to serving traffic.
+    :return: True if successful, otherwise False.
+    """
+    if not config_files or not isinstance(config_files, list):
+        raise ValueError('Invalid configuration file list argument.')
+
+    configs = ' '.join(config_files)
+
+    args = "--quiet deploy {0}".format(configs)
+    if project:
+        args += " --project {0}".format(project)
+    flags = ''
+    if version:
+        flags += ' --version "{0}"'.format(version)
+    if not promote:
+        flags += ' --no-promote'
+
+    pcode, so, se = gcp_gcloud_command("app", args, flags.strip())
+
+    if pcode != 0:
+        _logger.error("failed to deploy app. ({0}: {1}).".format(pcode, se))
+        return False
+
+    _logger.debug(so if so else se)
 
     return True

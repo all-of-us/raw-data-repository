@@ -163,7 +163,7 @@ class MetricsExport(object):
         """Entry point to exporting data for use by the metrics pipeline. Begins the export of
     the first shard of the participant data."""
         filename_prefix = "%s/" % clock.CLOCK.now().isoformat()
-        # TODO: Do we need to convert this to a Celery task?
+        # TODO: Do we need to convert this to a Cloud task?
         # deferred.defer(
         MetricsExport._start_participant_export(bucket_name, filename_prefix, num_shards, 0)
         # )

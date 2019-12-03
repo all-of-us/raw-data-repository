@@ -231,6 +231,7 @@ class Stratifications(messages.Enum):
     LANGUAGE = 15
     PRIMARY_CONSENT = 16
     EHR_METRICS = 17
+    SITES_COUNT = 18
 
 
 METRIC_SET_KEYS = {
@@ -463,3 +464,67 @@ def make_primary_provider_link_for_name(hpo_name):
   The returned JSON represents a list containing the one primary provider.
   """
     return json.dumps([{"primary": True, "organization": {"reference": "Organization/%s" % hpo_name}}], sort_keys=True)
+
+
+class GenomicSetStatus(messages.Enum):
+    """Status of Genomic Set"""
+
+    UNSET = 0
+    VALID = 1
+    INVALID = 2
+
+
+class GenomicValidationStatus(messages.Enum):
+    """Original Specification needed by older database migrations"""
+
+    UNSET = 0
+    VALID = 1
+    INVALID_BIOBANK_ORDER = 2
+    INVALID_NY_ZIPCODE = 3
+    INVALID_SEX_AT_BIRTH = 4
+    INVALID_GENOME_TYPE = 5
+    INVALID_CONSENT = 6
+    INVALID_WITHDRAW_STATUS = 7
+    INVALID_AGE = 8
+    INVALID_DUP_PARTICIPANT = 9
+
+
+class GenomicSetMemberStatus(messages.Enum):
+    """Status of Genomic Set Member"""
+
+    UNSET = 0
+    VALID = 1
+    INVALID = 2
+
+
+class GenomicValidationFlag(messages.Enum):
+    """Validation Status Flags"""
+
+    UNSET = 0
+    # VALID = 1
+    INVALID_BIOBANK_ORDER = 2
+    INVALID_NY_ZIPCODE = 3
+    INVALID_SEX_AT_BIRTH = 4
+    INVALID_GENOME_TYPE = 5
+    INVALID_CONSENT = 6
+    INVALID_WITHDRAW_STATUS = 7
+    INVALID_AGE = 8
+    INVALID_DUP_PARTICIPANT = 9
+
+
+class GenomicSubProcessStatus(messages.Enum):
+    """The status of a Genomics Sub-Process"""
+    QUEUED = 0
+    COMPLETED = 1
+    RUNNING = 2
+    ABORTED = 3
+
+
+class GenomicSubProcessResult(messages.Enum):
+    """The result codes for a particular run of a sub-process"""
+    UNSET = 0
+    SUCCESS = 1
+    NO_FILES = 2
+    INVALID_FILE_NAME = 3
+    INVALID_FILE_STRUCTURE = 4
+    ERROR = 5

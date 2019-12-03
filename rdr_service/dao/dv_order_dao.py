@@ -6,10 +6,10 @@ from werkzeug.exceptions import BadRequest, Conflict, NotFound
 from rdr_service import clock
 from rdr_service.api.mayolink_api import MayoLinkApi
 from rdr_service.api_util import (
-    VIBRENT_BARCODE_URL,
-    VIBRENT_FHIR_URL,
-    VIBRENT_FULFILLMENT_URL,
-    VIBRENT_ORDER_URL,
+    DV_BARCODE_URL,
+    DV_FHIR_URL,
+    DV_FULFILLMENT_URL,
+    DV_ORDER_URL,
     format_json_code,
     format_json_enum,
     get_code_id,
@@ -26,7 +26,6 @@ from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
 from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.participant_enums import BiobankOrderStatus, OrderShipmentStatus, OrderShipmentTrackingStatus
-
 
 class DvOrderDao(UpdatableDao):
     def __init__(self):
@@ -52,7 +51,7 @@ class DvOrderDao(UpdatableDao):
         fhir_resource = SimpleFhirR4Reader(resource)
         summary = ParticipantSummaryDao().get(pid)
         if not summary:
-            raise BadRequest("No summary for particpant id: {}".format(pid))
+            raise BadRequest("No summary for participant id: {}".format(pid))
         code_dict = summary.asdict()
         format_json_code(code_dict, self.code_dao, "genderIdentityId")
         format_json_code(code_dict, self.code_dao, "stateId")
@@ -95,7 +94,7 @@ class DvOrderDao(UpdatableDao):
                     "ethnic_group": None,
                 },
                 "physician": {"name": "None", "phone": None, "npi": None},  # must be a string value, not None.
-                "report_notes": fhir_resource.extension.get(url=VIBRENT_ORDER_URL).valueString,
+                "report_notes": fhir_resource.extension.get(url=DV_ORDER_URL).valueString,
                 "tests": {"test": {"code": "1SAL2", "name": "PMI Saliva, FDA Kit", "comments": None}},
                 "comments": "Salivary Kit Order, direct from participant",
             }
@@ -106,7 +105,7 @@ class DvOrderDao(UpdatableDao):
         if for_update:
             result = dict()
             reduced_model = model["orders"]["order"]
-            result["status"] = reduced_model["status"]
+            result["biobankStatus"] = reduced_model["status"]
             result["barcode"] = reduced_model["reference_number"]
             result["received"] = reduced_model["received"]
             result["biobankOrderId"] = reduced_model["number"]
@@ -138,22 +137,29 @@ class DvOrderDao(UpdatableDao):
             if not existing_obj:
                 raise NotFound("existing order record not found")
 
+            # handling of biobankStatus from Mayolink API
+            try:
+                existing_obj.biobankStatus = resource_json['biobankStatus']
+            except KeyError:
+                # resource will only have biobankStatus on a PUT
+                pass
+
             existing_obj.shipmentStatus = self._enumerate_order_tracking_status(
-                fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "tracking-status").valueString
+                fhir_resource.extension.get(url=DV_FHIR_URL + "tracking-status").valueString
             )
-            existing_obj.shipmentCarrier = fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "carrier").valueString
+            existing_obj.shipmentCarrier = fhir_resource.extension.get(url=DV_FHIR_URL + "carrier").valueString
 
             # shipmentEstArrival
             # The fhir_resource.get() method
             # will raise an exception on "expected-delivery-date"
             # if the resource doesn't have that path
             delivery_date_url = [extension.url for extension in fhir_resource["extension"]
-                                 if extension.url == VIBRENT_FHIR_URL + "expected-delivery-date"]
+                                 if extension.url == DV_FHIR_URL + "expected-delivery-date"]
             if delivery_date_url:
                 existing_obj.shipmentEstArrival = parse_date(
-                    fhir_resource.extension.get(url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime)
+                    fhir_resource.extension.get(url=DV_FHIR_URL + "expected-delivery-date").valueDateTime)
 
-            existing_obj.trackingId = fhir_resource.identifier.get(system=VIBRENT_FHIR_URL + "trackingId").value
+            existing_obj.trackingId = fhir_resource.identifier.get(system=DV_FHIR_URL + "trackingId").value
             # USPS status
             existing_obj.orderStatus = self._enumerate_order_shipping_status(fhir_resource.status)
             # USPS status time
@@ -196,7 +202,7 @@ class DvOrderDao(UpdatableDao):
             return existing_obj
 
         if resource_json["resourceType"].lower() == "supplyrequest":
-            order.order_id = int(fhir_resource.identifier.get(system=VIBRENT_FHIR_URL + "orderId").value)
+            order.order_id = int(fhir_resource.identifier.get(system=DV_FHIR_URL + "orderId").value)
             if id_ and int(id_) != order.order_id:
                 raise Conflict("url order id param does not match document order id")
 
@@ -205,11 +211,11 @@ class DvOrderDao(UpdatableDao):
 
             order.supplier = fhir_resource.contained.get(resourceType="Organization").id
             order.created = clock.CLOCK.now()
-            order.supplierStatus = fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString
+            order.supplierStatus = fhir_resource.extension.get(url=DV_FULFILLMENT_URL).valueString
 
             fhir_device = fhir_resource.contained.get(resourceType="Device")
             order.itemName = fhir_device.deviceName.get(type="manufacturer-name").name
-            order.itemSKUCode = fhir_device.identifier.get(system=VIBRENT_FHIR_URL + "SKU").value
+            order.itemSKUCode = fhir_device.identifier.get(system=DV_FHIR_URL + "SKU").value
             order.itemQuantity = fhir_resource.quantity.value
 
             fhir_patient = fhir_resource.contained.get(resourceType="Patient")
@@ -220,7 +226,7 @@ class DvOrderDao(UpdatableDao):
             order.stateId = get_code_id(fhir_address, self.code_dao, "state", "State_")
             order.zipCode = fhir_address.postalCode
 
-            order.orderType = fhir_resource.extension.get(url=VIBRENT_ORDER_URL).valueString
+            order.orderType = fhir_resource.extension.get(url=DV_ORDER_URL).valueString
             if id_ is None:
                 order.version = 1
             else:
@@ -231,8 +237,7 @@ class DvOrderDao(UpdatableDao):
 
                 order.id = existing_obj.id
                 order.version = expected_version
-                order.biobankStatus = fhir_resource.status
-                order.barcode = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).valueString
+                order.barcode = fhir_resource.extension.get(url=DV_BARCODE_URL).valueString
 
         return order
 
@@ -245,7 +250,6 @@ class DvOrderDao(UpdatableDao):
         obj.biobankOrderId = resource["biobankOrderId"]
         test = self.get(resource["id"])
         obj.dvOrders = [test]
-
         bod = BiobankOrderDao()
         obj.samples = [BiobankOrderedSample(test="1SAL2", processingRequired=False, description="salivary pilot kit")]
         self._add_identifiers_and_main_id(obj, ObjectView(resource))
@@ -253,29 +257,30 @@ class DvOrderDao(UpdatableDao):
 
     def _add_identifiers_and_main_id(self, order, resource):
         order.identifiers = []
+        dv_user = resource.auth_user.split("@")[0]
         for i in resource.identifier:
             try:
-                if i["system"].lower() == VIBRENT_FHIR_URL + "trackingid":
+                if i["system"].lower() == DV_FHIR_URL + "trackingid":
                     order.identifiers.append(
                         BiobankOrderIdentifier(
-                            system=BiobankDVOrder._VIBRENT_ID_SYSTEM + "/trackingId", value=i["value"]
+                            system=BiobankDVOrder._DV_ID_SYSTEM[dv_user] + "/trackingId", value=i["value"]
                         )
                     )
             except AttributeError:
                 raise BadRequest(
-                    "No identifier for system %r, required for primary key." % BiobankDVOrder._VIBRENT_ID_SYSTEM
+                    f"No identifier for system {BiobankDVOrder._DV_ID_SYSTEM[dv_user]}, required for primary key."
                 )
         for i in resource.basedOn:
             try:
-                if i["identifier"]["system"].lower() == VIBRENT_FHIR_URL + "orderid":
+                if i["identifier"]["system"].lower() == DV_FHIR_URL + "orderid":
                     order.identifiers.append(
                         BiobankOrderIdentifier(
-                            system=BiobankDVOrder._VIBRENT_ID_SYSTEM, value=i["identifier"]["value"]
+                            system=BiobankDVOrder._DV_ID_SYSTEM[dv_user], value=i["identifier"]["value"]
                         )
                     )
             except AttributeError:
                 raise BadRequest(
-                    "No identifier for system %r, required for primary key." % BiobankDVOrder._VIBRENT_ID_SYSTEM
+                    f"No identifier for system {BiobankDVOrder._DV_ID_SYSTEM[dv_user]}, required for primary key."
                 )
 
     def get_etag(self, id_, pid):

@@ -10,6 +10,8 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import BiobankOrderStatus, OrderStatus, WithdrawalStatus
+from rdr_service.api_util import parse_date
+
 from tests.test_data import load_biobank_order_json
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -114,6 +116,10 @@ class BiobankOrderDaoTest(BaseTestCase):
         self.assertEqual(2, order.finalizedSiteId)
         self.assertEqual("bob@pmi-ops.org", order.finalizedUsername)
 
+        # testing finalized_time
+        samples_finalized_time = parse_date(order_json['samples'][0]['finalized'])
+        self.assertEqual(samples_finalized_time, order.finalizedTime)
+
     def test_to_json(self):
         order = self._make_biobank_order()
         order_json = self.dao.to_client_json(order)
@@ -183,6 +189,9 @@ class BiobankOrderDaoTest(BaseTestCase):
         self.assertEqual(updated_order.cancelledUsername, "mike@pmi-ops.org")
         self.assertEqual(updated_order.orderStatus, BiobankOrderStatus.CANCELLED)
         self.assertEqual(updated_order.amendedReason, cancelled_request["amendedReason"])
+
+        ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
+        self.assertEqual(ps_dao.biospecimenFinalizedSiteId, None)
 
     def test_cancelled_order_removes_from_participant_summary(self):
         ParticipantSummaryDao().insert(self.participant_summary(self.participant))

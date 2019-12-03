@@ -1,3 +1,4 @@
+import json
 import logging
 
 from flask import jsonify, request, url_for
@@ -7,14 +8,74 @@ from sqlalchemy.exc import NoInspectionAvailable
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import app_util
+from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.base_dao import save_raw_request_record
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.query import OrderBy, Query
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 
 DEFAULT_MAX_RESULTS = 100
 MAX_MAX_RESULTS = 10000
+
+
+def log_api_request(model_obj=None):
+    """ Create deferred task to save the request payload and possibly link it to a table record """
+    log = RequestsLog()
+
+    log.endpoint = request.endpoint
+    log.method = request.method
+    log.url = request.url
+    log.user = app_util.get_oauth_id()
+    if request.method in ['POST', 'PUT', 'PATCH']:
+        try:
+            # We don't want to use request.json or request.get_json here.
+            log.resource = json.loads(request.data)
+        except ValueError:
+            log.resource = request.data
+    parts = request.url.split('/')
+    log.version = int(parts[4][1:]) if len(parts) > 4 else 0
+
+    request.logged = True
+
+    # See if we can get the participant id and a foreign key id out of the url.
+    if request.view_args and isinstance(request.view_args, dict):
+        for k, v in request.view_args.items():
+            if k == 'p_id':
+                log.participantId = int(v)
+            else:
+                if isinstance(v, int) or str(v).strip().isdigit():
+                    log.fpk_id = int(v)
+                else:
+                    log.fpk_alt_id = str(v).strip()
+
+    if model_obj:
+        try:
+            if hasattr(model_obj, '__table__'):
+                log.fpk_table = model_obj.__table__.name
+            if hasattr(model_obj, 'participantId'):
+                log.participantId = int(model_obj.participantId)
+
+            insp = inspect(model_obj)
+            if hasattr(insp, 'mapper'):
+                if insp.mapper._primary_key_propkeys and len(insp.mapper._primary_key_propkeys) == 1:
+                    log.fpk_column = str(max(insp.mapper._primary_key_propkeys))
+            if insp.identity is None:
+                if log.fpk_column and log.fpk_column == 'participant_id' and log.participantId:
+                    log.fpk_id = int(log.participantId)
+            else:
+                if isinstance(insp.identity[0], int) or str(insp.identity[0]).strip().isdigit():
+                    log.fpk_id = int(insp.identity[0])
+                else:
+                    log.fpk_alt_id = str(insp.identity[0])
+
+        except NoInspectionAvailable:
+            pass
+        except Exception:  # pylint: disable=broad-except
+            pass
+
+    save_raw_request_record(log)
 
 
 class BaseApi(Resource):
@@ -48,42 +109,6 @@ class BaseApi(Resource):
             return default
         return request.args.get(key).lower() == "true"
 
-    def _save_raw_request(self, obj):
-        """ Save the request payload and possibly link it to a table record """
-        log = RequestsLog()
-
-        log.endpoint = request.endpoint
-        log.method = request.method
-        log.url = request.url
-        log.resource = request.data
-        log.version = int(request.url.split("/")[4][1:])
-
-        if obj:
-            try:
-                if hasattr(obj, "__table__"):
-                    log.fpk_table = obj.__table__.name
-                if hasattr(obj, "participantId"):
-                    log.participantId = int(obj.participantId)
-
-                insp = inspect(obj)
-                if hasattr(insp, "mapper"):
-                    if insp.mapper._primary_key_propkeys and len(insp.mapper._primary_key_propkeys) == 1:
-                        log.fpk_column = str(max(insp.mapper._primary_key_propkeys))
-                if insp.identity is None:
-                    if log.fpk_column and log.fpk_column == "participant_id" and log.participantId:
-                        log.fpk_id = int(log.participantId)
-                else:
-                    if isinstance(insp.identity[0], int) or str(insp.identity[0]).strip().isdigit():
-                        log.fpk_id = int(insp.identity[0])
-                    else:
-                        log.fpk_alt_id = str(insp.identity[0])
-
-            except NoInspectionAvailable:
-                pass
-            except Exception:  #  pylint: disable=broad-except
-                pass
-            save_raw_request_record(log)
-
     def get(self, id_=None, participant_id=None):
         """Handle a GET request.
 
@@ -96,14 +121,13 @@ class BaseApi(Resource):
             return self.list(participant_id)
         obj = self.dao.get_with_children(id_) if self._get_returns_children else self.dao.get(id_)
         if not obj:
-            raise NotFound("%s with ID %s not found" % (self.dao.model_type.__name__, id_))
+            raise NotFound(f"{self.dao.model_type.__name__} with ID {id_} not found")
         if participant_id:
             if participant_id != obj.participantId:
                 raise NotFound(
-                    "%s with ID %s is not for participant with ID %s"
-                    % (self.dao.model_type.__name__, id_, participant_id)
+                    f"{self.dao.model_type.__name__} with ID {id_} is not for participant with ID {participant_id}"
                 )
-        self._save_raw_request(obj)
+        log_api_request(obj)
         return self._make_response(obj)
 
     def _make_response(self, obj):
@@ -131,9 +155,16 @@ class BaseApi(Resource):
         m = self._get_model_to_insert(resource, participant_id)
         result = self._do_insert(m)
         if participant_id:
-            task = bq_participant_summary_update_task.apply_async(queue='default', args=(participant_id,))
-            task.forget()
-        self._save_raw_request(result)
+            # Rebuild participant for BigQuery
+            if GAE_PROJECT == 'localhost':
+                bq_participant_summary_update_task(participant_id)
+            else:
+                params = {'p_id': participant_id}
+                task = GCPCloudTask('bq_rebuild_one_participant_task',
+                                    queue='bigquery-tasks', payload=params, in_seconds=5)
+                task.execute()
+
+        log_api_request(result)
         return self._make_response(result)
 
     def list(self, participant_id=None):
@@ -155,7 +186,7 @@ class BaseApi(Resource):
       id_field: name of the field containing the ID used when constructing resource URLs for results
       participant_id: the participant ID under which to perform this query, if appropriate
     """
-        logging.info("Preparing query for %s.", self.dao.model_type)
+        logging.info(f"Preparing query for {self.dao.model_type}.")
         query = self._make_query()
         results = self.dao.query(query)
         logging.info("Query complete, bundling results.")
@@ -210,23 +241,24 @@ class BaseApi(Resource):
             bundle_dict["link"] = [{"relation": "next", "url": next_url}]
         entries = []
         for item in results.items:
-            json = self._make_response(item)
-            full_url = self._make_resource_url(json, id_field, participant_id)
-            entries.append({"fullUrl": full_url, "resource": json})
+            response_json = self._make_response(item)
+            full_url = self._make_resource_url(response_json, id_field, participant_id)
+            entries.append({"fullUrl": full_url, "resource": response_json})
         bundle_dict["entry"] = entries
         if results.total is not None:
             bundle_dict["total"] = results.total
         return bundle_dict
 
-    def _make_resource_url(self, json, id_field, participant_id):
+    def _make_resource_url(self, response_json, id_field, participant_id):
         from rdr_service import main
 
         if participant_id:
             return main.api.url_for(
-                self.__class__, id_=json[id_field], p_id=to_client_participant_id(participant_id), _external=True
+                self.__class__, id_=response_json[id_field],
+                p_id=to_client_participant_id(participant_id), _external=True
             )
         else:
-            return main.api.url_for(self.__class__, p_id=json[id_field], _external=True)
+            return main.api.url_for(self.__class__, p_id=response_json[id_field], _external=True)
 
 
 class UpdatableApi(BaseApi):
@@ -281,9 +313,16 @@ class UpdatableApi(BaseApi):
         m = self._get_model_to_update(resource, id_, expected_version, participant_id)
         self._do_update(m)
         if participant_id:
-            task = bq_participant_summary_update_task.apply_async(queue='default', args=(participant_id,))
-            task.forget()
-        self._save_raw_request(m)
+            # Rebuild participant for BigQuery
+            if GAE_PROJECT == 'localhost':
+                bq_participant_summary_update_task(participant_id)
+            else:
+                params = {'p_id': participant_id}
+                task = GCPCloudTask('bq_rebuild_one_participant_task',
+                                    queue='bigquery-tasks', payload=params, in_seconds=5)
+                task.execute()
+
+        log_api_request(m)
         return self._make_response(m)
 
     def patch(self, id_):
@@ -298,12 +337,12 @@ class UpdatableApi(BaseApi):
             raise BadRequest("If-Match is missing for PATCH request")
         expected_version = _parse_etag(etag)
         order = self.dao.update_with_patch(id_, resource, expected_version)
-        self._save_raw_request(order)
+        log_api_request(order)
         return self._make_response(order)
 
     def update_with_patch(self, id_, resource, expected_version):
         # pylint: disable=unused-argument
-        raise NotImplementedError("update_with_patch not implemented in % s " % self.__class__)
+        raise NotImplementedError(f"update_with_patch not implemented in {self.__class__}")
 
 
 def _make_etag(version):
@@ -316,8 +355,8 @@ def _parse_etag(etag):
         try:
             return int(version_str)
         except ValueError:
-            raise BadRequest("Invalid version: %s" % version_str)
-    raise BadRequest("Invalid ETag: %s" % etag)
+            raise BadRequest(f"Invalid version: {version_str}")
+    raise BadRequest(f"Invalid ETag: {etag}")
 
 
 def get_sync_results_for_request(dao, max_results):

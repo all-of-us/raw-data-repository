@@ -71,6 +71,11 @@ class OrganizationDao(CacheAllDao):
     def get_by_external_id(self, external_id):
         return self._get_cache().index_maps["externalId"].get(external_id)
 
+    def get_by_resource_id(self, resource_id):
+        with self.session() as session:
+            query = session.query(Organization).filter(Organization.resourceId == resource_id)
+            return query.first()
+
     @staticmethod
     def _to_json(model, inactive_sites):
         resource = _FhirOrganization()

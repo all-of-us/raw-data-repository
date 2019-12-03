@@ -2,6 +2,7 @@
 
 Contains things such as the accounts allowed access to the system.
 """
+import base64
 import logging  # pylint: disable=unused-import
 
 import json
@@ -44,9 +45,12 @@ PARTICIPANT_SUMMARY_SHARDS = "participant_summary_shards"
 AGE_RANGE_SHARDS = "age_range_shards"
 BIOBANK_SAMPLES_SHARDS = "biobank_samples_shards"
 BIOBANK_SAMPLES_BUCKET_NAME = "biobank_samples_bucket_name"
+GENOMIC_CENTER_BUCKET_NAME = 'genomic_center_bucket_name'
 GENOMIC_SET_BUCKET_NAME = "genomic_set_bucket_name"
+GENOMIC_GC_METRICS_BUCKET_NAME = 'genomic_gc_metrics_bucket_name'
 GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME = "genomic_biobank_manifest_folder_name"
 GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME = "genomic_biobank_manifest_result_folder_name"
+GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME = 'genotyping_sample_manifest_folder_name'
 CONSENT_PDF_BUCKET = "consent_pdf_bucket"
 USER_INFO = "user_info"
 SYNC_SHARDS_PER_CHANNEL = "sync_shards_per_channel"
@@ -63,6 +67,9 @@ EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT = "ehr_status_bigquery_view_participant"
 EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION = "ehr_status_bigquery_view_organization"
 HPO_REPORT_CONFIG_MIXIN_PATH = "hpo_report_config_mixin_path"
 LOCALHOST_DEFAULT_BUCKET_NAME = 'local_bucket'
+
+# For testing different account names locally
+LOCAL_AUTH_USER = "example@example.com"
 
 # Allow requests which are never permitted in production. These include fake
 # timestamps for reuqests, unauthenticated requests to create fake data, etc.
@@ -153,8 +160,8 @@ class LocalFilesystemConfigProvider(ConfigProvider):
 
 class GoogleCloudDatastoreConfigProvider(ConfigProvider):
 
-    def load(self, name=CONFIG_SINGLETON_KEY, date=None):
-        datastore_client = datastore.Client(project=GAE_PROJECT)
+    def load(self, name=CONFIG_SINGLETON_KEY, date=None, project=None):
+        datastore_client = datastore.Client(project=project if project else GAE_PROJECT)
         kind = 'Configuration'
         key = datastore_client.key(kind, name)
         if date is not None:
@@ -173,7 +180,14 @@ class GoogleCloudDatastoreConfigProvider(ConfigProvider):
                 return None
         entity = datastore_client.get(key=key)
         if entity:
-            config_data = json.loads(entity['configuration'])
+            cdata = entity['configuration']
+            if isinstance(cdata, (str, bytes)):
+                try:
+                    cdata = base64.b64decode(cdata).decode('utf-8')
+                except UnicodeDecodeError:
+                    # see if it was just a regular byte string and not encoded in base64.
+                    cdata = cdata.decode('utf-8')
+            config_data = json.loads(cdata)
         else:
             if name == CONFIG_SINGLETON_KEY:
                 entity = datastore.Entity(key=key)
@@ -185,8 +199,8 @@ class GoogleCloudDatastoreConfigProvider(ConfigProvider):
 
         return config_data
 
-    def store(self, name, config_dict, **kwargs):
-        datastore_client = datastore.Client(project=GAE_PROJECT)
+    def store(self, name, config_dict, project=None, **kwargs):
+        datastore_client = datastore.Client(project=project if project else GAE_PROJECT)
         date = clock.CLOCK.now()
         with datastore_client.transaction():
             key = datastore_client.key('Configuration', name)
@@ -198,7 +212,9 @@ class GoogleCloudDatastoreConfigProvider(ConfigProvider):
             for k, v in kwargs.items():
                 history_entity[k] = v
             datastore_client.put(entity=history_entity)
-            entity['configuration'] = config_dict
+            # https://stackoverflow.com/questions/56067244/encoding-a-string-to-base64-in-python-2-x-vs-python-3-x
+            cdata = base64.b64encode(json.dumps(config_dict).encode()).decode()
+            entity['configuration'] = cdata
             datastore_client.put(entity=entity)
 
 

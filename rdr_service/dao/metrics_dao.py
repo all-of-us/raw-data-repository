@@ -48,7 +48,7 @@ class MetricsVersionDao(BaseDao):
             running_version = self.get_version_in_progress_with_session(session)
             if running_version:
                 if running_version.date + METRICS_LOCK_TIMEOUT <= clock.CLOCK.now():
-                    logging.warning("Metrics version %s timed out; breaking lock." % running_version.metricsVersionId)
+                    logging.warning(f"Metrics version {running_version.metricsVersionId} timed out; breaking lock.")
                     running_version.inProgress = False
                     session.merge(running_version)
                 else:

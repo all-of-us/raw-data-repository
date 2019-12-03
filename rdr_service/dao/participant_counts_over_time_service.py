@@ -1,5 +1,6 @@
 import datetime
 import logging
+import warnings
 
 from werkzeug.exceptions import BadRequest
 
@@ -33,9 +34,70 @@ CACHE_START_DATE = datetime.datetime.strptime("2017-01-01", "%Y-%m-%d").date()
 
 class ParticipantCountsOverTimeService(BaseDao):
     def __init__(self):
-        super(ParticipantCountsOverTimeService, self).__init__(ParticipantSummary, backup=True)
+        super(ParticipantCountsOverTimeService, self).__init__(ParticipantSummary, alembic=True)
         self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
         self.test_email_pattern = TEST_EMAIL_PATTERN
+
+    def init_tmp_table(self):
+        with self.session() as session:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                session.execute('DROP TABLE IF EXISTS metrics_tmp_participant;')
+            session.execute('CREATE TABLE metrics_tmp_participant LIKE participant_summary')
+
+            indexes_cursor = session.execute('SHOW INDEX FROM metrics_tmp_participant')
+            index_name_list = []
+            for index in indexes_cursor:
+                index_name_list.append(index[2])
+            index_name_list = list(set(index_name_list))
+
+            for index_name in index_name_list:
+                if index_name != 'PRIMARY':
+                    session.execute('ALTER TABLE  metrics_tmp_participant DROP INDEX  {}'.format(index_name))
+
+            session.execute('ALTER TABLE metrics_tmp_participant MODIFY first_name VARCHAR(255)')
+            session.execute('ALTER TABLE metrics_tmp_participant MODIFY last_name VARCHAR(255)')
+            session.execute('ALTER TABLE metrics_tmp_participant MODIFY suspension_status SMALLINT')
+
+            columns_cursor = session.execute('SELECT * FROM metrics_tmp_participant LIMIT 0')
+
+            participant_fields = ['participant_id', 'biobank_id', 'sign_up_time', 'withdrawal_status',
+                                  'hpo_id', 'organization_id', 'site_id', 'participant_origin']
+
+            def get_field_name(name):
+                if name in participant_fields:
+                    return 'p.' + name
+                else:
+                    return 'ps.' + name
+
+            columns = map(get_field_name, columns_cursor.keys())
+            columns_str = ','.join(columns)
+
+            sql = """
+              INSERT INTO metrics_tmp_participant
+              SELECT 
+              """ + columns_str + """
+              FROM participant p 
+              left join participant_summary ps on p.participant_id = ps.participant_id
+              WHERE p.hpo_id <> :test_hpo_id
+              AND p.is_ghost_id IS NOT TRUE
+              AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+              AND p.withdrawal_status = :not_withdraw
+            """
+            params = {'test_hpo_id': self.test_hpo_id, 'test_email_pattern': self.test_email_pattern,
+                      'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN)}
+
+            session.execute('CREATE INDEX idx_hpo_id ON metrics_tmp_participant (hpo_id)')
+            session.execute('CREATE INDEX idx_sign_up_time ON metrics_tmp_participant (sign_up_time)')
+            session.execute('CREATE INDEX idx_consent_time ON metrics_tmp_participant '
+                            '(consent_for_study_enrollment_time)')
+            session.execute('CREATE INDEX idx_member_time ON metrics_tmp_participant '
+                            '(enrollment_status_member_time)')
+            session.execute('CREATE INDEX idx_sample_time ON metrics_tmp_participant '
+                            '(enrollment_status_core_stored_sample_time)')
+
+            session.execute(sql, params)
+            logging.info('Init tmp table for metrics cron job.')
 
     def refresh_metrics_cache_data(self):
 
@@ -84,21 +146,15 @@ class ParticipantCountsOverTimeService(BaseDao):
         dao.delete_old_records()
 
     def insert_cache_by_hpo(self, dao, hpo_id, updated_time):
-        sql = dao.get_metrics_cache_sql()
+        sql_arr = dao.get_metrics_cache_sql()
         start_date = CACHE_START_DATE
         end_date = datetime.datetime.now().date() + datetime.timedelta(days=10)
 
-        params = {
-            "hpo_id": hpo_id,
-            "test_hpo_id": self.test_hpo_id,
-            "not_withdraw": int(WithdrawalStatus.NOT_WITHDRAWN),
-            "test_email_pattern": self.test_email_pattern,
-            "start_date": start_date,
-            "end_date": end_date,
-            "date_inserted": updated_time,
-        }
+        params = {'hpo_id': hpo_id, 'start_date': start_date, 'end_date': end_date,
+                  'date_inserted': updated_time}
         with dao.session() as session:
-            session.execute(sql, params)
+            for sql in sql_arr:
+                session.execute(sql, params)
 
     def get_filtered_results(
         self, stratification, start_date, end_date, history, awardee_ids, enrollment_statuses, sample_time_def, version
@@ -130,19 +186,19 @@ class ParticipantCountsOverTimeService(BaseDao):
         filters_sql_p = self.get_facets_sql(facets, stratification, table_prefix="p")
 
         if str(history) == "TRUE" and stratification == Stratifications.TOTAL:
-            dao = MetricsEnrollmentStatusCacheDao()
-            return dao.get_total_interested_count(start_date, end_date, awardee_ids)
+            dao = MetricsEnrollmentStatusCacheDao(version=version)
+            return dao.get_total_interested_count(start_date, end_date, awardee_ids, enrollment_statuses)
         elif str(history) == "TRUE" and stratification == Stratifications.ENROLLMENT_STATUS:
             dao = MetricsEnrollmentStatusCacheDao(version=version)
-            return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
+            return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)
         elif str(history) == "TRUE" and stratification == Stratifications.GENDER_IDENTITY:
-            dao = MetricsGenderCacheDao()
+            dao = MetricsGenderCacheDao(version=version)
             return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)
         elif str(history) == "TRUE" and stratification == Stratifications.AGE_RANGE:
             dao = MetricsAgeCacheDao()
             return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)
         elif str(history) == "TRUE" and stratification == Stratifications.RACE:
-            dao = MetricsRaceCacheDao()
+            dao = MetricsRaceCacheDao(version=version)
             return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)
         elif str(history) == "TRUE" and stratification in [
             Stratifications.FULL_STATE,
@@ -159,7 +215,7 @@ class ParticipantCountsOverTimeService(BaseDao):
             return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)
         elif str(history) == "TRUE" and stratification == Stratifications.LIFECYCLE:
             dao = MetricsLifecycleCacheDao(version=version)
-            return dao.get_latest_version_from_cache(end_date, awardee_ids)
+            return dao.get_latest_version_from_cache(end_date, awardee_ids, enrollment_statuses)
         elif stratification == Stratifications.TOTAL:
             strata = ["TOTAL"]
             sql = self.get_total_sql(filters_sql_ps)

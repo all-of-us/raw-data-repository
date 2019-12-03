@@ -12,7 +12,7 @@ import signal
 import sys
 import time
 
-from rdr_service.services.gcp_utils import gcp_get_app_access_token
+from rdr_service.services.gcp_utils import gcp_get_app_access_token, gcp_get_iam_service_key_info
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
 
@@ -28,8 +28,14 @@ original_sigint = signal.getsignal(signal.SIGINT)
 
 
 class OAuthTokenClass(object):
-    def __init__(self, args):
+
+    def __init__(self, args, gcp_env):
+        """
+        :param args: command line arguments.
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        """
         self.args = args
+        self.gcp_env = gcp_env
 
     def run(self):
         """
@@ -38,7 +44,13 @@ class OAuthTokenClass(object):
     """
         global do_continue
         token = gcp_get_app_access_token()
-        print(("\ntoken: {0}\n".format(token)))
+        key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
+
+        print('\nProject : {0}'.format(self.gcp_env.project))
+
+        print("\n  Key : {0}".format(key_info['key_path']))
+        print("  Token : {0}\n".format(token))
+
         print("press ctrl-c to clean up key")
 
         while do_continue:
@@ -77,8 +89,8 @@ def run():
     original_sigint = signal.getsignal(signal.SIGINT)
     signal.signal(signal.SIGINT, exit_program)
 
-    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account):
-        process = OAuthTokenClass(args)
+    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
+        process = OAuthTokenClass(args, gcp_env)
         exit_code = process.run()
         return exit_code
 

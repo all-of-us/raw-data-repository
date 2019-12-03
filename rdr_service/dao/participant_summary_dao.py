@@ -19,7 +19,7 @@ from rdr_service.api_util import (
     format_json_org,
     format_json_site,
 )
-from rdr_service.code_constants import BIOBANK_TESTS, PPI_SYSTEM, UNSET
+from rdr_service.code_constants import BIOBANK_TESTS, PPI_SYSTEM, UNSET, ORIGINATING_SOURCES
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
@@ -317,7 +317,7 @@ class ParticipantSummaryDao(UpdatableDao):
     def _validate_update(self, session, obj, existing_obj):  # pylint: disable=unused-argument
         """Participant summaries don't have a version value; drop it from validation logic."""
         if not existing_obj:
-            raise NotFound("%s with id %s does not exist" % (self.model_type.__name__, id))
+            raise NotFound(f"{self.model_type.__name__} with id {id} does not exist")
 
     def _has_withdrawn_filter(self, query):
         for field_filter in query.field_filters:
@@ -336,20 +336,36 @@ class ParticipantSummaryDao(UpdatableDao):
         return None
 
     def _initialize_query(self, session, query_def):
+        filter_client = False
         non_withdrawn_field = self._get_non_withdrawn_filter_field(query_def)
+        client_id = self.get_client_id()
+        if client_id in ORIGINATING_SOURCES:
+            filter_client = True
         if self._has_withdrawn_filter(query_def):
             if non_withdrawn_field:
-                raise BadRequest("Can't query on %s for withdrawn participants" % non_withdrawn_field)
+                raise BadRequest(f"Can't query on {non_withdrawn_field} for withdrawn participants")
             # When querying for withdrawn participants, ensure that the only fields being filtered on or
             # ordered by are in WITHDRAWN_PARTICIPANT_FIELDS.
             return super(ParticipantSummaryDao, self)._initialize_query(session, query_def)
         else:
             query = super(ParticipantSummaryDao, self)._initialize_query(session, query_def)
-            if non_withdrawn_field:
+
+            withdrawn_visible_start = clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
+            if filter_client and non_withdrawn_field:
+                return query.filter(ParticipantSummary.participantOrigin == client_id,
+                    or_(
+                        ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE,
+                        ParticipantSummary.withdrawalTime >= withdrawn_visible_start,
+                        )
+                )
+            elif filter_client:
+                return query.filter(
+                        ParticipantSummary.participantOrigin == client_id
+                        )
+            elif non_withdrawn_field:
                 # When querying on fields that aren't available for withdrawn participants,
                 # ensure that we only return participants
                 # who have not withdrawn or withdrew in the past 48 hours.
-                withdrawn_visible_start = clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
                 return query.filter(
                     or_(
                         ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE,
@@ -388,21 +404,21 @@ class ParticipantSummaryDao(UpdatableDao):
         if field_name == "hpoId" or field_name == "awardee":
             hpo = self.hpo_dao.get_by_name(value)
             if not hpo:
-                raise BadRequest("No HPO found with name %s" % value)
+                raise BadRequest(f"No HPO found with name {value}")
             if field_name == "awardee":
                 field_name = "hpoId"
             return super(ParticipantSummaryDao, self).make_query_filter(field_name, hpo.hpoId)
         if field_name == "organization":
             organization = self.organization_dao.get_by_external_id(value)
             if not organization:
-                raise BadRequest("No organization found with name %s" % value)
+                raise BadRequest(f"No organization found with name {value}")
             return super(ParticipantSummaryDao, self).make_query_filter(field_name + "Id", organization.organizationId)
         if field_name in _SITE_FIELDS:
             if value == UNSET:
                 return super(ParticipantSummaryDao, self).make_query_filter(field_name + "Id", None)
             site = self.site_dao.get_by_google_group(value)
             if not site:
-                raise BadRequest("No site found with google group %s" % value)
+                raise BadRequest(f"No site found with google group {value}")
             return super(ParticipantSummaryDao, self).make_query_filter(field_name + "Id", site.siteId)
         if field_name in _CODE_FILTER_FIELDS:
             if value == UNSET:
@@ -410,13 +426,19 @@ class ParticipantSummaryDao(UpdatableDao):
             # Note: we do not at present support querying for UNMAPPED code values.
             code = self.code_dao.get_code(PPI_SYSTEM, value)
             if not code:
-                raise BadRequest("No code found: %s" % value)
+                raise BadRequest(f"No code found: {value}")
             return super(ParticipantSummaryDao, self).make_query_filter(field_name + "Id", code.codeId)
 
         if field_name == "patientStatus":
             return self._make_patient_status_field_filter(field_name, value)
 
+        if field_name == "participantOrigin":
+            if value not in ORIGINATING_SOURCES:
+                raise BadRequest(f"No origin source found for {value}")
+            return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
+
         return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
+
 
     def _make_patient_status_field_filter(self, field_name, value):
         try:
@@ -435,7 +457,7 @@ class ParticipantSummaryDao(UpdatableDao):
             )
         organization = self.organization_dao.get_by_external_id(organization_external_id)
         if not organization:
-            raise BadRequest("No organization found with name %s" % organization_external_id)
+            raise BadRequest(f"No organization found with name {organization_external_id}")
         # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
         # return PatientStatusFieldFilter(field_name, Operator.EQUALS, value,
         #                                 organization=organization,
@@ -669,8 +691,21 @@ class ParticipantSummaryDao(UpdatableDao):
         is_distinct_visit = not (day_has_order or day_has_measurement)
         return is_distinct_visit
 
+    def get_client_id(self):
+        from rdr_service import app_util, api_util
+        email = app_util.get_oauth_id()
+        user_info = app_util.lookup_user_info(email)
+        client_id = user_info.get('clientId')
+        if email == api_util.DEV_MAIL and client_id is None:
+            client_id = 'example'  # account for temp configs that dont create the key
+        return client_id
+
     def to_client_json(self, model):
         result = model.asdict()
+        origin = result['participantOrigin']
+        client = self.get_client_id()
+        if client in ORIGINATING_SOURCES and origin != client:
+            return None
         # Participants that withdrew more than 48 hours ago should have fields other than
         # WITHDRAWN_PARTICIPANT_FIELDS cleared.
         if model.withdrawalStatus == WithdrawalStatus.NO_USE and (
@@ -839,7 +874,7 @@ class PatientStatusFieldFilter(FieldFilter):
                 )
             return query.filter(criterion)
         else:
-            raise ValueError("Invalid operator: %r." % self.operator)
+            raise ValueError(f"Invalid operator: {self.operator}.")
 
 
 class ParticipantGenderAnswersDao(UpdatableDao):

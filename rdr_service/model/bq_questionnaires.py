@@ -1,4 +1,6 @@
 import json
+import logging
+import string
 
 from sqlalchemy.sql import text
 
@@ -12,6 +14,7 @@ class _BQModuleSchema(BQSchema):
     """
     _module = ''
     _excluded_fields = ()
+    _allowed_chars = string.ascii_letters + string.digits + '_'
 
     def __init__(self):
         """ add the field list to our self. """
@@ -25,8 +28,7 @@ class _BQModuleSchema(BQSchema):
 
     def get_fields(self):
         """
-        Look up a participant id who has submitted this module and then get the module response answers to use
-        for creating the schema.
+        Look up questionnaire concept to get fields.
         :return: list of fields
         """
         fields = list()
@@ -45,20 +47,21 @@ class _BQModuleSchema(BQSchema):
         fields.append({'name': 'questionnaire_response_id', 'type': BQFieldTypeEnum.INTEGER.name,
                        'mode': BQFieldModeEnum.REQUIRED.name})
 
-        dao = BigQuerySyncDao()
+        dao = BigQuerySyncDao(backup=True)
 
+        # This query makes better use of the indexes.
         _sql_term = text("""
-        select convert(qh.resource using utf8) as resource 
-          from questionnaire_concept qc inner join code c on qc.code_id = c.code_id
-               inner join questionnaire_history qh on qc.questionnaire_id = qh.questionnaire_id and 
-                          qc.questionnaire_version = qh.version
-        where c.value = :mod
-        order by qh.created desc limit 1;
-    """)
+            select convert(qh.resource using utf8) as resource
+                from questionnaire_history qh
+                where qh.questionnaire_id = (
+                    select max(questionnaire_id) as questionnaire_id
+                    from questionnaire_concept qc
+                             inner join code c on qc.code_id = c.code_id
+                    where qc.code_id = (select c1.code_id from code c1 where c1.value = :mod)
+                );
+        """)
 
         with dao.session() as session:
-
-            # get a participant id that has submitted the module
             result = session.execute(_sql_term, {'mod': self._module}).first()
             if not result:
                 return fields
@@ -79,6 +82,18 @@ class _BQModuleSchema(BQSchema):
                 name = qn['concept'][0]['code']
                 if name in self._excluded_fields:
                     continue
+
+                # Check and make sure there are no other characters that are not allowed.
+                # Fields must contain only letters, numbers, and underscores, start with a letter or underscore,
+                # and be at most 128 characters long.
+                if not all(c in self._allowed_chars for c in name):
+                    logging.warning(f'Field {name} contains invalid characters, skipping.')
+                    continue
+                if len(name) > 128:
+                    logging.warning(f'Field {name} must be less than 128 characters, skipping.')
+                    continue
+                if name[:1] not in string.ascii_letters and name[:1] != '_':
+                    logging.warning(f'Field {name} must start with a character or underscore, skipping.')
 
                 field = dict()
                 field['name'] = name
@@ -109,7 +124,12 @@ class BQPDRConsentPIISchema(_BQModuleSchema):
         'ConsentPII_EmailAddress',
         'EHRConsentPII_Signature',
         'ExtraConsent_CABoRSignature',
-        'ExtraConsent_Signature'
+        'ExtraConsent_Signature',
+        'ConsentPII_HelpWithConsentSignature',
+        'PIIContactInformation_VerifiedPrimaryPhoneNumber',
+        'PIIContactInformation_Email',
+        'PIIBirthInformation_BirthDate',
+        'ConsentPII_VerifiedPrimaryPhoneNumber'
     )
 
 
@@ -127,6 +147,7 @@ class BQPDRConsentPIIView(BQView):
     __viewname__ = 'v_pdr_mod_consentpii'
     __viewdescr__ = 'PDR ConsentPII Module View'
     __table__ = BQPDRConsentPII
+    __pk_id__ = 'participant_id'
     _show_created = True
 
 
@@ -176,7 +197,8 @@ class BQPDRTheBasicsSchema(_BQModuleSchema):
         'PersonOneAddress_PersonOneAddressZipCode',
         'SecondContactsAddress_SecondContactZipCode',
         'PersonOneAddress_PersonOneAddressZipCode',
-        'SecondContactsAddress_SecondContactZipCode'
+        'SecondContactsAddress_SecondContactZipCode',
+        'OtherHealthPlan_FreeText'
     )
 
 
@@ -194,6 +216,7 @@ class BQPDRTheBasicsView(BQView):
     __viewname__ = 'v_pdr_mod_thebasics'
     __viewdescr__ = 'PDR TheBasics Module View'
     __table__ = BQPDRTheBasics
+    __pk_id__ = 'participant_id'
     _show_created = True
 
 
@@ -222,6 +245,7 @@ class BQPDRLifestyleView(BQView):
     __viewname__ = 'v_pdr_mod_lifestyle'
     __viewdescr__ = 'PDR Lifestyle Module View'
     __table__ = BQPDRLifestyle
+    __pk_id__ = 'participant_id'
     _show_created = True
 
 
@@ -252,6 +276,7 @@ class BQPDROverallHealthView(BQView):
     __viewname__ = 'v_pdr_mod_overallhealth'
     __viewdescr__ = 'PDR OverallHealth Module View'
     __table__ = BQPDROverallHealth
+    __pk_id__ = 'participant_id'
     _show_created = True
 
 
@@ -264,7 +289,9 @@ class BQPDREHRConsentPIISchema(_BQModuleSchema):
     _excluded_fields = (
         'EHRConsentPII_Signature',
         'EHRConsentPII_ILHIPPAWitnessSignature',
-        'EHRConsentPII_HelpWithConsentSignature'
+        'EHRConsentPII_HelpWithConsentSignature',
+        '12MoEHRConsentPII_EmailCopy',
+        '30MoEHRConsentPII_EmailCopy'
     )
 
 
@@ -282,14 +309,15 @@ class BQPDREHRConsentPIIView(BQView):
     __viewname__ = 'v_pdr_mod_ehrconsentpii'
     __viewdescr__ = 'PDR EHRConsentPII Module View'
     __table__ = BQPDREHRConsentPII
+    __pk_id__ = 'participant_id'
     _show_created = True
 
 
 #
-# DVEHRConsentPII
+# DVEHRSharing
 #
 class BQPDRDVEHRSharingSchema(_BQModuleSchema):
-    """ EHRConsentPII Module """
+    """ DVEHRSharing Module """
     _module = 'DVEHRSharing'
     _excluded_fields = (
         'EHRConsentPII_Signature',
@@ -297,7 +325,7 @@ class BQPDRDVEHRSharingSchema(_BQModuleSchema):
 
 
 class BQPDRDVEHRSharing(BQTable):
-    """ DVEHRConsentPII BigQuery Table """
+    """ DVEHRSharing BigQuery Table """
     __tablename__ = 'pdr_mod_dvehrsharing'
     __schema__ = BQPDRDVEHRSharingSchema
     __project_map__ = [
@@ -306,8 +334,127 @@ class BQPDRDVEHRSharing(BQTable):
 
 
 class BQPDRDVEHRSharingView(BQView):
-    """ PDR DVEHRConsentPII BiqQuery View """
+    """ PDR DVEHRSharing BiqQuery View """
     __viewname__ = 'v_pdr_mod_dvehrsharing'
-    __viewdescr__ = 'PDR DVEHRConsentPII Module View'
+    __viewdescr__ = 'PDR DVEHRSharing Module View'
     __table__ = BQPDRDVEHRSharing
+    __pk_id__ = 'participant_id'
+    _show_created = True
+
+
+#
+# FamilyHistory
+#
+class BQPDRFamilyHistorySchema(_BQModuleSchema):
+    """ FamilyHistory Module """
+    _module = 'FamilyHistory'
+    _excluded_fields = (
+        'DaughterDiagnosisHistory_WhichConditions',
+        'OtherCancer_DaughterFreeTextBox',
+        'OtherCancer_SonFreeTextBox',
+        'OtherCondition_DaughterFreeTextBox',
+        'OtherCondition_SonFreeTextBox',
+        'SonDiagnosisHistory_WhichConditions',
+        'OtherCancer_GrandparentFreeTextBox',
+        'OtherCondition_GrandparentFreeTextBox',
+        'FatherDiagnosisHistory_WhichConditions',
+        'MotherDiagnosisHistory_WhichConditions',
+        'OtherCancer_FatherFreeTextBox',
+        'OtherCancer_MotherFreeTextBox',
+        'OtherCondition_FatherFreeTextBox',
+        'OtherCondition_MotherFreeTextBox',
+        'OtherCancer_SiblingFreeTextBox',
+        'OtherCondition_SiblingFreeTextBox',
+        'SiblingDiagnosisHistory_WhichConditions',
+    )
+
+
+class BQPDRFamilyHistory(BQTable):
+    """ FamilyHistory BigQuery Table """
+    __tablename__ = 'pdr_mod_familyhistory'
+    __schema__ = BQPDRFamilyHistorySchema
+    __project_map__ = [
+        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
+    ]
+
+
+class BQPDRFamilyHistoryView(BQView):
+    """ PDR FamilyHistory BiqQuery View """
+    __viewname__ = 'v_pdr_mod_familyhistory'
+    __viewdescr__ = 'PDR FamilyHistory Module View'
+    __table__ = BQPDRFamilyHistory
+    __pk_id__ = 'participant_id'
+    _show_created = True
+
+
+#
+# HealthcareAccess
+#
+class BQPDRHealthcareAccessSchema(_BQModuleSchema):
+    """ HealthcareAccess Module """
+    _module = 'HealthcareAccess'
+    _excluded_fields = (
+        'OtherDelayedMedicalCare_FreeText',
+        'OtherInsuranceType_FreeText',
+    )
+
+
+class BQPDRHealthcareAccess(BQTable):
+    """ HealthcareAccess BigQuery Table """
+    __tablename__ = 'pdr_mod_healthcareaccess'
+    __schema__ = BQPDRHealthcareAccessSchema
+    __project_map__ = [
+        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
+    ]
+
+
+class BQPDRHealthcareAccessView(BQView):
+    """ PDR HealthcareAccess BiqQuery View """
+    __viewname__ = 'v_pdr_mod_healthcareaccess'
+    __viewdescr__ = 'PDR HealthcareAccess Module View'
+    __table__ = BQPDRHealthcareAccess
+    __pk_id__ = 'participant_id'
+    _show_created = True
+
+
+#
+# PersonalMedicalHistory
+#
+class BQPDRPersonalMedicalHistorySchema(_BQModuleSchema):
+    """ PersonalMedicalHistory Module """
+    _module = 'PersonalMedicalHistory'
+    _excluded_fields = (
+        'OtherHeartorBloodCondition_FreeTextBox',
+        'OtherRespiratory_FreeTextBox',
+        'OtherCancer_FreeTextBox',
+        'OtherDigestiveCondition_FreeTextBox',
+        'OtherDiabetes_FreeTextBox',
+        'OtherHormoneEndocrine_FreeTextBox',
+        'OtherThyroid_FreeTextBox',
+        'OtherKidneyCondition_FreeTextBox',
+        'OtherBoneJointMuscle_FreeTextBox',
+        'OtherArthritis_FreeTextBox',
+        'OtherHearingEye_FreeTextBox',
+        'OtherInfectiousDisease_FreeTextBox',
+        'OtherBrainNervousSystem_FreeTextBox',
+        'OtherMentalHealthSubstanceUse_FreeTextBox',
+        'OtherDiagnosis_FreeTextBox',
+    )
+
+
+class BQPDRPersonalMedicalHistory(BQTable):
+    """ PersonalMedicalHistory BigQuery Table """
+    __tablename__ = 'pdr_mod_personalmedicalhistory'
+    __schema__ = BQPDRPersonalMedicalHistorySchema
+    __project_map__ = [
+        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
+    ]
+
+
+class BQPDRPersonalMedicalHistoryView(BQView):
+    """ PDR PersonalMedicalHistory BiqQuery View """
+    __viewname__ = 'v_pdr_mod_personalmedicalhistory'
+    __viewdescr__ = 'PDR PersonalMedicalHistory Module View'
+    __table__ = BQPDRPersonalMedicalHistory
+    __pk_id__ = 'participant_id'
     _show_created = True
