@@ -668,7 +668,7 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         end_to_end_test_files = (
             'GC_AoU_SEQ_TestBadStructureDataManifest.csv',
-            'GC-AoU-TestBadFilenameDataManifest.csv',
+            'GC-AoU-TestBadFilename-DataManifest.csv',
             'test_empty_wells.csv'
         )
         for test_file in end_to_end_test_files:

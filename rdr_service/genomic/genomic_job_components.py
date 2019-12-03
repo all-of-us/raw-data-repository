@@ -30,7 +30,7 @@ class GenomicFileIngester:
     def __init__(self):
 
         self.file_obj = None
-        self.file_queue = None
+        self.file_queue = deque()
 
         # Sub Components
         self.file_validator = None
@@ -48,13 +48,11 @@ class GenomicFileIngester:
         else:
             for file_name in files:
                 file_path = "/" + bucket_name + "/" + file_name
-                self._create_file_record(job_run_id,
-                                         file_path,
-                                         bucket_name,
-                                         file_name)
-            self.file_queue = deque(
-                self._get_file_queue_for_run(job_run_id)
-            )
+                new_file_record = self._create_file_record(job_run_id,
+                                                           file_path,
+                                                           bucket_name,
+                                                           file_name)
+                self.file_queue.append(new_file_record)
 
     def _get_uningested_file_names_from_bucket(self,
                                                bucket_name,
@@ -74,7 +72,7 @@ class GenomicFileIngester:
         return files
 
     def _create_file_record(self, run_id, path, bucket_name, file_name):
-        self.file_processed_dao.insert_file_record(run_id, path,
+        return self.file_processed_dao.insert_file_record(run_id, path,
                                                    bucket_name, file_name)
 
     def _get_file_queue_for_run(self, run_id):
