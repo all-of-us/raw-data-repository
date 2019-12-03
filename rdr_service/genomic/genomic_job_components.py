@@ -2,14 +2,24 @@
 Component Classes for Genomic Jobs
 Components are assembled by the JobController for a particular Genomic Job
 """
+from collections import deque
 
 import csv
 import logging
 import re
 
-from rdr_service.api_util import open_cloud_file, copy_cloud_file, delete_cloud_file
+from rdr_service.api_util import list_blobs
+from rdr_service.api_util import (
+    open_cloud_file,
+    copy_cloud_file,
+    delete_cloud_file
+)
 from rdr_service.participant_enums import GenomicSubProcessResult
-from rdr_service.dao.genomics_dao import GenomicGCValidationMetricsDao
+from rdr_service.dao.genomics_dao import (
+    GenomicGCValidationMetricsDao,
+    GenomicSetMemberDao,
+    GenomicFileProcessedDao
+)
 
 
 class GenomicFileIngester:
@@ -20,10 +30,53 @@ class GenomicFileIngester:
     def __init__(self):
 
         self.file_obj = None
+        self.file_queue = deque()
 
         # Sub Components
         self.file_validator = None
         self.dao = GenomicGCValidationMetricsDao()
+        self.file_processed_dao = GenomicFileProcessedDao()
+
+    def generate_file_processing_queue(self, bucket_name, archive_folder_name, job_run_id):
+        """
+        Creates the list of files to be ingested in this run.
+        Ordering is currently arbitrary;
+        """
+        files = self._get_uningested_file_names_from_bucket(bucket_name, archive_folder_name)
+        if files == GenomicSubProcessResult.NO_FILES:
+            return files
+        else:
+            for file_name in files:
+                file_path = "/" + bucket_name + "/" + file_name
+                new_file_record = self._create_file_record(job_run_id,
+                                                           file_path,
+                                                           bucket_name,
+                                                           file_name)
+                self.file_queue.append(new_file_record)
+
+    def _get_uningested_file_names_from_bucket(self,
+                                               bucket_name,
+                                               archive_folder_name):
+        """
+        Searches the bucket for un-processed files.
+        :param bucket_name:
+        :return: list of filenames or NO_FILES result code
+        """
+        files = list_blobs('/' + bucket_name)
+        files = [s.name for s in files
+                 if archive_folder_name not in s.name.lower()
+                 if 'datamanifest' in s.name.lower()]
+        if not files:
+            logging.info('No files in cloud bucket {}'.format(bucket_name))
+            return GenomicSubProcessResult.NO_FILES
+        return files
+
+    def _create_file_record(self, run_id, path, bucket_name, file_name):
+        return self.file_processed_dao.insert_file_record(run_id, path,
+                                                   bucket_name, file_name)
+
+    def _get_file_queue_for_run(self, run_id):
+        return self.file_processed_dao.get_files_for_run(run_id)
 
     def ingest_gc_validation_metrics_file(self, file_obj):
         """
@@ -53,6 +106,10 @@ class GenomicFileIngester:
         else:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
+
+    def update_file_processed(self, file_id, status, result):
+        """Updates the genomic_file_processed record """
+        self.file_processed_dao.update_file_record(file_id, status, result)
 
     def _retrieve_data_from_path(self, path):
         """
@@ -96,7 +153,7 @@ class GenomicFileIngester:
                 key_lower = key.lower()
                 row_copy[key_lower] = val
 
-            row_copy['member_id'] = 1
+            # row_copy['member_id'] = 1
             row_copy['file_id'] = self.file_obj.id
             row_copy['biobank id'] = row_copy['biobank id'].replace('T', '')
 
@@ -235,3 +292,34 @@ class GenomicFileMover:
             delete_cloud_file(source_path)
         except FileNotFoundError:
             logging.ERROR(f"No file found at '{file_obj.filePath}'")
+
+
+class GenomicReconciler:
+    """ This component handles reconciliation between genomic datasets """
+    def __init__(self, run_id):
+
+        self.run_id = run_id
+
+        # Dao components
+        self.member_dao = GenomicSetMemberDao()
+        self.metrics_dao = GenomicGCValidationMetricsDao()
+
+    def reconcile_metrics_to_manifest(self):
+        """ The main method for the metrics vs. manifest reconciliation """
+        try:
+            unreconciled_metrics = self.metrics_dao.get_null_set_members()
+            results = []
+            for metric in unreconciled_metrics:
+                member = self._lookup_member(metric.biobankId)
+                results.append(
+                    self.metrics_dao.update_reconciled(
+                        metric, member.id, self.run_id)
+                )
+            return GenomicSubProcessResult.SUCCESS \
+                if GenomicSubProcessResult.ERROR not in results \
+                else GenomicSubProcessResult.ERROR
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR
+
+    def _lookup_member(self, biobank_id):
+        return self.member_dao.get_id_with_biobank_id(biobank_id)

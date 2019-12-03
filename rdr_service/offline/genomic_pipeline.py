@@ -8,7 +8,10 @@ from rdr_service.genomic import (
     genomic_center_menifest_handler,
     genomic_job_controller
 )
-from rdr_service.participant_enums import GenomicSetStatus, GenomicSubProcessStatus, GenomicSubProcessResult
+from rdr_service.participant_enums import (
+    GenomicSetStatus,
+    GenomicJob
+)
 
 
 def process_genomic_water_line():
@@ -38,25 +41,19 @@ def ingest_genomic_centers_metrics_files():
     """
     Entrypoint for GC Metrics File Ingestion subprocess of genomic_pipeline.
     """
-    run_controller = genomic_job_controller.GenomicJobController()
-    file_queue_result = run_controller.generate_file_processing_queue()
+    job_id = GenomicJob.METRICS_INGESTION
 
-    if file_queue_result == GenomicSubProcessResult.NO_FILES:
-        logging.info('No files to process.')
-        run_controller.end_run(file_queue_result)
-    else:
-        while len(run_controller.file_queue) > 0:
-            try:
-                ingestion_result = run_controller.process_file_using_ingester(
-                    run_controller.file_queue[0])
-                file_ingested = run_controller.file_queue.popleft()
-                run_controller.update_file_processed(
-                    file_ingested.id,
-                    GenomicSubProcessStatus.COMPLETED,
-                    ingestion_result
-                )
-            except IndexError:
-                logging.info('No files left in file queue.')
+    run_controller = genomic_job_controller.GenomicJobController(job_id)
+    result = run_controller.ingest_gc_metrics()
+    run_controller.end_run(result)
 
-        run_result = run_controller.aggregate_run_results()
-        run_controller.end_run(run_result)
+
+def reconcile_metrics():
+    """
+    Entrypoint for GC Metrics File reconciliation
+    against Manifest subprocess of genomic_pipeline.
+    """
+    job_id = GenomicJob.RECONCILE_MANIFEST
+    run_controller = genomic_job_controller.GenomicJobController(job_id)
+    result = run_controller.run_reconciliation_to_manifest()
+    run_controller.end_run(result)

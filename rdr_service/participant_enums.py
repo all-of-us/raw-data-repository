@@ -512,6 +512,14 @@ class GenomicValidationFlag(messages.Enum):
     INVALID_DUP_PARTICIPANT = 9
 
 
+class GenomicJob(messages.Enum):
+    """Genomic Job Definitions"""
+    UNSET = 0
+    METRICS_INGESTION = 1
+    RECONCILE_MANIFEST = 2
+    RECONCILE_SEQUENCING = 3
+
+
 class GenomicSubProcessStatus(messages.Enum):
     """The status of a Genomics Sub-Process"""
     QUEUED = 0

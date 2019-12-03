@@ -199,6 +199,7 @@ def update_ehr_status():
 def genomic_pipeline_handler():
     genomic_pipeline.process_genomic_water_line()
     genomic_pipeline.ingest_genomic_centers_metrics_files()
+    genomic_pipeline.reconcile_metrics()
     return '{"success": "true"}'
 
 

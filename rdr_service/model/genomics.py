@@ -3,8 +3,14 @@ from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, MultiEnum
-from rdr_service.participant_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, \
-    GenomicSubProcessStatus, GenomicSubProcessResult
+from rdr_service.participant_enums import (
+    GenomicSetStatus,
+    GenomicSetMemberStatus,
+    GenomicValidationFlag,
+    GenomicSubProcessStatus,
+    GenomicSubProcessResult,
+    GenomicJob
+)
 
 
 class GenomicSet(Base):
@@ -86,30 +92,6 @@ event.listen(GenomicSetMember, "before_insert", model_insert_listener)
 event.listen(GenomicSetMember, "before_update", model_update_listener)
 
 
-class GenomicJob(Base):
-    """Genomic Job model.
-    The Genomics system includes several workflows that involve data transfer.
-    This model represents a genomics data transfer job."""
-    __tablename__ = 'genomic_job'
-
-    # Primary Key
-    id = Column('id', Integer,
-                primary_key=True,
-                autoincrement=True,
-                nullable=False)
-
-    # Auto-Timestamps
-    created = Column('created', DateTime, nullable=True)
-    modified = Column('modified', DateTime, nullable=True)
-
-    name = Column('name', String(80), nullable=False)
-    activeFlag = Column('active_flag', Integer, nullable=False)
-
-
-event.listen(GenomicJob, 'before_insert', model_insert_listener)
-event.listen(GenomicJob, 'before_update', model_update_listener)
-
-
 class GenomicJobRun(Base):
     """Genomic Job Run model.
     This model represents a 'run' of a genomics job,
@@ -122,8 +104,8 @@ class GenomicJobRun(Base):
               autoincrement=True,
               nullable=False)
 
-    jobId = Column('job_id', Integer,
-                   ForeignKey('genomic_job.id'), nullable=False)
+    jobId = Column('job_id', Enum(GenomicJob),
+                   default=GenomicJob.UNSET, nullable=False)
     startTime = Column('start_time', DateTime, nullable=False)
     endTime = Column('end_time', DateTime, nullable=True)
     runStatus = Column('run_status',
@@ -168,7 +150,8 @@ class GenomicGCValidationMetrics(Base):
     # Primary Key
     id = Column('id', Integer,
                 primary_key=True, autoincrement=True, nullable=False)
-    genomicSetMemberId = Column('genomic_set_member_id', Integer,
+    genomicSetMemberId = Column('genomic_set_member_id',
+                                ForeignKey('genomic_set_member.id'),
                                 nullable=True)
     genomicFileProcessedId = Column('genomic_file_processed_id',
                                     ForeignKey('genomic_file_processed.id'))
@@ -176,11 +159,7 @@ class GenomicGCValidationMetrics(Base):
     created = Column('created', DateTime, nullable=True)
     modified = Column('modified', DateTime, nullable=True)
 
-    # TODO: This should be removed since in genomic_set_member,
-    #  but that table's pid can't be trusted yet
-    participantId = Column('participant_id', Integer,
-                           ForeignKey('participant.participant_id'),
-                           nullable=False)
+    biobankId = Column('biobank_id', String(80), nullable=False)
     # Ingested Data
     sampleId = Column('sample_id', String(80), nullable=True)
     limsId = Column('lims_id', String(80), nullable=True)
@@ -195,6 +174,12 @@ class GenomicGCValidationMetrics(Base):
     consentForRor = Column('consent_for_ror', String(10), nullable=True)
     withdrawnStatus = Column('withdrawn_status', Integer, nullable=True)
     siteId = Column('site_id', Integer, nullable=True)
+
+    # Reconciliation columns
+    reconcileManifestJobRunId = Column('reconcile_manifest_job_run_id',
+                                       Integer, nullable=True)
+    reconcileSequencingJobRunId = Column('reconcile_sequencing_job_run_id',
+                                         Integer, nullable=True)
 
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
