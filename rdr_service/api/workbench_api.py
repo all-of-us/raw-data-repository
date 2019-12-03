@@ -68,3 +68,4 @@ class WorkbenchResearcherHistoryApi(BaseApi):
         from rdr_service import main
 
         return main.api.url_for(self.__class__, user_id=json[id_field], _external=True)
+

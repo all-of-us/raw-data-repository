@@ -27,7 +27,6 @@ class WorkbenchResearcher(WorkbenchResearcherBase, Base):
 
     workbenchInstitutionalAffiliations = relationship("WorkbenchInstitutionalAffiliations",
                                                       cascade="all, delete-orphan")
-
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
     # have mysql set the creation data for each new order
