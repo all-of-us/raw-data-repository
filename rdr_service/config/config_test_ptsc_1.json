@@ -13,9 +13,11 @@
       "roles": ["exporter"]
     },
     "vibrent-drc-qa@vibrent-drc-qa-165017.iam.gserviceaccount.com": {
+      "clientId": "vibrent",
       "roles": ["ptc"]
     },
     "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
+      "clientId": "vibrent",
       "roles": ["ptc", "healthpro"],
       "whitelisted_ip_ranges": {
         "ip6": ["::0/0"],
