@@ -10,8 +10,6 @@ from rdr_service.genomic import (
 )
 from rdr_service.participant_enums import (
     GenomicSetStatus,
-    GenomicSubProcessStatus,
-    GenomicSubProcessResult,
     GenomicJob
 )
 
