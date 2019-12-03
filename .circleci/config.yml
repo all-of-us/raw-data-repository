@@ -43,7 +43,7 @@ filter_releases: &filter_releases
     branches:
       ignore: /.*/
     tags:
-      only: /v[0-9]+(-[0-9]+)*-rc[0-9]+[a-z]*/
+      only: /[0-9]+(\.[0-9]+)*\.[0-9]+[a-z]*/
 
 jobs:
   build_and_test:
@@ -189,7 +189,7 @@ jobs:
             pyenv local 3.7.0
       - run:
           working_directory: ~/all-of-us/raw-data-repository/rdr_service/
-          command: ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key
+          command:  python -m tools alembic --project https://pmi-drc-api-test.appspot.com upgrade head
       - save_cache:
           working_directory: ~/all-of-us/raw-data-repository
           key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
@@ -265,7 +265,7 @@ jobs:
             pyenv local 3.7.0
       - run:
           working_directory: ~/all-of-us/raw-data-repository/rdr_service/
-          command: ./tools/upgrade_database.sh -i https://all-of-us-rdr-staging.appspot.com --creds_file ~/gcloud-credentials.key
+          command:  python -m tools alembic --project https://all-of-us-rdr-staging.appspot.com upgrade head
       - save_cache:
           working_directory: ~/all-of-us/raw-data-repository
           key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
