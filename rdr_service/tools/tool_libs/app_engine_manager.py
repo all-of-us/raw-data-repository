@@ -397,6 +397,13 @@ class AppConfigClass(object):
         proj_config = json.loads(open(proj_config_file, 'r').read())
 
         config = {**base_config, **proj_config}
+
+        if self.gcp_env.project != 'localhost':
+            # insert the geocode key from 'pmi-drc-api-test' into this config.
+            geocode_config = self._provider.load('geocode_key', project='pmi-drc-api-test')
+            if geocode_config:
+                config['geocode_api_key'] = geocode_config['api_key']
+
         return config
 
     def get_config_from_file(self):
@@ -420,8 +427,15 @@ class AppConfigClass(object):
         else:
             config = self.get_config_from_file()
 
+        if self.gcp_env.project != 'localhost' and self.args.key == 'current_config' and not \
+                    config.get('geocode_api_key', None):
+            _logger.error("Config must include 'geocode_api_key', unable to write.")
+            return 1
+
         self._provider.store(self.args.key, config, project=self.gcp_env.project)
         _logger.info(f'Successfully updated {self.args.key} configuration.')
+
+        return 0
 
     def get_app_config(self):
         """
@@ -494,7 +508,7 @@ class AppConfigClass(object):
             return 1
 
         # Argument checks.
-        if self.args.key not in {'current_config', 'db_config'}:
+        if self.args.key not in {'current_config', 'db_config', 'geocode_key'}:
             _logger.error('\nInvalid --key argument.\n')
             return 1
         if self.args.compare and self.args.update:
@@ -516,7 +530,7 @@ class AppConfigClass(object):
         warnings.filterwarnings("ignore", "Your application has authenticated using end user credentials")
 
         if self.args.update:
-            self.update_app_config()
+            return self.update_app_config()
         elif self.args.compare:
             self.compare_configs()
         else:

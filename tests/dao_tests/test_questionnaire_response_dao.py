@@ -44,7 +44,7 @@ QUESTIONNAIRE_RESPONSE_RESOURCE = '{"resourceType": "QuestionnaireResponse", "a"
 QUESTIONNAIRE_RESPONSE_RESOURCE_2 = '{"resourceType": "QuestionnaireResponse", "a": "c"}'
 QUESTIONNAIRE_RESPONSE_RESOURCE_3 = '{"resourceType": "QuestionnaireResponse", "a": "d"}'
 
-_FAKE_BUCKET = "ptc-uploads-unit-testing"
+_FAKE_BUCKET = {"example": "ptc-uploads-unit-testing"}
 
 
 def with_id(resource, id_):
@@ -87,7 +87,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
         self.skip_code = Code(codeId=8, system=PPI_SYSTEM, value=PMI_SKIP_CODE, mapped=True, codeType=CodeType.ANSWER)
 
-        config.override_setting(config.CONSENT_PDF_BUCKET, [_FAKE_BUCKET])
+        config.override_setting(config.CONSENT_PDF_BUCKET, _FAKE_BUCKET)
 
     def _setup_questionnaire(self):
         q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
@@ -908,7 +908,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         questionnaire_response = self._get_questionnaire_response_with_consents(consent_pdf_path)
         # This should pass validation (not raise exceptions).
         self.questionnaire_response_dao.insert(questionnaire_response)
-        mock_gcloud_check.assert_called_with("/%s%s" % (_FAKE_BUCKET, consent_pdf_path))
+        mock_gcloud_check.assert_called_with("/%s%s" % (_FAKE_BUCKET['example'], consent_pdf_path))
 
     @mock.patch("rdr_service.dao.questionnaire_response_dao._raise_if_gcloud_file_missing")
     def test_consent_pdf_valid_no_leading_slash(self, mock_gcloud_check):
@@ -916,7 +916,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         questionnaire_response = self._get_questionnaire_response_with_consents(consent_pdf_path)
         # This should pass validation (not raise exceptions).
         self.questionnaire_response_dao.insert(questionnaire_response)
-        mock_gcloud_check.assert_called_with("/%s/%s" % (_FAKE_BUCKET, consent_pdf_path))
+        mock_gcloud_check.assert_called_with("/%s/%s" % (_FAKE_BUCKET['example'], consent_pdf_path))
 
     @mock.patch("rdr_service.dao.questionnaire_response_dao._raise_if_gcloud_file_missing")
     def test_consent_pdf_file_invalid(self, mock_gcloud_check):
@@ -935,7 +935,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 class QuestionnaireResponseDaoCloudCheckTest(BaseTestCase):
 
     def test_file_exists(self):
-        consent_pdf_path = "/%s/Participant/somefile.pdf" % _FAKE_BUCKET
+        consent_pdf_path = "/%s/Participant/somefile.pdf" % _FAKE_BUCKET['example']
         with self.assertRaises(BadRequest):
             _raise_if_gcloud_file_missing(consent_pdf_path)
         with open_cloud_file(consent_pdf_path, 'w') as cloud_file:

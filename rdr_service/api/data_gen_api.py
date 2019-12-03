@@ -53,7 +53,7 @@ def _auth_required_healthpro_or_config_admin(func):
         if not is_config_admin(app_util.get_oauth_id()):
             _, user_info = get_validated_user_info()
             if not HEALTHPRO in user_info.get("roles", []):
-                logging.info("User has roles {}, but HEALTHPRO or admin is required".format(user_info.get("roles")))
+                logging.warning("User has roles {}, but HEALTHPRO or admin is required".format(user_info.get("roles")))
                 raise Forbidden()
         return func(*args, **kwargs)
 

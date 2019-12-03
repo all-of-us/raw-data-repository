@@ -35,9 +35,9 @@
   "ghost_id_bucket": [
     "all-of-us-rdr-test-ghost-accounts"
   ],
-  "consent_pdf_bucket": [
-    "app_default_bucket"
-  ],
+  "consent_pdf_bucket": {
+    "example": "app_default_bucket"
+  },
   "genomic_gc_metrics_bucket_name": [
     "dev_genomics_cell_line_validation"
   ],

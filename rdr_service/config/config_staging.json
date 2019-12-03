@@ -105,9 +105,10 @@
   "ghost_id_bucket": [
     "all-of-us-rdr-staging-ghost-accounts"
   ],
-  "consent_pdf_bucket": [
-    "ptc-uploads-all-of-us-rdr-staging"
-  ],
+  "consent_pdf_bucket": {
+    "vibrent": "ptc-uploads-all-of-us-rdr-staging",
+    "careevolution": "ce-uploads-all-of-us-rdr-staging"
+  },
   "metrics_shards": [
     "10"
   ],

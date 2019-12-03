@@ -1,4 +1,3 @@
-import os
 import logging
 import time
 
@@ -7,6 +6,8 @@ import rdr_service.lib_fhir.fhirclient_3_0_0.models.organization
 
 from rdr_service.lib_fhir.fhirclient_3_0_0.models.fhirabstractbase import FHIRValidationError
 from werkzeug.exceptions import BadRequest
+
+from rdr_service import config
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
@@ -200,18 +201,22 @@ class OrganizationHierarchySyncDao(BaseDao):
 
         notes = self._get_value_from_extention(hierarchy_org_obj, HIERARCHY_CONTENT_SYSTEM_PREFIX + 'notes')
 
-        site_status_bool = self._get_value_from_extention(hierarchy_org_obj,
+        site_status_value = self._get_value_from_extention(hierarchy_org_obj,
                                                           HIERARCHY_CONTENT_SYSTEM_PREFIX +
                                                           'ptsc-scheduling-status',
                                                           'valueString')
+        # Since the data type was changed without us knowing, we can use this work around to get boolean values.
+        site_status_bool = True if site_status_value == "true" else False
         try:
             site_status = SiteStatus('ACTIVE' if site_status_bool else 'INACTIVE')
         except TypeError:
             raise BadRequest('Invalid site status {} for site {}'.format(site_status, google_group))
 
-        enrolling_status_bool = self._get_value_from_extention(hierarchy_org_obj,
+        enrolling_status_value = self._get_value_from_extention(hierarchy_org_obj,
                                                                HIERARCHY_CONTENT_SYSTEM_PREFIX +
-                                                               'enrolling-status')
+                                                               'enrolling-status',
+                                                               'valueString')
+        enrolling_status_bool = True if enrolling_status_value == "true" else False
 
         try:
             enrolling_status = EnrollingStatus('ACTIVE' if enrolling_status_bool else 'INACTIVE')
@@ -343,7 +348,13 @@ class OrganizationHierarchySyncDao(BaseDao):
 
 
     def _get_address(self, hierarchy_org_obj):
-        address = hierarchy_org_obj.address[0]
+        if hierarchy_org_obj.address:
+            try:
+                address = hierarchy_org_obj.address[0]
+            except IndexError:
+                return None, None, None, None, None
+        else:
+            return None, None, None, None, None
         address_1 = address.line[0] if len(address.line) > 0 else ''
         address_2 = address.line[1] if len(address.line) > 1 else ''
         city = address.city
@@ -375,15 +386,18 @@ class OrganizationHierarchySyncDao(BaseDao):
             if latitude and longitude:
                 site.timeZoneId = self._get_time_zone(latitude, longitude)
         else:
-            if site.googleGroup not in self.status_exception_list:
-                if site.siteStatus == self.ACTIVE:
-                    logging.warn('Active site must have valid address. Site: {}, Group: {}'.format(
-                        site.siteName, site.googleGroup))
+            if site.siteStatus == SiteStatus.ACTIVE:
+                logging.warn('Active site must have valid address. Site: {}, Group: {}'.format(
+                    site.siteName, site.googleGroup))
 
     def _get_lat_long_for_site(self, address_1, city, state):
         self.full_address = address_1 + ' ' + city + ' ' + state
         try:
-            self.api_key = os.environ.get('API_KEY')
+            self.api_key = config.getSetting('geocode_api_key', None)
+            if not self.api_key:
+                logging.error('Geocode key not set')
+                return None, None
+
             self.gmaps = googlemaps.Client(key=self.api_key)
             try:
                 geocode_result = self.gmaps.geocode(address_1 + '' + city + ' ' + state)[0]

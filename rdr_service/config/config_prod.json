@@ -20,11 +20,12 @@
   "genomic_biobank_manifest_result_folder_name": [
     "genomic_water_line_test_results"
   ],
+  "consent_pdf_bucket": {
+    "vibrent": "ptc-uploads-all-of-us-rdr-prod",
+    "careevolution": "ce-uploads-all-of-us-rdr-prod"
+  },
   "genomic_gc_metrics_bucket_name": [
     "prod_genomics_cell_line_validation"
-  ],
-  "consent_pdf_bucket": [
-    "ptc-uploads-all-of-us-rdr-prod"
   ],
   "metrics_shards": [
     "10"
@@ -218,6 +219,15 @@
           "10.115.115.88",
           "156.145.115.188",
           "156.145.115.105"
+        ]
+      }
+    },
+    "awardee-illinois@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "ILLINOIS",
+      "whitelisted_ip_ranges" : {
+        "ip4": [
+          "10.105.197.20"
         ]
       }
     }

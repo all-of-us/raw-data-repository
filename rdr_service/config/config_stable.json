@@ -230,9 +230,10 @@
   "ghost_id_bucket": [
     "all-of-us-rdr-stable-ghost-accounts"
   ],
-  "consent_pdf_bucket": [
-    "ptc-uploads-all-of-us-rdr-stable"
-  ],
+  "consent_pdf_bucket": {
+    "vibrent": "ptc-uploads-all-of-us-rdr-stable",
+    "careevolution": "ce-uploads-all-of-us-rdr-stable"
+  },
   "metrics_shards": [
     "10"
   ],

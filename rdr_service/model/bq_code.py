@@ -30,4 +30,5 @@ class BQCode(BQTable):
 class BQCodeView(BQView):
     __viewname__ = 'v_code'
     __viewdescr__ = 'CodeBook Code View'
+    __pk_id__ = 'code_id'
     __table__ = BQCode
