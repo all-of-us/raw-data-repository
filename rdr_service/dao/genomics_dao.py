@@ -328,7 +328,7 @@ class GenomicJobRunDao(UpdatableDao):
     def insert_run_record(self, job_id):
         """
         Inserts the job_run record.
-        :param job_id: the ID of the current genomic's job
+        :param job_id: the ID of the current genomic job
         :return: the object inserted
         """
         job_run = GenomicJobRun()
@@ -346,7 +346,6 @@ class GenomicJobRunDao(UpdatableDao):
         UPDATES the job_run record.
         :param run_id: the ID of the current genomic's job
         :param result: the result dict of the run.
-        :return: the object inserted
         """
         query = (
             sqlalchemy.update(GenomicJobRun)
@@ -508,9 +507,11 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
         :return: list of returned GenomicGCValidationMetrics objects
         """
         with self.session() as session:
-            metrics_list = session.query(GenomicGCValidationMetrics).filter(
-                GenomicGCValidationMetrics.genomicSetMemberId == None)
-        return list(metrics_list)
+            return (
+                session.query(GenomicGCValidationMetrics)
+                .filter(GenomicGCValidationMetrics.genomicSetMemberId == None)
+                .all()
+            )
 
     def update_reconciled(self, metric_obj, member_id, run_id):
         with self.session() as session:
@@ -524,20 +525,26 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
         :param metric_obj:
         :param member_id:
         :param run_id:
-        :return: result code of success
+        :return: query result or result code of error
         """
         try:
-            with self.session() as session:
-                query = (
-                    sqlalchemy.update(GenomicGCValidationMetrics)
-                        .where(GenomicGCValidationMetrics.id == metric_obj.id)
-                        .values(
-                        {
-                            GenomicGCValidationMetrics.genomicSetMemberId: member_id,
-                            GenomicGCValidationMetrics.reconcileManifestJobRunId: run_id,
-                        }
-                    )
+            query = (
+                sqlalchemy.update(GenomicGCValidationMetrics)
+                    .where(GenomicGCValidationMetrics.id == sqlalchemy.bindparam("metric_id_param"))
+                    .values(
+                    {
+                        GenomicGCValidationMetrics.genomicSetMemberId: sqlalchemy.bindparam("member_id_param"),
+                        GenomicGCValidationMetrics.reconcileManifestJobRunId: sqlalchemy.bindparam("run_id_param")
+                    }
                 )
-                return session.execute(query)
+            )
+
+            query_params = {
+                "metric_id_param": metric_obj.id,
+                "member_id_param": member_id,
+                "run_id_param": run_id,
+            }
+
+            return session.execute(query, query_params)
         except OperationalError:
             return GenomicSubProcessResult.ERROR

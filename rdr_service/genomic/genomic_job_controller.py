@@ -43,15 +43,12 @@ class GenomicJobController:
         self.file_mover = None
         self.reconciler = None
 
-        # TODO: currently set up for only gc metrics ingestion;
-        #  need to make more generic
         self.job_run = self._create_run(job_id)
 
     def generate_file_processing_queue(self):
         """
         Creates the list of files to be ingested in this run.
-        Ordering is currently arbitrary; may need to be defined explicitly at some point
-        They are written to the DB in `genomic_files_processed` with the current run ID
+        Ordering is currently arbitrary;
         """
 
         # last_run_time = self._get_last_successful_run_time(self.job_name)

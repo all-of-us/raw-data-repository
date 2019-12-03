@@ -76,4 +76,5 @@ def reconcile_metrics():
     """
     job_id = GenomicJob.RECONCILE_MANIFEST
     run_controller = genomic_job_controller.GenomicJobController(job_id)
-    run_controller.run_reconciliation_to_manifest()
+    result = run_controller.run_reconciliation_to_manifest()
+    run_controller.end_run(result)
