@@ -64,7 +64,8 @@
         "healthpro",
         "exporter",
         "storefront",
-        "rdr"
+        "rdr",
+        "workbench"
       ],
       "whitelisted_ip_ranges": {
         "ip6": [
