@@ -189,7 +189,7 @@ jobs:
             pyenv local 3.7.0
       - run:
           environment:
-            PYTHONPATH: ~/all-of-us/raw-data-repository/rdr_service/
+            PYTHONPATH: ~/all-of-us/raw-data-repository/
           working_directory: ~/all-of-us/raw-data-repository/rdr_service/
           command:  python -m tools alembic --project https://pmi-drc-api-test.appspot.com upgrade head
       - save_cache:
