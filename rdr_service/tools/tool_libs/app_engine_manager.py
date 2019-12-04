@@ -550,7 +550,7 @@ def run():
     parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
     parser.add_argument("--debug", help="Enable debug output", default=False, action="store_true")  # noqa
     parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
-    parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
+    parser.add_argument("--project", help="gcp project name", required=True)  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
     parser.add_argument("--git-project", help="path to git project root directory", default=None)  # noqa
@@ -593,10 +593,6 @@ def run():
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-
-        if not args.project or args.project == 'localhost':
-            _logger.error('unable to deploy without a project.')
-            exit(1)
 
         # determine the git project root directory.
         if not args.git_project:
