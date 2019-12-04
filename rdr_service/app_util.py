@@ -135,7 +135,7 @@ def check_cron():
 def lookup_user_info(user_email):
     return config.getSettingJson(config.USER_INFO, {}).get(user_email)
 
-def get_participant_origin_id():
+def get_account_origin_id():
     """
     Returns the clientId value set in the config for the user.
     :return: Client Id

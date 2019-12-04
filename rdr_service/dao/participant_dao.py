@@ -18,7 +18,7 @@ from rdr_service.api_util import (
     get_site_id_from_google_group,
     parse_json_enum,
     DEV_MAIL)
-from rdr_service.app_util import get_oauth_id, lookup_user_info, get_participant_origin_id
+from rdr_service.app_util import get_oauth_id, lookup_user_info, get_account_origin_id
 from rdr_service.code_constants import UNSET, ORIGINATING_SOURCES
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.dao.hpo_dao import HPODao
@@ -67,6 +67,15 @@ class ParticipantDao(UpdatableDao):
         self.organization_dao = OrganizationDao()
         self.site_dao = SiteDao()
 
+    def get(self, id_):
+        with self.session() as session:
+            obj = self.get_with_session(session, id_)
+        if obj:
+            if obj.participantOrigin != get_account_origin_id():
+                raise BadRequest('Can not retrieve participant from a different origin')
+            return obj
+
+
     def get_id(self, obj):
         return obj.participantId
 
@@ -75,7 +84,7 @@ class ParticipantDao(UpdatableDao):
         obj.version = 1
         obj.signUpTime = clock.CLOCK.now().replace(microsecond=0)
         obj.lastModified = obj.signUpTime
-        obj.participantOrigin = get_participant_origin_id()
+        obj.participantOrigin = get_account_origin_id()
         if obj.withdrawalStatus is None:
             obj.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
         if obj.suspensionStatus is None:
