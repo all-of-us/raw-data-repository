@@ -9,6 +9,7 @@ import argparse
 # pylint: disable=broad-except
 import logging
 import sys
+import textwrap
 
 from rdr_service.services.system_utils import setup_logging, setup_i18n, make_api_request
 from rdr_service.tools.tool_libs import GCPProcessContext
@@ -84,9 +85,10 @@ class ExportTablesClass(object):
             if code == 403:
                 if 'The service account does not have the required permissions for the bucket' in resp:
                     sa = gcp_get_mysql_instance_service_account(instance)
-                    _logger.error("\nThe MySQL service instance service account does not have permission to write")
-                    _logger.error(f"to '{self.args.bucket_uri}'. You need to grant bucket write")
-                    _logger.error(f"permission to '{sa}'\nand then try exporting again.\n")
+                    msg = "The MySQL service instance service account does not have permission to write " + \
+                            f"to '{self.args.bucket_uri}'. You need to grant bucket write " + \
+                            f"permission to '{sa}' and then try exporting again."
+                    _logger.error(f'\n{textwrap.fill(msg, 80)}\n')
                     return 1
 
             _logger.error(resp)
