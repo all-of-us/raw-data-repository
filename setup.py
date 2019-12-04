@@ -5,7 +5,7 @@ import os
 
 from setuptools import setup, find_packages
 
-__VERSION__ = "2.0.2"
+__VERSION__ = "1.60.2"
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 rdr_client_dir = os.path.join(base_dir, "rdr_service/rdr_client")

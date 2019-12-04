@@ -13,7 +13,7 @@ import sys
 from rdr_service.services.system_utils import setup_logging, setup_i18n, make_api_request
 from rdr_service.tools.tool_libs import GCPProcessContext
 from rdr_service.services.gcp_utils import gcp_make_auth_header
-from rdr_service.services.gcp_config import GCP_REPLICA_INSTANCES
+from rdr_service.services.gcp_config import GCP_INSTANCES
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -74,7 +74,8 @@ class ExportTablesClass(object):
             }
         }
         headers = gcp_make_auth_header()
-        instance = GCP_REPLICA_INSTANCES[self.gcp_env.project].split(':')[-1:][0]
+        # Exports can not be done against read-only replicas.
+        instance = GCP_INSTANCES[self.gcp_env.project].split(':')[-1:][0]
         path = f'/sql/v1beta4/projects/{self.gcp_env.project}/instances/{instance}/export'
 
         code, resp = make_api_request('www.googleapis.com', api_path=path, json_data=data, headers=headers,
