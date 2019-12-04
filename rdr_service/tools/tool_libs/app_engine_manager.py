@@ -18,7 +18,7 @@ from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, GCP_APP_CONFIG_MAP
 from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
     gcp_application_default_creds_exist
-from tools.tool_libs.alembic import AlembicManagerClass
+from rdr_service.tools.tool_libs.alembic import AlembicManagerClass
 
 _logger = logging.getLogger("rdr_logger")
 
