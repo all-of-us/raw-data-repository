@@ -49,8 +49,18 @@ _python()
             ;;
         mysql)
             # These are options specific to this tool.
-            local toolopts="--create-cloud-instance --change-passwords"
+            local toolopts="export"
             COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
+            return 0
+            ;;
+        export)
+            # mysql list command
+            if echo ${COMP_WORDS[@]} | grep -w "mysql" > /dev/null; then
+              local toolopts="--database --bucket-uri --format"
+              COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
+            else
+              COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
+            fi
             return 0
             ;;
         alembic)
