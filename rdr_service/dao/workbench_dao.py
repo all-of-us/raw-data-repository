@@ -35,7 +35,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             )
             return query.all()
 
-    def from_client_json(self, resource_json, client_id=None):
+    def from_client_json(self, resource_json, client_id=None):  # pylint: disable=unused-argument
         now = clock.CLOCK.now()
         workspaces = []
         for item in resource_json:
@@ -167,7 +167,7 @@ class WorkbenchResearcherDao(UpdatableDao):
         with self.session() as session:
             return self._get_researcher_by_user_id_with_session(session, user_source_id)
 
-    def from_client_json(self, resource_json, client_id=None):
+    def from_client_json(self, resource_json, client_id=None):  # pylint: disable=unused-argument
         now = clock.CLOCK.now()
         researchers = []
         for item in resource_json:
