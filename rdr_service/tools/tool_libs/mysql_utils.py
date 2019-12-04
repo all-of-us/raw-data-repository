@@ -12,7 +12,7 @@ import sys
 
 from rdr_service.services.system_utils import setup_logging, setup_i18n, make_api_request
 from rdr_service.tools.tool_libs import GCPProcessContext
-from rdr_service.services.gcp_utils import gcp_make_auth_header
+from rdr_service.services.gcp_utils import gcp_make_auth_header, gcp_get_mysql_instance_service_account
 from rdr_service.services.gcp_config import GCP_INSTANCES
 
 _logger = logging.getLogger("rdr_logger")
@@ -81,6 +81,14 @@ class ExportTablesClass(object):
         code, resp = make_api_request('www.googleapis.com', api_path=path, json_data=data, headers=headers,
                                       req_type='POST')
         if code != 200:
+            if code == 403:
+                if 'The service account does not have the required permissions for the bucket' in resp:
+                    sa = gcp_get_mysql_instance_service_account(instance)
+                    _logger.error("\nThe MySQL service instance service account does not have permission to write")
+                    _logger.error(f"to '{self.args.bucket_uri}'. You need to grant bucket write")
+                    _logger.error(f"permission to '{sa}'\nand then try exporting again.\n")
+                    return 1
+
             _logger.error(resp)
         else:
             _logger.info(resp)

@@ -591,6 +591,30 @@ def gcp_activate_sql_proxy(instances):
     return p
 
 
+def gcp_get_mysql_instance_service_account(instance: str) -> (str, None):
+    """
+    Get the service account for the given instance.
+    :param instance: MySQL Instance name
+    :return: Service account email or None
+    """
+    if ':' in instance:
+        instance = instance.split(':')[-1:][0]
+
+    args = f'instances describe {instance}'
+
+    pcode, so, se = gcp_gcloud_command("sql", args)
+    if pcode != 0:
+        _logger.error("failed to get mysql instance service account. ({0}: {1}).".format(pcode, se))
+        return None
+
+    lines = so.split('\n')
+    for line in lines:
+        if line.startswith('serviceAccountEmailAddress'):
+            return line.split(':')[1].strip()
+
+    return None
+
+
 def gcp_bq_command(cmd, args, global_flags=None, command_flags=None, headless=True):
     """
   Run a bq command
