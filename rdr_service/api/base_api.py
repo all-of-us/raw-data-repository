@@ -35,7 +35,10 @@ def log_api_request(model_obj=None):
         except ValueError:
             log.resource = request.data
     parts = request.url.split('/')
-    log.version = int(parts[4][1:]) if len(parts) > 4 else 0
+    try:
+        log.version = int(parts[4][1:]) if len(parts) > 4 else 0
+    except ValueError:
+        log.version = 0  # unknown, for urls that don't use the /rdr/v1/ format.
 
     request.logged = True
 
