@@ -9,9 +9,9 @@ class BiobankDVOrder(Base):
     """
   Direct Volunteer kit order shipment record
   """
-
+    # mapping a user_info.clientID (from config) to a system identifier
     _DV_ID_SYSTEM = {
-        'vibrent-drc-prod': "http://vibrenthealth.com",
+        'vibrent': "http://vibrenthealth.com",
         'careevolution': "http://carevolution.be",
         'example': "system-test"
     }

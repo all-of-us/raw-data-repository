@@ -148,14 +148,15 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
 
     def test_set_system_identifier_by_user(self):
         system_from_user = {
-            'vibrent-drc-prod@test-bed.fake': "http://vibrenthealth.com",
-            'careevolution@test-bed.fake': "http://carevolution.be",
-            'example@example.com': "system-test"
+            'vibrent-drc-prod@test-bed.fake': ('vibrent', 'http://vibrenthealth.com'),
+            'careevolution@test-bed.fake': ('careevolution', 'http://carevolution.be'),
+            'no-sys@test-bed.fake': (None, None),
+            'example@example.com': ('example', 'system-test')
         }
 
         # duplicate the test for each user (Vibrent and CE)
         for user, expected_system_identifier in system_from_user.items():
-            BaseTestCase.switch_auth_user(user)
+            BaseTestCase.switch_auth_user(user, client_id=expected_system_identifier[0])
 
             # Make the series of API calls to create DV orders and associated Biobank records
             post_response = self.send_post(
@@ -168,25 +169,35 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
                 'SupplyRequest/{}'.format(location_id),
                 request_data=self.get_payload('dv_order_api_put_supply_request.json'),
             )
-            self.send_post(
-                'SupplyDelivery',
-                request_data=self._set_mayo_address(
-                    self.get_payload('dv_order_api_post_supply_delivery.json')),
-                expected_status=http.client.CREATED
-            )
 
-            # Compare the results in the DB with the system identifiers defined above
-            with self.dv_order_dao.session() as session:
-                test_order_id = self.mayolink_response['orders']['order']['number']
-                identifiers = session.query(BiobankOrderIdentifier).filter_by(
-                    biobankOrderId=test_order_id
-                ).all()
-                for identifier in identifiers:
-                    if identifier.system.endswith('/trackingId'):
-                        self.assertEqual(identifier.system, expected_system_identifier + "/trackingId")
-                    else:
-                        self.assertEqual(identifier.system, expected_system_identifier)
-                    session.delete(identifier)
+            # Check if there is a client ID
+            if expected_system_identifier[0] is None:
+                self.send_post(
+                    'SupplyDelivery',
+                    request_data=self._set_mayo_address(
+                        self.get_payload('dv_order_api_post_supply_delivery.json')),
+                    expected_status=400
+                )
+            else:
+                self.send_post(
+                    'SupplyDelivery',
+                    request_data=self._set_mayo_address(
+                        self.get_payload('dv_order_api_post_supply_delivery.json')),
+                    expected_status=http.client.CREATED
+                )
+
+                # Compare the results in the DB with the system identifiers defined above
+                with self.dv_order_dao.session() as session:
+                    test_order_id = self.mayolink_response['orders']['order']['number']
+                    identifiers = session.query(BiobankOrderIdentifier).filter_by(
+                        biobankOrderId=test_order_id
+                    ).all()
+                    for identifier in identifiers:
+                        if identifier.system.endswith('/trackingId'):
+                            self.assertEqual(identifier.system, expected_system_identifier[1] + "/trackingId")
+                        else:
+                            self.assertEqual(identifier.system, expected_system_identifier[1])
+                        session.delete(identifier)
 
             self._intra_test_clean_up_db()
 

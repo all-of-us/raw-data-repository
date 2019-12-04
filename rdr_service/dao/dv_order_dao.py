@@ -3,7 +3,7 @@ import datetime
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import BadRequest, Conflict, NotFound
 
-from rdr_service import clock
+from rdr_service import clock, app_util
 from rdr_service.api.mayolink_api import MayoLinkApi
 from rdr_service.api_util import (
     DV_BARCODE_URL,
@@ -15,7 +15,6 @@ from rdr_service.api_util import (
     get_code_id,
     parse_date,
 )
-from rdr_service.app_util import ObjectView
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.code_dao import CodeDao
@@ -252,35 +251,43 @@ class DvOrderDao(UpdatableDao):
         obj.dvOrders = [test]
         bod = BiobankOrderDao()
         obj.samples = [BiobankOrderedSample(test="1SAL2", processingRequired=False, description="salivary pilot kit")]
-        self._add_identifiers_and_main_id(obj, ObjectView(resource))
+        self._add_identifiers_and_main_id(obj, app_util.ObjectView(resource))
         bod.insert(obj)
 
     def _add_identifiers_and_main_id(self, order, resource):
         order.identifiers = []
-        dv_user = resource.auth_user.split("@")[0]
+        client_id = app_util.lookup_user_info(resource.auth_user).get('clientId')
         for i in resource.identifier:
             try:
                 if i["system"].lower() == DV_FHIR_URL + "trackingid":
                     order.identifiers.append(
                         BiobankOrderIdentifier(
-                            system=BiobankDVOrder._DV_ID_SYSTEM[dv_user] + "/trackingId", value=i["value"]
+                            system=BiobankDVOrder._DV_ID_SYSTEM[client_id] + "/trackingId", value=i["value"]
                         )
                     )
             except AttributeError:
                 raise BadRequest(
-                    f"No identifier for system {BiobankDVOrder._DV_ID_SYSTEM[dv_user]}, required for primary key."
+                    f"No identifier for system {BiobankDVOrder._DV_ID_SYSTEM[client_id]}, required for primary key."
+                )
+            except KeyError:
+                raise BadRequest(
+                    f"No identifier for clientID {client_id}"
                 )
         for i in resource.basedOn:
             try:
                 if i["identifier"]["system"].lower() == DV_FHIR_URL + "orderid":
                     order.identifiers.append(
                         BiobankOrderIdentifier(
-                            system=BiobankDVOrder._DV_ID_SYSTEM[dv_user], value=i["identifier"]["value"]
+                            system=BiobankDVOrder._DV_ID_SYSTEM[client_id], value=i["identifier"]["value"]
                         )
                     )
             except AttributeError:
                 raise BadRequest(
-                    f"No identifier for system {BiobankDVOrder._DV_ID_SYSTEM[dv_user]}, required for primary key."
+                    f"No identifier for system {BiobankDVOrder._DV_ID_SYSTEM[client_id]}, required for primary key."
+                )
+            except KeyError:
+                raise BadRequest(
+                    f"No identifier for clientID {client_id}"
                 )
 
     def get_etag(self, id_, pid):
