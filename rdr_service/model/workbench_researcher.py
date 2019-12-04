@@ -47,7 +47,7 @@ class WorkbenchInstitutionalAffiliations(Base):
     # have mysql always update the modified data when the record is changed
     modified = Column("modified", DateTime, nullable=True)
 
-    userId = Column("user_id", Integer, ForeignKey("workbench_researcher.id"), nullable=False)
+    researcherId = Column("researcher_id", Integer, ForeignKey("workbench_researcher.id"), nullable=False)
     institution = Column("institution", String(250))
     role = Column("role", String(80))
     nonAcademicAffiliation = Column("non_academic_affiliation", Boolean)
@@ -76,7 +76,7 @@ class WorkbenchInstitutionalAffiliationsHistory(Base):
     # have mysql always update the modified data when the record is changed
     modified = Column("modified", DateTime, nullable=True)
 
-    userId = Column("user_id", Integer, ForeignKey("workbench_researcher_history.id"), nullable=False)
+    researcherId = Column("researcher_id", Integer, ForeignKey("workbench_researcher_history.id"), nullable=False)
     institution = Column("institution", String(250))
     role = Column("role", String(80))
     nonAcademicAffiliation = Column("non_academic_affiliation", Boolean)

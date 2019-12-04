@@ -1,4 +1,7 @@
 from tests.helpers.unittest_base import BaseTestCase
+from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchResearcherHistoryDao, \
+    WorkbenchWorkspaceDao, WorkbenchWorkspaceHistoryDao
+from rdr_service.participant_enums import WorkbenchWorkspaceUserRole
 
 
 class WorkbenchApiTest(BaseTestCase):
@@ -33,13 +36,20 @@ class WorkbenchApiTest(BaseTestCase):
             }
         ]
 
-        post_result = self.send_post('workbench/directory/researchers', request_data=request_json)
-        get_result = self.send_get('workbench/directory/researchers')
-        for item in get_result['entry']:
-            self.assertIn(item['resource'], post_result)
+        self.send_post('workbench/directory/researchers', request_data=request_json)
+        researcher_dao = WorkbenchResearcherDao()
+        self.assertEqual(researcher_dao.count(), 1)
+        results = researcher_dao.get_all_with_children()
+        self.assertEqual(results[0].userSourceId, 0)
+        self.assertEqual(results[0].givenName, 'string')
+        self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string')
 
-        get_history_result = self.send_get('workbench/directory/researchers/history')
-        self.assertEqual(len(get_history_result['entry']), 1)
+        researcher_history_dao = WorkbenchResearcherHistoryDao()
+        results = researcher_history_dao.get_all_with_children()
+        self.assertEqual(researcher_history_dao.count(), 1)
+        self.assertEqual(results[0].userSourceId, 0)
+        self.assertEqual(results[0].givenName, 'string')
+        self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string')
 
         # test update existing
         update_json = [
@@ -95,13 +105,33 @@ class WorkbenchApiTest(BaseTestCase):
                 ]
             }
         ]
-        update_result = self.send_post('workbench/directory/researchers', request_data=update_json)
-        get_result = self.send_get('workbench/directory/researchers')
-        self.assertEqual(len(get_result['entry']), 2)
-        for item in get_result['entry']:
-            self.assertIn(item['resource'], update_result)
-        get_history_result = self.send_get('workbench/directory/researchers/history')
-        self.assertEqual(len(get_history_result['entry']), 3)
+        self.send_post('workbench/directory/researchers', request_data=update_json)
+
+        researcher_dao = WorkbenchResearcherDao()
+        self.assertEqual(researcher_dao.count(), 2)
+        results = researcher_dao.get_all_with_children()
+        self.assertEqual(results[0].userSourceId, 0)
+        self.assertEqual(results[0].givenName, 'string_modify')
+        self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string_modify')
+
+        self.assertEqual(results[1].userSourceId, 1)
+        self.assertEqual(results[1].givenName, 'string2')
+        self.assertEqual(results[1].workbenchInstitutionalAffiliations[1].institution, 'string22')
+
+        researcher_history_dao = WorkbenchResearcherHistoryDao()
+        self.assertEqual(researcher_history_dao.count(), 3)
+        results = researcher_history_dao.get_all_with_children()
+        self.assertEqual(results[0].userSourceId, 0)
+        self.assertEqual(results[0].givenName, 'string')
+        self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string')
+
+        self.assertEqual(results[1].userSourceId, 0)
+        self.assertEqual(results[1].givenName, 'string_modify')
+        self.assertEqual(results[1].workbenchInstitutionalAffiliations[0].institution, 'string_modify')
+
+        self.assertEqual(results[2].userSourceId, 1)
+        self.assertEqual(results[2].givenName, 'string2')
+        self.assertEqual(results[2].workbenchInstitutionalAffiliations[1].institution, 'string22')
 
     def test_create_and_update_workspace(self):
         # create researchers first
@@ -191,7 +221,107 @@ class WorkbenchApiTest(BaseTestCase):
             }
         ]
 
-        post_result = self.send_post('workbench/directory/workspaces', request_data=request_json)
-        print(str(post_result))
-        get_result = self.send_get('workbench/directory/workspaces')
-        print(str(get_result))
+        self.send_post('workbench/directory/workspaces', request_data=request_json)
+
+        workspace_dao = WorkbenchWorkspaceDao()
+        self.assertEqual(workspace_dao.count(), 1)
+        results = workspace_dao.get_all_with_children()
+        self.assertEqual(results[0].workspaceSourceId, 0)
+        self.assertEqual(results[0].name, 'string')
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 0)
+
+        workspace_history_dao = WorkbenchWorkspaceHistoryDao()
+        results = workspace_history_dao.get_all_with_children()
+        self.assertEqual(workspace_history_dao.count(), 1)
+        self.assertEqual(results[0].workspaceSourceId, 0)
+        self.assertEqual(results[0].name, 'string')
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 0)
+
+        # test update workspace
+        update_json = [
+            {
+                "workspaceId": 0,
+                "name": "string_modify",
+                "creationTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "status": "ACTIVE",
+                "workspaceUsers": [
+                    {
+                        "userId": 1,
+                        "role": "READER",
+                        "status": "ACTIVE"
+                    }
+                ],
+                "excludeFromPublicDirectory": True,
+                "diseaseFocusedResearch": True,
+                "diseaseFocusedResearchName": "string",
+                "otherPurposeDetails": "string",
+                "methodsDevelopment": True,
+                "controlSet": True,
+                "ancestry": True,
+                "socialBehavioral": True,
+                "populationHealth": True,
+                "drugDevelopment": True,
+                "commercialPurpose": True,
+                "educational": True,
+                "otherPurpose": True
+            },
+            {
+                "workspaceId": 1,
+                "name": "string2",
+                "creationTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "status": "ACTIVE",
+                "workspaceUsers": [
+                    {
+                        "userId": 0,
+                        "role": "READER",
+                        "status": "ACTIVE"
+                    },
+                    {
+                        "userId": 1,
+                        "role": "WRITER",
+                        "status": "INACTIVE"
+                    }
+                ],
+                "excludeFromPublicDirectory": True,
+                "diseaseFocusedResearch": True,
+                "diseaseFocusedResearchName": "string",
+                "otherPurposeDetails": "string",
+                "methodsDevelopment": True,
+                "controlSet": True,
+                "ancestry": True,
+                "socialBehavioral": True,
+                "populationHealth": True,
+                "drugDevelopment": True,
+                "commercialPurpose": True,
+                "educational": True,
+                "otherPurpose": True
+            }
+        ]
+
+        self.send_post('workbench/directory/workspaces', request_data=update_json)
+        workspace_dao = WorkbenchWorkspaceDao()
+        self.assertEqual(workspace_dao.count(), 2)
+        results = workspace_dao.get_all_with_children()
+        self.assertEqual(results[0].workspaceSourceId, 0)
+        self.assertEqual(results[0].name, 'string_modify')
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
+        self.assertEqual(results[1].workspaceSourceId, 1)
+        self.assertEqual(results[1].name, 'string2')
+        self.assertEqual(results[1].workbenchWorkspaceUser[0].userId, 0)
+        self.assertEqual(results[1].workbenchWorkspaceUser[1].role, WorkbenchWorkspaceUserRole.WRITER)
+
+        workspace_history_dao = WorkbenchWorkspaceHistoryDao()
+        results = workspace_history_dao.get_all_with_children()
+        self.assertEqual(workspace_history_dao.count(), 3)
+        self.assertEqual(results[0].workspaceSourceId, 0)
+        self.assertEqual(results[0].name, 'string')
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 0)
+        self.assertEqual(results[1].workspaceSourceId, 0)
+        self.assertEqual(results[1].name, 'string_modify')
+        self.assertEqual(results[1].workbenchWorkspaceUser[0].userId, 1)
+        self.assertEqual(results[2].workspaceSourceId, 1)
+        self.assertEqual(results[2].name, 'string2')
+        self.assertEqual(results[2].workbenchWorkspaceUser[0].userId, 0)
+        self.assertEqual(results[2].workbenchWorkspaceUser[1].role, WorkbenchWorkspaceUserRole.WRITER)
