@@ -79,9 +79,24 @@ class GenomicJobController:
             return run_result
 
     def run_reconciliation_to_manifest(self):
+        """
+        Reconciles the metrics to manifest using reconciler component
+        :return: result code for job run
+        """
         self.reconciler = GenomicReconciler(self.job_run.id)
         try:
             return self.reconciler.reconcile_metrics_to_manifest()
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR
+
+    def run_reconciliation_to_sequencing(self):
+        """
+        Reconciles the metrics to sequencing file using reconciler component
+        :return: result code for job run
+        """
+        self.reconciler = GenomicReconciler(self.job_run.id)
+        try:
+            return self.reconciler.reconcile_metrics_to_sequencing(self.bucket_name)
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 

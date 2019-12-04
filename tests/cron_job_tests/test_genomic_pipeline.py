@@ -830,7 +830,7 @@ class GenomicPipelineTest(BaseTestCase):
         test_set_members = self.member_dao.get_all()
 
         # Run the GC Metrics Reconciliation
-        genomic_pipeline.reconcile_metrics()  # run_id = 2
+        genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 2
         gc_metrics = self.metrics_dao.get_all()
 
         # Test the gc_metrics were updated with reconciliation data
@@ -839,6 +839,25 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(set_member.biobankId, metric_record.biobankId)
             self.assertEqual(set_member.id, metric_record.genomicSetMemberId)
             self.assertEqual(2, metric_record.reconcileManifestJobRunId)
+
+        run_obj = self.job_run_dao.get(2)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_gc_metrics_reconciliation_vs_sequencing(self):
+        # Create the fake Google Cloud CSV files to ingest
+        self._create_fake_datasets_for_gc_tests(5)
+        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        self._create_ingestion_test_file('GC_AoU_SEQ_TestDataManifest.csv',
+                                         bucket_name)
+
+        # Run the GC Metrics Ingestion workflow
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+        gc_metrics = self.metrics_dao.get_all()
+
+        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 2
+
+        # TODO: Test the gc_metrics were updated with reconciliation data
 
         run_obj = self.job_run_dao.get(2)
 

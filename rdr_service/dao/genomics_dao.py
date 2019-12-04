@@ -513,13 +513,16 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 .all()
             )
 
-    def update_reconciled(self, metric_obj, member_id, run_id):
-        with self.session() as session:
-            return self._update_reconciled_with_session(session, metric_obj,
-                                                        member_id, run_id)
+    def get_null_seq_files(self, biobank_id_list):
+        pass
 
-    def _update_reconciled_with_session(self, session, metric_obj,
-                                        member_id, run_id):
+    def update_manifest_reconciled(self, metric_obj, member_id, run_id):
+        with self.session() as session:
+            return self._update_manifest_reconciled_with_session(session, metric_obj,
+                                                                 member_id, run_id)
+
+    def _update_manifest_reconciled_with_session(self, session, metric_obj,
+                                                 member_id, run_id):
         """
         Updates the record with the reconciliation data.
         :param metric_obj:

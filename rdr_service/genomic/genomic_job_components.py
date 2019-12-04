@@ -300,6 +300,9 @@ class GenomicReconciler:
 
         self.run_id = run_id
 
+        self.bucket_name = None
+        self.archive_folder = None
+
         # Dao components
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
@@ -312,7 +315,7 @@ class GenomicReconciler:
             for metric in unreconciled_metrics:
                 member = self._lookup_member(metric.biobankId)
                 results.append(
-                    self.metrics_dao.update_reconciled(
+                    self.metrics_dao.update_manifest_reconciled(
                         metric, member.id, self.run_id)
                 )
             return GenomicSubProcessResult.SUCCESS \
@@ -321,5 +324,39 @@ class GenomicReconciler:
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
+    def reconcile_metrics_to_sequencing(self, bucket_name):
+        """ The main method for the metrics vs. sequencing reconciliation """
+        try:
+            file_list = self._get_sequence_files(bucket_name)
+            #
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR
+
     def _lookup_member(self, biobank_id):
         return self.member_dao.get_id_with_biobank_id(biobank_id)
+
+    def _get_sequence_files(self, bucket_name):
+        try:
+            files = list_blobs('/' + bucket_name)
+            naming_convention = r"^gc_sequencing_T\d*\.txt$"
+            files = [s.name for s in files
+                     if self.archive_folder not in s.name.lower()
+                     if re.search(naming_convention,
+                                  s.name.split('/')[-1].lower())
+                     ]
+            if not files:
+                logging.info(f'No sequencing files in cloud bucket {bucket_name}')
+                return GenomicSubProcessResult.NO_FILES
+            return files
+        except FileNotFoundError:
+            pass
+
+    def _create_recon_queue(self, seq_file_list):
+        pass
+
+    def _lookup_null_sequence_metrics(self):
+        pass
+
+    def _update_gc_metrics(self, seq_file_name, job_run_id):
+        pass
+
