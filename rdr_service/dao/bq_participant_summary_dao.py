@@ -561,8 +561,7 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None):
 
     # filter test or ghost participants if production
     if app_id == 'all-of-us-rdr-prod':  # or app_id == 'localhost':
-        if ps_bqr.is_ghost_id == 1 or not ps_bqr.hpo or ps_bqr.hpo == 'TEST' or \
-            not ps_bqr.email or '@example.com' in ps_bqr.email:
+        if ps_bqr.is_ghost_id == 1 or ps_bqr.hpo == 'TEST':
             return None
 
     # Since the PDR participant summary is primarily a subset of the Participant Summary, call the full
