@@ -1,4 +1,8 @@
 import http.client
+
+from rdr_service.model.participant import Participant
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.participant_dao import ParticipantDao
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -7,12 +11,15 @@ class ParticipantApiTest(BaseTestCase):
         super(ParticipantApiTest, self).setUp()
         provider_link = {"primary": False, "organization": {"reference": "columbia"}}
         self.participant = {"providerLink": [provider_link]}
+        self.participant_2 = {"externalId": 12345}
         self.provider_link_2 = {"primary": True, "organization": {"reference": "Organization/PITT"}}
+        self.summary_dao = ParticipantSummaryDao()
+        self.dao = ParticipantDao()
 
     def tearDown(self):
         BaseTestCase.switch_auth_user('example@example.com', 'example')
 
-    def test_one_partner_cannot_see_other(self):
+    def test_one_partner_cannot_see_others_participant(self):
         vibrent_participant_list = []
         carevo_participant_list = []
 
@@ -51,6 +58,30 @@ class ParticipantApiTest(BaseTestCase):
         path = "Participant/%s" % participant_id
         # carevo can update
         self.send_put(path, participant, headers={"If-Match": 'W/"1"'})
+
+        # test hpro can get all participants
+        BaseTestCase.switch_auth_user('example@hpro.com', 'healthpro')
+        vibrent_participant_list.extend(carevo_participant_list)
+        self.assertEqual(len(vibrent_participant_list), 6)
+        for i in vibrent_participant_list:
+            self.send_get("Participant/{}".format(i))
+
+
+    def test_cannot_get_summary(self):
+        BaseTestCase.switch_auth_user('example@spellman.com', 'vibrent')
+        participant_id = 22
+        self.dao.insert(Participant(participantId=participant_id, biobankId=2))
+        refetched = self.dao.get(participant_id)
+        self.summary_dao.insert(self.participant_summary(refetched))
+
+        BaseTestCase.switch_auth_user('example@care.com', 'careevolution')
+        # we dont return bad request for participant summary, we filter by participant origin
+        response = self.send_get("ParticipantSummary?participantId={}".format(participant_id))
+        self.assertEqual(len(response['entry']), 0)
+
+        BaseTestCase.switch_auth_user('example@spellman.com', 'vibrent')
+        response = self.send_get("ParticipantSummary?participantId={}".format(participant_id))
+        self.assertEqual(len(response['entry']), 1)
 
     def test_update_hpro_can_edit(self):
         BaseTestCase.switch_auth_user('example@care.com', 'careevolution')

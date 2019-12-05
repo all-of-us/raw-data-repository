@@ -71,7 +71,8 @@ class ParticipantDao(UpdatableDao):
         with self.session() as session:
             obj = self.get_with_session(session, id_)
         if obj:
-            if obj.participantOrigin != get_account_origin_id():
+            client = get_account_origin_id()
+            if obj.participantOrigin != client and client in ORIGINATING_SOURCES:
                 raise BadRequest('Can not retrieve participant from a different origin')
             return obj
 
