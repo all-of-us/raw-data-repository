@@ -8,11 +8,11 @@ import csv
 import logging
 import re
 
-from rdr_service.api_util import list_blobs
 from rdr_service.api_util import (
     open_cloud_file,
     copy_cloud_file,
-    delete_cloud_file
+    delete_cloud_file,
+    list_blobs
 )
 from rdr_service.participant_enums import GenomicSubProcessResult
 from rdr_service.dao.genomics_dao import (
@@ -291,21 +291,24 @@ class GenomicFileMover:
             copy_cloud_file(source_path, archive_path)
             delete_cloud_file(source_path)
         except FileNotFoundError:
-            logging.ERROR(f"No file found at '{file_obj.filePath}'")
+            logging.error(f"No file found at '{file_obj.filePath}'")
 
 
 class GenomicReconciler:
     """ This component handles reconciliation between genomic datasets """
-    def __init__(self, run_id):
+    def __init__(self, run_id, archive_folder=None, file_mover=None):
 
         self.run_id = run_id
 
         self.bucket_name = None
-        self.archive_folder = None
+        self.archive_folder = archive_folder
 
         # Dao components
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
+
+        # Other components
+        self.file_mover = file_mover
 
     def reconcile_metrics_to_manifest(self):
         """ The main method for the metrics vs. manifest reconciliation """
@@ -326,11 +329,33 @@ class GenomicReconciler:
 
     def reconcile_metrics_to_sequencing(self, bucket_name):
         """ The main method for the metrics vs. sequencing reconciliation """
-        try:
-            file_list = self._get_sequence_files(bucket_name)
-            #
-        except RuntimeError:
-            return GenomicSubProcessResult.ERROR
+        file_list = self._get_sequence_files(bucket_name)
+        if file_list == GenomicSubProcessResult.NO_FILES:
+            logging.info('No sequencing files to reconcile.')
+            return file_list
+        else:
+            # iterate over seq file list and update metrics
+            results = []
+            for seq_file_name in file_list:
+                logging.info(f'Reconciling Sequencing File: {seq_file_name}')
+                # TODO: make this return better
+                seq_biobank_id, short_name = self._parse_seq_filename(
+                    seq_file_name)
+                if seq_biobank_id == GenomicSubProcessResult.INVALID_FILE_NAME:
+                    logging.info(f'Filename unable to be parsed: f{short_name}')
+                    return seq_biobank_id
+                else:
+                    metric_obj = self._get_null_sequence_metrics_for_biobank_id(
+                        seq_biobank_id)
+                    if metric_obj:
+                        results.append(
+                            self._update_gc_metrics(metric_obj, short_name,
+                                                    self.run_id)
+                        )
+                    self.file_mover.archive_file()
+            return GenomicSubProcessResult.SUCCESS \
+                if GenomicSubProcessResult.ERROR not in results \
+                else GenomicSubProcessResult.ERROR
 
     def _lookup_member(self, biobank_id):
         return self.member_dao.get_id_with_biobank_id(biobank_id)
@@ -338,25 +363,33 @@ class GenomicReconciler:
     def _get_sequence_files(self, bucket_name):
         try:
             files = list_blobs('/' + bucket_name)
-            naming_convention = r"^gc_sequencing_T\d*\.txt$"
+            # TODO: naming_convention is not known yet
+            naming_convention = r"^gc_sequencing_t\d*\.txt$"
             files = [s.name for s in files
                      if self.archive_folder not in s.name.lower()
                      if re.search(naming_convention,
-                                  s.name.split('/')[-1].lower())
-                     ]
+                                  s.name.lower())]
             if not files:
                 logging.info(f'No sequencing files in cloud bucket {bucket_name}')
                 return GenomicSubProcessResult.NO_FILES
             return files
         except FileNotFoundError:
-            pass
+            return GenomicSubProcessResult.ERROR
 
-    def _create_recon_queue(self, seq_file_list):
-        pass
+    def _parse_seq_filename(self, filename):
+        # TODO: naming_convention is not known yet
+        #shortened = filename.split('/')[-1]
+        shortened = filename  # cloud not returning full path?
+        try:
+            return shortened.lower().split('_')[-1].split('.')[0][1:], shortened
+        except IndexError:
+            return GenomicSubProcessResult.INVALID_FILE_NAME, shortened
 
-    def _lookup_null_sequence_metrics(self):
-        pass
+    def _get_null_sequence_metrics_for_biobank_id(self, biobank_id):
+        return self.metrics_dao.get_null_seq_metrics(biobank_id)
 
-    def _update_gc_metrics(self, seq_file_name, job_run_id):
-        pass
+    def _update_gc_metrics(self, metric_obj, seq_file_name, job_run_id):
+        return self.metrics_dao.update_metrics_with_seq_file(metric_obj,
+                                                             seq_file_name,
+                                                             job_run_id)
 

@@ -845,19 +845,47 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_gc_metrics_reconciliation_vs_sequencing(self):
-        # Create the fake Google Cloud CSV files to ingest
+        # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(5)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         self._create_ingestion_test_file('GC_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name)
-
-        # Run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
-        gc_metrics = self.metrics_dao.get_all()
+
+        # Test the reconciliation process
+        # TODO: naming convention TBD
+        sequencing_test_files = (
+            'GC_sequencing_T6.txt',
+            'GC_sequencing_T7.txt',
+            'GC_sequencing_T8.txt',
+            'GC_sequencing_T9.txt',
+            'GC_sequencing_T10.txt',
+        )
+        for f in sequencing_test_files:
+            self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
 
         genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 2
 
-        # TODO: Test the gc_metrics were updated with reconciliation data
+        gc_metrics = self.metrics_dao.get_all()
+        gc_metrics.sort(key=lambda x: int(x.biobankId))
+
+        # Test the gc_metrics were updated with reconciliation data
+        for seq_file, record in zip(sequencing_test_files, gc_metrics):
+            self.assertEqual(seq_file
+                             , record.sequencingFileName)
+            self.assertEqual(2, record.reconcileSequencingJobRunId)
+
+        # Test files were moved to archive OK
+        bucket_list = list_blobs('/' + bucket_name)
+        archive_files = [s.name.split('/')[1] for s in bucket_list
+                         if s.name.lower().startswith(
+                config.GENOMIC_GC_PROCESSED_FOLDER_NAME)]
+        bucket_files = [s.name for s in bucket_list
+                        if s.name.lower().endswith('.txt')]
+
+        for f in sequencing_test_files:
+            self.assertNotIn(f, bucket_files)
+            self.assertIn(f, archive_files)
 
         run_obj = self.job_run_dao.get(2)
 
