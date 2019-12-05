@@ -7,17 +7,17 @@ from rdr_service.dao.workbench_dao import WorkbenchWorkspaceDao, WorkbenchResear
 
 class WorkbenchWorkspaceApi(BaseApi):
     def __init__(self):
-        super(WorkbenchWorkspaceApi, self).__init__(WorkbenchWorkspaceDao(), get_returns_children=True)
+        super().__init__(WorkbenchWorkspaceDao(), get_returns_children=True)
 
     @app_util.auth_required(WORKBENCH)
     def post(self):
-        return super(WorkbenchWorkspaceApi, self).post()
+        return super().post()
 
 
 class WorkbenchResearcherApi(BaseApi):
     def __init__(self):
-        super(WorkbenchResearcherApi, self).__init__(WorkbenchResearcherDao(), get_returns_children=True)
+        super().__init__(WorkbenchResearcherDao(), get_returns_children=True)
 
     @app_util.auth_required(WORKBENCH)
     def post(self):
-        return super(WorkbenchResearcherApi, self).post()
+        return super().post()

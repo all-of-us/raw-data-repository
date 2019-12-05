@@ -6,7 +6,7 @@ from rdr_service.participant_enums import WorkbenchWorkspaceUserRole
 
 class WorkbenchApiTest(BaseTestCase):
     def setUp(self):
-        super(WorkbenchApiTest, self).setUp(with_data=False)
+        super().setUp(with_data=False)
 
     def test_create_and_update_researchers(self):
         # test create new

@@ -23,7 +23,7 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
 
 class WorkbenchWorkspaceDao(UpdatableDao):
     def __init__(self):
-        super(WorkbenchWorkspaceDao, self).__init__(WorkbenchWorkspace, order_by_ending=["id"])
+        super().__init__(WorkbenchWorkspace, order_by_ending=["id"])
 
     def get_id(self, obj):
         return obj.id
@@ -136,7 +136,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
 class WorkbenchWorkspaceHistoryDao(UpdatableDao):
     def __init__(self):
-        super(WorkbenchWorkspaceHistoryDao, self).__init__(WorkbenchWorkspaceHistory, order_by_ending=["id"])
+        super().__init__(WorkbenchWorkspaceHistory, order_by_ending=["id"])
 
     def get_id(self, obj):
         return obj.id
@@ -151,7 +151,7 @@ class WorkbenchWorkspaceHistoryDao(UpdatableDao):
 
 class WorkbenchResearcherDao(UpdatableDao):
     def __init__(self):
-        super(WorkbenchResearcherDao, self).__init__(WorkbenchResearcher, order_by_ending=["id"])
+        super().__init__(WorkbenchResearcher, order_by_ending=["id"])
 
     def get_id(self, obj):
         return obj.id
@@ -256,7 +256,7 @@ class WorkbenchResearcherDao(UpdatableDao):
 
 class WorkbenchResearcherHistoryDao(UpdatableDao):
     def __init__(self):
-        super(WorkbenchResearcherHistoryDao, self).__init__(WorkbenchResearcherHistory, order_by_ending=["id"])
+        super().__init__(WorkbenchResearcherHistory, order_by_ending=["id"])
 
     def get_researcher_history_by_user_source_id(self, user_source_id):
         with self.session() as session:
