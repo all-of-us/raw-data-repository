@@ -6,12 +6,11 @@ from rdr_service.dao.participant_dao import ParticipantDao
 from tests.helpers.unittest_base import BaseTestCase
 
 
-class ParticipantApiTest(BaseTestCase):
+class ParticipantDataSegmentTest(BaseTestCase):
     def setUp(self):
-        super(ParticipantApiTest, self).setUp()
+        super().setUp()
         provider_link = {"primary": False, "organization": {"reference": "columbia"}}
         self.participant = {"providerLink": [provider_link]}
-        self.participant_2 = {"externalId": 12345}
         self.provider_link_2 = {"primary": True, "organization": {"reference": "Organization/PITT"}}
         self.summary_dao = ParticipantSummaryDao()
         self.dao = ParticipantDao()

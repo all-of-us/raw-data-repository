@@ -67,7 +67,7 @@ class ParticipantDao(UpdatableDao):
         self.organization_dao = OrganizationDao()
         self.site_dao = SiteDao()
 
-    def get(self, id_):
+    def get(self, id_: int) -> object:
         with self.session() as session:
             obj = self.get_with_session(session, id_)
         if obj:
