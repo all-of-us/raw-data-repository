@@ -192,10 +192,10 @@ jobs:
             pyenv global 3.7.0
       - run:
           name: upgrade alembic migration
-          environment:
-            PYTHONPATH: /home/circleci/all-of-us/raw-data-repository/
           working_directory: /home/circleci/all-of-us/raw-data-repository/rdr_service/
-          command:  python -m tools alembic --project pmi-drc-api-test upgrade head
+          command: | 
+            export PYTHONPATH=/home/circleci/all-of-us/raw-data-repository/
+            python -m tools alembic --project pmi-drc-api-test upgrade head
       - save_cache:
           key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
           paths:
