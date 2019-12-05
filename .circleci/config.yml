@@ -60,7 +60,7 @@ jobs:
       - run: pip install --upgrade pip
       - run: pip install --upgrade httplib2 jira oauth2client parallel pylint isort==4.3.8
       - run: pip install -I alembic==0.9.1
-      - run: ./ci/test_python2.sh
+      - run: ./ci/test.sh
       - save_cache:
           key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
           paths:
@@ -180,8 +180,6 @@ jobs:
       - run: pip install --upgrade httplib2 jira oauth2client pylint isort==4.3.8
       - run: pip install -I alembic==0.9.1
       - run: ./ci/setup.sh
-
-      - run: pip install -r requirements.txt # installs google libraries
       - run: wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -O cloud_sql_proxy # downloads the gcp
       - run: chmod +x cloud_sql_proxy # makes proxy executable
       - run: sudo ln -s ~/cloud_sql_proxy /usr/local/bin/cloud_sql_proxy # link to where the alembic script is looking
@@ -189,8 +187,11 @@ jobs:
           name: activate credentials
           working_directory: ~/all-of-us/raw-data-repository/
           command: |
+            pyenv global 2.7.12 #stupid Google
             ./ci/activate_creds.sh ~/gcloud-credentials.key
+            pyenv global 3.7.0
       - run:
+          name: upgrade alembic migration
           environment:
             PYTHONPATH: ~/all-of-us/raw-data-repository/
           working_directory: ~/all-of-us/raw-data-repository/rdr_service/
