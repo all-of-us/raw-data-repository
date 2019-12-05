@@ -9,7 +9,7 @@ from werkzeug.exceptions import BadRequest
 
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 
-from rdr_service.app_util import get_participant_origin_id
+from rdr_service.app_util import get_account_origin_id
 from rdr_service import storage
 from rdr_service import clock, config
 from rdr_service.code_constants import (
@@ -593,7 +593,7 @@ def _validate_consent_pdfs(resource):
         raise ValueError(f'Expected QuestionnaireResponse for "resourceType" in {resource}.')
 
     # We now lookup up consent bucket names by participant origin id.
-    p_origin = get_participant_origin_id()
+    p_origin = get_account_origin_id()
     consent_bucket_config = config.getSettingJson(config.CONSENT_PDF_BUCKET)
     # If we don't match the origin id, just return the first bucket in the dict.
     try:
