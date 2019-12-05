@@ -102,7 +102,10 @@ class _BQModuleSchema(BQSchema):
                 field['enum'] = None
                 fields.append(field)
 
-            return fields
+            # There seems to be duplicate column definitions we need to remove in some of the modules.
+            tmpflds = [i for n, i in enumerate(fields) if i not in fields[n + 1:]]
+
+            return tmpflds
 
 
 #
