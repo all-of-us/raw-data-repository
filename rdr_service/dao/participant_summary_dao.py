@@ -702,10 +702,6 @@ class ParticipantSummaryDao(UpdatableDao):
 
     def to_client_json(self, model):
         result = model.asdict()
-        origin = result['participantOrigin']
-        client = self.get_client_id()
-        if client in ORIGINATING_SOURCES and origin != client:
-            return None
         # Participants that withdrew more than 48 hours ago should have fields other than
         # WITHDRAWN_PARTICIPANT_FIELDS cleared.
         if model.withdrawalStatus == WithdrawalStatus.NO_USE and (
