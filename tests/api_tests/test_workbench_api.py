@@ -131,7 +131,7 @@ class WorkbenchApiTest(BaseTestCase):
 
         self.assertEqual(results[2].userSourceId, 1)
         self.assertEqual(results[2].givenName, 'string2')
-        self.assertEqual(results[2].workbenchInstitutionalAffiliations[1].institution, 'string22')
+        self.assertEqual(len(results[2].workbenchInstitutionalAffiliations), 2)
 
     def test_create_and_update_workspace(self):
         # create researchers first
