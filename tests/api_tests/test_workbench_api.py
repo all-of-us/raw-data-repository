@@ -309,8 +309,12 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[1].workspaceSourceId, 1)
         self.assertEqual(results[1].name, 'string2')
-        self.assertEqual(results[1].workbenchWorkspaceUser[0].userId, 0)
-        self.assertEqual(results[1].workbenchWorkspaceUser[1].role, WorkbenchWorkspaceUserRole.WRITER)
+        if results[1].workbenchWorkspaceUser[0].userId == 0:
+            self.assertEqual(results[1].workbenchWorkspaceUser[0].role, WorkbenchWorkspaceUserRole.READER)
+            self.assertEqual(results[1].workbenchWorkspaceUser[1].role, WorkbenchWorkspaceUserRole.WRITER)
+        else:
+            self.assertEqual(results[1].workbenchWorkspaceUser[0].role, WorkbenchWorkspaceUserRole.WRITER)
+            self.assertEqual(results[1].workbenchWorkspaceUser[1].role, WorkbenchWorkspaceUserRole.READER)
 
         workspace_history_dao = WorkbenchWorkspaceHistoryDao()
         results = workspace_history_dao.get_all_with_children()
@@ -323,5 +327,9 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[1].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[2].workspaceSourceId, 1)
         self.assertEqual(results[2].name, 'string2')
-        self.assertEqual(results[2].workbenchWorkspaceUser[0].userId, 0)
-        self.assertEqual(results[2].workbenchWorkspaceUser[1].role, WorkbenchWorkspaceUserRole.WRITER)
+        if results[2].workbenchWorkspaceUser[0].userId == 0:
+            self.assertEqual(results[2].workbenchWorkspaceUser[0].role, WorkbenchWorkspaceUserRole.READER)
+            self.assertEqual(results[2].workbenchWorkspaceUser[1].role, WorkbenchWorkspaceUserRole.WRITER)
+        else:
+            self.assertEqual(results[2].workbenchWorkspaceUser[0].role, WorkbenchWorkspaceUserRole.WRITER)
+            self.assertEqual(results[2].workbenchWorkspaceUser[1].role, WorkbenchWorkspaceUserRole.READER)
