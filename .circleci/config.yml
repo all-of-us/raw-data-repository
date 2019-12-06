@@ -179,7 +179,6 @@ jobs:
       - run: pip install --upgrade pip
       - run: pip install --upgrade httplib2 jira oauth2client pylint isort==4.3.8
       - run: pip install -I alembic==0.9.1
-      - run: ./ci/setup.sh
       - run: wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -O cloud_sql_proxy # downloads the gcp
       - run: chmod +x cloud_sql_proxy # makes proxy executable
       - run: sudo ln -s ~/cloud_sql_proxy /usr/local/bin/cloud_sql_proxy # link to where the alembic script is looking
@@ -191,11 +190,15 @@ jobs:
             ./ci/activate_creds.sh ~/gcloud-credentials.key
             pyenv global 3.7.0
       - run:
-          name: upgrade alembic migration
-          working_directory: /home/circleci/all-of-us/raw-data-repository/rdr_service/
-          command: | 
-            export PYTHONPATH=$PYTHONPATH:/home/circleci/all-of-us/raw-data-repository/
+          command: |
+            trap '[[ "$(jobs -p)" ]] && kill $(jobs -p)' EXIT
+            python -m venv venv3
             source venv3/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+            export CLOUDSDK_CORE_DISABLE_PROMPTS=1
+            export PYTHONPATH=$PYTHONPATH:/home/circleci/all-of-us/raw-data-repository/
+            cd rdr_service
             python -m tools alembic --project pmi-drc-api-test upgrade head
       - save_cache:
           key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
