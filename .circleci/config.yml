@@ -181,7 +181,10 @@ jobs:
       - run: pip install -I alembic==0.9.1
       - run: wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -O cloud_sql_proxy # downloads the gcp
       - run: chmod +x cloud_sql_proxy # makes proxy executable
-      - run: sudo ln -s ~/cloud_sql_proxy /usr/local/bin/cloud_sql_proxy # link to where the alembic script is looking
+      - run: 
+          command: |
+            sudo ln -s ~/cloud_sql_proxy /usr/local/bin/cloud_sql_proxy # link to where the alembic script is looking
+            export CLOUDSDK_CORE_DISABLE_PROMPTS=1
       - run:
           name: activate credentials
           working_directory: ~/all-of-us/raw-data-repository/
@@ -196,7 +199,6 @@ jobs:
             source venv3/bin/activate
             pip install --upgrade pip
             pip install -r requirements.txt
-            export CLOUDSDK_CORE_DISABLE_PROMPTS=1
             export PYTHONPATH=$PYTHONPATH:/home/circleci/all-of-us/raw-data-repository/
             cd rdr_service
             python -m tools alembic --project pmi-drc-api-test upgrade head
