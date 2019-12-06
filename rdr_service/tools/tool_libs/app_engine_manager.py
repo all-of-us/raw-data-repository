@@ -18,7 +18,7 @@ from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, GCP_APP_CONFIG_MAP
 from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
     gcp_application_default_creds_exist
-from tools.tool_libs.alembic import AlembicManagerClass
+from rdr_service.tools.tool_libs.alembic import AlembicManagerClass
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -550,7 +550,7 @@ def run():
     parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
     parser.add_argument("--debug", help="Enable debug output", default=False, action="store_true")  # noqa
     parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
-    parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
+    parser.add_argument("--project", help="gcp project name", required=True)  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
     parser.add_argument("--git-project", help="path to git project root directory", default=None)  # noqa
@@ -593,10 +593,6 @@ def run():
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-
-        if not args.project or args.project == 'localhost':
-            _logger.error('unable to deploy without a project.')
-            exit(1)
 
         # determine the git project root directory.
         if not args.git_project:
