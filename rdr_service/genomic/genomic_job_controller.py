@@ -106,7 +106,7 @@ class GenomicJobController:
             self.job_run.id, self.archive_folder_name, self.file_mover
         )
         try:
-            result = self.reconciler.reconcile_metrics_to_sequencing(self.bucket_name)
+            return self.reconciler.reconcile_metrics_to_sequencing(self.bucket_name)
 
         except RuntimeError:
             return GenomicSubProcessResult.ERROR

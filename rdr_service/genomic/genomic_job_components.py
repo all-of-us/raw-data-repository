@@ -276,17 +276,18 @@ class GenomicFileMover:
     def __init__(self, archive_folder=None):
         self.archive_folder = archive_folder
 
-    def archive_file(self, file_obj):
+    def archive_file(self, file_obj=None, file_path=None):
         """
         This method moves a file to an archive
         by copy and delete
         :param file_obj: a genomic_file_processed object to move
         :return:
         """
-        source_path = file_obj.filePath
-        archive_path = source_path.replace(file_obj.fileName,
+        source_path = file_obj.filePath if file_obj else file_path
+        file_name = file_obj.fileName if file_obj else file_path.split('/')[-1]
+        archive_path = source_path.replace(file_name,
                                            f"{self.archive_folder}/"
-                                           f"{file_obj.fileName}")
+                                           f"{file_name}")
         try:
             copy_cloud_file(source_path, archive_path)
             delete_cloud_file(source_path)
@@ -328,7 +329,10 @@ class GenomicReconciler:
             return GenomicSubProcessResult.ERROR
 
     def reconcile_metrics_to_sequencing(self, bucket_name):
-        """ The main method for the metrics vs. sequencing reconciliation """
+        """ The main method for the metrics vs. sequencing reconciliation
+        :param bucket_name: the bucket to look for sequencin files
+        :return: result code
+        """
         file_list = self._get_sequence_files(bucket_name)
         if file_list == GenomicSubProcessResult.NO_FILES:
             logging.info('No sequencing files to reconcile.')
@@ -338,7 +342,6 @@ class GenomicReconciler:
             results = []
             for seq_file_name in file_list:
                 logging.info(f'Reconciling Sequencing File: {seq_file_name}')
-                # TODO: make this return better
                 seq_biobank_id, short_name = self._parse_seq_filename(
                     seq_file_name)
                 if seq_biobank_id == GenomicSubProcessResult.INVALID_FILE_NAME:
@@ -348,19 +351,33 @@ class GenomicReconciler:
                     metric_obj = self._get_null_sequence_metrics_for_biobank_id(
                         seq_biobank_id)
                     if metric_obj:
+                        # Updates the relevant fields for reconciliation
+                        # sequence files for non-existent GC metrics are ignored
                         results.append(
                             self._update_gc_metrics(metric_obj, short_name,
                                                     self.run_id)
                         )
-                    self.file_mover.archive_file()
+                        # Archive the file
+                        seq_file_path = "/" + bucket_name + "/" + seq_file_name
+                        self.file_mover.archive_file(file_path=seq_file_path)
             return GenomicSubProcessResult.SUCCESS \
                 if GenomicSubProcessResult.ERROR not in results \
                 else GenomicSubProcessResult.ERROR
 
     def _lookup_member(self, biobank_id):
+        """
+        Calls the DAO to query for a genomic set member from a biobank ID
+        :param biobank_id:
+        :return: GenomicSetMember object
+        """
         return self.member_dao.get_id_with_biobank_id(biobank_id)
 
     def _get_sequence_files(self, bucket_name):
+        """
+        Checks the bucket for sequencing files based on naming convention
+        :param bucket_name:
+        :return: file list or result code
+        """
         try:
             files = list_blobs('/' + bucket_name)
             # TODO: naming_convention is not known yet
@@ -370,15 +387,22 @@ class GenomicReconciler:
                      if re.search(naming_convention,
                                   s.name.lower())]
             if not files:
-                logging.info(f'No sequencing files in cloud bucket {bucket_name}')
+                logging.info(
+                    f'No valid sequencing files in bucket {bucket_name}'
+                )
                 return GenomicSubProcessResult.NO_FILES
             return files
         except FileNotFoundError:
             return GenomicSubProcessResult.ERROR
 
     def _parse_seq_filename(self, filename):
+        """
+        Takes a sequencing filename and returns the biobank id.
+        :param filename:
+        :return: tuple: biobank_id and shortened filename
+        """
         # TODO: naming_convention is not known yet
-        #shortened = filename.split('/')[-1]
+        # shortened = filename.split('/')[-1]
         shortened = filename  # cloud not returning full path?
         try:
             return shortened.lower().split('_')[-1].split('.')[0][1:], shortened
@@ -386,9 +410,23 @@ class GenomicReconciler:
             return GenomicSubProcessResult.INVALID_FILE_NAME, shortened
 
     def _get_null_sequence_metrics_for_biobank_id(self, biobank_id):
+        """
+        Calls the metrics DAO
+        :param biobank_id:
+        :return: list of GenomicGCValidationMetrics
+        objects with null sequencing_file_name
+        """
         return self.metrics_dao.get_null_seq_metrics(biobank_id)
 
     def _update_gc_metrics(self, metric_obj, seq_file_name, job_run_id):
+        """
+        Uses metrics DAO to update GenomicGCValidationMetrics object
+        with sequencing reconciliation data
+        :param metric_obj: the object to update
+        :param seq_file_name:
+        :param job_run_id:
+        :return: query result
+        """
         return self.metrics_dao.update_metrics_with_seq_file(metric_obj,
                                                              seq_file_name,
                                                              job_run_id)
