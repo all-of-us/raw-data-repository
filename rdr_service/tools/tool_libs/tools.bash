@@ -49,8 +49,18 @@ _python()
             ;;
         mysql)
             # These are options specific to this tool.
-            local toolopts="--create-cloud-instance --change-passwords"
+            local toolopts="export"
             COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
+            return 0
+            ;;
+        export)
+            # mysql list command
+            if echo ${COMP_WORDS[@]} | grep -w "mysql" > /dev/null; then
+              local toolopts="--help --database --bucket-uri --format"
+              COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
+            else
+              COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
+            fi
             return 0
             ;;
         alembic)
@@ -68,7 +78,7 @@ _python()
         deploy)
             # app-engine deploy command
             if echo ${COMP_WORDS[@]} | grep -w "app-engine" > /dev/null; then
-              local toolopts="--git-branch --deploy-as --services --promote --quiet"
+              local toolopts="--help --git-branch --deploy-as --services --promote --quiet"
               COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
             else
               COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
@@ -78,7 +88,7 @@ _python()
         list)
             # app-engine list command
             if echo ${COMP_WORDS[@]} | grep -w "app-engine" > /dev/null; then
-              local toolopts="--running-only"
+              local toolopts="--help --running-only"
               COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
             else
               COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
@@ -88,7 +98,7 @@ _python()
         split-traffic)
             # app-engine split-traffic command
             if echo ${COMP_WORDS[@]} | grep -w "app-engine" > /dev/null; then
-              local toolopts="--quiet --service --versions --split-by"
+              local toolopts="--help --quiet --service --versions --split-by"
               COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
             else
               COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
@@ -98,7 +108,7 @@ _python()
         config)
             # app-engine split-traffic command
             if echo ${COMP_WORDS[@]} | grep -w "app-engine" > /dev/null; then
-              local toolopts="--key --compare --update --to-file"
+              local toolopts="--help --key --compare --update --to-file"
               COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
             else
               COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
