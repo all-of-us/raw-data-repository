@@ -26,14 +26,12 @@ class GenomicJobController:
 
     def __init__(self, job_id,
                  bucket_name=GENOMIC_GC_METRICS_BUCKET_NAME,
-                 job_name="genomic_cell_line_metrics",
                  archive_folder_name=GENOMIC_GC_PROCESSED_FOLDER_NAME
                  ):
 
         self.job_id = job_id
         self.bucket_name = getSetting(bucket_name)
         self.archive_folder_name = archive_folder_name
-        self.job_name = job_name
 
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET

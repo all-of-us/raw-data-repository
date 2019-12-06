@@ -342,10 +342,10 @@ class GenomicReconciler:
             results = []
             for seq_file_name in file_list:
                 logging.info(f'Reconciling Sequencing File: {seq_file_name}')
-                seq_biobank_id, short_name = self._parse_seq_filename(
+                seq_biobank_id = self._parse_seq_filename(
                     seq_file_name)
                 if seq_biobank_id == GenomicSubProcessResult.INVALID_FILE_NAME:
-                    logging.info(f'Filename unable to be parsed: f{short_name}')
+                    logging.info(f'Filename unable to be parsed: f{seq_file_name}')
                     return seq_biobank_id
                 else:
                     metric_obj = self._get_null_sequence_metrics_for_biobank_id(
@@ -354,7 +354,7 @@ class GenomicReconciler:
                         # Updates the relevant fields for reconciliation
                         # sequence files for non-existent GC metrics are ignored
                         results.append(
-                            self._update_gc_metrics(metric_obj, short_name,
+                            self._update_gc_metrics(metric_obj, seq_file_name,
                                                     self.run_id)
                         )
                         # Archive the file
@@ -380,7 +380,7 @@ class GenomicReconciler:
         """
         try:
             files = list_blobs('/' + bucket_name)
-            # TODO: naming_convention is not known yet
+            # TODO: naming_convention is not yet finalized
             naming_convention = r"^gc_sequencing_t\d*\.txt$"
             files = [s.name for s in files
                      if self.archive_folder not in s.name.lower()
@@ -399,15 +399,14 @@ class GenomicReconciler:
         """
         Takes a sequencing filename and returns the biobank id.
         :param filename:
-        :return: tuple: biobank_id and shortened filename
+        :return: biobank_id
         """
-        # TODO: naming_convention is not known yet
-        # shortened = filename.split('/')[-1]
-        shortened = filename  # cloud not returning full path?
+        # TODO: naming_convention is not yet finalized
         try:
-            return shortened.lower().split('_')[-1].split('.')[0][1:], shortened
+            # pull biobank ID from filename
+            return filename.lower().split('_')[-1].split('.')[0][1:]
         except IndexError:
-            return GenomicSubProcessResult.INVALID_FILE_NAME, shortened
+            return GenomicSubProcessResult.INVALID_FILE_NAME
 
     def _get_null_sequence_metrics_for_biobank_id(self, biobank_id):
         """
