@@ -515,7 +515,8 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
 
     def get_metrics_to_reconcile_seq(self, biobank_id):
         """
-        Retrieves all gc metrics with a null sequencing_file_name
+        Retrieves gc metric record with the biobank_id
+        :param: biobank_id
         :return: list of returned GenomicGCValidationMetrics objects
         """
         with self.session() as session:
