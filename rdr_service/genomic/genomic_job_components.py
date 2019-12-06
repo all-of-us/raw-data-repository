@@ -348,7 +348,7 @@ class GenomicReconciler:
                     logging.info(f'Filename unable to be parsed: f{seq_file_name}')
                     return seq_biobank_id
                 else:
-                    metric_obj = self._get_null_sequence_metrics_for_biobank_id(
+                    metric_obj = self._get_sequence_metrics_to_reconcile_for_biobank_id(
                         seq_biobank_id)
                     if metric_obj:
                         # Updates the relevant fields for reconciliation
@@ -408,7 +408,7 @@ class GenomicReconciler:
         except IndexError:
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
-    def _get_null_sequence_metrics_for_biobank_id(self, biobank_id):
+    def _get_sequence_metrics_to_reconcile_for_biobank_id(self, biobank_id):
         """
         Calls the metrics DAO
         :param biobank_id:
