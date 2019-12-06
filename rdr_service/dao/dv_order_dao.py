@@ -237,7 +237,8 @@ class DvOrderDao(UpdatableDao):
 
                 order.id = existing_obj.id
                 order.version = expected_version
-                order.barcode = fhir_resource.extension.get(url=DV_BARCODE_URL).valueString
+                if order.supplierStatus.lower() == "shipped":
+                    order.barcode = fhir_resource.extension.get(url=DV_BARCODE_URL).valueString
 
         return order
 
