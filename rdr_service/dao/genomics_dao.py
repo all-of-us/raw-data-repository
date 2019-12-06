@@ -513,7 +513,7 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 .all()
             )
 
-    def get_null_seq_metrics(self, biobank_id):
+    def get_metrics_to_reconcile_seq(self, biobank_id):
         """
         Retrieves all gc metrics with a null sequencing_file_name
         :return: list of returned GenomicGCValidationMetrics objects
@@ -521,7 +521,6 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
         with self.session() as session:
             return (
                 session.query(GenomicGCValidationMetrics)
-                .filter(GenomicGCValidationMetrics.sequencingFileName == None)
                 .filter(GenomicGCValidationMetrics.biobankId == biobank_id)
                 .first()
             )

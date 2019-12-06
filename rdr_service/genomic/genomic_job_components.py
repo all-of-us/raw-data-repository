@@ -415,7 +415,7 @@ class GenomicReconciler:
         :return: list of GenomicGCValidationMetrics
         objects with null sequencing_file_name
         """
-        return self.metrics_dao.get_null_seq_metrics(biobank_id)
+        return self.metrics_dao.get_metrics_to_reconcile_seq(biobank_id)
 
     def _update_gc_metrics(self, metric_obj, seq_file_name, job_run_id):
         """

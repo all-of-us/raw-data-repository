@@ -889,10 +889,6 @@ class GenomicPipelineTest(BaseTestCase):
             if test_file == 'GC_bad_name.txt' or test_file == 'GC_sequencing_T11.txt':
                 # test bad sequence file name or no gc_metrics is ignored
                 self.assertIn(test_file, bucket_files)
-            elif test_file == 'GC_sequencing_T9.txt':
-                # Test what happens when a file
-                # is in the bucket that has already been processed
-                pass
             else:
                 # test the reconciled data files were moved
                 self.assertNotIn(test_file, bucket_files)
@@ -916,3 +912,42 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(2)
 
         self.assertEqual(GenomicSubProcessResult.NO_FILES, run_obj.runResult)
+
+    def test_duplicate_sequencing_reconciliation_file(self):
+        # Create the fake ingested data
+        self._create_fake_datasets_for_gc_tests(5)
+        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        self._create_ingestion_test_file('GC_AoU_SEQ_TestDataManifest.csv',
+                                         bucket_name)
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+
+        # Test file
+        test_file = 'GC_sequencing_T7.txt'
+        self._write_cloud_csv(test_file, 'attagc', bucket=bucket_name)
+
+        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 2
+
+        self._write_cloud_csv(test_file, 'attagc', bucket=bucket_name)
+
+        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 3
+
+        # Test files were moved to archive OK
+        bucket_list = list(list_blobs('/' + bucket_name))
+        archive_files = [s.name for s in bucket_list
+                         if s.name.lower().startswith(
+                config.GENOMIC_GC_PROCESSED_FOLDER_NAME)]
+        bucket_files = [s.name for s in bucket_list
+                        if s.name.lower().endswith('.txt')]
+
+        # test the reconciled data files were moved
+        self.assertNotIn(test_file, bucket_files)
+        self.assertIn(f'{config.GENOMIC_GC_PROCESSED_FOLDER_NAME}/{test_file}',
+                      archive_files)
+
+        gc_metric_record = self.metrics_dao.get(2)
+        self.assertEqual(test_file, gc_metric_record.sequencingFileName)
+
+        run_obj = self.job_run_dao.get(3)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
