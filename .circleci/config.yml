@@ -193,8 +193,8 @@ jobs:
       - run:
           name: upgrade alembic migration
           working_directory: /home/circleci/all-of-us/raw-data-repository/rdr_service/
-          command: |
-            export PYTHONPATH=/home/circleci/all-of-us/raw-data-repository/
+          command: | 
+            export PYTHONPATH=$PYTHONPATH:/home/circleci/all-of-us/raw-data-repository/
             python -m tools alembic --project pmi-drc-api-test upgrade head
       - save_cache:
           key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
