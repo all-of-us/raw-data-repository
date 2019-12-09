@@ -412,7 +412,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         # check physical measurements
         if 'pm' in ro_summary:
             for pm in ro_summary['pm']:
-                if pm['pm_status_id'] == int(PhysicalMeasurementsStatus.COMPLETED):
+                if pm['pm_status_id'] == int(PhysicalMeasurementsStatus.COMPLETED) or \
+                    (pm['pm_finalized'] and pm['pm_status_id'] != int(PhysicalMeasurementsStatus.CANCELLED)):
                     pm_complete = True
 
         baseline_module_count = dna_sample_count = 0
