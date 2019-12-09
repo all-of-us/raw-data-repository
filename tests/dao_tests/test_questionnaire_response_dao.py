@@ -38,8 +38,8 @@ TIME_3 = datetime.datetime(2016, 1, 3)
 TIME_4 = datetime.datetime(2016, 1, 4)
 
 ANSWERS = {"answers": {}}
-QUESTIONNAIRE_RESOURCE = '{"x": "y"}'
-QUESTIONNAIRE_RESOURCE_2 = '{"x": "z"}'
+QUESTIONNAIRE_RESOURCE = '{"x": "y", "version": "V1"}'
+QUESTIONNAIRE_RESOURCE_2 = '{"x": "z", "version": "V1"}'
 QUESTIONNAIRE_RESPONSE_RESOURCE = '{"resourceType": "QuestionnaireResponse", "a": "b"}'
 QUESTIONNAIRE_RESPONSE_RESOURCE_2 = '{"resourceType": "QuestionnaireResponse", "a": "c"}'
 QUESTIONNAIRE_RESPONSE_RESOURCE_3 = '{"resourceType": "QuestionnaireResponse", "a": "d"}'
@@ -163,8 +163,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         with self.assertRaises(BadRequest):
             self.questionnaire_response_dao.insert(qr)
@@ -178,8 +179,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.extend(self._names_and_email_answers())
         # Answers are there but the participant is not.
@@ -195,8 +197,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=2,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.extend(self._names_and_email_answers())
         with self.assertRaises(BadRequest):
@@ -211,8 +214,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.extend(self._names_and_email_answers())
         with self.assertRaises(Forbidden):
@@ -227,8 +231,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.append(
             QuestionnaireResponseAnswer(
@@ -252,8 +257,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.append(self.FN_ANSWER)
         with self.assertRaises(BadRequest):
@@ -268,8 +274,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.append(self.LN_ANSWER)
         # Both first and last name are required.
@@ -285,8 +292,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.append(self.FN_ANSWER)
         qr.answers.append(self.LN_ANSWER)
@@ -303,8 +311,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.append(self.EMAIL_ANSWER)
         # First and last name are required.
@@ -320,8 +329,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
         # First and last name are required.
@@ -337,8 +347,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.append(self.EMAIL_ANSWER)
         qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
@@ -355,8 +366,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.extend(self._names_and_login_phone_number_answers())
         time = datetime.datetime(2016, 1, 1)
@@ -369,6 +381,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireId=1,
             questionnaireVersion=1,
             participantId=1,
+            questionnaireSemanticVersion='V1',
             resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
             created=time,
             authored=time,
@@ -387,8 +400,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.extend(self._names_and_email_answers())
         time = datetime.datetime(2016, 1, 1)
@@ -401,6 +415,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireId=1,
             questionnaireVersion=1,
             participantId=1,
+            questionnaireSemanticVersion='V1',
             resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
             created=time,
             authored=time,
@@ -419,8 +434,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.append(self.FN_ANSWER)
         qr.answers.append(self.LN_ANSWER)
@@ -436,6 +452,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireId=1,
             questionnaireVersion=1,
             participantId=1,
+            questionnaireSemanticVersion='V1',
             resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
             created=time,
             authored=time,
@@ -457,8 +474,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.extend(self._names_and_email_answers())
         self.questionnaire_response_dao.insert(qr)
@@ -466,8 +484,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2
         )
         qr2.answers.append(
             QuestionnaireResponseAnswer(
@@ -492,8 +511,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
 
         answer_1 = QuestionnaireResponseAnswer(
@@ -519,6 +539,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireId=1,
             questionnaireVersion=1,
             participantId=1,
+            questionnaireSemanticVersion='V1',
             resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
             created=TIME_2,
             authored=TIME_2,
@@ -586,8 +607,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.extend(self._names_and_email_answers())
         self.questionnaire_response_dao.insert(qr)
@@ -606,8 +628,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         answer_1 = QuestionnaireResponseAnswer(
             questionnaireResponseAnswerId=1,
@@ -634,6 +657,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireId=1,
             questionnaireVersion=1,
             participantId=1,
+            questionnaireSemanticVersion='V1',
             resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
             created=TIME_2,
             authored=TIME_2,
@@ -694,8 +718,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
             participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         answer_1 = QuestionnaireResponseAnswer(
             questionnaireResponseAnswerId=1,
@@ -742,6 +767,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireId=2,
             questionnaireVersion=1,
             participantId=1,
+            questionnaireSemanticVersion='V1',
             resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2,
         )
         answer_3 = QuestionnaireResponseAnswer(
@@ -764,6 +790,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireId=1,
             questionnaireVersion=1,
             participantId=1,
+            questionnaireSemanticVersion='V1',
             resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
             created=TIME_2,
             authored=TIME_2,
@@ -782,6 +809,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireId=2,
             questionnaireVersion=1,
             participantId=1,
+            questionnaireSemanticVersion='V1',
             resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE_2, 2),
             created=TIME_3,
             authored=TIME_3,
@@ -817,6 +845,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireId=2,
             questionnaireVersion=1,
             participantId=1,
+            questionnaireSemanticVersion='V1',
             resource=QUESTIONNAIRE_RESPONSE_RESOURCE_3,
         )
         answer_4 = QuestionnaireResponseAnswer(
@@ -847,9 +876,10 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireId=2,
             questionnaireVersion=1,
             participantId=1,
+            questionnaireSemanticVersion='V1',
             resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE_3, 3),
             created=TIME_4,
-            authored=TIME_4,
+            authored=TIME_4
         )
         expected_qr3.answers.append(answer_4)
         self.check_response(expected_qr3)
