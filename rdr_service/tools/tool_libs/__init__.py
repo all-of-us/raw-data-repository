@@ -8,7 +8,7 @@ import random
 
 from rdr_service.config import GoogleCloudDatastoreConfigProvider
 from rdr_service.services.gcp_utils import gcp_activate_sql_proxy, gcp_cleanup, gcp_initialize, gcp_format_sql_instance
-from rdr_service.services.system_utils import remove_pidfile, write_pidfile_or_die, git_project_root
+from rdr_service.services.system_utils import remove_pidfile, write_pidfile_or_die, git_project_root, TerminalColors
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -20,6 +20,7 @@ class GCPEnvConfigObject(object):
 
     project = None
     git_project = None
+    terminal_colors = TerminalColors()
 
     def __init__(self, items):
         """
@@ -38,10 +39,19 @@ class GCPEnvConfigObject(object):
         else:
             _logger.warning("GCPEnvConfigObject: no git project root found.")
 
+        # Turn on terminal colors.
+        clr = self.terminal_colors
+
+        clr.set_default_formatting(clr.bold, clr.custom_fg_color(43))
+        clr.set_default_foreground(clr.custom_fg_color(152))
+        _logger.info('')
+
     def cleanup(self):
         """ Clean up or close everything we need to """
         if self._sql_proxy_process:
             self._sql_proxy_process.terminate()
+        # Turn off terminal colors.
+        _logger.info(self.terminal_colors.reset)
 
     def get_app_config(self):
         """
@@ -133,12 +143,12 @@ class GCPProcessContext(object):
 
     def __init__(self, command, project, account=None, service_account=None):
         """
-    Initialize GCP Context Manager
-    :param command: command name
-    :param project: gcp project name
-    :param account: pmi-ops account
-    :param service_account: gcp iam service account
-    """
+        Initialize GCP Context Manager
+        :param command: command name
+        :param project: gcp project name
+        :param account: pmi-ops account
+        :param service_account: gcp iam service account
+        """
         if not command:
             _logger.error("command not set, aborting.")
             exit(1)
