@@ -166,6 +166,7 @@ jobs:
             sudo chmod 775 /var/log
             sudo chmod 755 /var
             export MYSQL_ROOT_PASSWORD=root
+            export PATH=/usr/local/bin/:$PATH
       - restore_cache:
           key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
