@@ -26,6 +26,10 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
     Generate a Participant Summary BQRecord object
     """
     ro_dao = None
+    _baseline_modules = ['TheBasics', 'OverallHealth', 'Lifestyle']
+    _baseline_sample_test_codes = ["1ED04", "1ED10", "1HEP4", "1PST8", "2PST8", "1SST8", "2SST8",
+                                    "1PS08", "1SS08", "1UR10", "1CFD9", "1PXR2", "1UR90", "2ED10"]
+    _dna_sample_test_codes = ["1ED10", "2ED10", "1ED04", "1SAL", "1SAL2"]
 
     def make_bqrecord(self, p_id, convert_to_enum=False):
         """
@@ -181,8 +185,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         data = dict()
         modules = list()
         consents = list()
-        baseline_modules = config.getSettingList('baseline_ppi_questionnaire_fields',
-                                                     ['TheBasics', 'OverallHealth', 'Lifestyle'])
+
         consent_modules = {
             # module: question code string
             'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
@@ -194,7 +197,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 module_name = self._lookup_code_value(row.codeId, ro_session)
                 modules.append({
                     'mod_module': module_name,
-                    'mod_baseline_module': 1 if module_name in baseline_modules else 0,  # Boolean field
+                    'mod_baseline_module': 1 if module_name in self._baseline_modules else 0,  # Boolean field
                     'mod_authored': row.authored,
                     'mod_created': row.created,
                     'mod_language': row.language,
@@ -205,7 +208,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 # check if this is a module with consents.
                 if module_name not in consent_modules:
                     continue
-                # qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=[module_name, p_id])
+
                 qnans = self._get_module_answers(module_name, p_id)
                 if qnans:
                     qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
@@ -316,31 +319,27 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         """
         data = {}
         orders = list()
-        baseline_tests = config.getSettingList('baseline_sample_test_codes',
-                                           ["1ED04", "1ED10", "1HEP4", "1PST8", "2PST8", "1SST8", "2SST8",
-                                            "1PS08", "1SS08", "1UR10", "1CFD9", "1PXR2", "1UR90", "2ED10"])
-        dna_tests = config.getSettingList('dna_sample_test_codes', ["1ED10", "2ED10", "1ED04", "1SAL", "1SAL2"])
 
         sql = """
-      select bo.biobank_order_id, bo.created, bo.collected_site_id, bo.processed_site_id, bo.finalized_site_id, 
-              bos.test, bos.collected, bos.processed, bos.finalized, bo.order_status,
-              bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed, 
-              bss.status as bb_status, (
-                select count(1) from biobank_dv_order bdo where bdo.biobank_order_id = bo.biobank_order_id
-              ) as dv_order
-        from biobank_order bo inner join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
-                inner join biobank_order_identifier boi on bo.biobank_order_id = boi.biobank_order_id
-                left outer join 
-                  biobank_stored_sample bss on boi.`value` = bss.biobank_order_identifier and bos.test = bss.test
-        where boi.`system` = 'https://www.pmi-ops.org' and bo.participant_id = :pid
-        order by bo.biobank_order_id, bos.test;
-    """
+          select bo.biobank_order_id, bo.created, bo.collected_site_id, bo.processed_site_id, bo.finalized_site_id, 
+                  bos.test, bos.collected, bos.processed, bos.finalized, bo.order_status,
+                  bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed, 
+                  bss.status as bb_status, (
+                    select count(1) from biobank_dv_order bdo where bdo.biobank_order_id = bo.biobank_order_id
+                  ) as dv_order
+            from biobank_order bo inner join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
+                    inner join biobank_order_identifier boi on bo.biobank_order_id = boi.biobank_order_id
+                    left outer join 
+                      biobank_stored_sample bss on boi.`value` = bss.biobank_order_identifier and bos.test = bss.test
+            where boi.`system` = 'https://www.pmi-ops.org' and bo.participant_id = :pid
+            order by bo.biobank_order_id, bos.test;
+        """
 
         cursor = ro_session.execute(sql, {'pid': p_id})
         results = [r for r in cursor]
         # loop through results and create one order record for each biobank_order_id value.
         for row in results:
-            if not filter(lambda order: order['bbo_biobank_order_id'] == row.biobank_order_id, orders):
+            if not list(filter(lambda order: order['bbo_biobank_order_id'] == row.biobank_order_id, orders)):
                 orders.append({
                     'bbo_biobank_order_id': row.biobank_order_id,
                     'bbo_created': row.created,
@@ -365,13 +364,13 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             except IndexError:
                 continue
             # if we haven't added any samples to this order, create an empty list.
-            if 'samples' not in orders[idx]:
+            if 'bbo_samples' not in orders[idx]:
                 orders[idx]['bbo_samples'] = list()
             # append the sample to the order
             orders[idx]['bbo_samples'].append({
                 'bbs_test': row.test,
-                'bbs_baseline_test': 1 if row.test in baseline_tests else 0,  # Boolean field
-                'bbs_dna_test': 1 if row.test in dna_tests else 0,  # Boolean field
+                'bbs_baseline_test': 1 if row.test in self._baseline_sample_test_codes else 0,  # Boolean field
+                'bbs_dna_test': 1 if row.test in self._dna_sample_test_codes else 0,  # Boolean field
                 'bbs_collected': row.collected,
                 'bbs_processed': row.processed,
                 'bbs_finalized': row.finalized,
@@ -396,8 +395,6 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         """
         if 'consents' not in ro_summary:
             return {}
-        baseline_modules = config.getSettingList('baseline_ppi_questionnaire_fields',
-                                                     ['TheBasics', 'OverallHealth', 'Lifestyle'])
 
         study_consent = ehr_consent = dvehr_consent = pm_complete = False
         status = None
@@ -413,24 +410,28 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 dvehr_consent = True
 
         # check physical measurements
-        if 'pm_status_id' in ro_summary and ro_summary['pm_status_id'] == int(PhysicalMeasurementsStatus.COMPLETED):
-            pm_complete = True
+        if 'pm' in ro_summary:
+            for pm in ro_summary['pm']:
+                if pm['pm_status_id'] == int(PhysicalMeasurementsStatus.COMPLETED) or \
+                    (pm['pm_finalized'] and pm['pm_status_id'] != int(PhysicalMeasurementsStatus.CANCELLED)):
+                    pm_complete = True
 
         baseline_module_count = dna_sample_count = 0
         if 'modules' in ro_summary:
             baseline_module_count = len(
-                list(filter(lambda module: module['mod_baseline_module'] == 'true', ro_summary['modules'])))
+                list(filter(lambda module: module['mod_baseline_module'] == 1, ro_summary['modules'])))
         if 'biobank_orders' in ro_summary:
             for order in ro_summary['biobank_orders']:
-                if 'samples' in order:
-                    dna_sample_count += len(list(
-                        filter(lambda sample: sample['bbs_dna_test'] == 'true', order['samples'])))
+                if 'bbo_samples' in order:
+                    dna_sample_count += len(
+                        list(filter(lambda sample: sample['bbs_dna_test'] == 1 and sample['bbs_confirmed'],
+                                    order['bbo_samples'])))
 
         if study_consent:
             status = EnrollmentStatus.INTERESTED
         if ehr_consent or dvehr_consent:
             status = EnrollmentStatus.MEMBER
-        if pm_complete and 'modules' in ro_summary and baseline_module_count == len(baseline_modules) and \
+        if pm_complete and 'modules' in ro_summary and baseline_module_count == len(self._baseline_modules) and \
             dna_sample_count > 0:
             status = EnrollmentStatus.FULL_PARTICIPANT
 

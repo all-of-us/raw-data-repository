@@ -70,7 +70,7 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                 with open(os.path.join(path, 'rural_zipcodes.txt')) as handle:
                     # pylint: disable=unused-variable
                     for count, line in enumerate(handle):
-                        self.rural_zipcodes.append(line.split(',')[1])
+                        self.rural_zipcodes.append(line.split(',')[1].strip())
                 break
 
     def _calculate_ubr(self, ps_bqr):
@@ -132,7 +132,6 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                     # See if we need to import the rural zip code list.
                     if not self.rural_zipcodes:
                         self._import_rural_zipcodes()
-
                     if zipcode in self.rural_zipcodes:
                         data['ubr_geography'] = 1
 
