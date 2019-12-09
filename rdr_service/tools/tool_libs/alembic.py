@@ -42,13 +42,17 @@ class AlembicManagerClass(object):
         Main program process
         :return: Exit code value
         """
-        if not self.gcp_env.activate_sql_proxy(user='alembic'):
+        if not self.gcp_env.activate_sql_proxy(user='alembic', project=self.gcp_env.project):
             return 1
+
+        clr = self.gcp_env.terminal_colors
 
         _logger.info('\nAlembic Process Information:')
         _logger.info('=' * 90)
-        _logger.info('  Target Project : {0}'.format(self.gcp_env.project))
-        _logger.info('  Alembic Command : {0}\n'.format(' '.join(self.alembic_args)))
+        _logger.info('  Target Project : {0}'.format(
+                        clr.fmt(self.gcp_env.project)))
+        _logger.info('  Alembic Command : {0}\n'.format(
+                        clr.fmt(' '.join(self.alembic_args))))
 
         if not self.args.quiet:
             confirm = input('Run alembic command (Y/n)? : ')

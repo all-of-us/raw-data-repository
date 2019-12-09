@@ -78,7 +78,7 @@ _python()
         deploy)
             # app-engine deploy command
             if echo ${COMP_WORDS[@]} | grep -w "app-engine" > /dev/null; then
-              local toolopts="--help --git-branch --deploy-as --services --promote --quiet"
+              local toolopts="--help --git-branch --deploy-as --services --no-promote --quiet"
               COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
             else
               COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )

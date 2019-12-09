@@ -13,7 +13,7 @@ import yaml
 from yaml import Loader as yaml_loader
 
 from rdr_service.services.system_utils import setup_logging, setup_i18n, git_project_root, git_current_branch, \
-    git_checkout_branch, is_git_branch_clean, TerminalColors
+    git_checkout_branch, is_git_branch_clean
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, GCP_APP_CONFIG_MAP
 from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
@@ -164,8 +164,7 @@ class DeployAppClass(object):
         Main program process
         :return: Exit code value
         """
-        clr = TerminalColors()
-        _logger.info('')
+        clr = self.gcp_env.terminal_colors
 
         # Installing the app config makes API calls and needs an oauth token to succeed.
         if not gcp_application_default_creds_exist() and not self.args.service_account:
@@ -184,16 +183,13 @@ class DeployAppClass(object):
 
         running_services = gcp_get_app_versions(running_only=True)
 
-        clr.set_default_formatting(clr.bold, clr.custom_fg_color(43))
-        clr.set_default_foreground(clr.custom_fg_color(152))
-
         _logger.info(clr.fmt('Deployment Information:', clr.custom_fg_color(156)))
         _logger.info(clr.fmt(''))
         _logger.info('=' * 90)
         _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
         _logger.info('  Branch/Tag To Deploy  : {0}'.format(clr.fmt(self.args.git_branch)))
         _logger.info('  App Source Path       : {0}'.format(clr.fmt(self.deploy_root)))
-        _logger.info('  Promote               : {0}'.format(clr.fmt('Yes' if self.args.promote else 'No')))
+        _logger.info('  Promote               : {0}'.format(clr.fmt('No' if self.args.no_promote else 'Yes')))
 
         if self.gcp_env.project in ('all-of-us-rdr-prod', 'all-of-us-rdr-stable'):
             if 'JIRA_API_USER_NAME' in os.environ and 'JIRA_API_USER_PASSWORD' in os.environ:
@@ -217,9 +213,6 @@ class DeployAppClass(object):
 
         _logger.info('')
         _logger.info('=' * 90)
-
-        # Reset all colors.
-        _logger.info(clr.reset)
 
         if not self.args.quiet:
             confirm = input('\nStart deployment (Y/n)? : ')
@@ -249,7 +242,7 @@ class DeployAppClass(object):
         app_config.update_app_config()
 
         _logger.info('Deploying app...')
-        result = gcp_deploy_app(self.gcp_env.project, config_files, self.deploy_version, self.args.promote)
+        result = gcp_deploy_app(self.gcp_env.project, config_files, self.deploy_version, not self.args.no_promote)
         _logger.info('Cleaning up...')
         self.clean_up_config_files(config_files)
 
@@ -564,7 +557,7 @@ def run():
     deploy_parser.add_argument("--deploy-as", help="deploy as version", default=None)  #noqa
     deploy_parser.add_argument("--services", help="comma delimited list of service names to deploy",
                                default=None)  # noqa
-    deploy_parser.add_argument("--promote", help="promote version to serving state.",
+    deploy_parser.add_argument("--no-promote", help="do not promote version to serving state.",
                         default=False, action="store_true")  # noqa
 
     # List app engine services
