@@ -1,7 +1,7 @@
 """sequencing file column to gc metrics
 
 Revision ID: 844fd8dadd9f
-Revises: 2681d14b61d8
+Revises: f38451075acc
 Create Date: 2019-12-03 14:35:45.662225
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = '844fd8dadd9f'
-down_revision = '2681d14b61d8'
+down_revision = 'f38451075acc'
 branch_labels = None
 depends_on = None
 
