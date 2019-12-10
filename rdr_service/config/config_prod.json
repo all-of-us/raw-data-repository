@@ -74,6 +74,14 @@
         "ip6": []
       }
     },
+    "care-evolution@all-of-us-rdr-prod.iam.gserviceaccount.com": {
+      "roles": ["ptc"],
+      "clientId": "careevolution",
+      "whitelisted_ip_ranges": {
+        "ip6": [],
+        "ip4": ["52.86.97.51", "52.54.134.172"]
+      }
+    },
     "configurator@all-of-us-rdr-prod.iam.gserviceaccount.com": {
       "clientId": "configurator",
       "roles": [
@@ -227,7 +235,8 @@
       "awardee": "ILLINOIS",
       "whitelisted_ip_ranges" : {
         "ip4": [
-          "10.105.197.20"
+          "10.105.197.20",
+          "131.193.169.188"
         ]
       }
     }

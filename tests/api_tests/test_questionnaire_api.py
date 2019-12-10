@@ -3,7 +3,7 @@ import json
 
 from rdr_service.code_constants import PPI_EXTRA_SYSTEM
 from rdr_service.dao.code_dao import CodeDao
-from rdr_service.test.test_data import data_path
+from tests.test_data import data_path
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -17,7 +17,6 @@ class QuestionnaireApiTest(BaseTestCase):
             response = self.send_post("Questionnaire", questionnaire)
             questionnaire_id = response["id"]
             del response["id"]
-            questionnaire["version"] = "1"
             self.assertJsonResponseMatches(questionnaire, response)
 
             response = self.send_get("Questionnaire/%s" % questionnaire_id)
@@ -30,7 +29,7 @@ class QuestionnaireApiTest(BaseTestCase):
     def insert_questionnaire(self):
         with open(data_path("questionnaire1.json")) as f:
             questionnaire = json.load(f)
-            return self.send_post("Questionnaire", questionnaire, expected_response_headers={"ETag": 'W/"1"'})
+            return self.send_post("Questionnaire", questionnaire, expected_response_headers={'ETag': 'W/"aaa"'})
 
     def test_update_before_insert(self):
         with open(data_path("questionnaire1.json")) as f:
@@ -70,16 +69,32 @@ class QuestionnaireApiTest(BaseTestCase):
 
     def test_update_right_ifmatch_specified(self):
         response = self.insert_questionnaire()
-        self.assertEqual('W/"1"', response["meta"]["versionId"])
+        self.assertEqual('W/"aaa"', response['meta']['versionId'])
         with open(data_path("questionnaire2.json")) as f2:
             questionnaire2 = json.load(f2)
             update_response = self.send_put(
                 "Questionnaire/%s" % response["id"],
                 questionnaire2,
-                headers={"If-Match": response["meta"]["versionId"]},
-                expected_response_headers={"ETag": 'W/"2"'},
+                headers={'If-Match': response['meta']['versionId']},
+                expected_response_headers={'ETag': 'W/"bbb"'}
             )
         questionnaire2["id"] = response["id"]
-        questionnaire2["version"] = "2"
         self.assertJsonResponseMatches(questionnaire2, update_response)
-        self.assertEqual('W/"2"', update_response["meta"]["versionId"])
+        self.assertEqual('W/"bbb"', update_response['meta']['versionId'])
+
+    def test_insert_with_version(self):
+        with open(data_path('questionnaire5_with_version.json')) as f:
+            questionnaire = json.load(f)
+        response = self.send_post('Questionnaire', questionnaire)
+        questionnaire_id = response['id']
+        del response['id']
+        questionnaire['version'] = 'abc123'
+        self.assertJsonResponseMatches(questionnaire, response)
+
+        response = self.send_get('Questionnaire/%s' % questionnaire_id)
+        del response['id']
+        self.assertJsonResponseMatches(questionnaire, response)
+
+        # Ensure we didn't create codes in the extra system
+        self.assertIsNone(CodeDao().get_code(PPI_EXTRA_SYSTEM, 'IgnoreThis'))
+

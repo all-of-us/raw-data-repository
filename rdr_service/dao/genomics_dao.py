@@ -513,13 +513,36 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 .all()
             )
 
-    def update_reconciled(self, metric_obj, member_id, run_id):
+    def get_metrics_to_reconcile_seq(self, biobank_id):
+        """
+        Retrieves gc metric record with the biobank_id
+        :param: biobank_id
+        :return: list of returned GenomicGCValidationMetrics objects
+        """
         with self.session() as session:
-            return self._update_reconciled_with_session(session, metric_obj,
-                                                        member_id, run_id)
+            return (
+                session.query(GenomicGCValidationMetrics)
+                .filter(GenomicGCValidationMetrics.biobankId == biobank_id)
+                .first()
+            )
 
-    def _update_reconciled_with_session(self, session, metric_obj,
-                                        member_id, run_id):
+    def update_manifest_reconciled(self, metric_obj, member_id, run_id):
+        with self.session() as session:
+            return self._update_manifest_reconciled_with_session(session,
+                                                                 metric_obj,
+                                                                 member_id,
+                                                                 run_id)
+
+    def update_metrics_with_seq_file(self, metric_obj, seq_file_name,
+                                     job_run_id):
+        with self.session() as session:
+            return self._update_metrics_seq_file_with_session(session,
+                                                              metric_obj,
+                                                              seq_file_name,
+                                                              job_run_id)
+
+    def _update_manifest_reconciled_with_session(self, session, metric_obj,
+                                                 member_id, run_id):
         """
         Updates the record with the reconciliation data.
         :param metric_obj:
@@ -543,6 +566,42 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 "metric_id_param": metric_obj.id,
                 "member_id_param": member_id,
                 "run_id_param": run_id,
+            }
+
+            return session.execute(query, query_params)
+        except OperationalError:
+            return GenomicSubProcessResult.ERROR
+
+    def _update_metrics_seq_file_with_session(self, session, metric_obj,
+                                              sequence_file,
+                                              job_run_id):
+        """
+        Updates the record with the reconciliation data.
+        :param metric_obj:
+        :param sequence_file:
+        :param job_run_id:
+        :return: query result or result code of error
+        """
+        try:
+            query = (
+                sqlalchemy.update(GenomicGCValidationMetrics)
+                .where(GenomicGCValidationMetrics.biobankId == sqlalchemy.bindparam("biobankId_param"))
+                .values(
+                    {
+                        GenomicGCValidationMetrics
+                        .sequencingFileName: sqlalchemy.bindparam(
+                            "sequence_file_param"),
+                        GenomicGCValidationMetrics
+                        .reconcileSequencingJobRunId: sqlalchemy.bindparam(
+                            "job_run_id_param")
+                    }
+                )
+            )
+
+            query_params = {
+                "biobankId_param": metric_obj.biobankId,
+                "sequence_file_param": sequence_file,
+                "job_run_id_param": job_run_id,
             }
 
             return session.execute(query, query_params)

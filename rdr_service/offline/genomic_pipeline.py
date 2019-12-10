@@ -48,7 +48,7 @@ def ingest_genomic_centers_metrics_files():
     run_controller.end_run(result)
 
 
-def reconcile_metrics():
+def reconcile_metrics_vs_manifest():
     """
     Entrypoint for GC Metrics File reconciliation
     against Manifest subprocess of genomic_pipeline.
@@ -56,4 +56,15 @@ def reconcile_metrics():
     job_id = GenomicJob.RECONCILE_MANIFEST
     run_controller = genomic_job_controller.GenomicJobController(job_id)
     result = run_controller.run_reconciliation_to_manifest()
+    run_controller.end_run(result)
+
+
+def reconcile_metrics_vs_sequencing():
+    """
+    Entrypoint for GC Metrics File reconciliation
+    against Sequencing Files subprocess of genomic_pipeline.
+    """
+    job_id = GenomicJob.RECONCILE_SEQUENCING
+    run_controller = genomic_job_controller.GenomicJobController(job_id)
+    result = run_controller.run_reconciliation_to_sequencing()
     run_controller.end_run(result)
