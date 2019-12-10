@@ -1,388 +1,109 @@
-version: 2
+version: 2.1
 # For more information on choosing an image (or alternatively using a
 # VM instead of a container) see https://circleci.com/docs/2.0/executor-types/
 # To see the list of pre-built images that CircleCI provides for most common languages see
 # https://circleci.com/docs/2.0/circleci-images/
-defaults: &defaults
+
+job_defaults: &job_defaults
   docker:
-    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+    - image: circleci/python:3.7.5
   working_directory: ~/all-of-us/raw-data-repository
   parallelism: 1
   shell: /bin/bash --login
   environment:
     IS_AUTOMATED_TESTING_ENVIRONMENT: "true"
-    CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
-    CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
 
-filter_master: &filter_master
-  filters:
-    branches:
-      only: master
 
-filter_no_python3: &filter_no_python3
-  filters:
-    branches:
-      only:
-        - master
-        - /^python-?2.*/
+commands:
+  unittest-app-steps:
+    steps:
+      - checkout
+      - run:
+          name: Setup Python Environment
+          command: ./ci/setup_python_env.sh
+      - run:
+          name: Check Licenses
+          command : |
+            export PYTHONPATH=$PYTHONPATH:`pwd`
+            python ./ci/check_licenses.py --root ./venv/lib/python3.7/site-packages \
+                            --licenses_file ci/license_whitelist.txt --exceptions_file ci/license_exceptions.txt
+      - run:
+          name: Install MySQL Server
+          command: ./ci/install_mysql.sh
+      - run:
+          name: Launch Flask Unittest Service
+          command: ./ci/run_unittest_flask_server.sh
+          background: true
+      - run:
+          name: Running Unittests
+          command: ./ci/run_unittests.sh
 
-only_devel: &only_devel
-  filters:
-    branches:
-      only: devel
-
-filter_python3_branches: &filter_python3_branches
-  filters:
-    branches:
-      ignore:
-        - master
-        - /^python-?2.*/
-
-filter_releases: &filter_releases
-  filters:
-    branches:
-      ignore: /.*/
-    tags:
-      only: /[0-9]+(\.[0-9]+)*\.[0-9]+[a-z]*/
+  deploy-app-steps:
+    parameters:
+      project-id:
+        type: string
+        default: bad-mojo-teacup
+    steps:
+      - checkout
+      - run:
+          name: Install Cloud SDK
+          command: ./ci/install_google_sdk.sh
+      - run:
+          name: Setup Python Environment
+          command: ./ci/setup_python_env.sh
+      - run:
+          name: Deploy App To Test Environment
+          command: ./ci/deploy_app.sh << parameters.project-id >>
 
 jobs:
-  build_and_test:
-    <<: *defaults
+  job_run_unittests:
+    <<: *job_defaults
     steps:
-      - checkout
-      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-      - run:
-          working_directory: ~/all-of-us/raw-data-repository
-          command: 'sudo service mysql status || sudo service mysql start; '
-      - restore_cache:
-          key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
-      - run: sudo chmod o+w /opt
-      - run: pip install --upgrade pip
-      - run: pip install --upgrade httplib2 jira oauth2client parallel pylint isort==4.3.8
-      - run: pip install -I alembic==0.9.1
-      - run: ./ci/test.sh
-      - save_cache:
-          key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
-          paths:
-          - "venv"
-      # Save test results
-      - store_test_results:
-          path: /tmp/circleci-test-results
-      # Save artifacts
-      - store_artifacts:
-          path: /tmp/circleci-artifacts
-      - store_artifacts:
-          path: /tmp/circleci-test-results
-        
-  deploy_test:
-    <<: *defaults
+      - unittest-app-steps
+
+  job_deploy_to_test:
+    <<: *job_defaults
     steps:
-      - checkout
-      - run:
-          working_directory: ~/all-of-us/raw-data-repository
-          command: 'sudo service mysql status || sudo service mysql start; '
-      - restore_cache:
-           key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
-      - run: sudo chmod o+w /opt
-      - run: pip install --upgrade pip
-      - run: pip install --upgrade httplib2 jira oauth2client parallel pylint isort==4.3.8
-      - run: pip install -I alembic==0.9.1
-      - run: ./ci/setup.sh
-      - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
-      - run:
-          working_directory: ~/all-of-us/raw-data-repository/rest-api
-          command: ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key
-      - save_cache:
-          working_directory: ~/all-of-us/raw-data-repository
-          key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
-          paths:
-          - "venv"
-      - run: ./ci/deploy.sh pmi-drc-api-test config/config_test.json ~/gcloud-credentials.key
-      - run: ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.appspot.com -c ~/gcloud-credentials.key
+      - unittest-app-steps
+      - deploy-app-steps:
+          project-id: pmi-drc-api-test
 
-  # To deploy to staging, cut a GitHub release on a green build, with tag of
-  # the form v0-1-1-rc0. We use tags as AppEngine version names, so they must
-  # follow AE rules (no dots).
-  # This should match _RELEASE_TAG_RE in release_notes.py.
-  deploy_staging:
-    <<: *defaults
+  job_deploy_to_staging:
+    <<: *job_defaults
     steps:
-    - checkout
-    - run:
-        working_directory: ~/all-of-us/raw-data-repository
-        command: 'sudo service mysql status || sudo service mysql start; '
-    - restore_cache:
-        key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
-    - run: sudo chmod o+w /opt
-    - run: pip install --upgrade pip
-    - run: pip install --upgrade httplib2 jira oauth2client parallel pylint isort==4.3.8
-    - run: pip install -I alembic==0.9.1
-    - run: ./ci/setup.sh
-    - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
-    - run: ./ci/release_notes.py all-of-us-rdr-staging
-    - run:
-        working_directory: ~/all-of-us/raw-data-repository/rest-api
-        command: ./tools/upgrade_database.sh -i https://all-of-us-rdr-staging.appspot.com --creds_file ~/gcloud-credentials.key
-    - save_cache:
-        working_directory: ~/all-of-us/raw-data-repository
-        key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
-        paths:
-        - "venv"
-    - run: ./ci/deploy.sh all-of-us-rdr-staging config/config_staging.json ~/gcloud-credentials.key
-    - run: ./rest-api/test/test_server.sh -i https://all-of-us-rdr-staging.appspot.com -c ~/gcloud-credentials.key
-
-  deploy_test_py3:
-    machine:
-      image: ubuntu-1604:201903-01
-    working_directory: ~/all-of-us/raw-data-repository
-    parallelism: 1
-    shell: /bin/bash --login
-    environment:
-      IS_AUTOMATED_TESTING_ENVIRONMENT: "true"
-      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
-      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
-    steps:
-      - checkout
-      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-      - run:
-          name: install mysql
-          command: |
-            export DEBIAN_FRONTEND=noninteractive
-            sudo apt-get update
-            mkdir ~/tmp_mysql && cd ~/tmp_mysql/
-            curl -LO https://dev.mysql.com/get/mysql-apt-config_0.8.13-1_all.deb
-            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-preview select '
-            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-product select Ok'
-            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-server select mysql-5.7'
-            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-tools select '
-            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/unsupported-platform select abort'
-            sudo -E dpkg -i mysql-apt-config_0.8.13-1_all.deb
-            sudo apt-get update
-            sudo debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password root"
-            sudo debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password root"
-            sudo -E apt-get -y install mysql-community-server
-            sudo chmod 660 /var/log/mysql/error.log
-            sudo chmod 750 /var/log/mysql
-            sudo chmod 775 /var/log
-            sudo chmod 755 /var
-            export MYSQL_ROOT_PASSWORD=root
-            export PATH=/usr/local/bin/:$PATH
-      - restore_cache:
-          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
-      - run:
-          name: setup python
-          working_directory: ~/all-of-us/raw-data-repository
-          command: |
-            DEBIAN_FRONTEND=noninteractive
-            sudo apt-get -y install software-properties-common build-essential python-dev libmysqlclient-dev
-            pyenv global 3.7.0
-            sudo chmod o+w /opt
-      - run: pip install --upgrade pip
-      - run: pip install --upgrade httplib2 jira oauth2client pylint isort==4.3.8
-      - run: pip install -I alembic==0.9.1
-      - run: wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -O cloud_sql_proxy # downloads the gcp
-      - run: chmod +x cloud_sql_proxy # makes proxy executable
-      - run: 
-          command: |
-            sudo ln -s ~/cloud_sql_proxy /usr/local/bin/cloud_sql_proxy # link to where the alembic script is looking
-            export CLOUDSDK_CORE_DISABLE_PROMPTS=1
-      - run:
-          name: activate credentials
-          working_directory: ~/all-of-us/raw-data-repository/
-          command: |
-            pyenv global 2.7.12 #stupid Google
-            ./ci/activate_creds.sh ~/gcloud-credentials.key
-            pyenv global 3.7.0
-      - run:
-          command: |
-            trap '[[ "$(jobs -p)" ]] && kill $(jobs -p)' EXIT
-            python -m venv venv3
-            source venv3/bin/activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
-            export PYTHONPATH=$PYTHONPATH:/home/circleci/all-of-us/raw-data-repository/
-            cd rdr_service
-            python -m tools alembic --project pmi-drc-api-test upgrade head
-      - save_cache:
-          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
-          paths:
-          - "venv"
-      - run: ./ci/deploy.sh pmi-drc-api-test config/config_test.json ~/gcloud-credentials.key
-      - run: ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.appspot.com -c ~/gcloud-credentials.key
-      # Save test results
-      - store_test_results:
-         path: /tmp/circleci-test-results
-      # Save artifacts
-      - store_artifacts:
-         path: /tmp/circleci-artifacts
-      - store_artifacts:
-         path: /tmp/circleci-test-results
-
-
-  deploy_staging_py3:
-    machine:
-      image: ubuntu-1604:201903-01
-    working_directory: ~/all-of-us/raw-data-repository
-    parallelism: 1
-    shell: /bin/bash --login
-    environment:
-      IS_AUTOMATED_TESTING_ENVIRONMENT: "true"
-      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
-      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
-    steps:
-      - checkout
-      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-      - run:
-          name: install mysql
-          command: |
-            export DEBIAN_FRONTEND=noninteractive
-            sudo apt-get update
-            mkdir ~/tmp_mysql && cd ~/tmp_mysql/
-            curl -LO https://dev.mysql.com/get/mysql-apt-config_0.8.13-1_all.deb
-            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-preview select '
-            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-product select Ok'
-            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-server select mysql-5.7'
-            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-tools select '
-            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/unsupported-platform select abort'
-            sudo -E dpkg -i mysql-apt-config_0.8.13-1_all.deb
-            sudo apt-get update
-            sudo debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password root"
-            sudo debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password root"
-            sudo -E apt-get -y install mysql-community-server
-            sudo chmod 660 /var/log/mysql/error.log
-            sudo chmod 750 /var/log/mysql
-            sudo chmod 775 /var/log
-            sudo chmod 755 /var
-            export MYSQL_ROOT_PASSWORD=root
-      - restore_cache:
-          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
-      - run:
-          name: setup python
-          working_directory: ~/all-of-us/raw-data-repository
-          command: |
-            DEBIAN_FRONTEND=noninteractive
-            sudo apt-get -y install software-properties-common build-essential python-dev libmysqlclient-dev
-            pyenv global 3.7.0
-            sudo chmod o+w /opt
-      - run: pip install --upgrade pip
-      - run: pip install --upgrade httplib2 jira oauth2client pylint isort==4.3.8
-      - run: pip install -I alembic==0.9.1
-      - run: ./ci/setup.sh
-      - run:
-          name: activate credentials
-          working_directory: ~/all-of-us/raw-data-repository/
-          command: |
-            pyenv global 2.7.12
-            ./ci/activate_creds.sh ~/gcloud-credentials.key
-            pyenv global 3.7.0
-      - run:
-          name: upgrade alembic migration
-          working_directory: /home/circleci/all-of-us/raw-data-repository/rdr_service/
-          command: | 
-            export PYTHONPATH=$PYTHONPATH:/home/circleci/all-of-us/raw-data-repository/
-            source venv3/bin/activate
-            python -m tools alembic --project all-of-us-rdr-staging upgrade head
-      - save_cache:
-          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
-          paths:
-          - "venv"
-      - run: ./ci/deploy.sh pmi-drc-api-test config/config_test.json ~/gcloud-credentials.key
-      - run: ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.staging.com -c ~/gcloud-credentials.key
-      # Save test results
-      - store_test_results:
-         path: /tmp/circleci-test-results
-      # Save artifacts
-      - store_artifacts:
-         path: /tmp/circleci-artifacts
-      - store_artifacts:
-         path: /tmp/circleci-test-results
-
-
-    # Stable and production deployments are not done automatically but can be
-    # manually executed with the test.sh and deploy.sh pair, e.g.:
-    # ./ci/deploy.sh all-of-us-rdr-stable config/config_stable.json <configurator key file>
-    # ./ci/deploy.sh all-of-us-rdr config/config_prod.json <configurator key file>
-
-  test_python3_branches:
-    machine:
-      # Machine configuration can be found here:
-      # https://raw.githubusercontent.com/circleci/image-builder/picard-vm-image/provision.sh
-      image: ubuntu-1604:201903-01
-    working_directory: ~/all-of-us/raw-data-repository
-    parallelism: 1
-    shell: /bin/bash --login
-    environment:
-      IS_AUTOMATED_TESTING_ENVIRONMENT: "true"
-      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
-      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
-    steps:
-      - checkout
-      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-      - run:
-          name: install mysql
-          command: |
-            export DEBIAN_FRONTEND=noninteractive
-            sudo apt-get update
-            mkdir ~/tmp_mysql && cd ~/tmp_mysql/
-            curl -LO https://dev.mysql.com/get/mysql-apt-config_0.8.13-1_all.deb
-            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-preview select '
-            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-product select Ok'
-            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-server select mysql-5.7'
-            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/select-tools select '
-            sudo debconf-set-selections <<< 'mysql-apt-config mysql-apt-config/unsupported-platform select abort'
-            sudo -E dpkg -i mysql-apt-config_0.8.13-1_all.deb
-            sudo apt-get update
-            sudo debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password root"
-            sudo debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password root"
-            sudo -E apt-get -y install mysql-community-server
-            sudo chmod 660 /var/log/mysql/error.log
-            sudo chmod 750 /var/log/mysql
-            sudo chmod 775 /var/log
-            sudo chmod 755 /var
-            export MYSQL_ROOT_PASSWORD=root
-      - restore_cache:
-          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
-      - run:
-          name: setup python
-          working_directory: ~/all-of-us/raw-data-repository
-          command: |
-            DEBIAN_FRONTEND=noninteractive
-            sudo apt-get -y install software-properties-common build-essential python-dev libmysqlclient-dev
-            pyenv global 3.7.0
-            sudo chmod o+w /opt
-      - run: ./ci/test.sh
-      - save_cache:
-         key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
-         paths:
-           - "venv"
-      # Save test results
-      - store_test_results:
-         path: /tmp/circleci-test-results
-      # Save artifacts
-      - store_artifacts:
-         path: /tmp/circleci-artifacts
-      - store_artifacts:
-         path: /tmp/circleci-test-results
+      - deploy-app:
+          project-id: all-of-us-rdr-staging
 
 workflows:
-  version: 2
-  build_and_test:
+
+  test_commits_workflow:
     jobs:
-      - test_python3_branches:
-          <<: *filter_python3_branches
-  deploy_to_test:
+      - job_run_unittests:
+          filters:
+            branches:
+              ignore:
+                - devel
+                - master
+            tags:
+              ignore: /.*/
+
+  devel_branch_workflow:
     jobs:
-      - test_python3_branches:
-          <<: *only_devel
-      - deploy_test_py3:
-          <<: *only_devel
+      - job_run_unittests:
+          filters:
+            branches:
+              only: devel
+      - job_deploy_to_test:
           requires:
-            - test_python3_branches
-  deploy_to_staging:
-    jobs:
-      - test_python3_branches:
-          <<: *filter_releases
-      - deploy_staging_py3:
-          <<: *filter_releases
-          requires:
-            - test_python3_branches
+            - job_run_unittests
+          filters:
+            branches:
+              only: devel
+
+  release_workflow:
+    - job_deploy_to_staging:
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^\d\.\d+\.\d+$/

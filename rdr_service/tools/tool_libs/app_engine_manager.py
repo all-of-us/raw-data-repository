@@ -167,7 +167,7 @@ class DeployAppClass(object):
         clr = self.gcp_env.terminal_colors
 
         # Installing the app config makes API calls and needs an oauth token to succeed.
-        if not gcp_application_default_creds_exist() and not self.args.service_account:
+        if not self.args.quiet and not gcp_application_default_creds_exist() and not self.args.service_account:
             _logger.error('\n*** Google application default credentials were not found. ***')
             _logger.error("Run 'gcloud auth application-default login' and then try deploying again.\n")
             return 1
@@ -179,7 +179,8 @@ class DeployAppClass(object):
         if not self.setup_services():
             return 1
 
-        self.deploy_version = self.args.deploy_as if self.args.deploy_as else self.args.git_branch
+        self.deploy_version = self.args.deploy_as if self.args.deploy_as else \
+                                self.args.git_target.replace('.', '-')
 
         running_services = gcp_get_app_versions(running_only=True)
 
@@ -187,7 +188,7 @@ class DeployAppClass(object):
         _logger.info(clr.fmt(''))
         _logger.info('=' * 90)
         _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
-        _logger.info('  Branch/Tag To Deploy  : {0}'.format(clr.fmt(self.args.git_branch)))
+        _logger.info('  Branch/Tag To Deploy  : {0}'.format(clr.fmt(self.args.git_target)))
         _logger.info('  App Source Path       : {0}'.format(clr.fmt(self.deploy_root)))
         _logger.info('  Promote               : {0}'.format(clr.fmt('No' if self.args.no_promote else 'Yes')))
 
@@ -224,8 +225,8 @@ class DeployAppClass(object):
         self.args.quiet = True
 
         # Attempt to switch to the git branch we need to deploy.
-        _logger.info('Switching to git branch/tag: {0}...'.format(self.args.git_branch))
-        if not git_checkout_branch(self.args.git_branch):
+        _logger.info('Switching to git branch/tag: {0}...'.format(self.args.git_target))
+        if self.args.git_target and not git_checkout_branch(self.args.git_target):
             return 1
 
         # Run database migration
@@ -553,7 +554,7 @@ def run():
     # Deploy app
     deploy_parser = subparser.add_parser("deploy")
     deploy_parser.add_argument("--quiet", help="do not ask for user input", default=False, action="store_true") # noqa
-    deploy_parser.add_argument("--git-branch", help="git branch/tag to deploy.", required=True)  # noqa
+    deploy_parser.add_argument("--git-target", help="git branch/tag to deploy.", default=git_current_branch())  # noqa
     deploy_parser.add_argument("--deploy-as", help="deploy as version", default=None)  #noqa
     deploy_parser.add_argument("--services", help="comma delimited list of service names to deploy",
                                default=None)  # noqa
@@ -599,7 +600,7 @@ def run():
                 _logger.error("No project root found, set '--git-project' arg or set RDR_PROJECT environment var.")
                 exit(1)
 
-        if hasattr(args, 'git_branch'):
+        if hasattr(args, 'git_target'):
             process = DeployAppClass(args, gcp_env)
             exit_code = process.run()
 
