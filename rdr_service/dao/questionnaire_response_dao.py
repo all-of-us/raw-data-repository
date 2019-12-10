@@ -141,13 +141,13 @@ class QuestionnaireResponseDao(BaseDao):
 
         # Look for a questionnaire that matches any of the questionnaire history records.
         questionnaire_history = QuestionnaireHistoryDao().get_with_children_with_session(
-            session, [questionnaire_response.questionnaireId, questionnaire_response.questionnaireVersion]
+            session, [questionnaire_response.questionnaireId, questionnaire_response.questionnaireSemanticVersion]
         )
 
         if not questionnaire_history:
             raise BadRequest(
                 f"Questionnaire with ID {questionnaire_response.questionnaireId}, \
-                version {questionnaire_response.questionnaireVersion} is not found"
+                semantic version {questionnaire_response.questionnaireSemanticVersion} is not found"
             )
 
         # Get the questions from the questionnaire history record.
@@ -438,6 +438,7 @@ class QuestionnaireResponseDao(BaseDao):
         qr = QuestionnaireResponse(
             questionnaireId=questionnaire.questionnaireId,
             questionnaireVersion=questionnaire.version,
+            questionnaireSemanticVersion=questionnaire.semanticVersion,
             participantId=participant_id,
             authored=authored,
             language=language,
@@ -472,10 +473,11 @@ class QuestionnaireResponseDao(BaseDao):
                 raise BadRequest(f"Questionnaire id {questionnaire_reference} is invalid")
             try:
                 questionnaire_id = int(questionnaire_ref_parts[0])
-                version = int(questionnaire_ref_parts[1])
-                q = QuestionnaireHistoryDao().get_with_children((questionnaire_id, version))
+                semantic_version = questionnaire_ref_parts[1]
+                q = QuestionnaireHistoryDao().get_with_children((questionnaire_id, semantic_version))
                 if not q:
-                    raise BadRequest(f"Questionnaire with id {questionnaire_id}, version {version} is not found")
+                    raise BadRequest(f"Questionnaire with id {questionnaire_id}, semantic version {semantic_version} "
+                                     f"is not found")
                 return q
             except ValueError:
                 raise BadRequest(f"Questionnaire id {questionnaire_reference} is invalid")
@@ -489,7 +491,7 @@ class QuestionnaireResponseDao(BaseDao):
                 if not q:
                     raise BadRequest(f"Questionnaire with id {questionnaire_id} is not found")
                 # Mutate the questionnaire reference to include the version.
-                questionnaire_reference = _QUESTIONNAIRE_REFERENCE_FORMAT.format(questionnaire_id, q.version)
+                questionnaire_reference = _QUESTIONNAIRE_REFERENCE_FORMAT.format(questionnaire_id, q.semanticVersion)
                 resource_json["questionnaire"]["reference"] = questionnaire_reference
                 return q
             except ValueError:
