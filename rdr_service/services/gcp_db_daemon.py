@@ -99,6 +99,11 @@ def run():
                 if self._args.enable_replica:
                     instances += gcp_format_sql_instance('all-of-us-rdr-careevo-test', 9955, True) + ','
 
+            if self._args.enable_ptsc_1_test is True:
+                instances += gcp_format_sql_instance('all-of-us-rdr-ptsc-1-test', 9960) + ','
+                if self._args.enable_replica:
+                    instances += gcp_format_sql_instance('all-of-us-rdr-ptsc-1-test', 9965, True) + ','
+
             # remove trailing comma
             instances = instances[:-1]
 
@@ -171,6 +176,9 @@ def run():
     )  # noqa
     # pylint: disable=E0602
     parser.add_argument('--enable-care-evo', help=_('Add proxy to all-of-us-rdr-careevo-test'),
+                        default=False, action='store_true')  # noqa
+
+    parser.add_argument('--enable-ptsc-1-test', help=_('Add proxy to all-of-us-rdr-ptsc-1-test'),
                         default=False, action='store_true')  # noqa
 
     parser.add_argument("action", choices=("start", "stop", "restart"), default="")  # noqa
