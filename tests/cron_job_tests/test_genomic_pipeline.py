@@ -569,6 +569,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the fields against the DB
         gc_metrics = self.metrics_dao.get_all()
+        gc_metrics.sort(key=lambda x: x.id)
         self.assertEqual(len(gc_metrics), 10)
         self._gc_metrics_ingested_data_test_cases(bucket_name,
                                                   files_processed,
@@ -827,10 +828,12 @@ class GenomicPipelineTest(BaseTestCase):
         # Run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
         test_set_members = self.member_dao.get_all()
+        test_set_members.sort(key=lambda x: x.id)
 
         # Run the GC Metrics Reconciliation
         genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 2
         gc_metrics = self.metrics_dao.get_all()
+        gc_metrics.sort(key=lambda x: x.id)
 
         # Test the gc_metrics were updated with reconciliation data
         for set_member in test_set_members:
