@@ -71,7 +71,7 @@ jobs:
   job_deploy_to_staging:
     <<: *job_defaults
     steps:
-      - deploy-app:
+      - deploy-app-steps:
           project-id: all-of-us-rdr-staging
 
 workflows:
@@ -82,6 +82,7 @@ workflows:
           filters:
             branches:
               ignore:
+                - circleci-deploy
                 - devel
                 - master
             tags:
@@ -92,18 +93,25 @@ workflows:
       - job_run_unittests:
           filters:
             branches:
-              only: devel
+              only:
+                - circleci-deploy
+                - devel
+                - master
       - job_deploy_to_test:
           requires:
             - job_run_unittests
           filters:
             branches:
-              only: devel
+              only:
+                - circleci-deploy
+                - devel
+                - master
 
   release_workflow:
-    - job_deploy_to_staging:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^\d\.\d+\.\d+$/
+    jobs:
+      - job_deploy_to_staging:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^\d\.\d+\.\d+$/
