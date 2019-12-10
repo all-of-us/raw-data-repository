@@ -1,15 +1,15 @@
-"""add semantic version column
+"""add_semantic_version_column
 
-Revision ID: dc1cebd84c99
-Revises: f38451075acc
-Create Date: 2019-12-06 15:31:00.213714
+Revision ID: 9bd38631cfd0
+Revises: 844fd8dadd9f
+Create Date: 2019-12-10 11:06:40.119572
 
 """
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = 'dc1cebd84c99'
-down_revision = 'f38451075acc'
+revision = '9bd38631cfd0'
+down_revision = '844fd8dadd9f'
 branch_labels = None
 depends_on = None
 
