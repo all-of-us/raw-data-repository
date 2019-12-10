@@ -180,6 +180,8 @@ class GenomicGCValidationMetrics(Base):
                                        Integer, nullable=True)
     reconcileSequencingJobRunId = Column('reconcile_sequencing_job_run_id',
                                          Integer, nullable=True)
+    sequencingFileName = Column('sequencing_file_name',
+                                String(128), nullable=True)
 
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)

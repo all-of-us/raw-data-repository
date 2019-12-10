@@ -4,7 +4,11 @@ This module tracks and validates the status of Genomics Pipeline Subprocesses.
 
 import logging
 
-from rdr_service.config import GENOMIC_GC_METRICS_BUCKET_NAME, getSetting
+from rdr_service.config import (
+    GENOMIC_GC_METRICS_BUCKET_NAME,
+    GENOMIC_GC_PROCESSED_FOLDER_NAME,
+    getSetting
+)
 from rdr_service.participant_enums import GenomicSubProcessResult, GenomicSubProcessStatus
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
@@ -22,13 +26,12 @@ class GenomicJobController:
 
     def __init__(self, job_id,
                  bucket_name=GENOMIC_GC_METRICS_BUCKET_NAME,
-                 job_name="genomic_cell_line_metrics"
+                 archive_folder_name=GENOMIC_GC_PROCESSED_FOLDER_NAME
                  ):
 
         self.job_id = job_id
         self.bucket_name = getSetting(bucket_name)
-        self.archive_folder_name = 'processed_by_rdr'
-        self.job_name = job_name
+        self.archive_folder_name = archive_folder_name
 
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET
@@ -79,9 +82,30 @@ class GenomicJobController:
             return run_result
 
     def run_reconciliation_to_manifest(self):
+        """
+        Reconciles the metrics to manifest using reconciler component
+        :return: result code for job run
+        """
         self.reconciler = GenomicReconciler(self.job_run.id)
         try:
             return self.reconciler.reconcile_metrics_to_manifest()
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR
+
+    def run_reconciliation_to_sequencing(self):
+        """
+        Reconciles the metrics to sequencing file using reconciler component
+        :return: result code for job run
+        """
+        self.file_mover = GenomicFileMover(
+            archive_folder=self.archive_folder_name
+        )
+        self.reconciler = GenomicReconciler(
+            self.job_run.id, self.archive_folder_name, self.file_mover
+        )
+        try:
+            return self.reconciler.reconcile_metrics_to_sequencing(self.bucket_name)
+
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
