@@ -90,12 +90,16 @@ class GCPEnvConfigObject(object):
 
         return config
 
-    def activate_sql_proxy(self, user: str = 'rdr', project: str = None, replica: bool = False):
+    def activate_sql_proxy(self, user: str = 'rdr', project: str = None,
+                           replica: bool = False, instance: str = None,
+                           port: int = None):
         """
         Activate a google sql proxy instance service and set DB_CONNECTION_STRING environment var.
         :param user: database user, must be one of ['root', 'alembic', 'rdr'].
         :param project: GCP project id.
         :param replica: Use replica db instance or Primary instance.
+        :param instance: may be provided from tools
+        :param port: may be provided from tools
         :return: pid
         """
         if self._sql_proxy_process:
@@ -111,9 +115,10 @@ class GCPEnvConfigObject(object):
             return 1
 
         _logger.debug("Starting google sql proxy...")
-        port = random.randint(10000, 65535)
+        port = port if port else random.randint(10000, 65535)
+        instance = instance if instance else gcp_format_sql_instance(
+            project if project else self.project, port=port, replica=replica)
 
-        instance = gcp_format_sql_instance(project if project else self.project, port=port, replica=replica)
         self._sql_proxy_process = gcp_activate_sql_proxy(instance)
 
         if self._sql_proxy_process:

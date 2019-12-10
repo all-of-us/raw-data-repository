@@ -60,12 +60,20 @@ where organization.external_id = %s
 """
 
 COUNT_SQL = "select count(1) {0}".format(PARTICIPANT_SQL[PARTICIPANT_SQL.find("from") :])
-
+DAY_LIMIT_SQL = """
+and ( 
+    summary.consent_for_study_enrollment_time > date_sub(now(), INTERVAL {n_days} day)
+  	or
+  	summary.consent_for_electronic_health_records_time > date_sub(now(), INTERVAL {n_days} day)
+  	)
+"""
 
 class SyncConsentClass(object):
     def __init__(self, args, gcp_env):
         self.args = args
         self.gcp_env = gcp_env
+
+        self.sql = None
 
     def run(self):
         """
@@ -123,7 +131,8 @@ class SyncConsentClass(object):
         _logger.info("starting google sql proxy...")
         port = random.randint(10000, 65535)
         instances = gcp_format_sql_instance(self.gcp_env.project, port=port)
-        proxy_pid = self.gcp_env.activate_sql_proxy(instances)
+        proxy_pid = self.gcp_env.activate_sql_proxy(instance=instances, port=port)
+        print(os.environ['DB_CONNECTION_STRING'])
         if not proxy_pid:
             _logger.error("activating google sql proxy failed.")
             return 1
@@ -135,6 +144,12 @@ class SyncConsentClass(object):
 
             _logger.info("retrieving participant information...")
             # get record count
+            if self.args.limit_day_range:
+
+                self.sql = PARTICIPANT_SQL.replace('and summary.consent_for_study_enrollment = 1',
+                                        f'{DAY_LIMIT_SQL.format(n_days=self.args.limit_day_range)}'
+                                        f' and summary.consent_for_study_enrollment = 1')
+                print(COUNT_SQL)
             if self.args.org_id:
                 cursor.execute(COUNT_SQL, (self.args.org_id,))
             else:
@@ -227,6 +242,10 @@ def run():
     parser.add_argument(
         "--dry-run", action="store_true", help="Do not copy files, only print the list of files that would be copied"
     )
+
+    parser.add_argument(
+        "--limit-day-range", help="Limit consents to sync to those created within N days", default=None)  # noqa
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
