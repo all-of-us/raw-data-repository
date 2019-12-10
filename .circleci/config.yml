@@ -64,7 +64,6 @@ jobs:
   job_deploy_to_test:
     <<: *job_defaults
     steps:
-      - unittest-app-steps
       - deploy-app-steps:
           project-id: pmi-drc-api-test
 
