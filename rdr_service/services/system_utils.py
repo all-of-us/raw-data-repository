@@ -537,6 +537,7 @@ def find_mysqld_executable() -> str:
     :return: Executable path or None
     """
     KNOWN_PATHS = [
+        '/usr/sbin/mysqld',
         '/usr/libexec/mysqld',
         '/var/run/mysqld/mysql',
         '/usr/local/opt/mysql@5.7/bin/mysqld',
