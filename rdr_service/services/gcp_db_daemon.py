@@ -63,6 +63,16 @@ def run():
                 if self._args.enable_replica:
                     _logger.info('    all-of-us-rdr-careevo-test:       replica    -> tcp: 127.0.0.1:9955')
 
+            if self._args.enable_ptsc_1_test is True:
+                _logger.info('    all-of-us-rdr-ptsc-1-test:       primary    -> tcp: 127.0.0.1:9960')
+                if self._args.enable_replica:
+                    _logger.info('    all-of-us-rdr-ptsc-1-test:       replica    -> tcp: 127.0.0.1:9965')
+
+            if self._args.enable_ptsc_2_test is True:
+                _logger.info('    all-of-us-rdr-ptsc-2-test:       primary    -> tcp: 127.0.0.1:9970')
+                if self._args.enable_replica:
+                    _logger.info('    all-of-us-rdr-ptsc-2-test:       replica    -> tcp: 127.0.0.1:9975')
+
         def get_instances(self):
             """
       Build all instances we are going to connect to
@@ -103,6 +113,11 @@ def run():
                 instances += gcp_format_sql_instance('all-of-us-rdr-ptsc-1-test', 9960) + ','
                 if self._args.enable_replica:
                     instances += gcp_format_sql_instance('all-of-us-rdr-ptsc-1-test', 9965, True) + ','
+
+            if self._args.enable_ptsc_2_test is True:
+                instances += gcp_format_sql_instance('all-of-us-rdr-ptsc-2-test', 9970) + ','
+                if self._args.enable_replica:
+                    instances += gcp_format_sql_instance('all-of-us-rdr-ptsc-2-test', 9975, True) + ','
 
             # remove trailing comma
             instances = instances[:-1]
@@ -179,6 +194,9 @@ def run():
                         default=False, action='store_true')  # noqa
 
     parser.add_argument('--enable-ptsc-1-test', help=_('Add proxy to all-of-us-rdr-ptsc-1-test'),
+                        default=False, action='store_true')  # noqa
+
+    parser.add_argument('--enable-ptsc-2-test', help=_('Add proxy to all-of-us-rdr-ptsc-2-test'),
                         default=False, action='store_true')  # noqa
 
     parser.add_argument("action", choices=("start", "stop", "restart"), default="")  # noqa
