@@ -1,4 +1,5 @@
 import json
+import sqlalchemy
 
 from werkzeug.exceptions import BadRequest
 from dateutil.parser import parse
@@ -44,8 +45,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 modified=now,
                 workspaceSourceId=item['workspaceId'],
                 name=item['name'],
-                creationTime=parse(item['creationTime']).date(),
-                modifiedTime=parse(item['modifiedTime']).date(),
+                creationTime=parse(item['creationTime']),
+                modifiedTime=parse(item['modifiedTime']),
                 status=WorkbenchWorkspaceStatus(item['status']),
                 excludeFromPublicDirectory=item['excludeFromPublicDirectory'],
                 diseaseFocusedResearch=item['diseaseFocusedResearch'],
@@ -133,6 +134,107 @@ class WorkbenchWorkspaceDao(UpdatableDao):
     def _get_workspace_by_workspace_id_with_session(self, session, workspace_id):
         return session.query(WorkbenchWorkspace).filter(WorkbenchWorkspace.workspaceSourceId == workspace_id).first()
 
+    def get_workspaces_with_user_detail(self, status):
+
+        query = sqlalchemy.select(
+            [
+                WorkbenchWorkspace.workspaceSourceId.label('workspaceId'),
+                WorkbenchWorkspace.name.label('name'),
+                WorkbenchWorkspace.status.label('status'),
+                WorkbenchWorkspace.creationTime.label('creationTime'),
+                WorkbenchWorkspace.modifiedTime.label('modifiedTime'),
+                WorkbenchWorkspace.excludeFromPublicDirectory.label('excludeFromPublicDirectory'),
+                WorkbenchWorkspace.diseaseFocusedResearch.label('diseaseFocusedResearch'),
+                WorkbenchWorkspace.diseaseFocusedResearchName.label('diseaseFocusedResearchName'),
+                WorkbenchWorkspace.otherPurposeDetails.label('otherPurposeDetails'),
+                WorkbenchWorkspace.methodsDevelopment.label('methodsDevelopment'),
+                WorkbenchWorkspace.controlSet.label('controlSet'),
+                WorkbenchWorkspace.ancestry.label('ancestry'),
+                WorkbenchWorkspace.socialBehavioral.label('socialBehavioral'),
+                WorkbenchWorkspace.populationHealth.label('populationHealth'),
+                WorkbenchWorkspace.drugDevelopment.label('drugDevelopment'),
+                WorkbenchWorkspace.commercialPurpose.label('commercialPurpose'),
+                WorkbenchWorkspace.educational.label('educational'),
+                WorkbenchWorkspace.otherPurpose.label('otherPurpose'),
+
+                WorkbenchWorkspaceUser.userId.label('userId'),
+                WorkbenchWorkspaceUser.role.label('role'),
+                WorkbenchResearcher.givenName.label('givenName'),
+                WorkbenchResearcher.familyName.label('familyName'),
+
+                WorkbenchInstitutionalAffiliations.institution.label('institution'),
+                WorkbenchInstitutionalAffiliations.role.label('institutionRole'),
+                WorkbenchInstitutionalAffiliations.nonAcademicAffiliation.label('nonAcademicAffiliation')
+            ]
+        ).select_from(
+            sqlalchemy.join(
+                sqlalchemy.join(WorkbenchWorkspace, WorkbenchWorkspaceUser,
+                                WorkbenchWorkspace.id == WorkbenchWorkspaceUser.workspaceId),
+                sqlalchemy.join(WorkbenchResearcher, WorkbenchInstitutionalAffiliations,
+                                WorkbenchResearcher.id == WorkbenchInstitutionalAffiliations.researcherId),
+                WorkbenchResearcher.id == WorkbenchWorkspaceUser.researcherId
+            )
+        ).where(WorkbenchWorkspaceUser.role == WorkbenchWorkspaceUserRole.OWNER)
+
+        if status is not None:
+            query = query.where(WorkbenchWorkspace.status == status)
+
+        results = []
+        with self.session() as session:
+            cursor = session.execute(query)
+            for row in cursor:
+                record = {
+                    'workspaceId': row.workspaceId,
+                    'name': row.name,
+                    'creationTime': row.creationTime,
+                    'modifiedTime': row.modifiedTime,
+                    'status': str(WorkbenchWorkspaceStatus(row.status)),
+                    'workspaceOwner': [
+                        {
+                            'userId': row.userId,
+                            'userName': row.givenName + ' ' + row.familyName,
+                            'affiliations': [
+                                {
+                                    "institution": row.institution,
+                                    "role": row.institutionRole,
+                                    "nonAcademicAffiliation": row.nonAcademicAffiliation
+                                }
+                            ]
+                        }
+                    ],
+                    "excludeFromPublicDirectory": row.excludeFromPublicDirectory,
+                    "diseaseFocusedResearch": row.diseaseFocusedResearch,
+                    "diseaseFocusedResearchName": row.diseaseFocusedResearchName,
+                    "otherPurposeDetails": row.otherPurposeDetails,
+                    "methodsDevelopment": row.methodsDevelopment,
+                    "controlSet": row.controlSet,
+                    "ancestry": row.ancestry,
+                    "socialBehavioral": row.socialBehavioral,
+                    "populationHealth": row.populationHealth,
+                    "drugDevelopment": row.drugDevelopment,
+                    "commercialPurpose": row.commercialPurpose,
+                    "educational": row.educational,
+                    "otherPurpose": row.otherPurpose
+                }
+                is_exist_workspace = False
+                for item in results:
+                    if item['workspaceId'] == record['workspaceId']:
+                        is_exist_user = False
+                        for user in item['workspaceOwner']:
+                            if user['userId'] == record['workspaceOwner'][0]['userId']:
+                                user['affiliations'] = user['affiliations'] + \
+                                                       record['workspaceOwner'][0]['affiliations']
+                            is_exist_user = True
+                            break
+                        if not is_exist_user:
+                            item['workspaceOwner'] = item['workspaceOwner'] + record['workspaceOwner']
+                        is_exist_workspace = True
+                        break
+                if not is_exist_workspace:
+                    results.append(record)
+
+        return results
+
 
 class WorkbenchWorkspaceHistoryDao(UpdatableDao):
     def __init__(self):
@@ -175,8 +277,8 @@ class WorkbenchResearcherDao(UpdatableDao):
                 created=now,
                 modified=now,
                 userSourceId=item['userId'],
-                creationTime=parse(item['creationTime']).date(),
-                modifiedTime=parse(item['modifiedTime']).date(),
+                creationTime=parse(item['creationTime']),
+                modifiedTime=parse(item['modifiedTime']),
                 givenName=item['givenName'],
                 familyName=item['familyName'],
                 streetAddress1=item['streetAddress1'],

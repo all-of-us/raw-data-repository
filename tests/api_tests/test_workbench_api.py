@@ -116,7 +116,7 @@ class WorkbenchApiTest(BaseTestCase):
 
         self.assertEqual(results[1].userSourceId, 1)
         self.assertEqual(results[1].givenName, 'string2')
-        self.assertEqual(results[1].workbenchInstitutionalAffiliations[1].institution, 'string22')
+        self.assertEqual(len(results[1].workbenchInstitutionalAffiliations), 2)
 
         researcher_history_dao = WorkbenchResearcherHistoryDao()
         self.assertEqual(researcher_history_dao.count(), 3)
