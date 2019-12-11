@@ -83,10 +83,10 @@ def _run_tool(lib_paths, import_path):
                 return exit_code
 
     if show_usage:
-        if 'rtool' in sys.argv[0]:
-            print("\nusage: rtool command [-h|--help] [args]\n\navailable commands:")
+        if 'rclient' in sys.argv[0]:
+            print("\nusage: rclient command [-h|--help] [args]\n\navailable commands:")
         else:
-            print("\nusage: python -m tools command [-h|--help] [args]\n\navailable commands:")
+            print("\nusage: python -m client command [-h|--help] [args]\n\navailable commands:")
 
         command_names.sort()
         for gn in command_names:
@@ -101,19 +101,10 @@ def run_client():
     """
     User Client Tools
     """
-    lib_paths = ["rdr_service/tools/client_libs", "tools/client_libs", "../client_libs", "client_libs", "../../client_libs"]
-    import_path = "rdr_service.tools.client_libs"
-    _run_tool(lib_paths, import_path)
-
-
-def run():
-    """
-    Developer Tools
-    """
-    lib_paths = ["rdr_service/tools/tool_libs", "tools/tool_libs", "../tool_libs", "tool_libs", "../../tool_libs"]
-    import_path = "rdr_service.tools.tool_libs"
+    lib_paths = ["rdr_service/client/client_libs", "client/client_libs", "../client_libs", "client_libs", "../../client_libs"]
+    import_path = "rdr_service.client.client_libs"
     _run_tool(lib_paths, import_path)
 
 
 # --- Main Program Call ---
-sys.exit(run())
+sys.exit(run_client())
