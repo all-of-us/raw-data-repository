@@ -50,7 +50,7 @@ from participant
                    on participant.site_id = site.site_id
          left join participant_summary summary
                    on participant.participant_id = summary.participant_id
-where organization.external_id = %s  
+where TRUE
   and summary.consent_for_study_enrollment = 1
   and participant.is_ghost_id is not true
   and (
@@ -59,21 +59,33 @@ where organization.external_id = %s
     )
 """
 
+participant_filters_sql = {
+    'org_id_sql': 'and organization.external_id = "{org_id}" ',
+    'day_limit_sql': """
+        and ( 
+            summary.consent_for_study_enrollment_time > date_sub(now(), INTERVAL {n_days} day)
+            or
+            summary.consent_for_electronic_health_records_time > date_sub(now(), INTERVAL {n_days} day)
+            )
+            
+        """,
+}
+
 COUNT_SQL = "select count(1) {0}".format(PARTICIPANT_SQL[PARTICIPANT_SQL.find("from") :])
-DAY_LIMIT_SQL = """
-and ( 
-    summary.consent_for_study_enrollment_time > date_sub(now(), INTERVAL {n_days} day)
-  	or
-  	summary.consent_for_electronic_health_records_time > date_sub(now(), INTERVAL {n_days} day)
-  	)
-"""
 
 class SyncConsentClass(object):
     def __init__(self, args, gcp_env):
         self.args = args
         self.gcp_env = gcp_env
 
-        self.sql = None
+        self.sql = PARTICIPANT_SQL
+        self.count_sql = str()
+
+    def _format_count_sql(self):
+        self.count_sql = "select count(1) {0}".format(self.sql[self.sql.find("from") :])
+
+    def _add_participant_filter(self, filter_key, **kwargs):
+        self.sql += participant_filters_sql[filter_key].format(**kwargs)
 
     def run(self):
         """
@@ -145,24 +157,17 @@ class SyncConsentClass(object):
             _logger.info("retrieving participant information...")
             # get record count
             if self.args.limit_day_range:
-
-                self.sql = PARTICIPANT_SQL.replace('and summary.consent_for_study_enrollment = 1',
-                                        f'{DAY_LIMIT_SQL.format(n_days=self.args.limit_day_range)}'
-                                        f' and summary.consent_for_study_enrollment = 1')
-                print(COUNT_SQL)
+                self._add_participant_filter('day_limit_sql',
+                                             n_days=self.args.limit_day_range)
             if self.args.org_id:
-                cursor.execute(COUNT_SQL, (self.args.org_id,))
-            else:
-                sql = COUNT_SQL.replace("where organization.external_id = %s", "where")
-                cursor.execute(sql)
+                self._add_participant_filter('org_id_sql',
+                                             org_id=self.args.org_id)
+            self._format_count_sql()
+            cursor.execute(self.count_sql)
             rec = cursor.fetchone()
             total_recs = rec[0]
 
-            if self.args.org_id:
-                cursor.execute(PARTICIPANT_SQL, (self.args.org_id,))
-            else:
-                sql = PARTICIPANT_SQL.replace("where organization.external_id = %s", "where")
-                cursor.execute(sql)
+            cursor.execute(self.sql)
 
             _logger.info("transferring files to destinations...")
             count = 0
@@ -190,6 +195,8 @@ class SyncConsentClass(object):
                     continue
 
                 src_bucket = SOURCE_BUCKET.get(origin_id, SOURCE_BUCKET[next(iter(SOURCE_BUCKET))]).format(p_id=p_id)
+                #
+
                 dest_bucket = DEST_BUCKET.format(
                     bucket_name=bucket,
                     org_external_id=self.args.org_id,
@@ -201,8 +208,8 @@ class SyncConsentClass(object):
                 _logger.debug("   dest: {0}".format(dest_bucket))
 
                 if not self.args.dry_run:
-                    # gsutil -m cp -r -n gs://src/ gs://dest
-                    gcp_cp(src_bucket, dest_bucket, args="-r", flags="-m")
+                    # gcp_cp(src_bucket, dest_bucket, args="-r", flags="-m")
+                    print('TRANSFERRING')
 
                 count += 1
                 rec = cursor.fetchone()
@@ -245,6 +252,9 @@ def run():
 
     parser.add_argument(
         "--limit-day-range", help="Limit consents to sync to those created within N days", default=None)  # noqa
+
+    parser.add_argument(
+        "--no-png", help="Do not transfer PNG files.", default=None)  # noqa
 
     args = parser.parse_args()
 
