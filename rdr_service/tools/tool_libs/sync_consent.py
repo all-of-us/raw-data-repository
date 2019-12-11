@@ -62,11 +62,11 @@ where TRUE
 
 participant_filters_sql = {
     'org_id_sql': 'and organization.external_id = "{org_id}" ',
-    'day_limit_sql': """
+    'date_limit_sql': """
         and ( 
-            summary.consent_for_study_enrollment_time > date_sub(now(), INTERVAL {n_days} day)
+            summary.consent_for_study_enrollment_time > "{date_limit}"
             or
-            summary.consent_for_electronic_health_records_time > date_sub(now(), INTERVAL {n_days} day)
+            summary.consent_for_electronic_health_records_time > "{date_limit}"
             )
             
         """,
@@ -83,6 +83,7 @@ class SyncConsentClass(object):
         self.count_sql = str()
 
         self.file_filter = ".pdf"
+        self.date_limit = "2001-01-01 00:00:00"
 
     def _format_count_sql(self):
         self.count_sql = "select count(1) {0}".format(self.sql[self.sql.find("from") :])
@@ -166,9 +167,9 @@ class SyncConsentClass(object):
 
             _logger.info("retrieving participant information...")
             # get record count
-            if self.args.limit_day_range:
-                self._add_participant_filter('day_limit_sql',
-                                             n_days=self.args.limit_day_range)
+            if self.args.date_limit:
+                self._add_participant_filter('date_limit_sql',
+                                             n_days=self.args.date_limit)
             if self.args.org_id:
                 self._add_participant_filter('org_id_sql',
                                              org_id=self.args.org_id)
@@ -265,7 +266,7 @@ def run():
     )
 
     parser.add_argument(
-        "--limit-day-range", help="Limit consents to sync to those created within N days", default=None)  # noqa
+        "--date-limit", help="Limit consents to sync to those created after the date", default=None)  # noqa
 
     parser.add_argument(
         "--all-files", help="Transfer all files, default is only PDF.", default=False, action="store_true")  # noqa
