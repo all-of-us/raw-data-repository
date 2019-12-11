@@ -11,7 +11,7 @@ import importlib
 import logging
 import sys
 
-from rdr_service.service_libs import GCPProcessContext
+from rdr_service.tools.tool_libs import GCPProcessContext
 from rdr_service.services.gcp_utils import gcp_get_app_access_token, gcp_get_app_host_name
 from rdr_service.services.system_utils import make_api_request, setup_logging, setup_i18n
 
@@ -22,8 +22,9 @@ mod_desc = "test local environment"
 
 
 class Verify(object):
-    def __init__(self, args):
+    def __init__(self, args, gcp_env):
         self.args = args
+        self.gcp_env = gcp_env
 
     def run(self):
         """
@@ -99,8 +100,8 @@ def run():
     parser.add_argument("--service-account", help="gcp service account", default=None)  # noqa
     args = parser.parse_args()
 
-    with GCPProcessContext(mod_cmd, args.project, args.account, args.service_account):
-        process = Verify(args)
+    with GCPProcessContext(mod_cmd, args.project, args.account, args.service_account) as gcp_env:
+        process = Verify(args, gcp_env)
         exit_code = process.run()
         return exit_code
 
