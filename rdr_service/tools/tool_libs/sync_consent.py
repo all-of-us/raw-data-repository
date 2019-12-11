@@ -20,6 +20,7 @@ import tempfile
 
 import MySQLdb
 
+from rdr_service.api_util import list_blobs
 from rdr_service.services.gcp_utils import gcp_cp, gcp_format_sql_instance, gcp_make_auth_header
 from rdr_service.services.system_utils import make_api_request, print_progress_bar, setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
@@ -33,8 +34,8 @@ tool_desc = "manually sync consent files to sites"
 
 HPO_REPORT_CONFIG_GCS_PATH = "gs://all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
 SOURCE_BUCKET = {
-    "vibrent": "gs://ptc-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*",
-    "careevolution": "gs://ce-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*"
+    "vibrent": "gs://ptc-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*{file_ext}",
+    "careevolution": "gs://ce-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*{file_ext}"
 }
 DEST_BUCKET = "gs://{bucket_name}/Participant/{org_external_id}/{site_name}/P{p_id}/"
 
@@ -81,11 +82,20 @@ class SyncConsentClass(object):
         self.sql = PARTICIPANT_SQL
         self.count_sql = str()
 
+        self.file_filter = ".pdf"
+
     def _format_count_sql(self):
         self.count_sql = "select count(1) {0}".format(self.sql[self.sql.find("from") :])
 
     def _add_participant_filter(self, filter_key, **kwargs):
         self.sql += participant_filters_sql[filter_key].format(**kwargs)
+
+    def _get_files_updated_in_range(self, source_bucket, date_limit):
+        files = list_blobs(source_bucket)
+        file_list = [
+            f.name for f in files if f.updated > date_limit
+        ]
+        return file_list
 
     def run(self):
         """
@@ -194,8 +204,14 @@ class SyncConsentClass(object):
                     _logger.warning("\nno bucket name found for [{0}].".format(rec[2]))
                     continue
 
-                src_bucket = SOURCE_BUCKET.get(origin_id, SOURCE_BUCKET[next(iter(SOURCE_BUCKET))]).format(p_id=p_id)
-                #
+                # Copy all files, not just PDFs
+                if self.args.all_files:
+                    self.file_filter = ""
+
+                src_bucket = SOURCE_BUCKET.get(origin_id, SOURCE_BUCKET[
+                    next(iter(SOURCE_BUCKET))
+                ]).format(p_id=p_id, file_ext=self.file_filter)
+
 
                 dest_bucket = DEST_BUCKET.format(
                     bucket_name=bucket,
@@ -208,9 +224,7 @@ class SyncConsentClass(object):
                 _logger.debug("   dest: {0}".format(dest_bucket))
 
                 if not self.args.dry_run:
-                    # gcp_cp(src_bucket, dest_bucket, args="-r", flags="-m")
-                    print('TRANSFERRING')
-
+                    gcp_cp(src_bucket, dest_bucket, args="-r", flags="-m")
                 count += 1
                 rec = cursor.fetchone()
                 # print progressbar one more time to show completed.
@@ -254,7 +268,7 @@ def run():
         "--limit-day-range", help="Limit consents to sync to those created within N days", default=None)  # noqa
 
     parser.add_argument(
-        "--no-png", help="Do not transfer PNG files.", default=None)  # noqa
+        "--all-files", help="Transfer all files, default is only PDF.", default=False, action="store_true")  # noqa
 
     args = parser.parse_args()
 
