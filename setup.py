@@ -13,8 +13,7 @@ with open(os.path.join(base_dir, "README.md")) as readme:
     readme_contents = readme.read()
 
 with open("requirements.txt") as requirements:
-     requirements_list = [l.strip() for l in requirements.readlines()]
-
+    requirements_list = [l.strip() for l in requirements.readlines()]
 
 setup(
     # This is what people 'pip install'.
@@ -26,9 +25,9 @@ setup(
     packages=find_packages(exclude=['tests']),
     install_requires=requirements_list,
     entry_points={
-      'console_scripts': [
-        'rtool = rdr_service.tools.__main__:run',
-        'rclient = rdr_service.client.__main__:run',
-      ],
+        'console_scripts': [
+            'rtool = rdr_service.tools.__main__:run',
+            'rclient = rdr_service.client.__main__:run',
+        ],
     },
 )

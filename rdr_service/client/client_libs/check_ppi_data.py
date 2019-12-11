@@ -179,9 +179,9 @@ def run():
                         help='google spreadsheet doc id, after the "/d/" in the URL. the doc must be public.') # noqa
     parser.add_argument("--sheet-gid", help='google spreadsheet sheet id, after "gid=" in the url.')  # noqa
     parser.add_argument("--email", help=("only validate the given e-mail(s). Validate all by default. "
-                            "this flag may be repeated to specify multiple e-mails."),action="append")  # noqa
-    parser.add_argument("--phone", help=("only validate the given phone number. " 
-                            "this flag may be repeated to specify multiple phone numbers."),action="append")  # noqa
+                            "this flag may be repeated to specify multiple e-mails."), action="append")  # noqa
+    parser.add_argument("--phone", help=("only validate the given phone number. "
+                            "this flag may be repeated to specify multiple phone numbers."), action="append")  # noqa
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:

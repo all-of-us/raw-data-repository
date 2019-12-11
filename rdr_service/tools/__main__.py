@@ -101,7 +101,8 @@ def run_client():
     """
     User Client Tools
     """
-    lib_paths = ["rdr_service/tools/client_libs", "tools/client_libs", "../client_libs", "client_libs", "../../client_libs"]
+    lib_paths = ["rdr_service/tools/client_libs", "tools/client_libs", "../client_libs", "client_libs",
+                 "../../client_libs"]
     import_path = "rdr_service.tools.client_libs"
     _run_tool(lib_paths, import_path)
 
