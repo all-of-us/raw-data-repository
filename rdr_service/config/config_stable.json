@@ -9,6 +9,10 @@
       "roles": ["healthpro"],
       "clientId": "hpro"
     },
+    "all-of-us-rw-stable@appspot.gserviceaccount.com": {
+      "roles": ["workbench"],
+      "clientId": "workbench"
+    },
     "awardee-pitt@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "PITT",

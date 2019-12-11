@@ -55,6 +55,10 @@
       "clientId": "hpro",
       "roles": ["healthpro"]
     },
+    "all-of-us-rw-prod@appspot.gserviceaccount.com": {
+      "roles": ["workbench"],
+      "clientId": "workbench"
+    },
     "aou-res-storefront-prod@appspot.gserviceaccount.com": {
       "roles": ["storefront"]
     },
