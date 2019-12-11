@@ -5,14 +5,15 @@ import os
 
 from setuptools import setup, find_packages
 
-__VERSION__ = "1.60.2"
+__VERSION__ = "1.60.6"
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
-rdr_client_dir = os.path.join(base_dir, "rdr_service/rdr_client")
+
 with open(os.path.join(base_dir, "README.md")) as readme:
     readme_contents = readme.read()
-with open(os.path.join(rdr_client_dir, "requirements.txt")) as requirements:
-    requirements_list = [l.strip() for l in requirements.readlines()]
+
+with open("requirements.txt") as requirements:
+     requirements_list = [l.strip() for l in requirements.readlines()]
 
 
 setup(
@@ -26,7 +27,8 @@ setup(
     install_requires=requirements_list,
     entry_points={
       'console_scripts': [
-        'rtool = rdr_service.tools.__main__:run'
+        'rtool = rdr_service.tools.__main__:run',
+        'rclient = rdr_service.client.__main__:run',
       ],
     },
 )
