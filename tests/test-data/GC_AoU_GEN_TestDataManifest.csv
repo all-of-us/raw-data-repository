@@ -1,6 +1,2 @@
 Biobank ID,BiobankidSampleid,LIMS ID,Call Rate,Sex Concordance,Contamination,Processing Status,Notes,site_id
-T1,T1_1,10001,1,True,4,Pass,This sample passed,11001
-T2,T2_2,10002,2,False,8,Fail,This sample also failed,11002
-T3,T3_3,10003,3,True,16,Abandoned,This sample was abandoned,11003
-T4,T4_4,10004,4,False,20,Unexpected,This sample was unexpected,11004
-T5,T5_5,10005,5,True,24,Other,This sample was other,11005
+T1,1001,10001,1,True,4,Pass,This sample passed,11001
