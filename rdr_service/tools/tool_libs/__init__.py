@@ -6,8 +6,11 @@ import time
 import traceback
 import random
 
+from rdr_service.services.gcp_config import GCP_APP_CONFIG_MAP
+
 from rdr_service.config import GoogleCloudDatastoreConfigProvider
-from rdr_service.services.gcp_utils import gcp_activate_sql_proxy, gcp_cleanup, gcp_initialize, gcp_format_sql_instance
+from rdr_service.services.gcp_utils import gcp_activate_sql_proxy, gcp_cleanup, gcp_initialize, \
+    gcp_format_sql_instance, gcp_get_current_project
 from rdr_service.services.system_utils import remove_pidfile, write_pidfile_or_die, git_project_root, TerminalColors
 
 _logger = logging.getLogger("rdr_logger")
@@ -90,7 +93,55 @@ class GCPEnvConfigObject(object):
 
         return config
 
-    def activate_sql_proxy(self, user: str = 'rdr', project: str = None, replica: bool = False):
+    def get_local_app_config(self, project: str) -> (dict, None):
+        """
+        Return the local project app configuration for the given project id.
+        :params project: GCP project id
+        :return: dict or none
+        """
+        files = list()
+        if not project or project == 'localhost':
+            files.append(os.path.join(self.git_project, 'rdr_service/.configs/current_config.json'))
+
+        else:
+            files.append(os.path.join(self.git_project, 'rdr_service/config/base_config.json'))
+            files.append(os.path.join(self.git_project, 'rdr_service/config', GCP_APP_CONFIG_MAP[project]))
+
+        config = dict()
+        for file in files:
+            if os.path.exists(file):
+                with open(file, 'r') as handle:
+                    temp_config = json.loads(handle.read())
+                    config = {**config, **temp_config}
+            else:
+                _logger.error(f'Configuration file "{file}" not found.')
+                return None
+
+        return config
+
+    def get_gcp_configurator_account(self, project: str) -> (str, None):
+        """
+        Return the GCP app engine configurator account for the given project id.
+        :param project: GCP project id
+        :return: service account or None
+        """
+        config = self.get_local_app_config(project)
+
+        if not config:
+            _logger.error(f'Failed to get local config for "{project}".')
+            return None
+
+        users = config['user_info']
+        for user, data in users.items():
+            try:
+                if data['clientId'] == 'configurator':
+                    return user
+            except KeyError:
+                pass
+
+        return None
+
+    def activate_sql_proxy(self, user: str = 'rdr', project: str = None, replica: bool = False) -> int:
         """
         Activate a google sql proxy instance service and set DB_CONNECTION_STRING environment var.
         :param user: database user, must be one of ['root', 'alembic', 'rdr'].
@@ -141,17 +192,24 @@ class GCPProcessContext(object):
 
     _env_config_obj = None
 
-    def __init__(self, command, project, account=None, service_account=None):
+    def __init__(self, command, project, account=None, service_account=None, lookup_configurator_sa=False):
         """
         Initialize GCP Context Manager
         :param command: command name
         :param project: gcp project name
         :param account: pmi-ops account
         :param service_account: gcp iam service account
+        :param lookup_configurator_sa: try looking up the service account from the project id
         """
         if not command:
             _logger.error("command not set, aborting.")
             exit(1)
+
+        # Be helpful and try to get the app engine configurator service account if asked to do so.
+        if not service_account and lookup_configurator_sa:
+            gcp_env = GCPEnvConfigObject(dict())  # Create temporary object.
+            service_account = \
+                gcp_env.get_gcp_configurator_account(self._project if self._project else gcp_get_current_project())
 
         self._command = command
         self._project = project

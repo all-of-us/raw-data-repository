@@ -39,6 +39,7 @@ from rdr_service.api.questionnaire_api import QuestionnaireApi
 from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireAnswers, QuestionnaireResponseApi
 from rdr_service.api.organization_hierarchy_api import OrganizationHierarchyApi
 from rdr_service.api.workbench_api import WorkbenchWorkspaceApi, WorkbenchResearcherApi
+from rdr_service.api.research_projects_directory_api import ResearchProjectsDirectoryApi
 from rdr_service.config import get_config, get_db_config
 
 from rdr_service.services.flask import app, API_PREFIX, TASK_PREFIX
@@ -247,6 +248,11 @@ api.add_resource(WorkbenchWorkspaceApi,
                  API_PREFIX + 'workbench/directory/workspaces',
                  endpoint='workbench.workspaces',
                  methods=['POST'])
+
+api.add_resource(ResearchProjectsDirectoryApi,
+                 API_PREFIX + 'researchHub/projectDirectory',
+                 endpoint='research.projects.directory',
+                 methods=['GET'])
 
 # Configuration API for admin use.  # note: temporarily disabled until decided
 api.add_resource(

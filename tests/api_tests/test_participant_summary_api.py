@@ -479,6 +479,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
         response = self.send_get("ParticipantSummary")
         self.assertBundle([], response)
 
+    def test_zero_participant_id(self):
+        self.send_get("Participant/P000/Summary", expected_status=http.client.NOT_FOUND)
+
     def submit_questionnaire_response(
         self,
         participant_id,
