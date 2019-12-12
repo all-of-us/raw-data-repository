@@ -177,6 +177,20 @@
         "ip4": ["128.195.50.121"]
       }
     },
+    "awardee-chs@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "CHEROKEE",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["40.128.118.80"]
+      }
+    },
+    "awardee-sanysidro@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "SAN_YSIDRO",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["70.183.84.153/28"]
+      }
+    },
     "vumc-appscan@all-of-us-rdr-prod.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"],
       "whitelisted_ip_ranges" : {
