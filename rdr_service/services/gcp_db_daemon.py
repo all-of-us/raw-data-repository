@@ -73,6 +73,11 @@ def run():
                 if self._args.enable_replica:
                     _logger.info('    all-of-us-rdr-ptsc-2-test:       replica    -> tcp: 127.0.0.1:9975')
 
+            if self._args.enable_ptsc_3_test is True:
+                _logger.info('    all-of-us-rdr-ptsc-3-test:       primary    -> tcp: 127.0.0.1:9980')
+                if self._args.enable_replica:
+                    _logger.info('    all-of-us-rdr-ptsc-3-test:       replica    -> tcp: 127.0.0.1:9985')
+
         def get_instances(self):
             """
       Build all instances we are going to connect to
