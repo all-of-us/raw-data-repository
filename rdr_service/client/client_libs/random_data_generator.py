@@ -12,7 +12,7 @@ import logging
 import sys
 from time import sleep
 
-from rdr_service.service_libs import GCPProcessContext
+from rdr_service.tools.tool_libs import GCPProcessContext
 from rdr_service.services.gcp_utils import gcp_get_app_access_token, gcp_get_app_host_name, gcp_make_auth_header
 from rdr_service.services.system_utils import make_api_request, setup_logging, setup_i18n
 
@@ -32,8 +32,9 @@ class RandomGeneratorClass(object):
     _host = None
     _oauth_token = None
 
-    def __init__(self, args):
+    def __init__(self, args, gcp_env):
         self.args = args
+        self.gcp_env = gcp_env
 
         if args:
             self._host = gcp_get_app_host_name(self.args.project)
@@ -162,13 +163,13 @@ def run():
         parser.error("--num_participants must be nonzero unless --create_biobank_samples is true.")
         exit(exit_code)
 
-    with GCPProcessContext(mod_cmd, args.project, args.account, args.service_account) as env:
+    with GCPProcessContext(mod_cmd, args.project, args.account, args.service_account) as gcp_env:
         # verify we're not getting pointed to production.
-        if env["project"] == "all-of-us-rdr-prod":
+        if gcp_env.project == "all-of-us-rdr-prod":
             _logger.error("using spec generator in production is not allowed.")
             return 1
 
-        process = RandomGeneratorClass(args)
+        process = RandomGeneratorClass(args, gcp_env)
         exit_code = process.run()
         return exit_code
 

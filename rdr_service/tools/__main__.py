@@ -11,26 +11,24 @@ import os
 import re
 import sys
 
-lib_paths = ["rdr_service/tools/tool_libs", "tools/tool_libs", "../tool_libs", "tool_libs", "../../tool_libs"]
-import_path = "rdr_service.tools.tool_libs"
-
 
 def _grep_prop(filename, prop_name):
     """
-  Look for property in file
-  :param filename: path to file and file name.
-  :param prop_name: property to search for in file.
-  :return: property value or None.
-  """
+    Look for property in file
+    :param filename: path to file and file name.
+    :param prop_name: property to search for in file.
+    :return: property value or None.
+    """
     fdata = open(filename, "r").read()
     obj = re.search("^{0} = ['|\"](.+)['|\"]$".format(prop_name), fdata, re.MULTILINE)
     if obj:
         return obj.group(1)
     return None
 
-
-def run():
-
+def _run_tool(lib_paths, import_path):
+    """
+    Run the tools from the given path.
+    """
     # We need to run from the `rdr_service` directory, save the current directory
     cwd = os.path.abspath(os.curdir)
     if not cwd.endswith('rdr_service'):
@@ -97,6 +95,25 @@ def run():
         print("")
 
     os.chdir(cwd)
+
+
+def run_client():
+    """
+    User Client Tools
+    """
+    lib_paths = ["rdr_service/tools/client_libs", "tools/client_libs", "../client_libs", "client_libs",
+                 "../../client_libs"]
+    import_path = "rdr_service.tools.client_libs"
+    _run_tool(lib_paths, import_path)
+
+
+def run():
+    """
+    Developer Tools
+    """
+    lib_paths = ["rdr_service/tools/tool_libs", "tools/tool_libs", "../tool_libs", "tool_libs", "../../tool_libs"]
+    import_path = "rdr_service.tools.tool_libs"
+    _run_tool(lib_paths, import_path)
 
 
 # --- Main Program Call ---
