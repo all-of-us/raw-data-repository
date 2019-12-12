@@ -215,11 +215,6 @@ class HierarchyContentApiTest(BaseTestCase):
         self.send_put('organization/hierarchy', request_data=request_json)
 
         result_after = self.send_get('Awardee/PITT')
-        from pprint import pprint
-        pprint(result_after)
-        # orgs = self.org_dao.get_all()
-        # for org in orgs:
-        #     print(f'{org.externalId}: {org.isObsolete}')
         self.assertEqual(2, len(result_after['organizations']))
         self.assertIn({'displayName': 'Test update organization display name', 'id': 'AARDVARK_ORG'},
                       result_after['organizations'])

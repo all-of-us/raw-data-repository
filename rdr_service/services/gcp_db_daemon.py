@@ -119,6 +119,11 @@ def run():
                 if self._args.enable_replica:
                     instances += gcp_format_sql_instance('all-of-us-rdr-ptsc-2-test', 9975, True) + ','
 
+            if self._args.enable_ptsc_3_test is True:
+                instances += gcp_format_sql_instance('all-of-us-rdr-ptsc-3-test', 9980) + ','
+                if self._args.enable_replica:
+                    instances += gcp_format_sql_instance('all-of-us-rdr-ptsc-3-test', 9985, True) + ','
+
             # remove trailing comma
             instances = instances[:-1]
 
@@ -197,6 +202,9 @@ def run():
                         default=False, action='store_true')  # noqa
 
     parser.add_argument('--enable-ptsc-2-test', help=_('Add proxy to all-of-us-rdr-ptsc-2-test'),
+                        default=False, action='store_true')  # noqa
+
+    parser.add_argument('--enable-ptsc-3-test', help=_('Add proxy to all-of-us-rdr-ptsc-3-test'),
                         default=False, action='store_true')  # noqa
 
     parser.add_argument("action", choices=("start", "stop", "restart"), default="")  # noqa
