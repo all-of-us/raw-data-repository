@@ -126,10 +126,14 @@ class CheckPPIDataClass(object):
         Formats and logs the validation results. See CheckPpiDataApi for response format details.
         """
         clr = self.gcp_env.terminal_colors
-        _logger.info(clr.fmt(''))
-        _logger.info('Results:')
-        _logger.info('=' * 110)
+        _logger.info(clr.fmt('Test Config:', clr.custom_fg_color(156)))
+        _logger.info('=' * 100)
+        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+        _logger.info('  Sheet ID              : {0}'.format(clr.fmt(self.args.sheet_id)))
+        _logger.info('  Sheet GID             : {0}'.format(clr.fmt(self.args.sheet_gid)))
 
+        _logger.info(clr.fmt('\nResults:', clr.custom_fg_color(156)))
+        _logger.info('-' * 100)
         total = 0
         errors = 0
         for email, results in data.items():
@@ -137,7 +141,7 @@ class CheckPPIDataClass(object):
             errors += errors_count
             total += tests_count
             log_lines = [
-                clr.fmt(f"  {email}: {tests_count} tests, {errors_count} errors",
+                clr.fmt(f"  {email} : {tests_count} tests, {errors_count} errors",
                         clr.fg_bright_green if errors_count == 0 else clr.fg_bright_red)
             ]
             for message in results["error_messages"]:
@@ -148,8 +152,9 @@ class CheckPPIDataClass(object):
                     message = message.replace('  ', ' ')
                 log_lines += ["\n      " + message]
             _logger.info("".join(log_lines))
-        _logger.info('=' * 110)
-        _logger.info(f"Completed {total} tests across {len(data)} participants with {errors} errors.")
+        _logger.info('-' * 100)
+        _logger.info(clr.fmt(f"\nCompleted {total} tests across {len(data)} participants with {errors} errors.",
+                             clr.custom_fg_color(156)))
 
     def run(self):
         """
@@ -171,7 +176,7 @@ def run():
     parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
     parser.add_argument("--debug", help="enable debug output", default=False, action="store_true")  # noqa
     parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
-    parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
+    parser.add_argument("--project", help="gcp project name", default=None)  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
 
@@ -184,7 +189,8 @@ def run():
                             "this flag may be repeated to specify multiple phone numbers."), action="append")  # noqa
     args = parser.parse_args()
 
-    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
+    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account,
+                                lookup_configurator_sa=True) as gcp_env:
         process = CheckPPIDataClass(args, gcp_env)
         exit_code = process.run()
         return exit_code
