@@ -70,7 +70,7 @@ def gcp_validate_project(project):
     return project
 
 
-def gcp_get_project_name():
+def gcp_get_current_project():
     """
   Return the currently set project name
   :return: project name
@@ -90,7 +90,7 @@ def gcp_get_project_short_name(project=None):
   :return: project short name
   """
     if not project:
-        project = gcp_get_project_name()
+        project = gcp_get_current_project()
         if not project:
             return None
 
@@ -122,7 +122,10 @@ def gcp_initialize(project, account=None, service_account=None):
         if "APPLICATION_ID" not in os.environ:
             os.environ["APPLICATION_ID"] = project
     else:
-        project = "localhost"
+        # If we don't have a project id, try using the currently set project id.
+        project = gcp_get_current_project()
+        if not project:
+            project = "localhost"
 
     # Use the account and service_account parameters if set, otherwise try the environment var.
     account = account if account else (os.environ["RDR_ACCOUNT"] if "RDR_ACCOUNT" in os.environ else None)

@@ -17,8 +17,8 @@ from rdr_service.services.system_utils import make_api_request, setup_logging, s
 
 _logger = logging.getLogger("rdr_logger")
 
-mod_cmd = "verify"
-mod_desc = "test local environment"
+tool_cmd = "verify"
+tool_desc = "test local environment"
 
 
 class Verify(object):
@@ -49,7 +49,7 @@ class Verify(object):
                 result = 1
 
         if self.args.project in ["localhost", "127.0.0.1"]:
-            _logger.warning("unable to perform additional testing unless project parameter is set.")
+            _logger.warning("unable to perform additional testing unless '--project' parameter is set.")
             return result
 
         # Try making some API calls to to verify OAuth2 token functions.
@@ -87,12 +87,12 @@ class Verify(object):
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
-        _logger, mod_cmd, "--debug" in sys.argv, "{0}.log".format(mod_cmd) if "--log-file" in sys.argv else None
+        _logger, tool_cmd, "--debug" in sys.argv, "{0}.log".format(tool_cmd) if "--log-file" in sys.argv else None
     )
     setup_i18n()
 
     # Setup program arguments.
-    parser = argparse.ArgumentParser(prog=mod_cmd, description=mod_desc)
+    parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
     parser.add_argument("--debug", help="Enable debug output", default=False, action="store_true")  # noqa
     parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
     parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
@@ -100,7 +100,7 @@ def run():
     parser.add_argument("--service-account", help="gcp service account", default=None)  # noqa
     args = parser.parse_args()
 
-    with GCPProcessContext(mod_cmd, args.project, args.account, args.service_account) as gcp_env:
+    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
         process = Verify(args, gcp_env)
         exit_code = process.run()
         return exit_code
