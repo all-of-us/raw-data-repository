@@ -5,6 +5,9 @@ _port = 8080 # local dev/testing.
 workers = 1
 threads = 1
 
+max_requests = 1000
+max_requests_jitter = 50
+
 if os.getenv('GAE_ENV', '').startswith('standard'):
     _port = os.environ.get('PORT', 8081)
     workers = multiprocessing.cpu_count() * 2 + 1

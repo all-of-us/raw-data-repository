@@ -624,6 +624,20 @@ def git_current_branch():
 
     return None
 
+def git_current_tag():
+    """
+    Get the current git tag
+    :return: Git tag
+    """
+    args = ['git', 'describe', '--tags']
+    # pylint: disable=unused-variable
+    code, so, se = run_external_program(args=args)
+
+    if code == 0:
+        return so.strip()
+
+    return None
+
 def git_checkout_branch(branch):
     """
     Change current branch to the given branch.
