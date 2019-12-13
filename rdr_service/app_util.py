@@ -3,12 +3,13 @@ import datetime
 import email.utils
 import logging
 import urllib.parse
+from time import sleep
 
 import netaddr
 import pytz
 import requests
 from flask import request
-from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.exceptions import Forbidden, Unauthorized, GatewayTimeout
 
 from rdr_service import clock, config
 from rdr_service.api.base_api import log_api_request
@@ -100,27 +101,33 @@ def get_oauth_id():
         - could be cached
         - could be validated locally instead of with API
     '''
-    if GAE_PROJECT == 'localhost':  # NOTE: 2019-08-15 mimic devappserver.py behavior
-        return config.LOCAL_AUTH_USER
-    try:
-        token = get_auth_token()
-    except ValueError as e:
-        logging.info(f"Invalid Authorization Token: {e}")
-        user_email = None
-    else:
-        #if GAE_PROJECT == 'localhost' and token == 'localtesting':  # NOTE: this would give us more robust local
-                                                                     # testing: allowing for anonymous code paths
-        #    return 'example@example.com'
-        response = get_token_info_response(token)
-        data = response.json()
-        if response.status_code == 200:
-            user_email = data.get('email')
-        else:
-            user_email = None
-            message = data.get("error_description", response.content)
-            logging.info(f"Oauth failure: {message}")
+    retries = 5
+    while retries:
+        retries -= 1
 
-    return user_email
+        if GAE_PROJECT == 'localhost':  # NOTE: 2019-08-15 mimic devappserver.py behavior
+            return config.LOCAL_AUTH_USER
+        try:
+            token = get_auth_token()
+        except ValueError as e:
+            logging.info(f"Invalid Authorization Token: {e}")
+            return None
+        else:
+            #if GAE_PROJECT == 'localhost' and token == 'localtesting':  # NOTE: this would give us more robust local
+                                                                         # testing: allowing for anonymous code paths
+            #    return 'example@example.com'
+            response = get_token_info_response(token)
+            data = response.json()
+            if response.status_code == 200:
+                return data.get('email')
+            else:
+                message = str(data.get("error_description", response.content))
+                logging.info(f"Oauth failure: {message}")
+
+        sleep(0.25)
+        logging.info('Retrying authentication call to Google after failure.')
+
+    raise GatewayTimeout('Google authentication services is not available, try again later.')
 
 
 def check_cron():

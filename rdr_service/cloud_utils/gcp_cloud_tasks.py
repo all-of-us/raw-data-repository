@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 import json
 import logging
+from time import sleep
 
+from google.api_core.exceptions import InternalServerError
 from google.cloud import tasks_v2
 from google.protobuf import timestamp_pb2
 
@@ -80,6 +82,15 @@ class GCPCloudTask(object):
             task['schedule_time'] = timestamp
 
         # Use the client to build and send the task.
-        response = client.create_task(parent, task)
-        if not quiet:
-            logging.info('Created task {0}'.format(response.name))
+        retry = 5
+        while retry:
+            retry -= 1
+            try:
+                response = client.create_task(parent, task)
+                if not quiet:
+                    logging.info('Created task {0}'.format(response.name))
+                return
+            except InternalServerError:
+                sleep(0.25)
+        logging.error('Create Cloud Task Failed.')
+
