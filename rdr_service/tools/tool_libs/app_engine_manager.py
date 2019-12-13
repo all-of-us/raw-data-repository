@@ -12,7 +12,7 @@ import difflib
 import yaml
 from yaml import Loader as yaml_loader
 
-from rdr_service.services.system_utils import setup_logging, setup_i18n, git_project_root, git_current_branch, \
+from rdr_service.services.system_utils import setup_logging, setup_i18n, git_current_branch, \
     git_checkout_branch, is_git_branch_clean
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, GCP_APP_CONFIG_MAP
@@ -590,15 +590,12 @@ def run():
 
         # determine the git project root directory.
         if not args.git_project:
-            envron_path = os.environ.get('RDR_PROJECT', None)
-            git_root_path = git_project_root()
-            if envron_path:
-                args.git_project = envron_path
-            elif git_root_path:
-                args.git_project = git_root_path
+            if gcp_env.git_project:
+                args.git_project = gcp_env.git_project
             else:
                 _logger.error("No project root found, set '--git-project' arg or set RDR_PROJECT environment var.")
                 exit(1)
+
 
         if hasattr(args, 'git_target'):
             process = DeployAppClass(args, gcp_env)
