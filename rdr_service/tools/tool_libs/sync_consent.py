@@ -83,7 +83,6 @@ class SyncConsentClass(object):
         self.count_sql = str()
 
         self.file_filter = ".pdf"
-        self.date_limit = "2001-01-01 00:00:00"
 
     def _format_count_sql(self):
         self.count_sql = "select count(1) {0}".format(self.sql[self.sql.find("from") :])
@@ -155,7 +154,6 @@ class SyncConsentClass(object):
         port = random.randint(10000, 65535)
         instances = gcp_format_sql_instance(self.gcp_env.project, port=port)
         proxy_pid = self.gcp_env.activate_sql_proxy(instance=instances, port=port)
-        print(os.environ['DB_CONNECTION_STRING'])
         if not proxy_pid:
             _logger.error("activating google sql proxy failed.")
             return 1
@@ -169,7 +167,7 @@ class SyncConsentClass(object):
             # get record count
             if self.args.date_limit:
                 self._add_participant_filter('date_limit_sql',
-                                             n_days=self.args.date_limit)
+                                             date_limit=self.args.date_limit)
             if self.args.org_id:
                 self._add_participant_filter('org_id_sql',
                                              org_id=self.args.org_id)
@@ -199,10 +197,14 @@ class SyncConsentClass(object):
                     site_info = sites.get(rec[3])
                     if not site_info:
                         _logger.warning("\nsite info not found for [{0}].".format(rec[2]))
+                        count += 1
+                        rec = cursor.fetchone()
                         continue
                     bucket = site_info.get("bucket_name")
                 if not bucket:
                     _logger.warning("\nno bucket name found for [{0}].".format(rec[2]))
+                    count += 1
+                    rec = cursor.fetchone()
                     continue
 
                 # Copy all files, not just PDFs
@@ -212,7 +214,6 @@ class SyncConsentClass(object):
                 src_bucket = SOURCE_BUCKET.get(origin_id, SOURCE_BUCKET[
                     next(iter(SOURCE_BUCKET))
                 ]).format(p_id=p_id, file_ext=self.file_filter)
-
 
                 dest_bucket = DEST_BUCKET.format(
                     bucket_name=bucket,
