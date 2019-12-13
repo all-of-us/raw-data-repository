@@ -35,6 +35,9 @@ class GCPEnvConfigObject(object):
         # Determine the git project root directory.
         envron_path = os.environ.get('RDR_PROJECT', None)
         git_root_path = git_project_root()
+        if not git_root_path:
+            git_root_path = git_project_root('raw_data_repository')
+
         if envron_path:
             self.git_project = envron_path
         elif git_root_path:

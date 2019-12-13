@@ -112,10 +112,10 @@ class CheckPPIDataClass(object):
             key = row[0]
             data = row[1:][column]
 
-            if data:
-                if key not in results:
-                    results[key] = data.strip() if data else ""
-                else:
+            if key not in results:
+                results[key] = data.strip() if data else ""
+            else:
+                if data:
                     # append multiple choice questions
                     results[key] += "|{0}".format(data.strip())
 
