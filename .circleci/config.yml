@@ -43,6 +43,9 @@ commands:
       project-id:
         type: string
         default: bad-mojo-teacup
+      git-target:
+        type: string
+        default: bad-mojo-teacup
     steps:
       - checkout
       - run:
@@ -53,7 +56,7 @@ commands:
           command: ./ci/setup_python_env.sh
       - run:
           name: Deploy App To Test Environment
-          command: ./ci/deploy_app.sh << parameters.project-id >>
+          command: ./ci/deploy_app.sh << parameters.project-id >> << parameters.git-target >>
 
 jobs:
   job_run_unittests:
@@ -66,12 +69,14 @@ jobs:
     steps:
       - deploy-app-steps:
           project-id: pmi-drc-api-test
+          git-target: << pipeline.git.branch >>
 
   job_deploy_to_staging:
     <<: *job_defaults
     steps:
       - deploy-app-steps:
           project-id: all-of-us-rdr-staging
+          git-target: << pipeline.git.tag >>
 
 workflows:
 

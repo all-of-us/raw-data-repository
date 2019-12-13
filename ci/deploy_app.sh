@@ -7,4 +7,4 @@ export PYTHONPATH=$PYTHONPATH:`pwd`
 export GOOGLE_APPLICATION_CREDENTIALS=/home/circleci/gcloud-credentials.key
 ./ci/activate_creds.sh ~/gcloud-credentials.key
 cd rdr_service
-python -m tools app-engine --project $1 deploy --deploy-as circleci --quiet
+python -m tools app-engine --project $1 deploy --git-target $2 --deploy-as circleci --quiet
