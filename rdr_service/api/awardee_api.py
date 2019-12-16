@@ -27,4 +27,7 @@ class AwardeeApi(BaseApi):
 
     def _make_response(self, obj):
         inactive = request.args.get("_inactive")
-        return self.dao.to_client_json(obj, inactive)
+        obsolete = request.args.get("_obsolete")
+        return self.dao.to_client_json(obj,
+                                       inactive_sites=inactive,
+                                       include_obsolete=obsolete)

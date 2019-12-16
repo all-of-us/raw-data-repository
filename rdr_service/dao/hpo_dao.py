@@ -68,20 +68,28 @@ class HPODao(CacheAllDao):
             _ORDER_BY_ENDING,
         )
 
-    def to_client_json(self, model, inactive_sites):
-        return HPODao._to_json(model, inactive_sites)
+    def to_client_json(self, model, inactive_sites, include_obsolete):
+        return HPODao._to_json(model, inactive_sites, include_obsolete)
 
     @staticmethod
-    def _to_json(model, inactive_sites=False):
+    def _to_json(model, inactive_sites=False, include_obsolete=None):
         resource = _FhirAwardee()
         resource.id = model.name
         resource.display_name = model.displayName
+        obsolete_filters = [0, 1, None]
+        if include_obsolete is not None:
+            if include_obsolete.lower() == 'false':
+                obsolete_filters = [0, None]
+            elif include_obsolete.lower() == 'true':
+                obsolete_filters = [1]
+
         if model.organizationType:
             resource.type = str(model.organizationType)
         else:
             resource.type = UNSET
         resource.organizations = [
-            OrganizationDao._to_json(organization, inactive_sites) for organization in model.organizations
+            OrganizationDao._to_json(organization, inactive_sites)
+            for organization in model.organizations
         ]
         json = resource.as_json()
         del json["resourceType"]

@@ -104,6 +104,29 @@ class AwardeeApiTest(BaseTestCase):
         result = self.send_get("Awardee?_inactive=true")
         self.assertEqual(self._make_expected_unset_enrollment_data(), result)
 
+    def test_get_awardee_no_obsolete(self):
+        self._setup_data()
+        self._update_heirarchy_item_obsolete('org')
+        self._setup_active_sitefor_obsolete_test()
+        self._update_heirarchy_item_obsolete('site')
+
+        result_false = self.send_get("Awardee")
+        from pprint import pprint
+        pprint(result_false)
+
+        self.assertEqual(1, len(result_false['organizations']))
+        #self.assertEqual(1, len(result_false['organizations'][0]['sites']))
+
+        result_true = self.send_get("Awardee/PITT?_obsolete=true")
+
+
+        self.assertEqual(1, len(result_true['organizations']))
+        # self.assertEqual(1, len(result_true['organizations'][0]['sites']))
+        # self.assertEqual('Site 3', result_true['organizations'][0])
+
+
+
+
     def _make_expected_pitt_awardee_resource(self, inactive=False):
         sites = [
             {
@@ -240,3 +263,80 @@ class AwardeeApiTest(BaseTestCase):
             ],
             "type": "searchset",
         }
+
+    def _setup_active_sitefor_obsolete_test(self):
+        site_dao = SiteDao()
+        site_dao.insert(
+            Site(
+                siteName="Site 3",
+                googleGroup="org-1-site-3",
+                organizationId=1,
+                enrollingStatus=EnrollingStatus.ACTIVE,
+                siteStatus=SiteStatus.ACTIVE,
+            )
+        )
+
+    def _update_heirarchy_item_obsolete(self, item):
+        if item == 'org':
+            request_json = {
+                    "resourceType": "Organization",
+                    "id": "a893282c-2717-4a20-b276-d5c9c2c0e51f",
+                    'meta': {
+                        'versionId': '2'
+                    },
+                    "extension": [],
+                    "identifier": [
+                        {
+                            "system": "http://all-of-us.org/fhir/sites/organization-id",
+                            "value": "AARDVARK_ORG"
+                        }
+                    ],
+                    "active": False,
+                    "type": [
+                        {
+                            "coding": [
+                                {
+                                    "code": "ORGANIZATION",
+                                    "system": "http://all-of-us.org/fhir/sites/type"
+                                }
+                            ]
+                        }
+                    ],
+                    "name": "Test update organization obsolete",
+                    "partOf": {
+                        "reference": "PITT_HPO_ID"
+                    }
+                }
+        else:
+            request_json = {
+                "resourceType": "Organization",
+                "id": "7d011d52-5de1-43e6-afa8-0943b15dc639",
+                "meta": {
+                    "versionId": "27"
+                },
+                "extension": [],
+                "identifier": [
+                    {
+                        "system": "http://all-of-us.org/fhir/sites/site-id",
+                        "value": "org-1-site-3"
+                    }
+                ],
+                "active": False,
+                "type": [
+                    {
+                        "coding": [
+                            {
+                                "system": "http://all-of-us.org/fhir/sites/type",
+                                "code": "SITE"
+                            }
+                        ]
+                    }
+                ],
+                "name": "Site 3 Medical Center",
+                "address": [],
+                "partOf": {
+                    "reference": "ORG_1"
+                },
+            }
+
+        self.send_put('organization/hierarchy', request_data=request_json)
