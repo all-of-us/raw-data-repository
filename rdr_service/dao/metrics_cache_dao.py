@@ -268,6 +268,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                     GROUP BY DATE(ps.sign_up_time), DATE(ps.consent_for_study_enrollment_time)
                   ) AS results
                   WHERE c.day>=DATE(sign_up_time) AND (consent_for_study_enrollment_time IS NULL OR DATE(consent_for_study_enrollment_time)>c.day)
+                  and ps.participant_origin = d.participant_origin
                 ),0) AS registered_count,
                 IFNULL((
                   SELECT SUM(results.enrollment_count)
@@ -281,6 +282,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                     GROUP BY DATE(ps.consent_for_study_enrollment_time), DATE(ps.enrollment_status_member_time)
                   ) AS results
                   WHERE consent_for_study_enrollment_time IS NOT NULL AND c.day>=DATE(consent_for_study_enrollment_time) AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
+                  and ps.participant_origin = d.participant_origin
                 ),0) AS participant_count,
                 IFNULL((
                   SELECT SUM(results.enrollment_count)
@@ -294,6 +296,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                     GROUP BY DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
                   ) AS results
                   WHERE enrollment_status_member_time IS NOT NULL AND day>=DATE(enrollment_status_member_time) AND (enrollment_status_core_stored_sample_time IS NULL OR day < DATE(enrollment_status_core_stored_sample_time))
+                  and ps.participant_origin = d.participant_origin
                 ),0) AS consented_count,
                 IFNULL((
                   SELECT SUM(results.enrollment_count)
@@ -306,8 +309,10 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                     GROUP BY DATE(ps.enrollment_status_core_stored_sample_time)
                   ) AS results
                   WHERE enrollment_status_core_stored_sample_time IS NOT NULL AND day>=DATE(enrollment_status_core_stored_sample_time)
-                ),0) AS core_count
-              FROM calendar c
+                  and ps.participant_origin = d.participant_origin
+                ),0) AS core_count,
+                d.participant_origin
+              FROM calendar c, metrics_tmp_participant_origin d
               WHERE c.day BETWEEN :start_date AND :end_date
               ;
         """

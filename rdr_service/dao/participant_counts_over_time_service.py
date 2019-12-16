@@ -43,7 +43,9 @@ class ParticipantCountsOverTimeService(BaseDao):
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')
                 session.execute('DROP TABLE IF EXISTS metrics_tmp_participant;')
+                session.execute('DROP TABLE IF EXISTS metrics_tmp_participant_origin;')
             session.execute('CREATE TABLE metrics_tmp_participant LIKE participant_summary')
+            session.execute('CREATE TABLE metrics_tmp_participant_origin (participant_origin VARCHAR(50))')
 
             indexes_cursor = session.execute('SHOW INDEX FROM metrics_tmp_participant')
             index_name_list = []
@@ -73,7 +75,7 @@ class ParticipantCountsOverTimeService(BaseDao):
             columns = map(get_field_name, columns_cursor.keys())
             columns_str = ','.join(columns)
 
-            sql = """
+            participant_sql = """
               INSERT INTO metrics_tmp_participant
               SELECT 
               """ + columns_str + """
@@ -96,7 +98,14 @@ class ParticipantCountsOverTimeService(BaseDao):
             session.execute('CREATE INDEX idx_sample_time ON metrics_tmp_participant '
                             '(enrollment_status_core_stored_sample_time)')
 
-            session.execute(sql, params)
+            session.execute(participant_sql, params)
+
+            participant_origin_sql = """
+                INSERT INTO metrics_tmp_participant_origin
+                SELECT DISTINCT participant_origin FROM participant
+            """
+            session.execute(participant_origin_sql)
+
             logging.info('Init tmp table for metrics cron job.')
 
     def refresh_metrics_cache_data(self):

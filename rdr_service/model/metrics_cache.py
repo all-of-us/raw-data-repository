@@ -18,6 +18,7 @@ class MetricsEnrollmentStatusCache(Base):
     participantCount = Column("participant_count", Integer, nullable=False)
     consentedCount = Column("consented_count", Integer, nullable=False)
     coreCount = Column("core_count", Integer, nullable=False)
+    participantOrigin = Column("type", String(50))
 
 
 class MetricsRaceCache(Base):
