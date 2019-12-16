@@ -77,15 +77,20 @@ class MayoLinkApi(UpdatableApi):
         http = httplib2.Http()
         http.add_credentials(self.username, self.pw)
 
-        response, content = http.request(
-            self.endpoint, method="POST", headers={"Content-type": "application/xml"}, body=xml
-        )
+        try:
+            response, content = http.request(
+                self.endpoint, method="POST", headers={"Content-type": "application/xml"}, body=xml
+            )
+            if response['status'] == "200":
+                result = self._xml_to_dict(content)
+                return result
+        except httplib2.HttpLib2Error:
+            pass
+        except OSError:
+            pass
 
-        if response["status"] != "201":
-            raise ServiceUnavailable("Mayolink service unavailable, please re-try later")
+        raise ServiceUnavailable("Mayolink service unavailable, please re-try later")
 
-        result = self._xml_to_dict(content)
-        return result
 
     def __dict_to_mayo_xml__(self, order):
         root = etree.fromstring(self.payload_template)
