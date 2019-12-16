@@ -8,3 +8,4 @@ export GOOGLE_APPLICATION_CREDENTIALS=/home/circleci/gcloud-credentials.key
 ./ci/activate_creds.sh ~/gcloud-credentials.key
 cd rdr_service
 python -m tools app-engine --project $1 deploy --git-target $2 --quiet
+
