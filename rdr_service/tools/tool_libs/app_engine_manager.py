@@ -224,9 +224,6 @@ class DeployAppClass(object):
         # Disable any other user prompts.
         self.args.quiet = True
 
-        self.add_jira_comment(self._jira_handler.get_release_notes_since_tag('1.60.6'))
-        return 0
-
         # Run database migration
         _logger.info('Applying database migrations...')
         alembic = AlembicManagerClass(self.args, self.gcp_env, ['upgrade', 'head'])
