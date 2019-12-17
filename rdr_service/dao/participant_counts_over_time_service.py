@@ -60,6 +60,7 @@ class ParticipantCountsOverTimeService(BaseDao):
             session.execute('ALTER TABLE metrics_tmp_participant MODIFY first_name VARCHAR(255)')
             session.execute('ALTER TABLE metrics_tmp_participant MODIFY last_name VARCHAR(255)')
             session.execute('ALTER TABLE metrics_tmp_participant MODIFY suspension_status SMALLINT')
+            session.execute('ALTER TABLE metrics_tmp_participant MODIFY participant_origin VARCHAR(80)')
 
             columns_cursor = session.execute('SELECT * FROM metrics_tmp_participant LIMIT 0')
 
@@ -166,7 +167,8 @@ class ParticipantCountsOverTimeService(BaseDao):
                 session.execute(sql, params)
 
     def get_filtered_results(
-        self, stratification, start_date, end_date, history, awardee_ids, enrollment_statuses, sample_time_def, version
+        self, stratification, start_date, end_date, history, awardee_ids, enrollment_statuses, sample_time_def,
+        participant_origins, version
     ):
         """Queries DB, returns results in format consumed by front-end
 
@@ -178,6 +180,7 @@ class ParticipantCountsOverTimeService(BaseDao):
     :param history: query for history data from metrics cache table
     :param stratification: How to stratify (layer) results, as in a stacked bar chart
     :param version: indicate the version of the result filter
+    :param participant_origins: indicate the participant origins
     :return: Filtered, stratified results by date
     """
 
@@ -199,7 +202,8 @@ class ParticipantCountsOverTimeService(BaseDao):
             return dao.get_total_interested_count(start_date, end_date, awardee_ids, enrollment_statuses)
         elif str(history) == "TRUE" and stratification == Stratifications.ENROLLMENT_STATUS:
             dao = MetricsEnrollmentStatusCacheDao(version=version)
-            return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)
+            return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses,
+                                                     participant_origins)
         elif str(history) == "TRUE" and stratification == Stratifications.GENDER_IDENTITY:
             dao = MetricsGenderCacheDao(version=version)
             return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)

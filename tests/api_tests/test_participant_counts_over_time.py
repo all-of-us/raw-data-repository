@@ -130,6 +130,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
     :param time_fp: Time that participant fulfilled FULL_PARTICIPANT criteria
     :return: Participant object
     """
+        origin = participant.participantOrigin
 
         if unconsented is True:
             enrollment_status = None
@@ -146,6 +147,12 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         participant.providerLink = make_primary_provider_link_for_name(hpo_name)
         with FakeClock(time_mem):
             self.dao.update(participant)
+        if origin:
+            with self.dao.session() as session:
+                update_origin_sql = """
+                    UPDATE participant set participant_origin='{}' where rdr.participant.participant_id={}
+                """.format(origin, participant.participantId)
+                session.execute(update_origin_sql)
 
         if enrollment_status is None:
             return None
@@ -1464,13 +1471,13 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
     def test_get_history_enrollment_status_api_v2(self):
 
-        p1 = Participant(participantId=1, biobankId=4)
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
         self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1)
 
-        p2 = Participant(participantId=2, biobankId=5)
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='b')
         self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2)
 
-        p3 = Participant(participantId=3, biobankId=6)
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='c')
         self._insert(
             p3,
             "Chad",
@@ -1612,6 +1619,51 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self.assertIn({u'date': u'2018-01-04', u'metrics': {u'consented': 0, u'core': 0,
                                                             u'registered': 0, u'participant': 0},
                        u'hpo': u'AZ_TUCSON'}, response)
+
+        qs = """
+                    &stratification=ENROLLMENT_STATUS
+                    &startDate=2018-01-01
+                    &endDate=2018-01-08
+                    &history=TRUE
+                    &version=2
+                    &origin=a,b
+                    """
+
+        qs = ''.join(qs.split())  # Remove all whitespace
+
+        response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+        self.assertIn(
+            {
+                "date": "2018-01-02",
+                "metrics": {"consented": 0, "core": 0, "registered": 1, "participant": 0},
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-03",
+                "metrics": {"consented": 0, "core": 0, "registered": 1, "participant": 0},
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertNotIn(
+            {
+                "date": "2018-01-02",
+                "metrics": {"consented": 1, "core": 0, "registered": 1, "participant": 0},
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertNotIn(
+            {
+                "date": "2018-01-03",
+                "metrics": {"consented": 0, "core": 1, "registered": 1, "participant": 0},
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
 
     def test_get_history_enrollment_status_api_filtered_by_awardee(self):
 

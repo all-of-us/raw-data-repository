@@ -81,7 +81,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                     .order_by(MetricsEnrollmentStatusCache.dateInserted.desc())
                     .first())
 
-    def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None):
+    def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None, participant_origins=None):
         with self.session() as session:
             last_inserted_record = self.get_serving_version_with_session(session)
             if last_inserted_record is None:
@@ -110,8 +110,17 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
 
                 return query.group_by(MetricsEnrollmentStatusCache.date).all()
             else:
-                query = session.query(MetricsEnrollmentStatusCache) \
-                    .filter(MetricsEnrollmentStatusCache.dateInserted == last_inserted_date)
+                query = session.query(MetricsEnrollmentStatusCache.date,
+                                      MetricsEnrollmentStatusCache.hpoName,
+                                      func.sum(MetricsEnrollmentStatusCache.registeredCount)
+                                      .label('registeredCount'),
+                                      func.sum(MetricsEnrollmentStatusCache.participantCount)
+                                      .label('participantCount'),
+                                      func.sum(MetricsEnrollmentStatusCache.consentedCount)
+                                      .label('consentedCount'),
+                                      func.sum(MetricsEnrollmentStatusCache.coreCount)
+                                      .label('coreCount')
+                                      ).filter(MetricsEnrollmentStatusCache.dateInserted == last_inserted_date)
                 if start_date:
                     query = query.filter(MetricsEnrollmentStatusCache.date >= start_date)
                 if end_date:
@@ -120,11 +129,14 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                 if hpo_ids:
                     query = query.filter(MetricsEnrollmentStatusCache.hpoId.in_(hpo_ids))
 
-                return query.all()
+                if participant_origins:
+                    query = query.filter(MetricsEnrollmentStatusCache.participantOrigin.in_(participant_origins))
+
+                return query.group_by(MetricsEnrollmentStatusCache.date, MetricsEnrollmentStatusCache.hpoName).all()
 
     def get_latest_version_from_cache(self, start_date, end_date, hpo_ids=None,
-                                      enrollment_statuses=None):
-        buckets = self.get_active_buckets(start_date, end_date, hpo_ids)
+                                      enrollment_statuses=None, participant_origins=None):
+        buckets = self.get_active_buckets(start_date, end_date, hpo_ids, participant_origins)
         if buckets is None:
             return []
         operation_funcs = {
@@ -153,13 +165,13 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                     'date': record.date.isoformat(),
                     'hpo': record.hpoName,
                     'metrics': {
-                        'registered': record.registeredCount if not enrollment_statuses or str(
+                        'registered': int(record.registeredCount) if not enrollment_statuses or str(
                           EnrollmentStatusV2.REGISTERED) in enrollment_statuses else 0,
-                        'participant': record.participantCount if not enrollment_statuses or str(
+                        'participant': int(record.participantCount) if not enrollment_statuses or str(
                           EnrollmentStatusV2.PARTICIPANT) in enrollment_statuses else 0,
-                        'consented': record.consentedCount if not enrollment_statuses or str(
+                        'consented': int(record.consentedCount) if not enrollment_statuses or str(
                           EnrollmentStatusV2.FULLY_CONSENTED) in enrollment_statuses else 0,
-                        'core': record.coreCount if not enrollment_statuses or str(
+                        'core': int(record.coreCount) if not enrollment_statuses or str(
                           EnrollmentStatusV2.CORE_PARTICIPANT) in enrollment_statuses else 0,
                     }
                 }
@@ -170,9 +182,9 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                     'date': record.date.isoformat(),
                     'hpo': record.hpoName,
                     'metrics': {
-                        'registered': record.registeredCount + record.participantCount,
-                        'consented': record.consentedCount,
-                        'core': record.coreCount
+                        'registered': int(record.registeredCount) + int(record.participantCount),
+                        'consented': int(record.consentedCount),
+                        'core': int(record.coreCount)
                     }
                 }
                 client_json.append(new_item)
@@ -262,13 +274,14 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                   (
                     SELECT DATE(ps.sign_up_time) AS sign_up_time,
                            DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
+                           ps.participant_origin,
                            count(*) enrollment_count
                     FROM metrics_tmp_participant ps
                     WHERE ps.hpo_id = :hpo_id
-                    GROUP BY DATE(ps.sign_up_time), DATE(ps.consent_for_study_enrollment_time)
+                    GROUP BY DATE(ps.sign_up_time), DATE(ps.consent_for_study_enrollment_time), ps.participant_origin
                   ) AS results
                   WHERE c.day>=DATE(sign_up_time) AND (consent_for_study_enrollment_time IS NULL OR DATE(consent_for_study_enrollment_time)>c.day)
-                  and ps.participant_origin = d.participant_origin
+                  and results.participant_origin = d.participant_origin
                 ),0) AS registered_count,
                 IFNULL((
                   SELECT SUM(results.enrollment_count)
@@ -276,13 +289,14 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                   (
                     SELECT DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
                            DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                           ps.participant_origin,
                            count(*) enrollment_count
                     FROM metrics_tmp_participant ps
                     WHERE ps.hpo_id = :hpo_id
-                    GROUP BY DATE(ps.consent_for_study_enrollment_time), DATE(ps.enrollment_status_member_time)
+                    GROUP BY DATE(ps.consent_for_study_enrollment_time), DATE(ps.enrollment_status_member_time), ps.participant_origin
                   ) AS results
                   WHERE consent_for_study_enrollment_time IS NOT NULL AND c.day>=DATE(consent_for_study_enrollment_time) AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
-                  and ps.participant_origin = d.participant_origin
+                  and results.participant_origin = d.participant_origin
                 ),0) AS participant_count,
                 IFNULL((
                   SELECT SUM(results.enrollment_count)
@@ -290,26 +304,27 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                   (
                     SELECT DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
                            DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
+                           ps.participant_origin,
                            count(*) enrollment_count
                     FROM metrics_tmp_participant ps
                     WHERE ps.hpo_id = :hpo_id
-                    GROUP BY DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                    GROUP BY DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time), ps.participant_origin
                   ) AS results
                   WHERE enrollment_status_member_time IS NOT NULL AND day>=DATE(enrollment_status_member_time) AND (enrollment_status_core_stored_sample_time IS NULL OR day < DATE(enrollment_status_core_stored_sample_time))
-                  and ps.participant_origin = d.participant_origin
+                  and results.participant_origin = d.participant_origin
                 ),0) AS consented_count,
                 IFNULL((
                   SELECT SUM(results.enrollment_count)
                   FROM
                   (
                     SELECT DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
-                           count(*) enrollment_count
+                           ps.participant_origin, count(*) enrollment_count
                     FROM metrics_tmp_participant ps
                     WHERE ps.hpo_id = :hpo_id
-                    GROUP BY DATE(ps.enrollment_status_core_stored_sample_time)
+                    GROUP BY DATE(ps.enrollment_status_core_stored_sample_time), ps.participant_origin
                   ) AS results
                   WHERE enrollment_status_core_stored_sample_time IS NOT NULL AND day>=DATE(enrollment_status_core_stored_sample_time)
-                  and ps.participant_origin = d.participant_origin
+                  and results.participant_origin = d.participant_origin
                 ),0) AS core_count,
                 d.participant_origin
               FROM calendar c, metrics_tmp_participant_origin d
