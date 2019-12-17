@@ -142,7 +142,7 @@ class CheckPPIDataClass(object):
             total += tests_count
             log_lines = [
                 clr.fmt(f"  {email} : {tests_count} tests, {errors_count} errors",
-                        clr.fg_bright_green if errors_count == 0 else clr.fg_bright_red)
+                        clr.fg_bright_green if errors_count == 0 else clr.fg_bright_yellow)
             ]
             for message in results["error_messages"]:
                 # Convert braces and unicode indicator to quotes for better readability
