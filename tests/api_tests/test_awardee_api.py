@@ -124,8 +124,10 @@ class AwardeeApiTest(BaseTestCase):
                 isObsolete=ObsoleteStatus.OBSOLETE)
         )
         result_all = self.send_get("Awardee?_obsolete=false")
-
         self.assertEqual(3, len(result_all['entry']))
+
+        result_1_obsolete = self.send_get("Awardee/OBSOLETE_HPO?_obsolete=false")
+        self.assertEqual('OBSOLETE_HPO', result_1_obsolete['id'])
 
     def _make_expected_pitt_awardee_resource(self, inactive=False):
         sites = [
