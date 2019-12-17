@@ -77,7 +77,7 @@ class OrganizationDao(CacheAllDao):
             return query.first()
 
     @staticmethod
-    def _to_json(model, inactive_sites):
+    def _to_json(model, inactive_sites, obsolete_filters):
         resource = _FhirOrganization()
         resource.id = model.externalId
         resource.display_name = model.displayName
@@ -88,5 +88,6 @@ class OrganizationDao(CacheAllDao):
                 SiteDao._to_json(site)
                 for site in model.sites
                 if site.siteStatus and site.siteStatus == site.siteStatus.ACTIVE
+                and site.isObsolete in obsolete_filters
             ]
         return resource

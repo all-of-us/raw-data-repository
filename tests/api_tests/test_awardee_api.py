@@ -1,4 +1,5 @@
 import datetime
+import mock
 
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
@@ -6,10 +7,10 @@ from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
-from rdr_service.model.site_enums import EnrollingStatus, SiteStatus
+from rdr_service.model.site_enums import EnrollingStatus, SiteStatus, ObsoleteStatus
 from rdr_service.participant_enums import OrganizationType, UNSET_HPO_ID
 from tests.helpers.unittest_base import BaseTestCase
-from tests.helpers.mysql_helper_data import AZ_HPO_ID, PITT_HPO_ID
+from tests.helpers.mysql_helper_data import AZ_HPO_ID, PITT_HPO_ID, OBSOLETE_ID
 
 
 def _make_awardee_resource(awardee_id, display_name, org_type, organizations=None):
@@ -39,15 +40,16 @@ def _make_organization_dict(organization_id, display_name, sites=None):
 class AwardeeApiTest(BaseTestCase):
     def setUp(self):
         super(AwardeeApiTest, self).setUp(with_data=False)
-
-        hpo_dao = HPODao()
-        hpo_dao.insert(
+        self.org_dao = OrganizationDao()
+        self.hpo_dao = HPODao()
+        self.hpo_dao.insert(
             HPO(hpoId=UNSET_HPO_ID, name="UNSET", displayName="Unset", organizationType=OrganizationType.UNSET)
         )
-        hpo_dao.insert(
-            HPO(hpoId=PITT_HPO_ID, name="PITT", displayName="Pittsburgh", organizationType=OrganizationType.HPO)
+        self.hpo_dao.insert(
+            HPO(hpoId=PITT_HPO_ID, name="PITT", displayName="Pittsburgh",
+                organizationType=OrganizationType.HPO, resourceId='abcdefg-123')
         )
-        hpo_dao.insert(
+        self.hpo_dao.insert(
             HPO(hpoId=AZ_HPO_ID, name="AZ_TUCSON", displayName="Arizona", organizationType=OrganizationType.HPO)
         )
 
@@ -109,23 +111,21 @@ class AwardeeApiTest(BaseTestCase):
         self._update_heirarchy_item_obsolete('org')
         self._setup_active_sitefor_obsolete_test()
         self._update_heirarchy_item_obsolete('site')
+        result_pitt = self.send_get("Awardee/PITT?_obsolete=false")
 
-        result_false = self.send_get("Awardee")
-        from pprint import pprint
-        pprint(result_false)
+        self.assertEqual(1, len(result_pitt['organizations']))
+        self.assertEqual(1, len(result_pitt['organizations'][0]['sites']))
 
-        self.assertEqual(1, len(result_false['organizations']))
-        #self.assertEqual(1, len(result_false['organizations'][0]['sites']))
+        self.hpo_dao.insert(
+            HPO(hpoId=OBSOLETE_ID,
+                name="OBSOLETE_HPO",
+                displayName="Obso Leet",
+                organizationType=OrganizationType.HPO,
+                isObsolete=ObsoleteStatus.OBSOLETE)
+        )
+        result_all = self.send_get("Awardee?_obsolete=false")
 
-        result_true = self.send_get("Awardee/PITT?_obsolete=true")
-
-
-        self.assertEqual(1, len(result_true['organizations']))
-        # self.assertEqual(1, len(result_true['organizations'][0]['sites']))
-        # self.assertEqual('Site 3', result_true['organizations'][0])
-
-
-
+        self.assertEqual(3, len(result_all['entry']))
 
     def _make_expected_pitt_awardee_resource(self, inactive=False):
         sites = [
@@ -273,10 +273,28 @@ class AwardeeApiTest(BaseTestCase):
                 organizationId=1,
                 enrollingStatus=EnrollingStatus.ACTIVE,
                 siteStatus=SiteStatus.ACTIVE,
+                latitude=100.0,
+                longitude=110.0,
             )
         )
 
-    def _update_heirarchy_item_obsolete(self, item):
+        site_dao.insert(
+            Site(
+                siteName="AA Site 1",
+                googleGroup="aardvark-site-1",
+                organizationId=2,
+                siteStatus=SiteStatus.ACTIVE,
+                enrollingStatus=EnrollingStatus.ACTIVE,
+                latitude=24.1,
+                longitude=24.1,
+            )
+        )
+
+    @mock.patch('rdr_service.dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao.'
+                '_get_lat_long_for_site')
+    @mock.patch('rdr_service.dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao.'
+                '_get_time_zone')
+    def _update_heirarchy_item_obsolete(self, item, time_zone, lat_long):
         if item == 'org':
             request_json = {
                     "resourceType": "Organization",
@@ -304,21 +322,40 @@ class AwardeeApiTest(BaseTestCase):
                     ],
                     "name": "Test update organization obsolete",
                     "partOf": {
-                        "reference": "PITT_HPO_ID"
+                        "reference": "Organization/abcdefg-123"
                     }
                 }
         else:
+            lat_long.return_value = 100, 110
+            time_zone.return_value = 'America/Los_Angeles'
             request_json = {
                 "resourceType": "Organization",
                 "id": "7d011d52-5de1-43e6-afa8-0943b15dc639",
                 "meta": {
                     "versionId": "27"
                 },
-                "extension": [],
+                "extension": [
+                    {
+                        "url": "http://all-of-us.org/fhir/sites/enrolling-status",
+                        "valueString": "true"
+                    },
+                    {
+                        "url": "http://all-of-us.org/fhir/sites/digital-scheduling-status",
+                        "valueString": "true"
+                    },
+                    {
+                        "url": "http://all-of-us.org/fhir/sites/ptsc-scheduling-status",
+                        "valueString": "true"
+                    }
+                ],
                 "identifier": [
                     {
                         "system": "http://all-of-us.org/fhir/sites/site-id",
                         "value": "org-1-site-3"
+                    },
+                    {
+                        "system": "http://all-of-us.org/fhir/sites/google-group-identifier",
+                        "value": "Good Site 3"
                     }
                 ],
                 "active": False,
@@ -333,10 +370,19 @@ class AwardeeApiTest(BaseTestCase):
                     }
                 ],
                 "name": "Site 3 Medical Center",
-                "address": [],
+                "address": [
+                    {
+                        "line": [
+                            "6644 E. Baywood Ave."
+                        ],
+                        "city": "Mesa",
+                        "state": "AZ",
+                        "postalCode": "85206"
+                    }
+                ],
                 "partOf": {
                     "reference": "ORG_1"
-                },
+                }
             }
 
         self.send_put('organization/hierarchy', request_data=request_json)
