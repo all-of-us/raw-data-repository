@@ -17,10 +17,13 @@ import os
 import random
 import sys
 import tempfile
+from datetime import datetime
 
 import MySQLdb
+import pytz
 
 from rdr_service.api_util import list_blobs
+from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.services.gcp_utils import gcp_cp, gcp_format_sql_instance, gcp_make_auth_header
 from rdr_service.services.system_utils import make_api_request, print_progress_bar, setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
@@ -90,12 +93,26 @@ class SyncConsentClass(object):
     def _add_participant_filter(self, filter_key, **kwargs):
         self.sql += participant_filters_sql[filter_key].format(**kwargs)
 
-    def _get_files_updated_in_range(self, source_bucket, date_limit):
-        files = list_blobs(source_bucket)
-        file_list = [
-            f.name for f in files if f.updated > date_limit
-        ]
-        return file_list
+    def _get_files_updated_in_range(self, source_bucket, date_limit, p_id):
+        directory = source_bucket.split('/')[2]
+        try:
+            if self.args.debug:
+                provider = GoogleCloudStorageProvider()
+                files = list(provider.list(directory, prefix=f'Participant/P{p_id}'))
+                timezone = pytz.timezone('America/New_York')
+                date_limit_obj = timezone.localize(datetime.strptime(date_limit, '%Y-%m-%d'))
+                file_list = [
+                    f.name for f in files if f.updated > date_limit_obj
+                ]
+            else:
+                #     files = list_blobs(directory, prefix=None)
+                #     file_list = [
+                #         f.name for f in files if f.updated > date_limit
+                #     ]
+                # return file_list
+                pass
+        except FileNotFoundError:
+            pass
 
     def run(self):
         """
@@ -166,6 +183,7 @@ class SyncConsentClass(object):
             _logger.info("retrieving participant information...")
             # get record count
             if self.args.date_limit:
+                # TODO: Add execption handling for incorrect date format
                 self._add_participant_filter('date_limit_sql',
                                              date_limit=self.args.date_limit)
             if self.args.org_id:
@@ -214,6 +232,8 @@ class SyncConsentClass(object):
                 src_bucket = SOURCE_BUCKET.get(origin_id, SOURCE_BUCKET[
                     next(iter(SOURCE_BUCKET))
                 ]).format(p_id=p_id, file_ext=self.file_filter)
+                # files_in_range = self._get_files_updated_in_range(
+                #     date_limit=self.args.date_limit, source_bucket=src_bucket, p_id=p_id)
 
                 dest_bucket = DEST_BUCKET.format(
                     bucket_name=bucket,
