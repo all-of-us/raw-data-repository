@@ -5,6 +5,7 @@ from rdr_service.api.base_api import BaseApi
 from rdr_service.api_util import PTC_AND_HEALTHPRO
 from rdr_service.app_util import auth_required
 from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.model.site_enums import ObsoleteStatus
 
 
 class AwardeeApi(BaseApi):
@@ -13,6 +14,7 @@ class AwardeeApi(BaseApi):
 
     @auth_required(PTC_AND_HEALTHPRO)
     def get(self, a_id=None):
+        self.dao.obsolete_filters = self._get_obsolete_filters()
         if a_id:
             hpo = self.dao.get_by_name(a_id)
             if not hpo:
@@ -27,4 +29,15 @@ class AwardeeApi(BaseApi):
 
     def _make_response(self, obj):
         inactive = request.args.get("_inactive")
-        return self.dao.to_client_json(obj, inactive)
+        return self.dao.to_client_json(obj,
+                                       inactive_sites=inactive,
+                                       obsolete_filters=self._get_obsolete_filters())
+
+    def _get_obsolete_filters(self):
+        obsolete_param = request.args.get("_obsolete")
+        obsolete_filters = [None,
+                            ObsoleteStatus.ACTIVE,
+                            ObsoleteStatus.OBSOLETE]
+        if obsolete_param is not None and obsolete_param.lower() == 'false':
+            obsolete_filters = obsolete_filters[:-1]
+        return obsolete_filters
