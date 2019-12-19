@@ -36,32 +36,60 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             )
             return query.all()
 
+    def _validate(self, resource_json):
+        for item in resource_json:
+            if item.get('workspaceId') is None:
+                raise BadRequest('Workspace ID can not be NULL')
+            if item.get('name') is None:
+                raise BadRequest('Workspace name can not be NULL')
+            if item.get('creationTime') is None:
+                raise BadRequest('Workspace creationTime can not be NULL')
+            if item.get('modifiedTime') is None:
+                raise BadRequest('Workspace modifiedTime can not be NULL')
+            try:
+                WorkbenchWorkspaceStatus(item.get('status'))
+            except TypeError:
+                raise BadRequest(f"Invalid workspace status: {item.get('status')}")
+
+            for user in item.get('workspaceUsers'):
+                if user.get('userId') is None:
+                    raise BadRequest('Workspace user ID can not be NULL')
+                try:
+                    WorkbenchWorkspaceUserRole(user.get('role'))
+                except TypeError:
+                    raise BadRequest(f"Invalid user role: {user.get('role')}")
+                try:
+                    WorkbenchWorkspaceStatus(user.get('status'))
+                except TypeError:
+                    raise BadRequest(f"Invalid user status: {user.get('status')}")
+
     def from_client_json(self, resource_json, client_id=None):  # pylint: disable=unused-argument
+        self._validate(resource_json)
         now = clock.CLOCK.now()
         workspaces = []
         for item in resource_json:
             workspace = WorkbenchWorkspace(
                 created=now,
                 modified=now,
-                workspaceSourceId=item['workspaceId'],
-                name=item['name'],
-                creationTime=parse(item['creationTime']),
-                modifiedTime=parse(item['modifiedTime']),
-                status=WorkbenchWorkspaceStatus(item['status']),
-                excludeFromPublicDirectory=item['excludeFromPublicDirectory'],
-                diseaseFocusedResearch=item['diseaseFocusedResearch'],
-                diseaseFocusedResearchName=item['diseaseFocusedResearchName'],
-                otherPurposeDetails=item['otherPurposeDetails'],
-                methodsDevelopment=item['methodsDevelopment'],
-                controlSet=item['controlSet'],
-                ancestry=item['ancestry'],
-                socialBehavioral=item['socialBehavioral'],
-                populationHealth=item['populationHealth'],
-                drugDevelopment=item['drugDevelopment'],
-                commercialPurpose=item['commercialPurpose'],
-                educational=item['educational'],
-                otherPurpose=item['otherPurpose'],
-                workbenchWorkspaceUser=self._get_users(item['workspaceUsers']),
+                workspaceSourceId=item.get('workspaceId'),
+                name=item.get('name'),
+                creationTime=parse(item.get('creationTime')),
+                modifiedTime=parse(item.get('modifiedTime')),
+                status=WorkbenchWorkspaceStatus(item.get('status', 'UNSET')),
+                excludeFromPublicDirectory=item.get('excludeFromPublicDirectory'),
+                diseaseFocusedResearch=item.get('diseaseFocusedResearch'),
+                diseaseFocusedResearchName=item.get('diseaseFocusedResearchName'),
+                otherPurposeDetails=item.get('otherPurposeDetails'),
+                methodsDevelopment=item.get('methodsDevelopment'),
+                controlSet=item.get('controlSet'),
+                ancestry=item.get('ancestry'),
+                socialBehavioral=item.get('socialBehavioral'),
+                populationHealth=item.get('populationHealth'),
+                drugDevelopment=item.get('drugDevelopment'),
+                commercialPurpose=item.get('commercialPurpose'),
+                educational=item.get('educational'),
+                otherPurpose=item.get('otherPurpose'),
+                workbenchWorkspaceUser=self._get_users(item.get('workspaceUsers')),
                 resource=json.dumps(item)
             )
 
@@ -74,16 +102,16 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         now = clock.CLOCK.now()
         workspace_users = []
         for user in workspace_users_json:
-            researcher = researcher_dao.get_researcher_by_user_source_id(user['userId'])
+            researcher = researcher_dao.get_researcher_by_user_source_id(user.get('userId'))
             if not researcher:
-                raise BadRequest('Researcher not found for user ID: {}'.format(user['userId']))
+                raise BadRequest('Researcher not found for user ID: {}'.format(user.get('userId')))
             user_obj = WorkbenchWorkspaceUser(
                 created=now,
                 modified=now,
                 researcherId=researcher.id,
-                userId=user['userId'],
-                role=WorkbenchWorkspaceUserRole(user['role']),
-                status=WorkbenchWorkspaceStatus(user['status'])
+                userId=user.get('userId'),
+                role=WorkbenchWorkspaceUserRole(user.get('role', 'UNSET')),
+                status=WorkbenchWorkspaceStatus(user.get('status', 'UNSET'))
             )
             workspace_users.append(user_obj)
         return workspace_users
@@ -269,28 +297,42 @@ class WorkbenchResearcherDao(UpdatableDao):
         with self.session() as session:
             return self._get_researcher_by_user_id_with_session(session, user_source_id)
 
+    def _validate(self, resource_json):
+        for item in resource_json:
+            if item.get('userId') is None:
+                raise BadRequest('User ID can not be NULL')
+            if item.get('creationTime') is None:
+                raise BadRequest('User creationTime can not be NULL')
+            if item.get('modifiedTime') is None:
+                raise BadRequest('User modifiedTime can not be NULL')
+            if item.get('givenName') is None:
+                raise BadRequest('User givenName can not be NULL')
+            if item.get('familyName') is None:
+                raise BadRequest('User familyName can not be NULL')
+
     def from_client_json(self, resource_json, client_id=None):  # pylint: disable=unused-argument
+        self._validate(resource_json)
         now = clock.CLOCK.now()
         researchers = []
         for item in resource_json:
             researcher = WorkbenchResearcher(
                 created=now,
                 modified=now,
-                userSourceId=item['userId'],
-                creationTime=parse(item['creationTime']),
-                modifiedTime=parse(item['modifiedTime']),
-                givenName=item['givenName'],
-                familyName=item['familyName'],
-                streetAddress1=item['streetAddress1'],
-                streetAddress2=item['streetAddress2'],
-                city=item['city'],
-                state=item['state'],
-                zipCode=item['zipCode'],
-                country=item['country'],
-                ethnicity=item['ethnicity'],
-                gender=item['gender'],
-                race=item['race'],
-                workbenchInstitutionalAffiliations=self._get_affiliations(item['affiliations']),
+                userSourceId=item.get('userId'),
+                creationTime=parse(item.get('creationTime')),
+                modifiedTime=parse(item.get('modifiedTime')),
+                givenName=item.get('givenName'),
+                familyName=item.get('familyName'),
+                streetAddress1=item.get('streetAddress1'),
+                streetAddress2=item.get('streetAddress2'),
+                city=item.get('city'),
+                state=item.get('state'),
+                zipCode=item.get('zipCode'),
+                country=item.get('country'),
+                ethnicity=item.get('ethnicity'),
+                gender=item.get('gender'),
+                race=item.get('race'),
+                workbenchInstitutionalAffiliations=self._get_affiliations(item.get('affiliations')),
                 resource=json.dumps(item)
             )
 
@@ -305,9 +347,9 @@ class WorkbenchResearcherDao(UpdatableDao):
             affiliation_obj = WorkbenchInstitutionalAffiliations(
                 created=now,
                 modified=now,
-                institution=affiliation['institution'],
-                role=affiliation['role'],
-                nonAcademicAffiliation=affiliation['nonAcademicAffiliation']
+                institution=affiliation.get('institution'),
+                role=affiliation.get('role'),
+                nonAcademicAffiliation=affiliation.get('nonAcademicAffiliation')
             )
             affiliations.append(affiliation_obj)
         return affiliations
