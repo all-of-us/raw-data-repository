@@ -90,6 +90,7 @@ class MetricsRegionCache(Base):
     date = Column("date", Date, nullable=False, primary_key=True)
     stateName = Column("state_name", String(255), primary_key=True)
     stateCount = Column("state_count", Integer, nullable=False)
+    participantOrigin = Column("participant_origin", String(50), primary_key=True)
 
 
 class MetricsLanguageCache(Base):

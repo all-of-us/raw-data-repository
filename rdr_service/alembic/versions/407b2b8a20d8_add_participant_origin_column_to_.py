@@ -36,6 +36,15 @@ def upgrade_rdr():
     )
 
     op.execute(
+        "ALTER TABLE metrics_region_cache ADD COLUMN participant_origin VARCHAR(50);"
+    )
+    op.execute("ALTER TABLE metrics_region_cache DROP PRIMARY KEY")
+    op.execute(
+        "ALTER TABLE metrics_region_cache ADD PRIMARY KEY (`date_inserted`, `hpo_id`, `hpo_name`,`date`, `state_name`, "
+        "`enrollment_status`, `participant_origin`)"
+    )
+
+    op.execute(
         "ALTER TABLE metrics_lifecycle_cache ADD COLUMN participant_origin VARCHAR(50);"
     )
     op.execute("ALTER TABLE metrics_lifecycle_cache DROP PRIMARY KEY")

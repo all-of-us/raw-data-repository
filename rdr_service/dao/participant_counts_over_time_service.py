@@ -223,7 +223,8 @@ class ParticipantCountsOverTimeService(BaseDao):
             Stratifications.GEO_AWARDEE,
         ]:
             dao = MetricsRegionCacheDao(version=version)
-            return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids, enrollment_statuses)
+            return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids, enrollment_statuses,
+                                                     participant_origins)
         elif str(history) == "TRUE" and stratification == Stratifications.LANGUAGE:
             dao = MetricsLanguageCacheDao()
             return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)

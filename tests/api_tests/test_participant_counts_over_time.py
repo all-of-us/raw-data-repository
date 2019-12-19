@@ -7132,7 +7132,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self.code_dao.insert(code2)
         self.code_dao.insert(code3)
 
-        p1 = Participant(participantId=1, biobankId=4)
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
         self._insert(
             p1,
             "Alice",
@@ -7145,7 +7145,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             state_id=1,
         )
 
-        p2 = Participant(participantId=2, biobankId=5)
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='a')
         self._insert(
             p2,
             "Bob",
@@ -7158,7 +7158,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             state_id=2,
         )
 
-        p3 = Participant(participantId=3, biobankId=6)
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='b')
         self._insert(
             p3,
             "Chad",
@@ -7171,7 +7171,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             state_id=3,
         )
 
-        p4 = Participant(participantId=4, biobankId=7)
+        p4 = Participant(participantId=4, biobankId=7, participantOrigin='c')
         self._insert(
             p4,
             "Chad2",
@@ -7184,7 +7184,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             state_id=2,
         )
 
-        p5 = Participant(participantId=6, biobankId=9)
+        p5 = Participant(participantId=6, biobankId=9, participantOrigin='c')
         self._insert(
             p5,
             "Chad3",
@@ -7845,6 +7845,22 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self.assertIn({"date": "2018-01-02", "hpo": "UNSET", "count": 1}, results3)
         self.assertIn({"date": "2018-01-02", "hpo": "PITT", "count": 2}, results3)
         self.assertIn({"date": "2018-01-02", "hpo": "AZ_TUCSON", "count": 2}, results3)
+
+        # test participant origin
+        qs4 = """
+              &stratification=GEO_AWARDEE
+              &endDate=2018-01-02
+              &history=TRUE
+              &version=2
+              &origin=a,b
+              """
+
+        qs4 = "".join(qs4.split())
+
+        results4 = self.send_get("ParticipantCountsOverTime", query_string=qs4)
+        self.assertIn({"date": "2018-01-02", "hpo": "UNSET", "count": 1}, results4)
+        self.assertNotIn({"date": "2018-01-02", "hpo": "PITT", "count": 2}, results4)
+        self.assertIn({"date": "2018-01-02", "hpo": "AZ_TUCSON", "count": 2}, results4)
 
     def test_get_metrics_region_data_api_filter_by_enrollment_status(self):
 

@@ -1645,7 +1645,8 @@ class MetricsRegionCacheDao(BaseDao):
                     .order_by(MetricsRegionCache.dateInserted.desc())
                     .first())
 
-    def get_active_buckets(self, cutoff, stratification, hpo_ids=None, enrollment_statuses=None):
+    def get_active_buckets(self, cutoff, stratification, hpo_ids=None, enrollment_statuses=None,
+                           participant_origins=None):
         with self.session() as session:
             last_inserted_record = self.get_serving_version_with_session(session)
             if last_inserted_record is None:
@@ -1687,6 +1688,8 @@ class MetricsRegionCacheDao(BaseDao):
                         query = query.filter(MetricsRegionCache.enrollmentStatus == 'core')
                     if hpo_ids:
                         query = query.filter(MetricsRegionCache.hpoId.in_(hpo_ids))
+                    if participant_origins:
+                        query = query.filter(MetricsRegionCache.participantOrigin.in_(participant_origins))
                     if enrollment_statuses:
                         status_filter_list = []
                         for status in enrollment_statuses:
@@ -1729,7 +1732,7 @@ class MetricsRegionCacheDao(BaseDao):
                                           MetricsRegionCache.stateName).all()
 
     def get_latest_version_from_cache(self, cutoff, stratification, hpo_ids=None,
-                                      enrollment_statuses=None):
+                                      enrollment_statuses=None, participant_origins=None):
         stratification = Stratifications(str(stratification))
         operation_funcs = {
             Stratifications.FULL_STATE: self.to_state_client_json,
@@ -1740,7 +1743,7 @@ class MetricsRegionCacheDao(BaseDao):
             Stratifications.GEO_AWARDEE: self.to_awardee_client_json
         }
 
-        buckets = self.get_active_buckets(cutoff, stratification, hpo_ids, enrollment_statuses)
+        buckets = self.get_active_buckets(cutoff, stratification, hpo_ids, enrollment_statuses, participant_origins)
         if buckets is None:
             return []
         return operation_funcs[stratification](buckets)
@@ -1895,15 +1898,18 @@ class MetricsRegionCacheDao(BaseDao):
               (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
               c.day,
               IFNULL(ps.value,'UNSET') AS state_name,
-              count(ps.participant_id) AS state_count
+              count(ps.participant_id) AS state_count,
+              ps.participant_origin
             FROM
-              (SELECT participant_id, hpo_id, email, value, enrollment_status_core_stored_sample_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              (SELECT participant_id, participant_origin, hpo_id, email, value, enrollment_status_core_stored_sample_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              metrics_tmp_participant_origin po,
               calendar c
             WHERE ps.hpo_id=:hpo_id
+            AND ps.participant_origin = po.participant_origin
             AND ps.enrollment_status_core_stored_sample_time IS NOT NULL
             AND DATE(ps.enrollment_status_core_stored_sample_time) <= c.day
             AND c.day BETWEEN :start_date AND :end_date
-            GROUP BY c.day, ps.hpo_id ,ps.value
+            GROUP BY c.day, ps.hpo_id, ps.value, ps.participant_origin
             union 
             SELECT
               :date_inserted AS date_inserted,
@@ -1912,16 +1918,19 @@ class MetricsRegionCacheDao(BaseDao):
               (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
               c.day,
               IFNULL(ps.value,'UNSET') AS state_name,
-              count(ps.participant_id) AS state_count
+              count(ps.participant_id) AS state_count,
+              ps.participant_origin
             FROM
-              (SELECT participant_id, hpo_id, email, value, sign_up_time, consent_for_study_enrollment_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              (SELECT participant_id, participant_origin, hpo_id, email, value, sign_up_time, consent_for_study_enrollment_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              metrics_tmp_participant_origin po,
               calendar c
             WHERE ps.hpo_id=:hpo_id
+            AND ps.participant_origin = po.participant_origin
             AND ps.sign_up_time IS NOT NULL
             AND DATE(ps.sign_up_time) <= c.day
             AND (ps.consent_for_study_enrollment_time IS NULL OR DATE(ps.consent_for_study_enrollment_time)>c.day)
             AND c.day BETWEEN :start_date AND :end_date
-            GROUP BY c.day, ps.hpo_id ,ps.value
+            GROUP BY c.day, ps.hpo_id, ps.value, ps.participant_origin
             union 
             SELECT
               :date_inserted AS date_inserted,
@@ -1930,16 +1939,19 @@ class MetricsRegionCacheDao(BaseDao):
               (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
               c.day,
               IFNULL(ps.value,'UNSET') AS state_name,
-              count(ps.participant_id) AS state_count
+              count(ps.participant_id) AS state_count,
+              ps.participant_origin
             FROM
-              (SELECT participant_id, hpo_id, email, value, consent_for_study_enrollment_time, enrollment_status_member_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              (SELECT participant_id, participant_origin, hpo_id, email, value, consent_for_study_enrollment_time, enrollment_status_member_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              metrics_tmp_participant_origin po,
               calendar c
             WHERE ps.hpo_id=:hpo_id
+            AND ps.participant_origin = po.participant_origin
             AND ps.consent_for_study_enrollment_time IS NOT NULL
             AND DATE(ps.consent_for_study_enrollment_time) <= c.day
             AND (ps.enrollment_status_member_time is null or DATE(ps.enrollment_status_member_time)>c.day)
             AND c.day BETWEEN :start_date AND :end_date
-            GROUP BY c.day, ps.hpo_id ,ps.value
+            GROUP BY c.day, ps.hpo_id, ps.value, ps.participant_origin
             union 
             SELECT
               :date_inserted AS date_inserted,
@@ -1948,16 +1960,19 @@ class MetricsRegionCacheDao(BaseDao):
               (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
               c.day,
               IFNULL(ps.value,'UNSET') AS state_name,
-              count(ps.participant_id) AS state_count
+              count(ps.participant_id) AS state_count,
+              ps.participant_origin
             FROM
-              (SELECT participant_id, hpo_id, email, value, enrollment_status_member_time, enrollment_status_core_stored_sample_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              (SELECT participant_id, participant_origin, hpo_id, email, value, enrollment_status_member_time, enrollment_status_core_stored_sample_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              metrics_tmp_participant_origin po,
               calendar c
             WHERE ps.hpo_id=:hpo_id
+            AND ps.participant_origin = po.participant_origin
             AND ps.enrollment_status_member_time IS NOT NULL
             AND DATE(ps.enrollment_status_member_time) <= c.day
             AND (ps.enrollment_status_core_stored_sample_time is null or DATE(ps.enrollment_status_core_stored_sample_time)>c.day)
             AND c.day BETWEEN :start_date AND :end_date
-            GROUP BY c.day, ps.hpo_id ,ps.value
+            GROUP BY c.day, ps.hpo_id, ps.value, ps.participant_origin
             ;
         """
 
