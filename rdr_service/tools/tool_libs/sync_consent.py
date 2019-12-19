@@ -70,8 +70,7 @@ participant_filters_sql = {
             summary.consent_for_study_enrollment_time > "{date_limit}"
             or
             summary.consent_for_electronic_health_records_time > "{date_limit}"
-            )
-            
+            )            
         """,
 }
 
@@ -94,25 +93,33 @@ class SyncConsentClass(object):
         self.sql += participant_filters_sql[filter_key].format(**kwargs)
 
     def _get_files_updated_in_range(self, source_bucket, date_limit, p_id):
+        """
+        Uses the date limit to filter cloud storage files by the date
+        :param source_bucket:
+        :param date_limit:
+        :param p_id:
+        :return:
+        """
         directory = source_bucket.split('/')[2]
+        timezone = pytz.timezone('Etc/Greenwich')
+        date_limit_obj = timezone.localize(datetime.strptime(date_limit, '%Y-%m-%d'))
+        prefix = f'Participant/P{p_id}'
         try:
-            if self.args.debug:
-                provider = GoogleCloudStorageProvider()
-                files = list(provider.list(directory, prefix=f'Participant/P{p_id}'))
-                timezone = pytz.timezone('America/New_York')
-                date_limit_obj = timezone.localize(datetime.strptime(date_limit, '%Y-%m-%d'))
-                file_list = [
-                    f.name for f in files if f.updated > date_limit_obj
-                ]
-            else:
-                #     files = list_blobs(directory, prefix=None)
-                #     file_list = [
-                #         f.name for f in files if f.updated > date_limit
-                #     ]
-                # return file_list
-                pass
+            provider = GoogleCloudStorageProvider()
+            files = list(provider.list(directory, prefix=prefix))
+            file_list = [
+                f.name.replace(f'{prefix}', f'gs://{directory}/{prefix}')
+                for f in files if f.updated > date_limit_obj
+                and f.name.endswith(self.file_filter)
+            ]
+            return file_list
         except FileNotFoundError:
-            pass
+            return False
+
+    def _format_debug_out(self, p_id, src, dest):
+        _logger.debug(" Participant: {0}".format(p_id))
+        _logger.debug("    src: {0}".format(src))
+        _logger.debug("   dest: {0}".format(dest))
 
     def run(self):
         """
@@ -232,8 +239,6 @@ class SyncConsentClass(object):
                 src_bucket = SOURCE_BUCKET.get(origin_id, SOURCE_BUCKET[
                     next(iter(SOURCE_BUCKET))
                 ]).format(p_id=p_id, file_ext=self.file_filter)
-                # files_in_range = self._get_files_updated_in_range(
-                #     date_limit=self.args.date_limit, source_bucket=src_bucket, p_id=p_id)
 
                 dest_bucket = DEST_BUCKET.format(
                     bucket_name=bucket,
@@ -241,12 +246,26 @@ class SyncConsentClass(object):
                     site_name=site if site else "no-site-assigned",
                     p_id=p_id,
                 )
-                _logger.debug(" Participant: {0}".format(p_id))
-                _logger.debug("    src: {0}".format(src_bucket))
-                _logger.debug("   dest: {0}".format(dest_bucket))
+                if self.args.date_limit:
+                    # only copy files newer than date limit
+                    files_in_range = self._get_files_updated_in_range(
+                        date_limit=self.args.date_limit,
+                        source_bucket=src_bucket, p_id=p_id)
+                    if not files_in_range or len(files_in_range) == 0:
+                        _logger.info(f'No files in bucket updated after {self.args.date_limit}')
+                    for f in files_in_range:
+                        if not self.args.dry_run:
+                            # actually copy the fles
+                            gcp_cp(f, dest_bucket, args="-r", flags="-m")
 
-                if not self.args.dry_run:
-                    gcp_cp(src_bucket, dest_bucket, args="-r", flags="-m")
+                        self._format_debug_out(p_id, f, dest_bucket)
+
+                else:
+                    if not self.args.dry_run:
+                        gcp_cp(src_bucket, dest_bucket, args="-r", flags="-m")
+
+                    self._format_debug_out(p_id, src_bucket, dest_bucket)
+
                 count += 1
                 rec = cursor.fetchone()
                 # print progressbar one more time to show completed.
