@@ -229,7 +229,7 @@ class ParticipantCountsOverTimeService(BaseDao):
             return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)
         elif str(history) == "TRUE" and stratification == Stratifications.LIFECYCLE:
             dao = MetricsLifecycleCacheDao(version=version)
-            return dao.get_latest_version_from_cache(end_date, awardee_ids, enrollment_statuses)
+            return dao.get_latest_version_from_cache(end_date, awardee_ids, enrollment_statuses, participant_origins)
         elif stratification == Stratifications.TOTAL:
             strata = ["TOTAL"]
             sql = self.get_total_sql(filters_sql_ps)

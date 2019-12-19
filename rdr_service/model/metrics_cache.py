@@ -133,6 +133,7 @@ class MetricsLifecycleCache(Base):
     physicalMeasurement = Column("physical_measurement", Integer, nullable=False)
     sampleReceived = Column("sample_received", Integer, nullable=False)
     fullParticipant = Column("full_participant", Integer, nullable=False)
+    participantOrigin = Column("participant_origin", String(50), primary_key=True)
 
 
 class MetricsCacheJobStatus(Base):

@@ -1985,7 +1985,7 @@ class MetricsLifecycleCacheDao(BaseDao):
                     .order_by(MetricsLifecycleCache.dateInserted.desc())
                     .first())
 
-    def get_active_buckets(self, cutoff, hpo_ids=None, enrollment_statuses=None):
+    def get_active_buckets(self, cutoff, hpo_ids=None, enrollment_statuses=None, participant_origins=None):
         with self.session() as session:
             last_inserted_record = self.get_serving_version_with_session(session)
             if last_inserted_record is None:
@@ -2075,6 +2075,9 @@ class MetricsLifecycleCacheDao(BaseDao):
                 if hpo_ids:
                     query = query.filter(MetricsLifecycleCache.hpoId.in_(hpo_ids))
 
+                if participant_origins:
+                    query = query.filter(MetricsLifecycleCache.participantOrigin.in_(participant_origins))
+
                 if enrollment_statuses:
                     status_filter_list = []
                     for status in enrollment_statuses:
@@ -2119,8 +2122,8 @@ class MetricsLifecycleCacheDao(BaseDao):
                 client_json.append(new_item)
             return client_json
 
-    def get_latest_version_from_cache(self, cutoff, hpo_ids=None, enrollment_statuses=None):
-        buckets = self.get_active_buckets(cutoff, hpo_ids, enrollment_statuses)
+    def get_latest_version_from_cache(self, cutoff, hpo_ids=None, enrollment_statuses=None, participant_origins=None):
+        buckets = self.get_active_buckets(cutoff, hpo_ids, enrollment_statuses, participant_origins)
         if buckets is None:
             return []
         operation_funcs = {
@@ -2384,12 +2387,14 @@ class MetricsLifecycleCacheDao(BaseDao):
                         DATE(ps.sample_status_1sal2_time) <= calendar.day
                       THEN 1 ELSE 0
                     END) AS sample_received,
-                    SUM(CASE WHEN DATE(ps.enrollment_status_core_stored_sample_time) <= calendar.day THEN 1 ELSE 0 END) AS core_participant
-                  from metrics_tmp_participant ps,
+                    SUM(CASE WHEN DATE(ps.enrollment_status_core_stored_sample_time) <= calendar.day THEN 1 ELSE 0 END) AS core_participant,
+                    ps.participant_origin
+                  from metrics_tmp_participant ps, metrics_tmp_participant_origin po,
                        calendar
                   WHERE {enrollment_status_criteria} 
+                  AND ps.participant_origin = po.participant_origin 
                   AND ps.hpo_id = :hpo_id AND calendar.day BETWEEN :start_date AND :end_date
-                  GROUP BY day, ps.hpo_id;
+                  GROUP BY day, ps.hpo_id, ps.participant_origin;
               """.format(enrollment_status=item[0], cache_type=self.cache_type,
                          enrollment_status_criteria=item[1])
                 sql_arr.append(sql)
@@ -2483,11 +2488,13 @@ class MetricsLifecycleCacheDao(BaseDao):
                     DATE(ps.sample_status_1sal2_time) <= calendar.day
                   THEN 1 ELSE 0
                 END) AS sample_received,
-                SUM(CASE WHEN DATE(ps.enrollment_status_core_stored_sample_time) <= calendar.day THEN 1 ELSE 0 END) AS core_participant
-              from metrics_tmp_participant ps,
+                SUM(CASE WHEN DATE(ps.enrollment_status_core_stored_sample_time) <= calendar.day THEN 1 ELSE 0 END) AS core_participant,
+                ps.participant_origin
+              from metrics_tmp_participant ps, metrics_tmp_participant_origin po,
                    calendar
-              WHERE ps.hpo_id = :hpo_id AND calendar.day BETWEEN :start_date AND :end_date
-              GROUP BY day, ps.hpo_id;
+              WHERE ps.participant_origin = po.participant_origin 
+                AND ps.hpo_id = :hpo_id AND calendar.day BETWEEN :start_date AND :end_date
+              GROUP BY day, ps.hpo_id, ps.participant_origin;
           """.format(cache_type=self.cache_type)
             sql_arr.append(sql)
         return sql_arr
