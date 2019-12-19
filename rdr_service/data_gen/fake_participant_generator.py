@@ -696,8 +696,13 @@ class FakeParticipantGenerator(object):
             change_time = last_request_time + datetime.timedelta(days=days_delta)
             self._update_participant(change_time, participant_response, participant_id)
 
-    def generate_participant(self, include_physical_measurements, include_biobank_orders, requested_hpo=None):
-        participant_response, creation_time, hpo = self._create_participant(requested_hpo)
+    def generate_participant(self, include_physical_measurements,
+                             include_biobank_orders,
+                             requested_hpo=None,
+                             hpo_obj=None,
+                             requested_site=None):
+        participant_response, creation_time, hpo, site = self._create_participant(requested_hpo, hpo_obj=hpo_obj,
+                                                                                  site=requested_site)
         participant_id = participant_response["participantId"]
         california_hpo = hpo is not None and hpo.name in _CALIFORNIA_HPOS
         consent_time, last_qr_time, the_basics_submission_time = self._submit_questionnaire_responses(
@@ -743,22 +748,25 @@ class FakeParticipantGenerator(object):
         logging.info("submitting physical measurements and biospecimen for %s" % participant_id)
         self._submit_status_changes(participant_id, last_request_time, force_measurement=True)
 
-    def _create_participant(self, hpo_name):
+    def _create_participant(self, hpo_name, hpo_obj=None, site=None):
         participant_json = {}
         hpo = None
-        if hpo_name:
+        if hpo_name and isinstance(hpo_name, str):
             hpo = HPODao().get_by_name(hpo_name)
         else:
-            if random.random() > _NO_HPO_PERCENT:
+            if random.random() > _NO_HPO_PERCENT and hpo_obj is None:
                 hpo = random.choice(self._hpos)
+        if hpo_obj is not None:
+            hpo = hpo_obj
         if hpo:
             if hpo.hpoId != UNSET_HPO_ID:
                 participant_json["providerLink"] = json.loads(make_primary_provider_link_for_hpo(hpo))
+
         creation_time = self._days_ago(random.randint(0, _MAX_DAYS_HISTORY))
         participant_response = self._client.request_json(
             "Participant", method="POST", body=participant_json, pretend_date=creation_time
         )
-        return (participant_response, creation_time, hpo)
+        return (participant_response, creation_time, hpo, site)
 
     def _random_code_answer(self, question_code):
         code = random.choice(self._question_code_to_answer_codes[question_code])

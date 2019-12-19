@@ -22,6 +22,9 @@ from rdr_service.dao.bq_organization_dao import bq_organization_update_by_id
 from rdr_service.dao.bq_site_dao import bq_site_update_by_id
 from dateutil.parser import parse
 from rdr_service.api_util import HIERARCHY_CONTENT_SYSTEM_PREFIX
+from rdr_service.data_gen.fake_participant_generator import FakeParticipantGenerator
+from rdr_service.data_gen.in_process_client import InProcessClient
+from rdr_service.rdr_client.client import Client
 
 
 class OrganizationHierarchySyncDao(BaseDao):
@@ -281,6 +284,7 @@ class OrganizationHierarchySyncDao(BaseDao):
 
         existing_map = {entity.googleGroup: entity for entity in self.site_dao.get_all()}
         existing_entity = existing_map.get(entity.googleGroup)
+        new_site = None
         with self.site_dao.session() as session:
             if existing_entity:
                 self._populate_lat_lng_and_time_zone(entity, existing_entity)
@@ -303,9 +307,27 @@ class OrganizationHierarchySyncDao(BaseDao):
                 if entity.siteStatus == SiteStatus.ACTIVE and \
                     (entity.latitude is None or entity.longitude is None):
                     raise BadRequest('Active site without geocoding: {}'.format(entity.googleGroup))
-                self.site_dao.insert_with_session(session, entity)
+                new_site = self.site_dao.insert_with_session(session, entity)
+
+        if new_site is not None:
+            # TODO: generate 20 fake participants for the site if not on Prod
+            self._generate_fake_participants_for_site(new_site)
+
         site_id = self.site_dao.get_by_google_group(google_group).siteId
         bq_site_update_by_id(site_id)
+
+    def _generate_fake_participants_for_site(self, new_site):
+        if config.GAE_PROJECT in ['localhost', 'all-of-us-rdr-stable']:
+            n = 20
+            logging.info(f'Generating {n} fake participants for {new_site.googleGroup}.')
+            fake_gen = FakeParticipantGenerator(client=InProcessClient())
+            for i in range(n):
+                fake_gen.generate_participant(
+                    include_physical_measurements=False,
+                    include_biobank_orders=False,
+                    hpo_obj=None,
+                    requested_site=new_site
+                )
 
     def _get_type(self, hierarchy_org_obj):
         obj_type = None
