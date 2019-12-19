@@ -1170,7 +1170,7 @@ class MetricsRaceCacheDao(BaseDao):
                         .first())
 
     def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None,
-                           enrollment_statuses=None):
+                           enrollment_statuses=None, participant_origins=None):
         with self.session() as session:
             last_inserted_record = self.get_serving_version_with_session(session)
             if last_inserted_record is None:
@@ -1261,6 +1261,8 @@ class MetricsRaceCacheDao(BaseDao):
                     query = query.filter(MetricsRaceCache.date <= end_date)
                 if hpo_ids:
                     query = query.filter(MetricsRaceCache.hpoId.in_(hpo_ids))
+                if participant_origins:
+                    query = query.filter(MetricsRaceCache.participantOrigin.in_(participant_origins))
                 if enrollment_statuses and self.version == MetricsAPIVersion.V2:
                     param_list = []
                     for status in enrollment_statuses:
@@ -1278,8 +1280,8 @@ class MetricsRaceCacheDao(BaseDao):
                 return query.group_by(MetricsRaceCache.date, MetricsRaceCache.hpoName).all()
 
     def get_latest_version_from_cache(self, start_date, end_date, hpo_ids=None,
-                                      enrollment_statuses=None):
-        buckets = self.get_active_buckets(start_date, end_date, hpo_ids, enrollment_statuses)
+                                      enrollment_statuses=None, participant_origins=None):
+        buckets = self.get_active_buckets(start_date, end_date, hpo_ids, enrollment_statuses, participant_origins)
         if buckets is None:
             return []
         operation_funcs = {
@@ -1388,11 +1390,13 @@ class MetricsRaceCacheDao(BaseDao):
                 SUM(None_Of_These_Fully_Describe_Me) AS None_Of_These_Fully_Describe_Me,
                 SUM(Prefer_Not_To_Answer) AS Prefer_Not_To_Answer,
                 SUM(Multi_Ancestry) AS Multi_Ancestry,
-                SUM(No_Ancestry_Checked) AS No_Ancestry_Checked
+                SUM(No_Ancestry_Checked) AS No_Ancestry_Checked,
+                participant_origin
                 FROM
                 (
                   SELECT p.hpo_id,
                          day,
+                         p.participant_origin,
                          CASE WHEN DATE(sign_up_time)<=calendar.day AND (consent_for_study_enrollment_time IS NULL OR DATE(consent_for_study_enrollment_time)>calendar.day)
                                    THEN 1 ELSE 0 END AS registered,
                          CASE WHEN (consent_for_study_enrollment_time IS NOT NULL AND DATE(consent_for_study_enrollment_time)<=calendar.day) AND 
@@ -1437,6 +1441,7 @@ class MetricsRaceCacheDao(BaseDao):
                                 consent_for_study_enrollment_time,
                                 enrollment_status_member_time,
                                 enrollment_status_core_stored_sample_time,
+                                participant_origin,
                                 MAX(WhatRaceEthnicity_Hispanic)                 AS WhatRaceEthnicity_Hispanic,
                                 MAX(WhatRaceEthnicity_Black)                    AS WhatRaceEthnicity_Black,
                                 MAX(WhatRaceEthnicity_White)                    AS WhatRaceEthnicity_White,
@@ -1456,6 +1461,7 @@ class MetricsRaceCacheDao(BaseDao):
                                        consent_for_study_enrollment_time,
                                        ps.enrollment_status_member_time,
                                        ps.enrollment_status_core_stored_sample_time,
+                                       ps.participant_origin,
                                        CASE WHEN q.code_id = {WhatRaceEthnicity_Hispanic} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
                                        CASE WHEN q.code_id = {WhatRaceEthnicity_Black} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Black,
                                        CASE WHEN q.code_id = {WhatRaceEthnicity_White} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_White,
@@ -1471,14 +1477,15 @@ class MetricsRaceCacheDao(BaseDao):
                                 LEFT JOIN participant_race_answers q ON ps.participant_id = q.participant_id
                                 WHERE ps.hpo_id=:hpo_id AND ps.questionnaire_on_the_basics = 1
                               ) x
-                         GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time
+                         GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time, participant_origin
                        ) p,
-                       calendar
+                       calendar, metrics_tmp_participant_origin po
                   WHERE calendar.day >= :start_date
                     AND calendar.day <= :end_date
                     AND calendar.day >= Date(p.sign_up_time)
+                    AND p.participant_origin = po.participant_origin
                 ) y
-                GROUP BY day, hpo_id, registered, participant, consented, core
+                GROUP BY day, hpo_id, registered, participant, consented, core, participant_origin
                 ;
             """.format(cache_type=self.cache_type,
                        Race_WhatRaceEthnicity=race_code_dict['Race_WhatRaceEthnicity'],
@@ -1516,11 +1523,13 @@ class MetricsRaceCacheDao(BaseDao):
                       SUM(None_Of_These_Fully_Describe_Me) AS None_Of_These_Fully_Describe_Me,
                       SUM(Prefer_Not_To_Answer) AS Prefer_Not_To_Answer,
                       SUM(Multi_Ancestry) AS Multi_Ancestry,
-                      SUM(No_Ancestry_Checked) AS No_Ancestry_Checked
+                      SUM(No_Ancestry_Checked) AS No_Ancestry_Checked,
+                      participant_origin
                       FROM
                       (
                         SELECT p.hpo_id,
                                day,
+                               p.participant_origin,
                                CASE WHEN DATE(sign_up_time)<=calendar.day AND (consent_for_study_enrollment_time IS NULL OR DATE(consent_for_study_enrollment_time)>calendar.day)
                                    THEN 1 ELSE 0 END AS registered,
                                CASE WHEN (consent_for_study_enrollment_time IS NOT NULL AND DATE(consent_for_study_enrollment_time)<=calendar.day) AND 
@@ -1565,6 +1574,7 @@ class MetricsRaceCacheDao(BaseDao):
                                       consent_for_study_enrollment_time,
                                       enrollment_status_member_time,
                                       enrollment_status_core_stored_sample_time,
+                                      participant_origin,
                                       MAX(WhatRaceEthnicity_Hispanic)                 AS WhatRaceEthnicity_Hispanic,
                                       MAX(WhatRaceEthnicity_Black)                    AS WhatRaceEthnicity_Black,
                                       MAX(WhatRaceEthnicity_White)                    AS WhatRaceEthnicity_White,
@@ -1584,6 +1594,7 @@ class MetricsRaceCacheDao(BaseDao):
                                              consent_for_study_enrollment_time,
                                              ps.enrollment_status_member_time,
                                              ps.enrollment_status_core_stored_sample_time,
+                                             ps.participant_origin,
                                              CASE WHEN q.code_id = {WhatRaceEthnicity_Hispanic} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
                                              CASE WHEN q.code_id = {WhatRaceEthnicity_Black} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Black,
                                              CASE WHEN q.code_id = {WhatRaceEthnicity_White} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_White,
@@ -1599,14 +1610,15 @@ class MetricsRaceCacheDao(BaseDao):
                                       LEFT JOIN participant_race_answers q ON ps.participant_id = q.participant_id
                                       WHERE ps.hpo_id=:hpo_id AND ps.questionnaire_on_the_basics = 1
                                     ) x
-                               GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time
+                               GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time, participant_origin
                              ) p,
-                             calendar
+                             calendar, metrics_tmp_participant_origin po
                         WHERE calendar.day >= :start_date
                           AND calendar.day <= :end_date
                           AND calendar.day >= Date(p.sign_up_time)
+                          AND p.participant_origin = po.participant_origin
                       ) y
-                      GROUP BY day, hpo_id, registered, participant, consented, core
+                      GROUP BY day, hpo_id, registered, participant, consented, core, participant_origin
                       ;
                 """.format(cache_type=self.cache_type,
                            Race_WhatRaceEthnicity=race_code_dict['Race_WhatRaceEthnicity'],

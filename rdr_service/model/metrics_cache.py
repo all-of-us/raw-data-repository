@@ -46,6 +46,7 @@ class MetricsRaceCache(Base):
     preferNotToAnswer = Column("prefer_not_to_answer", Integer, nullable=False)
     multiAncestry = Column("multi_ancestry", Integer, nullable=False)
     noAncestryChecked = Column("no_ancestry_checked", Integer, nullable=False)
+    participantOrigin = Column("participant_origin", String(50), primary_key=True)
 
 
 class MetricsGenderCache(Base):

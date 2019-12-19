@@ -150,7 +150,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         if origin:
             with self.dao.session() as session:
                 update_origin_sql = """
-                    UPDATE participant set participant_origin='{}' where rdr.participant.participant_id={}
+                    UPDATE participant set participant_origin='{}' where participant.participant_id={}
                 """.format(origin, participant.participantId)
                 session.execute(update_origin_sql)
 
@@ -228,10 +228,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         return summary
 
     def update_participant_summary(
-        self, participant_id, time_mem=None, time_fp=None, time_fp_stored=None, time_study=None
+        self, participant_id, time_mem=None, time_fp=None, time_fp_stored=None, time_study=None, origin=None
     ):
 
         participant = self.dao.get(participant_id)
+        if origin:
+            with self.dao.session() as session:
+                update_origin_sql = """
+                    UPDATE participant set participant_origin='{}' where participant.participant_id={}
+                """.format(origin, participant_id)
+                session.execute(update_origin_sql)
         summary = self.participant_summary(participant)
         if time_mem is None:
             enrollment_status = EnrollmentStatus.INTERESTED
@@ -3846,6 +3852,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                 participant = self.send_post("Participant", {"providerLink": [providerLink]})
                 participant_id = participant["participantId"]
                 self.send_consent(participant_id)
+
                 # Populate some answers to the questionnaire
                 answers = {
                     "race": race_code_list,
@@ -3868,18 +3875,21 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "CABoRSignature": "signature.pdf",
                 }
             self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
+
             return participant
 
         p1 = setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
-        self.update_participant_summary(p1["participantId"][1:], time_mem=self.time2)
+        self.update_participant_summary(p1["participantId"][1:], time_mem=self.time2, origin='a')
         p2 = setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
-        self.update_participant_summary(p2["participantId"][1:], time_mem=self.time3, time_fp_stored=self.time5)
+        self.update_participant_summary(p2["participantId"][1:], time_mem=self.time3, time_fp_stored=self.time5,
+                                        origin='a')
         p3 = setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
-        self.update_participant_summary(p3["participantId"][1:], time_mem=self.time4)
+        self.update_participant_summary(p3["participantId"][1:], time_mem=self.time4, origin='a')
         p4 = setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
-        self.update_participant_summary(p4["participantId"][1:], time_mem=self.time5)
+        self.update_participant_summary(p4["participantId"][1:], time_mem=self.time5, origin='a')
         p5 = setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
-        self.update_participant_summary(p5["participantId"][1:], time_mem=self.time4, time_fp_stored=self.time5)
+        self.update_participant_summary(p5["participantId"][1:], time_mem=self.time4, time_fp_stored=self.time5,
+                                        origin='b')
 
         setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
         setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
@@ -3910,6 +3920,64 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "None_Of_These_Fully_Describe_Me": 1,
                     "Middle_Eastern_North_African": 0,
                     "Multi_Ancestry": 2,
+                    "American_Indian_Alaska_Native": 1,
+                    "No_Ancestry_Checked": 0,
+                    "Black_African_American": 0,
+                    "White": 0,
+                    "Prefer_Not_To_Answer": 0,
+                    "Hispanic_Latino_Spanish": 0,
+                    "Native_Hawaiian_other_Pacific_Islander": 0,
+                    "Asian": 0,
+                },
+                "hpo": "PITT",
+            },
+            response,
+        )
+
+        self.assertIn(
+            {
+                "date": "2018-01-04",
+                "metrics": {
+                    "None_Of_These_Fully_Describe_Me": 0,
+                    "Middle_Eastern_North_African": 0,
+                    "Multi_Ancestry": 1,
+                    "American_Indian_Alaska_Native": 1,
+                    "No_Ancestry_Checked": 1,
+                    "Black_African_American": 0,
+                    "White": 0,
+                    "Prefer_Not_To_Answer": 0,
+                    "Hispanic_Latino_Spanish": 0,
+                    "Native_Hawaiian_other_Pacific_Islander": 0,
+                    "Asian": 0,
+                },
+                "hpo": "PITT",
+            },
+            response,
+        )
+
+        # test participant origin
+        qs = """
+                      &stratification=RACE
+                      &startDate=2017-12-31
+                      &endDate=2018-01-08
+                      &history=TRUE
+                      &awardee=PITT
+                      &enrollmentStatus=FULLY_CONSENTED
+                      &version=2
+                      &origin=a
+                      """
+
+        qs = "".join(qs.split())  # Remove all whitespace
+
+        response = self.send_get("ParticipantCountsOverTime", query_string=qs)
+
+        self.assertIn(
+            {
+                "date": "2018-01-03",
+                "metrics": {
+                    "None_Of_These_Fully_Describe_Me": 1,
+                    "Middle_Eastern_North_African": 0,
+                    "Multi_Ancestry": 1,
                     "American_Indian_Alaska_Native": 1,
                     "No_Ancestry_Checked": 0,
                     "Black_African_American": 0,
