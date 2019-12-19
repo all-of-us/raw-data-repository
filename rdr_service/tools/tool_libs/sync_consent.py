@@ -22,7 +22,6 @@ from datetime import datetime
 import MySQLdb
 import pytz
 
-from rdr_service.api_util import list_blobs
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.services.gcp_utils import gcp_cp, gcp_format_sql_instance, gcp_make_auth_header
 from rdr_service.services.system_utils import make_api_request, print_progress_bar, setup_logging, setup_i18n
