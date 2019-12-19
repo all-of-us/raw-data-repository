@@ -3206,13 +3206,13 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
     def test_get_history_total_api_v2(self):
 
-        p1 = Participant(participantId=1, biobankId=4)
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
         self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
 
-        p2 = Participant(participantId=2, biobankId=5)
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='b')
         self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
 
-        p3 = Participant(participantId=3, biobankId=6)
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='c')
         self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time3,
                      time_mem=self.time4, time_fp_stored=self.time5)
 
@@ -3243,6 +3243,25 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self.assertIn({u'date': u'2018-01-02', u'metrics': {u'TOTAL': 0}}, response)
         self.assertIn({u'date': u'2018-01-03', u'metrics': {u'TOTAL': 1}}, response)
         self.assertIn({u'date': u'2018-01-04', u'metrics': {u'TOTAL': 0}}, response)
+
+        # test origin
+        qs = """
+              &stratification=TOTAL
+              &startDate=2018-01-01
+              &endDate=2018-01-08
+              &history=TRUE
+              &version=2
+              &origin=a,b
+              """
+
+        qs = ''.join(qs.split())  # Remove all whitespace
+
+        response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+        self.assertIn({u'date': u'2018-01-01', u'metrics': {u'TOTAL': 2}}, response)
+        self.assertIn({u'date': u'2018-01-02', u'metrics': {u'TOTAL': 2}}, response)
+        self.assertIn({u'date': u'2018-01-03', u'metrics': {u'TOTAL': 2}}, response)
+        self.assertIn({u'date': u'2018-01-04', u'metrics': {u'TOTAL': 2}}, response)
 
     def test_get_history_total_api_filter_by_awardees(self):
         p1 = Participant(participantId=1, biobankId=4)

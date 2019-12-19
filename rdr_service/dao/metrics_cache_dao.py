@@ -206,7 +206,8 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
             client_json.append(new_item)
         return client_json
 
-    def get_total_interested_count(self, start_date, end_date, hpo_ids=None, enrollment_statuses=None):
+    def get_total_interested_count(self, start_date, end_date, hpo_ids=None, enrollment_statuses=None,
+                                   participant_origins=None):
         with self.session() as session:
             last_inserted_record = self.get_serving_version_with_session(session)
             if last_inserted_record is None:
@@ -217,6 +218,12 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                 filters_hpo = ' (' + ' OR '.join('hpo_id=' + str(x) for x in hpo_ids) + ') AND '
             else:
                 filters_hpo = ''
+
+            if participant_origins:
+                filters_origin = ' (' + ' OR '.join('participant_origin=\'' + str(x) + '\''
+                                                    for x in participant_origins) + ') AND '
+            else:
+                filters_origin = ''
 
             select_field_mapping = {
                 str(EnrollmentStatusV2.REGISTERED): 'SUM(registered_count)',
@@ -235,11 +242,12 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
             date AS start_date
             FROM metrics_enrollment_status_cache
             WHERE %(filters_hpo)s
+            %(filters_origin)s
             date_inserted=:date_inserted
             AND date >= :start_date
             AND date <= :end_date
             GROUP BY date;
-            """ % {'filters_hpo': filters_hpo}
+            """ % {'filters_hpo': filters_hpo, 'filters_origin': filters_origin}
             params = {'start_date': start_date, 'end_date': end_date, 'date_inserted': last_inserted_date}
 
             results_by_date = []

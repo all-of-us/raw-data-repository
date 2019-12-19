@@ -199,7 +199,8 @@ class ParticipantCountsOverTimeService(BaseDao):
 
         if str(history) == "TRUE" and stratification == Stratifications.TOTAL:
             dao = MetricsEnrollmentStatusCacheDao(version=version)
-            return dao.get_total_interested_count(start_date, end_date, awardee_ids, enrollment_statuses)
+            return dao.get_total_interested_count(start_date, end_date, awardee_ids, enrollment_statuses,
+                                                  participant_origins)
         elif str(history) == "TRUE" and stratification == Stratifications.ENROLLMENT_STATUS:
             dao = MetricsEnrollmentStatusCacheDao(version=version)
             return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses,
