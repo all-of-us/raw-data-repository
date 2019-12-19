@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 #
-# RDR cli tool launcher
+# RDR tool launcher
 #
 
 # pylint: disable=superfluous-parens
@@ -11,25 +11,32 @@ import os
 import re
 import sys
 
-lib_paths = ["../service_libs", "service_libs"]
-import_path = "service_libs"
-
 
 def _grep_prop(filename, prop_name):
     """
-  Look for property in file
-  :param filename: path to file and file name.
-  :param prop_name: property to search for in file.
-  :return: property value or None.
-  """
+    Look for property in file
+    :param filename: path to file and file name.
+    :param prop_name: property to search for in file.
+    :return: property value or None.
+    """
     fdata = open(filename, "r").read()
     obj = re.search("^{0} = ['|\"](.+)['|\"]$".format(prop_name), fdata, re.MULTILINE)
     if obj:
         return obj.group(1)
     return None
 
+def _run_tool(lib_paths, import_path):
+    """
+    Run the tools from the given path.
+    """
+    # We need to run from the `rdr_service` directory, save the current directory
+    cwd = os.path.abspath(os.curdir)
+    if not cwd.endswith('rdr_service'):
+        tmp_cwd = os.path.join(cwd, 'rdr_service')
+        if not os.path.exists(tmp_cwd):
+            raise FileNotFoundError('Unable to locate "rdr_service" directory.')
+        os.chdir(tmp_cwd)
 
-def run():
     args = copy.deepcopy(sys.argv)
 
     show_usage = False
@@ -50,15 +57,16 @@ def run():
             lp = os.path.join(os.curdir, lib_path)
 
     if not lp:
-        print("ERROR: service libs path not found, aborting.")
+        print("ERROR: tool library path not found, aborting.")
+        os.chdir(cwd)
         exit(1)
 
     command_names = list()
 
     libs = glob.glob(os.path.join(lp, "*.py"))
     for lib in libs:
-        mod_cmd = _grep_prop(lib, "mod_cmd")
-        mod_desc = _grep_prop(lib, "mod_desc")
+        mod_cmd = _grep_prop(lib, "tool_cmd")
+        mod_desc = _grep_prop(lib, "tool_desc")
         if not mod_cmd:
             continue
 
@@ -71,10 +79,14 @@ def run():
                 mod = importlib.import_module("{0}.{1}".format(import_path, mod_name))
                 exit_code = mod.run()
                 print("finished.")
+                os.chdir(cwd)
                 return exit_code
 
     if show_usage:
-        print("\nusage: rdr.py command [-h|--help] [args]\n\navailable commands:")
+        if 'rclient' in sys.argv[0]:
+            print("\nusage: rclient command [-h|--help] [args]\n\navailable commands:")
+        else:
+            print("\nusage: python -m client command [-h|--help] [args]\n\navailable commands:")
 
         command_names.sort()
         for gn in command_names:
@@ -82,7 +94,18 @@ def run():
 
         print("")
 
+    os.chdir(cwd)
+
+
+def run_client():
+    """
+    User Client Tools
+    """
+    lib_paths = ["rdr_service/client/client_libs", "client/client_libs", "../client_libs", "client_libs",
+                 "../../client_libs", "raw_data_repository/rdr_service/client/client_libs"]
+    import_path = "rdr_service.client.client_libs"
+    _run_tool(lib_paths, import_path)
+
 
 # --- Main Program Call ---
-if __name__ == "__main__":
-    sys.exit(run())
+sys.exit(run_client())

@@ -526,28 +526,6 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(rows[2][ResultCsvColumns.SEX_AT_BIRTH], "M")
 
     def test_gc_validation_metrics_end_to_end(self):
-        # fake genomic_set
-        self._create_fake_genomic_set(
-            genomic_set_name="genomic-test-set-cell-line",
-            genomic_set_criteria=".",
-            genomic_set_filename="genomic-test-set-cell-line.csv"
-        )
-
-        # create 10 test participant set members
-        # pylint:disable=unused-variable
-        for p in range(1, 11):
-            # Fake participant_ids and biobank_orders
-            new_participant = self._make_participant()
-            self._make_summary(new_participant)
-
-            self._make_biobank_order(
-                participantId=new_participant.participantId,
-                biobankOrderId=new_participant.participantId,
-                identifiers=[BiobankOrderIdentifier(
-                    system=u'c', value=u'e{}'.format(
-                        new_participant.participantId))]
-            )
-
         # Create the fake Google Cloud CSV files to ingest
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         end_to_end_test_files = (
@@ -563,51 +541,21 @@ class GenomicPipelineTest(BaseTestCase):
 
         # test file processing queue
         files_processed = self.file_processed_dao.get_all()
-        files_processed.sort(key=lambda x: x.fileName, reverse=True)
         self.assertEqual(len(files_processed), 2)
         self._gc_files_processed_test_cases(files_processed, bucket_name)
 
         # Test the fields against the DB
         gc_metrics = self.metrics_dao.get_all()
-        self.assertEqual(len(gc_metrics), 10)
-        self._gc_metrics_ingested_data_test_cases(bucket_name,
-                                                  files_processed,
-                                                  gc_metrics)
+
+        self.assertEqual(len(gc_metrics), 2)
+        self._gc_metrics_ingested_data_test_cases(gc_metrics)
 
         # Test successful run result
-        run_obj = self.job_run_dao.get_all()
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj[0].runResult)
+        run_obj = self.job_run_dao.get(1)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def _gc_files_processed_test_cases(self, files_processed, bucket_name):
-        """
-        sub tests for the GC Metrics end to end test
-        :param files_processed:
-        :return:
-        """
-        self.assertEqual(
-            files_processed[0].fileName,
-            'GC_AoU_SEQ_TestDataManifest_11192019.csv'
-        )
-        self.assertEqual(
-            files_processed[0].filePath,
-            '/dev_genomics_cell_line_validation/'
-            'GC_AoU_SEQ_TestDataManifest_11192019.csv'
-        )
-
-        self.assertEqual(
-            files_processed[1].fileName,
-            'GC_AoU_GEN_TestDataManifest_11192019.csv'
-        )
-        self.assertEqual(
-            files_processed[1].filePath,
-            '/dev_genomics_cell_line_validation/'
-            'GC_AoU_GEN_TestDataManifest_11192019.csv'
-        )
-
-        self.assertEqual(files_processed[1].fileStatus,
-                         GenomicSubProcessStatus.COMPLETED)
-        self.assertEqual(files_processed[1].fileResult,
-                         GenomicSubProcessResult.SUCCESS)
+        """ sub tests for the GC Metrics end to end test """
 
         # Test files were moved to archive OK
         bucket_list = list_blobs('/' + bucket_name)
@@ -617,50 +565,63 @@ class GenomicPipelineTest(BaseTestCase):
                         if s.name.lower().endswith('.csv')]
 
         for f in files_processed:
+            if "SEQ" in f.fileName:
+                self.assertEqual(
+                    f.fileName,
+                    'GC_AoU_SEQ_TestDataManifest_11192019.csv'
+                )
+                self.assertEqual(
+                    f.filePath,
+                    '/dev_genomics_cell_line_validation/'
+                    'GC_AoU_SEQ_TestDataManifest_11192019.csv'
+                )
+            else:
+                self.assertEqual(
+                    f.fileName,
+                    'GC_AoU_GEN_TestDataManifest_11192019.csv'
+                )
+                self.assertEqual(
+                    f.filePath,
+                    '/dev_genomics_cell_line_validation/'
+                    'GC_AoU_GEN_TestDataManifest_11192019.csv'
+                )
+
+            self.assertEqual(f.fileStatus,
+                             GenomicSubProcessStatus.COMPLETED)
+            self.assertEqual(f.fileResult,
+                             GenomicSubProcessResult.SUCCESS)
+
             self.assertNotIn(f.fileName, bucket_files)
             self.assertIn(f.fileName, archive_files)
 
-    def _gc_metrics_ingested_data_test_cases(self, bucket_name,
-                                             files_processed, gc_metrics):
+    def _gc_metrics_ingested_data_test_cases(self, gc_metrics):
         """Sub tests for the end-to-end metrics test"""
-
-        # Test SEQ file data inserted correctly
-        with open_cloud_file(
-            bucket_name + '/processed_by_rdr/' + files_processed[0].fileName
-        ) as csv_file:
-            csv_reader = csv.DictReader(csv_file, delimiter=",")
-            rows = list(csv_reader)
-            for i in range(0, 5):
-                self.assertEqual(rows[i]['Biobank ID'][1:], gc_metrics[i].biobankId)
-                self.assertEqual(rows[i]['BiobankidSampleid'], gc_metrics[i].sampleId)
-                self.assertEqual(rows[i]['LIMS ID'], gc_metrics[i].limsId)
-                self.assertEqual(int(rows[i]['Mean Coverage']), gc_metrics[i].meanCoverage)
-                self.assertEqual(int(rows[i]['Genome Coverage']), gc_metrics[i].genomeCoverage)
-                self.assertEqual(int(rows[i]['Contamination']), gc_metrics[i].contamination)
-                self.assertEqual(rows[i]['Sex Concordance'], gc_metrics[i].sexConcordance)
-                self.assertEqual(int(rows[i]['Aligned Q20 Bases']), gc_metrics[i].alignedQ20Bases)
-                self.assertEqual(rows[i]['Processing Status'], gc_metrics[i].processingStatus)
-                self.assertEqual(rows[i]['Notes'], gc_metrics[i].notes)
-                self.assertEqual(rows[i]['Consent for RoR'], gc_metrics[i].consentForRor)
-                self.assertEqual(int(rows[i]['Withdrawn_status']), gc_metrics[i].withdrawnStatus)
-                self.assertEqual(int(rows[i]['site_id']), gc_metrics[i].siteId)
-
-        # Test GEN file data inserted correctly
-        with open_cloud_file(
-            bucket_name + '/processed_by_rdr/' + files_processed[1].fileName
-        ) as csv_file:
-            csv_reader = csv.DictReader(csv_file, delimiter=",")
-            rows = list(csv_reader)
-            for i in range(5, 10):
-                self.assertEqual(rows[i - 5]['Biobank ID'][1:], gc_metrics[i].biobankId)
-                self.assertEqual(rows[i - 5]['BiobankidSampleid'], gc_metrics[i].sampleId)
-                self.assertEqual(rows[i - 5]['LIMS ID'], gc_metrics[i].limsId)
-                self.assertEqual(int(rows[i - 5]['Call Rate']), gc_metrics[i].callRate)
-                self.assertEqual(int(rows[i - 5]['Contamination']), gc_metrics[i].contamination)
-                self.assertEqual(rows[i - 5]['Sex Concordance'], gc_metrics[i].sexConcordance)
-                self.assertEqual(rows[i - 5]['Processing Status'], gc_metrics[i].processingStatus)
-                self.assertEqual(rows[i - 5]['Notes'], gc_metrics[i].notes)
-                self.assertEqual(int(rows[i - 5]['site_id']), gc_metrics[i].siteId)
+        for record in gc_metrics:
+            if record.biobankId == '2':
+                # test SEQ File inserted correctly
+                self.assertEqual('1002', record.sampleId)
+                self.assertEqual('10002', record.limsId)
+                self.assertEqual(2, record.meanCoverage)
+                self.assertEqual(2, record.genomeCoverage)
+                self.assertEqual(3, record.contamination)
+                self.assertEqual('True', record.sexConcordance)
+                self.assertEqual(4, record.alignedQ20Bases)
+                self.assertEqual('Pass', record.processingStatus)
+                self.assertEqual('This sample passed', record.notes)
+                self.assertEqual('Y', record.consentForRor)
+                self.assertEqual(1, record.withdrawnStatus)
+                self.assertEqual(11002, record.siteId)
+            else:
+                # Test GEN file data inserted correctly
+                self.assertEqual('1', record.biobankId)
+                self.assertEqual('1001', record.sampleId)
+                self.assertEqual('10001', record.limsId)
+                self.assertEqual(1, record.callRate)
+                self.assertEqual(4, record.contamination)
+                self.assertEqual('True', record.sexConcordance)
+                self.assertEqual('Pass', record.processingStatus)
+                self.assertEqual('This sample passed', record.notes)
+                self.assertEqual(11001, record.siteId)
 
     def test_gc_metrics_ingestion_bad_files(self):
         # Create the fake Google Cloud CSV files to ingest
@@ -819,25 +780,23 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_gc_metrics_reconciliation_vs_manifest(self):
         # Create the fake Google Cloud CSV files to ingest
-        self._create_fake_datasets_for_gc_tests(5)
+        self._create_fake_datasets_for_gc_tests(1)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         self._create_ingestion_test_file('GC_AoU_GEN_TestDataManifest.csv',
                                          bucket_name)
 
         # Run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
-        test_set_members = self.member_dao.get_all()
+        test_set_member = self.member_dao.get(1)
 
         # Run the GC Metrics Reconciliation
         genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 2
-        gc_metrics = self.metrics_dao.get_all()
+        gc_metric_record = self.metrics_dao.get(1)
 
         # Test the gc_metrics were updated with reconciliation data
-        for set_member in test_set_members:
-            metric_record = gc_metrics[int(set_member.biobankId) - 1]
-            self.assertEqual(set_member.biobankId, metric_record.biobankId)
-            self.assertEqual(set_member.id, metric_record.genomicSetMemberId)
-            self.assertEqual(2, metric_record.reconcileManifestJobRunId)
+        self.assertEqual(test_set_member.biobankId, gc_metric_record.biobankId)
+        self.assertEqual(test_set_member.id, gc_metric_record.genomicSetMemberId)
+        self.assertEqual(2, gc_metric_record.reconcileManifestJobRunId)
 
         run_obj = self.job_run_dao.get(2)
 
@@ -845,7 +804,7 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_gc_metrics_reconciliation_vs_sequencing_end_to_end(self):
         # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(5)
+        self._create_fake_datasets_for_gc_tests(1)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         self._create_ingestion_test_file('GC_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name)
@@ -854,12 +813,8 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the reconciliation process
         # TODO: naming convention TBD
         sequencing_test_files = (
-            'GC_sequencing_T6.txt',
-            'GC_sequencing_T7.txt',
-            'GC_sequencing_T8.txt',
-            'GC_sequencing_T9.txt',
-            'GC_sequencing_T10.txt',
-            'GC_sequencing_T11.txt',
+            'GC_sequencing_T2.txt',
+            'GC_sequencing_T3.txt',
             'GC_bad_name.txt'
         )
         for f in sequencing_test_files:
@@ -867,14 +822,12 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 2
 
-        gc_metrics = self.metrics_dao.get_all()
-        gc_metrics.sort(key=lambda x: int(x.biobankId))
+        gc_record = self.metrics_dao.get(1)
 
         # Test the gc_metrics were updated with reconciliation data
-        for seq_file, record in zip(sequencing_test_files, gc_metrics):
-            self.assertEqual(seq_file
-                             , record.sequencingFileName)
-            self.assertEqual(2, record.reconcileSequencingJobRunId)
+        self.assertEqual('GC_sequencing_T2.txt'
+                         , gc_record.sequencingFileName)
+        self.assertEqual(2, gc_record.reconcileSequencingJobRunId)
 
         # Test files were moved to archive OK
         bucket_list = list(list_blobs('/' + bucket_name))
@@ -886,7 +839,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         for test_file in sequencing_test_files:
             # Test cases
-            if test_file == 'GC_bad_name.txt' or test_file == 'GC_sequencing_T11.txt':
+            if test_file == 'GC_bad_name.txt' or test_file == 'GC_sequencing_T3.txt':
                 # test bad sequence file name or no gc_metrics is ignored
                 self.assertIn(test_file, bucket_files)
             else:
@@ -915,14 +868,14 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_duplicate_sequencing_reconciliation_file(self):
         # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(5)
+        self._create_fake_datasets_for_gc_tests(1)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         self._create_ingestion_test_file('GC_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name)
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
         # Test file
-        test_file = 'GC_sequencing_T7.txt'
+        test_file = 'GC_sequencing_T2.txt'
         self._write_cloud_csv(test_file, 'attagc', bucket=bucket_name)
 
         genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 2
@@ -944,7 +897,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertIn(f'{config.GENOMIC_GC_PROCESSED_FOLDER_NAME}/{test_file}',
                       archive_files)
 
-        gc_metric_record = self.metrics_dao.get(2)
+        # Test the filename was updated
+        gc_metric_record = self.metrics_dao.get(1)
         self.assertEqual(test_file, gc_metric_record.sequencingFileName)
 
         run_obj = self.job_run_dao.get(3)

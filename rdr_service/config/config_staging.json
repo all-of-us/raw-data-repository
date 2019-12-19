@@ -18,6 +18,10 @@
       "comment": "for HealthPro testing",
       "clientId": "hpro"
     },
+    "all-of-us-rw-staging@appspot.gserviceaccount.com": {
+      "roles": ["workbench"],
+      "clientId": "workbench"
+    },
     "vibrent-drc-staging@vibrent-drc-staging-165017.iam.gserviceaccount.com": {
       "roles": [
         "ptc"

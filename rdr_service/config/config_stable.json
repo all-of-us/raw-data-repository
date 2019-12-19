@@ -9,6 +9,10 @@
       "roles": ["healthpro"],
       "clientId": "hpro"
     },
+    "all-of-us-rw-stable@appspot.gserviceaccount.com": {
+      "roles": ["workbench"],
+      "clientId": "workbench"
+    },
     "awardee-pitt@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "PITT",
@@ -98,6 +102,20 @@
       "awardee": "CAL_PMC",
       "whitelisted_ip_ranges" : {
         "ip4": ["68.181.126.194", "104.129.198.138", "128.195.50.120", "10.204.146.84", "207.151.20.206"]
+      }
+    },
+    "awardee-chs@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "CHEROKEE",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["40.128.118.80"]
+      }
+    },
+    "awardee-sanysidro@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "SAN_YSIDRO",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["70.183.84.153/28"]
       }
     },
     "awardee-chc@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {

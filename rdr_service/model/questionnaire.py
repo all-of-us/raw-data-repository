@@ -22,6 +22,7 @@ class QuestionnaireBase(object):
     questionnaireId = Column("questionnaire_id", Integer, primary_key=True)
     # Incrementing version, starts at 1 and is incremented on each update.
     version = Column("version", Integer, nullable=False)
+    semanticVersion = Column('semantic_version', String(100))
     created = Column("created", UTCDateTime, nullable=False)
     lastModified = Column("last_modified", UTCDateTime, nullable=False)
     # The JSON representation of the questionnaire provided by the client.

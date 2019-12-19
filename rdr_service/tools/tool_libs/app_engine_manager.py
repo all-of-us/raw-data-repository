@@ -6,19 +6,21 @@ import argparse
 import json
 import logging
 import os
+import re
 import sys
 import difflib
 
 import yaml
 from yaml import Loader as yaml_loader
 
-from rdr_service.services.system_utils import setup_logging, setup_i18n, git_project_root, git_current_branch, \
-    git_checkout_branch, is_git_branch_clean
+from rdr_service.services.system_utils import setup_logging, setup_i18n, git_current_branch, \
+    git_checkout_branch, is_git_branch_clean, make_api_request
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, GCP_APP_CONFIG_MAP
 from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
     gcp_application_default_creds_exist
 from rdr_service.tools.tool_libs.alembic import AlembicManagerClass
+from rdr_service.services.jira_utils import JiraTicketHandler
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -38,6 +40,8 @@ class DeployAppClass(object):
     deploy_root = None
 
     _current_git_branch = None
+
+    _jira_handler = None
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
@@ -159,6 +163,95 @@ class DeployAppClass(object):
             if os.path.exists(c):
                 os.remove(c)
 
+    def create_jira_ticket(self, summary):
+        """
+        Create a Jira ticket.
+        """
+        code, resp = make_api_request(f'{self.gcp_env.project}.appspot.com', api_path='/')
+        if code != 200:
+            deployed_version = 'unknown'
+        else:
+            deployed_version = resp.get('version_id', 'unknown').replace('-', '.')
+
+        notes = self._jira_handler.get_release_notes_since_tag(deployed_version)
+
+        descr = "h1. Release Notes for {0}\nh2.deployed to {1}, listing changes since {2}:\n{3}".format(
+            self.args.git_target,
+            self.gcp_env.project,
+            deployed_version,
+            notes
+        )
+
+        ticket = self._jira_handler.create_ticket(summary, descr)
+        return ticket
+
+    def add_jira_comment(self, comment):
+        """
+        Add a comment to a Jira ticket
+        :param comment: Comment to add to Jira ticket.
+        """
+        if not self.jira_ready:
+            return
+        matches = re.match(r"^(\d-[\d]+-[\d]+)", self.deploy_version)
+        if not matches:
+            return comment
+
+        summary = f"Release tracker for {self.args.git_target}"
+        tickets = self._jira_handler.find_ticket_from_summary(summary, board_id='PD')
+
+        ticket = None
+        if tickets:
+            ticket = tickets[0]
+        else:
+            # Determine if this is a CircleCI deploy.
+            if self.gcp_env.project == 'all-of-us-rdr-staging' and 'JIRA_WATCHER_NAMES' in os.environ:
+                ticket = self.create_jira_ticket(summary)
+
+        if ticket:
+            self._jira_handler.add_ticket_comment(ticket, comment)
+
+        return comment
+
+
+    def deploy_app(self):
+        """
+        Deploy the app
+        """
+        if not self.jira_ready and self.gcp_env.project in ('all-of-us-rdr-prod', 'all-of-us-rdr-stable'):
+            _logger.error('Jira credentials not set, aborting.')
+            return 1
+
+        # Disable any other user prompts.
+        self.args.quiet = True
+
+        # Run database migration
+        _logger.info('Applying database migrations...')
+        alembic = AlembicManagerClass(self.args, self.gcp_env, ['upgrade', 'head'])
+        if alembic.run() != 0:
+            _logger.warning('Deploy process stopped.')
+            return 1
+
+        _logger.info('Preparing configuration files...')
+        config_files = self.setup_config_files()
+
+        # Install app config
+        _logger.info(self.add_jira_comment(f"Updating config for '{self.gcp_env.project}'"))
+        app_config = AppConfigClass(self.args, self.gcp_env)
+        app_config.update_app_config()
+        _logger.info(self.add_jira_comment(f"Config for '{self.gcp_env.project}' updated."))
+
+        _logger.info(self.add_jira_comment(f"Deploying app to '{self.gcp_env.project}'."))
+        result = gcp_deploy_app(self.gcp_env.project, config_files, self.deploy_version, not self.args.no_promote)
+        _logger.info(self.add_jira_comment(f"App deployed to '{self.gcp_env.project}'."))
+
+        _logger.info('Cleaning up...')
+        self.clean_up_config_files(config_files)
+
+        _logger.info('Switching back to git branch/tag: {0}...'.format(self._current_git_branch))
+        git_checkout_branch(self._current_git_branch)
+
+        return 0 if result else 1
+
     def run(self):
         """
         Main program process
@@ -167,7 +260,7 @@ class DeployAppClass(object):
         clr = self.gcp_env.terminal_colors
 
         # Installing the app config makes API calls and needs an oauth token to succeed.
-        if not gcp_application_default_creds_exist() and not self.args.service_account:
+        if not self.args.quiet and not gcp_application_default_creds_exist() and not self.args.service_account:
             _logger.error('\n*** Google application default credentials were not found. ***')
             _logger.error("Run 'gcloud auth application-default login' and then try deploying again.\n")
             return 1
@@ -179,7 +272,8 @@ class DeployAppClass(object):
         if not self.setup_services():
             return 1
 
-        self.deploy_version = self.args.deploy_as if self.args.deploy_as else self.args.git_branch
+        self.deploy_version = self.args.deploy_as if self.args.deploy_as else \
+                                self.args.git_target.replace('.', '-')
 
         running_services = gcp_get_app_versions(running_only=True)
 
@@ -187,15 +281,18 @@ class DeployAppClass(object):
         _logger.info(clr.fmt(''))
         _logger.info('=' * 90)
         _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
-        _logger.info('  Branch/Tag To Deploy  : {0}'.format(clr.fmt(self.args.git_branch)))
+        _logger.info('  Branch/Tag To Deploy  : {0}'.format(clr.fmt(self.args.git_target)))
         _logger.info('  App Source Path       : {0}'.format(clr.fmt(self.deploy_root)))
         _logger.info('  Promote               : {0}'.format(clr.fmt('No' if self.args.no_promote else 'Yes')))
 
-        if self.gcp_env.project in ('all-of-us-rdr-prod', 'all-of-us-rdr-stable'):
-            if 'JIRA_API_USER_NAME' in os.environ and 'JIRA_API_USER_PASSWORD' in os.environ:
-                self.jira_ready = True
-                _logger.info('  JIRA Credentials      : {0}'.format(clr.fmt('Set')))
-            else:
+        if 'JIRA_API_USER_NAME' in os.environ and 'JIRA_API_USER_PASSWORD' in os.environ:
+            self.jira_ready = True
+            self._jira_handler = JiraTicketHandler()
+
+        if self.jira_ready:
+            _logger.info('  JIRA Credentials      : {0}'.format(clr.fmt('Set')))
+        else:
+            if self.gcp_env.project in ('all-of-us-rdr-prod', 'all-of-us-rdr-stable'):
                 _logger.info('  JIRA Credentials      : {0}'.format(clr.fmt('*** Not Set ***', clr.fg_bright_red)))
 
         for service in self.services:
@@ -220,36 +317,7 @@ class DeployAppClass(object):
                 _logger.warning('Aborting deployment.')
                 return 1
 
-        # Disable any other user prompts.
-        self.args.quiet = True
-
-        # Attempt to switch to the git branch we need to deploy.
-        _logger.info('Switching to git branch/tag: {0}...'.format(self.args.git_branch))
-        if not git_checkout_branch(self.args.git_branch):
-            return 1
-
-        # Run database migration
-        _logger.info('Applying database migrations...')
-        alembic = AlembicManagerClass(self.args, self.gcp_env, ['upgrade', 'head'])
-        alembic.run()
-
-        _logger.info('Preparing configuration files...')
-        config_files = self.setup_config_files()
-
-        # Install app config
-        _logger.info('Installing app configuration into datastore...')
-        app_config = AppConfigClass(self.args, self.gcp_env)
-        app_config.update_app_config()
-
-        _logger.info('Deploying app...')
-        result = gcp_deploy_app(self.gcp_env.project, config_files, self.deploy_version, not self.args.no_promote)
-        _logger.info('Cleaning up...')
-        self.clean_up_config_files(config_files)
-
-        _logger.info('Switching back to git branch/tag: {0}...'.format(self._current_git_branch))
-        git_checkout_branch(self._current_git_branch)
-
-        return 0 if result else 1
+        return self.deploy_app()
 
 
 class ListServicesClass(object):
@@ -553,7 +621,7 @@ def run():
     # Deploy app
     deploy_parser = subparser.add_parser("deploy")
     deploy_parser.add_argument("--quiet", help="do not ask for user input", default=False, action="store_true") # noqa
-    deploy_parser.add_argument("--git-branch", help="git branch/tag to deploy.", required=True)  # noqa
+    deploy_parser.add_argument("--git-target", help="git branch/tag to deploy.", default=git_current_branch())  # noqa
     deploy_parser.add_argument("--deploy-as", help="deploy as version", default=None)  #noqa
     deploy_parser.add_argument("--services", help="comma delimited list of service names to deploy",
                                default=None)  # noqa
@@ -589,17 +657,14 @@ def run():
 
         # determine the git project root directory.
         if not args.git_project:
-            envron_path = os.environ.get('RDR_PROJECT', None)
-            git_root_path = git_project_root()
-            if envron_path:
-                args.git_project = envron_path
-            elif git_root_path:
-                args.git_project = git_root_path
+            if gcp_env.git_project:
+                args.git_project = gcp_env.git_project
             else:
                 _logger.error("No project root found, set '--git-project' arg or set RDR_PROJECT environment var.")
                 exit(1)
 
-        if hasattr(args, 'git_branch'):
+
+        if hasattr(args, 'git_target'):
             process = DeployAppClass(args, gcp_env)
             exit_code = process.run()
 

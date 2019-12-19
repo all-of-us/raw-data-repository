@@ -7,6 +7,7 @@ import traceback
 import random
 
 from rdr_service.config import GoogleCloudDatastoreConfigProvider
+from rdr_service.services.gcp_config import GCP_APP_CONFIG_MAP
 from rdr_service.services.gcp_utils import gcp_activate_sql_proxy, gcp_cleanup, gcp_initialize, gcp_format_sql_instance
 from rdr_service.services.system_utils import remove_pidfile, write_pidfile_or_die, git_project_root, TerminalColors
 
@@ -90,9 +91,57 @@ class GCPEnvConfigObject(object):
 
         return config
 
+    def get_local_app_config(self, project: str) -> (dict, None):
+        """
+        Return the local project app configuration for the given project id.
+        :params project: GCP project id
+        :return: dict or none
+        """
+        files = list()
+        if not project or project == 'localhost':
+            files.append(os.path.join(self.git_project, 'rdr_service/.configs/current_config.json'))
+
+        else:
+            files.append(os.path.join(self.git_project, 'rdr_service/config/base_config.json'))
+            files.append(os.path.join(self.git_project, 'rdr_service/config', GCP_APP_CONFIG_MAP[project]))
+
+        config = dict()
+        for file in files:
+            if os.path.exists(file):
+                with open(file, 'r') as handle:
+                    temp_config = json.loads(handle.read())
+                    config = {**config, **temp_config}
+            else:
+                _logger.error(f'Configuration file "{file}" not found.')
+                return None
+
+        return config
+
+    def get_gcp_configurator_account(self, project: str) -> (str, None):
+        """
+        Return the GCP app engine configurator account for the given project id.
+        :param project: GCP project id
+        :return: service account or None
+        """
+        config = self.get_local_app_config(project)
+
+        if not config:
+            _logger.error(f'Failed to get local config for "{project}".')
+            return None
+
+        users = config['user_info']
+        for user, data in users.items():
+            try:
+                if data['clientId'] == 'configurator':
+                    return user
+            except KeyError:
+                pass
+
+        return None
+
     def activate_sql_proxy(self, user: str = 'rdr', project: str = None,
                            replica: bool = False, instance: str = None,
-                           port: int = None):
+                           port: int = None) -> int:
         """
         Activate a google sql proxy instance service and set DB_CONNECTION_STRING environment var.
         :param user: database user, must be one of ['root', 'alembic', 'rdr'].

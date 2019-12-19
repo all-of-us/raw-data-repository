@@ -537,6 +537,7 @@ def find_mysqld_executable() -> str:
     :return: Executable path or None
     """
     KNOWN_PATHS = [
+        '/usr/sbin/mysqld',
         '/usr/libexec/mysqld',
         '/var/run/mysqld/mysql',
         '/usr/local/opt/mysql@5.7/bin/mysqld',
@@ -615,6 +616,20 @@ def git_current_branch():
     :return: Git branch name.
     """
     args = ['git', 'rev-parse', '--abbrev-ref', 'HEAD']
+    # pylint: disable=unused-variable
+    code, so, se = run_external_program(args=args)
+
+    if code == 0:
+        return so.strip()
+
+    return None
+
+def git_current_tag():
+    """
+    Get the current git tag
+    :return: Git tag
+    """
+    args = ['git', 'describe', '--tags']
     # pylint: disable=unused-variable
     code, so, se = run_external_program(args=args)
 

@@ -25,14 +25,14 @@ from rdr_service.data_gen.generators import (
     QuestionnaireGen,
 )
 from rdr_service.data_gen.generators.hpo import HPOGen
-from rdr_service.service_libs import GCPProcessContext
+from rdr_service.tools.tool_libs import GCPProcessContext
 from rdr_service.services.gcp_utils import gcp_get_app_access_token, gcp_get_app_host_name, gcp_make_auth_header
 from rdr_service.services.system_utils import make_api_request, setup_logging, setup_i18n
 
 _logger = logging.getLogger("rdr_logger")
 
-mod_cmd = "spec-gen"
-mod_desc = "specific participant data generator"
+tool_cmd = "spec-gen"
+tool_desc = "specific participant data generator"
 
 
 class DataGeneratorClass(object):
@@ -47,8 +47,9 @@ class DataGeneratorClass(object):
     _qn_gen = None
     _bio_gen = None
 
-    def __init__(self, args):
+    def __init__(self, args, gcp_env):
         self.args = args
+        self.gcp_env = gcp_env
 
         if args:
             self._host = gcp_get_app_host_name(self.args.project)
@@ -434,12 +435,12 @@ class DataGeneratorClass(object):
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
-        _logger, mod_cmd, "--debug" in sys.argv, "{0}.log".format(mod_cmd) if "--log-file" in sys.argv else None
+        _logger, tool_cmd, "--debug" in sys.argv, "{0}.log".format(tool_cmd) if "--log-file" in sys.argv else None
     )
     setup_i18n()
 
     # Setup program arguments.
-    parser = argparse.ArgumentParser(prog=mod_cmd, description=mod_desc)
+    parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
     parser.add_argument("--debug", help="Enable debug output", default=False, action="store_true")  # noqa
     parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
     parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
@@ -452,13 +453,13 @@ def run():
     parser.add_argument("--src-csv", help="participant list csv (file/google doc id)", required=True)  # noqa
     args = parser.parse_args()
 
-    with GCPProcessContext(mod_cmd, args.project, args.account, args.service_account) as env:
+    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
         # verify we're not getting pointed to production.
-        if env["project"] == "all-of-us-rdr-prod":
+        if gcp_env.project == "all-of-us-rdr-prod":
             _logger.error("using spec generator in production is not allowed.")
             return 1
 
-        process = DataGeneratorClass(args)
+        process = DataGeneratorClass(args, gcp_env)
         exit_code = process.run()
         return exit_code
 

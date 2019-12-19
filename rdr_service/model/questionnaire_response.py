@@ -25,6 +25,7 @@ class QuestionnaireResponse(Base):
     questionnaireResponseId = Column("questionnaire_response_id", Integer, primary_key=True, autoincrement=False)
     questionnaireId = Column("questionnaire_id", Integer, nullable=False)
     questionnaireVersion = Column("questionnaire_version", Integer, nullable=False)
+    questionnaireSemanticVersion = Column('questionnaire_semantic_version', String(100))
     participantId = Column("participant_id", Integer, ForeignKey("participant.participant_id"), nullable=False)
     created = Column("created", UTCDateTime, nullable=False)
     authored = Column("authored", UTCDateTime, nullable=True)

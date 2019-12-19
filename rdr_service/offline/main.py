@@ -189,7 +189,7 @@ def sync_consent_files():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
-def update_ehr_status():
+def update_ehr_status_cron():
     update_ehr_status.update_ehr_status()
     return '{"success": "true"}'
 
@@ -309,7 +309,7 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        PREFIX + "UpdateEhrStatus", endpoint="update_ehr_status", view_func=update_ehr_status, methods=["GET"]
+        PREFIX + "UpdateEhrStatus", endpoint="update_ehr_status", view_func=update_ehr_status_cron, methods=["GET"]
     )
 
     offline_app.add_url_rule(

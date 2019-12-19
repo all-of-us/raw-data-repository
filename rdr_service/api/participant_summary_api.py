@@ -28,7 +28,7 @@ class ParticipantSummaryApi(BaseApi):
                     raise InternalServerError("Config error for awardee")
 
         # data only for user_awardee, assert that query has same awardee
-        if p_id:
+        if p_id is not None:
             if auth_awardee and user_email != DEV_MAIL:
                 raise Forbidden
             return super(ParticipantSummaryApi, self).get(p_id)

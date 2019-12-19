@@ -1,5 +1,6 @@
 
 from sqlalchemy.orm import subqueryload
+from sqlalchemy import or_
 
 from rdr_service.code_constants import UNSET
 from rdr_service.dao.base_dao import FhirMixin, FhirProperty
@@ -8,7 +9,9 @@ from rdr_service.dao.organization_dao import OrganizationDao, _FhirOrganization
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainResource
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
+from rdr_service.model.site_enums import ObsoleteStatus
 from rdr_service.singletons import HPO_CACHE_INDEX
+
 
 
 class _FhirAwardee(FhirMixin, DomainResource):
@@ -35,6 +38,10 @@ class HPODao(CacheAllDao):
             index_field_keys=["name"],
             order_by_ending=_ORDER_BY_ENDING,
         )
+        # Default includes obsolete HPOs
+        self.obsolete_filters = [None,
+                                 ObsoleteStatus.ACTIVE,
+                                 ObsoleteStatus.OBSOLETE]
 
     def _validate_update(self, session, obj, existing_obj):
         # HPOs aren't versioned; suppress the normal check here.
@@ -61,27 +68,35 @@ class HPODao(CacheAllDao):
     def _make_query(self, session, query_def):  # pylint: disable=unused-argument
         # For now, no filtering, ordering, or pagination is supported; fetch child organizations and
         # sites.
-        return (
-            session.query(HPO)
-            .options(subqueryload(HPO.organizations).subqueryload(Organization.sites))
-            .order_by(HPO.name),
-            _ORDER_BY_ENDING,
-        )
+        query = session.query(HPO)\
+                .options(subqueryload(HPO.organizations).subqueryload(Organization.sites)) \
+                .order_by(HPO.name)
+        if len(self.obsolete_filters) < 3:
+            query = session.query(HPO) \
+                .filter(or_(HPO.isObsolete == None, HPO.isObsolete == ObsoleteStatus.ACTIVE)) \
+                .options(subqueryload(HPO.organizations).subqueryload(Organization.sites)) \
+                .order_by(HPO.name)
+        return query, _ORDER_BY_ENDING,
 
-    def to_client_json(self, model, inactive_sites):
-        return HPODao._to_json(model, inactive_sites)
+    def to_client_json(self, model, inactive_sites, obsolete_filters):
+        return HPODao._to_json(model, inactive_sites, obsolete_filters)
 
     @staticmethod
-    def _to_json(model, inactive_sites=False):
+    def _to_json(model, inactive_sites=False,
+                 obsolete_filters=None):
         resource = _FhirAwardee()
         resource.id = model.name
         resource.display_name = model.displayName
+
         if model.organizationType:
             resource.type = str(model.organizationType)
         else:
             resource.type = UNSET
+
         resource.organizations = [
-            OrganizationDao._to_json(organization, inactive_sites) for organization in model.organizations
+            OrganizationDao._to_json(organization, inactive_sites, obsolete_filters)
+            for organization in model.organizations
+            if organization.isObsolete in obsolete_filters
         ]
         json = resource.as_json()
         del json["resourceType"]

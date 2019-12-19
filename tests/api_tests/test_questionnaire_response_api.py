@@ -15,7 +15,7 @@ from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnsw
 from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus
-from rdr_service.test.test_data import data_path
+from tests.test_data import data_path
 from tests.helpers.unittest_base import BaseTestCase
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -105,12 +105,24 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         response = self.send_post(_questionnaire_response_url(participant_id), resource)
         resource["id"] = response["id"]
         # The resource gets rewritten to include the version
-        resource["questionnaire"]["reference"] = "Questionnaire/%s/_history/1" % questionnaire_id
+        resource['questionnaire']['reference'] = 'Questionnaire/%s/_history/aaa' % questionnaire_id
         self.assertJsonResponseMatches(resource, response)
+
+        #  sending an update response with history reference
+        with open(data_path('questionnaire_response4.json')) as fd:
+            update_resource = json.load(fd)
+        update_resource['subject']['reference'] = \
+            update_resource['subject']['reference'].format(participant_id=participant_id)
+        update_resource['questionnaire']['reference'] = \
+            update_resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id,
+                                                                 semantic_version='aaa')
+        response = self.send_post(_questionnaire_response_url(participant_id), update_resource)
+        update_resource['id'] = response['id']
+        self.assertJsonResponseMatches(update_resource, response)
 
         # Do a get to fetch the questionnaire
         get_response = self.send_get(_questionnaire_response_url(participant_id) + "/" + response["id"])
-        self.assertJsonResponseMatches(resource, get_response)
+        self.assertJsonResponseMatches(update_resource, get_response)
 
         code_dao = CodeDao()
 

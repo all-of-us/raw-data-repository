@@ -10,6 +10,10 @@
       "clientId": "hpro",
       "comment": "for HealthPro testing"
     },
+    "all-of-us-workbench-test@appspot.gserviceaccount.com": {
+      "roles": ["workbench"],
+      "clientId": "workbench"
+    },
     "awardee-pitt@pmi-drc-api-test.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "PITT",
