@@ -1,3 +1,4 @@
+import http.client
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchResearcherHistoryDao, \
     WorkbenchWorkspaceDao, WorkbenchWorkspaceHistoryDao
@@ -132,6 +133,35 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[2].userSourceId, 1)
         self.assertEqual(results[2].givenName, 'string2')
         self.assertEqual(len(results[2].workbenchInstitutionalAffiliations), 2)
+
+    def test_invalid_input_for_researchers(self):
+        request_json = [
+            {
+                "userId": 0,
+                "creationTime": "2019-11-26T21:21:13.056Z",
+                "givenName": "string",
+                "familyName": "string",
+                "streetAddress1": "string",
+                "streetAddress2": "string",
+                "city": "string",
+                "state": "string",
+                "zipCode": "string",
+                "country": "string",
+                "ethnicity": "string",
+                "gender": "string",
+                "race": "string",
+                "affiliations": [
+                    {
+                        "institution": "string",
+                        "role": "string",
+                        "nonAcademicAffiliation": True
+                    }
+                ]
+            }
+        ]
+
+        self.send_post('workbench/directory/researchers', request_data=request_json,
+                       expected_status=http.client.BAD_REQUEST)
 
     def test_create_and_update_workspace(self):
         # create researchers first
@@ -333,3 +363,37 @@ class WorkbenchApiTest(BaseTestCase):
         else:
             self.assertEqual(results[2].workbenchWorkspaceUser[0].role, WorkbenchWorkspaceUserRole.WRITER)
             self.assertEqual(results[2].workbenchWorkspaceUser[1].role, WorkbenchWorkspaceUserRole.READER)
+
+    def test_invalid_input_for_workspace(self):
+        request_json = [
+            {
+                "workspaceId": 0,
+                "name": "string",
+                "creationTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "status": "ACTIVE",
+                "workspaceUsers": [
+                    {
+                        "userId": 0,
+                        "role": "bad input",
+                        "status": "ACTIVE"
+                    }
+                ],
+                "excludeFromPublicDirectory": True,
+                "diseaseFocusedResearch": True,
+                "diseaseFocusedResearchName": "string",
+                "otherPurposeDetails": "string",
+                "methodsDevelopment": True,
+                "controlSet": True,
+                "ancestry": True,
+                "socialBehavioral": True,
+                "populationHealth": True,
+                "drugDevelopment": True,
+                "commercialPurpose": True,
+                "educational": True,
+                "otherPurpose": True
+            }
+        ]
+
+        self.send_post('workbench/directory/workspaces', request_data=request_json,
+                       expected_status=http.client.BAD_REQUEST)
