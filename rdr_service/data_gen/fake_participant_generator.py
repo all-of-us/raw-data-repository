@@ -699,31 +699,33 @@ class FakeParticipantGenerator(object):
     def generate_participant(self, include_physical_measurements,
                              include_biobank_orders,
                              requested_hpo=None,
-                             hpo_obj=None,
                              requested_site=None):
-        participant_response, creation_time, hpo, site = self._create_participant(requested_hpo, hpo_obj=hpo_obj,
-                                                                                  site=requested_site)
-        participant_id = participant_response["participantId"]
-        california_hpo = hpo is not None and hpo.name in _CALIFORNIA_HPOS
-        consent_time, last_qr_time, the_basics_submission_time = self._submit_questionnaire_responses(
-            participant_id, california_hpo, creation_time
-        )
-        if consent_time:
-            last_request_time = last_qr_time
-            # Potentially include physical measurements and biobank orders if the client requested it
-            # and the participant has submitted the basics questionnaire.
-            if include_physical_measurements and the_basics_submission_time:
-                last_measurement_time = self._submit_physical_measurements(participant_id, the_basics_submission_time)
-                last_request_time = max(last_request_time, last_measurement_time)
-            if include_biobank_orders and the_basics_submission_time:
-                last_biobank_time = self._submit_biobank_data(participant_id, the_basics_submission_time)
-                last_request_time = max(last_request_time, last_biobank_time)
-            if not requested_hpo:
-                last_hpo_change_time, participant_response = self._submit_hpo_changes(
-                    participant_response, participant_id, consent_time
-                )
-                last_request_time = max(last_request_time, last_hpo_change_time)
-            self._submit_status_changes(participant_id, last_request_time)
+        participant_response, creation_time, hpo = self._create_participant(requested_hpo,
+                                                                            site=requested_site)
+
+        if requested_site is None:
+            participant_id = participant_response["participantId"]
+            california_hpo = hpo is not None and hpo.name in _CALIFORNIA_HPOS
+            consent_time, last_qr_time, the_basics_submission_time = self._submit_questionnaire_responses(
+                participant_id, california_hpo, creation_time
+            )
+
+            if consent_time:
+                last_request_time = last_qr_time
+                # Potentially include physical measurements and biobank orders if the client requested it
+                # and the participant has submitted the basics questionnaire.
+                if include_physical_measurements and the_basics_submission_time:
+                    last_measurement_time = self._submit_physical_measurements(participant_id, the_basics_submission_time)
+                    last_request_time = max(last_request_time, last_measurement_time)
+                if include_biobank_orders and the_basics_submission_time:
+                    last_biobank_time = self._submit_biobank_data(participant_id, the_basics_submission_time)
+                    last_request_time = max(last_request_time, last_biobank_time)
+                if not requested_hpo:
+                    last_hpo_change_time, participant_response = self._submit_hpo_changes(
+                        participant_response, participant_id, consent_time
+                    )
+                    last_request_time = max(last_request_time, last_hpo_change_time)
+                self._submit_status_changes(participant_id, last_request_time)
 
     def add_pm_and_biospecimens_to_participants(self, participant_id):
         logging.info("Adding PM&B for %s", participant_id)
@@ -748,25 +750,28 @@ class FakeParticipantGenerator(object):
         logging.info("submitting physical measurements and biospecimen for %s" % participant_id)
         self._submit_status_changes(participant_id, last_request_time, force_measurement=True)
 
-    def _create_participant(self, hpo_name, hpo_obj=None, site=None):
+    def _create_participant(self, hpo_name, site=None):
         participant_json = {}
+        creation_time = self._days_ago(random.randint(0, _MAX_DAYS_HISTORY))
+
         hpo = None
         if hpo_name and isinstance(hpo_name, str):
             hpo = HPODao().get_by_name(hpo_name)
         else:
-            if random.random() > _NO_HPO_PERCENT and hpo_obj is None:
+            if random.random() > _NO_HPO_PERCENT and site is None:
                 hpo = random.choice(self._hpos)
-        if hpo_obj is not None:
-            hpo = hpo_obj
+        if site is not None:
+            hpo = HPODao().get(site.hpoId)
+            creation_time = self._now
+            participant_json["site"] = site.googleGroup
         if hpo:
             if hpo.hpoId != UNSET_HPO_ID:
                 participant_json["providerLink"] = json.loads(make_primary_provider_link_for_hpo(hpo))
 
-        creation_time = self._days_ago(random.randint(0, _MAX_DAYS_HISTORY))
         participant_response = self._client.request_json(
             "Participant", method="POST", body=participant_json, pretend_date=creation_time
         )
-        return (participant_response, creation_time, hpo, site)
+        return (participant_response, creation_time, hpo)
 
     def _random_code_answer(self, question_code):
         code = random.choice(self._question_code_to_answer_codes[question_code])

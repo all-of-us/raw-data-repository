@@ -320,12 +320,14 @@ class OrganizationHierarchySyncDao(BaseDao):
         if config.GAE_PROJECT in ['localhost', 'all-of-us-rdr-stable']:
             n = 20
             logging.info(f'Generating {n} fake participants for {new_site.googleGroup}.')
-            fake_gen = FakeParticipantGenerator(client=InProcessClient())
+            fake_gen = FakeParticipantGenerator(client=InProcessClient(),
+                                                withdrawn_percent=0,
+                                                suspended_percent=0)
             for i in range(n):
                 fake_gen.generate_participant(
                     include_physical_measurements=False,
                     include_biobank_orders=False,
-                    hpo_obj=None,
+                    requested_hpo=None,
                     requested_site=new_site
                 )
 
