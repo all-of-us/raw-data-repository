@@ -6,7 +6,7 @@ import rdr_service.lib_fhir.fhirclient_3_0_0.models.organization
 
 from rdr_service.lib_fhir.fhirclient_3_0_0.models.fhirabstractbase import FHIRValidationError
 from werkzeug.exceptions import BadRequest
-
+from flask import request
 from rdr_service import config
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.hpo import HPO
@@ -325,16 +325,10 @@ class OrganizationHierarchySyncDao(BaseDao):
     def _generate_fake_participants_for_site(self, new_site):
         if config.GAE_PROJECT in ['localhost',
                                   "all-of-us-rdr-stable",
-                                  "all-of-us-rdr-staging",
-                                  "all-of-us-rdr-sandbox",
-                                  "pmi-drc-api-test",
-                                  "all-of-us-rdr-careevo-test",
-                                  "all-of-us-rdr-ptsc-1-test",
-                                  "all-of-us-rdr-ptsc-2-test",
-                                  "all-of-us-rdr-ptsc-3-test"]:
-            n = 20
+                                  "all-of-us-rdr-sandbox"]:
+            n = 20  # number of participants
             logging.info(f'Generating {n} fake participants for {new_site.googleGroup}.')
-            fake_gen = FakeParticipantGenerator(client=InProcessClient(),
+            fake_gen = FakeParticipantGenerator(client=InProcessClient(headers=request.headers),
                                                 withdrawn_percent=0,
                                                 suspended_percent=0)
             for _ in range(n):
