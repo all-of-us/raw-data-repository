@@ -701,8 +701,7 @@ class FakeParticipantGenerator(object):
                              requested_hpo=None,
                              requested_site=None):
         participant_response, creation_time, hpo = self._create_participant(requested_hpo,
-                                                                            site=requested_site,
-                                                                            headers=None)
+                                                                            site=requested_site)
 
         if requested_site is None:
             participant_id = participant_response["participantId"]
