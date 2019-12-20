@@ -699,8 +699,7 @@ class FakeParticipantGenerator(object):
     def generate_participant(self, include_physical_measurements,
                              include_biobank_orders,
                              requested_hpo=None,
-                             requested_site=None,
-                             headers=None):
+                             requested_site=None):
         participant_response, creation_time, hpo = self._create_participant(requested_hpo,
                                                                             site=requested_site,
                                                                             headers=None)

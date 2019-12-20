@@ -24,7 +24,6 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
 from dateutil.parser import parse
 from rdr_service.api_util import HIERARCHY_CONTENT_SYSTEM_PREFIX
-from rdr_service.app_util import get_auth_token
 from rdr_service.data_gen.fake_participant_generator import FakeParticipantGenerator
 from rdr_service.data_gen.in_process_client import InProcessClient
 
