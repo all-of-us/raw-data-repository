@@ -24,7 +24,6 @@ from dateutil.parser import parse
 from rdr_service.api_util import HIERARCHY_CONTENT_SYSTEM_PREFIX
 from rdr_service.data_gen.fake_participant_generator import FakeParticipantGenerator
 from rdr_service.data_gen.in_process_client import InProcessClient
-from rdr_service.rdr_client.client import Client
 
 
 class OrganizationHierarchySyncDao(BaseDao):
@@ -323,7 +322,7 @@ class OrganizationHierarchySyncDao(BaseDao):
             fake_gen = FakeParticipantGenerator(client=InProcessClient(),
                                                 withdrawn_percent=0,
                                                 suspended_percent=0)
-            for i in range(n):
+            for _ in range(n):
                 fake_gen.generate_participant(
                     include_physical_measurements=False,
                     include_biobank_orders=False,

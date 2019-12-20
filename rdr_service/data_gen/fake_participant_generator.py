@@ -715,7 +715,8 @@ class FakeParticipantGenerator(object):
                 # Potentially include physical measurements and biobank orders if the client requested it
                 # and the participant has submitted the basics questionnaire.
                 if include_physical_measurements and the_basics_submission_time:
-                    last_measurement_time = self._submit_physical_measurements(participant_id, the_basics_submission_time)
+                    last_measurement_time = self._submit_physical_measurements(participant_id,
+                                                                               the_basics_submission_time)
                     last_request_time = max(last_request_time, last_measurement_time)
                 if include_biobank_orders and the_basics_submission_time:
                     last_biobank_time = self._submit_biobank_data(participant_id, the_basics_submission_time)
