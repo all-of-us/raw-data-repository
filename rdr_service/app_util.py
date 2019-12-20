@@ -148,7 +148,6 @@ def get_account_origin_id():
     :return: Client Id
     """
     auth_email = get_oauth_id()
-    logging.info(f'Account email: {auth_email}')
     user_info = lookup_user_info(auth_email)
     client_id = user_info.get('clientId')
     from rdr_service.api_util import DEV_MAIL
