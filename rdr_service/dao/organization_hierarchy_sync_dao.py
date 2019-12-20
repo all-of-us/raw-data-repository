@@ -323,7 +323,15 @@ class OrganizationHierarchySyncDao(BaseDao):
         bq_site_update_by_id(site_id)
 
     def _generate_fake_participants_for_site(self, new_site):
-        if config.GAE_PROJECT in ['localhost', 'all-of-us-rdr-stable']:
+        if config.GAE_PROJECT in ['localhost',
+                                  "all-of-us-rdr-stable",
+                                  "all-of-us-rdr-staging",
+                                  "all-of-us-rdr-sandbox",
+                                  "pmi-drc-api-test",
+                                  "all-of-us-rdr-careevo-test",
+                                  "all-of-us-rdr-ptsc-1-test",
+                                  "all-of-us-rdr-ptsc-2-test",
+                                  "all-of-us-rdr-ptsc-3-test"]:
             n = 20
             logging.info(f'Generating {n} fake participants for {new_site.googleGroup}.')
             fake_gen = FakeParticipantGenerator(client=InProcessClient(),
