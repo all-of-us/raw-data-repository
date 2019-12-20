@@ -328,7 +328,8 @@ class OrganizationHierarchySyncDao(BaseDao):
                                   "all-of-us-rdr-sandbox"]:
             n = 20  # number of participants
             logging.info(f'Generating {n} fake participants for {new_site.googleGroup}.')
-            fake_gen = FakeParticipantGenerator(client=InProcessClient(headers=request.headers),
+            auth_header = request.headers.get('Authorization')
+            fake_gen = FakeParticipantGenerator(client=InProcessClient(headers=auth_header),
                                                 withdrawn_percent=0,
                                                 suspended_percent=0)
             for _ in range(n):

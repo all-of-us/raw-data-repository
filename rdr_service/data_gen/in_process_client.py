@@ -10,8 +10,6 @@ class InProcessClient(object):
 
   Used for creating fake data.
   """
-    _headers = None
-
     def __init__(self, headers=None):
         self._headers = headers
 
