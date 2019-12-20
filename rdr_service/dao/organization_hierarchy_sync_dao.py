@@ -21,9 +21,10 @@ from rdr_service.dao.bq_hpo_dao import bq_hpo_update_by_id
 from rdr_service.dao.bq_organization_dao import bq_organization_update_by_id
 from rdr_service.dao.bq_site_dao import bq_site_update_by_id
 from rdr_service.dao.code_dao import CodeDao
-from rdr_service.code_constants import PPI_SYSTEM
+from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
 from dateutil.parser import parse
 from rdr_service.api_util import HIERARCHY_CONTENT_SYSTEM_PREFIX
+from rdr_service.app_util import get_auth_token
 from rdr_service.data_gen.fake_participant_generator import FakeParticipantGenerator
 from rdr_service.data_gen.in_process_client import InProcessClient
 
@@ -315,7 +316,7 @@ class OrganizationHierarchySyncDao(BaseDao):
             # Generates 20 fake participants for the site if not on Prod
             # Not called during unittests since codebook breaks
             logging.info(f'New site: {new_site.googleGroup}')
-            if self.code_dao.get_code(PPI_SYSTEM, 'ConsentPII'):
+            if self.code_dao.get_code(PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE):
                 logging.info('Generating fake participants.')
                 self._generate_fake_participants_for_site(new_site)
 
