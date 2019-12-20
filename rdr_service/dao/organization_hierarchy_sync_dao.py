@@ -20,6 +20,8 @@ from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.bq_hpo_dao import bq_hpo_update_by_id
 from rdr_service.dao.bq_organization_dao import bq_organization_update_by_id
 from rdr_service.dao.bq_site_dao import bq_site_update_by_id
+from rdr_service.dao.code_dao import CodeDao
+from rdr_service.code_constants import PPI_SYSTEM
 from dateutil.parser import parse
 from rdr_service.api_util import HIERARCHY_CONTENT_SYSTEM_PREFIX
 from rdr_service.data_gen.fake_participant_generator import FakeParticipantGenerator
@@ -32,6 +34,7 @@ class OrganizationHierarchySyncDao(BaseDao):
         self.hpo_dao = HPODao()
         self.organization_dao = OrganizationDao()
         self.site_dao = SiteDao()
+        self.code_dao = CodeDao()
 
     def from_client_json(self, resource_json, id_=None, expected_version=None, client_id=None):  # pylint: disable=unused-argument
         try:
@@ -309,8 +312,10 @@ class OrganizationHierarchySyncDao(BaseDao):
                 new_site = self.site_dao.insert_with_session(session, entity)
 
         if new_site is not None:
-            # TODO: generate 20 fake participants for the site if not on Prod
-            self._generate_fake_participants_for_site(new_site)
+            # Generates 20 fake participants for the site if not on Prod
+            # Not called during unittests since codebook breaks
+            if self.code_dao.get_code(PPI_SYSTEM, 'ConsentPII'):
+                self._generate_fake_participants_for_site(new_site)
 
         site_id = self.site_dao.get_by_google_group(google_group).siteId
         bq_site_update_by_id(site_id)
