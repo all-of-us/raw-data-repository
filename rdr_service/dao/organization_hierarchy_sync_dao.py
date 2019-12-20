@@ -316,7 +316,7 @@ class OrganizationHierarchySyncDao(BaseDao):
             # Not called during unittests since codebook breaks
             logging.info(f'New site: {new_site.googleGroup}')
             if self.code_dao.get_code(PPI_SYSTEM, 'ConsentPII'):
-                logging.info(f'Generating fake participants.}')
+                logging.info('Generating fake participants.')
                 self._generate_fake_participants_for_site(new_site)
 
         site_id = self.site_dao.get_by_google_group(google_group).siteId
