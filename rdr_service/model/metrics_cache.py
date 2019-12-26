@@ -77,6 +77,7 @@ class MetricsAgeCache(Base):
     date = Column("date", Date, nullable=False, primary_key=True)
     ageRange = Column("age_range", String(255), primary_key=True)
     ageCount = Column("age_count", Integer, nullable=False)
+    participantOrigin = Column("participant_origin", String(50), primary_key=True)
 
 
 class MetricsRegionCache(Base):

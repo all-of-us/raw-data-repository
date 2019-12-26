@@ -2783,16 +2783,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         dob3 = datetime.date(1988, 10, 10)
         dob4 = datetime.date(1998, 10, 10)
 
-        p1 = Participant(participantId=1, biobankId=4)
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
         self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, dob=dob1)
 
-        p2 = Participant(participantId=2, biobankId=5)
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='a')
         self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, dob=dob2)
 
-        p3 = Participant(participantId=3, biobankId=6)
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='b')
         self._insert(p3, "Chad", "Caterpillar", "AZ_TUCSON", time_int=self.time3, dob=dob3)
 
-        p4 = Participant(participantId=4, biobankId=7)
+        p4 = Participant(participantId=4, biobankId=7, participantOrigin='b')
         self._insert(p4, "Chad2", "Caterpillar2", "AZ_TUCSON", time_int=self.time4, dob=dob4)
 
         # ghost participant should be filtered out
@@ -2910,6 +2910,114 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             response,
         )
 
+        qs = """
+              &stratification=AGE_RANGE
+              &startDate=2017-12-31
+              &endDate=2018-01-08
+              &history=TRUE
+              &origin=a
+              """
+
+        qs = "".join(qs.split())  # Remove all whitespace
+
+        response = self.send_get("ParticipantCountsOverTime", query_string=qs)
+
+        self.assertIn(
+            {
+                "date": "2017-12-31",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 1,
+                    "26-35": 0,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "UNSET",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-01",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-02",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-06",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-08",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+
     def test_get_history_age_range_api_filtered_by_awardee(self):
 
         dob1 = datetime.date(1978, 10, 10)
@@ -2917,16 +3025,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         dob3 = datetime.date(1988, 10, 10)
         dob4 = datetime.date(1998, 10, 10)
 
-        p1 = Participant(participantId=1, biobankId=4)
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
         self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, dob=dob1)
 
-        p2 = Participant(participantId=2, biobankId=5)
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='a')
         self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, dob=dob2)
 
-        p3 = Participant(participantId=3, biobankId=6)
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='b')
         self._insert(p3, "Chad", "Caterpillar", "AZ_TUCSON", time_int=self.time3, dob=dob3)
 
-        p4 = Participant(participantId=4, biobankId=7)
+        p4 = Participant(participantId=4, biobankId=7, participantOrigin='b')
         self._insert(p4, "Chad2", "Caterpillar2", "PITT", time_int=self.time4, dob=dob4)
 
         # ghost participant should be filtered out
@@ -3026,6 +3134,77 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             response,
         )
         self.assertIn(
+            {
+                "date": "2018-01-08",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 1,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 0,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "PITT",
+            },
+            response,
+        )
+
+        qs = """
+                  &stratification=AGE_RANGE
+                  &startDate=2017-12-31
+                  &endDate=2018-01-08
+                  &history=TRUE
+                  &awardee=AZ_TUCSON,PITT
+                  &origin=a
+                  """
+
+        qs = "".join(qs.split())  # Remove all whitespace
+
+        response = self.send_get("ParticipantCountsOverTime", query_string=qs)
+
+        self.assertIn(
+            {
+                "date": "2018-01-01",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-02",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertNotIn(
             {
                 "date": "2018-01-08",
                 "metrics": {

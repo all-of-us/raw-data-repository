@@ -78,9 +78,9 @@ class ParticipantCountsOverTimeService(BaseDao):
 
             participant_sql = """
               INSERT INTO metrics_tmp_participant
-              SELECT 
+              SELECT
               """ + columns_str + """
-              FROM participant p 
+              FROM participant p
               left join participant_summary ps on p.participant_id = ps.participant_id
               WHERE p.hpo_id <> :test_hpo_id
               AND p.is_ghost_id IS NOT TRUE
@@ -210,7 +210,8 @@ class ParticipantCountsOverTimeService(BaseDao):
             return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)
         elif str(history) == "TRUE" and stratification == Stratifications.AGE_RANGE:
             dao = MetricsAgeCacheDao()
-            return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)
+            return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses,
+                                                     participant_origins)
         elif str(history) == "TRUE" and stratification == Stratifications.RACE:
             dao = MetricsRaceCacheDao(version=version)
             return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses,
