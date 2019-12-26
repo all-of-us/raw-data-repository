@@ -62,6 +62,7 @@ class MetricsGenderCache(Base):
     date = Column("date", Date, nullable=False, primary_key=True)
     genderName = Column("gender_name", String(255), primary_key=True)
     genderCount = Column("gender_count", Integer, nullable=False)
+    participantOrigin = Column("participant_origin", String(50), primary_key=True)
 
 
 class MetricsAgeCache(Base):

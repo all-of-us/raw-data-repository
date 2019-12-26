@@ -382,7 +382,7 @@ class MetricsGenderCacheDao(BaseDao):
                         .first())
 
     def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None,
-                           enrollment_statuses=None):
+                           enrollment_statuses=None, participant_origins=None):
         with self.session() as session:
             last_inserted_record = self.get_serving_version_with_session(session)
             if last_inserted_record is None:
@@ -393,6 +393,10 @@ class MetricsGenderCacheDao(BaseDao):
                 filters_hpo = ' (' + ' OR '.join('hpo_id=' + str(x) for x in hpo_ids) + ') AND '
             else:
                 filters_hpo = ''
+
+            if participant_origins:
+                filters_hpo += ' (' + ' OR '.join('participant_origin=\'' + str(x) + '\''
+                                                  for x in participant_origins) + ') AND '
 
             if self.cache_type == MetricsCacheType.PUBLIC_METRICS_EXPORT_API:
                 if enrollment_statuses:
@@ -470,8 +474,8 @@ class MetricsGenderCacheDao(BaseDao):
             return results
 
     def get_latest_version_from_cache(self, start_date, end_date, hpo_ids=None,
-                                      enrollment_statuses=None):
-        buckets = self.get_active_buckets(start_date, end_date, hpo_ids, enrollment_statuses)
+                                      enrollment_statuses=None, participant_origins=None):
+        buckets = self.get_active_buckets(start_date, end_date, hpo_ids, enrollment_statuses, participant_origins)
         if buckets is None:
             return []
         operation_funcs = {
@@ -613,7 +617,8 @@ class MetricsGenderCacheDao(BaseDao):
                 WHERE results.day <= c.day
                 AND enrollment_status_core_stored_sample_time IS NOT NULL
                 AND DATE(enrollment_status_core_stored_sample_time) <= c.day
-              ),0) AS gender_count
+              ),0) AS gender_count,
+              '' as participant_origin
             FROM calendar c
             WHERE c.day BETWEEN :start_date AND :end_date
             UNION
@@ -639,7 +644,8 @@ class MetricsGenderCacheDao(BaseDao):
                 ) AS results
                 WHERE results.day <= c.day
                 AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
-              ),0) AS gender_count
+              ),0) AS gender_count,
+              '' as participant_origin
             FROM calendar c
             WHERE c.day BETWEEN :start_date AND :end_date
             UNION
@@ -668,7 +674,8 @@ class MetricsGenderCacheDao(BaseDao):
                 AND enrollment_status_member_time IS NOT NULL
                 AND DATE(enrollment_status_member_time) <= c.day
                 AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
-              ),0) AS gender_count
+              ),0) AS gender_count,
+              '' as participant_origin
             FROM calendar c
             WHERE c.day BETWEEN :start_date AND :end_date
             """
@@ -721,13 +728,14 @@ class MetricsGenderCacheDao(BaseDao):
                   (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
                   c.day AS date,
                   '{gender_name}' AS gender_name,
-                  COUNT(*) as gender_count
+                  COUNT(*) as gender_count,
+                  participant_origin
                 FROM metrics_tmp_participant ps, calendar c
                 WHERE {enrollment_status_criteria}
                 AND {gender_condition}
                 AND ps.hpo_id = :hpo_id
                 AND c.day BETWEEN :start_date AND :end_date
-                GROUP BY date
+                GROUP BY date, participant_origin
                 """
                 for gender_name, gender_condition in zip(self.gender_names, gender_conditions):
                     sub_query = sql_template.format(cache_type=self.cache_type, enrollment_status=item[0],

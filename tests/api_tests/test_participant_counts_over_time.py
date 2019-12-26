@@ -2147,16 +2147,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
     def test_get_history_gender_api(self):
 
-        p1 = Participant(participantId=1, biobankId=4)
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
         self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, gender_identity=3)
 
-        p2 = Participant(participantId=2, biobankId=5)
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='a')
         self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, gender_identity=2)
 
-        p3 = Participant(participantId=3, biobankId=6)
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='b')
         self._insert(p3, "Chad", "Caterpillar", "AZ_TUCSON", time_int=self.time3, gender_identity=5)
 
-        p4 = Participant(participantId=4, biobankId=7)
+        p4 = Participant(participantId=4, biobankId=7, participantOrigin='b')
         self._insert(p4, "Chad2", "Caterpillar2", "AZ_TUCSON", time_int=self.time4, gender_identity=5)
 
         # ghost participant should be filtered out
@@ -2274,18 +2274,126 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             response,
         )
 
+        qs = """
+                  &stratification=GENDER_IDENTITY
+                  &startDate=2017-12-31
+                  &endDate=2018-01-08
+                  &history=TRUE
+                  &origin=a
+                  """
+
+        qs = "".join(qs.split())  # Remove all whitespace
+
+        response = self.send_get("ParticipantCountsOverTime", query_string=qs)
+
+        self.assertIn(
+            {
+                "date": "2017-12-31",
+                "metrics": {
+                    "Woman": 1,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 0,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "UNSET",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-01",
+                "metrics": {
+                    "Woman": 1,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 0,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "UNSET",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-01",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 1,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-03",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 1,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-08",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 1,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+
     def test_get_history_gender_api_filtered_by_awardee(self):
 
-        p1 = Participant(participantId=1, biobankId=4)
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
         self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, gender_identity=3)
 
-        p2 = Participant(participantId=2, biobankId=5)
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='a')
         self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, gender_identity=2)
 
-        p3 = Participant(participantId=3, biobankId=6)
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='b')
         self._insert(p3, "Chad", "Caterpillar", "AZ_TUCSON", time_int=self.time3, gender_identity=5)
 
-        p4 = Participant(participantId=4, biobankId=7)
+        p4 = Participant(participantId=4, biobankId=7, participantOrigin='b')
         self._insert(p4, "Chad2", "Caterpillar2", "PITT", time_int=self.time4, gender_identity=5)
 
         # ghost participant should be filtered out
@@ -2423,6 +2531,153 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             response,
         )
         self.assertIn(
+            {
+                "date": "2018-01-08",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "Other/Additional Options": 0,
+                    "Non-Binary": 0,
+                    "UNMAPPED": 0,
+                    "Transgender": 1,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 0,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "PITT",
+            },
+            response,
+        )
+
+        qs = """
+                  &stratification=GENDER_IDENTITY
+                  &startDate=2017-12-31
+                  &endDate=2018-01-08
+                  &history=TRUE
+                  &awardee=AZ_TUCSON,PITT
+                  &origin=a
+                  """
+
+        qs = "".join(qs.split())  # Remove all whitespace
+
+        response = self.send_get("ParticipantCountsOverTime", query_string=qs)
+
+        self.assertNotIn(
+            {
+                "date": "2017-12-31",
+                "metrics": {
+                    "Woman": 1,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 0,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "UNSET",
+            },
+            response,
+        )
+        self.assertNotIn(
+            {
+                "date": "2018-01-01",
+                "metrics": {
+                    "Woman": 1,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 0,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "UNSET",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-01",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 1,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-03",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 1,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-08",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 1,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertNotIn(
+            {
+                "date": "2018-01-03",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "Other/Additional Options": 0,
+                    "Non-Binary": 0,
+                    "UNMAPPED": 0,
+                    "Transgender": 1,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 0,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "PITT",
+            },
+            response,
+        )
+        self.assertNotIn(
             {
                 "date": "2018-01-08",
                 "metrics": {
