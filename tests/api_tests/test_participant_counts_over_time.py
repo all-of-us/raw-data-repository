@@ -24,6 +24,7 @@ from rdr_service.dao.metrics_cache_dao import (
     MetricsLifecycleCacheDao,
     MetricsRaceCacheDao,
     MetricsRegionCacheDao,
+    MetricsParticipantOriginCacheDao
 )
 from rdr_service.dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -130,6 +131,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
     :param time_fp: Time that participant fulfilled FULL_PARTICIPANT criteria
     :return: Participant object
     """
+        origin = participant.participantOrigin
 
         if unconsented is True:
             enrollment_status = None
@@ -146,6 +148,12 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         participant.providerLink = make_primary_provider_link_for_name(hpo_name)
         with FakeClock(time_mem):
             self.dao.update(participant)
+        if origin:
+            with self.dao.session() as session:
+                update_origin_sql = """
+                    UPDATE participant set participant_origin='{}' where participant.participant_id={}
+                """.format(origin, participant.participantId)
+                session.execute(update_origin_sql)
 
         if enrollment_status is None:
             return None
@@ -221,10 +229,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         return summary
 
     def update_participant_summary(
-        self, participant_id, time_mem=None, time_fp=None, time_fp_stored=None, time_study=None
+        self, participant_id, time_mem=None, time_fp=None, time_fp_stored=None, time_study=None, origin=None
     ):
 
         participant = self.dao.get(participant_id)
+        if origin:
+            with self.dao.session() as session:
+                update_origin_sql = """
+                    UPDATE participant set participant_origin='{}' where participant.participant_id={}
+                """.format(origin, participant_id)
+                session.execute(update_origin_sql)
         summary = self.participant_summary(participant)
         if time_mem is None:
             enrollment_status = EnrollmentStatus.INTERESTED
@@ -1464,13 +1478,13 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
     def test_get_history_enrollment_status_api_v2(self):
 
-        p1 = Participant(participantId=1, biobankId=4)
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
         self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1)
 
-        p2 = Participant(participantId=2, biobankId=5)
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='b')
         self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2)
 
-        p3 = Participant(participantId=3, biobankId=6)
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='c')
         self._insert(
             p3,
             "Chad",
@@ -1612,6 +1626,51 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self.assertIn({u'date': u'2018-01-04', u'metrics': {u'consented': 0, u'core': 0,
                                                             u'registered': 0, u'participant': 0},
                        u'hpo': u'AZ_TUCSON'}, response)
+
+        qs = """
+                    &stratification=ENROLLMENT_STATUS
+                    &startDate=2018-01-01
+                    &endDate=2018-01-08
+                    &history=TRUE
+                    &version=2
+                    &origin=a,b
+                    """
+
+        qs = ''.join(qs.split())  # Remove all whitespace
+
+        response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+        self.assertIn(
+            {
+                "date": "2018-01-02",
+                "metrics": {"consented": 0, "core": 0, "registered": 1, "participant": 0},
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-03",
+                "metrics": {"consented": 0, "core": 0, "registered": 1, "participant": 0},
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertNotIn(
+            {
+                "date": "2018-01-02",
+                "metrics": {"consented": 1, "core": 0, "registered": 1, "participant": 0},
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertNotIn(
+            {
+                "date": "2018-01-03",
+                "metrics": {"consented": 0, "core": 1, "registered": 1, "participant": 0},
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
 
     def test_get_history_enrollment_status_api_filtered_by_awardee(self):
 
@@ -2089,16 +2148,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
     def test_get_history_gender_api(self):
 
-        p1 = Participant(participantId=1, biobankId=4)
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
         self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, gender_identity=3)
 
-        p2 = Participant(participantId=2, biobankId=5)
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='a')
         self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, gender_identity=2)
 
-        p3 = Participant(participantId=3, biobankId=6)
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='b')
         self._insert(p3, "Chad", "Caterpillar", "AZ_TUCSON", time_int=self.time3, gender_identity=5)
 
-        p4 = Participant(participantId=4, biobankId=7)
+        p4 = Participant(participantId=4, biobankId=7, participantOrigin='b')
         self._insert(p4, "Chad2", "Caterpillar2", "AZ_TUCSON", time_int=self.time4, gender_identity=5)
 
         # ghost participant should be filtered out
@@ -2216,18 +2275,126 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             response,
         )
 
+        qs = """
+                  &stratification=GENDER_IDENTITY
+                  &startDate=2017-12-31
+                  &endDate=2018-01-08
+                  &history=TRUE
+                  &origin=a
+                  """
+
+        qs = "".join(qs.split())  # Remove all whitespace
+
+        response = self.send_get("ParticipantCountsOverTime", query_string=qs)
+
+        self.assertIn(
+            {
+                "date": "2017-12-31",
+                "metrics": {
+                    "Woman": 1,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 0,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "UNSET",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-01",
+                "metrics": {
+                    "Woman": 1,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 0,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "UNSET",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-01",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 1,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-03",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 1,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-08",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 1,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+
     def test_get_history_gender_api_filtered_by_awardee(self):
 
-        p1 = Participant(participantId=1, biobankId=4)
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
         self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, gender_identity=3)
 
-        p2 = Participant(participantId=2, biobankId=5)
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='a')
         self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, gender_identity=2)
 
-        p3 = Participant(participantId=3, biobankId=6)
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='b')
         self._insert(p3, "Chad", "Caterpillar", "AZ_TUCSON", time_int=self.time3, gender_identity=5)
 
-        p4 = Participant(participantId=4, biobankId=7)
+        p4 = Participant(participantId=4, biobankId=7, participantOrigin='b')
         self._insert(p4, "Chad2", "Caterpillar2", "PITT", time_int=self.time4, gender_identity=5)
 
         # ghost participant should be filtered out
@@ -2365,6 +2532,153 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             response,
         )
         self.assertIn(
+            {
+                "date": "2018-01-08",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "Other/Additional Options": 0,
+                    "Non-Binary": 0,
+                    "UNMAPPED": 0,
+                    "Transgender": 1,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 0,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "PITT",
+            },
+            response,
+        )
+
+        qs = """
+                  &stratification=GENDER_IDENTITY
+                  &startDate=2017-12-31
+                  &endDate=2018-01-08
+                  &history=TRUE
+                  &awardee=AZ_TUCSON,PITT
+                  &origin=a
+                  """
+
+        qs = "".join(qs.split())  # Remove all whitespace
+
+        response = self.send_get("ParticipantCountsOverTime", query_string=qs)
+
+        self.assertNotIn(
+            {
+                "date": "2017-12-31",
+                "metrics": {
+                    "Woman": 1,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 0,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "UNSET",
+            },
+            response,
+        )
+        self.assertNotIn(
+            {
+                "date": "2018-01-01",
+                "metrics": {
+                    "Woman": 1,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 0,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "UNSET",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-01",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 1,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-03",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 1,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-08",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "UNMAPPED": 0,
+                    "Other/Additional Options": 0,
+                    "Transgender": 0,
+                    "Non-Binary": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 1,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertNotIn(
+            {
+                "date": "2018-01-03",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "Other/Additional Options": 0,
+                    "Non-Binary": 0,
+                    "UNMAPPED": 0,
+                    "Transgender": 1,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 0,
+                    "More than one gender identity": 0,
+                },
+                "hpo": "PITT",
+            },
+            response,
+        )
+        self.assertNotIn(
             {
                 "date": "2018-01-08",
                 "metrics": {
@@ -2725,16 +3039,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         dob3 = datetime.date(1988, 10, 10)
         dob4 = datetime.date(1998, 10, 10)
 
-        p1 = Participant(participantId=1, biobankId=4)
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
         self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, dob=dob1)
 
-        p2 = Participant(participantId=2, biobankId=5)
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='a')
         self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, dob=dob2)
 
-        p3 = Participant(participantId=3, biobankId=6)
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='b')
         self._insert(p3, "Chad", "Caterpillar", "AZ_TUCSON", time_int=self.time3, dob=dob3)
 
-        p4 = Participant(participantId=4, biobankId=7)
+        p4 = Participant(participantId=4, biobankId=7, participantOrigin='b')
         self._insert(p4, "Chad2", "Caterpillar2", "AZ_TUCSON", time_int=self.time4, dob=dob4)
 
         # ghost participant should be filtered out
@@ -2852,6 +3166,114 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             response,
         )
 
+        qs = """
+              &stratification=AGE_RANGE
+              &startDate=2017-12-31
+              &endDate=2018-01-08
+              &history=TRUE
+              &origin=a
+              """
+
+        qs = "".join(qs.split())  # Remove all whitespace
+
+        response = self.send_get("ParticipantCountsOverTime", query_string=qs)
+
+        self.assertIn(
+            {
+                "date": "2017-12-31",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 1,
+                    "26-35": 0,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "UNSET",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-01",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-02",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-06",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-08",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+
     def test_get_history_age_range_api_filtered_by_awardee(self):
 
         dob1 = datetime.date(1978, 10, 10)
@@ -2859,16 +3281,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         dob3 = datetime.date(1988, 10, 10)
         dob4 = datetime.date(1998, 10, 10)
 
-        p1 = Participant(participantId=1, biobankId=4)
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
         self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, dob=dob1)
 
-        p2 = Participant(participantId=2, biobankId=5)
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='a')
         self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, dob=dob2)
 
-        p3 = Participant(participantId=3, biobankId=6)
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='b')
         self._insert(p3, "Chad", "Caterpillar", "AZ_TUCSON", time_int=self.time3, dob=dob3)
 
-        p4 = Participant(participantId=4, biobankId=7)
+        p4 = Participant(participantId=4, biobankId=7, participantOrigin='b')
         self._insert(p4, "Chad2", "Caterpillar2", "PITT", time_int=self.time4, dob=dob4)
 
         # ghost participant should be filtered out
@@ -2968,6 +3390,77 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             response,
         )
         self.assertIn(
+            {
+                "date": "2018-01-08",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 1,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 0,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "PITT",
+            },
+            response,
+        )
+
+        qs = """
+                  &stratification=AGE_RANGE
+                  &startDate=2017-12-31
+                  &endDate=2018-01-08
+                  &history=TRUE
+                  &awardee=AZ_TUCSON,PITT
+                  &origin=a
+                  """
+
+        qs = "".join(qs.split())  # Remove all whitespace
+
+        response = self.send_get("ParticipantCountsOverTime", query_string=qs)
+
+        self.assertIn(
+            {
+                "date": "2018-01-01",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-02",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertNotIn(
             {
                 "date": "2018-01-08",
                 "metrics": {
@@ -3154,13 +3647,13 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
     def test_get_history_total_api_v2(self):
 
-        p1 = Participant(participantId=1, biobankId=4)
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
         self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
 
-        p2 = Participant(participantId=2, biobankId=5)
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='b')
         self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
 
-        p3 = Participant(participantId=3, biobankId=6)
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='c')
         self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time3,
                      time_mem=self.time4, time_fp_stored=self.time5)
 
@@ -3191,6 +3684,25 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self.assertIn({u'date': u'2018-01-02', u'metrics': {u'TOTAL': 0}}, response)
         self.assertIn({u'date': u'2018-01-03', u'metrics': {u'TOTAL': 1}}, response)
         self.assertIn({u'date': u'2018-01-04', u'metrics': {u'TOTAL': 0}}, response)
+
+        # test origin
+        qs = """
+              &stratification=TOTAL
+              &startDate=2018-01-01
+              &endDate=2018-01-08
+              &history=TRUE
+              &version=2
+              &origin=a,b
+              """
+
+        qs = ''.join(qs.split())  # Remove all whitespace
+
+        response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+        self.assertIn({u'date': u'2018-01-01', u'metrics': {u'TOTAL': 2}}, response)
+        self.assertIn({u'date': u'2018-01-02', u'metrics': {u'TOTAL': 2}}, response)
+        self.assertIn({u'date': u'2018-01-03', u'metrics': {u'TOTAL': 2}}, response)
+        self.assertIn({u'date': u'2018-01-04', u'metrics': {u'TOTAL': 2}}, response)
 
     def test_get_history_total_api_filter_by_awardees(self):
         p1 = Participant(participantId=1, biobankId=4)
@@ -3775,6 +4287,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                 participant = self.send_post("Participant", {"providerLink": [providerLink]})
                 participant_id = participant["participantId"]
                 self.send_consent(participant_id)
+
                 # Populate some answers to the questionnaire
                 answers = {
                     "race": race_code_list,
@@ -3797,18 +4310,21 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "CABoRSignature": "signature.pdf",
                 }
             self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
+
             return participant
 
         p1 = setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
-        self.update_participant_summary(p1["participantId"][1:], time_mem=self.time2)
+        self.update_participant_summary(p1["participantId"][1:], time_mem=self.time2, origin='a')
         p2 = setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
-        self.update_participant_summary(p2["participantId"][1:], time_mem=self.time3, time_fp_stored=self.time5)
+        self.update_participant_summary(p2["participantId"][1:], time_mem=self.time3, time_fp_stored=self.time5,
+                                        origin='a')
         p3 = setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
-        self.update_participant_summary(p3["participantId"][1:], time_mem=self.time4)
+        self.update_participant_summary(p3["participantId"][1:], time_mem=self.time4, origin='a')
         p4 = setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
-        self.update_participant_summary(p4["participantId"][1:], time_mem=self.time5)
+        self.update_participant_summary(p4["participantId"][1:], time_mem=self.time5, origin='a')
         p5 = setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
-        self.update_participant_summary(p5["participantId"][1:], time_mem=self.time4, time_fp_stored=self.time5)
+        self.update_participant_summary(p5["participantId"][1:], time_mem=self.time4, time_fp_stored=self.time5,
+                                        origin='b')
 
         setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
         setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
@@ -3839,6 +4355,64 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "None_Of_These_Fully_Describe_Me": 1,
                     "Middle_Eastern_North_African": 0,
                     "Multi_Ancestry": 2,
+                    "American_Indian_Alaska_Native": 1,
+                    "No_Ancestry_Checked": 0,
+                    "Black_African_American": 0,
+                    "White": 0,
+                    "Prefer_Not_To_Answer": 0,
+                    "Hispanic_Latino_Spanish": 0,
+                    "Native_Hawaiian_other_Pacific_Islander": 0,
+                    "Asian": 0,
+                },
+                "hpo": "PITT",
+            },
+            response,
+        )
+
+        self.assertIn(
+            {
+                "date": "2018-01-04",
+                "metrics": {
+                    "None_Of_These_Fully_Describe_Me": 0,
+                    "Middle_Eastern_North_African": 0,
+                    "Multi_Ancestry": 1,
+                    "American_Indian_Alaska_Native": 1,
+                    "No_Ancestry_Checked": 1,
+                    "Black_African_American": 0,
+                    "White": 0,
+                    "Prefer_Not_To_Answer": 0,
+                    "Hispanic_Latino_Spanish": 0,
+                    "Native_Hawaiian_other_Pacific_Islander": 0,
+                    "Asian": 0,
+                },
+                "hpo": "PITT",
+            },
+            response,
+        )
+
+        # test participant origin
+        qs = """
+                      &stratification=RACE
+                      &startDate=2017-12-31
+                      &endDate=2018-01-08
+                      &history=TRUE
+                      &awardee=PITT
+                      &enrollmentStatus=FULLY_CONSENTED
+                      &version=2
+                      &origin=a
+                      """
+
+        qs = "".join(qs.split())  # Remove all whitespace
+
+        response = self.send_get("ParticipantCountsOverTime", query_string=qs)
+
+        self.assertIn(
+            {
+                "date": "2018-01-03",
+                "metrics": {
+                    "None_Of_These_Fully_Describe_Me": 1,
+                    "Middle_Eastern_North_African": 0,
+                    "Multi_Ancestry": 1,
                     "American_Indian_Alaska_Native": 1,
                     "No_Ancestry_Checked": 0,
                     "Black_African_American": 0,
@@ -7061,7 +7635,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self.code_dao.insert(code2)
         self.code_dao.insert(code3)
 
-        p1 = Participant(participantId=1, biobankId=4)
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
         self._insert(
             p1,
             "Alice",
@@ -7074,7 +7648,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             state_id=1,
         )
 
-        p2 = Participant(participantId=2, biobankId=5)
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='a')
         self._insert(
             p2,
             "Bob",
@@ -7087,7 +7661,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             state_id=2,
         )
 
-        p3 = Participant(participantId=3, biobankId=6)
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='b')
         self._insert(
             p3,
             "Chad",
@@ -7100,7 +7674,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             state_id=3,
         )
 
-        p4 = Participant(participantId=4, biobankId=7)
+        p4 = Participant(participantId=4, biobankId=7, participantOrigin='c')
         self._insert(
             p4,
             "Chad2",
@@ -7113,7 +7687,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             state_id=2,
         )
 
-        p5 = Participant(participantId=6, biobankId=9)
+        p5 = Participant(participantId=6, biobankId=9, participantOrigin='c')
         self._insert(
             p5,
             "Chad3",
@@ -7774,6 +8348,22 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self.assertIn({"date": "2018-01-02", "hpo": "UNSET", "count": 1}, results3)
         self.assertIn({"date": "2018-01-02", "hpo": "PITT", "count": 2}, results3)
         self.assertIn({"date": "2018-01-02", "hpo": "AZ_TUCSON", "count": 2}, results3)
+
+        # test participant origin
+        qs4 = """
+              &stratification=GEO_AWARDEE
+              &endDate=2018-01-02
+              &history=TRUE
+              &version=2
+              &origin=a,b
+              """
+
+        qs4 = "".join(qs4.split())
+
+        results4 = self.send_get("ParticipantCountsOverTime", query_string=qs4)
+        self.assertIn({"date": "2018-01-02", "hpo": "UNSET", "count": 1}, results4)
+        self.assertNotIn({"date": "2018-01-02", "hpo": "PITT", "count": 2}, results4)
+        self.assertIn({"date": "2018-01-02", "hpo": "AZ_TUCSON", "count": 2}, results4)
 
     def test_get_metrics_region_data_api_filter_by_enrollment_status(self):
 
@@ -10547,30 +11137,30 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
     def test_get_metrics_lifecycle_data_api_v2(self):
 
-        p1 = Participant(participantId=1, biobankId=4)
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
         self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
                      time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
-        p2 = Participant(participantId=2, biobankId=5)
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='a')
         self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
                      time_mem=self.time2, time_fp=self.time3, time_fp_stored=self.time3)
 
-        p3 = Participant(participantId=3, biobankId=6)
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='b')
         self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time4,
                      time_mem=self.time4, time_fp=self.time5, time_fp_stored=self.time5)
 
-        p4 = Participant(participantId=4, biobankId=7)
+        p4 = Participant(participantId=4, biobankId=7, participantOrigin='c')
         self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time4,
                      time_mem=self.time5, time_fp=self.time5, time_fp_stored=self.time5)
 
-        p4 = Participant(participantId=6, biobankId=9)
+        p4 = Participant(participantId=6, biobankId=9, participantOrigin='c')
         self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time3, time_study=self.time4,
                      time_mem=self.time4, time_fp=self.time4, time_fp_stored=self.time5)
-        p5 = Participant(participantId=7, biobankId=10)
+        p5 = Participant(participantId=7, biobankId=10, participantOrigin='c')
         self._insert(p5, 'Chad4', 'Caterpillar4', 'PITT', time_int=self.time0, time_study=self.time0,
                      time_mem=self.time0, time_fp=self.time0, time_fp_stored=self.time0)
 
-        p6 = Participant(participantId=8, biobankId=11)
+        p6 = Participant(participantId=8, biobankId=11, participantOrigin='c')
         ppi_modules = dict(
             questionnaireOnTheBasicsTime=self.time0,
             questionnaireOnLifestyleTime=self.time0,
@@ -10762,6 +11352,84 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                            u'PPI_Module_Healthcare_Access': 0, u'Samples_Received': 1}
         }, u'hpo': u'AZ_TUCSON'},
                       results2)
+
+        qs3 = """
+                &stratification=LIFECYCLE
+                &endDate=2018-01-03
+                &history=TRUE
+                &version=2
+                &origin=a,b
+                """
+
+        qs3 = ''.join(qs3.split())
+        results = self.send_get('ParticipantCountsOverTime', query_string=qs3)
+        self.assertEqual(len(results), 2)
+        self.assertIn({u'date': u'2018-01-03',
+                       u'metrics':
+                           {u'not_completed':
+                                {u'Full_Participant': 0,
+                                 u'PPI_Module_The_Basics': 0,
+                                 u'Consent_Complete': 0,
+                                 u'Consent_Enrollment': 0,
+                                 u'PPI_Module_Lifestyle': 0,
+                                 u'Registered': 0,
+                                 u'Baseline_PPI_Modules_Complete': 0,
+                                 u'Physical_Measurements': 0,
+                                 u'PPI_Module_Family_Health': 0,
+                                 u'PPI_Module_Overall_Health': 0,
+                                 u'PPI_Module_Medical_History': 0,
+                                 u'PPI_Retention_Modules_Complete': 0,
+                                 u'PPI_Module_Healthcare_Access': 0,
+                                 u'Samples_Received': 0},
+                            u'completed':
+                                {u'Full_Participant': 1,
+                                 u'PPI_Module_The_Basics': 1,
+                                 u'Consent_Complete': 1,
+                                 u'Consent_Enrollment': 1,
+                                 u'PPI_Module_Lifestyle': 1,
+                                 u'Registered': 1,
+                                 u'Baseline_PPI_Modules_Complete': 1,
+                                 u'Physical_Measurements': 1,
+                                 u'PPI_Module_Family_Health': 0,
+                                 u'PPI_Module_Overall_Health': 1,
+                                 u'PPI_Module_Medical_History': 0,
+                                 u'PPI_Retention_Modules_Complete': 0,
+                                 u'PPI_Module_Healthcare_Access': 0,
+                                 u'Samples_Received': 1}}, u'hpo': u'UNSET'},
+                      results)
+        self.assertIn({u'date': u'2018-01-03',
+                       u'metrics':
+                           {u'not_completed':
+                                {u'Full_Participant': 1,
+                                 u'PPI_Module_The_Basics': 1,
+                                 u'Consent_Complete': 0,
+                                 u'Consent_Enrollment': 0,
+                                 u'PPI_Module_Lifestyle': 1,
+                                 u'Registered': 0,
+                                 u'Baseline_PPI_Modules_Complete': 1,
+                                 u'Physical_Measurements': 1,
+                                 u'PPI_Module_Family_Health': 0,
+                                 u'PPI_Module_Overall_Health': 1,
+                                 u'PPI_Module_Medical_History': 0,
+                                 u'PPI_Retention_Modules_Complete': 0,
+                                 u'PPI_Module_Healthcare_Access': 0,
+                                 u'Samples_Received': 1},
+                            u'completed':
+                                {u'Full_Participant': 1,
+                                 u'PPI_Module_The_Basics': 1,
+                                 u'Consent_Complete': 2,
+                                 u'Consent_Enrollment': 2,
+                                 u'PPI_Module_Lifestyle': 1,
+                                 u'Registered': 2,
+                                 u'Baseline_PPI_Modules_Complete': 1,
+                                 u'Physical_Measurements': 1,
+                                 u'PPI_Module_Family_Health': 0,
+                                 u'PPI_Module_Overall_Health': 1,
+                                 u'PPI_Module_Medical_History': 0,
+                                 u'PPI_Retention_Modules_Complete': 0,
+                                 u'PPI_Module_Healthcare_Access': 0,
+                                 u'Samples_Received': 1}}, u'hpo': u'AZ_TUCSON'},
+                      results)
 
     def test_refresh_metrics_lifecycle_cache_data_for_public_metrics_api(self):
 
@@ -11245,3 +11913,26 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self.assertEqual(ratios_by_date["2018-01-04"], 1 / 2.0)
         self.assertEqual(ratios_by_date["2018-01-05"], 2 / 2.0)
         self.assertEqual(ratios_by_date["2018-01-06"], 2 / 2.0)
+
+    def test_get_participant_origins(self):
+
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
+        self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1)
+
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='b')
+        self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2)
+
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='c')
+        self._insert(p3, "Chad", "Caterpillar", "AZ_TUCSON", time_int=self.time3)
+
+        p4 = Participant(participantId=4, biobankId=7, participantOrigin='a')
+        self._insert(p4, "Chad2", "Caterpillar2", "AZ_TUCSON", time_int=self.time4)
+
+        qs = """
+              &stratification=PARTICIPANT_ORIGIN
+              """
+
+        qs = "".join(qs.split())  # Remove all whitespace
+
+        result = self.send_get("ParticipantCountsOverTime", query_string=qs)
+        self.assertEqual(result, {'participant_origins': ['a', 'b', 'c']})

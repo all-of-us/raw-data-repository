@@ -15,6 +15,7 @@ from rdr_service.dao.metrics_cache_dao import (
     MetricsLifecycleCacheDao,
     MetricsRaceCacheDao,
     MetricsRegionCacheDao,
+    MetricsParticipantOriginCacheDao
 )
 from rdr_service.model.metrics_cache import MetricsCacheJobStatus
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -43,7 +44,9 @@ class ParticipantCountsOverTimeService(BaseDao):
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')
                 session.execute('DROP TABLE IF EXISTS metrics_tmp_participant;')
+                session.execute('DROP TABLE IF EXISTS metrics_tmp_participant_origin;')
             session.execute('CREATE TABLE metrics_tmp_participant LIKE participant_summary')
+            session.execute('CREATE TABLE metrics_tmp_participant_origin (participant_origin VARCHAR(50))')
 
             indexes_cursor = session.execute('SHOW INDEX FROM metrics_tmp_participant')
             index_name_list = []
@@ -58,6 +61,7 @@ class ParticipantCountsOverTimeService(BaseDao):
             session.execute('ALTER TABLE metrics_tmp_participant MODIFY first_name VARCHAR(255)')
             session.execute('ALTER TABLE metrics_tmp_participant MODIFY last_name VARCHAR(255)')
             session.execute('ALTER TABLE metrics_tmp_participant MODIFY suspension_status SMALLINT')
+            session.execute('ALTER TABLE metrics_tmp_participant MODIFY participant_origin VARCHAR(80)')
 
             columns_cursor = session.execute('SELECT * FROM metrics_tmp_participant LIMIT 0')
 
@@ -73,11 +77,11 @@ class ParticipantCountsOverTimeService(BaseDao):
             columns = map(get_field_name, columns_cursor.keys())
             columns_str = ','.join(columns)
 
-            sql = """
+            participant_sql = """
               INSERT INTO metrics_tmp_participant
-              SELECT 
+              SELECT
               """ + columns_str + """
-              FROM participant p 
+              FROM participant p
               left join participant_summary ps on p.participant_id = ps.participant_id
               WHERE p.hpo_id <> :test_hpo_id
               AND p.is_ghost_id IS NOT TRUE
@@ -96,7 +100,14 @@ class ParticipantCountsOverTimeService(BaseDao):
             session.execute('CREATE INDEX idx_sample_time ON metrics_tmp_participant '
                             '(enrollment_status_core_stored_sample_time)')
 
-            session.execute(sql, params)
+            session.execute(participant_sql, params)
+
+            participant_origin_sql = """
+                INSERT INTO metrics_tmp_participant_origin
+                SELECT DISTINCT participant_origin FROM participant
+            """
+            session.execute(participant_origin_sql)
+
             logging.info('Init tmp table for metrics cron job.')
 
     def refresh_metrics_cache_data(self):
@@ -157,7 +168,8 @@ class ParticipantCountsOverTimeService(BaseDao):
                 session.execute(sql, params)
 
     def get_filtered_results(
-        self, stratification, start_date, end_date, history, awardee_ids, enrollment_statuses, sample_time_def, version
+        self, stratification, start_date, end_date, history, awardee_ids, enrollment_statuses, sample_time_def,
+        participant_origins, version
     ):
         """Queries DB, returns results in format consumed by front-end
 
@@ -169,6 +181,7 @@ class ParticipantCountsOverTimeService(BaseDao):
     :param history: query for history data from metrics cache table
     :param stratification: How to stratify (layer) results, as in a stacked bar chart
     :param version: indicate the version of the result filter
+    :param participant_origins: indicate the participant origins
     :return: Filtered, stratified results by date
     """
 
@@ -187,19 +200,24 @@ class ParticipantCountsOverTimeService(BaseDao):
 
         if str(history) == "TRUE" and stratification == Stratifications.TOTAL:
             dao = MetricsEnrollmentStatusCacheDao(version=version)
-            return dao.get_total_interested_count(start_date, end_date, awardee_ids, enrollment_statuses)
+            return dao.get_total_interested_count(start_date, end_date, awardee_ids, enrollment_statuses,
+                                                  participant_origins)
         elif str(history) == "TRUE" and stratification == Stratifications.ENROLLMENT_STATUS:
             dao = MetricsEnrollmentStatusCacheDao(version=version)
-            return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)
+            return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses,
+                                                     participant_origins)
         elif str(history) == "TRUE" and stratification == Stratifications.GENDER_IDENTITY:
             dao = MetricsGenderCacheDao(version=version)
-            return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)
+            return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses,
+                                                     participant_origins)
         elif str(history) == "TRUE" and stratification == Stratifications.AGE_RANGE:
             dao = MetricsAgeCacheDao()
-            return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)
+            return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses,
+                                                     participant_origins)
         elif str(history) == "TRUE" and stratification == Stratifications.RACE:
             dao = MetricsRaceCacheDao(version=version)
-            return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)
+            return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses,
+                                                     participant_origins)
         elif str(history) == "TRUE" and stratification in [
             Stratifications.FULL_STATE,
             Stratifications.FULL_CENSUS,
@@ -209,13 +227,17 @@ class ParticipantCountsOverTimeService(BaseDao):
             Stratifications.GEO_AWARDEE,
         ]:
             dao = MetricsRegionCacheDao(version=version)
-            return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids, enrollment_statuses)
+            return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids, enrollment_statuses,
+                                                     participant_origins)
         elif str(history) == "TRUE" and stratification == Stratifications.LANGUAGE:
             dao = MetricsLanguageCacheDao()
             return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids, enrollment_statuses)
         elif str(history) == "TRUE" and stratification == Stratifications.LIFECYCLE:
             dao = MetricsLifecycleCacheDao(version=version)
-            return dao.get_latest_version_from_cache(end_date, awardee_ids, enrollment_statuses)
+            return dao.get_latest_version_from_cache(end_date, awardee_ids, enrollment_statuses, participant_origins)
+        elif stratification == Stratifications.PARTICIPANT_ORIGIN:
+            dao = MetricsParticipantOriginCacheDao()
+            return dao.get_participant_origins()
         elif stratification == Stratifications.TOTAL:
             strata = ["TOTAL"]
             sql = self.get_total_sql(filters_sql_ps)

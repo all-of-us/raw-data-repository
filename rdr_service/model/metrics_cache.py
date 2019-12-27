@@ -18,6 +18,7 @@ class MetricsEnrollmentStatusCache(Base):
     participantCount = Column("participant_count", Integer, nullable=False)
     consentedCount = Column("consented_count", Integer, nullable=False)
     coreCount = Column("core_count", Integer, nullable=False)
+    participantOrigin = Column("participant_origin", String(50), primary_key=True)
 
 
 class MetricsRaceCache(Base):
@@ -45,6 +46,7 @@ class MetricsRaceCache(Base):
     preferNotToAnswer = Column("prefer_not_to_answer", Integer, nullable=False)
     multiAncestry = Column("multi_ancestry", Integer, nullable=False)
     noAncestryChecked = Column("no_ancestry_checked", Integer, nullable=False)
+    participantOrigin = Column("participant_origin", String(50), primary_key=True)
 
 
 class MetricsGenderCache(Base):
@@ -60,6 +62,7 @@ class MetricsGenderCache(Base):
     date = Column("date", Date, nullable=False, primary_key=True)
     genderName = Column("gender_name", String(255), primary_key=True)
     genderCount = Column("gender_count", Integer, nullable=False)
+    participantOrigin = Column("participant_origin", String(50), primary_key=True)
 
 
 class MetricsAgeCache(Base):
@@ -75,6 +78,7 @@ class MetricsAgeCache(Base):
     date = Column("date", Date, nullable=False, primary_key=True)
     ageRange = Column("age_range", String(255), primary_key=True)
     ageCount = Column("age_count", Integer, nullable=False)
+    participantOrigin = Column("participant_origin", String(50), primary_key=True)
 
 
 class MetricsRegionCache(Base):
@@ -89,6 +93,7 @@ class MetricsRegionCache(Base):
     date = Column("date", Date, nullable=False, primary_key=True)
     stateName = Column("state_name", String(255), primary_key=True)
     stateCount = Column("state_count", Integer, nullable=False)
+    participantOrigin = Column("participant_origin", String(50), primary_key=True)
 
 
 class MetricsLanguageCache(Base):
@@ -132,6 +137,7 @@ class MetricsLifecycleCache(Base):
     physicalMeasurement = Column("physical_measurement", Integer, nullable=False)
     sampleReceived = Column("sample_received", Integer, nullable=False)
     fullParticipant = Column("full_participant", Integer, nullable=False)
+    participantOrigin = Column("participant_origin", String(50), primary_key=True)
 
 
 class MetricsCacheJobStatus(Base):

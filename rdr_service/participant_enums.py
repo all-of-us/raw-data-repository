@@ -232,6 +232,7 @@ class Stratifications(messages.Enum):
     PRIMARY_CONSENT = 16
     EHR_METRICS = 17
     SITES_COUNT = 18
+    PARTICIPANT_ORIGIN = 19
 
 
 METRIC_SET_KEYS = {
