@@ -68,6 +68,10 @@ class ParticipantCountsOverTimeApi(Resource):
 
             filters["start_date"] = start_date
             filters["end_date"] = end_date
+        elif filters['stratification'] == Stratifications.PARTICIPANT_ORIGIN:
+            # no date needed
+            filters['start_date'] = None
+            filters['end_date'] = None
         else:
             # Validate dates
             if not params["start_date"] or not params["end_date"]:

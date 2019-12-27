@@ -11928,6 +11928,11 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         p4 = Participant(participantId=4, biobankId=7, participantOrigin='a')
         self._insert(p4, "Chad2", "Caterpillar2", "AZ_TUCSON", time_int=self.time4)
 
-        dao = MetricsParticipantOriginCacheDao()
-        results = dao.get_participant_origins()
-        print(str(results))
+        qs = """
+              &stratification=PARTICIPANT_ORIGIN
+              """
+
+        qs = "".join(qs.split())  # Remove all whitespace
+
+        result = self.send_get("ParticipantCountsOverTime", query_string=qs)
+        self.assertEqual(result, {'participant_origins': ['a', 'b', 'c']})
