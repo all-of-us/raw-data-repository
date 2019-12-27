@@ -195,11 +195,11 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 WorkbenchInstitutionalAffiliations.nonAcademicAffiliation.label('nonAcademicAffiliation')
             ]
         ).select_from(
-            sqlalchemy.join(
-                sqlalchemy.join(WorkbenchWorkspace, WorkbenchWorkspaceUser,
-                                WorkbenchWorkspace.id == WorkbenchWorkspaceUser.workspaceId),
-                sqlalchemy.join(WorkbenchResearcher, WorkbenchInstitutionalAffiliations,
-                                WorkbenchResearcher.id == WorkbenchInstitutionalAffiliations.researcherId),
+            sqlalchemy.outerjoin(
+                sqlalchemy.outerjoin(WorkbenchWorkspace, WorkbenchWorkspaceUser,
+                                     WorkbenchWorkspace.id == WorkbenchWorkspaceUser.workspaceId),
+                sqlalchemy.outerjoin(WorkbenchResearcher, WorkbenchInstitutionalAffiliations,
+                                     WorkbenchResearcher.id == WorkbenchInstitutionalAffiliations.researcherId),
                 WorkbenchResearcher.id == WorkbenchWorkspaceUser.researcherId
             )
         ).where(WorkbenchWorkspaceUser.role == WorkbenchWorkspaceUserRole.OWNER)
