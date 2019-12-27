@@ -15,6 +15,7 @@ from rdr_service.dao.metrics_cache_dao import (
     MetricsLifecycleCacheDao,
     MetricsRaceCacheDao,
     MetricsRegionCacheDao,
+    MetricsParticipantOriginCacheDao
 )
 from rdr_service.model.metrics_cache import MetricsCacheJobStatus
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -234,6 +235,9 @@ class ParticipantCountsOverTimeService(BaseDao):
         elif str(history) == "TRUE" and stratification == Stratifications.LIFECYCLE:
             dao = MetricsLifecycleCacheDao(version=version)
             return dao.get_latest_version_from_cache(end_date, awardee_ids, enrollment_statuses, participant_origins)
+        elif stratification == Stratifications.PARTICIPANT_ORIGIN:
+            dao = MetricsParticipantOriginCacheDao()
+            return dao.get_participant_origins()
         elif stratification == Stratifications.TOTAL:
             strata = ["TOTAL"]
             sql = self.get_total_sql(filters_sql_ps)

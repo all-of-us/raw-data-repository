@@ -2,13 +2,14 @@ import datetime
 import json
 
 import sqlalchemy
-from sqlalchemy import and_, desc, func, or_
+from sqlalchemy import and_, desc, func, or_, distinct
 
 from rdr_service.census_regions import census_regions
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.model.site import Site
+from rdr_service.model.participant import Participant
 from rdr_service.model.metrics_cache import (
     MetricsAgeCache,
     MetricsCacheJobStatus,
@@ -2767,3 +2768,14 @@ class MetricsSitesCacheDao(BaseDao):
             query = session.query(func.count(Site.googleGroup))
             query = query.filter(Site.enrollingStatus == 1)
             return {'sites_count': query.first()[0]}
+
+
+class MetricsParticipantOriginCacheDao(BaseDao):
+    def __init__(self):
+        super(MetricsParticipantOriginCacheDao, self).__init__(Participant)
+
+    def get_participant_origins(self):
+        with self.session() as session:
+            query = session.query(distinct(Participant.participantOrigin))
+            result = [r[0] for r in query.all()]
+            return {'participant_origins': result}

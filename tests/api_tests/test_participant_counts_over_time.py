@@ -24,6 +24,7 @@ from rdr_service.dao.metrics_cache_dao import (
     MetricsLifecycleCacheDao,
     MetricsRaceCacheDao,
     MetricsRegionCacheDao,
+    MetricsParticipantOriginCacheDao
 )
 from rdr_service.dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -11912,3 +11913,21 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self.assertEqual(ratios_by_date["2018-01-04"], 1 / 2.0)
         self.assertEqual(ratios_by_date["2018-01-05"], 2 / 2.0)
         self.assertEqual(ratios_by_date["2018-01-06"], 2 / 2.0)
+
+    def test_get_participant_origins(self):
+
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
+        self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1)
+
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='b')
+        self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2)
+
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='c')
+        self._insert(p3, "Chad", "Caterpillar", "AZ_TUCSON", time_int=self.time3)
+
+        p4 = Participant(participantId=4, biobankId=7, participantOrigin='a')
+        self._insert(p4, "Chad2", "Caterpillar2", "AZ_TUCSON", time_int=self.time4)
+
+        dao = MetricsParticipantOriginCacheDao()
+        results = dao.get_participant_origins()
+        print(str(results))
