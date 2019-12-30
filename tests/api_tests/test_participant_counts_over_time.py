@@ -23,8 +23,7 @@ from rdr_service.dao.metrics_cache_dao import (
     MetricsLanguageCacheDao,
     MetricsLifecycleCacheDao,
     MetricsRaceCacheDao,
-    MetricsRegionCacheDao,
-    MetricsParticipantOriginCacheDao
+    MetricsRegionCacheDao
 )
 from rdr_service.dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from rdr_service.dao.participant_dao import ParticipantDao
