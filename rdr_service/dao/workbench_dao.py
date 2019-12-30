@@ -226,7 +226,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                                 {
                                     "institution": row.institution,
                                     "role": row.institutionRole,
-                                    "nonAcademicAffiliation": row.nonAcademicAffiliation
+                                    "nonAcademicAffiliation": str(WorkbenchInstitutionNoAcademic(
+                                        row.nonAcademicAffiliation if row.nonAcademicAffiliation is not None
+                                        else 'UNSET'))
                                 }
                             ]
                         }
