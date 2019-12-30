@@ -554,3 +554,13 @@ class WorkbenchWorkspaceUserRole(messages.Enum):
     READER = 1
     WRITER = 2
     OWNER = 3
+
+
+class WorkbenchInstitutionNoAcademic(messages.Enum):
+    """Workbench Institution enum"""
+
+    UNSET = 0
+    INDUSTRY = 1
+    EDUCATIONAL_INSTITUTION = 2
+    COMMUNITY_SCIENTIST = 3
+    FREE_TEXT = 4

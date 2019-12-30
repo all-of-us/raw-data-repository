@@ -1,8 +1,9 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Boolean, UniqueConstraint
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, UniqueConstraint, JSON
 from sqlalchemy.orm import relationship
 from rdr_service.model.field_types import BlobUTF8
 from rdr_service.model.base import Base
-
+from rdr_service.model.utils import Enum
+from rdr_service.participant_enums import WorkbenchInstitutionNoAcademic
 
 class WorkbenchResearcherBase(object):
     userSourceId = Column("user_source_id", Integer, nullable=False)
@@ -17,8 +18,8 @@ class WorkbenchResearcherBase(object):
     zipCode = Column("zip_code", String(80))
     country = Column("country", String(80))
     ethnicity = Column("ethnicity", String(80))
-    gender = Column("gender", String(80))
-    race = Column("race", String(80))
+    gender = Column("gender", JSON)
+    race = Column("race", JSON)
     resource = Column("resource", BlobUTF8, nullable=False)
 
 
@@ -50,7 +51,8 @@ class WorkbenchInstitutionalAffiliations(Base):
     researcherId = Column("researcher_id", Integer, ForeignKey("workbench_researcher.id"), nullable=False)
     institution = Column("institution", String(250))
     role = Column("role", String(80))
-    nonAcademicAffiliation = Column("non_academic_affiliation", Boolean)
+    nonAcademicAffiliation = Column("non_academic_affiliation", Enum(WorkbenchInstitutionNoAcademic),
+                                    default=WorkbenchInstitutionNoAcademic.UNSET)
 
 
 class WorkbenchResearcherHistory(WorkbenchResearcherBase, Base):
@@ -79,4 +81,5 @@ class WorkbenchInstitutionalAffiliationsHistory(Base):
     researcherId = Column("researcher_id", Integer, ForeignKey("workbench_researcher_history.id"), nullable=False)
     institution = Column("institution", String(250))
     role = Column("role", String(80))
-    nonAcademicAffiliation = Column("non_academic_affiliation", Boolean)
+    nonAcademicAffiliation = Column("non_academic_affiliation", Enum(WorkbenchInstitutionNoAcademic),
+                                    default=WorkbenchInstitutionNoAcademic.UNSET)
