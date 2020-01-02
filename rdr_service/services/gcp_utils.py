@@ -7,6 +7,7 @@
 # pylint: disable=W0612
 from dateutil import parser
 import glob
+import json
 import logging
 import os
 import shlex
@@ -819,3 +820,38 @@ def gcp_deploy_app(project, config_files: list, version: str = None, promote: bo
     _logger.debug(so if so else se)
 
     return True
+
+def gcp_restart_instances(project=None):
+    """
+    Restart running instances of an App Engine environment.
+    :return: True if successful, else False.
+    """
+
+    if not project:
+        project = gcp_get_current_project()
+    # First get instance ID's
+    args = f"instances list --format json --project {project}"
+    pcode, so, se = gcp_gcloud_command("app", args)
+
+    if pcode != 0 or not so:
+        _logger.error("Failed to list running instances. (%s: %s)", pcode, se)
+
+    so_json = json.loads(so)
+    names = {i['id']:i['version'] for i in so_json}
+
+    # iterate and delete each instance (you can not pass multiple to old style gcloud)
+    # if we ever move to compute engine we can pass a list of instances
+    se_list = []
+    for k, v in names.items():
+        args = f"instances delete " + k + ' --version=' + v + ' --project={project} --service=default -q'
+        pcode, so, se = gcp_gcloud_command("app", args)
+        # this method always sends to se
+        se_list.append(se)
+
+    for i in se_list:
+        if not i.startswith('Deleting the instance'):
+            _logger.warning(i)
+            return 1
+        else:
+            _logger.info(i)
+    return 0
