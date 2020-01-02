@@ -821,16 +821,15 @@ def gcp_deploy_app(project, config_files: list, version: str = None, promote: bo
 
     return True
 
-def gcp_restart_instances(project=None):
+def gcp_restart_instances(self):
     """
     Restart running instances of an App Engine environment.
     :return: True if successful, else False.
     """
 
-    if not project:
-        project = gcp_get_current_project()
+    project = self.gcp_env.project if self.gcp_env.project else gcp_get_current_project()
     # First get instance ID's
-    args = f"instances list --format json --project {project}"
+    args = "instances list --format json --project {}".format(project)
     pcode, so, se = gcp_gcloud_command("app", args)
 
     if pcode != 0 or not so:
@@ -843,7 +842,7 @@ def gcp_restart_instances(project=None):
     # if we ever move to compute engine we can pass a list of instances
     se_list = []
     for k, v in names.items():
-        args = f"instances delete " + k + ' --version=' + v + ' --project={project} --service=default -q'
+        args = "instances delete " + k + ' --version=' + v + ' --project={} --service=default -q'.format(project)
         pcode, so, se = gcp_gcloud_command("app", args)
         # this method always sends to se
         se_list.append(se)

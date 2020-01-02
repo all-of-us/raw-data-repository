@@ -620,23 +620,14 @@ class RunGCPUtilCommand:
         self.args = args
         self.gcp_env = gcp_env
 
-        self._config_dir = os.path.join(self.args.git_project, 'rdr_service/config')
-        if not os.path.exists(self._config_dir):
-            raise FileNotFoundError('Unable to locate the app config directory.')
 
-        from rdr_service.config import GoogleCloudDatastoreConfigProvider
-        self._provider = GoogleCloudDatastoreConfigProvider()
-
-        if not hasattr(self.args, 'key'):
-            setattr(self.args, 'key', 'current_config')
-
-    def run(self, args):
-        function = args.run_single_util
+    def run(self):
+        function = self.args.run_single_util
         try:
             package = "rdr_service.services.gcp_utils"
             imported = getattr(__import__(package, fromlist=[function]), function)
             # call the function
-            return_code = imported()
+            return_code = imported(self)
         except ImportError as err:
             _logger.warning(err)
 
@@ -728,7 +719,7 @@ def run():
 
         elif hasattr(args, 'run_single_util'):
             process = RunGCPUtilCommand(args, gcp_env)
-            exit_code = process.run(args)
+            exit_code = process.run()
 
         else:
             import ipdb; ipdb.set_trace()
