@@ -657,6 +657,8 @@ def run():
     deploy_parser.add_argument("--quiet", help="do not ask for user input", default=False, action="store_true") # noqa
     deploy_parser.add_argument("--git-target", help="git branch/tag to deploy.", default=git_current_branch())  # noqa
     deploy_parser.add_argument("--deploy-as", help="deploy as version", default=None)  #noqa
+    deploy_parser.add_argument("--services", help="comma delimited list of service names to deploy",
+                               default=None)  # noqa
 
     deploy_parser.add_argument("--no-promote", help="do not promote version to serving state.",
                                default=False, action="store_true")  # noqa
