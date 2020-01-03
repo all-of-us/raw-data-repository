@@ -323,7 +323,8 @@ def run():
         "--end-date", help="Limit consents to sync to those created before the date", default=None)  # noqa
 
     parser.add_argument(
-        "--all-files", help="Transfer all file types, default is only PDF.", default=False, action="store_true")  # noqa
+        "--all-files", help="Transfer all file types, default is only PDF.",
+        default=False, action="store_true")  # noqa
 
     args = parser.parse_args()
 
