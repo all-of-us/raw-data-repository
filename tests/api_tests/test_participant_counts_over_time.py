@@ -16,6 +16,7 @@ from rdr_service.concepts import Concept
 from rdr_service.dao.calendar_dao import CalendarDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
+# pylint: disable=unused-import
 from rdr_service.dao.metrics_cache_dao import (
     MetricsAgeCacheDao,
     MetricsEnrollmentStatusCacheDao,

@@ -71,6 +71,13 @@ participant_filters_sql = {
             summary.consent_for_electronic_health_records_time > "{date_limit}"
             )            
         """,
+    'end_date_sql': """
+        and ( 
+            summary.consent_for_study_enrollment_time < "{end_date}"
+            or
+            summary.consent_for_electronic_health_records_time < "{end_date}"
+            ) 
+        """,
 }
 
 COUNT_SQL = "select count(1) {0}".format(PARTICIPANT_SQL[PARTICIPANT_SQL.find("from") :])
@@ -192,6 +199,11 @@ class SyncConsentClass(object):
                 # TODO: Add execption handling for incorrect date format
                 self._add_participant_filter('date_limit_sql',
                                              date_limit=self.args.date_limit)
+            if self.args.end_date:
+                # TODO: Add execption handling for incorrect date format
+                self._add_participant_filter('end_date_sql',
+                                             end_date=self.args.end_date)
+
             if self.args.org_id:
                 self._add_participant_filter('org_id_sql',
                                              org_id=self.args.org_id)
@@ -308,7 +320,11 @@ def run():
         "--date-limit", help="Limit consents to sync to those created after the date", default=None)  # noqa
 
     parser.add_argument(
-        "--all-files", help="Transfer all files, default is only PDF.", default=False, action="store_true")  # noqa
+        "--end-date", help="Limit consents to sync to those created before the date", default=None)  # noqa
+
+    parser.add_argument(
+        "--all-files", help="Transfer all file types, default is only PDF.",
+        default=False, action="store_true")  # noqa
 
     args = parser.parse_args()
 
