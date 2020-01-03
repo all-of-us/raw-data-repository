@@ -19,7 +19,8 @@ from rdr_service.model.workbench_researcher import (
     WorkbenchInstitutionalAffiliations,
     WorkbenchInstitutionalAffiliationsHistory
 )
-from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWorkspaceUserRole
+from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWorkspaceUserRole, \
+    WorkbenchInstitutionNoAcademic
 
 
 class WorkbenchWorkspaceDao(UpdatableDao):
@@ -121,7 +122,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             exist = self._get_workspace_by_workspace_id_with_session(session, workspace.workspaceSourceId)
             if exist:
                 session.delete(exist)
-                session.commit()
+                session.flush()
             session.add(workspace)
         self._insert_history(session, workspaces)
 
@@ -225,7 +226,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                                 {
                                     "institution": row.institution,
                                     "role": row.institutionRole,
-                                    "nonAcademicAffiliation": row.nonAcademicAffiliation
+                                    "nonAcademicAffiliation": str(WorkbenchInstitutionNoAcademic(
+                                        row.nonAcademicAffiliation if row.nonAcademicAffiliation is not None
+                                        else 'UNSET'))
                                 }
                             ]
                         }
@@ -310,6 +313,14 @@ class WorkbenchResearcherDao(UpdatableDao):
             if item.get('familyName') is None:
                 raise BadRequest('User familyName can not be NULL')
 
+            for institution in item.get('affiliations'):
+                if institution.get('nonAcademicAffiliation') is None:
+                    institution['nonAcademicAffiliation'] = 'UNSET'
+                try:
+                    WorkbenchInstitutionNoAcademic(institution.get('nonAcademicAffiliation'))
+                except TypeError:
+                    raise BadRequest(f"Invalid nonAcademicAffiliation: {institution.get('nonAcademicAffiliation')}")
+
     def from_client_json(self, resource_json, client_id=None):  # pylint: disable=unused-argument
         self._validate(resource_json)
         now = clock.CLOCK.now()
@@ -349,7 +360,8 @@ class WorkbenchResearcherDao(UpdatableDao):
                 modified=now,
                 institution=affiliation.get('institution'),
                 role=affiliation.get('role'),
-                nonAcademicAffiliation=affiliation.get('nonAcademicAffiliation')
+                nonAcademicAffiliation=WorkbenchInstitutionNoAcademic(affiliation.get('nonAcademicAffiliation',
+                                                                                      'UNSET'))
             )
             affiliations.append(affiliation_obj)
         return affiliations
@@ -359,7 +371,7 @@ class WorkbenchResearcherDao(UpdatableDao):
             exist = self._get_researcher_by_user_id_with_session(session, researcher.userSourceId)
             if exist:
                 session.delete(exist)
-                session.commit()
+                session.flush()
             session.add(researcher)
         self._insert_history(session, researchers)
         return researchers

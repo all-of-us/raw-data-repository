@@ -2,7 +2,7 @@ import http.client
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchResearcherHistoryDao, \
     WorkbenchWorkspaceDao, WorkbenchWorkspaceHistoryDao
-from rdr_service.participant_enums import WorkbenchWorkspaceUserRole
+from rdr_service.participant_enums import WorkbenchWorkspaceUserRole, WorkbenchInstitutionNoAcademic
 
 
 class WorkbenchApiTest(BaseTestCase):
@@ -25,13 +25,13 @@ class WorkbenchApiTest(BaseTestCase):
                 "zipCode": "string",
                 "country": "string",
                 "ethnicity": "string",
-                "gender": "string",
-                "race": "string",
+                "gender": ["gender1", "gender2"],
+                "race": ["race1", "race2"],
                 "affiliations": [
                     {
                         "institution": "string",
                         "role": "string",
-                        "nonAcademicAffiliation": True
+                        "nonAcademicAffiliation": "INDUSTRY"
                     }
                 ]
             }
@@ -43,14 +43,22 @@ class WorkbenchApiTest(BaseTestCase):
         results = researcher_dao.get_all_with_children()
         self.assertEqual(results[0].userSourceId, 0)
         self.assertEqual(results[0].givenName, 'string')
+        self.assertEqual(results[0].gender, ['gender1', 'gender2'])
+        self.assertEqual(results[0].race, ['race1', 'race2'])
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string')
+        self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].nonAcademicAffiliation,
+                         WorkbenchInstitutionNoAcademic('INDUSTRY'))
 
         researcher_history_dao = WorkbenchResearcherHistoryDao()
         results = researcher_history_dao.get_all_with_children()
         self.assertEqual(researcher_history_dao.count(), 1)
         self.assertEqual(results[0].userSourceId, 0)
         self.assertEqual(results[0].givenName, 'string')
+        self.assertEqual(results[0].gender, ['gender1', 'gender2'])
+        self.assertEqual(results[0].race, ['race1', 'race2'])
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string')
+        self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].nonAcademicAffiliation,
+                         WorkbenchInstitutionNoAcademic('INDUSTRY'))
 
         # test update existing
         update_json = [
@@ -67,13 +75,13 @@ class WorkbenchApiTest(BaseTestCase):
                 "zipCode": "string",
                 "country": "string",
                 "ethnicity": "string",
-                "gender": "string",
-                "race": "string",
+                "gender": ["gender3", "gender4"],
+                "race": ["race3", "race4"],
                 "affiliations": [
                     {
                         "institution": "string_modify",
                         "role": "string",
-                        "nonAcademicAffiliation": True
+                        "nonAcademicAffiliation": "EDUCATIONAL_INSTITUTION"
                     }
                 ]
             },
@@ -90,18 +98,18 @@ class WorkbenchApiTest(BaseTestCase):
                 "zipCode": "string2",
                 "country": "string2",
                 "ethnicity": "string2",
-                "gender": "string2",
-                "race": "string2",
+                "gender": ["gender1", "gender2"],
+                "race": ["race1", "race2"],
                 "affiliations": [
                     {
                         "institution": "string2",
                         "role": "string2",
-                        "nonAcademicAffiliation": False
+                        "nonAcademicAffiliation": "EDUCATIONAL_INSTITUTION"
                     },
                     {
                         "institution": "string22",
                         "role": "string22",
-                        "nonAcademicAffiliation": True
+                        "nonAcademicAffiliation": "COMMUNITY_SCIENTIST"
                     }
                 ]
             }
@@ -113,7 +121,11 @@ class WorkbenchApiTest(BaseTestCase):
         results = researcher_dao.get_all_with_children()
         self.assertEqual(results[0].userSourceId, 0)
         self.assertEqual(results[0].givenName, 'string_modify')
+        self.assertEqual(results[0].gender, ['gender3', 'gender4'])
+        self.assertEqual(results[0].race, ['race3', 'race4'])
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string_modify')
+        self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].nonAcademicAffiliation,
+                         WorkbenchInstitutionNoAcademic('EDUCATIONAL_INSTITUTION'))
 
         self.assertEqual(results[1].userSourceId, 1)
         self.assertEqual(results[1].givenName, 'string2')
@@ -154,7 +166,7 @@ class WorkbenchApiTest(BaseTestCase):
                     {
                         "institution": "string",
                         "role": "string",
-                        "nonAcademicAffiliation": True
+                        "nonAcademicAffiliation": "xxx"
                     }
                 ]
             }

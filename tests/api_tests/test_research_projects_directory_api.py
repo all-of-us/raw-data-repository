@@ -27,7 +27,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                     {
                         "institution": "institution1",
                         "role": "institution role 1",
-                        "nonAcademicAffiliation": True
+                        "nonAcademicAffiliation": "INDUSTRY"
                     }
                 ]
             },
@@ -49,13 +49,12 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "affiliations": [
                     {
                         "institution": "institution2",
-                        "role": "institution role 2",
-                        "nonAcademicAffiliation": False
+                        "role": "institution role 2"
                     },
                     {
                         "institution": "institution22",
                         "role": "institution role 22",
-                        "nonAcademicAffiliation": True
+                        "nonAcademicAffiliation": "INDUSTRY"
                     }
                 ]
             }
@@ -140,10 +139,10 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'workspaceOwner': [{'userId': 1, 'userName': 'given name 2 family name 2',
                                            'affiliations': [{'institution': 'institution2',
                                                              'role': 'institution role 2',
-                                                             'nonAcademicAffiliation': False},
+                                                             'nonAcademicAffiliation': 'UNSET'},
                                                             {'institution': 'institution22',
                                                              'role': 'institution role 22',
-                                                             'nonAcademicAffiliation': True}]}],
+                                                             'nonAcademicAffiliation': 'INDUSTRY'}]}],
                        'excludeFromPublicDirectory': True, 'diseaseFocusedResearch': True,
                        'diseaseFocusedResearchName': 'disease focused research name str',
                        'otherPurposeDetails': 'other purpose details str', 'methodsDevelopment': True,
@@ -156,7 +155,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'workspaceOwner': [{'userId': 0, 'userName': 'given name 1 family name 1',
                                            'affiliations': [{'institution': 'institution1',
                                                              'role': 'institution role 1',
-                                                             'nonAcademicAffiliation': True}]}],
+                                                             'nonAcademicAffiliation': 'INDUSTRY'}]}],
                        'excludeFromPublicDirectory': False, 'diseaseFocusedResearch': True,
                        'diseaseFocusedResearchName': 'disease focused research name str 2',
                        'otherPurposeDetails': 'other purpose details str 2', 'methodsDevelopment': False,
@@ -173,10 +172,10 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'workspaceOwner': [{'userId': 1, 'userName': 'given name 2 family name 2',
                                            'affiliations': [{'institution': 'institution2',
                                                              'role': 'institution role 2',
-                                                             'nonAcademicAffiliation': False},
+                                                             'nonAcademicAffiliation': 'UNSET'},
                                                             {'institution': 'institution22',
                                                              'role': 'institution role 22',
-                                                             'nonAcademicAffiliation': True}]}],
+                                                             'nonAcademicAffiliation': 'INDUSTRY'}]}],
                        'excludeFromPublicDirectory': True, 'diseaseFocusedResearch': True,
                        'diseaseFocusedResearchName': 'disease focused research name str',
                        'otherPurposeDetails': 'other purpose details str', 'methodsDevelopment': True,
