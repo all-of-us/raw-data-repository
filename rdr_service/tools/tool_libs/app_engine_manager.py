@@ -724,7 +724,6 @@ def run():
             exit_code = process.run()
 
         else:
-            import ipdb; ipdb.set_trace()
             _logger.info('Please select a service option to run. For help use "app-engine --help".')
             exit_code = 1
         return exit_code
