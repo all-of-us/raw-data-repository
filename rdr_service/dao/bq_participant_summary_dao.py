@@ -538,12 +538,13 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         return None
 
 
-def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None):
+def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None):
     """
     Rebuild a BQ record for a specific participant
     :param p_id: participant id
     :param ps_bqgen: BQParticipantSummaryGenerator object
     :param pdr_bqgen: BQPDRParticipantSummaryGenerator object
+    :param project_id: Project ID override value.
     :return:
     """
     # Allow for batch requests to rebuild participant summary data.
@@ -572,9 +573,11 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None):
     w_dao = BigQuerySyncDao()
     with w_dao.session() as w_session:
         # save the participant summary record.
-        ps_bqgen.save_bqrecord(p_id, ps_bqr, bqtable=BQParticipantSummary, w_dao=w_dao, w_session=w_session)
+        ps_bqgen.save_bqrecord(p_id, ps_bqr, bqtable=BQParticipantSummary, w_dao=w_dao, w_session=w_session,
+                               project_id=project_id)
         # save the PDR participant summary record
-        pdr_bqgen.save_bqrecord(p_id, pdr_bqr, bqtable=BQPDRParticipantSummary, w_dao=w_dao, w_session=w_session)
+        pdr_bqgen.save_bqrecord(p_id, pdr_bqr, bqtable=BQPDRParticipantSummary, w_dao=w_dao, w_session=w_session,
+                                project_id=project_id)
         w_session.flush()
 
     return ps_bqr

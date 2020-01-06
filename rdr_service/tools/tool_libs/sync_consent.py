@@ -191,11 +191,12 @@ class SyncConsentClass(object):
 
                 count += 1
                 rec = cursor.fetchone()
-                # print progressbar one more time to show completed.
-                if not rec and not self.args.debug:
-                    print_progress_bar(
-                        count, total_recs, prefix="{0}/{1}:".format(count, total_recs), suffix="complete"
-                    )
+
+            # print progressbar one more time to show completed.
+            if not rec and not self.args.debug:
+                print_progress_bar(
+                    count, total_recs, prefix="{0}/{1}:".format(count, total_recs), suffix="complete"
+                )
 
             cursor.close()
             sql_conn.close()
