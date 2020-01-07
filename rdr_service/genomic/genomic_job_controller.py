@@ -13,7 +13,9 @@ from rdr_service.participant_enums import GenomicSubProcessResult, GenomicSubPro
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
     GenomicFileMover,
-    GenomicReconciler
+    GenomicReconciler,
+    GenomicBiobankSamplesCoupler,
+    GenomicManifestCoupler
 )
 from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
@@ -42,6 +44,8 @@ class GenomicJobController:
         self.ingester = None
         self.file_mover = None
         self.reconciler = None
+        self.biobank_coupler = None
+        self.manifest_coupler = None
 
         self.job_run = self._create_run(job_id)
 
@@ -109,6 +113,27 @@ class GenomicJobController:
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
+    def run_new_participant_workflow(self):
+        """
+        Creates new GenomicSet, GenomicSetMembers,
+        And manifest file using BiobankSamplesCoupler
+        and ManifestCoupler components
+        :return: result code for job run
+        """
+        self.biobank_coupler = GenomicBiobankSamplesCoupler()
+
+        self.manifest_coupler = GenomicManifestCoupler()
+
+        try:
+            last_run_date = self._get_last_successful_run_time()
+
+            bb_result = self.biobank_coupler.create_new_genomic_participants()
+            manifest_result = self.manifest_coupler.create_manifest()
+            # TODO: get result from the couplers
+
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR
+
     def end_run(self, result):
         """Updates the genomic_job_run table with end result"""
         self.job_run_dao.update_run_record(self.job_run.id, result)
@@ -129,10 +154,10 @@ class GenomicJobController:
 
         return GenomicSubProcessResult.SUCCESS
 
-    def _get_last_successful_run_time(self, job_name):
+    def _get_last_successful_run_time(self):
         """Return last successful run's starttime from `genomics_job_runs`"""
         # TODO: implement once 'Cell Line' test runs are complete
-        # pylint: disable=unused-argument
+        self.job_run_dao.get_last_successful_runtime(self.job_id)
         last_run_time = "2019-11-05"
         return last_run_time
 

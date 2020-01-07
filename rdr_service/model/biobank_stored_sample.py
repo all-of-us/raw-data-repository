@@ -70,4 +70,6 @@ class BiobankStoredSample(Base):
     # Sample family ID
     family_id = Column("family_id", String(80), nullable=True)
 
+    nightlyReportDate = Column("nightly_report_date", UTCDateTime)
+
     __table_args__ = (Index("ix_boi_test", "biobank_order_identifier", "test"),)

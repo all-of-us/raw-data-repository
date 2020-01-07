@@ -518,6 +518,7 @@ class GenomicJob(messages.Enum):
     METRICS_INGESTION = 1
     RECONCILE_MANIFEST = 2
     RECONCILE_SEQUENCING = 3
+    NEW_PARTICIPANT_WORKFLOW = 4
 
 
 class GenomicSubProcessStatus(messages.Enum):

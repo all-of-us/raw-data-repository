@@ -430,3 +430,24 @@ class GenomicReconciler:
                                                              seq_file_name,
                                                              job_run_id)
 
+
+class GenomicBiobankSamplesCoupler:
+    """This component creates new genomic set
+    and members from the biobank samples pipeline"""
+
+    def __init__(self):
+        pass
+
+    def create_new_genomic_participants(self):
+        pass
+
+
+class GenomicManifestCoupler:
+    """This component uses the existing manifest
+    handler to create a genomic manifest"""
+
+    def __init__(self):
+        pass
+
+    def create_manifest(self):
+        pass

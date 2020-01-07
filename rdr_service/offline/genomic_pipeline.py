@@ -68,3 +68,14 @@ def reconcile_metrics_vs_sequencing():
     run_controller = genomic_job_controller.GenomicJobController(job_id)
     result = run_controller.run_reconciliation_to_sequencing()
     run_controller.end_run(result)
+
+
+def new_participant_workflow():
+    """
+    Entrypoint for New Participant Workflow,
+    using newly created biobank_stored_samples from the BiobankSamplesPipeline.
+    """
+    job_id = GenomicJob.NEW_PARTICIPANT_WORKFLOW
+    run_controller = genomic_job_controller.GenomicJobController(job_id)
+    result = run_controller.run_new_participant_workflow()
+    run_controller.end_run(result)
