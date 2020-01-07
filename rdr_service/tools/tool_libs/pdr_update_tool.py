@@ -152,7 +152,8 @@ def run():
     # Rebuild PDR participants
     rebuild_parser = subparser.add_parser("rebuild-pids")
     rebuild_parser.add_argument("--pid", help="rebuild single participant id", type=int, default=None)  # noqa
-    rebuild_parser.add_argument("--from-file", help="rebuild participant ids from a file with a list of pids", default=None)  # noqa
+    rebuild_parser.add_argument("--from-file", help="rebuild participant ids from a file with a list of pids",
+                                default=None)  # noqa
 
     args = parser.parse_args()
 
