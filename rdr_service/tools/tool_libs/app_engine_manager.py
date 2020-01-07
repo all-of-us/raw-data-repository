@@ -18,7 +18,7 @@ from rdr_service.services.system_utils import setup_logging, setup_i18n, git_cur
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, GCP_APP_CONFIG_MAP
 from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
-    gcp_application_default_creds_exist
+    gcp_application_default_creds_exist, gcp_restart_instances
 from rdr_service.tools.tool_libs.alembic import AlembicManagerClass
 from rdr_service.services.jira_utils import JiraTicketHandler
 
@@ -236,7 +236,7 @@ class DeployAppClass(object):
 
         # Install app config
         _logger.info(self.add_jira_comment(f"Updating config for '{self.gcp_env.project}'"))
-        app_config = AppConfigClass(self.args, self.gcp_env)
+        app_config = AppConfigClass(self.args, self.gcp_env, restart=False)
         app_config.update_app_config()
         _logger.info(self.add_jira_comment(f"Config for '{self.gcp_env.project}' updated."))
 
@@ -246,6 +246,8 @@ class DeployAppClass(object):
 
         _logger.info('Cleaning up...')
         self.clean_up_config_files(config_files)
+
+        gcp_restart_instances(self.gcp_env.project)
 
         _logger.info('Switching back to git branch/tag: {0}...'.format(self._current_git_branch))
         git_checkout_branch(self._current_git_branch)
@@ -311,6 +313,7 @@ class DeployAppClass(object):
         _logger.info('')
         _logger.info('=' * 90)
 
+
         if not self.args.quiet:
             confirm = input('\nStart deployment (Y/n)? : ')
             if confirm and confirm.lower().strip() != 'y':
@@ -318,6 +321,7 @@ class DeployAppClass(object):
                 return 1
 
         return self.deploy_app()
+
 
 
 class ListServicesClass(object):
@@ -428,13 +432,14 @@ class AppConfigClass(object):
     _config_dir = None
     _provider = None
 
-    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject, restart=True):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
         """
         self.args = args
         self.gcp_env = gcp_env
+        self.restart = restart
 
         self._config_dir = os.path.join(self.args.git_project, 'rdr_service/config')
         if not os.path.exists(self._config_dir):
@@ -597,7 +602,36 @@ class AppConfigClass(object):
         else:
             self.get_app_config()
 
+        if self.restart:
+            gcp_restart_instances(self.gcp_env.project)
+
         return 0
+
+
+class RunGCPUtilCommand:
+    _config_dir = None
+    _provider = None
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        """
+        :param args: The argument to 'run_single_util' should be a function inside of gcp_utils
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        """
+        self.args = args
+        self.gcp_env = gcp_env
+
+
+    def run(self):
+        function = self.args.run_single_util
+        try:
+            package = "rdr_service.services.gcp_utils"
+            imported = getattr(__import__(package, fromlist=[function]), function)
+            # call the function
+            return_code = imported(self)
+        except ImportError as err:
+            _logger.warning(err)
+
+        return return_code
 
 
 def run():
@@ -625,8 +659,9 @@ def run():
     deploy_parser.add_argument("--deploy-as", help="deploy as version", default=None)  #noqa
     deploy_parser.add_argument("--services", help="comma delimited list of service names to deploy",
                                default=None)  # noqa
+
     deploy_parser.add_argument("--no-promote", help="do not promote version to serving state.",
-                        default=False, action="store_true")  # noqa
+                               default=False, action="store_true")  # noqa
 
     # List app engine services
     service_list_parser = subparser.add_parser("list")
@@ -650,6 +685,10 @@ def run():
     config_parser.add_argument('--update', help='update cloud app config.', default=False, action="store_true")  # noqa
     config_parser.add_argument('--to-file', help='export config to file', default='', type=str)  # noqa
     config_parser.add_argument('--from-file', help='import config from file', default='', type=str)  # noqa
+
+    config_parser = subparser.add_parser("test")
+    config_parser.add_argument('--run-single-util', help='runs single gcp util command, good for testing',
+                               default='', type=str)  # noqa
 
     args = parser.parse_args()
 
@@ -678,6 +717,10 @@ def run():
 
         elif hasattr(args, 'key'):
             process = AppConfigClass(args, gcp_env)
+            exit_code = process.run()
+
+        elif hasattr(args, 'run_single_util'):
+            process = RunGCPUtilCommand(args, gcp_env)
             exit_code = process.run()
 
         else:

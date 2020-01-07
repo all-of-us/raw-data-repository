@@ -6,11 +6,9 @@ import time
 import traceback
 import random
 
-from rdr_service.services.gcp_config import GCP_APP_CONFIG_MAP
-
 from rdr_service.config import GoogleCloudDatastoreConfigProvider
-from rdr_service.services.gcp_utils import gcp_activate_sql_proxy, gcp_cleanup, gcp_initialize, \
-    gcp_format_sql_instance, gcp_get_current_project
+from rdr_service.services.gcp_config import GCP_APP_CONFIG_MAP
+from rdr_service.services.gcp_utils import gcp_activate_sql_proxy, gcp_cleanup, gcp_initialize, gcp_format_sql_instance
 from rdr_service.services.system_utils import remove_pidfile, write_pidfile_or_die, git_project_root, TerminalColors
 
 _logger = logging.getLogger("rdr_logger")
@@ -35,9 +33,6 @@ class GCPEnvConfigObject(object):
         # Determine the git project root directory.
         envron_path = os.environ.get('RDR_PROJECT', None)
         git_root_path = git_project_root()
-        if not git_root_path:
-            git_root_path = git_project_root('raw_data_repository')
-
         if envron_path:
             self.git_project = envron_path
         elif git_root_path:
@@ -144,12 +139,16 @@ class GCPEnvConfigObject(object):
 
         return None
 
-    def activate_sql_proxy(self, user: str = 'rdr', project: str = None, replica: bool = False) -> int:
+    def activate_sql_proxy(self, user: str = 'rdr', project: str = None,
+                           replica: bool = False, instance: str = None,
+                           port: int = None) -> int:
         """
         Activate a google sql proxy instance service and set DB_CONNECTION_STRING environment var.
         :param user: database user, must be one of ['root', 'alembic', 'rdr'].
         :param project: GCP project id.
         :param replica: Use replica db instance or Primary instance.
+        :param instance: may be provided from tools
+        :param port: may be provided from tools
         :return: pid
         """
         if self._sql_proxy_process:
@@ -165,9 +164,10 @@ class GCPEnvConfigObject(object):
             return 1
 
         _logger.debug("Starting google sql proxy...")
-        port = random.randint(10000, 65535)
+        port = port if port else random.randint(10000, 65535)
+        instance = instance if instance else gcp_format_sql_instance(
+            project if project else self.project, port=port, replica=replica)
 
-        instance = gcp_format_sql_instance(project if project else self.project, port=port, replica=replica)
         self._sql_proxy_process = gcp_activate_sql_proxy(instance)
 
         if self._sql_proxy_process:
@@ -195,24 +195,17 @@ class GCPProcessContext(object):
 
     _env_config_obj = None
 
-    def __init__(self, command, project, account=None, service_account=None, lookup_configurator_sa=False):
+    def __init__(self, command, project, account=None, service_account=None):
         """
         Initialize GCP Context Manager
         :param command: command name
         :param project: gcp project name
         :param account: pmi-ops account
         :param service_account: gcp iam service account
-        :param lookup_configurator_sa: try looking up the service account from the project id
         """
         if not command:
             _logger.error("command not set, aborting.")
             exit(1)
-
-        # Be helpful and try to get the app engine configurator service account if asked to do so.
-        if not service_account and lookup_configurator_sa:
-            gcp_env = GCPEnvConfigObject(dict())  # Create temporary object.
-            service_account = \
-                gcp_env.get_gcp_configurator_account(self._project if self._project else gcp_get_current_project())
 
         self._command = command
         self._project = project

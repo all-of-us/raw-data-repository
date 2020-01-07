@@ -13,7 +13,7 @@ _python()
 
 
     # These are the specific tools we support
-    tools="--help migrate-bq verify oauth-token mysql app-engine alembic"
+    tools="--help migrate-bq verify oauth-token mysql app-engine alembic sync-consents"
     # These are the standard options all tools support.
     stdopts="--help --debug --log-file --project --account --service-account"
 
@@ -44,6 +44,12 @@ _python()
         migrate-bq)
             # These are options specific to this tool.
             local toolopts="--dataset --delete"
+            COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
+            return 0
+            ;;
+        sync-consents)
+            # These are options specific to this tool.
+            local toolopts="--org-id --destination-bucket --dry-run --date-limit --end-date --all-files"
             COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
             return 0
             ;;

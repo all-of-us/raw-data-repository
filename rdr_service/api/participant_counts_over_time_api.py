@@ -29,7 +29,8 @@ class ParticipantCountsOverTimeApi(Resource):
             "enrollment_statuses": request.args.get("enrollmentStatus"),
             "sample_time_def": request.args.get("filterBy"),
             "awardees": request.args.get("awardee"),
-            "version": request.args.get("version"),
+            "participant_origins": request.args.get("origin"),
+            "version": request.args.get("version")
         }
 
         filters = self.validate_params(params)
@@ -67,6 +68,10 @@ class ParticipantCountsOverTimeApi(Resource):
 
             filters["start_date"] = start_date
             filters["end_date"] = end_date
+        elif filters['stratification'] == Stratifications.PARTICIPANT_ORIGIN:
+            # no date needed
+            filters['start_date'] = None
+            filters['end_date'] = None
         else:
             # Validate dates
             if not params["start_date"] or not params["end_date"]:
@@ -143,5 +148,10 @@ class ParticipantCountsOverTimeApi(Resource):
             raise BadRequest(f"Invalid value for parameter history: {params['history']}")
         else:
             filters["history"] = params["history"]
+
+        participant_origins = []
+        if params["participant_origins"] is not None:
+            participant_origins = params["participant_origins"].split(",")
+        filters['participant_origins'] = participant_origins
 
         return filters
