@@ -442,9 +442,10 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         if study_consent:
             status = EnrollmentStatus.INTERESTED
-        if ehr_consent or dvehr_consent:
+        if status == EnrollmentStatus.INTERESTED and ehr_consent or dvehr_consent:
             status = EnrollmentStatus.MEMBER
-        if pm_complete and 'modules' in ro_summary and baseline_module_count >= len(self._baseline_modules) and \
+        if status == EnrollmentStatus.MEMBER and pm_complete and 'modules' in ro_summary and\
+                        baseline_module_count >= len(self._baseline_modules) and \
             dna_sample_count > 0:
             status = EnrollmentStatus.FULL_PARTICIPANT
 
