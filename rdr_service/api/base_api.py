@@ -157,7 +157,9 @@ class BaseApi(Resource):
         resource = request.get_json(force=True)
         m = self._get_model_to_insert(resource, participant_id)
         result = self._do_insert(m)
-        if participant_id:
+        if participant_id or (result and hasattr(result, 'participantId')):
+            if not participant_id:
+                participant_id = getattr(result, 'participantId')
             # Rebuild participant for BigQuery
             if GAE_PROJECT == 'localhost':
                 bq_participant_summary_update_task(participant_id)
