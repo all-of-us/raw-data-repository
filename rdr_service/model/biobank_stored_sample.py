@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Index, Integer, String
+from sqlalchemy import Column, ForeignKey, Index, Integer, String, DateTime
 
 from rdr_service.model.base import Base
 from rdr_service.model.utils import Enum, UTCDateTime
@@ -70,6 +70,6 @@ class BiobankStoredSample(Base):
     # Sample family ID
     family_id = Column("family_id", String(80), nullable=True)
 
-    nightlyReportDate = Column("nightly_report_date", UTCDateTime)
+    nightlyReportDate = Column("nightly_report_date", DateTime)
 
     __table_args__ = (Index("ix_boi_test", "biobank_order_identifier", "test"),)

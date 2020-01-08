@@ -3,6 +3,7 @@ This module tracks and validates the status of Genomics Pipeline Subprocesses.
 """
 
 import logging
+from datetime import datetime
 
 from rdr_service.config import (
     GENOMIC_GC_METRICS_BUCKET_NAME,
@@ -37,6 +38,8 @@ class GenomicJobController:
 
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET
+
+        self.default_date = datetime(2019, 11, 5, 0, 0, 0)
 
         # Components
         self.job_run_dao = GenomicJobRunDao()
@@ -120,17 +123,11 @@ class GenomicJobController:
         and ManifestCoupler components
         :return: result code for job run
         """
-        self.biobank_coupler = GenomicBiobankSamplesCoupler()
-
-        self.manifest_coupler = GenomicManifestCoupler()
+        self.biobank_coupler = GenomicBiobankSamplesCoupler(self.job_run.id)
 
         try:
             last_run_date = self._get_last_successful_run_time()
-
-            bb_result = self.biobank_coupler.create_new_genomic_participants()
-            manifest_result = self.manifest_coupler.create_manifest()
-            # TODO: get result from the couplers
-
+            return self.biobank_coupler.create_new_genomic_participants(last_run_date)
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
@@ -156,10 +153,8 @@ class GenomicJobController:
 
     def _get_last_successful_run_time(self):
         """Return last successful run's starttime from `genomics_job_runs`"""
-        # TODO: implement once 'Cell Line' test runs are complete
-        self.job_run_dao.get_last_successful_runtime(self.job_id)
-        last_run_time = "2019-11-05"
-        return last_run_time
+        last_run_time = self.job_run_dao.get_last_successful_runtime(self.job_id)
+        return last_run_time if last_run_time else self.default_date
 
     def _create_run(self, job_id):
         return self.job_run_dao.insert_run_record(job_id)

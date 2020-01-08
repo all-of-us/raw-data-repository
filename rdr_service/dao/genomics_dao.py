@@ -332,7 +332,9 @@ class GenomicJobRunDao(UpdatableDao):
 
     def _get_last_runtime_with_session(self, session, job_id):
         return session.query(functions.max(GenomicJobRun.startTime))\
-            .filter(GenomicJobRun.jobId == job_id)
+            .filter(GenomicJobRun.jobId == job_id,
+                    GenomicJobRun.runResult == GenomicSubProcessResult.SUCCESS)\
+            .one()
 
     def insert_run_record(self, job_id):
         """
