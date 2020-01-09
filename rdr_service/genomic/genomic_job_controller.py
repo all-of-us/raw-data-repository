@@ -15,8 +15,7 @@ from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
     GenomicFileMover,
     GenomicReconciler,
-    GenomicBiobankSamplesCoupler,
-    GenomicManifestCoupler
+    GenomicBiobankSamplesCoupler
 )
 from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,

@@ -18,6 +18,7 @@ from rdr_service.dao.genomics_dao import (
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.site_dao import SiteDao
+from rdr_service.dao.code_dao import CodeDao, CodeType
 from rdr_service.genomic import genomic_set_file_handler
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.model.biobank_dv_order import BiobankDVOrder
@@ -33,6 +34,7 @@ from rdr_service.model.genomics import (
     GenomicJobRun
 )
 from rdr_service.model.participant import Participant
+from rdr_service.model.code import Code
 from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import (
     SampleStatus,
@@ -80,6 +82,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.sample_dao = BiobankStoredSampleDao()
         self.site_dao = SiteDao()
+        self.code_dao = CodeDao()
         self._participant_i = 1
 
     mock_bucket_paths = [_FAKE_BUCKET,
@@ -803,6 +806,21 @@ class GenomicPipelineTest(BaseTestCase):
         for site in sites:
             self.site_dao.update(site)
 
+    def _setup_fake_sex_at_birth_codes(self, sex_code='n'):
+        if sex_code.lower() == 'f':
+            c_val = "SexAtBirth_Female"
+        elif sex_code.lower() == 'm':
+            c_val = "SexAtBirth_Male"
+        else:
+            c_val = "SexAtBirth_Intersex"
+        code_to_insert = Code(
+            system="a",
+            value=c_val,
+            display="c",
+            topic="d",
+            codeType=CodeType.ANSWER, mapped=True)
+        return self.code_dao.insert(code_to_insert).codeId
+
     def test_gc_metrics_reconciliation_vs_manifest(self):
         # Create the fake Google Cloud CSV files to ingest
         self._create_fake_datasets_for_gc_tests(1)
@@ -932,7 +950,7 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_new_participant_workflow(self):
         # create test samples
-        test_biobank_ids = (100001, 100002, 100003)
+        test_biobank_ids = (100001, 100002, 100003, 100004, 100005, 100006)
         fake_datetime_old = datetime.datetime(2019, 12, 31, tzinfo=pytz.utc)
         fake_datetime_new = datetime.datetime(2020, 1, 5, tzinfo=pytz.utc)
         sample_args = {
@@ -940,20 +958,29 @@ class GenomicPipelineTest(BaseTestCase):
             'confirmed': fake_datetime_new,
             'created': fake_datetime_old,
         }
-        # update the sites' states for the state test
+        # update the sites' States for the state test (NY or AZ)
         self._update_site_states()
+
+        # setup sex_at_birth code for unittests
+        female_code = self._setup_fake_sex_at_birth_codes('f')
+        intersex_code = self._setup_fake_sex_at_birth_codes()
 
         # Setup the biobank order backend
         for bid in test_biobank_ids:
             p = self._make_participant(biobankId=bid)
-            self._make_summary(p)
-            site_id = 1 if bid == 100002 else 2
+            self._make_summary(p,
+                               sexId=intersex_code if bid == 100004 else female_code,
+                               consentForStudyEnrollment=0 if bid == 100006 else 1,
+                               sampleStatus1ED04=0,
+                               sampleStatus1SAL2=0 if bid == 100005 else 1,
+                               samplesToIsolateDNA=0,
+                               )
             test_identifier = BiobankOrderIdentifier(
                     system=u'c',
                     value=u'e{}'.format(bid))
             self._make_biobank_order(biobankOrderId=f'W{bid}',
                                      participantId=p.participantId,
-                                     collectedSiteId=site_id,
+                                     collectedSiteId=1 if bid == 100002 else 2,
                                      identifiers=[test_identifier])
             sample_args.update({
                 'biobankId': bid,
@@ -984,7 +1011,7 @@ class GenomicPipelineTest(BaseTestCase):
         new_genomic_members = self.member_dao.get_all()
         self.assertEqual(2, len(new_genomic_members))
 
-        # Test Members' data
+        # Test GenomicMember's data
         for member in new_genomic_members:
             if member.biobankId == '100002':
                 self.assertEqual(1, member.nyFlag)
@@ -1010,16 +1037,15 @@ class GenomicPipelineTest(BaseTestCase):
         blob_name = self._find_latest_genomic_set_csv(bucket_name, _FAKE_BUCKET_FOLDER)
         with open_cloud_file(os.path.normpath(bucket_name + '/' + blob_name)) as csv_file:
             csv_reader = csv.DictReader(csv_file, delimiter=",")
-
             missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
-            self.assertEqual(len(missing_cols), 0)
+            self.assertEqual(0, len(missing_cols))
             rows = list(csv_reader)
             # TODO: Get info on what other fields we need to populate for this wf
-            self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ID], "T100002")
-            self.assertEqual(rows[0][ExpectedCsvColumns.SEX_AT_BIRTH], "F")
-            self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], "Y")
-            self.assertEqual(rows[1][ExpectedCsvColumns.BIOBANK_ID], "T100003")
-            self.assertEqual(rows[1][ExpectedCsvColumns.SEX_AT_BIRTH], "F")
-            self.assertEqual(rows[1][ExpectedCsvColumns.NY_FLAG], "N")
+            self.assertEqual("T100002", rows[0][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual("F", rows[0][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("Y", rows[0][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("T100003", rows[1][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual("F", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("N", rows[1][ExpectedCsvColumns.NY_FLAG])
 
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)

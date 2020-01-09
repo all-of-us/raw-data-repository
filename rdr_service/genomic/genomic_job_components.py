@@ -2,11 +2,14 @@
 Component Classes for Genomic Jobs
 Components are assembled by the JobController for a particular Genomic Job
 """
-from collections import deque, namedtuple
 
 import csv
 import logging
 import re
+import datetime
+from collections import deque, namedtuple
+
+from sqlalchemy import or_
 
 from rdr_service.api_util import (
     open_cloud_file,
@@ -20,7 +23,13 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.genomics import GenomicSet, GenomicSetMember
 from rdr_service.model.code import Code
-from rdr_service.participant_enums import GenomicSubProcessResult
+from rdr_service.participant_enums import (
+    GenomicSubProcessResult,
+    WithdrawalStatus,
+    QuestionnaireStatus,
+    SampleStatus,
+    GenomicSetStatus,
+)
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,
@@ -31,6 +40,11 @@ from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.genomic.genomic_biobank_menifest_handler import create_and_upload_genomic_biobank_manifest_file
+from rdr_service.genomic.validation import (
+    GENOMIC_VALID_AGE,
+    GENOMIC_VALID_CONSENT_CUTOFF,
+)
+
 
 class GenomicFileIngester:
     """
@@ -445,6 +459,11 @@ class GenomicBiobankSamplesCoupler:
     """This component creates new genomic set
     and members from the biobank samples pipeline"""
 
+    _SEX_AT_BIRTH_CODES = {
+        'male': 'M',
+        'female': 'F'
+    }
+
     def __init__(self, run_id):
         self.samples_dao = BiobankStoredSampleDao()
         self.set_dao = GenomicSetDao()
@@ -453,51 +472,54 @@ class GenomicBiobankSamplesCoupler:
         self.ps_dao = ParticipantSummaryDao()
         self.run_id = run_id
 
-        # Components
-        self.manifest_coupler = GenomicManifestCoupler()
-
     def create_new_genomic_participants(self, from_date):
         """This method is the main execution method for this class
         It determines which biobankIDs to process and then executes subprocesses
+        Validation is handled in the query that get's the new Biobank IDs to process.
         :param: from_date : the date from which to lookup new biobank_ids
         :return: result
         """
-        # bid, pid, identifier, site_id
-        GenomicSampleMeta = namedtuple("GenomicSampleMeta", "bid, pid, identifier, site_id")
-        sample_meta = GenomicSampleMeta(*self._get_new_biobank_samples(from_date))
-        print(sample_meta)
-        if len(sample_meta) > 0:
-            logging.info(f'Processing new biobank_ids {sample_meta[0]}')
+        samples = self._get_new_biobank_samples(from_date)
+        if len(samples) > 0:
+            # Get the genomic data to insert into GenomicSetMember as multi-dim tuple
+            GenomicSampleMeta = namedtuple("GenomicSampleMeta", "bids, pids, identifiers, site_ids")
+            samples_meta = GenomicSampleMeta(*samples)
+            logging.info(f'Processing new biobank_ids {samples_meta.bids}')
             new_genomic_set = self._create_new_genomic_set()
             # Create genomic set members
-            for i, bid in enumerate(sample_meta[0]):
+            for i, bid in enumerate(samples_meta.bids):
+                # Extra validations cleaner that need to be calculated
+                sab_code = self._get_sex_at_birth(samples_meta.pids[i])
+                if sab_code not in self._SEX_AT_BIRTH_CODES.values():
+                    continue
                 # TODO: add biobankOrderId, client, etc. attributes
                 self._create_new_set_member(
                     biobankId=bid,
                     genomicSetId=new_genomic_set.id,
-                    participantId=sample_meta[1][i],
-                    nyFlag=self._get_new_york_flag(sample_meta[3][i]),
-                    sexAtBirth=self._get_sex_at_birth(sample_meta[1][i]),
+                    participantId=samples_meta.pids[i],
+                    nyFlag=self._get_new_york_flag(samples_meta.site_ids[i]),
+                    sexAtBirth=sab_code,
                 )
-
-            # Manifest
+            # Create & transfer the Biobank Manifest based no the new genomic set
             try:
                 create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id)
                 return GenomicSubProcessResult.SUCCESS
             except RuntimeError:
                 return GenomicSubProcessResult.ERROR
-
         else:
             logging.info(f'New Participant Workflow: No new biobank_ids to process.')
             return GenomicSubProcessResult.NO_FILES
 
     def _get_new_biobank_samples(self, from_date):
         """
-        This method retrieves BiobankStoredSample objects with nightlyReportDate
+        Retrieves BiobankStoredSample objects with nightlyReportDate
         after the last run of the new participant workflow job.
+        The query filters out participants that do not match the
+        genomic validation requirements.
         :param: from_date
         :return: list of tuples (bid, pid, biobank_identifier.value, collected_site_id)
         """
+        # TODO: add Genomic ROR consent when that project launches
         with self.samples_dao.session() as session:
             result = session.query(BiobankStoredSample.biobankId,
                                    Participant.participantId,
@@ -506,6 +528,16 @@ class GenomicBiobankSamplesCoupler:
                 BiobankStoredSample.biobankId == Participant.biobankId,
                 BiobankOrder.biobankOrderId == BiobankOrderIdentifier.biobankOrderId,
                 BiobankStoredSample.biobankOrderIdentifier == BiobankOrderIdentifier.value,
+                Participant.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.participantId == Participant.participantId,
+                ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
+                ParticipantSummary.consentForStudyEnrollmentTime > GENOMIC_VALID_CONSENT_CUTOFF,
+                ParticipantSummary.dateOfBirth < (
+                    datetime.datetime.now() - datetime.timedelta(days=GENOMIC_VALID_AGE*365)
+                ), or_(
+                    ParticipantSummary.sampleStatus1ED04 == SampleStatus.RECEIVED,
+                    ParticipantSummary.sampleStatus1SAL2 == SampleStatus.RECEIVED
+                ),
                 BiobankStoredSample.nightlyReportDate > from_date).distinct()
         return list(zip(*result))
 
@@ -515,6 +547,7 @@ class GenomicBiobankSamplesCoupler:
             'genomicSetName': f'new_participant_workflow_{self.run_id}',
             'genomicSetCriteria': '.',
             'genomicSetVersion': 1,
+            'genomicSetStatus': GenomicSetStatus.VALID,
         }
         new_set_obj = GenomicSet(**attributes)
         return self.set_dao.insert(new_set_obj)
@@ -526,7 +559,8 @@ class GenomicBiobankSamplesCoupler:
 
     def _get_new_york_flag(self, collected_site_id):
         """
-        Looks up whether a collected site's state is NY
+        Looks up whether a collected site's state is NY,
+        TODO: verify using site.state, not ZIP, is OK
         :param collected_site_id: the id of the site
         :return: int
         """
@@ -534,29 +568,15 @@ class GenomicBiobankSamplesCoupler:
 
     def _get_sex_at_birth(self, participant_id):
         """
-        Looks up participant's sex at birth
+        Looks up participant's sex at birth based on code.vale
         :param participant_id: the id of the participant
         :return: 'M', 'F', or 'NA'
         """
-        # TODO: Implement when details received DA-1352
-        # with self.ps_dao.session() as session:
-        #     result = session.query(Code.value)\
-        #                   .filter(Code.codeId == ParticipantSummary.sexId,
-        #                           ParticipantSummary.participantId == participant_id)\
-        #                   .first()
-        # if result and result in _SEX_AT_BIRTH_CODES:
-        #     print(result)
-        #     return result
-        # else:
-        #     return 'NA'
-        return 'F'
-
-class GenomicManifestCoupler:
-    """This component uses the existing manifest
-    handler to create a genomic manifest"""
-
-    def __init__(self):
-        pass
-
-    def create_manifest(self):
-        pass
+        # Assumes code.values like 'SexAtBirth_Male' and 'SexAtBirth_Female'
+        with self.ps_dao.session() as session:
+            result = session.query(Code.value)\
+                          .filter(Code.codeId == ParticipantSummary.sexId,
+                                  ParticipantSummary.participantId == participant_id)\
+                          .first()
+        return self._SEX_AT_BIRTH_CODES.get(
+                 result[0].lower().split('_')[-1], 'NA') if result else 'NA'
