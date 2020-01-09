@@ -54,11 +54,15 @@ class QuestionnaireTestMixin:
     def questionnaire_response_url(participant_id):
         return "Participant/%s/QuestionnaireResponse" % participant_id
 
-    def create_questionnaire(self, filename):
+    def create_questionnaire(self, filename, concept_id=None):
         with open(data_path(filename)) as f:
             questionnaire = json.load(f)
             response = self.send_post("Questionnaire", questionnaire)
             return response["id"]
+
+    @staticmethod
+    def make_code_answer(link_id, value):
+        return (link_id, Concept(PPI_SYSTEM, value))
 
     @staticmethod
     def make_questionnaire_response_json(
@@ -71,6 +75,9 @@ class QuestionnaireTestMixin:
         language=None,
         authored=None,
     ):
+        if isinstance(participant_id, int):
+            participant_id = f'P{participant_id}'
+
         results = []
         if code_answers:
             for answer in code_answers:
@@ -218,8 +225,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         return ParticipantHistory(**common_args)
 
     def submit_questionnaire_response(
-        self, participant_id, questionnaire_id, race_code, gender_code, state, date_of_birth
-    ):
+        self, participant_id, questionnaire_id, race_code, gender_code, state, date_of_birth):
         code_answers = []
         date_answers = []
         if race_code:
@@ -247,8 +253,12 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         summary.email = self.fake.email()
         return summary
 
-    def create_participant(self):
-        response = self.send_post("Participant", {})
+    def create_participant(self, provider_link=None):
+        if provider_link:
+            provider_link = {"providerLink": [provider_link]}
+        else:
+            provider_link = {}
+        response = self.send_post("Participant", provider_link)
         return response["participantId"]
 
     def send_post(self, *args, **kwargs):
@@ -298,6 +308,10 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
 
     def send_consent(self, participant_id, email=None, language=None, code_values=None, authored=None):
+
+        if isinstance(participant_id, int):
+            participant_id = f'P{participant_id}'
+
         if not self._consent_questionnaire_id:
             self._consent_questionnaire_id = self.create_questionnaire("study_consent.json")
         self.first_name = self.fake.first_name()

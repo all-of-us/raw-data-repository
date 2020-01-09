@@ -6,11 +6,14 @@ Also updates ParticipantSummary data related to samples.
 import csv
 import datetime
 import logging
+import math
 import os
+
 import pytz
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file, list_blobs
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.code_constants import PPI_SYSTEM, RACE_AIAN_CODE, RACE_QUESTION_CODE
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.code_dao import CodeDao
@@ -20,6 +23,7 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import from_client_biobank_id, get_biobank_id_prefix
 from rdr_service.model.participant import Participant
+from rdr_service.offline.bigquery_sync import rebuild_bq_participant_task
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import BiobankOrderStatus, OrganizationType, get_sample_status_enum_value
 
@@ -72,8 +76,66 @@ def upsert_from_latest_csv():
     with open_cloud_file(csv_file_path) as csv_file:
         csv_reader = csv.DictReader(csv_file, delimiter="\t")
         written = _upsert_samples_from_csv(csv_reader)
-    ParticipantSummaryDao().update_from_biobank_stored_samples()
+
+    ts = datetime.datetime.now()
+    dao = ParticipantSummaryDao()
+    dao.update_from_biobank_stored_samples()
+    update_bigquery_sync_participants(ts, dao)
+
     return written, timestamp
+
+def update_bigquery_sync_participants(ts, dao):
+    """
+    Update all participants modified by the biobank reconciliation process.
+    :param ts: Timestamp
+    :param dao: DAO Object
+    """
+    batch_size = 250
+
+    with dao.session() as session:
+        participants = session.query(Participant.participantId).filter(Participant.lastModified > ts).all()
+
+        total_rows = len(participants)
+        count = int(math.ceil(float(total_rows) / float(batch_size)))
+        logging.info('Biobank: calculated {0} tasks from {1} records with a batch size of {2}.'.
+                     format(count, total_rows, batch_size))
+
+        count = 0
+        batch_count = 0
+        batch = list()
+
+        # queue up a batch of participant ids and send them to be rebuilt.
+        for p in participants:
+
+            batch.append({'pid': p.participantId})
+            count += 1
+
+            if count == batch_size:
+                payload = {'batch': batch}
+
+                if config.GAE_PROJECT == 'localhost':
+                    rebuild_bq_participant_task(payload)
+                else:
+                    task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
+                                        queue='bigquery-rebuild')
+                    task.execute(quiet=True)
+                batch_count += 1
+                # reset for next batch
+                batch = list()
+                count = 0
+
+        # send last batch if needed.
+        if count:
+            payload = {'batch': batch}
+            batch_count += 1
+            if config.GAE_PROJECT == 'localhost':
+                rebuild_bq_participant_task(payload)
+            else:
+                task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
+                                    queue='bigquery-rebuild')
+                task.execute(quiet=True)
+
+        logging.info(f'Biobank: submitted {batch_count} tasks.')
 
 
 def get_last_biobank_sample_file_info(monthly=False):

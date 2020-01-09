@@ -17,7 +17,7 @@ from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
-from rdr_service.participant_enums import EnrollmentStatus, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
+from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus
 
 
@@ -399,11 +399,14 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :param ro_summary: summary data
         :return: dict
         """
+        status = EnrollmentStatusV2.REGISTERED
         if 'consents' not in ro_summary:
-            return {}
+            return {
+                'enrollment_status': str(status),
+                'enrollment_status_id': int(status),
+            }
 
         study_consent = ehr_consent = dvehr_consent = pm_complete = False
-        status = None
         # iterate over consents
         for consent in ro_summary['consents']:
             if consent['consent'] == 'ConsentPII':
@@ -441,13 +444,13 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         dna_sample_count = len(list(filter(lambda test: test[0] in self._baseline_sample_test_codes, results)))
 
         if study_consent:
-            status = EnrollmentStatus.INTERESTED
-        if status == EnrollmentStatus.INTERESTED and ehr_consent or dvehr_consent:
-            status = EnrollmentStatus.MEMBER
-        if status == EnrollmentStatus.MEMBER and pm_complete and 'modules' in ro_summary and\
+            status = EnrollmentStatusV2.PARTICIPANT
+        if status == EnrollmentStatusV2.PARTICIPANT and ehr_consent or dvehr_consent:
+            status = EnrollmentStatusV2.FULLY_CONSENTED
+        if status == EnrollmentStatusV2.FULLY_CONSENTED and pm_complete and 'modules' in ro_summary and\
                         baseline_module_count >= len(self._baseline_modules) and \
             dna_sample_count > 0:
-            status = EnrollmentStatus.FULL_PARTICIPANT
+            status = EnrollmentStatusV2.CORE_PARTICIPANT
 
         # TODO: Get Enrollment dates for additional fields -> participant_summary_dao.py:499
 

@@ -35,7 +35,7 @@ class ParticipantDataSegmentTest(BaseTestCase):
 
         # care evolution can not retrieve vibrent participants
         for i in vibrent_participant_list:
-            print('getting participant...')
+            # print('getting participant...')
             self.send_get("Participant/{}".format(i), expected_status=http.client.BAD_REQUEST)
 
         BaseTestCase.switch_auth_user('example@spellman.com', 'vibrent')
