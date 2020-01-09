@@ -3,7 +3,9 @@ from sqlalchemy.orm import relationship
 from rdr_service.model.field_types import BlobUTF8
 from rdr_service.model.base import Base
 from rdr_service.model.utils import Enum
-from rdr_service.participant_enums import WorkbenchInstitutionNoAcademic
+from rdr_service.participant_enums import WorkbenchInstitutionNoAcademic, WorkbenchResearcherSexualOrientation, \
+    WorkbenchResearcherSexAtBirth, WorkbenchResearcherEthnicity
+
 
 class WorkbenchResearcherBase(object):
     userSourceId = Column("user_source_id", Integer, nullable=False)
@@ -17,9 +19,13 @@ class WorkbenchResearcherBase(object):
     state = Column("state", String(80))
     zipCode = Column("zip_code", String(80))
     country = Column("country", String(80))
-    ethnicity = Column("ethnicity", String(80))
+    ethnicity = Column("ethnicity", Enum(WorkbenchResearcherEthnicity), default=WorkbenchResearcherEthnicity.UNSET)
     gender = Column("gender", JSON)
     race = Column("race", JSON)
+    sexAtBirth = Column("sex_at_birth", Enum(WorkbenchResearcherSexAtBirth),
+                        default=WorkbenchResearcherSexAtBirth.UNSET)
+    sexualOrientation = Column("sexual_orientation", Enum(WorkbenchResearcherSexualOrientation),
+                               default=WorkbenchResearcherSexualOrientation.UNSET)
     resource = Column("resource", BlobUTF8, nullable=False)
 
 

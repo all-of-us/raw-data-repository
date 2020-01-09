@@ -25,6 +25,9 @@ class WorkbenchWorkspaceBase(object):
     commercialPurpose = Column("commercial_purpose", Boolean)
     educational = Column("educational", Boolean)
     otherPurpose = Column("other_purpose", Boolean)
+    reasonForInvestigation = Column("reason_for_investigation", String(500))
+    intendToStudy = Column("intend_to_study", String(500))
+    findingsFromStudy = Column("findings_from_study", String(500))
     resource = Column("resource", BlobUTF8, nullable=False)
 
 
