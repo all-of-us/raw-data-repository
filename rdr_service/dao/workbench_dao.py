@@ -20,7 +20,8 @@ from rdr_service.model.workbench_researcher import (
     WorkbenchInstitutionalAffiliationsHistory
 )
 from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWorkspaceUserRole, \
-    WorkbenchInstitutionNoAcademic
+    WorkbenchInstitutionNoAcademic, WorkbenchResearcherEthnicity, WorkbenchResearcherSexAtBirth, \
+    WorkbenchResearcherSexualOrientation, WorkbenchResearcherGender, WorkbenchResearcherRace
 
 
 class WorkbenchWorkspaceDao(UpdatableDao):
@@ -90,6 +91,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 commercialPurpose=item.get('commercialPurpose'),
                 educational=item.get('educational'),
                 otherPurpose=item.get('otherPurpose'),
+                reasonForInvestigation=item.get('reasonForInvestigation'),
+                intendToStudy=item.get('intendToStudy'),
+                findingsFromStudy=item.get('findingsFromStudy'),
                 workbenchWorkspaceUser=self._get_users(item.get('workspaceUsers')),
                 resource=json.dumps(item)
             )
@@ -185,6 +189,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 WorkbenchWorkspace.commercialPurpose.label('commercialPurpose'),
                 WorkbenchWorkspace.educational.label('educational'),
                 WorkbenchWorkspace.otherPurpose.label('otherPurpose'),
+                WorkbenchWorkspace.reasonForInvestigation.label('reasonForInvestigation'),
+                WorkbenchWorkspace.intendToStudy.label('intendToStudy'),
+                WorkbenchWorkspace.findingsFromStudy.label('findingsFromStudy'),
 
                 WorkbenchWorkspaceUser.userId.label('userId'),
                 WorkbenchWorkspaceUser.role.label('role'),
@@ -245,7 +252,10 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     "drugDevelopment": row.drugDevelopment,
                     "commercialPurpose": row.commercialPurpose,
                     "educational": row.educational,
-                    "otherPurpose": row.otherPurpose
+                    "otherPurpose": row.otherPurpose,
+                    "reasonForInvestigation": row.reasonForInvestigation,
+                    "intendToStudy": row.intendToStudy,
+                    "findingsFromStudy": row.findingsFromStudy
                 }
                 is_exist_workspace = False
                 for item in results:
@@ -312,6 +322,42 @@ class WorkbenchResearcherDao(UpdatableDao):
                 raise BadRequest('User givenName can not be NULL')
             if item.get('familyName') is None:
                 raise BadRequest('User familyName can not be NULL')
+            try:
+                if item.get('ethnicity') is None:
+                    item['ethnicity'] = 'UNSET'
+                WorkbenchResearcherEthnicity(item.get('ethnicity'))
+            except TypeError:
+                raise BadRequest(f"Invalid ethnicity status: {item.get('ethnicity')}")
+
+            try:
+                if item.get('sexAtBirth') is None:
+                    item['sexAtBirth'] = 'UNSET'
+                WorkbenchResearcherSexAtBirth(item.get('sexAtBirth'))
+            except TypeError:
+                raise BadRequest(f"Invalid sexAtBirth status: {item.get('sexAtBirth')}")
+
+            try:
+                if item.get('sexualOrientation') is None:
+                    item['sexualOrientation'] = 'UNSET'
+                WorkbenchResearcherSexualOrientation(item.get('sexualOrientation'))
+            except TypeError:
+                raise BadRequest(f"Invalid sexualOrientation status: {item.get('sexualOrientation')}")
+
+            gender_array = []
+            for gender in item.get('gender'):
+                try:
+                    gender_array.append(int(WorkbenchResearcherGender(gender)))
+                except TypeError:
+                    raise BadRequest(f"Invalid gender status: {gender}")
+            item['gender'] = gender_array
+
+            race_array = []
+            for race in item.get('race'):
+                try:
+                    race_array.append(int(WorkbenchResearcherRace(race)))
+                except TypeError:
+                    raise BadRequest(f"Invalid race status: {race}")
+            item['race'] = race_array
 
             for institution in item.get('affiliations'):
                 if institution.get('nonAcademicAffiliation') is None:
@@ -340,7 +386,9 @@ class WorkbenchResearcherDao(UpdatableDao):
                 state=item.get('state'),
                 zipCode=item.get('zipCode'),
                 country=item.get('country'),
-                ethnicity=item.get('ethnicity'),
+                ethnicity=WorkbenchResearcherEthnicity(item.get('ethnicity', 'UNSET')),
+                sexAtBirth=WorkbenchResearcherSexAtBirth(item.get('sexAtBirth', 'UNSET')),
+                sexualOrientation=WorkbenchResearcherSexualOrientation(item.get('sexualOrientation', 'UNSET')),
                 gender=item.get('gender'),
                 race=item.get('race'),
                 workbenchInstitutionalAffiliations=self._get_affiliations(item.get('affiliations')),

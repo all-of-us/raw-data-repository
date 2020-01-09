@@ -20,9 +20,11 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "state": "string",
                 "zipCode": "string",
                 "country": "string",
-                "ethnicity": "string",
-                "gender": "string",
-                "race": "string",
+                "ethnicity": "HISPANIC",
+                "gender": ["MALE"],
+                "race": ["AIAN"],
+                "sexAtBirth": "FEMALE",
+                "sexualOrientation": "BISEXUAL",
                 "affiliations": [
                     {
                         "institution": "institution1",
@@ -43,9 +45,11 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "state": "string2",
                 "zipCode": "string2",
                 "country": "string2",
-                "ethnicity": "string2",
-                "gender": "string2",
-                "race": "string2",
+                "ethnicity": "HISPANIC",
+                "sexAtBirth": "FEMALE",
+                "sexualOrientation": "BISEXUAL",
+                "gender": ["MALE", "FEMALE"],
+                "race": ["AIAN", "WHITE"],
                 "affiliations": [
                     {
                         "institution": "institution2",
@@ -93,7 +97,10 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "drugDevelopment": True,
                 "commercialPurpose": True,
                 "educational": True,
-                "otherPurpose": True
+                "otherPurpose": True,
+                "reasonForInvestigation": 'reasonForInvestigation string',
+                "intendToStudy": 'intendToStudy string',
+                "findingsFromStudy": 'findingsFromStudy string'
             },
             {
                 "workspaceId": 1,
@@ -125,7 +132,10 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "drugDevelopment": False,
                 "commercialPurpose": False,
                 "educational": False,
-                "otherPurpose": False
+                "otherPurpose": False,
+                "reasonForInvestigation": 'reasonForInvestigation string2',
+                "intendToStudy": 'intendToStudy string2',
+                "findingsFromStudy": 'findingsFromStudy string2'
             }
         ]
 
@@ -147,7 +157,10 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'diseaseFocusedResearchName': 'disease focused research name str',
                        'otherPurposeDetails': 'other purpose details str', 'methodsDevelopment': True,
                        'controlSet': True, 'ancestry': True, 'socialBehavioral': True, 'populationHealth': True,
-                       'drugDevelopment': True, 'commercialPurpose': True, 'educational': True, 'otherPurpose': True
+                       'drugDevelopment': True, 'commercialPurpose': True, 'educational': True, 'otherPurpose': True,
+                       'reasonForInvestigation': 'reasonForInvestigation string',
+                       'intendToStudy': 'intendToStudy string',
+                       'findingsFromStudy': 'findingsFromStudy string'
                        },
                       result)
         self.assertIn({'workspaceId': 1, 'name': 'workspace name str 2', 'creationTime': '2019-11-25T17:43:41',
@@ -160,7 +173,10 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'diseaseFocusedResearchName': 'disease focused research name str 2',
                        'otherPurposeDetails': 'other purpose details str 2', 'methodsDevelopment': False,
                        'controlSet': False, 'ancestry': False, 'socialBehavioral': False, 'populationHealth': False,
-                       'drugDevelopment': False, 'commercialPurpose': False, 'educational': False, 'otherPurpose': False
+                       'drugDevelopment': False, 'commercialPurpose': False, 'educational': False,
+                       'otherPurpose': False, 'reasonForInvestigation': 'reasonForInvestigation string2',
+                       'intendToStudy': 'intendToStudy string2',
+                       'findingsFromStudy': 'findingsFromStudy string2'
                        },
                       result)
 
@@ -180,6 +196,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'diseaseFocusedResearchName': 'disease focused research name str',
                        'otherPurposeDetails': 'other purpose details str', 'methodsDevelopment': True,
                        'controlSet': True, 'ancestry': True, 'socialBehavioral': True, 'populationHealth': True,
-                       'drugDevelopment': True, 'commercialPurpose': True, 'educational': True, 'otherPurpose': True
+                       'drugDevelopment': True, 'commercialPurpose': True, 'educational': True, 'otherPurpose': True,
+                       'reasonForInvestigation': 'reasonForInvestigation string',
+                       'intendToStudy': 'intendToStudy string',
+                       'findingsFromStudy': 'findingsFromStudy string'
                        },
                       result)

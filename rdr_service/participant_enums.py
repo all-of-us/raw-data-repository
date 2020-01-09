@@ -564,3 +564,52 @@ class WorkbenchInstitutionNoAcademic(messages.Enum):
     EDUCATIONAL_INSTITUTION = 2
     COMMUNITY_SCIENTIST = 3
     FREE_TEXT = 4
+
+
+class WorkbenchResearcherEthnicity(messages.Enum):
+    UNSET = 0
+    HISPANIC = 1
+    NOT_HISPANIC = 2
+    PREFER_NOT_TO_ANSWER = 3
+
+
+class WorkbenchResearcherGender(messages.Enum):
+    UNSET = 0
+    MALE = 1
+    FEMALE = 2
+    NON_BINARY = 3
+    TRANSGENDER = 4
+    INTERSEX = 5
+    NONE = 6
+    PREFER_NOT_TO_ANSWER = 7
+
+
+class WorkbenchResearcherRace(messages.Enum):
+    UNSET = 0
+    AIAN = 1
+    ASIAN = 2
+    AA = 3
+    NHOPI = 4
+    WHITE = 5
+    NONE = 6
+    PREFER_NOT_TO_ANSWER = 7
+
+
+class WorkbenchResearcherSexAtBirth(messages.Enum):
+    UNSET = 0
+    FEMALE = 1
+    MALE = 2
+    INTERSEX = 3
+    NONE_OF_THESE_DESCRIBE_ME = 4
+    PREFER_NOT_TO_ANSWER = 5
+
+
+class WorkbenchResearcherSexualOrientation(messages.Enum):
+    UNSET = 0
+    STRAIGHT = 1
+    GAY = 2
+    LESBIAN = 3
+    BISEXUAL = 4
+    NONE_OF_THESE_DESCRIBE_ME = 5
+    PREFER_NOT_TO_ANSWER = 6
+
