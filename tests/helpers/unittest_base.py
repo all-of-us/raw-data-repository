@@ -54,7 +54,7 @@ class QuestionnaireTestMixin:
     def questionnaire_response_url(participant_id):
         return "Participant/%s/QuestionnaireResponse" % participant_id
 
-    def create_questionnaire(self, filename, concept_id=None):
+    def create_questionnaire(self, filename):
         with open(data_path(filename)) as f:
             questionnaire = json.load(f)
             response = self.send_post("Questionnaire", questionnaire)
