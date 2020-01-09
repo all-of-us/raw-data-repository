@@ -3,7 +3,8 @@ from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchResearcherHistoryDao, \
     WorkbenchWorkspaceDao, WorkbenchWorkspaceHistoryDao
 from rdr_service.participant_enums import WorkbenchWorkspaceUserRole, WorkbenchInstitutionNoAcademic, \
-    WorkbenchResearcherSexAtBirth, WorkbenchResearcherEthnicity, WorkbenchResearcherSexualOrientation
+    WorkbenchResearcherSexAtBirth, WorkbenchResearcherEthnicity, WorkbenchResearcherSexualOrientation, \
+    WorkbenchResearcherEducation, WorkbenchResearcherDisability
 
 
 class WorkbenchApiTest(BaseTestCase):
@@ -30,6 +31,8 @@ class WorkbenchApiTest(BaseTestCase):
                 "sexualOrientation": "BISEXUAL",
                 "gender": ["MALE", "FEMALE"],
                 "race": ["AIAN", "WHITE"],
+                "education": "COLLEGE_GRADUATE",
+                "disability": "YES",
                 "affiliations": [
                     {
                         "institution": "string",
@@ -51,6 +54,8 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].sexAtBirth, WorkbenchResearcherSexAtBirth('FEMALE'))
         self.assertEqual(results[0].sexualOrientation, WorkbenchResearcherSexualOrientation('BISEXUAL'))
         self.assertEqual(results[0].ethnicity, WorkbenchResearcherEthnicity('HISPANIC'))
+        self.assertEqual(results[0].education, WorkbenchResearcherEducation('COLLEGE_GRADUATE'))
+        self.assertEqual(results[0].disability, WorkbenchResearcherDisability('YES'))
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string')
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].nonAcademicAffiliation,
                          WorkbenchInstitutionNoAcademic('INDUSTRY'))
@@ -159,6 +164,8 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].sexAtBirth, WorkbenchResearcherSexAtBirth('FEMALE'))
         self.assertEqual(results[0].sexualOrientation, WorkbenchResearcherSexualOrientation('BISEXUAL'))
         self.assertEqual(results[0].ethnicity, WorkbenchResearcherEthnicity('HISPANIC'))
+        self.assertEqual(results[0].education, WorkbenchResearcherEducation('COLLEGE_GRADUATE'))
+        self.assertEqual(results[0].disability, WorkbenchResearcherDisability('YES'))
 
         self.assertEqual(results[1].userSourceId, 0)
         self.assertEqual(results[1].givenName, 'string_modify')

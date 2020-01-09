@@ -21,7 +21,8 @@ from rdr_service.model.workbench_researcher import (
 )
 from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWorkspaceUserRole, \
     WorkbenchInstitutionNoAcademic, WorkbenchResearcherEthnicity, WorkbenchResearcherSexAtBirth, \
-    WorkbenchResearcherSexualOrientation, WorkbenchResearcherGender, WorkbenchResearcherRace
+    WorkbenchResearcherSexualOrientation, WorkbenchResearcherGender, WorkbenchResearcherRace, \
+    WorkbenchResearcherEducation, WorkbenchResearcherDisability
 
 
 class WorkbenchWorkspaceDao(UpdatableDao):
@@ -343,6 +344,20 @@ class WorkbenchResearcherDao(UpdatableDao):
             except TypeError:
                 raise BadRequest(f"Invalid sexualOrientation status: {item.get('sexualOrientation')}")
 
+            try:
+                if item.get('education') is None:
+                    item['education'] = 'UNSET'
+                WorkbenchResearcherEducation(item.get('education'))
+            except TypeError:
+                raise BadRequest(f"Invalid education status: {item.get('education')}")
+
+            try:
+                if item.get('disability') is None:
+                    item['disability'] = 'UNSET'
+                WorkbenchResearcherDisability(item.get('disability'))
+            except TypeError:
+                raise BadRequest(f"Invalid disability status: {item.get('disability')}")
+
             gender_array = []
             for gender in item.get('gender'):
                 try:
@@ -389,6 +404,8 @@ class WorkbenchResearcherDao(UpdatableDao):
                 ethnicity=WorkbenchResearcherEthnicity(item.get('ethnicity', 'UNSET')),
                 sexAtBirth=WorkbenchResearcherSexAtBirth(item.get('sexAtBirth', 'UNSET')),
                 sexualOrientation=WorkbenchResearcherSexualOrientation(item.get('sexualOrientation', 'UNSET')),
+                education=WorkbenchResearcherEducation(item.get('education', 'UNSET')),
+                disability=WorkbenchResearcherDisability(item.get('disability', 'UNSET')),
                 gender=item.get('gender'),
                 race=item.get('race'),
                 workbenchInstitutionalAffiliations=self._get_affiliations(item.get('affiliations')),
