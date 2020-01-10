@@ -78,7 +78,7 @@ class QuestionnaireDefinitionStatus(messages.Enum):
 class EnrollmentStatus(messages.Enum):
     """A status reflecting how fully enrolled a participant is"""
 
-    # REGISTERED = 0  # Adding this value breaks metric counts over time.
+    # REGISTERED should not be added here as doing so will break metric counts over time.
     INTERESTED = 1
     MEMBER = 2
     FULL_PARTICIPANT = 3
