@@ -17,7 +17,7 @@ from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
-from rdr_service.participant_enums import EnrollmentStatus, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
+from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus
 
 
@@ -55,7 +55,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             # prep biobank orders and samples
             summary = self._merge_schema_dicts(summary, self._prep_biobank_info(p_id, ro_session))
             # calculate enrollment status for participant
-            summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary))
+            summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(p_id, ro_session, summary))
             # calculate distinct visits
             summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
 
@@ -293,11 +293,15 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         results = query.all()
 
         for row in results:
+
+            if row.final == 1 and row.status != PhysicalMeasurementsStatus.CANCELLED:
+                pm_status = PhysicalMeasurementsStatus.COMPLETED
+            else:
+                pm_status = PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.UNSET
+
             pm_list.append({
-                'pm_status': str(
-                    PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.UNSET),
-                'pm_status_id': int(PhysicalMeasurementsStatus(row.status) if row.status else
-                                    PhysicalMeasurementsStatus.UNSET),
+                'pm_status': str(pm_status),
+                'pm_status_id': int(pm_status),
                 'pm_created': row.created,
                 'pm_created_site': self._lookup_site_name(row.createdSiteId, ro_session),
                 'pm_created_site_id': row.createdSiteId,
@@ -387,17 +391,22 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             data['biobank_orders'] = orders
         return data
 
-    def _calculate_enrollment_status(self, ro_summary):
+    def _calculate_enrollment_status(self, p_id, ro_session, ro_summary):
         """
         Calculate the participant's enrollment status
+        :param p_id: participant id
+        :param ro_session: Readonly DAO session object
         :param ro_summary: summary data
         :return: dict
         """
+        status = EnrollmentStatusV2.REGISTERED
         if 'consents' not in ro_summary:
-            return {}
+            return {
+                'enrollment_status': str(status),
+                'enrollment_status_id': int(status),
+            }
 
         study_consent = ehr_consent = dvehr_consent = pm_complete = False
-        status = None
         # iterate over consents
         for consent in ro_summary['consents']:
             if consent['consent'] == 'ConsentPII':
@@ -420,20 +429,28 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         if 'modules' in ro_summary:
             baseline_module_count = len(
                 list(filter(lambda module: module['mod_baseline_module'] == 1, ro_summary['modules'])))
-        if 'biobank_orders' in ro_summary:
-            for order in ro_summary['biobank_orders']:
-                if 'bbo_samples' in order:
-                    dna_sample_count += len(
-                        list(filter(lambda sample: sample['bbs_dna_test'] == 1 and sample['bbs_confirmed'],
-                                    order['bbo_samples'])))
+
+        # It seems we have around 100 participants that BioBank has received and processed samples for
+        # and RDR knows about them, but RDR has no record of the orders or which tests were ordered.
+        # These participants can still count as Full/Core Participants, so we need to look at only what
+        # is in the `biobank_stored_sample` table to calculate the enrollment status.
+        # https://precisionmedicineinitiative.atlassian.net/browse/DA-812
+        sql = """select bss.test from biobank_stored_sample bss
+                    inner join participant p on bss.biobank_id = p.biobank_id
+                    where p.participant_id = :pid"""
+
+        cursor = ro_session.execute(sql, {'pid': p_id})
+        results = [r for r in cursor]
+        dna_sample_count = len(list(filter(lambda test: test[0] in self._baseline_sample_test_codes, results)))
 
         if study_consent:
-            status = EnrollmentStatus.INTERESTED
-        if ehr_consent or dvehr_consent:
-            status = EnrollmentStatus.MEMBER
-        if pm_complete and 'modules' in ro_summary and baseline_module_count == len(self._baseline_modules) and \
+            status = EnrollmentStatusV2.PARTICIPANT
+        if status == EnrollmentStatusV2.PARTICIPANT and ehr_consent or dvehr_consent:
+            status = EnrollmentStatusV2.FULLY_CONSENTED
+        if status == EnrollmentStatusV2.FULLY_CONSENTED and pm_complete and 'modules' in ro_summary and\
+                        baseline_module_count >= len(self._baseline_modules) and \
             dna_sample_count > 0:
-            status = EnrollmentStatus.FULL_PARTICIPANT
+            status = EnrollmentStatusV2.CORE_PARTICIPANT
 
         # TODO: Get Enrollment dates for additional fields -> participant_summary_dao.py:499
 
@@ -538,12 +555,13 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         return None
 
 
-def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None):
+def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None):
     """
     Rebuild a BQ record for a specific participant
     :param p_id: participant id
     :param ps_bqgen: BQParticipantSummaryGenerator object
     :param pdr_bqgen: BQPDRParticipantSummaryGenerator object
+    :param project_id: Project ID override value.
     :return:
     """
     # Allow for batch requests to rebuild participant summary data.
@@ -572,9 +590,11 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None):
     w_dao = BigQuerySyncDao()
     with w_dao.session() as w_session:
         # save the participant summary record.
-        ps_bqgen.save_bqrecord(p_id, ps_bqr, bqtable=BQParticipantSummary, w_dao=w_dao, w_session=w_session)
+        ps_bqgen.save_bqrecord(p_id, ps_bqr, bqtable=BQParticipantSummary, w_dao=w_dao, w_session=w_session,
+                               project_id=project_id)
         # save the PDR participant summary record
-        pdr_bqgen.save_bqrecord(p_id, pdr_bqr, bqtable=BQPDRParticipantSummary, w_dao=w_dao, w_session=w_session)
+        pdr_bqgen.save_bqrecord(p_id, pdr_bqr, bqtable=BQPDRParticipantSummary, w_dao=w_dao, w_session=w_session,
+                                project_id=project_id)
         w_session.flush()
 
     return ps_bqr
