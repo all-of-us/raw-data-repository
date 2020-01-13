@@ -3,6 +3,7 @@ import collections
 import sqlalchemy
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import load_only
+from sqlalchemy.sql import functions
 
 from rdr_service import clock
 from rdr_service.dao.base_dao import UpdatableDao
@@ -324,6 +325,16 @@ class GenomicJobRunDao(UpdatableDao):
 
     def get_id(self, obj):
         return obj.id
+
+    def get_last_successful_runtime(self, job_id):
+        with self.session() as session:
+            return self._get_last_runtime_with_session(session, job_id)
+
+    def _get_last_runtime_with_session(self, session, job_id):
+        return session.query(functions.max(GenomicJobRun.startTime))\
+            .filter(GenomicJobRun.jobId == job_id,
+                    GenomicJobRun.runResult == GenomicSubProcessResult.SUCCESS)\
+            .one()
 
     def insert_run_record(self, job_id):
         """

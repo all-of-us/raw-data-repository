@@ -7,6 +7,7 @@ from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file, list_blobs
 from rdr_service.code_constants import BIOBANK_TESTS
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
+from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.genomics_dao import (
     GenomicSetDao,
     GenomicSetMemberDao,
@@ -16,6 +17,8 @@ from rdr_service.dao.genomics_dao import (
 )
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.site_dao import SiteDao
+from rdr_service.dao.code_dao import CodeDao, CodeType
 from rdr_service.genomic import genomic_set_file_handler
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.model.biobank_dv_order import BiobankDVOrder
@@ -24,14 +27,23 @@ from rdr_service.model.biobank_order import (
     BiobankOrderIdentifier,
     BiobankOrderedSample
 )
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.genomics import (
     GenomicSet,
-    GenomicSetMember
+    GenomicSetMember,
+    GenomicJobRun
 )
 from rdr_service.model.participant import Participant
+from rdr_service.model.code import Code
 from rdr_service.offline import genomic_pipeline
-from rdr_service.participant_enums import SampleStatus, GenomicSetStatus, GenomicSetMemberStatus, \
-    GenomicSubProcessStatus, GenomicSubProcessResult
+from rdr_service.participant_enums import (
+    SampleStatus,
+    GenomicSetStatus,
+    GenomicSetMemberStatus,
+    GenomicSubProcessStatus,
+    GenomicSubProcessResult,
+    GenomicJob,
+)
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -65,8 +77,12 @@ class GenomicPipelineTest(BaseTestCase):
         self.summary_dao = ParticipantSummaryDao()
         self.job_run_dao = GenomicJobRunDao()
         self.file_processed_dao = GenomicFileProcessedDao()
+        self.set_dao = GenomicSetDao()
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
+        self.sample_dao = BiobankStoredSampleDao()
+        self.site_dao = SiteDao()
+        self.code_dao = CodeDao()
         self._participant_i = 1
 
     mock_bucket_paths = [_FAKE_BUCKET,
@@ -91,7 +107,8 @@ class GenomicPipelineTest(BaseTestCase):
     """
         i = self._participant_i
         self._participant_i += 1
-        participant = Participant(participantId=i, biobankId=i, **kwargs)
+        bid = kwargs.pop('biobankId', i)
+        participant = Participant(participantId=i, biobankId=bid, **kwargs)
         self.participant_dao.insert(participant)
         return participant
 
@@ -123,6 +140,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         biobank_order = BiobankOrderDao().insert(BiobankOrder(**kwargs))
         return biobank_order
+
+    def _make_stored_sample(self, **kwargs):
+        """Makes BiobankStoredSamples for a biobank_id"""
+        return BiobankStoredSampleDao().insert(BiobankStoredSample(**kwargs))
 
     def _make_summary(self, participant, **override_kwargs):
         """
@@ -778,6 +799,28 @@ class GenomicPipelineTest(BaseTestCase):
                 sex_at_birth='F', genome_type='aou_array', ny_flag='Y'
             )
 
+    def _update_site_states(self):
+        sites = [self.site_dao.get(i) for i in range(1, 3)]
+        sites[0].state = 'NY'
+        sites[1].state = 'AZ'
+        for site in sites:
+            self.site_dao.update(site)
+
+    def _setup_fake_sex_at_birth_codes(self, sex_code='n'):
+        if sex_code.lower() == 'f':
+            c_val = "SexAtBirth_Female"
+        elif sex_code.lower() == 'm':
+            c_val = "SexAtBirth_Male"
+        else:
+            c_val = "SexAtBirth_Intersex"
+        code_to_insert = Code(
+            system="a",
+            value=c_val,
+            display="c",
+            topic="d",
+            codeType=CodeType.ANSWER, mapped=True)
+        return self.code_dao.insert(code_to_insert).codeId
+
     def test_gc_metrics_reconciliation_vs_manifest(self):
         # Create the fake Google Cloud CSV files to ingest
         self._create_fake_datasets_for_gc_tests(1)
@@ -905,3 +948,102 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+    def test_new_participant_workflow(self):
+        # create test samples
+        test_biobank_ids = (100001, 100002, 100003, 100004, 100005, 100006)
+        fake_datetime_old = datetime.datetime(2019, 12, 31, tzinfo=pytz.utc)
+        fake_datetime_new = datetime.datetime(2020, 1, 5, tzinfo=pytz.utc)
+        # update the sites' States for the state test (NY or AZ)
+        self._update_site_states()
+
+        # setup sex_at_birth code for unittests
+        female_code = self._setup_fake_sex_at_birth_codes('f')
+        intersex_code = self._setup_fake_sex_at_birth_codes()
+
+        # Setup the biobank order backend
+        for bid in test_biobank_ids:
+            p = self._make_participant(biobankId=bid)
+            self._make_summary(p,
+                               sexId=intersex_code if bid == 100004 else female_code,
+                               consentForStudyEnrollment=0 if bid == 100006 else 1,
+                               sampleStatus1ED04=0,
+                               sampleStatus1SAL2=0 if bid == 100005 else 1,
+                               samplesToIsolateDNA=0,
+                               )
+            test_identifier = BiobankOrderIdentifier(
+                    system=u'c',
+                    value=u'e{}'.format(bid))
+            self._make_biobank_order(biobankOrderId=f'W{bid}',
+                                     participantId=p.participantId,
+                                     collectedSiteId=1 if bid == 100002 else 2,
+                                     identifiers=[test_identifier])
+            sample_args = {
+                'test': '1UR10',
+                'confirmed': fake_datetime_new,
+                'created': fake_datetime_old,
+                'biobankId': bid,
+                'biobankOrderIdentifier': test_identifier.value,
+                'biobankStoredSampleId': bid,
+            }
+            insert_dtm = fake_datetime_new
+            if bid == 100001:
+                insert_dtm = fake_datetime_old
+            with clock.FakeClock(insert_dtm):
+                self._make_stored_sample(**sample_args)
+
+        # insert an 'already ran' workflow to test proper exclusions
+        self.job_run_dao.insert(GenomicJobRun(
+            id=1,
+            jobId=GenomicJob.NEW_PARTICIPANT_WORKFLOW,
+            startTime=datetime.datetime(2020, 1, 1),
+            endTime=datetime.datetime(2020, 1, 1),
+            runStatus=GenomicSubProcessStatus.COMPLETED,
+            runResult=GenomicSubProcessResult.SUCCESS
+        ))
+
+        # run new participant workflow and test results
+        genomic_pipeline.new_participant_workflow()
+
+        new_genomic_set = self.set_dao.get_all()
+        self.assertEqual(1, len(new_genomic_set))
+
+        new_genomic_members = self.member_dao.get_all()
+        self.assertEqual(2, len(new_genomic_members))
+
+        # Test GenomicMember's data
+        for member in new_genomic_members:
+            if member.biobankId == '100002':
+                self.assertEqual(1, member.nyFlag)
+            if member.biobankId == '100003':
+                self.assertEqual(0, member.nyFlag)
+
+        # Test manifest file was created correctly
+        bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
+
+        class ExpectedCsvColumns(object):
+            VALUE = "value"
+            BIOBANK_ID = "biobank_id"
+            SEX_AT_BIRTH = "sex_at_birth"
+            GENOME_TYPE = "genome_type"
+            NY_FLAG = "ny_flag"
+            REQUEST_ID = "request_id"
+            PACKAGE_ID = "package_id"
+
+            ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, REQUEST_ID, PACKAGE_ID)
+
+        blob_name = self._find_latest_genomic_set_csv(bucket_name, _FAKE_BUCKET_FOLDER)
+        with open_cloud_file(os.path.normpath(bucket_name + '/' + blob_name)) as csv_file:
+            csv_reader = csv.DictReader(csv_file, delimiter=",")
+            missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
+            self.assertEqual(0, len(missing_cols))
+            rows = list(csv_reader)
+
+            self.assertEqual("T100002", rows[0][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual("F", rows[0][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("Y", rows[0][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("T100003", rows[1][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual("F", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("N", rows[1][ExpectedCsvColumns.NY_FLAG])
+
+        # Test the end-to-end result code
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
