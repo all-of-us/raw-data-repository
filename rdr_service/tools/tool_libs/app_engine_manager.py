@@ -242,17 +242,37 @@ class DeployAppClass(object):
 
         _logger.info(self.add_jira_comment(f"Deploying app to '{self.gcp_env.project}'."))
         result = gcp_deploy_app(self.gcp_env.project, config_files, self.deploy_version, not self.args.no_promote)
+
         _logger.info(self.add_jira_comment(f"App deployed to '{self.gcp_env.project}'."))
+        self.tag_people()
 
         _logger.info('Cleaning up...')
         self.clean_up_config_files(config_files)
 
         gcp_restart_instances(self.gcp_env.project)
 
-        _logger.info('Switching back to git branch/tag: {0}...'.format(self._current_git_branch))
+        _logger.info('Switching back to git branch/tag: %s ...', self._current_git_branch)
         git_checkout_branch(self._current_git_branch)
 
         return 0 if result else 1
+
+    def tag_people(self):
+        tag_unames = {}
+        for position, names in self._jira_handler._required_tags.items():
+            tmp_list = []
+            for i in names:
+                tmp_list.append('[~' + self._jira_handler.search_user(i) + ']')
+
+            tag_unames[position] = tmp_list
+
+        comment = "Notificiation/approval for the following roles: "
+        for k, v in tag_unames.items():  #pylint: disable=invalid-name
+            comment += k + ': \n'
+            for i in v:
+                comment += i + '\n'
+
+        _logger.info(self.add_jira_comment(comment))
+
 
     def run(self):
         """

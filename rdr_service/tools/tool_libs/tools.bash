@@ -122,13 +122,7 @@ _python()
             return 0
             ;;
         test-jira)
-            # app-engine split-traffic command
-            if echo ${COMP_WORDS[@]} | grep -w "app-engine" > /dev/null; then
-              local toolopts="--help --key --compare --update --to-file"
-              COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
-            else
-              COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
-            fi
+            COMPREPLY=( $(compgen -W "${tools}" -- ${cur}) )
             return 0
             ;;
         *)
