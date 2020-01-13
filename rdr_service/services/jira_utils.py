@@ -24,7 +24,7 @@ class JiraTicketHandler:
         self._required_tags = {'drc_analytics': ['alpha.parrott@vumc.org'],
                                'qa': ['rohini.chavan@vumc.org', 'ashton.e.rollings@vumc.org'],
                                'change_management_board': ['charissa.r.rotundo@vumc.org', 'neil.bible@vumc.org'],
-                               'change_manager': 
+                               'change_manager': \
                                ['asmita.gauchan@vumc.org', 'bhinnata.piya@vumc.org', 'katherine.j.worley@vumc.org']}
         self._connect_to_jira()
 
