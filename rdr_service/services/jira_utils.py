@@ -44,7 +44,7 @@ class JiraTicketHandler:
         """param: user = email
            return: username"""
         un_resource = self._jira_connection.search_users(user)
-        return un_resource[0].name
+        return un_resource[0].name if len(un_resource) >= 1 else user
 
     def find_ticket_from_summary(self, summary, board_id=_JIRA_BOARD_ID):
         """

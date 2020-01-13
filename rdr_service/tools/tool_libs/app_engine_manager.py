@@ -244,7 +244,8 @@ class DeployAppClass(object):
         result = gcp_deploy_app(self.gcp_env.project, config_files, self.deploy_version, not self.args.no_promote)
 
         _logger.info(self.add_jira_comment(f"App deployed to '{self.gcp_env.project}'."))
-        self.tag_people()
+        if self.gcp_env.project == 'all-of-us-rdr-stable':
+            self.tag_people()
 
         _logger.info('Cleaning up...')
         self.clean_up_config_files(config_files)
