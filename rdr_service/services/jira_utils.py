@@ -21,7 +21,11 @@ class JiraTicketHandler:
         self._jira_password = os.environ.get('JIRA_API_USER_PASSWORD', None)
         self._jira_watchers = os.environ.get('JIRA_WATCHER_NAMES', None)
         self._jira_connection = None
-
+        self._required_tags = {'drc_analytics': ['alpha.parrott@vumc.org'],
+                               'qa': ['rohini.chavan@vumc.org', 'ashton.e.rollings@vumc.org'],
+                               'change_management_board': ['charissa.r.rotundo@vumc.org', 'neil.bible@vumc.org'],
+                               'change_manager': \
+                               ['asmita.gauchan@vumc.org', 'bhinnata.piya@vumc.org', 'katherine.j.worley@vumc.org']}
         self._connect_to_jira()
 
     def _connect_to_jira(self):
@@ -32,6 +36,15 @@ class JiraTicketHandler:
             if not self._jira_user or not self._jira_password:
                 raise ValueError('Jira user name or password not set in environment.')
             self._jira_connection = jira.JIRA(_JIRA_INSTANCE_URL, basic_auth=(self._jira_user, self._jira_password))
+
+    def current_user(self):
+        return self._jira_connection.current_user()
+
+    def search_user(self, user: str) -> str:
+        """param: user = email
+           return: username"""
+        un_resource = self._jira_connection.search_users(user)
+        return un_resource[0].name
 
     def find_ticket_from_summary(self, summary, board_id=_JIRA_BOARD_ID):
         """
@@ -61,6 +74,8 @@ class JiraTicketHandler:
             project=board_id, summary=summary, description=descr, issuetype={"name": issue_type}
         )
 
+        # pylint: disable=W0511
+        #NOTE: the drc api jira account does not have permissions to add watchers. This is a no-op.
         if self._jira_watchers:
             for name in [n.strip() for n in self._jira_watchers.split(",")]:
                 if name:
@@ -88,7 +103,11 @@ class JiraTicketHandler:
         Formats release notes for JIRA from commit messages, from the given tag to HEAD.
         :param git_tag: get messages after given git tag.
         """
-        args = ['git', 'log', f'{git_tag}..', '--pretty=format:"%h||%aN, %ad||%s"']
+        #args = ['git', 'log', f'{git_tag}..', '--pretty=format:"%h||%aN, %ad||%s"']
+        # They want pretty, we'll give them pretty !
+        args = ['git', 'log', f'{git_tag}..', "--graph --decorate \
+                --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) \
+                %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' "]
         # pylint: disable=unused-variable
         code, so, se = run_external_program(args=args)
 
@@ -102,4 +121,3 @@ class JiraTicketHandler:
         message = message.replace('||', ' ').replace('"', '')
 
         return message
-

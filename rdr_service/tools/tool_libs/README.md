@@ -16,7 +16,7 @@ The tools are invoked by calling Python with the module argument (-m). To show a
 python -m tools --help
 ```
 
-You should see out like the following;
+You should see output like the following;
 
 ```
 usage: python -m tools command [-h|--help] [args]

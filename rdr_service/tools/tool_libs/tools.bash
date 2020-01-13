@@ -121,6 +121,10 @@ _python()
             fi
             return 0
             ;;
+        test-jira)
+            COMPREPLY=( $(compgen -W "${tools}" -- ${cur}) )
+            return 0
+            ;;
         *)
         ;;
     esac
