@@ -73,6 +73,8 @@ class JiraTicketHandler:
             project=board_id, summary=summary, description=descr, issuetype={"name": issue_type}
         )
 
+        # pylint: disable=W0511
+        #NOTE: the drc api jira account does not have permissions to add watchers. This is a no-op.
         if self._jira_watchers:
             for name in [n.strip() for n in self._jira_watchers.split(",")]:
                 if name:
