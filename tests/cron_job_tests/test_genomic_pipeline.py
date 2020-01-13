@@ -953,11 +953,6 @@ class GenomicPipelineTest(BaseTestCase):
         test_biobank_ids = (100001, 100002, 100003, 100004, 100005, 100006)
         fake_datetime_old = datetime.datetime(2019, 12, 31, tzinfo=pytz.utc)
         fake_datetime_new = datetime.datetime(2020, 1, 5, tzinfo=pytz.utc)
-        sample_args = {
-            'test': '1UR10',
-            'confirmed': fake_datetime_new,
-            'created': fake_datetime_old,
-        }
         # update the sites' States for the state test (NY or AZ)
         self._update_site_states()
 
@@ -982,15 +977,19 @@ class GenomicPipelineTest(BaseTestCase):
                                      participantId=p.participantId,
                                      collectedSiteId=1 if bid == 100002 else 2,
                                      identifiers=[test_identifier])
-            sample_args.update({
+            sample_args = {
+                'test': '1UR10',
+                'confirmed': fake_datetime_new,
+                'created': fake_datetime_old,
                 'biobankId': bid,
                 'biobankOrderIdentifier': test_identifier.value,
                 'biobankStoredSampleId': bid,
-                'nightlyReportDate': fake_datetime_new,
-            })
+            }
+            insert_dtm = fake_datetime_new
             if bid == 100001:
-                sample_args['nightlyReportDate'] = fake_datetime_old
-            self._make_stored_sample(**sample_args)
+                insert_dtm = fake_datetime_old
+            with clock.FakeClock(insert_dtm):
+                self._make_stored_sample(**sample_args)
 
         # insert an 'already ran' workflow to test proper exclusions
         self.job_run_dao.insert(GenomicJobRun(

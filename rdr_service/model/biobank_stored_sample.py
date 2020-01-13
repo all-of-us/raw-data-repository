@@ -1,6 +1,7 @@
 from sqlalchemy import Column, ForeignKey, Index, Integer, String, DateTime, event
 
-from rdr_service.model.base import Base, model_insert_listener
+from rdr_service import clock
+from rdr_service.model.base import Base, model_update_listener
 from rdr_service.model.utils import Enum, UTCDateTime
 from rdr_service.participant_enums import SampleStatus
 
@@ -70,9 +71,18 @@ class BiobankStoredSample(Base):
     # Sample family ID
     family_id = Column("family_id", String(80), nullable=True)
 
-    nightlyReportDate = Column("nightly_report_date", DateTime)
+    rdrCreated = Column("rdr_created", DateTime)
+    modified = Column("modified", DateTime)
 
     __table_args__ = (Index("ix_boi_test", "biobank_order_identifier", "test"),)
 
 
-event.listen(BiobankStoredSample, 'before_insert', model_insert_listener)
+def stored_sample_insert_listener(mapper, connection, target):
+    """ On insert auto set `created` and `modified` column values """
+    now = clock.CLOCK.now()
+    target.rdrCreated = now
+    target.modified = now
+
+
+event.listen(BiobankStoredSample, 'before_insert', stored_sample_insert_listener)
+event.listen(BiobankStoredSample, "before_update", model_update_listener)

@@ -520,7 +520,7 @@ class GenomicBiobankSamplesCoupler:
 
     def _get_new_biobank_samples(self, from_date):
         """
-        Retrieves BiobankStoredSample objects with nightlyReportDate
+        Retrieves BiobankStoredSample objects with `rdr_created`
         after the last run of the new participant workflow job.
         The query filters out participants that do not match the
         genomic validation requirements.
@@ -547,7 +547,7 @@ class GenomicBiobankSamplesCoupler:
                     ParticipantSummary.sampleStatus1ED04 == SampleStatus.RECEIVED,
                     ParticipantSummary.sampleStatus1SAL2 == SampleStatus.RECEIVED
                 ),
-                BiobankStoredSample.nightlyReportDate > from_date).distinct()
+                BiobankStoredSample.rdrCreated > from_date).distinct()
         return list(zip(*result))
 
     def _create_new_genomic_set(self):
