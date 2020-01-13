@@ -1,6 +1,6 @@
 from sqlalchemy import Column, ForeignKey, Index, Integer, String, DateTime, event
 
-from rdr_service.model.base import Base
+from rdr_service.model.base import Base, model_insert_listener
 from rdr_service.model.utils import Enum, UTCDateTime
 from rdr_service.participant_enums import SampleStatus
 
@@ -74,4 +74,5 @@ class BiobankStoredSample(Base):
 
     __table_args__ = (Index("ix_boi_test", "biobank_order_identifier", "test"),)
 
-event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
+
+event.listen(BiobankStoredSample, 'before_insert', model_insert_listener)
