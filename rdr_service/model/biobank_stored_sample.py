@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Index, Integer, String, DateTime
+from sqlalchemy import Column, ForeignKey, Index, Integer, String, DateTime, event
 
 from rdr_service.model.base import Base
 from rdr_service.model.utils import Enum, UTCDateTime
@@ -73,3 +73,5 @@ class BiobankStoredSample(Base):
     nightlyReportDate = Column("nightly_report_date", DateTime)
 
     __table_args__ = (Index("ix_boi_test", "biobank_order_identifier", "test"),)
+
+event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
