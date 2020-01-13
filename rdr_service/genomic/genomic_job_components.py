@@ -457,7 +457,8 @@ class GenomicReconciler:
 
 class GenomicBiobankSamplesCoupler:
     """This component creates new genomic set
-    and members from the biobank samples pipeline"""
+    and members from the biobank samples pipeline,
+    then calls the manifest handler to create and upload a manifest"""
 
     _SEX_AT_BIRTH_CODES = {
         'male': 'M',
@@ -482,9 +483,13 @@ class GenomicBiobankSamplesCoupler:
         samples = self._get_new_biobank_samples(from_date)
         if len(samples) > 0:
             # Get the genomic data to insert into GenomicSetMember as multi-dim tuple
-            GenomicSampleMeta = namedtuple("GenomicSampleMeta", "bids, pids, identifiers, site_ids")
+            GenomicSampleMeta = namedtuple("GenomicSampleMeta", ["bids",
+                                                                 "pids",
+                                                                 "order_ids",
+                                                                 "site_ids",
+                                                                 "sample_ids"])
             samples_meta = GenomicSampleMeta(*samples)
-            logging.info(f'Processing new biobank_ids {samples_meta.bids}')
+            logging.info(f'{self.__class__.__name__}: Processing new biobank_ids {samples_meta.bids}')
             new_genomic_set = self._create_new_genomic_set()
             # Create genomic set members
             for i, bid in enumerate(samples_meta.bids):
@@ -492,17 +497,20 @@ class GenomicBiobankSamplesCoupler:
                 sab_code = self._get_sex_at_birth(samples_meta.pids[i])
                 if sab_code not in self._SEX_AT_BIRTH_CODES.values():
                     continue
-                # TODO: add biobankOrderId, client, etc. attributes
+                logging.info(f'Creating genomic set member for PID: {samples_meta.pids[i]}')
                 self._create_new_set_member(
                     biobankId=bid,
                     genomicSetId=new_genomic_set.id,
                     participantId=samples_meta.pids[i],
                     nyFlag=self._get_new_york_flag(samples_meta.site_ids[i]),
                     sexAtBirth=sab_code,
+                    biobankOrderId=samples_meta.order_ids[i],
+                    sampleId=samples_meta.sample_ids[i],
                 )
             # Create & transfer the Biobank Manifest based no the new genomic set
             try:
                 create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id)
+                logging.info(f'{self.__class__.__name__}: Genomic set members created ')
                 return GenomicSubProcessResult.SUCCESS
             except RuntimeError:
                 return GenomicSubProcessResult.ERROR
@@ -524,7 +532,8 @@ class GenomicBiobankSamplesCoupler:
             result = session.query(BiobankStoredSample.biobankId,
                                    Participant.participantId,
                                    BiobankOrder.biobankOrderId,
-                                   BiobankOrder.collectedSiteId).filter(
+                                   BiobankOrder.collectedSiteId,
+                                   BiobankStoredSample.biobankStoredSampleId).filter(
                 BiobankStoredSample.biobankId == Participant.biobankId,
                 BiobankOrder.biobankOrderId == BiobankOrderIdentifier.biobankOrderId,
                 BiobankStoredSample.biobankOrderIdentifier == BiobankOrderIdentifier.value,
@@ -559,8 +568,7 @@ class GenomicBiobankSamplesCoupler:
 
     def _get_new_york_flag(self, collected_site_id):
         """
-        Looks up whether a collected site's state is NY,
-        TODO: verify using site.state, not ZIP, is OK
+        Looks up whether a collected site's state is NY
         :param collected_site_id: the id of the site
         :return: int
         """
