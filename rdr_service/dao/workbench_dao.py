@@ -347,6 +347,7 @@ class WorkbenchResearcherDao(UpdatableDao):
             try:
                 if item.get('education') is None:
                     item['education'] = 'UNSET'
+                # Checking for validation of item passed in only.
                 WorkbenchResearcherEducation(item.get('education'))
             except TypeError:
                 raise BadRequest(f"Invalid education status: {item.get('education')}")
