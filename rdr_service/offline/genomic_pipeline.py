@@ -73,7 +73,8 @@ def reconcile_metrics_vs_sequencing():
 def new_participant_workflow():
     """
     Entrypoint for New Participant Workflow,
-    using newly created biobank_stored_samples from the BiobankSamplesPipeline.
+    Sources from newly-created biobank_stored_samples
+    from the BiobankSamplesPipeline.
     """
     job_id = GenomicJob.NEW_PARTICIPANT_WORKFLOW
     run_controller = genomic_job_controller.GenomicJobController(job_id)

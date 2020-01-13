@@ -1014,10 +1014,8 @@ class GenomicPipelineTest(BaseTestCase):
         for member in new_genomic_members:
             if member.biobankId == '100002':
                 self.assertEqual(1, member.nyFlag)
-                # self.assertEqual('F', member.sexAtBirth)
             if member.biobankId == '100003':
                 self.assertEqual(0, member.nyFlag)
-                # self.assertEqual('M', member.sexAtBirth)
 
         # Test manifest file was created correctly
         bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
@@ -1039,7 +1037,7 @@ class GenomicPipelineTest(BaseTestCase):
             missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
             self.assertEqual(0, len(missing_cols))
             rows = list(csv_reader)
-            # TODO: Get info on what other fields we need to populate for this wf
+
             self.assertEqual("T100002", rows[0][ExpectedCsvColumns.BIOBANK_ID])
             self.assertEqual("F", rows[0][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("Y", rows[0][ExpectedCsvColumns.NY_FLAG])
@@ -1047,4 +1045,5 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("F", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[1][ExpectedCsvColumns.NY_FLAG])
 
+        # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)

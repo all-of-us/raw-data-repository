@@ -79,7 +79,7 @@ class BiobankStoredSample(Base):
 
 # pylint: disable=unused-argument
 def stored_sample_insert_listener(mapper, connection, target):
-    """ On insert auto set `created` and `modified` column values """
+    """ On insert auto set `rdrCreated` and `modified` column values """
     now = clock.CLOCK.now()
     target.rdrCreated = now
     target.modified = now

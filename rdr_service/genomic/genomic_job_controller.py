@@ -126,6 +126,7 @@ class GenomicJobController:
 
         try:
             last_run_date = self._get_last_successful_run_time()
+            logging.info(f'Running New Participant Workflow.')
             return self.biobank_coupler.create_new_genomic_participants(last_run_date)
         except RuntimeError:
             return GenomicSubProcessResult.ERROR

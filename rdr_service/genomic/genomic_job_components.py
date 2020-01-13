@@ -476,7 +476,7 @@ class GenomicBiobankSamplesCoupler:
     def create_new_genomic_participants(self, from_date):
         """This method is the main execution method for this class
         It determines which biobankIDs to process and then executes subprocesses
-        Validation is handled in the query that get's the new Biobank IDs to process.
+        Validation is handled in the query that retrieves the new Biobank IDs to process.
         :param: from_date : the date from which to lookup new biobank_ids
         :return: result
         """
@@ -493,7 +493,7 @@ class GenomicBiobankSamplesCoupler:
             new_genomic_set = self._create_new_genomic_set()
             # Create genomic set members
             for i, bid in enumerate(samples_meta.bids):
-                # Extra validations cleaner that need to be calculated
+                # Validate sex at birth
                 sab_code = self._get_sex_at_birth(samples_meta.pids[i])
                 if sab_code not in self._SEX_AT_BIRTH_CODES.values():
                     continue
@@ -507,7 +507,7 @@ class GenomicBiobankSamplesCoupler:
                     biobankOrderId=samples_meta.order_ids[i],
                     sampleId=samples_meta.sample_ids[i],
                 )
-            # Create & transfer the Biobank Manifest based no the new genomic set
+            # Create & transfer the Biobank Manifest based on the new genomic set
             try:
                 create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id)
                 logging.info(f'{self.__class__.__name__}: Genomic set members created ')
@@ -562,7 +562,7 @@ class GenomicBiobankSamplesCoupler:
         return self.set_dao.insert(new_set_obj)
 
     def _create_new_set_member(self, **kwargs):
-        """Inserts new GenomicSetMember objects"""
+        """Inserts new GenomicSetMember object"""
         new_member_obj = GenomicSetMember(**kwargs)
         return self.member_dao.insert(new_member_obj)
 
@@ -570,7 +570,7 @@ class GenomicBiobankSamplesCoupler:
         """
         Looks up whether a collected site's state is NY
         :param collected_site_id: the id of the site
-        :return: int
+        :return: int (1 or 0 for NY or Not)
         """
         return int(self.site_dao.get(collected_site_id).state == 'NY')
 
