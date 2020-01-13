@@ -1,16 +1,17 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, UniqueConstraint, JSON
+from sqlalchemy import Column, ForeignKey, Integer, String, UniqueConstraint, JSON, event
 from sqlalchemy.orm import relationship
 from rdr_service.model.field_types import BlobUTF8
-from rdr_service.model.base import Base
-from rdr_service.model.utils import Enum
+from rdr_service.model.base import Base, model_insert_listener, model_update_listener
+from rdr_service.model.utils import Enum, UTCDateTime6
 from rdr_service.participant_enums import WorkbenchInstitutionNoAcademic, WorkbenchResearcherSexualOrientation, \
-    WorkbenchResearcherSexAtBirth, WorkbenchResearcherEthnicity
+    WorkbenchResearcherSexAtBirth, WorkbenchResearcherEthnicity, WorkbenchResearcherEducation, \
+    WorkbenchResearcherDisability
 
 
 class WorkbenchResearcherBase(object):
     userSourceId = Column("user_source_id", Integer, nullable=False)
-    creationTime = Column("creation_time", DateTime, nullable=True)
-    modifiedTime = Column("modified_time", DateTime, nullable=True)
+    creationTime = Column("creation_time", UTCDateTime6, nullable=True)
+    modifiedTime = Column("modified_time", UTCDateTime6, nullable=True)
     givenName = Column("given_name", String(100))
     familyName = Column("family_name", String(100))
     streetAddress1 = Column("street_address1", String(250))
@@ -26,6 +27,8 @@ class WorkbenchResearcherBase(object):
                         default=WorkbenchResearcherSexAtBirth.UNSET)
     sexualOrientation = Column("sexual_orientation", Enum(WorkbenchResearcherSexualOrientation),
                                default=WorkbenchResearcherSexualOrientation.UNSET)
+    education = Column("education", Enum(WorkbenchResearcherEducation), default=WorkbenchResearcherEducation.UNSET)
+    disability = Column("disability", Enum(WorkbenchResearcherDisability), default=WorkbenchResearcherDisability.UNSET)
     resource = Column("resource", BlobUTF8, nullable=False)
 
 
@@ -37,9 +40,9 @@ class WorkbenchResearcher(WorkbenchResearcherBase, Base):
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
     # have mysql set the creation data for each new order
-    created = Column("created", DateTime, nullable=True)
+    created = Column("created", UTCDateTime6, nullable=True)
     # have mysql always update the modified data when the record is changed
-    modified = Column("modified", DateTime, nullable=True)
+    modified = Column("modified", UTCDateTime6, nullable=True)
 
     __table_args__ = (UniqueConstraint("user_source_id", name="uniqe_user_source_id"),)
 
@@ -50,9 +53,9 @@ class WorkbenchInstitutionalAffiliations(Base):
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
     # have mysql set the creation data for each new order
-    created = Column("created", DateTime, nullable=True)
+    created = Column("created", UTCDateTime6, nullable=True)
     # have mysql always update the modified data when the record is changed
-    modified = Column("modified", DateTime, nullable=True)
+    modified = Column("modified", UTCDateTime6, nullable=True)
 
     researcherId = Column("researcher_id", Integer, ForeignKey("workbench_researcher.id"), nullable=False)
     institution = Column("institution", String(250))
@@ -69,9 +72,9 @@ class WorkbenchResearcherHistory(WorkbenchResearcherBase, Base):
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
     # have mysql set the creation data for each new order
-    created = Column("created", DateTime, nullable=True)
+    created = Column("created", UTCDateTime6, nullable=True)
     # have mysql always update the modified data when the record is changed
-    modified = Column("modified", DateTime, nullable=True)
+    modified = Column("modified", UTCDateTime6, nullable=True)
 
 
 class WorkbenchInstitutionalAffiliationsHistory(Base):
@@ -80,12 +83,22 @@ class WorkbenchInstitutionalAffiliationsHistory(Base):
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
     # have mysql set the creation data for each new order
-    created = Column("created", DateTime, nullable=True)
+    created = Column("created", UTCDateTime6, nullable=True)
     # have mysql always update the modified data when the record is changed
-    modified = Column("modified", DateTime, nullable=True)
+    modified = Column("modified", UTCDateTime6, nullable=True)
 
     researcherId = Column("researcher_id", Integer, ForeignKey("workbench_researcher_history.id"), nullable=False)
     institution = Column("institution", String(250))
     role = Column("role", String(80))
     nonAcademicAffiliation = Column("non_academic_affiliation", Enum(WorkbenchInstitutionNoAcademic),
                                     default=WorkbenchInstitutionNoAcademic.UNSET)
+
+
+event.listen(WorkbenchResearcher, "before_insert", model_insert_listener)
+event.listen(WorkbenchResearcher, "before_update", model_update_listener)
+event.listen(WorkbenchInstitutionalAffiliations, "before_insert", model_insert_listener)
+event.listen(WorkbenchInstitutionalAffiliations, "before_update", model_update_listener)
+event.listen(WorkbenchResearcherHistory, "before_insert", model_insert_listener)
+event.listen(WorkbenchResearcherHistory, "before_update", model_update_listener)
+event.listen(WorkbenchInstitutionalAffiliationsHistory, "before_insert", model_insert_listener)
+event.listen(WorkbenchInstitutionalAffiliationsHistory, "before_update", model_update_listener)

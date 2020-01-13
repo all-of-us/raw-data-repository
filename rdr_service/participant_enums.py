@@ -614,3 +614,19 @@ class WorkbenchResearcherSexualOrientation(messages.Enum):
     NONE_OF_THESE_DESCRIBE_ME = 5
     PREFER_NOT_TO_ANSWER = 6
 
+
+class WorkbenchResearcherEducation(messages.Enum):
+    UNSET = 0
+    NO_EDUCATION = 1
+    GRADES_1_12 = 2
+    COLLEGE_GRADUATE = 3
+    UNDERGRADUATE = 4
+    MASTER = 5
+    DOCTORATE = 6
+
+
+class WorkbenchResearcherDisability(messages.Enum):
+    UNSET = 0
+    YES = 1
+    NO = 2
+    PREFER_NOT_TO_ANSWER = 3

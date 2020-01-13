@@ -144,8 +144,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         # test get research projects directory
         result = self.send_get('researchHub/projectDirectory')
         self.assertEqual(len(result), 2)
-        self.assertIn({'workspaceId': 0, 'name': 'workspace name str', 'creationTime': '2019-11-25T17:43:41',
-                       'modifiedTime': '2019-11-25T17:43:41', 'status': 'ACTIVE',
+        self.assertIn({'workspaceId': 0, 'name': 'workspace name str', 'creationTime': '2019-11-25T17:43:41.085000',
+                       'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'ACTIVE',
                        'workspaceOwner': [{'userId': 1, 'userName': 'given name 2 family name 2',
                                            'affiliations': [{'institution': 'institution2',
                                                              'role': 'institution role 2',
@@ -163,8 +163,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'findingsFromStudy': 'findingsFromStudy string'
                        },
                       result)
-        self.assertIn({'workspaceId': 1, 'name': 'workspace name str 2', 'creationTime': '2019-11-25T17:43:41',
-                       'modifiedTime': '2019-11-25T17:43:41', 'status': 'INACTIVE',
+        self.assertIn({'workspaceId': 1, 'name': 'workspace name str 2', 'creationTime': '2019-11-25T17:43:41.085000',
+                       'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'INACTIVE',
                        'workspaceOwner': [{'userId': 0, 'userName': 'given name 1 family name 1',
                                            'affiliations': [{'institution': 'institution1',
                                                              'role': 'institution role 1',
@@ -183,8 +183,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         # test get research projects directory with status
         result = self.send_get('researchHub/projectDirectory?status=ACTIVE')
         self.assertEqual(len(result), 1)
-        self.assertIn({'workspaceId': 0, 'name': 'workspace name str', 'creationTime': '2019-11-25T17:43:41',
-                       'modifiedTime': '2019-11-25T17:43:41', 'status': 'ACTIVE',
+        self.assertIn({'workspaceId': 0, 'name': 'workspace name str', 'creationTime': '2019-11-25T17:43:41.085000',
+                       'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'ACTIVE',
                        'workspaceOwner': [{'userId': 1, 'userName': 'given name 2 family name 2',
                                            'affiliations': [{'institution': 'institution2',
                                                              'role': 'institution role 2',
