@@ -77,6 +77,7 @@ class BiobankStoredSample(Base):
     __table_args__ = (Index("ix_boi_test", "biobank_order_identifier", "test"),)
 
 
+# pylint: disable=unused-argument
 def stored_sample_insert_listener(mapper, connection, target):
     """ On insert auto set `created` and `modified` column values """
     now = clock.CLOCK.now()
