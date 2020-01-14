@@ -144,6 +144,30 @@ class ParticipantApiTest(BaseTestCase):
         response["suspensionTime"] = update_response["lastModified"]
         self.assertJsonResponseMatches(response, update_response)
 
+    def test_update_right_suspension_status(self):
+        response = self.send_post("Participant", self.participant)
+        self.assertEqual('W/"1"', response["meta"]["versionId"])
+        participant_id = response["participantId"]
+        response["providerLink"] = [self.provider_link_2]
+        response["suspensionStatus"] = "NO_CONTACT"
+        response["site"] = "UNSET"
+        response["organization"] = "UNSET"
+        response["awardee"] = "PITT"
+        response["hpoId"] = "PITT"
+        path = "Participant/%s" % participant_id
+        self.send_put(path, response, headers={"If-Match": 'W/"1"'})
+
+        response["suspensionStatus"] = "NOT_SUSPENDED"
+        response["meta"]["versionId"] = 'W/"3"'
+        response["withdrawalTime"] = None
+        response["withdrawalStatus"] = 'NOT_WITHDRAWN'
+
+        with FakeClock(TIME_1):
+            update_response = self.send_put(path, response, headers={"If-Match": 'W/"2"'})
+        self.assertEqual(update_response['suspensionStatus'], 'NOT_SUSPENDED')
+        self.assertEqual(update_response['withdrawalStatus'], 'NOT_WITHDRAWN')
+        self.assertNotIn('suspensionTime', update_response)
+
     def test_change_pairing_awardee_and_site(self):
         participant = self.send_post("Participant", self.participant)
         participant["providerLink"] = [self.provider_link_2]

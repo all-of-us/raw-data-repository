@@ -350,6 +350,63 @@ class ParticipantDaoTest(BaseTestCase):
         )
         self.assertEqual(expected_participant.asdict(), p2.asdict())
 
+    def test_update_multiple_suspend(self):
+        p = Participant()
+        time = datetime.datetime(2016, 1, 1)
+        with random_ids([1, 2]):
+            with FakeClock(time):
+                self.dao.insert(p)
+        p.version = 1
+        p.suspensionStatus = SuspensionStatus.NO_CONTACT
+        time2 = datetime.datetime(2016, 1, 2)
+        with FakeClock(time2):
+            self.dao.update(p)
+
+        p.version = 2
+        p.providerLink = make_primary_provider_link_for_name("PITT")
+        p.suspensionTime = None
+        p.suspensionStatus = SuspensionStatus.NOT_SUSPENDED
+        time3 = datetime.datetime(2016, 1, 3)
+        with FakeClock(time3):
+            self.dao.update(p)
+
+        # Withdrawal time should get copied over.
+        p2 = self.dao.get(p.participantId)
+        expected_participant = self._participant_with_defaults(
+            participantId=1,
+            version=3,
+            biobankId=2,
+            lastModified=time3,
+            signUpTime=time,
+            suspensionStatus=SuspensionStatus.NOT_SUSPENDED,
+            suspensionTime=None,
+            hpoId=PITT_HPO_ID,
+            providerLink=p2.providerLink,
+        )
+        self.assertEqual(expected_participant.asdict(), p2.asdict())
+
+        p.version = 3
+        p.suspensionStatus = SuspensionStatus.NO_CONTACT
+        time4 = datetime.datetime(2016, 1, 4)
+        with FakeClock(time4):
+            self.dao.update(p)
+
+        p2 = self.dao.get(p.participantId)
+        expected_participant = self._participant_with_defaults(
+            participantId=1,
+            version=4,
+            biobankId=2,
+            lastModified=time4,
+            signUpTime=time,
+            suspensionStatus=SuspensionStatus.NO_CONTACT,
+            suspensionTime=time4,
+            hpoId=PITT_HPO_ID,
+            providerLink=p2.providerLink,
+        )
+        self.assertEqual(expected_participant.asdict(), p2.asdict())
+        p2_summary = self.participant_summary_dao.get(p2.participantId)
+        print(p2_summary)
+
     def test_update_wrong_expected_version(self):
         p = Participant()
         time = datetime.datetime(2016, 1, 1)
