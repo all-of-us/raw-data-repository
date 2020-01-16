@@ -103,7 +103,8 @@ class WorkbenchApiTest(BaseTestCase):
             },
             {
                 "userId": 1,
-                "creationTime": "2019-11-27T21:21:13.056Z",
+                # test creationTime can be NULL
+                # "creationTime": "2019-11-27T21:21:13.056Z",
                 "modifiedTime": "2019-11-27T21:21:13.056Z",
                 "givenName": "string2",
                 "familyName": "string2",

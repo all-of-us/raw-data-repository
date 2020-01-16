@@ -315,8 +315,6 @@ class WorkbenchResearcherDao(UpdatableDao):
         for item in resource_json:
             if item.get('userId') is None:
                 raise BadRequest('User ID can not be NULL')
-            if item.get('creationTime') is None:
-                raise BadRequest('User creationTime can not be NULL')
             if item.get('modifiedTime') is None:
                 raise BadRequest('User modifiedTime can not be NULL')
             if item.get('givenName') is None:
@@ -392,7 +390,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 created=now,
                 modified=now,
                 userSourceId=item.get('userId'),
-                creationTime=parse(item.get('creationTime')),
+                creationTime=parse(item.get('creationTime')) if item.get('creationTime') is not None else None,
                 modifiedTime=parse(item.get('modifiedTime')),
                 givenName=item.get('givenName'),
                 familyName=item.get('familyName'),
