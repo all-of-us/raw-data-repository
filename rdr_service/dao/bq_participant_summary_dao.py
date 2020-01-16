@@ -441,11 +441,11 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         cursor = ro_session.execute(sql, {'pid': p_id})
         results = [r for r in cursor]
-        dna_sample_count = len(list(filter(lambda test: test[0] in self._baseline_sample_test_codes, results)))
+        dna_sample_count = len(list(filter(lambda test: test[0] in self._dna_sample_test_codes, results)))
 
-        if study_consent:
+        if study_consent is True:
             status = EnrollmentStatusV2.PARTICIPANT
-        if status == EnrollmentStatusV2.PARTICIPANT and ehr_consent or dvehr_consent:
+        if status == EnrollmentStatusV2.PARTICIPANT and (ehr_consent is True or dvehr_consent is True):
             status = EnrollmentStatusV2.FULLY_CONSENTED
         if status == EnrollmentStatusV2.FULLY_CONSENTED and pm_complete and 'modules' in ro_summary and\
                         baseline_module_count >= len(self._baseline_modules) and \
