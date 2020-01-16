@@ -232,6 +232,7 @@ class MySqlReconciliationTest(BaseTestCase):
                                  f"PresentDVIdentifier{participant_obj.participantId}",
                                  clock.CLOCK.now().replace(microsecond=0),
                                  mayo_create_time)
+            #self.sample_dao.
 
         return dv_dao.insert(dv_order_obj)
 
@@ -594,7 +595,6 @@ class MySqlReconciliationTest(BaseTestCase):
         self._create_dv_order(p_missing_inside_timeframe, missing=False)
 
         p_present_salivary = self._insert_participant(race_codes=[RACE_WHITE_CODE])
-        # print(f'present bbid: {p_present_salivary.biobankId}')
         self._create_dv_order(p_present_salivary, missing=False, received=True)
 
         received, missing, modified, withdrawals = "rx.csv", "missing.csv", "modified.csv", "withdrawals.csv"
@@ -821,7 +821,7 @@ class MySqlReconciliationTest(BaseTestCase):
 
         # Test that the salivary received order is in received
         exporter.assertHasRow(
-            missing_salivary,
+            received,
             {
                 "biobank_id": to_client_biobank_id(p_present_salivary.biobankId)
             }

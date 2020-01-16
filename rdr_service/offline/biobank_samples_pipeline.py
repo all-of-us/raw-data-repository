@@ -380,6 +380,7 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
     report_predicates = [received_predicate, missing_predicate, modified_predicate]
 
     for report_path, report_predicate in zip(report_paths, report_predicates):
+        dv_filter = 1 if report_path == path_missing else 0
         with exporter.open_writer(report_path, report_predicate) as report_writer:
             exporter.run_export_with_writer(
                 report_writer,
@@ -392,6 +393,7 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
                     "kit_id_system": _KIT_ID_SYSTEM,
                     "tracking_number_system": _TRACKING_NUMBER_SYSTEM,
                     "n_days_ago": now - datetime.timedelta(days=(report_cover_range + 1)),
+                    "dv_order_filter": dv_filter
                 },
                 backup=True,
             )
@@ -649,7 +651,10 @@ _RECONCILIATION_REPORT_SQL = (
        AND tracking_number_identifier.system = :tracking_number_system
     WHERE
       participant.withdrawal_time IS NULL
-      AND dv_order.id IS NULL      
+      AND NOT EXISTS (
+        SELECT 0 FROM participant
+        WHERE participant.participant_id = dv_order.participant_id          
+      )     
     UNION ALL
     SELECT
       biobank_stored_sample.biobank_id raw_biobank_id,
@@ -686,7 +691,7 @@ _RECONCILIATION_REPORT_SQL = (
     FROM
       biobank_stored_sample
       LEFT OUTER JOIN
-        participant ON biobank_stored_sample.biobank_id = participant.biobank_id
+        participant ON biobank_stored_sample.biobank_id = participant.biobank_id      
     WHERE biobank_stored_sample.confirmed IS NOT NULL AND NOT EXISTS (
       SELECT 0 FROM """
     + _ORDER_JOINS
@@ -696,8 +701,20 @@ _RECONCILIATION_REPORT_SQL = (
     ) AND NOT EXISTS (
       SELECT 0 FROM participant
        WHERE participant.biobank_id = biobank_stored_sample.biobank_id
-         AND participant.withdrawal_time IS NOT NULL)   
-  ) reconciled
+         AND participant.withdrawal_time IS NOT NULL)  
+    AND 
+        (
+            CASE 
+                WHEN 1 = :dv_order_filter THEN 
+                    biobank_stored_sample.biobank_id NOT IN (
+                    SELECT p.biobank_id 
+                     FROM participant p
+                        JOIN biobank_dv_order dv 
+                        ON p.participant_id = dv.participant_id)
+                ELSE TRUE
+            END
+        )
+  ) reconciled  
   WHERE (reconciled.collected IS NOT NULL 
     AND reconciled.confirmed IS NOT NULL 
     AND reconciled.collected >= reconciled.confirmed 
@@ -741,7 +758,6 @@ _SALIVARY_MISSING_REPORT_SQL = (
     , dvo.biobank_tracking_id AS usps_tracking_id
     , dvo.biobank_order_id AS order_id
     , bo.created AS collection_date
-        
 FROM
     biobank_dv_order dvo
     JOIN participant p ON p.participant_id = dvo.participant_id
