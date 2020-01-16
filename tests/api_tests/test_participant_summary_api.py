@@ -357,8 +357,12 @@ class ParticipantSummaryApiTest(BaseTestCase):
             participant["withdrawalStatus"] = "NO_USE"
             participant["withdrawalReason"] = "DUPLICATE"
             participant["withdrawalTimeStamp"] = 1563907344169
+            participant["suspensionStatus"] = "NO_CONTACT"
             participant["withdrawalReasonJustification"] = "IT WAS A DUPLICATE"
             self.send_put(path, participant, headers={"If-Match": 'W/"1"'})
+            response = self.send_get("ParticipantSummary", participant)
+            self.assertGreater(len(response['entry']), 0)
+
         with FakeClock(TIME_3):
             response = self.send_get("Participant/%s/Summary" % participant_id)
             del answers["CABoRSignature"]
@@ -374,6 +378,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertEqual(response["withdrawalReason"], "DUPLICATE")
             self.assertEqual(response["withdrawalAuthored"], "2019-07-23T18:42:24")
             self.assertEqual(response["withdrawalReasonJustification"], "IT WAS A DUPLICATE")
+
+        response = self.send_get("ParticipantSummary?suspensionStatus=NO_CONTACT")
+        self.assertEqual(len(response['entry']), 0)
 
     def test_suspension_status_returns_right_info(self):
         with FakeClock(TIME_1):
