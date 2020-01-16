@@ -1,7 +1,7 @@
 """rdr_created and modifed for biobank_stored_samples
 
 Revision ID: 7490afb4beb3
-Revises: 27b812b403cc
+Revises: f4316bf05797
 Create Date: 2020-01-13 12:04:12.201081
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import mysql
 
 # revision identifiers, used by Alembic.
 revision = '7490afb4beb3'
-down_revision = '27b812b403cc'
+down_revision = 'f4316bf05797'
 branch_labels = None
 depends_on = None
 
