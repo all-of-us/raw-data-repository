@@ -82,7 +82,10 @@ class OrganizationDao(CacheAllDao):
         resource.id = model.externalId
         resource.display_name = model.displayName
         if inactive_sites:
-            resource.sites = [SiteDao._to_json(site) for site in model.sites]
+            resource.sites = [
+                SiteDao._to_json(site) for site in model.sites
+                if site.isObsolete in obsolete_filters
+            ]
         else:
             resource.sites = [
                 SiteDao._to_json(site)
