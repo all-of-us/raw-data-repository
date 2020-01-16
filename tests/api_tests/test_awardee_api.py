@@ -42,6 +42,7 @@ class AwardeeApiTest(BaseTestCase):
         super(AwardeeApiTest, self).setUp(with_data=False)
         self.org_dao = OrganizationDao()
         self.hpo_dao = HPODao()
+        self.site_dao = SiteDao()
         self.hpo_dao.insert(
             HPO(hpoId=UNSET_HPO_ID, name="UNSET", displayName="Unset", organizationType=OrganizationType.UNSET)
         )
@@ -116,6 +117,11 @@ class AwardeeApiTest(BaseTestCase):
         self.assertEqual(1, len(result_pitt['organizations']))
         self.assertEqual(1, len(result_pitt['organizations'][0]['sites']))
 
+        # Test HPO ID with with inactive flag
+        self._setup_inactive_obsolete_site_for_obsolete_test()
+        result_pitt_inactive = self.send_get("Awardee/PITT?_inactive=true&_obsolete=false")
+        self.assertEqual(2, len(result_pitt_inactive['organizations'][0]['sites']))
+
         self.hpo_dao.insert(
             HPO(hpoId=OBSOLETE_ID,
                 name="OBSOLETE_HPO",
@@ -126,6 +132,11 @@ class AwardeeApiTest(BaseTestCase):
         result_all = self.send_get("Awardee?_obsolete=false")
         self.assertEqual(3, len(result_all['entry']))
 
+        # Test no HPO ID but with inactive & obsolete flag
+        result_all_inactive = self.send_get("Awardee?_inactive=true&_obsolete=false")
+        self.assertEqual(2, len(result_all_inactive['entry'][1]['resource']['organizations'][0]['sites']))
+
+        # Test updated to obsolete
         result_1_obsolete = self.send_get("Awardee/OBSOLETE_HPO?_obsolete=false")
         self.assertEqual('OBSOLETE_HPO', result_1_obsolete['id'])
 
@@ -169,7 +180,7 @@ class AwardeeApiTest(BaseTestCase):
 
     def _setup_data(self):
         organization_dao = OrganizationDao()
-        site_dao = SiteDao()
+
         org_1 = organization_dao.insert(
             Organization(externalId="ORG_1", displayName="Organization 1", hpoId=PITT_HPO_ID)
         )
@@ -177,7 +188,7 @@ class AwardeeApiTest(BaseTestCase):
             Organization(externalId="AARDVARK_ORG", displayName="Aardvarks Rock", hpoId=PITT_HPO_ID)
         )
 
-        site_dao.insert(
+        self.site_dao.insert(
             Site(
                 siteName="Site 1",
                 googleGroup="hpo-site-1",
@@ -201,7 +212,7 @@ class AwardeeApiTest(BaseTestCase):
                 link="http://www.example.com",
             )
         )
-        site_dao.insert(
+        self.site_dao.insert(
             Site(
                 siteName="Zebras Rock",
                 googleGroup="aaaaaaa",
@@ -212,12 +223,11 @@ class AwardeeApiTest(BaseTestCase):
         )
 
     def _setup_unset_enrollment_site(self):
-        site_dao = SiteDao()
         organization_dao = OrganizationDao()
         org_2 = organization_dao.insert(
             Organization(externalId="ORG_2", displayName="Organization 2", hpoId=PITT_HPO_ID)
         )
-        site_dao.insert(
+        self.site_dao.insert(
             Site(
                 siteName="not enrolling site",
                 googleGroup="not_enrolling_dot_com",
@@ -267,8 +277,7 @@ class AwardeeApiTest(BaseTestCase):
         }
 
     def _setup_active_sitefor_obsolete_test(self):
-        site_dao = SiteDao()
-        site_dao.insert(
+        self.site_dao.insert(
             Site(
                 siteName="Site 3",
                 googleGroup="org-1-site-3",
@@ -280,7 +289,7 @@ class AwardeeApiTest(BaseTestCase):
             )
         )
 
-        site_dao.insert(
+        self.site_dao.insert(
             Site(
                 siteName="AA Site 1",
                 googleGroup="aardvark-site-1",
@@ -289,6 +298,20 @@ class AwardeeApiTest(BaseTestCase):
                 enrollingStatus=EnrollingStatus.ACTIVE,
                 latitude=24.1,
                 longitude=24.1,
+            )
+        )
+
+    def _setup_inactive_obsolete_site_for_obsolete_test(self):
+        self.site_dao.insert(
+            Site(
+                siteName="Inactive Obsolete Site Test",
+                googleGroup="org-1-inactive-site",
+                organizationId=1,
+                enrollingStatus=EnrollingStatus.INACTIVE,
+                siteStatus=SiteStatus.INACTIVE,
+                isObsolete=ObsoleteStatus.OBSOLETE,
+                latitude=100.0,
+                longitude=110.0,
             )
         )
 
