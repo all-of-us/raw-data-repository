@@ -57,7 +57,7 @@ class _BQModuleSchema(BQSchema):
                     select max(questionnaire_id) as questionnaire_id
                     from questionnaire_concept qc
                              inner join code c on qc.code_id = c.code_id
-                    where qc.code_id = (select c1.code_id from code c1 where c1.value = :mod)
+                    where qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
                 );
         """)
 
