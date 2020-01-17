@@ -470,7 +470,7 @@ _ORDER_JOINS = """
     ON biobank_order.amended_site_id = amended_site.site_id
     LEFT OUTER JOIN
       site cancelled_site
-    ON biobank_order.cancelled_site_id = cancelled_site.site_id   
+    ON biobank_order.cancelled_site_id = cancelled_site.site_id
 """
 
 _STORED_SAMPLE_JOIN_CRITERIA = """
@@ -692,7 +692,7 @@ _RECONCILIATION_REPORT_SQL = (
     FROM
       biobank_stored_sample
       LEFT OUTER JOIN
-        participant ON biobank_stored_sample.biobank_id = participant.biobank_id      
+        participant ON biobank_stored_sample.biobank_id = participant.biobank_id
     WHERE biobank_stored_sample.confirmed IS NOT NULL AND NOT EXISTS (
       SELECT 0 FROM """
     + _ORDER_JOINS

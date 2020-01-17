@@ -225,6 +225,7 @@ class MySqlReconciliationTest(BaseTestCase):
             biobankOrderId=order.biobankOrderId,
         )
 
+        # Samples for the 'received' dv order test
         if not missing and received:
             self._insert_samples(participant_obj,
                                  [BIOBANK_TESTS[12]],
@@ -232,7 +233,6 @@ class MySqlReconciliationTest(BaseTestCase):
                                  f"PresentDVIdentifier{participant_obj.participantId}",
                                  clock.CLOCK.now().replace(microsecond=0),
                                  mayo_create_time)
-            #self.sample_dao.
 
         return dv_dao.insert(dv_order_obj)
 
@@ -810,7 +810,7 @@ class MySqlReconciliationTest(BaseTestCase):
             },
         )
 
-        # Test the salivary_missing report
+        # Test the missing DV order is in salivary_missing report
         exporter.assertRowCount(missing_salivary, 1)
         exporter.assertHasRow(
             missing_salivary,
@@ -819,7 +819,7 @@ class MySqlReconciliationTest(BaseTestCase):
             }
         )
 
-        # Test that the salivary received order is in received
+        # Test that the DV received order is in the received report
         exporter.assertHasRow(
             received,
             {
