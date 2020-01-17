@@ -2755,6 +2755,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(participant_id_2, new_ps_2["participantId"])
         self.assertIsNotNone(ps_2["withdrawalTime"])
         self.assertIsNone(new_ps_2.get("suspensionTime"))
+        self.assertIsNone(new_ps_2.get("city"))
+        self.assertIsNone(new_ps_2.get("streetAddress"))
+        self.assertIsNone(new_ps_2.get("streetAddress2"))
         # Queries that filter on fields not returned for withdrawn participants no longer return
         # participant 2; queries that filter on fields that are returned for withdrawn participants
         # include it; queries that ask for withdrawn participants get back participant 2 only.
