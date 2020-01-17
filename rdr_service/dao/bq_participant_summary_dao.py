@@ -515,7 +515,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                     FROM questionnaire_response qr
                             INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
                             INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
-                    WHERE qr.participant_id = :p_id and qc.code_id = (select c1.code_id from code c1 where c1.value = :mod)
+                    WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
                     ORDER BY qr.created DESC;
                 """
 
