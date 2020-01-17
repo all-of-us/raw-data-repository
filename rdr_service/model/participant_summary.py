@@ -50,7 +50,8 @@ WITHDRAWN_PARTICIPANT_VISIBILITY_TIME = datetime.timedelta(days=2)
 
 # suspended participants don't allow contact but can still use samples. These fields
 # will not be returned when queried on suspended participant.
-SUSPENDED_PARTICIPANT_FIELDS = ["zipCode", "city", "streetAddress", "streetAddress2", "phoneNumber", "loginPhoneNumber", "email"]
+SUSPENDED_PARTICIPANT_FIELDS = ["zipCode", "city", "streetAddress", "streetAddress2", "phoneNumber", "loginPhoneNumber",
+                                "email"]
 
 
 class ParticipantSummary(Base):
