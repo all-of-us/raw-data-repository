@@ -275,7 +275,7 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         dt = datetime.datetime(2016, 12, 22, 18, 30, 45)
         expected_prefix = "reconciliation/report_2016-12-22"
         paths = biobank_samples_pipeline._get_report_paths(dt)
-        self.assertEqual(len(paths), 4)
+        self.assertEqual(len(paths), 5)
         for path in paths:
             self.assertTrue(
                 path.startswith(expected_prefix), "Report path %r must start with %r." % (expected_prefix, path)

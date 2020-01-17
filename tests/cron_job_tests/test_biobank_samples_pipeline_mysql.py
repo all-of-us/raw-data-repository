@@ -11,6 +11,8 @@ from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.biobank_dv_order import BiobankDVOrder
+from rdr_service.dao.dv_order_dao import DvOrderDao
 from rdr_service.model.code import CodeType
 from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.model.participant import Participant
@@ -203,6 +205,36 @@ class MySqlReconciliationTest(BaseTestCase):
             _add_code_answer(code_answers, "race", answer)
         qr = self.make_questionnaire_response_json(participant_id, self._questionnaire_id, code_answers=code_answers)
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
+
+    def _create_dv_order(self, participant_obj, missing=False, received=False):
+        dt = 11 if missing else 2
+        mayo_create_time = clock.CLOCK.now().replace(microsecond=0) - datetime.timedelta(days=dt)
+
+        # since not using Mayolink API for test, need a biobank order
+        order = self._insert_order(
+            participant_obj,
+            f'DVOrderMissing{participant_obj.participantId}',
+            [BIOBANK_TESTS[13]],
+            mayo_create_time
+        )
+
+        dv_dao = DvOrderDao()
+        dv_order_obj = BiobankDVOrder(
+            participantId=participant_obj.participantId,
+            version=1,
+            biobankOrderId=order.biobankOrderId,
+        )
+
+        # Samples for the 'received' dv order test
+        if not missing and received:
+            self._insert_samples(participant_obj,
+                                 [BIOBANK_TESTS[12]],
+                                 [f"PresentDVSample{participant_obj.participantId}"],
+                                 f"PresentDVIdentifier{participant_obj.participantId}",
+                                 clock.CLOCK.now().replace(microsecond=0),
+                                 mayo_create_time)
+
+        return dv_dao.insert(dv_order_obj)
 
     def test_reconciliation_query(self):
         self.setup_codes([RACE_QUESTION_CODE], CodeType.QUESTION)
@@ -555,17 +587,29 @@ class MySqlReconciliationTest(BaseTestCase):
                     within_24_hours + datetime.timedelta(hours=repetition - 1),
                 )
 
+        # Participants to test the salivary missing report
+        p_missing_salivary = self._insert_participant(race_codes=[RACE_WHITE_CODE])
+        self._create_dv_order(p_missing_salivary, missing=True)
+
+        p_missing_inside_timeframe = self._insert_participant(race_codes=[RACE_WHITE_CODE])
+        self._create_dv_order(p_missing_inside_timeframe, missing=False)
+
+        p_present_salivary = self._insert_participant(race_codes=[RACE_WHITE_CODE])
+        self._create_dv_order(p_present_salivary, missing=False, received=True)
+
         received, missing, modified, withdrawals = "rx.csv", "missing.csv", "modified.csv", "withdrawals.csv"
+        missing_salivary = "missing_salivary.csv"
         exporter = InMemorySqlExporter(self)
         biobank_samples_pipeline._query_and_write_reports(
-            exporter, file_time, "daily", received, missing, modified, withdrawals
+            exporter, file_time, "daily", received, missing, modified, withdrawals, missing_salivary
         )
 
-        exporter.assertFilesEqual((received, missing, modified, withdrawals))
+        exporter.assertFilesEqual((received, missing, modified, withdrawals, missing_salivary))
 
         # sent-and-received: 4 on-time, 2 late, none of the missing/extra/repeated ones;
-        # not includes orders/samples from more than 10 days ago
-        exporter.assertRowCount(received, 10)
+        # not includes orders/samples from more than 10 days ago;
+        # Includes 1 Salivary order
+        exporter.assertRowCount(received, 11)
         exporter.assertColumnNamesEqual(received, _CSV_COLUMN_NAMES)
         row = exporter.assertHasRow(
             received,
@@ -764,6 +808,23 @@ class MySqlReconciliationTest(BaseTestCase):
                 "withdrawal_time": database_utils.format_datetime(within_24_hours),
                 "is_native_american": "Y",
             },
+        )
+
+        # Test the missing DV order is in salivary_missing report
+        exporter.assertRowCount(missing_salivary, 1)
+        exporter.assertHasRow(
+            missing_salivary,
+            {
+                "biobank_id": to_client_biobank_id(p_missing_salivary.biobankId)
+            }
+        )
+
+        # Test that the DV received order is in the received report
+        exporter.assertHasRow(
+            received,
+            {
+                "biobank_id": to_client_biobank_id(p_present_salivary.biobankId)
+            }
         )
 
     def test_monthly_reconciliation_report(self):

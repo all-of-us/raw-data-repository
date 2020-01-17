@@ -323,9 +323,9 @@ def write_reconciliation_report(now, report_type="daily"):
 
 
 def _get_report_paths(report_datetime, report_type="daily"):
-    """Returns a list of output filenames for samples: (received, late, missing, withdrawals)."""
+    """Returns a list of output filenames for samples: (received, late, missing, withdrawals, salivary_missing)."""
 
-    report_name_suffix = ("received", "missing", "modified", "withdrawals")
+    report_name_suffix = ("received", "missing", "modified", "withdrawals", "salivary_missing")
 
     if report_type == "monthly":
         report_name_suffix = ("received_monthly", "missing_monthly", "modified_monthly", "withdrawals_monthly")
@@ -336,7 +336,9 @@ def _get_report_paths(report_datetime, report_type="daily"):
     ]
 
 
-def _query_and_write_reports(exporter, now, report_type, path_received, path_missing, path_modified, path_withdrawals):
+def _query_and_write_reports(exporter, now, report_type, path_received,
+                             path_missing, path_modified,
+                             path_withdrawals, path_salivary_missing=None):
     """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers.
 
   Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
@@ -378,6 +380,7 @@ def _query_and_write_reports(exporter, now, report_type, path_received, path_mis
     report_predicates = [received_predicate, missing_predicate, modified_predicate]
 
     for report_path, report_predicate in zip(report_paths, report_predicates):
+        dv_filter = 1 if report_path == path_missing else 0
         with exporter.open_writer(report_path, report_predicate) as report_writer:
             exporter.run_export_with_writer(
                 report_writer,
@@ -390,6 +393,7 @@ def _query_and_write_reports(exporter, now, report_type, path_received, path_mis
                     "kit_id_system": _KIT_ID_SYSTEM,
                     "tracking_number_system": _TRACKING_NUMBER_SYSTEM,
                     "n_days_ago": now - datetime.timedelta(days=(report_cover_range + 1)),
+                    "dv_order_filter": dv_filter
                 },
                 backup=True,
             )
@@ -406,6 +410,18 @@ def _query_and_write_reports(exporter, now, report_type, path_received, path_mis
         },
         backup=True,
     )
+
+    # Generate the missing salivary report, within last n days (10 1/20)
+    if report_type != "monthly" and path_salivary_missing is not None:
+        exporter.run_export(
+            path_salivary_missing,
+            _SALIVARY_MISSING_REPORT_SQL,
+            {
+                "biobank_id_prefix": get_biobank_id_prefix(),
+                "n_days_interval": 10,
+            },
+            backup=True,
+        )
 
 
 # Indexes from the SQL query below; used in predicates.
@@ -619,6 +635,9 @@ _RECONCILIATION_REPORT_SQL = (
     + _ORDER_JOINS
     + """
     LEFT OUTER JOIN
+        biobank_dv_order dv_order
+    ON dv_order.biobank_order_id = biobank_order.biobank_order_id
+    LEFT OUTER JOIN
       biobank_stored_sample
     ON """
     + _STORED_SAMPLE_JOIN_CRITERIA
@@ -633,6 +652,10 @@ _RECONCILIATION_REPORT_SQL = (
        AND tracking_number_identifier.system = :tracking_number_system
     WHERE
       participant.withdrawal_time IS NULL
+      AND NOT EXISTS (
+        SELECT 0 FROM participant
+        WHERE participant.participant_id = dv_order.participant_id          
+      )     
     UNION ALL
     SELECT
       biobank_stored_sample.biobank_id raw_biobank_id,
@@ -679,8 +702,20 @@ _RECONCILIATION_REPORT_SQL = (
     ) AND NOT EXISTS (
       SELECT 0 FROM participant
        WHERE participant.biobank_id = biobank_stored_sample.biobank_id
-         AND participant.withdrawal_time IS NOT NULL)
-  ) reconciled
+         AND participant.withdrawal_time IS NOT NULL)  
+    AND 
+        (
+            CASE 
+                WHEN 1 = :dv_order_filter THEN 
+                    biobank_stored_sample.biobank_id NOT IN (
+                    SELECT p.biobank_id 
+                     FROM participant p
+                        JOIN biobank_dv_order dv 
+                        ON p.participant_id = dv.participant_id)
+                ELSE TRUE
+            END
+        )
+  ) reconciled  
   WHERE (reconciled.collected IS NOT NULL 
     AND reconciled.confirmed IS NOT NULL 
     AND reconciled.collected >= reconciled.confirmed 
@@ -717,6 +752,27 @@ _WITHDRAWAL_REPORT_SQL = (
 """
 )
 
+_SALIVARY_MISSING_REPORT_SQL = (
+    """
+    SELECT DISTINCT
+      CONCAT(:biobank_id_prefix, p.biobank_id) AS biobank_id
+    , dvo.biobank_tracking_id AS usps_tracking_id
+    , dvo.biobank_order_id AS order_id
+    , bo.created AS collection_date
+FROM
+    biobank_dv_order dvo
+    JOIN participant p ON p.participant_id = dvo.participant_id
+    JOIN biobank_order bo ON bo.biobank_order_id = dvo.biobank_order_id
+    JOIN biobank_ordered_sample bos ON bos.order_id = bo.biobank_order_id
+    JOIN biobank_order_identifier boi ON boi.biobank_order_id = bo.biobank_order_id
+    LEFT JOIN biobank_stored_sample bss ON bss.biobank_id = p.biobank_id
+WHERE TRUE
+     AND (
+         bo.created < DATE_SUB(now(), INTERVAL :n_days_interval DAY)
+     )
+     AND bss.biobank_stored_sample_id IS NULL
+    """
+)
 
 def in_past_n_days(result, now, n_days, ordered_before=None):
     sent_collection_time_str = result[_SENT_COLLECTION_TIME_INDEX]
