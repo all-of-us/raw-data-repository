@@ -338,7 +338,7 @@ def _get_report_paths(report_datetime, report_type="daily"):
 
 def _query_and_write_reports(exporter, now, report_type, path_received,
                              path_missing, path_modified,
-                             path_withdrawals, path_salivary_missing):
+                             path_withdrawals, path_salivary_missing=None):
     """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers.
 
   Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
@@ -412,15 +412,16 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
     )
 
     # Generate the missing salivary report, within last n days (10 1/20)
-    exporter.run_export(
-        path_salivary_missing,
-        _SALIVARY_MISSING_REPORT_SQL,
-        {
-            "biobank_id_prefix": get_biobank_id_prefix(),
-            "n_days_interval": 10,
-        },
-        backup=True,
-    )
+    if report_type != "monthly" and path_salivary_missing is not None:
+        exporter.run_export(
+            path_salivary_missing,
+            _SALIVARY_MISSING_REPORT_SQL,
+            {
+                "biobank_id_prefix": get_biobank_id_prefix(),
+                "n_days_interval": 10,
+            },
+            backup=True,
+        )
 
 
 # Indexes from the SQL query below; used in predicates.
