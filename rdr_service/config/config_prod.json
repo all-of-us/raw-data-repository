@@ -27,6 +27,9 @@
   "genomic_gc_metrics_bucket_name": [
     "prod_genomics_cell_line_validation"
   ],
+  "genomic_cvl_reconciliation_report_subfolder": [
+    "cvl_reconciliation_reports"
+  ],
   "metrics_shards": [
     "10"
   ],

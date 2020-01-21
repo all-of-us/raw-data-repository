@@ -339,12 +339,17 @@ class GenomicReconciler:
         """ The main method for the metrics vs. manifest reconciliation """
         try:
             unreconciled_metrics = self.metrics_dao.get_null_set_members()
+            # unreconciled_members = self.member_dao.get_null_gc_metrics()
             results = []
             for metric in unreconciled_metrics:
                 member = self._lookup_member(metric.biobankId)
                 results.append(
                     self.metrics_dao.update_manifest_reconciled(
-                        metric, member.id, self.run_id)
+                        metric, member.id)
+                )
+                results.append(
+                    self.member_dao.update_member_job_run_id(
+                        member.id, self.run_id, 'reconcileManifestJobRunId')
                 )
             return GenomicSubProcessResult.SUCCESS \
                 if GenomicSubProcessResult.ERROR not in results \
@@ -378,8 +383,8 @@ class GenomicReconciler:
                         # Updates the relevant fields for reconciliation
                         # sequence files for non-existent GC metrics are ignored
                         results.append(
-                            self._update_gc_metrics(metric_obj, seq_file_name,
-                                                    self.run_id)
+                            self._update_genomic_set_member_metrics_reconciliation(metric_obj, seq_file_name,
+                                                                                   self.run_id)
                         )
                         # Archive the file
                         seq_file_path = "/" + bucket_name + "/" + seq_file_name
@@ -441,7 +446,7 @@ class GenomicReconciler:
         """
         return self.metrics_dao.get_metrics_to_reconcile_seq(biobank_id)
 
-    def _update_gc_metrics(self, metric_obj, seq_file_name, job_run_id):
+    def _update_genomic_set_member_metrics_reconciliation(self, metric_obj, seq_file_name, job_run_id):
         """
         Uses metrics DAO to update GenomicGCValidationMetrics object
         with sequencing reconciliation data
@@ -527,7 +532,7 @@ class GenomicBiobankSamplesCoupler:
         :param: from_date
         :return: list of tuples (bid, pid, biobank_identifier.value, collected_site_id)
         """
-        # TODO: add Genomic ROR consent when that project launches
+        # TODO: add Genomic RoR Consent when that Code is added
         with self.samples_dao.session() as session:
             result = session.query(BiobankStoredSample.biobankId,
                                    Participant.participantId,

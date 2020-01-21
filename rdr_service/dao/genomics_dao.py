@@ -134,6 +134,11 @@ class GenomicSetMemberDao(UpdatableDao):
 
     def __init__(self):
         super(GenomicSetMemberDao, self).__init__(GenomicSetMember, order_by_ending=["id"])
+        self.valid_job_id_fields = ('reconcileManifestJobRunId',
+                                    'reconcileSequencingJobRunId',
+                                    'reconcileCvlJobRunId',
+                                    'CvlManifestWgsJobRunId',
+                                    'CvlManifestArrJobRunId')
 
     def get_id(self, obj):
         return obj.id
@@ -309,6 +314,15 @@ class GenomicSetMemberDao(UpdatableDao):
                 options(load_only("id")).first()
         return member_id
 
+    def update_member_job_run_id(self, member_id, job_run_id, field):
+        """Updates the GenomicSetMember with a job_run_id for supplied workflow"""
+        if field not in self.valid_job_id_fields:
+            return GenomicSubProcessResult.ERROR
+        with self.session() as session:
+            result = session.query(GenomicSetMember).filter(
+                GenomicSetMember.id == member_id
+            ).update({field: job_run_id})
+        return result
 
 class GenomicJobRunDao(UpdatableDao):
     """ Stub for GenomicJobRun model """
@@ -537,12 +551,11 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 .first()
             )
 
-    def update_manifest_reconciled(self, metric_obj, member_id, run_id):
+    def update_manifest_reconciled(self, metric_obj, member_id):
         with self.session() as session:
             return self._update_manifest_reconciled_with_session(session,
                                                                  metric_obj,
-                                                                 member_id,
-                                                                 run_id)
+                                                                 member_id)
 
     def update_metrics_with_seq_file(self, metric_obj, seq_file_name,
                                      job_run_id):
@@ -553,12 +566,11 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                                                               job_run_id)
 
     def _update_manifest_reconciled_with_session(self, session, metric_obj,
-                                                 member_id, run_id):
+                                                 member_id):
         """
         Updates the record with the reconciliation data.
         :param metric_obj:
         :param member_id:
-        :param run_id:
         :return: query result or result code of error
         """
         try:
@@ -568,7 +580,6 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                     .values(
                     {
                         GenomicGCValidationMetrics.genomicSetMemberId: sqlalchemy.bindparam("member_id_param"),
-                        GenomicGCValidationMetrics.reconcileManifestJobRunId: sqlalchemy.bindparam("run_id_param")
                     }
                 )
             )
@@ -576,7 +587,6 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
             query_params = {
                 "metric_id_param": metric_obj.id,
                 "member_id_param": member_id,
-                "run_id_param": run_id,
             }
 
             return session.execute(query, query_params)
