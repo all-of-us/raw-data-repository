@@ -2,7 +2,6 @@ import collections
 
 import sqlalchemy
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import load_only
 from sqlalchemy.sql import functions
 
 from rdr_service import clock
