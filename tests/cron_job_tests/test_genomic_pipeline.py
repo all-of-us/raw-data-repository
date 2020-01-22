@@ -629,8 +629,6 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(4, record.alignedQ20Bases)
                 self.assertEqual('Pass', record.processingStatus)
                 self.assertEqual('This sample passed', record.notes)
-                self.assertEqual('Y', record.consentForRor)
-                self.assertEqual(1, record.withdrawnStatus)
                 self.assertEqual(11002, record.siteId)
             else:
                 # Test GEN file data inserted correctly
@@ -830,16 +828,16 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
-        test_set_member = self.member_dao.get(1)
 
         # Run the GC Metrics Reconciliation
         genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 2
+        test_set_member = self.member_dao.get(1)
         gc_metric_record = self.metrics_dao.get(1)
 
         # Test the gc_metrics were updated with reconciliation data
         self.assertEqual(test_set_member.biobankId, gc_metric_record.biobankId)
         self.assertEqual(test_set_member.id, gc_metric_record.genomicSetMemberId)
-        self.assertEqual(2, gc_metric_record.reconcileManifestJobRunId)
+        self.assertEqual(2, test_set_member.reconcileManifestJobRunId)
 
         run_obj = self.job_run_dao.get(2)
 
@@ -847,7 +845,7 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_gc_metrics_reconciliation_vs_sequencing_end_to_end(self):
         # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(1)
+        self._create_fake_datasets_for_gc_tests(2)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         self._create_ingestion_test_file('GC_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name)
@@ -865,7 +863,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 2
 
-        gc_record = self.metrics_dao.get(1)
+        gc_record = self.member_dao.get(2)
 
         # Test the gc_metrics were updated with reconciliation data
         self.assertEqual('GC_sequencing_T2.txt'
@@ -911,7 +909,7 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_duplicate_sequencing_reconciliation_file(self):
         # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(1)
+        self._create_fake_datasets_for_gc_tests(2)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         self._create_ingestion_test_file('GC_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name)
@@ -941,8 +939,8 @@ class GenomicPipelineTest(BaseTestCase):
                       archive_files)
 
         # Test the filename was updated
-        gc_metric_record = self.metrics_dao.get(1)
-        self.assertEqual(test_file, gc_metric_record.sequencingFileName)
+        gc_member_record = self.member_dao.get(2)
+        self.assertEqual(test_file, gc_member_record.sequencingFileName)
 
         run_obj = self.job_run_dao.get(3)
 

@@ -343,8 +343,12 @@ class GenomicReconciler:
             for metric in unreconciled_metrics:
                 member = self._lookup_member(metric.biobankId)
                 results.append(
-                    self.metrics_dao.update_manifest_reconciled(
-                        metric, member.id, self.run_id)
+                    self.metrics_dao.update_metric_set_member_id(
+                        metric, member.id)
+                )
+                results.append(
+                    self.member_dao.update_member_job_run_id(
+                        member, self.run_id, 'reconcileManifestJobRunId')
                 )
             return GenomicSubProcessResult.SUCCESS \
                 if GenomicSubProcessResult.ERROR not in results \
@@ -358,6 +362,7 @@ class GenomicReconciler:
         :return: result code
         """
         file_list = self._get_sequence_files(bucket_name)
+
         if file_list == GenomicSubProcessResult.NO_FILES:
             logging.info('No sequencing files to reconcile.')
             return file_list
@@ -372,15 +377,13 @@ class GenomicReconciler:
                     logging.info(f'Filename unable to be parsed: f{seq_file_name}')
                     return seq_biobank_id
                 else:
-                    metric_obj = self._get_sequence_metrics_to_reconcile_for_biobank_id(
-                        seq_biobank_id)
-                    if metric_obj:
+                    member = self._lookup_member(seq_biobank_id)
+                    if member:
                         # Updates the relevant fields for reconciliation
-                        # sequence files for non-existent GC metrics are ignored
                         results.append(
-                            self._update_gc_metrics(metric_obj, seq_file_name,
-                                                    self.run_id)
-                        )
+                            self._update_genomic_set_member_seq_reconciliation(member,
+                                                                               seq_file_name,
+                                                                               self.run_id))
                         # Archive the file
                         seq_file_path = "/" + bucket_name + "/" + seq_file_name
                         self.file_mover.archive_file(file_path=seq_file_path)
@@ -394,7 +397,7 @@ class GenomicReconciler:
         :param biobank_id:
         :return: GenomicSetMember object
         """
-        return self.member_dao.get_id_with_biobank_id(biobank_id)
+        return self.member_dao.get_member_with_biobank_id(biobank_id)
 
     def _get_sequence_files(self, bucket_name):
         """
@@ -432,27 +435,27 @@ class GenomicReconciler:
         except IndexError:
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
-    def _get_sequence_metrics_to_reconcile_for_biobank_id(self, biobank_id):
+    def _get_sequence_metrics_by_biobank_id(self, biobank_id):
         """
         Calls the metrics DAO
         :param biobank_id:
         :return: list of GenomicGCValidationMetrics
         objects with null sequencing_file_name
         """
-        return self.metrics_dao.get_metrics_to_reconcile_seq(biobank_id)
+        return self.metrics_dao.get_metrics_by_biobank_id(biobank_id)
 
-    def _update_gc_metrics(self, metric_obj, seq_file_name, job_run_id):
+    def _update_genomic_set_member_seq_reconciliation(self, member, seq_file_name, job_run_id):
         """
-        Uses metrics DAO to update GenomicGCValidationMetrics object
+        Uses member DAO to update GenomicSetMember object
         with sequencing reconciliation data
-        :param metric_obj: the object to update
+        :param member: the GenomicSetMember to update
         :param seq_file_name:
         :param job_run_id:
         :return: query result
         """
-        return self.metrics_dao.update_metrics_with_seq_file(metric_obj,
-                                                             seq_file_name,
-                                                             job_run_id)
+        return self.member_dao.update_member_sequencing_file(member,
+                                                             job_run_id,
+                                                             seq_file_name)
 
 
 class GenomicBiobankSamplesCoupler:
@@ -527,7 +530,7 @@ class GenomicBiobankSamplesCoupler:
         :param: from_date
         :return: list of tuples (bid, pid, biobank_identifier.value, collected_site_id)
         """
-        # TODO: add Genomic ROR consent when that project launches
+        # TODO: add Genomic RoR Consent when that Code is added
         with self.samples_dao.session() as session:
             result = session.query(BiobankStoredSample.biobankId,
                                    Participant.participantId,

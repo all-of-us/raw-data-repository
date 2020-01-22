@@ -51,6 +51,7 @@ GENOMIC_GC_METRICS_BUCKET_NAME = 'genomic_gc_metrics_bucket_name'
 GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME = "genomic_biobank_manifest_folder_name"
 GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME = "genomic_biobank_manifest_result_folder_name"
 GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME = 'genotyping_sample_manifest_folder_name'
+GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER = "genomic_cvl_reconciliation_report_subfolder"
 GENOMIC_GC_PROCESSED_FOLDER_NAME = "processed_by_rdr"
 CONSENT_PDF_BUCKET = "consent_pdf_bucket"
 USER_INFO = "user_info"

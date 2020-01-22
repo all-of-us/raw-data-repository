@@ -87,6 +87,29 @@ class GenomicSetMember(Base):
     sampleId = Column('sample_id', String(80), nullable=True)
     sampleType = Column('sample_type', String(50), nullable=True)
 
+    consentForRor = Column('consent_for_ror', String(10), nullable=True)
+    withdrawnStatus = Column('withdrawn_status', Integer, nullable=True)
+
+    sequencingFileName = Column('sequencing_file_name',
+                                String(128), nullable=True)
+
+    # Reconciliation and Manifest columns
+    reconcileManifestJobRunId = Column('reconcile_manifest_job_run_id',
+                                       Integer, ForeignKey("genomic_job_run.id"),
+                                       nullable=True)
+    reconcileSequencingJobRunId = Column('reconcile_sequencing_job_run_id',
+                                         Integer, ForeignKey("genomic_job_run.id"),
+                                         nullable=True)
+    reconcileCvlJobRunId = Column('reconcile_cvl_job_run_id',
+                                  Integer, ForeignKey("genomic_job_run.id"),
+                                  nullable=True)
+    cvlManifestWgsJobRunId = Column('cvl_manifest_wgs_job_run_id',
+                                    Integer, ForeignKey("genomic_job_run.id"),
+                                    nullable=True)
+    cvlManifestArrJobRunId = Column('cvl_manifest_arr_job_run_id',
+                                    Integer, ForeignKey("genomic_job_run.id"),
+                                    nullable=True)
+
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
 event.listen(GenomicSetMember, "before_update", model_update_listener)
@@ -171,17 +194,7 @@ class GenomicGCValidationMetrics(Base):
     alignedQ20Bases = Column('aligned_q20_bases', Integer, nullable=True)
     processingStatus = Column('processing_status', String(15), nullable=True)
     notes = Column('notes', String(128), nullable=True)
-    consentForRor = Column('consent_for_ror', String(10), nullable=True)
-    withdrawnStatus = Column('withdrawn_status', Integer, nullable=True)
     siteId = Column('site_id', Integer, nullable=True)
-
-    # Reconciliation columns
-    reconcileManifestJobRunId = Column('reconcile_manifest_job_run_id',
-                                       Integer, nullable=True)
-    reconcileSequencingJobRunId = Column('reconcile_sequencing_job_run_id',
-                                         Integer, nullable=True)
-    sequencingFileName = Column('sequencing_file_name',
-                                String(128), nullable=True)
 
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)

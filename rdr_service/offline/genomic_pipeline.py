@@ -80,3 +80,19 @@ def new_participant_workflow():
     run_controller = genomic_job_controller.GenomicJobController(job_id)
     result = run_controller.run_new_participant_workflow()
     run_controller.end_run(result)
+
+
+def create_cvl_reconciliation_report():
+    """
+    Entrypoint for CVL reconciliation workflow
+    Sources from genomic_set_member and produces CVL reconciliation report CSV
+    """
+    pass
+
+
+def create_cvl_manifests():
+    """
+    Entrypoint for CVL Manifest workflow
+    Sources from list of biobank_ids in CVL reconciliation report
+    """
+    pass

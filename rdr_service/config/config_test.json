@@ -73,6 +73,9 @@
   "genomic_gc_metrics_bucket_name": [
     "test_genomics_cell_line_validation"
   ],
+  "genomic_cvl_reconciliation_report_subfolder": [
+    "cvl_reconciliation_reports"
+  ],
   "ghost_id_bucket": [
     "all-of-us-rdr-test-ghost-accounts"
   ],
