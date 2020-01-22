@@ -53,6 +53,7 @@ class DeployAppClass(object):
 
         self.deploy_root = args.git_project
         self._current_git_branch = git_current_branch()
+        self.jira_board = 'PD'
 
     def write_config_file(self, key: str, config: list, filename: str = None):
         """
@@ -182,7 +183,7 @@ class DeployAppClass(object):
             notes
         )
 
-        ticket = self._jira_handler.create_ticket(summary, descr)
+        ticket = self._jira_handler.create_ticket(summary, descr, board_id=self.jira_board)
         return ticket
 
     def add_jira_comment(self, comment):
@@ -197,15 +198,19 @@ class DeployAppClass(object):
             return comment
 
         summary = f"Release tracker for {self.args.git_target}"
-        tickets = self._jira_handler.find_ticket_from_summary(summary, board_id='PD')
+        tickets = self._jira_handler.find_ticket_from_summary(summary, board_id=self.jira_board)
 
         ticket = None
         if tickets:
             ticket = tickets[0]
         else:
             # Determine if this is a CircleCI deploy.
-            if self.gcp_env.project == 'all-of-us-rdr-staging' and 'JIRA_WATCHER_NAMES' in os.environ:
+            if self.gcp_env.project == 'all-of-us-rdr-staging':
                 ticket = self.create_jira_ticket(summary)
+                if not ticket:
+                    _logger.error('Failed to create JIRA ticket')
+                else:
+                    _logger.info(f'Created JIRA ticket {ticket.key} for tracking release.')
 
         if ticket:
             self._jira_handler.add_ticket_comment(ticket, comment)
@@ -223,6 +228,12 @@ class DeployAppClass(object):
 
         # Disable any other user prompts.
         self.args.quiet = True
+
+        # Change current git branch/tag to git target.
+        if not git_checkout_branch(self.args.git_target):
+            _logger.error(f'Unable to switch to git branch/tag {self.args.git_target}, aborting.')
+            return 1
+        _logger.info(f'Switched to {git_current_branch()} branch/tag.')
 
         # Run database migration
         _logger.info('Applying database migrations...')
@@ -252,9 +263,6 @@ class DeployAppClass(object):
 
         gcp_restart_instances(self.gcp_env.project)
 
-        _logger.info('Switching back to git branch/tag: %s ...', self._current_git_branch)
-        git_checkout_branch(self._current_git_branch)
-
         return 0 if result else 1
 
     def tag_people(self):
@@ -266,7 +274,7 @@ class DeployAppClass(object):
 
             tag_unames[position] = tmp_list
 
-        comment = "Notificiation/approval for the following roles: "
+        comment = "Notification/approval for the following roles: "
         for k, v in tag_unames.items():  #pylint: disable=invalid-name
             comment += k + ': \n'
             for i in v:
@@ -341,8 +349,12 @@ class DeployAppClass(object):
                 _logger.warning('Aborting deployment.')
                 return 1
 
-        return self.deploy_app()
+        result = self.deploy_app()
 
+        git_checkout_branch(self._current_git_branch)
+        _logger.info('Returned to git branch/tag: %s ...', self._current_git_branch)
+
+        return result
 
 
 class ListServicesClass(object):
