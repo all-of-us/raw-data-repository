@@ -131,6 +131,19 @@ class GenomicJobController:
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
+    def run_cvl_reconciliation_report(self):
+        """
+        Creates the CVL reconciliation report using the reconciler objec
+        :return: result code for job run
+        """
+        self.reconciler = GenomicReconciler(
+            self.job_run.id, bucket_name=self.bucket_name
+        )
+        try:
+            return self.reconciler.generate_cvl_reconciliation_report()
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR
+
     def end_run(self, result):
         """Updates the genomic_job_run table with end result"""
         self.job_run_dao.update_run_record(self.job_run.id, result)

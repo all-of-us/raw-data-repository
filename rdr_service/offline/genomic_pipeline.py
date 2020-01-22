@@ -87,7 +87,11 @@ def create_cvl_reconciliation_report():
     Entrypoint for CVL reconciliation workflow
     Sources from genomic_set_member and produces CVL reconciliation report CSV
     """
-    pass
+    job_id = GenomicJob.CVL_RECONCILIATION_REPORT
+    run_controller = genomic_job_controller.GenomicJobController(
+        job_id)
+    result = run_controller.run_cvl_reconciliation_report()
+    run_controller.end_run(result)
 
 
 def create_cvl_manifests():

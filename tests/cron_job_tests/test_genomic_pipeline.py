@@ -724,6 +724,13 @@ class GenomicPipelineTest(BaseTestCase):
         biobankId=None,
         genome_type="aou_array",
         ny_flag="Y",
+        consent_for_ror="Y",
+        sequencing_filename=None,
+        recon_manifest_job_id=None,
+        recon_sequencing_job_id=None,
+        recon_cvl_job_id=None,
+        cvl_manifest_wgs_job_id=None,
+        cvl_manifest_arr_job_id=None,
     ):
         genomic_set_member = GenomicSetMember()
         genomic_set_member.genomicSetId = genomic_set_id
@@ -735,6 +742,13 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.genomeType = genome_type
         genomic_set_member.nyFlag = 1 if ny_flag == "Y" else 0
         genomic_set_member.biobankOrderId = biobank_order_id
+        genomic_set_member.consentForRor = consent_for_ror
+        genomic_set_member.sequencingFileName = sequencing_filename
+        genomic_set_member.reconcileManifestJobRunId = recon_manifest_job_id
+        genomic_set_member.reconcileSequencingJobRunId = recon_sequencing_job_id
+        genomic_set_member.reconcileCvlJobRunId = recon_cvl_job_id
+        genomic_set_member.cvlManifestWgsJobRunId = cvl_manifest_wgs_job_id
+        genomic_set_member.cvlManifestArrJobRunId = cvl_manifest_arr_job_id
 
         member_dao = GenomicSetMemberDao()
         member_dao.insert(genomic_set_member)
@@ -794,7 +808,7 @@ class GenomicPipelineTest(BaseTestCase):
                 validation_status=GenomicSetMemberStatus.VALID,
                 validation_flags=None,
                 biobankId=f'{p}',
-                sex_at_birth='F', genome_type='aou_array', ny_flag='Y'
+                sex_at_birth='F', genome_type='aou_array', ny_flag='Y',
             )
 
     def _update_site_states(self):
@@ -1045,3 +1059,38 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
+
+    def test_cvl_reconciliation_report_end_to_end(self):
+        # Create fake genomic dataset and reconcile the sequencing data
+        # Create the fake ingested data
+        self._create_fake_datasets_for_gc_tests(3)
+        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        self._create_ingestion_test_file('GC_AoU_SEQ_TestDataManifest.csv',
+                                         bucket_name)
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+
+        # Test file
+        test_sequencing_file = 'GC_sequencing_T2.txt'
+        self._write_cloud_csv(test_sequencing_file, 'attagc', bucket=bucket_name)
+
+        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 2
+
+        # Run the CVL Reconciliation report workflow
+        genomic_pipeline.create_cvl_reconciliation_report()  # run_id = 3
+
+        # Test Genomic Set Member updated with CVL reconciliation job run
+        test_member_2 = self.member_dao.get(2)  # member 2 should be CVL Reconciled
+        test_member_no_seq_file = self.member_dao.get(3)  # member 3 should not be CVL Reconciled
+        self.assertEqual(3, test_member_2.reconcileCvlJobRunId)
+        self.assertIsNone(test_member_no_seq_file.reconcileCvlJobRunId)
+
+        # TODO: Test the reconciliation file contents
+        bucket_list = list(list_blobs(f'/{bucket_name}/{GENOMIC_CVL}))
+        print(bucket_list)
+
+        # TODO: Test the job controller updated the file_processed records
+
+        # Test the job result
+        run_obj = self.job_run_dao.get(3)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)

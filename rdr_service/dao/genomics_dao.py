@@ -343,6 +343,19 @@ class GenomicSetMemberDao(UpdatableDao):
         except OperationalError:
             return GenomicSubProcessResult.ERROR
 
+    def get_members_for_cvl_reconciliation(self):
+        """
+        Simple select from GSM
+        :return: unreconciled GenomicSetMembers with ror consent and seq. data
+        """
+        with self.session() as session:
+            members = session.query(GenomicSetMember).filter(
+                GenomicSetMember.reconcileCvlJobRunId == None,
+                GenomicSetMember.consentForRor == "Y",
+                GenomicSetMember.sequencingFileName != None,
+            )
+        return members
+
 
 class GenomicJobRunDao(UpdatableDao):
     """ Stub for GenomicJobRun model """

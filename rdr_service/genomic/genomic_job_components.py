@@ -44,7 +44,8 @@ from rdr_service.genomic.validation import (
     GENOMIC_VALID_AGE,
     GENOMIC_VALID_CONSENT_CUTOFF,
 )
-
+from rdr_service.offline.sql_exporter import SqlExporter
+from rdr_service.config import GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER
 
 class GenomicFileIngester:
     """
@@ -321,11 +322,11 @@ class GenomicFileMover:
 
 class GenomicReconciler:
     """ This component handles reconciliation between genomic datasets """
-    def __init__(self, run_id, archive_folder=None, file_mover=None):
+    def __init__(self, run_id, archive_folder=None, file_mover=None, bucket_name=None):
 
         self.run_id = run_id
 
-        self.bucket_name = None
+        self.bucket_name = bucket_name
         self.archive_folder = archive_folder
 
         # Dao components
@@ -390,6 +391,31 @@ class GenomicReconciler:
             return GenomicSubProcessResult.SUCCESS \
                 if GenomicSubProcessResult.ERROR not in results \
                 else GenomicSubProcessResult.ERROR
+
+    def generate_cvl_reconciliation_report(self):
+        """
+        The main method for the CVL Reconciliation report,
+        ouptuts report file to the cvl subfolder and updates
+        genomic_set_member
+        :return: result code
+        """
+        members = self._get_members_for_cvl_reconciliation()
+        if members:
+            file_name = f"{GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER}/cvl_report_{self.run_id}.csv"
+            self._write_cvl_report_to_file(members, file_name)
+
+            results = []
+            for member in members:
+                results.append(self.member_dao.update_member_job_run_id(
+                    member, job_run_id=self.run_id,
+                    field='reconcileCvlJobRunId')
+                )
+
+            return GenomicSubProcessResult.SUCCESS \
+                if GenomicSubProcessResult.ERROR not in results \
+                else GenomicSubProcessResult.ERROR
+
+        return GenomicSubProcessResult.NO_FILES
 
     def _lookup_member(self, biobank_id):
         """
@@ -456,6 +482,34 @@ class GenomicReconciler:
         return self.member_dao.update_member_sequencing_file(member,
                                                              job_run_id,
                                                              seq_file_name)
+
+    def _get_members_for_cvl_reconciliation(self):
+        """
+        Retrieves GenomicSetMembers from DB
+        :return: list of GenomicSetMembers to add to CVL recon report
+        """
+        return self.member_dao.get_members_for_cvl_reconciliation()
+
+    def _write_cvl_report_to_file(self, members, file_name):
+        """
+        writes data to csv file in bucket
+        :param members:
+        :param file_name:
+        :return: result code
+        """
+        try:
+            # extract only columns we need
+            cvl_columns = ('biobank_id', 'member_id')
+            report_data = ((m.biobankId, m.id) for m in members)
+
+            # Use SQL exporter
+            exporter = SqlExporter(self.bucket_name)
+            with exporter.open_writer(file_name) as writer:
+                writer.write_header(cvl_columns)
+                writer.write_rows(report_data)
+            return GenomicSubProcessResult.SUCCESS
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR
 
 
 class GenomicBiobankSamplesCoupler:
