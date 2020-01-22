@@ -302,27 +302,48 @@ class GenomicSetMemberDao(UpdatableDao):
         ]
         return session.execute(query, parameter_sets)
 
-    def get_id_with_biobank_id(self, biobank_id):
+    def get_member_with_biobank_id(self, biobank_id):
         """
         Retrieves a genomic set member record matching the biobank Id
         :param biobank_id:
         :return: a GenomicSetMember.id for the object
         """
         with self.session() as session:
-            member_id = session.query(GenomicSetMember).filter(
-                GenomicSetMember.biobankId == biobank_id). \
-                options(load_only("id")).first()
-        return member_id
+            member = session.query(GenomicSetMember).filter(
+                GenomicSetMember.biobankId == biobank_id).first()
+        return member
 
-    def update_member_job_run_id(self, member_id, job_run_id, field):
-        """Updates the GenomicSetMember with a job_run_id for supplied workflow"""
+    def update_member_job_run_id(self, member, job_run_id, field):
+        """
+        Updates the GenomicSetMember with a job_run_id for an arbitrary workflow
+        :param member: the GenomicSetMember object to update
+        :param job_run_id:
+        :param field: the field for the job-run workflow (i.e. reconciliation, cvl, etc.)
+        :return: query result or result code of error
+        """
         if field not in self.valid_job_id_fields:
             return GenomicSubProcessResult.ERROR
-        with self.session() as session:
-            result = session.query(GenomicSetMember).filter(
-                GenomicSetMember.id == member_id
-            ).update({field: job_run_id})
-        return result
+        setattr(member, field, job_run_id)
+        try:
+            return self.update(member)
+        except OperationalError:
+            return GenomicSubProcessResult.ERROR
+
+    def update_member_sequencing_file(self, member, job_run_id, filename):
+        """
+        Updates the sequencing filename of the GenomicSetMember
+        :param member:
+        :param filename:
+        :param job_run_id:
+        :return: query result or result code of error
+        """
+        member.reconcileSequencingJobRunId = job_run_id
+        member.sequencingFileName = filename
+        try:
+            return self.update(member)
+        except OperationalError:
+            return GenomicSubProcessResult.ERROR
+
 
 class GenomicJobRunDao(UpdatableDao):
     """ Stub for GenomicJobRun model """
@@ -538,7 +559,7 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 .all()
             )
 
-    def get_metrics_to_reconcile_seq(self, biobank_id):
+    def get_metrics_by_biobank_id(self, biobank_id):
         """
         Retrieves gc metric record with the biobank_id
         :param: biobank_id
@@ -551,80 +572,15 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 .first()
             )
 
-    def update_manifest_reconciled(self, metric_obj, member_id):
-        with self.session() as session:
-            return self._update_manifest_reconciled_with_session(session,
-                                                                 metric_obj,
-                                                                 member_id)
-
-    def update_metrics_with_seq_file(self, metric_obj, seq_file_name,
-                                     job_run_id):
-        with self.session() as session:
-            return self._update_metrics_seq_file_with_session(session,
-                                                              metric_obj,
-                                                              seq_file_name,
-                                                              job_run_id)
-
-    def _update_manifest_reconciled_with_session(self, session, metric_obj,
-                                                 member_id):
+    def update_metric_set_member_id(self, metric_obj, member_id):
         """
         Updates the record with the reconciliation data.
         :param metric_obj:
         :param member_id:
         :return: query result or result code of error
         """
+        metric_obj.genomicSetMemberId = member_id
         try:
-            query = (
-                sqlalchemy.update(GenomicGCValidationMetrics)
-                    .where(GenomicGCValidationMetrics.id == sqlalchemy.bindparam("metric_id_param"))
-                    .values(
-                    {
-                        GenomicGCValidationMetrics.genomicSetMemberId: sqlalchemy.bindparam("member_id_param"),
-                    }
-                )
-            )
-
-            query_params = {
-                "metric_id_param": metric_obj.id,
-                "member_id_param": member_id,
-            }
-
-            return session.execute(query, query_params)
-        except OperationalError:
-            return GenomicSubProcessResult.ERROR
-
-    def _update_metrics_seq_file_with_session(self, session, metric_obj,
-                                              sequence_file,
-                                              job_run_id):
-        """
-        Updates the record with the reconciliation data.
-        :param metric_obj:
-        :param sequence_file:
-        :param job_run_id:
-        :return: query result or result code of error
-        """
-        try:
-            query = (
-                sqlalchemy.update(GenomicGCValidationMetrics)
-                .where(GenomicGCValidationMetrics.biobankId == sqlalchemy.bindparam("biobankId_param"))
-                .values(
-                    {
-                        GenomicGCValidationMetrics
-                        .sequencingFileName: sqlalchemy.bindparam(
-                            "sequence_file_param"),
-                        GenomicGCValidationMetrics
-                        .reconcileSequencingJobRunId: sqlalchemy.bindparam(
-                            "job_run_id_param")
-                    }
-                )
-            )
-
-            query_params = {
-                "biobankId_param": metric_obj.biobankId,
-                "sequence_file_param": sequence_file,
-                "job_run_id_param": job_run_id,
-            }
-
-            return session.execute(query, query_params)
+            return self.update(metric_obj)
         except OperationalError:
             return GenomicSubProcessResult.ERROR
