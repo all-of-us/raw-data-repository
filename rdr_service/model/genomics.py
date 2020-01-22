@@ -103,10 +103,10 @@ class GenomicSetMember(Base):
     reconcileCvlJobRunId = Column('reconcile_cvl_job_run_id',
                                   Integer, ForeignKey("genomic_job_run.id"),
                                   nullable=True)
-    CvlManifestWgsJobRunId = Column('cvl_manifest_wgs_job_run_id',
+    cvlManifestWgsJobRunId = Column('cvl_manifest_wgs_job_run_id',
                                     Integer, ForeignKey("genomic_job_run.id"),
                                     nullable=True)
-    CvlManifestArrJobRunId = Column('cvl_manifest_arr_job_run_id',
+    cvlManifestArrJobRunId = Column('cvl_manifest_arr_job_run_id',
                                     Integer, ForeignKey("genomic_job_run.id"),
                                     nullable=True)
 

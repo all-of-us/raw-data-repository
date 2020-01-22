@@ -629,8 +629,6 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(4, record.alignedQ20Bases)
                 self.assertEqual('Pass', record.processingStatus)
                 self.assertEqual('This sample passed', record.notes)
-                # self.assertEqual('Y', record.consentForRor)
-                # self.assertEqual(1, record.withdrawnStatus)
                 self.assertEqual(11002, record.siteId)
             else:
                 # Test GEN file data inserted correctly

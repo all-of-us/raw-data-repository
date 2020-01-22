@@ -305,7 +305,7 @@ class GenomicSetMemberDao(UpdatableDao):
         """
         Retrieves a genomic set member record matching the biobank Id
         :param biobank_id:
-        :return: a GenomicSetMember.id for the object
+        :return: a GenomicSetMember object
         """
         with self.session() as session:
             member = session.query(GenomicSetMember).filter(
