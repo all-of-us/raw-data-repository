@@ -81,9 +81,11 @@ class MayoLinkApi(UpdatableApi):
             response, content = http.request(
                 self.endpoint, method="POST", headers={"Content-type": "application/xml"}, body=xml
             )
-            if response['status'] == "200":
+            if response['status'] == "201":
                 result = self._xml_to_dict(content)
                 return result
+            else:
+                ServiceUnavailable("Mayolink service return {} rather than 201".format(response['status']))
         except httplib2.HttpLib2Error:
             pass
         except OSError:
