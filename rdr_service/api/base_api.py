@@ -20,11 +20,20 @@ DEFAULT_MAX_RESULTS = 100
 MAX_MAX_RESULTS = 10000
 
 
-def log_api_request(model_obj=None):
+def log_api_request(log: RequestsLog = None, model_obj=None):
     """ Create deferred task to save the request payload and possibly link it to a table record """
-    log = RequestsLog()
+    if not log:
+        log = RequestsLog()
+        log.complete = False
+    else:
+        log.complete = True
 
-    log.endpoint = request.endpoint
+    try:
+        log.endpoint = request.endpoint
+    except RuntimeError:
+        # This is a unittest, just return.
+        return None
+
     log.method = request.method
     log.url = request.url
     log.user = app_util.get_oauth_id()
@@ -78,7 +87,7 @@ def log_api_request(model_obj=None):
         except Exception:  # pylint: disable=broad-except
             pass
 
-    save_raw_request_record(log)
+    return save_raw_request_record(log)
 
 
 class BaseApi(Resource):
@@ -130,7 +139,7 @@ class BaseApi(Resource):
                 raise NotFound(
                     f"{self.dao.model_type.__name__} with ID {id_} is not for participant with ID {participant_id}"
                 )
-        log_api_request(obj)
+        log_api_request(log=request.log_record, model_obj=obj)
         return self._make_response(obj)
 
     def _make_response(self, obj):
@@ -169,7 +178,7 @@ class BaseApi(Resource):
                                     queue='bigquery-tasks', payload=params, in_seconds=5)
                 task.execute()
 
-        log_api_request(result)
+        log_api_request(log=request.log_record, model_obj=result)
         return self._make_response(result)
 
     def list(self, participant_id=None):
@@ -327,7 +336,7 @@ class UpdatableApi(BaseApi):
                                     queue='bigquery-tasks', payload=params, in_seconds=5)
                 task.execute()
 
-        log_api_request(m)
+        log_api_request(log=request.log_record, model_obj=m)
         return self._make_response(m)
 
     def make_etag(self, version):
@@ -348,7 +357,7 @@ class UpdatableApi(BaseApi):
             raise BadRequest("If-Match is missing for PATCH request")
         expected_version = _parse_etag(etag)
         order = self.dao.update_with_patch(id_, resource, expected_version)
-        log_api_request(order)
+        log_api_request(log=request.log_record, model_obj=order)
         return self._make_response(order)
 
     def update_with_patch(self, id_, resource, expected_version):
