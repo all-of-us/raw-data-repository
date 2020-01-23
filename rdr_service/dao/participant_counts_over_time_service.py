@@ -99,6 +99,8 @@ class ParticipantCountsOverTimeService(BaseDao):
                             '(enrollment_status_member_time)')
             session.execute('CREATE INDEX idx_sample_time ON metrics_tmp_participant '
                             '(enrollment_status_core_stored_sample_time)')
+            session.execute('CREATE INDEX idx_participant_origin ON metrics_tmp_participant '
+                            '(participant_origin)')
 
             session.execute(participant_sql, params)
 
