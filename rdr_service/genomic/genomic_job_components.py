@@ -605,7 +605,7 @@ class GenomicBiobankSamplesCoupler:
                     ParticipantSummary.sampleStatus1ED04 == SampleStatus.RECEIVED,
                     ParticipantSummary.sampleStatus1SAL2 == SampleStatus.RECEIVED
                 ),
-                BiobankStoredSample.rdrCreated > from_date).distinct()
+                BiobankStoredSample.rdrCreated > from_date).all()
         return list(zip(*result))
 
     def _create_new_genomic_set(self):

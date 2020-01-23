@@ -353,7 +353,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember.reconcileCvlJobRunId == None,
                 GenomicSetMember.consentForRor == "Y",
                 GenomicSetMember.sequencingFileName != None,
-            )
+            ).all()
         return members
 
 
@@ -448,8 +448,8 @@ class GenomicFileProcessedDao(UpdatableDao):
         """
         with self.session() as session:
             file_list = session.query(GenomicFileProcessed).filter(
-                GenomicFileProcessed.runId == run_id)
-        return list(file_list)
+                GenomicFileProcessed.runId == run_id).all()
+        return file_list
 
     def insert_file_record(self, run_id,
                            path,
