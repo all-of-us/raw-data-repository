@@ -343,6 +343,19 @@ class GenomicSetMemberDao(UpdatableDao):
         except OperationalError:
             return GenomicSubProcessResult.ERROR
 
+    def get_members_for_cvl_reconciliation(self):
+        """
+        Simple select from GSM
+        :return: unreconciled GenomicSetMembers with ror consent and seq. data
+        """
+        with self.session() as session:
+            members = session.query(GenomicSetMember).filter(
+                GenomicSetMember.reconcileCvlJobRunId == None,
+                GenomicSetMember.consentForRor == "Y",
+                GenomicSetMember.sequencingFileName != None,
+            ).all()
+        return members
+
 
 class GenomicJobRunDao(UpdatableDao):
     """ Stub for GenomicJobRun model """
@@ -435,10 +448,15 @@ class GenomicFileProcessedDao(UpdatableDao):
         """
         with self.session() as session:
             file_list = session.query(GenomicFileProcessed).filter(
-                GenomicFileProcessed.runId == run_id)
-        return list(file_list)
+                GenomicFileProcessed.runId == run_id).all()
+        return file_list
 
-    def insert_file_record(self, run_id, path, bucket_name, file_name):
+    def insert_file_record(self, run_id,
+                           path,
+                           bucket_name,
+                           file_name,
+                           end_time=None,
+                           file_result=None):
         """
         Inserts the file record
         :param run_id: the id of the current genomics_job_run
@@ -453,6 +471,8 @@ class GenomicFileProcessedDao(UpdatableDao):
         processing_file.bucketName = bucket_name
         processing_file.fileName = file_name
         processing_file.startTime = clock.CLOCK.now()
+        processing_file.endTime = end_time
+        processing_file.fileResult = file_result
 
         return self.insert(processing_file)
 
