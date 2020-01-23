@@ -23,7 +23,7 @@ class PhysicalMeasurementsApi(BaseApi):
     def patch(self, id_, p_id):
         resource = request.get_json(force=True)
         obj = self.dao.patch(id_, resource, p_id)
-        log_api_request(obj)
+        log_api_request(log=request.log_record, model_obj=obj)
         return obj
 
     def list(self, participant_id=None):

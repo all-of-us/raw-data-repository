@@ -721,7 +721,7 @@ def save_raw_request_record(log: RequestsLog):
     _dao = BaseDao(RequestsLog)
     with _dao.session() as session:
         session.add(log)
-        session.commit()
+        session.flush()
         # for a small window each sunday, check for old records and delete them.
         now = datetime.datetime.utcnow()
         if now.weekday() == 6 and now.hour == 0:
@@ -730,3 +730,5 @@ def save_raw_request_record(log: RequestsLog):
             if count > 0:
                 session.query(RequestsLog).filter(RequestsLog.created < old_date).delete(synchronize_session=False)
                 session.commit()
+
+        return log

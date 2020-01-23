@@ -242,6 +242,7 @@ def auth_required(role_whitelist):
     def auth_required_wrapper(func):
         def wrapped(*args, **kwargs):
             appid = GAE_PROJECT
+            request.log_record = log_api_request()
             # Only enforce HTTPS and auth for external requests; requests made for data generation
             # are allowed through (when enabled).
             acceptable_hosts = ("None", "testbed-test", "testapp", "localhost", "127.0.0.1")
@@ -254,7 +255,7 @@ def auth_required(role_whitelist):
             result = func(*args, **kwargs)
             if request.logged is False:
                 try:
-                    log_api_request()
+                    log_api_request(log=request.log_record)
                 except RuntimeError:
                     # Unittests don't always setup a valid flask request context.
                     pass

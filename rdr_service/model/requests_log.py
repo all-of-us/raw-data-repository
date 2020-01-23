@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Integer, String, event
+from sqlalchemy import Column, DateTime, Integer, String, event, Boolean
 from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
@@ -38,6 +38,9 @@ class RequestsLog(Base):
     fpk_column = Column("fpk_column", String(65), nullable=True)
     # Authenticated User ID
     user = Column('user', String(255), nullable=True)
+    # request completed successfully
+    complete = Column('complete', Boolean, nullable=True, default=0)
+
 
 
 event.listen(RequestsLog, "before_insert", model_insert_listener)
