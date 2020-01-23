@@ -521,6 +521,7 @@ class GenomicJob(messages.Enum):
     RECONCILE_MANIFEST = 2
     RECONCILE_SEQUENCING = 3
     NEW_PARTICIPANT_WORKFLOW = 4
+    CVL_RECONCILIATION_REPORT = 5
 
 
 class GenomicSubProcessStatus(messages.Enum):

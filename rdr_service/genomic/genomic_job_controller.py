@@ -5,6 +5,8 @@ This module tracks and validates the status of Genomics Pipeline Subprocesses.
 import logging
 from datetime import datetime
 
+from rdr_service import clock
+
 from rdr_service.config import (
     GENOMIC_GC_METRICS_BUCKET_NAME,
     GENOMIC_GC_PROCESSED_FOLDER_NAME,
@@ -128,6 +130,31 @@ class GenomicJobController:
             last_run_date = self._get_last_successful_run_time()
             logging.info(f'Running New Participant Workflow.')
             return self.biobank_coupler.create_new_genomic_participants(last_run_date)
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR
+
+    def run_cvl_reconciliation_report(self):
+        """
+        Creates the CVL reconciliation report using the reconciler objec
+        :return: result code for job run
+        """
+        self.reconciler = GenomicReconciler(
+            self.job_run.id, bucket_name=self.bucket_name
+        )
+        try:
+            cvl_result = self.reconciler.generate_cvl_reconciliation_report()
+            if cvl_result == GenomicSubProcessResult.SUCCESS:
+                logging.info(f'CVL reconciliation report created: {self.reconciler.cvl_file_name}')
+                # Insert the file record
+                self.file_processed_dao.insert_file_record(
+                    self.job_run.id,
+                    f'{self.bucket_name}/{self.reconciler.cvl_file_name}',
+                    self.bucket_name,
+                    self.reconciler.cvl_file_name,
+                    end_time=clock.CLOCK.now(),
+                    file_result=cvl_result
+                )
+            return cvl_result
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
