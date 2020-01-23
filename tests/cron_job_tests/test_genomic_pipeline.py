@@ -55,6 +55,7 @@ _FAKE_BUCKET_RESULT_FOLDER = "rdr_fake_sub_result_folder"
 _FAKE_GENOMIC_CENTER_BUCKET_A = 'rdr_fake_genomic_center_a_bucket'
 _FAKE_GENOMIC_CENTER_BUCKET_B = 'rdr_fake_genomic_center_b_bucket'
 _FAKE_GENOTYPING_FOLDER = 'rdr_fake_genotyping_folder'
+_FAKE_CVL_REPORT_FOLDER = 'fake_cvl_reconciliation_reports'
 _OUTPUT_CSV_TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
 _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
@@ -72,6 +73,8 @@ class GenomicPipelineTest(BaseTestCase):
                                                                     _FAKE_GENOMIC_CENTER_BUCKET_B])
         config.override_setting(config.GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME,
                                 [_FAKE_GENOTYPING_FOLDER])
+        config.override_setting(config.GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
+                                [_FAKE_CVL_REPORT_FOLDER])
 
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
@@ -1069,7 +1072,7 @@ class GenomicPipelineTest(BaseTestCase):
                                          bucket_name)
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
-        # Test file
+        # Test sequencing file (required for CVL)
         test_sequencing_file = 'GC_sequencing_T2.txt'
         self._write_cloud_csv(test_sequencing_file, 'attagc', bucket=bucket_name)
 
@@ -1084,11 +1087,26 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(3, test_member_2.reconcileCvlJobRunId)
         self.assertIsNone(test_member_no_seq_file.reconcileCvlJobRunId)
 
-        # TODO: Test the reconciliation file contents
-        bucket_list = list(list_blobs(f'/{bucket_name}/{GENOMIC_CVL}))
-        print(bucket_list)
+        # Test the reconciliation file contents
+        expected_cvl_columns = (
+            "biobank_id",
+            "member_id"
+        )
+        cvl_subfolder = config.getSetting(config.GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER)
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{cvl_subfolder}/cvl_report_3.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            missing_cols = set(expected_cvl_columns) - set(csv_reader.fieldnames)
 
-        # TODO: Test the job controller updated the file_processed records
+            self.assertEqual(0, len(missing_cols))
+            rows = list(csv_reader)
+            self.assertEqual(1, len(rows))
+            self.assertEqual(test_member_2.biobankId, rows[0]['biobank_id'])
+            self.assertEqual(test_member_2.id, int(rows[0]['member_id']))
+
+        # Test the job controller updated the file_processed records
+        file_record = self.file_processed_dao.get(2)  # remember, ingested file is id #1
+        self.assertEqual(3, file_record.runId)
+        self.assertEqual(f'{cvl_subfolder}/cvl_report_3.csv', file_record.fileName)
 
         # Test the job result
         run_obj = self.job_run_dao.get(3)

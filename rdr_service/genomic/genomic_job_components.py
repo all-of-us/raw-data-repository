@@ -45,7 +45,7 @@ from rdr_service.genomic.validation import (
     GENOMIC_VALID_CONSENT_CUTOFF,
 )
 from rdr_service.offline.sql_exporter import SqlExporter
-from rdr_service.config import GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER
+from rdr_service.config import GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER, getSetting
 
 class GenomicFileIngester:
     """
@@ -328,6 +328,7 @@ class GenomicReconciler:
 
         self.bucket_name = bucket_name
         self.archive_folder = archive_folder
+        self.cvl_file_name = None
 
         # Dao components
         self.member_dao = GenomicSetMemberDao()
@@ -401,8 +402,9 @@ class GenomicReconciler:
         """
         members = self._get_members_for_cvl_reconciliation()
         if members:
-            file_name = f"{GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER}/cvl_report_{self.run_id}.csv"
-            self._write_cvl_report_to_file(members, file_name)
+            cvl_subfolder = getSetting(GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER)
+            self.cvl_file_name = f"{cvl_subfolder}/cvl_report_{self.run_id}.csv"
+            self._write_cvl_report_to_file(members)
 
             results = []
             for member in members:
@@ -490,11 +492,10 @@ class GenomicReconciler:
         """
         return self.member_dao.get_members_for_cvl_reconciliation()
 
-    def _write_cvl_report_to_file(self, members, file_name):
+    def _write_cvl_report_to_file(self, members):
         """
         writes data to csv file in bucket
         :param members:
-        :param file_name:
         :return: result code
         """
         try:
@@ -504,7 +505,7 @@ class GenomicReconciler:
 
             # Use SQL exporter
             exporter = SqlExporter(self.bucket_name)
-            with exporter.open_writer(file_name) as writer:
+            with exporter.open_writer(self.cvl_file_name) as writer:
                 writer.write_header(cvl_columns)
                 writer.write_rows(report_data)
             return GenomicSubProcessResult.SUCCESS

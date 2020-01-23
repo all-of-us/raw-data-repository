@@ -451,7 +451,12 @@ class GenomicFileProcessedDao(UpdatableDao):
                 GenomicFileProcessed.runId == run_id)
         return list(file_list)
 
-    def insert_file_record(self, run_id, path, bucket_name, file_name):
+    def insert_file_record(self, run_id,
+                           path,
+                           bucket_name,
+                           file_name,
+                           end_time=None,
+                           file_result=None):
         """
         Inserts the file record
         :param run_id: the id of the current genomics_job_run
@@ -466,6 +471,8 @@ class GenomicFileProcessedDao(UpdatableDao):
         processing_file.bucketName = bucket_name
         processing_file.fileName = file_name
         processing_file.startTime = clock.CLOCK.now()
+        processing_file.endTime = end_time
+        processing_file.fileResult = file_result
 
         return self.insert(processing_file)
 
