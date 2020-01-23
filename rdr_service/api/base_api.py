@@ -28,7 +28,12 @@ def log_api_request(log: RequestsLog = None, model_obj=None):
     else:
         log.complete = True
 
-    log.endpoint = request.endpoint
+    try:
+        log.endpoint = request.endpoint
+    except RuntimeError:
+        # This is a unittest, just return.
+        return None
+
     log.method = request.method
     log.url = request.url
     log.user = app_util.get_oauth_id()
