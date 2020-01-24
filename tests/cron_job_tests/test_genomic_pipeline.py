@@ -1173,6 +1173,11 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(test_member_2.nyFlag, int(rows[0]['ny_flag']))
             self.assertEqual(test_member_2.siteId, int(rows[0]['site_id']))
 
+        # Test the job controller updated the file_processed records
+        file_record = self.file_processed_dao.get(3)  # remember, CVL report is id #2
+        self.assertEqual(5, file_record.runId)
+        self.assertEqual(f'{sub_folder}/cvl_manifest_5.csv', file_record.fileName)
+
         # Test the job result
         run_obj = self.job_run_dao.get(5)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
