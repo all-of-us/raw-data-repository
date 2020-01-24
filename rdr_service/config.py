@@ -53,6 +53,7 @@ GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME = "genomic_biobank_manifest_result_f
 GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME = 'genotyping_sample_manifest_folder_name'
 GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER = "genomic_cvl_reconciliation_report_subfolder"
 GENOMIC_GC_PROCESSED_FOLDER_NAME = "processed_by_rdr"
+GENOMIC_CVL_MANIFEST_SUBFOLDER = "genomic_cvl_manifest_subfolder"
 CONSENT_PDF_BUCKET = "consent_pdf_bucket"
 USER_INFO = "user_info"
 SYNC_SHARDS_PER_CHANNEL = "sync_shards_per_channel"

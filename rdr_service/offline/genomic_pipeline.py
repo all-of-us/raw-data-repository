@@ -99,4 +99,9 @@ def create_cvl_manifests():
     Entrypoint for CVL Manifest workflow
     Sources from list of biobank_ids in CVL reconciliation report
     """
-    pass
+    # So Far only WGS manifest requirements are really defined
+    job_id = GenomicJob.CREATE_MANIFEST_CVL_WGS
+    run_controller = genomic_job_controller.GenomicJobController(
+        job_id)
+    result = run_controller.run_cvl_wgs_manifest()
+    run_controller.end_run(result)

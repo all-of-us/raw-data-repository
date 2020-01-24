@@ -31,8 +31,8 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
-    GenomicJobRun
-)
+    GenomicJobRun,
+    GenomicGCValidationMetrics)
 from rdr_service.model.participant import Participant
 from rdr_service.model.code import Code
 from rdr_service.offline import genomic_pipeline
@@ -56,6 +56,7 @@ _FAKE_GENOMIC_CENTER_BUCKET_A = 'rdr_fake_genomic_center_a_bucket'
 _FAKE_GENOMIC_CENTER_BUCKET_B = 'rdr_fake_genomic_center_b_bucket'
 _FAKE_GENOTYPING_FOLDER = 'rdr_fake_genotyping_folder'
 _FAKE_CVL_REPORT_FOLDER = 'fake_cvl_reconciliation_reports'
+_FAKE_CVL_MANIFEST_FOLDER = 'fake_cvl_manifest_folder'
 _OUTPUT_CSV_TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
 _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
@@ -75,6 +76,8 @@ class GenomicPipelineTest(BaseTestCase):
                                 [_FAKE_GENOTYPING_FOLDER])
         config.override_setting(config.GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
                                 [_FAKE_CVL_REPORT_FOLDER])
+        config.override_setting(config.GENOMIC_CVL_MANIFEST_SUBFOLDER,
+                                [_FAKE_CVL_MANIFEST_FOLDER])
 
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
@@ -1110,5 +1113,66 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the job result
         run_obj = self.job_run_dao.get(3)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+    def test_cvl_wgs_manifest_end_to_end(self):
+        self._create_fake_datasets_for_gc_tests(3)
+        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        self._create_ingestion_test_file('GC_AoU_SEQ_TestDataManifest.csv',
+                                         bucket_name)
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+
+        # Test sequencing file (required for CVL)
+        test_sequencing_file = 'GC_sequencing_T2.txt'
+        self._write_cloud_csv(test_sequencing_file, 'attagc', bucket=bucket_name)
+
+        genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 2
+        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 3
+
+        # Run the CVL Reconciliation report workflow
+        genomic_pipeline.create_cvl_reconciliation_report()  # run_id = 4
+
+        # finally run the manifest workflow
+        genomic_pipeline.create_cvl_manifests()  # run_id = 5
+
+        # Test Genomic Set Member updated with CVL WGS Manifest job run
+        # test_member_2 = self.member_dao.get(2)  # member 2 should be in manifest
+        with self.member_dao.session() as member_session:
+            test_member_2 = member_session.query(
+                GenomicSet.genomicSetName,
+                GenomicSetMember.biobankId,
+                GenomicSetMember.sexAtBirth,
+                GenomicSetMember.nyFlag,
+                GenomicSetMember.cvlManifestWgsJobRunId,
+                GenomicGCValidationMetrics.siteId).filter(
+                GenomicGCValidationMetrics.biobankId == GenomicSetMember.biobankId,
+                GenomicSet.id == GenomicSetMember.genomicSetId,
+                GenomicSetMember.id == 2
+            ).one()
+
+        self.assertEqual(5, test_member_2.cvlManifestWgsJobRunId)
+
+        # Test the manifest file contents
+        expected_cvl_columns = (
+            "genomic_set_name",
+            "biobank_id",
+            "sex_at_birth",
+            "ny_flag",
+            "site_id",
+            "secondary_validation",
+        )
+        sub_folder = config.getSetting(config.GENOMIC_CVL_MANIFEST_SUBFOLDER)
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/cvl_manifest_5.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            missing_cols = set(expected_cvl_columns) - set(csv_reader.fieldnames)
+            self.assertEqual(0, len(missing_cols))
+            rows = list(csv_reader)
+            self.assertEqual(1, len(rows))
+            self.assertEqual(test_member_2.biobankId, rows[0]['biobank_id'])
+            self.assertEqual(test_member_2.sexAtBirth, rows[0]['sex_at_birth'])
+            self.assertEqual(test_member_2.nyFlag, int(rows[0]['ny_flag']))
+            self.assertEqual(test_member_2.siteId, int(rows[0]['site_id']))
+
+        # Test the job result
+        run_obj = self.job_run_dao.get(5)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)

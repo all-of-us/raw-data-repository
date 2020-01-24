@@ -12,12 +12,17 @@ from rdr_service.config import (
     GENOMIC_GC_PROCESSED_FOLDER_NAME,
     getSetting
 )
-from rdr_service.participant_enums import GenomicSubProcessResult, GenomicSubProcessStatus
+from rdr_service.participant_enums import (
+    GenomicSubProcessResult,
+    GenomicSubProcessStatus,
+    GenomicManifestTypes,
+)
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
     GenomicFileMover,
     GenomicReconciler,
-    GenomicBiobankSamplesCoupler
+    GenomicBiobankSamplesCoupler,
+    ManifestCompiler,
 )
 from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
@@ -49,7 +54,7 @@ class GenomicJobController:
         self.file_mover = None
         self.reconciler = None
         self.biobank_coupler = None
-        self.manifest_coupler = None
+        self.manifest_compiler = None
 
         self.job_run = self._create_run(job_id)
 
@@ -135,7 +140,7 @@ class GenomicJobController:
 
     def run_cvl_reconciliation_report(self):
         """
-        Creates the CVL reconciliation report using the reconciler objec
+        Creates the CVL reconciliation report using the reconciler object
         :return: result code for job run
         """
         self.reconciler = GenomicReconciler(
@@ -155,6 +160,31 @@ class GenomicJobController:
                     file_result=cvl_result
                 )
             return cvl_result
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR
+
+    def run_cvl_wgs_manifest(self):
+        """
+        Creates the CVL WGS manifest using ManifestCompiler component
+        :return: result code for job run
+        """
+        self.manifest_compiler = ManifestCompiler(run_id=self.job_run.id,
+                                                  bucket_name=self.bucket_name)
+        try:
+            logging.info(f'Running Manifest Compiler for CVL...')
+            result = self.manifest_compiler.generate_and_transfer_manifest(GenomicManifestTypes.DRC_CVL_WGS)
+            if result == GenomicSubProcessResult.SUCCESS:
+                logging.info(f'CVL Manifest created: {self.manifest_compiler.output_file_name}')
+                # Insert the file record
+                self.file_processed_dao.insert_file_record(
+                    self.job_run.id,
+                    f'{self.bucket_name}/{self.manifest_compiler.output_file_name}',
+                    self.bucket_name,
+                    self.manifest_compiler.output_file_name,
+                    end_time=clock.CLOCK.now(),
+                    file_result=result
+                )
+            return result
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
