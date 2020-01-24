@@ -9,7 +9,7 @@ import re
 import datetime
 from collections import deque, namedtuple
 
-from sqlalchemy import or_, select
+from sqlalchemy import or_
 
 from rdr_service.api_util import (
     open_cloud_file,
