@@ -5,9 +5,9 @@ from rdr_service.genomic import (
     genomic_biobank_menifest_handler,
     genomic_set_file_handler,
     validation,
-    genomic_center_menifest_handler,
-    genomic_job_controller
+    genomic_center_menifest_handler
 )
+from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.participant_enums import (
     GenomicSetStatus,
     GenomicJob
@@ -41,11 +41,9 @@ def ingest_genomic_centers_metrics_files():
     """
     Entrypoint for GC Metrics File Ingestion subprocess of genomic_pipeline.
     """
-    job_id = GenomicJob.METRICS_INGESTION
-
-    run_controller = genomic_job_controller.GenomicJobController(job_id)
-    result = run_controller.ingest_gc_metrics()
-    run_controller.end_run(result)
+    logging.info('Beginning METRICS_INGESTION workflow')
+    with GenomicJobController(GenomicJob.METRICS_INGESTION) as controller:
+        controller.ingest_gc_metrics()
 
 
 def reconcile_metrics_vs_manifest():
@@ -53,10 +51,9 @@ def reconcile_metrics_vs_manifest():
     Entrypoint for GC Metrics File reconciliation
     against Manifest subprocess of genomic_pipeline.
     """
-    job_id = GenomicJob.RECONCILE_MANIFEST
-    run_controller = genomic_job_controller.GenomicJobController(job_id)
-    result = run_controller.run_reconciliation_to_manifest()
-    run_controller.end_run(result)
+    logging.info('Beginning RECONCILE_MANIFEST workflow')
+    with GenomicJobController(GenomicJob.RECONCILE_MANIFEST) as controller:
+        controller.run_reconciliation_to_manifest()
 
 
 def reconcile_metrics_vs_sequencing():
@@ -64,10 +61,9 @@ def reconcile_metrics_vs_sequencing():
     Entrypoint for GC Metrics File reconciliation
     against Sequencing Files subprocess of genomic_pipeline.
     """
-    job_id = GenomicJob.RECONCILE_SEQUENCING
-    run_controller = genomic_job_controller.GenomicJobController(job_id)
-    result = run_controller.run_reconciliation_to_sequencing()
-    run_controller.end_run(result)
+    logging.info('Beginning RECONCILE_SEQUENCING workflow')
+    with GenomicJobController(GenomicJob.RECONCILE_SEQUENCING) as controller:
+        controller.run_reconciliation_to_sequencing()
 
 
 def new_participant_workflow():
@@ -76,10 +72,9 @@ def new_participant_workflow():
     Sources from newly-created biobank_stored_samples
     from the BiobankSamplesPipeline.
     """
-    job_id = GenomicJob.NEW_PARTICIPANT_WORKFLOW
-    run_controller = genomic_job_controller.GenomicJobController(job_id)
-    result = run_controller.run_new_participant_workflow()
-    run_controller.end_run(result)
+    logging.info('Beginning NEW_PARTICIPANT_WORKFLOW workflow')
+    with GenomicJobController(GenomicJob.NEW_PARTICIPANT_WORKFLOW) as controller:
+        controller.run_new_participant_workflow()
 
 
 def create_cvl_reconciliation_report():
@@ -87,11 +82,9 @@ def create_cvl_reconciliation_report():
     Entrypoint for CVL reconciliation workflow
     Sources from genomic_set_member and produces CVL reconciliation report CSV
     """
-    job_id = GenomicJob.CVL_RECONCILIATION_REPORT
-    run_controller = genomic_job_controller.GenomicJobController(
-        job_id)
-    result = run_controller.run_cvl_reconciliation_report()
-    run_controller.end_run(result)
+    logging.info('Beginning CVL_RECONCILIATION_REPORT workflow')
+    with GenomicJobController(GenomicJob.CVL_RECONCILIATION_REPORT) as controller:
+        controller.run_cvl_reconciliation_report()
 
 
 def create_cvl_manifests():
@@ -99,9 +92,6 @@ def create_cvl_manifests():
     Entrypoint for CVL Manifest workflow
     Sources from list of biobank_ids in CVL reconciliation report
     """
-    # So Far only WGS manifest requirements are really defined
-    job_id = GenomicJob.CREATE_MANIFEST_CVL_WGS
-    run_controller = genomic_job_controller.GenomicJobController(
-        job_id)
-    result = run_controller.run_cvl_wgs_manifest()
-    run_controller.end_run(result)
+    logging.info('Beginning CREATE_MANIFEST_CVL_WGS workflow')
+    with GenomicJobController(GenomicJob.CREATE_MANIFEST_CVL_WGS) as controller:
+        controller.run_cvl_wgs_manifest()
