@@ -14,10 +14,9 @@ from rdr_service.model.biobank_order import (
 from rdr_service.model.participant import Participant
 from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
 from rdr_service.participant_enums import OrderStatus, UNSET_HPO_ID
-
-from tests.test_data import load_measurement_json, load_biobank_order_json
 from tests.api_tests.test_participant_summary_api import _add_code_answer
 from tests.helpers.unittest_base import BaseTestCase
+from tests.test_data import load_biobank_order_json, load_measurement_json
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
@@ -28,7 +27,7 @@ TIME_6 = datetime.datetime(2015, 1, 1)
 
 
 class BiobankOrderApiTest(BaseTestCase):
-    def setUp(self):
+    def setUp(self, **kwargs):
         super().setUp()
         self.participant = Participant(participantId=123, biobankId=555)
         self.participant_dao = ParticipantDao()
@@ -362,12 +361,14 @@ class BiobankOrderApiTest(BaseTestCase):
             order_history = session.query(BiobankOrderHistory).first()
             identifier_history = session.query(BiobankOrderIdentifierHistory).first()
             sample_history = session.query(BiobankOrderedSampleHistory).first()
+            all_samples_history = session.query(BiobankOrderedSampleHistory).all()
 
             self.assertEqual(result["id"], order_history.biobankOrderId)
             self.assertEqual(identifier_history.biobankOrderId, result["id"])
             self.assertEqual(sample_history.biobankOrderId, result["id"])
             self.assertEqual(result["meta"]["versionId"], 'W/"1"')
             self.assertEqual(order_history.version, 1)
+            self.assertEqual(len(all_samples_history), 16)
 
             # Test history on updates...
             biobank_order_id = result["identifier"][1]["value"]
