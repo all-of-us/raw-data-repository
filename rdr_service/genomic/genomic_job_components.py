@@ -677,7 +677,7 @@ class ManifestDefinitionProvider:
         Creates the manifest definitions to use when generating the manifest
         based on manifest type
         """
-        # Set each Manifes Definition as an instance of ManifestDef()
+        # Set each Manifest Definition as an instance of ManifestDef()
         self.MANIFEST_DEFINITIONS[GenomicManifestTypes.DRC_CVL_WGS] = self.ManifestDef(
             job_run_field='cvlManifestWgsJobRunId',
             source_data=self._get_source_data_query(GenomicManifestTypes.DRC_CVL_WGS),
