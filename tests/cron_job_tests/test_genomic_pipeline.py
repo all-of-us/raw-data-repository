@@ -1136,7 +1136,6 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.create_cvl_manifests()  # run_id = 5
 
         # Test Genomic Set Member updated with CVL WGS Manifest job run
-        # test_member_2 = self.member_dao.get(2)  # member 2 should be in manifest
         with self.member_dao.session() as member_session:
             test_member_2 = member_session.query(
                 GenomicSet.genomicSetName,

@@ -656,10 +656,7 @@ class GenomicBiobankSamplesCoupler:
 class ManifestDefinitionProvider:
     """
     Helper class to produce the definitions for each manifest
-    Separated here so that all manifest definitions are in one code block
-    (unlike, for example, the biobank samples reports)
     """
-
     # Metadata for the various manifests
     ManifestDef = namedtuple('ManifestDef', ["job_run_field",
                                              "source_data",
@@ -680,7 +677,7 @@ class ManifestDefinitionProvider:
         Creates the manifest definitions to use when generating the manifest
         based on manifest type
         """
-        # TODO: Put destination buckets in config when naming convention defined
+        # Set each Manifes Definition as an instance of ManifestDef()
         self.MANIFEST_DEFINITIONS[GenomicManifestTypes.DRC_CVL_WGS] = self.ManifestDef(
             job_run_field='cvlManifestWgsJobRunId',
             source_data=self._get_source_data_query(GenomicManifestTypes.DRC_CVL_WGS),

@@ -326,7 +326,7 @@ class GenomicSetMemberDao(UpdatableDao):
             return GenomicSubProcessResult.ERROR
         setattr(member, field, job_run_id)
         try:
-            logging.error(f'Updating {field} with run ID.')
+            logging.info(f'Updating {field} with run ID.')
             return self.update(member)
         except OperationalError:
             logging.error(f'Error updating member id: {member.id}.')
