@@ -522,6 +522,7 @@ class GenomicJob(messages.Enum):
     RECONCILE_SEQUENCING = 3
     NEW_PARTICIPANT_WORKFLOW = 4
     CVL_RECONCILIATION_REPORT = 5
+    CREATE_MANIFEST_CVL_WGS = 6
 
 
 class GenomicSubProcessStatus(messages.Enum):
@@ -540,6 +541,14 @@ class GenomicSubProcessResult(messages.Enum):
     INVALID_FILE_NAME = 3
     INVALID_FILE_STRUCTURE = 4
     ERROR = 5
+
+
+class GenomicManifestTypes(messages.Enum):
+    DRC_BIOBANK = 1
+    BIOBANK_GC = 2
+    GC_DRC = 3
+    DRC_CVL_WGS = 4
+    DRC_CVL_ARR = 5
 
 
 class WorkbenchWorkspaceStatus(messages.Enum):

@@ -76,6 +76,9 @@
   "genomic_cvl_reconciliation_report_subfolder": [
     "cvl_reconciliation_reports"
   ],
+  "genomic_cvl_manifest_subfolder": [
+    "cvl_manifests"
+  ],
   "ghost_id_bucket": [
     "all-of-us-rdr-test-ghost-accounts"
   ],

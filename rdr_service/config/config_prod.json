@@ -30,6 +30,9 @@
   "genomic_cvl_reconciliation_report_subfolder": [
     "cvl_reconciliation_reports"
   ],
+  "genomic_cvl_manifest_subfolder": [
+    "cvl_manifests"
+  ],
   "metrics_shards": [
     "10"
   ],

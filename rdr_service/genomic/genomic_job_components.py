@@ -29,6 +29,7 @@ from rdr_service.participant_enums import (
     QuestionnaireStatus,
     SampleStatus,
     GenomicSetStatus,
+    GenomicManifestTypes,
 )
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
@@ -45,7 +46,11 @@ from rdr_service.genomic.validation import (
     GENOMIC_VALID_CONSENT_CUTOFF,
 )
 from rdr_service.offline.sql_exporter import SqlExporter
-from rdr_service.config import GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER, getSetting
+from rdr_service.config import (
+    getSetting,
+    GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
+    GENOMIC_CVL_MANIFEST_SUBFOLDER,
+)
 
 class GenomicFileIngester:
     """
@@ -646,3 +651,159 @@ class GenomicBiobankSamplesCoupler:
                           .first()
         return self._SEX_AT_BIRTH_CODES.get(
                  result[0].lower().split('_')[-1], 'NA') if result else 'NA'
+
+
+class ManifestDefinitionProvider:
+    """
+    Helper class to produce the definitions for each manifest
+    """
+    # Metadata for the various manifests
+    ManifestDef = namedtuple('ManifestDef', ["job_run_field",
+                                             "source_data",
+                                             "destination_bucket",
+                                             "output_filename",
+                                             "columns"])
+
+    def __init__(self, job_run_id=None, bucket_name=None,):
+        # Attributes
+        self.job_run_id = job_run_id
+        self.bucket_name = bucket_name
+
+        self.MANIFEST_DEFINITIONS = dict()
+        self._setup_manifest_definitions()
+
+    def _setup_manifest_definitions(self):
+        """
+        Creates the manifest definitions to use when generating the manifest
+        based on manifest type
+        """
+        # Set each Manifes Definition as an instance of ManifestDef()
+        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.DRC_CVL_WGS] = self.ManifestDef(
+            job_run_field='cvlManifestWgsJobRunId',
+            source_data=self._get_source_data_query(GenomicManifestTypes.DRC_CVL_WGS),
+            destination_bucket=f'{self.bucket_name}',
+            output_filename=f'{getSetting(GENOMIC_CVL_MANIFEST_SUBFOLDER)}/cvl_manifest_{self.job_run_id}.csv',
+            columns=self._get_manifest_columns(GenomicManifestTypes.DRC_CVL_WGS),
+        )
+
+    def _get_source_data_query(self, manifest_type):
+        """
+        Returns the query to use for manifest's source data
+        :param manifest_type:
+        :return: query object
+        """
+        query_sql = ""
+        if manifest_type == GenomicManifestTypes.DRC_CVL_WGS:
+            query_sql = """
+                SELECT s.genomic_set_name
+                    , m.biobank_id
+                    , m.sex_at_birth
+                    , m.ny_flag
+                    , gcv.site_id
+                    , NULL as secondary_validation
+                FROM genomic_set_member m
+                    JOIN genomic_set s
+                        ON s.id = m.genomic_set_id
+                    JOIN genomic_gc_validation_metrics gcv
+                        ON gcv.genomic_set_member_id = m.id
+                WHERE gcv.processing_status = "pass"
+                    AND m.reconcile_cvl_job_run_id IS NOT NULL
+                    AND m.cvl_manifest_wgs_job_run_id IS NULL
+            """
+        return query_sql
+
+    def _get_manifest_columns(self, manifest_type):
+        """
+        Defines the columns of each manifest-type
+        :param manifest_type:
+        :return: column tuple
+        """
+        columns = tuple()
+        if manifest_type == GenomicManifestTypes.DRC_CVL_WGS:
+            columns = (
+                "genomic_set_name",
+                "biobank_id",
+                "sex_at_birth",
+                "ny_flag",
+                "site_id",
+                "secondary_validation",
+            )
+        return columns
+
+    def get_def(self, manifest_type):
+        return self.MANIFEST_DEFINITIONS[manifest_type]
+
+
+class ManifestCompiler:
+    """
+    This component compiles Genomic manifests
+    based on definitions provided by ManifestDefinitionProvider
+    TODO: All manifests should be updated to using this pattern, currently only CVL
+    """
+    def __init__(self, run_id, bucket_name=None):
+        self.run_id = run_id
+
+        self.bucket_name = bucket_name
+        self.output_file_name = None
+        self.manifest_def = None
+
+        self.def_provider = ManifestDefinitionProvider(
+            job_run_id=run_id, bucket_name=bucket_name
+        )
+
+        # Dao components
+        self.member_dao = GenomicSetMemberDao()
+        self.metrics_dao = GenomicGCValidationMetricsDao()
+
+    def generate_and_transfer_manifest(self, manifest_type):
+        """
+        Main execution method for ManifestCompiler
+        :return: result code
+        """
+        self.manifest_def = self.def_provider.get_def(manifest_type)
+        source_data = self._pull_source_data()
+        if source_data:
+            self.output_file_name = self.manifest_def.output_filename
+            logging.info(
+                f'Preparing manifest of type {manifest_type}...'
+                f'{self.manifest_def.destination_bucket}/{self.manifest_def.output_filename}'
+            )
+            self._write_and_upload_manifest(source_data)
+            results = []
+            for row in source_data:
+                member = self.member_dao.get_member_with_biobank_id(row.biobank_id)
+                results.append(
+                    self.member_dao.update_member_job_run_id(
+                        member,
+                        job_run_id=self.run_id,
+                        field=self.manifest_def.job_run_field
+                    )
+                )
+            return GenomicSubProcessResult.SUCCESS \
+                if GenomicSubProcessResult.ERROR not in results \
+                else GenomicSubProcessResult.ERROR
+        logging.info(f'No records found for manifest type: {manifest_type}.')
+        return GenomicSubProcessResult.NO_FILES
+
+    def _pull_source_data(self):
+        """
+        Runs the source data query
+        :return: result set
+        """
+        with self.member_dao.session() as session:
+            return session.execute(self.manifest_def.source_data).fetchall()
+
+    def _write_and_upload_manifest(self, source_data):
+        """
+        writes data to csv file in bucket
+        :return: result code
+        """
+        try:
+            # Use SQL exporter
+            exporter = SqlExporter(self.bucket_name)
+            with exporter.open_writer(self.manifest_def.output_filename) as writer:
+                writer.write_header(self.manifest_def.columns)
+                writer.write_rows(source_data)
+            return GenomicSubProcessResult.SUCCESS
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR

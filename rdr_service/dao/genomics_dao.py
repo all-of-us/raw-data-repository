@@ -1,6 +1,7 @@
 import collections
-
 import sqlalchemy
+import logging
+
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import functions
 
@@ -136,8 +137,8 @@ class GenomicSetMemberDao(UpdatableDao):
         self.valid_job_id_fields = ('reconcileManifestJobRunId',
                                     'reconcileSequencingJobRunId',
                                     'reconcileCvlJobRunId',
-                                    'CvlManifestWgsJobRunId',
-                                    'CvlManifestArrJobRunId')
+                                    'cvlManifestWgsJobRunId',
+                                    'cvlManifestArrJobRunId')
 
     def get_id(self, obj):
         return obj.id
@@ -321,11 +322,14 @@ class GenomicSetMemberDao(UpdatableDao):
         :return: query result or result code of error
         """
         if field not in self.valid_job_id_fields:
+            logging.error(f'{field} is not a valid job ID field.')
             return GenomicSubProcessResult.ERROR
         setattr(member, field, job_run_id)
         try:
+            logging.info(f'Updating {field} with run ID.')
             return self.update(member)
         except OperationalError:
+            logging.error(f'Error updating member id: {member.id}.')
             return GenomicSubProcessResult.ERROR
 
     def update_member_sequencing_file(self, member, job_run_id, filename):
