@@ -27,7 +27,7 @@ TIME_6 = datetime.datetime(2015, 1, 1)
 
 
 class BiobankOrderApiTest(BaseTestCase):
-    def setUp(self, **kwargs):
+    def setUp(self):
         super().setUp()
         self.participant = Participant(participantId=123, biobankId=555)
         self.participant_dao = ParticipantDao()
