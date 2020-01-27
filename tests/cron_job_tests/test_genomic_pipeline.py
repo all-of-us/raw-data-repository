@@ -814,7 +814,7 @@ class GenomicPipelineTest(BaseTestCase):
                 validation_status=GenomicSetMemberStatus.VALID,
                 validation_flags=None,
                 biobankId=f'{p}',
-                sex_at_birth='F', genome_type='aou_array', ny_flag='Y',
+                sex_at_birth='F', genome_type='aou_wgs', ny_flag='Y',
             )
 
     def _update_site_states(self):
@@ -1161,7 +1161,7 @@ class GenomicPipelineTest(BaseTestCase):
             "secondary_validation",
         )
         sub_folder = config.getSetting(config.GENOMIC_CVL_MANIFEST_SUBFOLDER)
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/cvl_manifest_5.csv')) as csv_file:
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/cvl_wgs_manifest_5.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             missing_cols = set(expected_cvl_columns) - set(csv_reader.fieldnames)
             self.assertEqual(0, len(missing_cols))
@@ -1175,7 +1175,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the job controller updated the file_processed records
         file_record = self.file_processed_dao.get(3)  # remember, CVL report is id #2
         self.assertEqual(5, file_record.runId)
-        self.assertEqual(f'{sub_folder}/cvl_manifest_5.csv', file_record.fileName)
+        self.assertEqual(f'{sub_folder}/cvl_wgs_manifest_5.csv', file_record.fileName)
 
         # Test the job result
         run_obj = self.job_run_dao.get(5)

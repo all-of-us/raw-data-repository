@@ -16,7 +16,7 @@ from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     GenomicSubProcessStatus,
     GenomicManifestTypes,
-)
+    GenomicJob)
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
     GenomicFileMover,
@@ -58,11 +58,12 @@ class GenomicJobController:
         self.manifest_compiler = None
 
     def __enter__(self):
+        logging.info(f'Beginning {self.job_id.name} workflow')
         self.job_run = self._create_run(self.job_id)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._end_run(self.job_result)
+        self._end_run()
 
     def ingest_gc_metrics(self):
         """
@@ -164,17 +165,17 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def run_cvl_wgs_manifest(self):
+    def generate_manifest(self, manifest_type):
         """
         Creates the CVL WGS manifest using ManifestCompiler component
         """
         self.manifest_compiler = ManifestCompiler(run_id=self.job_run.id,
                                                   bucket_name=self.bucket_name)
         try:
-            logging.info(f'Running Manifest Compiler for CVL...')
-            result = self.manifest_compiler.generate_and_transfer_manifest(GenomicManifestTypes.DRC_CVL_WGS)
+            print(f'Running Manifest Compiler for {manifest_type.name}.')
+            result = self.manifest_compiler.generate_and_transfer_manifest(manifest_type)
             if result == GenomicSubProcessResult.SUCCESS:
-                logging.info(f'CVL Manifest created: {self.manifest_compiler.output_file_name}')
+                logging.info(f'Manifest created: {self.manifest_compiler.output_file_name}')
                 # Insert the file record
                 self.file_processed_dao.insert_file_record(
                     self.job_run.id,
@@ -188,9 +189,9 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def _end_run(self, result):
+    def _end_run(self):
         """Updates the genomic_job_run table with end result"""
-        self.job_run_dao.update_run_record(self.job_run.id, result)
+        self.job_run_dao.update_run_record(self.job_run.id, self.job_result)
 
     def aggregate_run_results(self):
         """

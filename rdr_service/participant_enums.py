@@ -522,7 +522,7 @@ class GenomicJob(messages.Enum):
     RECONCILE_SEQUENCING = 3
     NEW_PARTICIPANT_WORKFLOW = 4
     CVL_RECONCILIATION_REPORT = 5
-    CREATE_MANIFEST_CVL_WGS = 6
+    CREATE_CVL_MANIFESTS = 6
 
 
 class GenomicSubProcessStatus(messages.Enum):
