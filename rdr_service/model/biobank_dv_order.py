@@ -74,9 +74,11 @@ class BiobankDVOrder(Base):
     # occurenceDateTime
     shipmentLastUpdate = Column("shipment_last_update", DateTime, nullable=True)
 
-    # To participant tracking id. identifier/code (system=trackingId).
+    # Represents a shipping tracking #,
+    # (Genotek->Participant, then updated to Participat->Biobank)
+    # identifier/code (system=trackingId).
     trackingId = Column("tracking_id", String(80), nullable=True)
-    # To biobank tracking id. partOf/identifier/code (system=trackingId).
+    # Represents biobank_id. partOf/identifier/code (system=trackingId).
     biobankTrackingId = Column("biobank_tracking_id", String(80), nullable=True)
 
     #

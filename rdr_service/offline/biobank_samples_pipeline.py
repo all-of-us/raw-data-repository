@@ -756,7 +756,7 @@ _SALIVARY_MISSING_REPORT_SQL = (
     """
     SELECT DISTINCT
       CONCAT(:biobank_id_prefix, p.biobank_id) AS biobank_id
-    , dvo.biobank_tracking_id AS usps_tracking_id
+    , dvo.tracking_id AS usps_tracking_id
     , dvo.biobank_order_id AS order_id
     , bo.created AS collection_date
 FROM
