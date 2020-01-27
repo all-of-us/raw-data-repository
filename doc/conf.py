@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath('../'))
 # -- Project information -----------------------------------------------------
 
 project = 'The All of Us Raw Data Repository (RDR)'
-copyright = '2019, RDR team'
+copyright = '2019, RDR team' # pylint: disable=redefined-builtin
 author = 'RDR Dev team'
 
 # The short X.Y version
