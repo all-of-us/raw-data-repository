@@ -13,21 +13,62 @@ The ParticipantSummary resource represents an aggregated view of relevant partic
 
 Querying the Participant Summary Resource
 ------------------------------------------------------------
-.. note:: This content will be updated with Synchronizing queries as well.
+.. note:: This content can be updated using the ``_sync=true`` parameter as well.
 
 **Request:**
 
 ::
 
-  GET /ParticipantSummary?
+  GET /ParticipantSummary?awardee=PITT&_sort=lastModified
 
-**Response**:
+Example sync:
 
 ::
 
-  {
+  GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_sync=true
 
-  }
+
+Pagination is provided with a token i.e.
+
+::
+
+    GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_token=<token string>
+
+By default when the '_sync' parameter is passed, records modified 60 seconds before the
+last record in a batch of record will be included in the next batch of records. This
+backfill behavior may be disabled by adding the ``_backfill=false`` parameter.
+
+::
+
+    GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_sync=true&_backfill=false
+
+It is possible to get the same participant data back in multiple sync responses.
+The recommended time between syncs is 5 minutes.
+
+See FHIR search prefixes below
+
+Synchronize Participant Summary last modified link.
+This allows Awardees to stay up-to-date
+with newly-arrived summaries. The return value is a FHIR History [Bundle](http://hl7.org/fhir/bundle.html)
+where each entry is a `ParticipantSummary` document.
+
+The Bundle's `link` array will include a link with relation=`next` if more results are available immediately.
+Otherwise the array will contain a `link` with relation=`sync` that can be used to check for new results.
+
+Example response:
+
+::
+
+    {
+     "link": [
+            {
+                "relation": "sync",
+                "url": "GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_token=WzM1XQ%3D%3D"
+            }
+     ]
+    }
+
+
 
 ------------------------------------------------------------
 
