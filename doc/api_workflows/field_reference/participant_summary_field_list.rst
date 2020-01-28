@@ -182,7 +182,7 @@ Participant Summary Field List
       A questionnaire on FamilyHealth that a participant can fill out.
 
   questionnaireOnFamilyHealthTime
-      A questionnaire on FamilyHealthTime that a participant can fill out.
+      Indicates the time at which the participant completed the family health questionnaire.
 
   questionnaireOnFamilyHealthAuthored
       indicates the time at which the participant completed the family health questionnaire.
