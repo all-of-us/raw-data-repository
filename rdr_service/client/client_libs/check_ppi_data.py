@@ -3,9 +3,12 @@
 # Template for RDR tool python program.
 #
 import argparse
+import csv
+import io
 import logging
 import re
 import sys
+
 
 from rdr_service.code_constants import EMAIL_QUESTION_CODE as EQC, LOGIN_PHONE_NUMBER_QUESTION_CODE as PNQC
 from rdr_service.services.gcp_utils import gcp_make_auth_header
@@ -91,12 +94,7 @@ class CheckPPIDataClass(object):
             _logger.error(f'Error fetching https://{host}{path}. {code}: {resp}')
             return
 
-        resp = resp.replace('\r', '')
-
-        csv_data = list()
-        for row in resp.split('\n'):
-            csv_data.append(row.split(','))
-
+        csv_data = list(csv.reader(io.StringIO(resp)))
         return csv_data
 
     def convert_csv_column_to_dict(self, csv_data, column):
@@ -189,8 +187,7 @@ def run():
                             "this flag may be repeated to specify multiple phone numbers."), action="append")  # noqa
     args = parser.parse_args()
 
-    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account,
-                                lookup_configurator_sa=True) as gcp_env:
+    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
         process = CheckPPIDataClass(args, gcp_env)
         exit_code = process.run()
         return exit_code
