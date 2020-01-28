@@ -182,7 +182,7 @@ Participant Summary Field List
       A questionnaire on FamilyHealth that a participant can fill out.
 
   questionnaireOnFamilyHealthTime
-      Indicates the time at which the participant completed the family health questionnaire.
+      Indicates the time at which the RDR received notice of family health questionnaire.
 
   questionnaireOnFamilyHealthAuthored
       indicates the time at which the participant completed the family health questionnaire.
