@@ -111,6 +111,9 @@ Participant Summary Field List
       indicates whether enrollment consent has been received
       :ref:`Field options <consent_for_study_enrollment>`
 
+  consentForStudyEnrollmentAuthored
+      The UTC Date time the participant completed the survey, regardless of when it was sent to RDR
+
   consentForStudyEnrollmentTime
       indicates the time at which enrollment consent has been received (ISO-8601 time)
 
@@ -121,35 +124,59 @@ Participant Summary Field List
   consentForElectronicHealthRecordsTime
       indicates the time at which the RDR received notice of consentForElectronicHealthRecords.
 
+  consentForElectronicHealthRecordsAuthored
+      indicates the time at which the participant completed consent, regardless of when it was sent to RDR.
+
+  consentForDvElectronicHealthRecordsSharingAuthored
+      indicates the time at which the participant completed consent, regardless of when it was sent to RDR.
+
+  consentForCABoRTimeAuthored
+      indicates the time at which the participant completed California Bill of Rights consent, regardless of when it was sent to RDR
+
   questionnaireOnOverallHealth
       indicates status for Overall Health PPI module.
 
   questionnaireOnOverallHealthTime
-      A questionnaire on OverallHealthTime that a participant can fill out.
+      indicates the time at which the RDR received notice of overall health questionnaire.
+
+  questionnaireOnOverallHealthAuthored
+      indicates the time at which the participant completed the overall health questionnaire.
 
   questionnaireOnHealthcareAccess
       A questionnaire on HealthcareAccess that a participant can fill out.
 
   questionnaireOnHealthcareAccessTime
-      A questionnaire on HealthcareAccessTime that a participant can fill out.
+      indicates the time at which the RDR received notice of health care access questionnaire.
+
+  questionnaireOnHealthcareAccessAuthored
+      indicates the time at which the participant completed the health care access questionnaire.
 
   questionnaireOnlifestyle
       A questionnaire on lifestyle that a participant can fill out.
 
   questionnaireOnlifestyleTime
-      A questionnaire on lifestyleTime that a participant can fill out.
+      indicates the time at which the RDR received notice of lifestyle questionnaire.
+
+  questionnaireOnlifestyleAuthored
+      indicates the time at which the participant completed the lifestyle questionnaire.
 
   questionnaireOnMedicalHistory
       A questionnaire on MedicalHistory that a participant can fill out.
 
   questionnaireOnMedicalHistoryTime
-      A questionnaire on MedicalHistoryTime that a participant can fill out.
+      indicates the time at which the RDR received notice of medical history questionnaire.
+
+  questionnaireOnMedicalHistoryAuthored
+      indicates the time at which the participant completed the medical history questionnaire.
 
   questionnaireOnMedications
       A questionnaire on Medications that a participant can fill out.
 
   questionnaireOnMedicationsTime
-      A questionnaire on MedicationsTime that a participant can fill out.
+      Indicates the time at which the RDR received notice of medications questionnaire.
+
+  questionnaireOnMedicationsAuthored
+      indicates the time at which the participant completed the medications questionnaire.
 
   questionnaireOnFamilyHealth
       A questionnaire on FamilyHealth that a participant can fill out.
@@ -157,11 +184,17 @@ Participant Summary Field List
   questionnaireOnFamilyHealthTime
       A questionnaire on FamilyHealthTime that a participant can fill out.
 
+  questionnaireOnFamilyHealthAuthored
+      indicates the time at which the participant completed the family health questionnaire.
+
   questionnaireOnTheBasics
       A questionnaire on TheBasics that a participant can fill out.
 
   questionnaireOnTheBasicsTime
-      A questionnaire on TheBasicsTime that a participant can fill out.
+      The UTC Date time of when the RDR received the basics questionnaire.
+
+  questionnaireOnTheBasicsAuthored
+      The UTC Date time of when the participant completed the basics questionnaire.
 
   biospecimenStatus
       Whether biospecimens have been finalized for the participant.
@@ -440,5 +473,11 @@ Participant Summary Field List
   withdrawalReason
       Possible enumerations are (UNSET, FRAUDULENT, DUPLICATE, TEST). If withdrawalReason is UNSET the participant is self withdrawn, any other enumeration means the participant was administratively withdrawn.
 
+  withdrawalAuthored
+      The time the participant withdrew from program participation.
+
   suspensionStatus
       The satus of suspension for a participant. The possible enumerations are (NOT_SUSPENDED, NO_CONTACT).
+
+  participantOrigin
+      The sign up portal the participant used to enroll (Vibrent, Care Evolution).
