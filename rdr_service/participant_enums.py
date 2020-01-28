@@ -559,6 +559,65 @@ class WorkbenchWorkspaceStatus(messages.Enum):
     INACTIVE = 2
 
 
+class WorkbenchWorkspaceRaceEthnicity(messages.Enum):
+    UNSET = 0
+    AIAN = 1
+    ASIAN = 2
+    HISPANIC = 3
+    NHPI = 4
+    MENA = 5
+    AA = 6
+    MULTI = 7
+
+
+class WorkbenchWorkspaceAge(messages.Enum):
+    UNSET = 0
+    AGE_0_11 = 1
+    AGE_12_17 = 2
+    AGE_65_74 = 3
+    AGE_75_AND_MORE = 4
+
+
+class WorkbenchWorkspaceSexAtBirth(messages.Enum):
+    UNSET = 0
+    INTERSEX = 1
+
+
+class WorkbenchWorkspaceGenderIdentity(messages.Enum):
+    UNSET = 0
+    OTHER_THAN_MAN_WOMAN = 1
+
+
+class WorkbenchWorkspaceSexualOrientation(messages.Enum):
+    UNSET = 0
+    OTHER_THAN_STRAIGHT = 1
+
+
+class WorkbenchWorkspaceGeography(messages.Enum):
+    UNSET = 0
+    RURAL = 1
+
+
+class WorkbenchWorkspaceDisabilityStatus(messages.Enum):
+    UNSET = 0
+    DISABILITY = 1
+
+
+class WorkbenchWorkspaceAccessToCare(messages.Enum):
+    UNSET = 0
+    NOT_EASILY_ACCESS_CARE = 1
+
+
+class WorkbenchWorkspaceEducationLevel(messages.Enum):
+    UNSET = 0
+    LESS_THAN_HIGH_SCHOOL = 1
+
+
+class WorkbenchWorkspaceIncomeLevel(messages.Enum):
+    UNSET = 0
+    BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT = 1
+
+
 class WorkbenchWorkspaceUserRole(messages.Enum):
     """Status of Workbench Workspace User Role"""
 
@@ -568,14 +627,15 @@ class WorkbenchWorkspaceUserRole(messages.Enum):
     OWNER = 3
 
 
-class WorkbenchInstitutionNoAcademic(messages.Enum):
+class WorkbenchInstitutionNonAcademic(messages.Enum):
     """Workbench Institution enum"""
 
     UNSET = 0
     INDUSTRY = 1
     EDUCATIONAL_INSTITUTION = 2
-    COMMUNITY_SCIENTIST = 3
-    FREE_TEXT = 4
+    CITIZEN_SCIENTIST = 3
+    HEALTH_CENTER_OR_NON_PROFIT = 4
+    FREE_TEXT = 5
 
 
 class WorkbenchResearcherEthnicity(messages.Enum):
@@ -634,6 +694,23 @@ class WorkbenchResearcherEducation(messages.Enum):
     UNDERGRADUATE = 4
     MASTER = 5
     DOCTORATE = 6
+    PREFER_NOT_TO_ANSWER = 7
+
+
+class WorkbenchResearcherDegree(messages.Enum):
+    UNSET = 0
+    PHD = 1
+    MD = 2
+    JD = 3
+    EDD = 4
+    MSN = 5
+    MS = 6
+    MA = 7
+    MBA = 8
+    ME = 9
+    BA = 10
+    BS = 11
+    BSN = 12
 
 
 class WorkbenchResearcherDisability(messages.Enum):

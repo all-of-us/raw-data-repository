@@ -20,9 +20,10 @@ from rdr_service.model.workbench_researcher import (
     WorkbenchInstitutionalAffiliationsHistory
 )
 from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWorkspaceUserRole, \
-    WorkbenchInstitutionNoAcademic, WorkbenchResearcherEthnicity, WorkbenchResearcherSexAtBirth, \
-    WorkbenchResearcherSexualOrientation, WorkbenchResearcherGender, WorkbenchResearcherRace, \
-    WorkbenchResearcherEducation, WorkbenchResearcherDisability
+    WorkbenchInstitutionNonAcademic, WorkbenchResearcherEthnicity, WorkbenchResearcherSexAtBirth, \
+    WorkbenchResearcherGender, WorkbenchResearcherRace, WorkbenchResearcherEducation, WorkbenchResearcherDisability, \
+    WorkbenchResearcherDegree, WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, \
+    WorkbenchWorkspaceSexualOrientation
 
 
 class WorkbenchWorkspaceDao(UpdatableDao):
@@ -66,6 +67,35 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 except TypeError:
                     raise BadRequest(f"Invalid user status: {user.get('status')}")
 
+            if item.get("focusOnUnderrepresentedPopulations") and item.get("workspaceDemographic"):
+                try:
+                    if item.get("workspaceDemographic").get('sexAtBirth') is None:
+                        item['sexAtBirth'] = 'UNSET'
+                    else:
+                        item["sexAtBirth"] = item.get("workspaceDemographic").get("sexAtBirth")
+                    WorkbenchWorkspaceSexAtBirth(item['sexAtBirth'])
+                except TypeError:
+                    raise BadRequest(f"Invalid sexAtBirth for workspaceDemographic: {item.get('sexAtBirth')}")
+
+                try:
+                    if item.get("workspaceDemographic").get('genderIdentity') is None:
+                        item['genderIdentity'] = 'UNSET'
+                    else:
+                        item["genderIdentity"] = item.get("workspaceDemographic").get("genderIdentity")
+                    WorkbenchWorkspaceGenderIdentity(item['genderIdentity'])
+                except TypeError:
+                    raise BadRequest(f"Invalid genderIdentity for workspaceDemographic: {item.get('genderIdentity')}")
+
+                try:
+                    if item.get("workspaceDemographic").get('sexualOrientation') is None:
+                        item['sexualOrientation'] = 'UNSET'
+                    else:
+                        item["sexualOrientation"] = item.get("workspaceDemographic").get("sexualOrientation")
+                    WorkbenchWorkspaceSexualOrientation(item['sexualOrientation'])
+                except TypeError:
+                    raise BadRequest(f"Invalid sexualOrientation for workspaceDemographic: "
+                                     f"{item.get('sexualOrientation')}")
+
     def from_client_json(self, resource_json, client_id=None):  # pylint: disable=unused-argument
         self._validate(resource_json)
         now = clock.CLOCK.now()
@@ -92,9 +122,13 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 commercialPurpose=item.get('commercialPurpose'),
                 educational=item.get('educational'),
                 otherPurpose=item.get('otherPurpose'),
-                reasonForInvestigation=item.get('reasonForInvestigation'),
+                scientificApproaches=item.get('scientificApproaches'),
                 intendToStudy=item.get('intendToStudy'),
                 findingsFromStudy=item.get('findingsFromStudy'),
+                focusOnUnderrepresentedPopulations=item.get('focusOnUnderrepresentedPopulations'),
+                sexAtBirth=WorkbenchWorkspaceSexAtBirth(item.get('sexAtBirth', 'UNSET')),
+                genderIdentity=WorkbenchWorkspaceGenderIdentity(item.get('genderIdentity', 'UNSET')),
+                sexualOrientation=WorkbenchWorkspaceSexualOrientation(item.get('sexualOrientation', 'UNSET')),
                 workbenchWorkspaceUser=self._get_users(item.get('workspaceUsers')),
                 resource=json.dumps(item)
             )
@@ -190,7 +224,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 WorkbenchWorkspace.commercialPurpose.label('commercialPurpose'),
                 WorkbenchWorkspace.educational.label('educational'),
                 WorkbenchWorkspace.otherPurpose.label('otherPurpose'),
-                WorkbenchWorkspace.reasonForInvestigation.label('reasonForInvestigation'),
+                WorkbenchWorkspace.scientificApproaches.label('scientificApproaches'),
                 WorkbenchWorkspace.intendToStudy.label('intendToStudy'),
                 WorkbenchWorkspace.findingsFromStudy.label('findingsFromStudy'),
 
@@ -234,7 +268,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                                 {
                                     "institution": row.institution,
                                     "role": row.institutionRole,
-                                    "nonAcademicAffiliation": str(WorkbenchInstitutionNoAcademic(
+                                    "nonAcademicAffiliation": str(WorkbenchInstitutionNonAcademic(
                                         row.nonAcademicAffiliation if row.nonAcademicAffiliation is not None
                                         else 'UNSET'))
                                 }
@@ -336,13 +370,6 @@ class WorkbenchResearcherDao(UpdatableDao):
                 raise BadRequest(f"Invalid sexAtBirth status: {item.get('sexAtBirth')}")
 
             try:
-                if item.get('sexualOrientation') is None:
-                    item['sexualOrientation'] = 'UNSET'
-                WorkbenchResearcherSexualOrientation(item.get('sexualOrientation'))
-            except TypeError:
-                raise BadRequest(f"Invalid sexualOrientation status: {item.get('sexualOrientation')}")
-
-            try:
                 if item.get('education') is None:
                     item['education'] = 'UNSET'
                 # Checking for validation of item passed in only.
@@ -351,35 +378,45 @@ class WorkbenchResearcherDao(UpdatableDao):
                 raise BadRequest(f"Invalid education status: {item.get('education')}")
 
             try:
+                if item.get('degree') is None:
+                    item['degree'] = 'UNSET'
+                WorkbenchResearcherDegree(item.get('degree'))
+            except TypeError:
+                raise BadRequest(f"Invalid degree status: {item.get('degree')}")
+
+            try:
                 if item.get('disability') is None:
                     item['disability'] = 'UNSET'
                 WorkbenchResearcherDisability(item.get('disability'))
             except TypeError:
                 raise BadRequest(f"Invalid disability status: {item.get('disability')}")
 
-            gender_array = []
-            for gender in item.get('gender'):
-                try:
-                    gender_array.append(int(WorkbenchResearcherGender(gender)))
-                except TypeError:
-                    raise BadRequest(f"Invalid gender status: {gender}")
-            item['gender'] = gender_array
+            if item.get('gender') is not None:
+                gender_array = []
+                for gender in item.get('gender'):
+                    try:
+                        gender_array.append(int(WorkbenchResearcherGender(gender)))
+                    except TypeError:
+                        raise BadRequest(f"Invalid gender status: {gender}")
+                item['gender'] = gender_array
 
-            race_array = []
-            for race in item.get('race'):
-                try:
-                    race_array.append(int(WorkbenchResearcherRace(race)))
-                except TypeError:
-                    raise BadRequest(f"Invalid race status: {race}")
-            item['race'] = race_array
+            if item.get('race') is not None:
+                race_array = []
+                for race in item.get('race'):
+                    try:
+                        race_array.append(int(WorkbenchResearcherRace(race)))
+                    except TypeError:
+                        raise BadRequest(f"Invalid race status: {race}")
+                item['race'] = race_array
 
-            for institution in item.get('affiliations'):
-                if institution.get('nonAcademicAffiliation') is None:
-                    institution['nonAcademicAffiliation'] = 'UNSET'
-                try:
-                    WorkbenchInstitutionNoAcademic(institution.get('nonAcademicAffiliation'))
-                except TypeError:
-                    raise BadRequest(f"Invalid nonAcademicAffiliation: {institution.get('nonAcademicAffiliation')}")
+            if item.get('affiliations') is not None:
+                for institution in item.get('affiliations'):
+                    if institution.get('nonAcademicAffiliation') is None:
+                        institution['nonAcademicAffiliation'] = 'UNSET'
+                    try:
+                        WorkbenchInstitutionNonAcademic(institution.get('nonAcademicAffiliation'))
+                    except TypeError:
+                        raise BadRequest(f"Invalid nonAcademicAffiliation: {institution.get('nonAcademicAffiliation')}")
 
     def from_client_json(self, resource_json, client_id=None):  # pylint: disable=unused-argument
         self._validate(resource_json)
@@ -402,8 +439,10 @@ class WorkbenchResearcherDao(UpdatableDao):
                 country=item.get('country'),
                 ethnicity=WorkbenchResearcherEthnicity(item.get('ethnicity', 'UNSET')),
                 sexAtBirth=WorkbenchResearcherSexAtBirth(item.get('sexAtBirth', 'UNSET')),
-                sexualOrientation=WorkbenchResearcherSexualOrientation(item.get('sexualOrientation', 'UNSET')),
+                identifiesAsLgbtq=item.get('identifiesAsLgbtq'),
+                lgbtqIdentity=item.get('lgbtqIdentity') if item.get('identifiesAsLgbtq') else None,
                 education=WorkbenchResearcherEducation(item.get('education', 'UNSET')),
+                degree=WorkbenchResearcherDegree(item.get('degree', 'UNSET')),
                 disability=WorkbenchResearcherDisability(item.get('disability', 'UNSET')),
                 gender=item.get('gender'),
                 race=item.get('race'),
@@ -418,16 +457,17 @@ class WorkbenchResearcherDao(UpdatableDao):
     def _get_affiliations(self, affiliations_json):
         now = clock.CLOCK.now()
         affiliations = []
-        for affiliation in affiliations_json:
-            affiliation_obj = WorkbenchInstitutionalAffiliations(
-                created=now,
-                modified=now,
-                institution=affiliation.get('institution'),
-                role=affiliation.get('role'),
-                nonAcademicAffiliation=WorkbenchInstitutionNoAcademic(affiliation.get('nonAcademicAffiliation',
-                                                                                      'UNSET'))
-            )
-            affiliations.append(affiliation_obj)
+        if affiliations_json is not None:
+            for affiliation in affiliations_json:
+                affiliation_obj = WorkbenchInstitutionalAffiliations(
+                    created=now,
+                    modified=now,
+                    institution=affiliation.get('institution'),
+                    role=affiliation.get('role'),
+                    nonAcademicAffiliation=WorkbenchInstitutionNonAcademic(affiliation.get('nonAcademicAffiliation',
+                                                                                           'UNSET'))
+                )
+                affiliations.append(affiliation_obj)
         return affiliations
 
     def insert_with_session(self, session, researchers):

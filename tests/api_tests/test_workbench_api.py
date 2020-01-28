@@ -2,9 +2,10 @@ import http.client
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchResearcherHistoryDao, \
     WorkbenchWorkspaceDao, WorkbenchWorkspaceHistoryDao
-from rdr_service.participant_enums import WorkbenchWorkspaceUserRole, WorkbenchInstitutionNoAcademic, \
-    WorkbenchResearcherSexAtBirth, WorkbenchResearcherEthnicity, WorkbenchResearcherSexualOrientation, \
-    WorkbenchResearcherEducation, WorkbenchResearcherDisability
+from rdr_service.participant_enums import WorkbenchWorkspaceUserRole, WorkbenchInstitutionNonAcademic, \
+    WorkbenchResearcherSexAtBirth, WorkbenchResearcherEthnicity, WorkbenchResearcherEducation, \
+    WorkbenchResearcherDisability, WorkbenchResearcherDegree, WorkbenchWorkspaceSexAtBirth, \
+    WorkbenchWorkspaceGenderIdentity, WorkbenchWorkspaceSexualOrientation
 
 
 class WorkbenchApiTest(BaseTestCase):
@@ -28,10 +29,12 @@ class WorkbenchApiTest(BaseTestCase):
                 "country": "string",
                 "ethnicity": "HISPANIC",
                 "sexAtBirth": "FEMALE",
-                "sexualOrientation": "BISEXUAL",
+                "identifiesAsLgbtq": False,
+                "lgbtqIdentity": "string",
                 "gender": ["MALE", "FEMALE"],
                 "race": ["AIAN", "WHITE"],
                 "education": "COLLEGE_GRADUATE",
+                "degree": "PHD",
                 "disability": "YES",
                 "affiliations": [
                     {
@@ -52,13 +55,15 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].gender, [1, 2])
         self.assertEqual(results[0].race, [1, 5])
         self.assertEqual(results[0].sexAtBirth, WorkbenchResearcherSexAtBirth('FEMALE'))
-        self.assertEqual(results[0].sexualOrientation, WorkbenchResearcherSexualOrientation('BISEXUAL'))
         self.assertEqual(results[0].ethnicity, WorkbenchResearcherEthnicity('HISPANIC'))
         self.assertEqual(results[0].education, WorkbenchResearcherEducation('COLLEGE_GRADUATE'))
+        self.assertEqual(results[0].degree, WorkbenchResearcherDegree('PHD'))
         self.assertEqual(results[0].disability, WorkbenchResearcherDisability('YES'))
+        self.assertEqual(results[0].identifiesAsLgbtq, False)
+        self.assertEqual(results[0].lgbtqIdentity, None)
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string')
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].nonAcademicAffiliation,
-                         WorkbenchInstitutionNoAcademic('INDUSTRY'))
+                         WorkbenchInstitutionNonAcademic('INDUSTRY'))
 
         researcher_history_dao = WorkbenchResearcherHistoryDao()
         results = researcher_history_dao.get_all_with_children()
@@ -67,12 +72,12 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].givenName, 'string')
         self.assertEqual(results[0].gender, [1, 2])
         self.assertEqual(results[0].race, [1, 5])
+        self.assertEqual(results[0].identifiesAsLgbtq, False)
         self.assertEqual(results[0].sexAtBirth, WorkbenchResearcherSexAtBirth('FEMALE'))
-        self.assertEqual(results[0].sexualOrientation, WorkbenchResearcherSexualOrientation('BISEXUAL'))
         self.assertEqual(results[0].ethnicity, WorkbenchResearcherEthnicity('HISPANIC'))
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string')
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].nonAcademicAffiliation,
-                         WorkbenchInstitutionNoAcademic('INDUSTRY'))
+                         WorkbenchInstitutionNonAcademic('INDUSTRY'))
 
         # test update existing
         update_json = [
@@ -92,7 +97,8 @@ class WorkbenchApiTest(BaseTestCase):
                 "gender": ["FEMALE", "INTERSEX"],
                 "race": ["NHOPI", "WHITE"],
                 "sexAtBirth": "INTERSEX",
-                "sexualOrientation": "LESBIAN",
+                "identifiesAsLgbtq": True,
+                "lgbtqIdentity": "string",
                 "affiliations": [
                     {
                         "institution": "string_modify",
@@ -115,8 +121,8 @@ class WorkbenchApiTest(BaseTestCase):
                 "zipCode": "string2",
                 "country": "string2",
                 "ethnicity": "PREFER_NOT_TO_ANSWER",
-                "gender": ["MALE", "INTERSEX"],
-                "race": ["WHITE", "AA"],
+                # "gender": ["MALE", "INTERSEX"], # test no gender in the payload, will store None in DB
+                # "race": ["WHITE", "AA"], # test no race in the payload, will store None in DB
                 "affiliations": [
                     {
                         "institution": "string2",
@@ -126,7 +132,7 @@ class WorkbenchApiTest(BaseTestCase):
                     {
                         "institution": "string22",
                         "role": "string22",
-                        "nonAcademicAffiliation": "COMMUNITY_SCIENTIST"
+                        "nonAcademicAffiliation": "CITIZEN_SCIENTIST"
                     }
                 ]
             }
@@ -140,18 +146,20 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].givenName, 'string_modify')
         self.assertEqual(results[0].gender, [2, 5])
         self.assertEqual(results[0].race, [4, 5])
+        self.assertEqual(results[0].identifiesAsLgbtq, True)
+        self.assertEqual(results[0].lgbtqIdentity, "string")
         self.assertEqual(results[0].sexAtBirth, WorkbenchResearcherSexAtBirth('INTERSEX'))
-        self.assertEqual(results[0].sexualOrientation, WorkbenchResearcherSexualOrientation('LESBIAN'))
         self.assertEqual(results[0].ethnicity, WorkbenchResearcherEthnicity('NOT_HISPANIC'))
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string_modify')
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].nonAcademicAffiliation,
-                         WorkbenchInstitutionNoAcademic('EDUCATIONAL_INSTITUTION'))
+                         WorkbenchInstitutionNonAcademic('EDUCATIONAL_INSTITUTION'))
 
         self.assertEqual(results[1].userSourceId, 1)
         self.assertEqual(results[1].givenName, 'string2')
         self.assertEqual(len(results[1].workbenchInstitutionalAffiliations), 2)
-        self.assertEqual(results[1].gender, [1, 5])
-        self.assertEqual(results[1].race, [5, 3])
+        self.assertEqual(results[1].gender, None)
+        self.assertEqual(results[1].race, None)
+        self.assertEqual(results[1].identifiesAsLgbtq, None)
         self.assertEqual(results[1].ethnicity, WorkbenchResearcherEthnicity('PREFER_NOT_TO_ANSWER'))
 
         researcher_history_dao = WorkbenchResearcherHistoryDao()
@@ -163,7 +171,6 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].gender, [1, 2])
         self.assertEqual(results[0].race, [1, 5])
         self.assertEqual(results[0].sexAtBirth, WorkbenchResearcherSexAtBirth('FEMALE'))
-        self.assertEqual(results[0].sexualOrientation, WorkbenchResearcherSexualOrientation('BISEXUAL'))
         self.assertEqual(results[0].ethnicity, WorkbenchResearcherEthnicity('HISPANIC'))
         self.assertEqual(results[0].education, WorkbenchResearcherEducation('COLLEGE_GRADUATE'))
         self.assertEqual(results[0].disability, WorkbenchResearcherDisability('YES'))
@@ -174,14 +181,13 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[1].gender, [2, 5])
         self.assertEqual(results[1].race, [4, 5])
         self.assertEqual(results[1].sexAtBirth, WorkbenchResearcherSexAtBirth('INTERSEX'))
-        self.assertEqual(results[1].sexualOrientation, WorkbenchResearcherSexualOrientation('LESBIAN'))
         self.assertEqual(results[1].ethnicity, WorkbenchResearcherEthnicity('NOT_HISPANIC'))
 
         self.assertEqual(results[2].userSourceId, 1)
         self.assertEqual(results[2].givenName, 'string2')
         self.assertEqual(len(results[2].workbenchInstitutionalAffiliations), 2)
-        self.assertEqual(results[2].gender, [1, 5])
-        self.assertEqual(results[2].race, [5, 3])
+        self.assertEqual(results[2].gender, None)
+        self.assertEqual(results[2].race, None)
         self.assertEqual(results[2].ethnicity, WorkbenchResearcherEthnicity('PREFER_NOT_TO_ANSWER'))
 
     def test_invalid_input_for_researchers(self):
@@ -298,9 +304,15 @@ class WorkbenchApiTest(BaseTestCase):
                 "commercialPurpose": True,
                 "educational": True,
                 "otherPurpose": True,
-                "reasonForInvestigation": 'string',
+                "scientificApproaches": 'string',
                 "intendToStudy": 'string',
-                "findingsFromStudy": 'string'
+                "findingsFromStudy": 'string',
+                "focusOnUnderrepresentedPopulations": True,
+                "workspaceDemographic": {
+                    "sexAtBirth": "INTERSEX",
+                    "genderIdentity": "OTHER_THAN_MAN_WOMAN",
+                    "sexualOrientation": "OTHER_THAN_STRAIGHT"
+                }
             }
         ]
 
@@ -311,8 +323,12 @@ class WorkbenchApiTest(BaseTestCase):
         results = workspace_dao.get_all_with_children()
         self.assertEqual(results[0].workspaceSourceId, 0)
         self.assertEqual(results[0].name, 'string')
-        self.assertEqual(results[0].reasonForInvestigation, 'string')
+        self.assertEqual(results[0].scientificApproaches, 'string')
         self.assertEqual(results[0].intendToStudy, 'string')
+        self.assertEqual(results[0].focusOnUnderrepresentedPopulations, True)
+        self.assertEqual(results[0].sexAtBirth, WorkbenchWorkspaceSexAtBirth("INTERSEX"))
+        self.assertEqual(results[0].genderIdentity, WorkbenchWorkspaceGenderIdentity("OTHER_THAN_MAN_WOMAN"))
+        self.assertEqual(results[0].sexualOrientation, WorkbenchWorkspaceSexualOrientation("OTHER_THAN_STRAIGHT"))
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 0)
 
         workspace_history_dao = WorkbenchWorkspaceHistoryDao()
@@ -320,7 +336,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(workspace_history_dao.count(), 1)
         self.assertEqual(results[0].workspaceSourceId, 0)
         self.assertEqual(results[0].name, 'string')
-        self.assertEqual(results[0].reasonForInvestigation, 'string')
+        self.assertEqual(results[0].scientificApproaches, 'string')
         self.assertEqual(results[0].intendToStudy, 'string')
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 0)
 
@@ -352,9 +368,13 @@ class WorkbenchApiTest(BaseTestCase):
                 "commercialPurpose": True,
                 "educational": True,
                 "otherPurpose": True,
-                "reasonForInvestigation": 'string2',
+                "scientificApproaches": 'string2',
                 "intendToStudy": 'string2',
-                "findingsFromStudy": 'string2'
+                "findingsFromStudy": 'string2',
+                "focusOnUnderrepresentedPopulations": True,
+                "workspaceDemographic": {
+
+                }
             },
             {
                 "workspaceId": 1,
@@ -387,7 +407,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "commercialPurpose": True,
                 "educational": True,
                 "otherPurpose": True,
-                "reasonForInvestigation": 'string2',
+                "scientificApproaches": 'string2',
                 "intendToStudy": 'string2',
                 "findingsFromStudy": 'string2'
             }
@@ -399,8 +419,10 @@ class WorkbenchApiTest(BaseTestCase):
         results = workspace_dao.get_all_with_children()
         self.assertEqual(results[0].workspaceSourceId, 0)
         self.assertEqual(results[0].name, 'string_modify')
-        self.assertEqual(results[0].reasonForInvestigation, 'string2')
+        self.assertEqual(results[0].scientificApproaches, 'string2')
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
+        self.assertEqual(results[0].focusOnUnderrepresentedPopulations, True)
+        self.assertEqual(results[0].sexAtBirth, None)
         self.assertEqual(results[1].workspaceSourceId, 1)
         self.assertEqual(results[1].name, 'string2')
         if results[1].workbenchWorkspaceUser[0].userId == 0:
@@ -415,15 +437,15 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(workspace_history_dao.count(), 3)
         self.assertEqual(results[0].workspaceSourceId, 0)
         self.assertEqual(results[0].name, 'string')
-        self.assertEqual(results[0].reasonForInvestigation, 'string')
+        self.assertEqual(results[0].scientificApproaches, 'string')
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 0)
         self.assertEqual(results[1].workspaceSourceId, 0)
         self.assertEqual(results[1].name, 'string_modify')
-        self.assertEqual(results[1].reasonForInvestigation, 'string2')
+        self.assertEqual(results[1].scientificApproaches, 'string2')
         self.assertEqual(results[1].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[2].workspaceSourceId, 1)
         self.assertEqual(results[2].name, 'string2')
-        self.assertEqual(results[2].reasonForInvestigation, 'string2')
+        self.assertEqual(results[2].scientificApproaches, 'string2')
         if results[2].workbenchWorkspaceUser[0].userId == 0:
             self.assertEqual(results[2].workbenchWorkspaceUser[0].role, WorkbenchWorkspaceUserRole.READER)
             self.assertEqual(results[2].workbenchWorkspaceUser[1].role, WorkbenchWorkspaceUserRole.WRITER)
