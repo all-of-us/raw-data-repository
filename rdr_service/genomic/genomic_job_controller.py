@@ -15,8 +15,7 @@ from rdr_service.config import (
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     GenomicSubProcessStatus,
-    GenomicManifestTypes,
-    GenomicJob)
+)
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
     GenomicFileMover,
@@ -97,7 +96,7 @@ class GenomicJobController:
                 except IndexError:
                     logging.info('No files left in file queue.')
 
-            self.job_result = self.aggregate_run_results()
+            self.job_result = self._aggregate_run_results()
 
     def run_reconciliation_to_manifest(self):
         """
@@ -161,7 +160,8 @@ class GenomicJobController:
                     end_time=clock.CLOCK.now(),
                     file_result=cvl_result
                 )
-            self.job_result = cvl_result
+                self.subprocess_results.add(cvl_result)
+            self.job_result = self._aggregate_run_results()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
@@ -172,7 +172,7 @@ class GenomicJobController:
         self.manifest_compiler = ManifestCompiler(run_id=self.job_run.id,
                                                   bucket_name=self.bucket_name)
         try:
-            print(f'Running Manifest Compiler for {manifest_type.name}.')
+            logging.info(f'Running Manifest Compiler for {manifest_type.name}.')
             result = self.manifest_compiler.generate_and_transfer_manifest(manifest_type)
             if result == GenomicSubProcessResult.SUCCESS:
                 logging.info(f'Manifest created: {self.manifest_compiler.output_file_name}')
@@ -185,7 +185,8 @@ class GenomicJobController:
                     end_time=clock.CLOCK.now(),
                     file_result=result
                 )
-            self.job_result = result
+                self.subprocess_results.add(result)
+            self.job_result = self._aggregate_run_results()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
@@ -193,7 +194,7 @@ class GenomicJobController:
         """Updates the genomic_job_run table with end result"""
         self.job_run_dao.update_run_record(self.job_run.id, self.job_result)
 
-    def aggregate_run_results(self):
+    def _aggregate_run_results(self):
         """
         This method aggregates the run results based on a priority of
         sub-process results

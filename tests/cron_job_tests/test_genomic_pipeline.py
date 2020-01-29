@@ -62,6 +62,7 @@ _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
 
 
+# noinspection DuplicatedCode
 class GenomicPipelineTest(BaseTestCase):
     def setUp(self):
         super(GenomicPipelineTest, self).setUp()
@@ -787,7 +788,7 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_stat_list.sort(key=lambda s: s.updated)
         return bucket_stat_list[-1].name
 
-    def _create_fake_datasets_for_gc_tests(self, count):
+    def _create_fake_datasets_for_gc_tests(self, count, arr_override=False):
         # fake genomic_set
         genomic_test_set = self._create_fake_genomic_set(
             genomic_set_name="genomic-test-set-cell-line",
@@ -807,6 +808,9 @@ class GenomicPipelineTest(BaseTestCase):
             )
 
             # Fake genomic set members.
+            gt = 'aou_wgs'
+            if arr_override and p == 1:
+                gt = 'aou_array'
             self._create_fake_genomic_member(
                 genomic_set_id=genomic_test_set.id,
                 participant_id=participant.participantId,
@@ -814,7 +818,7 @@ class GenomicPipelineTest(BaseTestCase):
                 validation_status=GenomicSetMemberStatus.VALID,
                 validation_flags=None,
                 biobankId=f'{p}',
-                sex_at_birth='F', genome_type='aou_wgs', ny_flag='Y',
+                sex_at_birth='F', genome_type=gt, ny_flag='Y',
             )
 
     def _update_site_states(self):
@@ -1173,9 +1177,78 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(test_member_2.siteId, int(rows[0]['site_id']))
 
         # Test the job controller updated the file_processed records
+        # WGS
         file_record = self.file_processed_dao.get(3)  # remember, CVL report is id #2
         self.assertEqual(5, file_record.runId)
         self.assertEqual(f'{sub_folder}/cvl_wgs_manifest_5.csv', file_record.fileName)
+
+        # Test the job result
+        run_obj = self.job_run_dao.get(5)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_cvl_array_manifest_end_to_end(self):
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True)
+        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        self._create_ingestion_test_file('GC_AoU_GEN_TestDataManifest.csv',
+                                         bucket_name)
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+
+        # Test sequencing file (required for CVL)
+        test_sequencing_file = 'GC_sequencing_T1.txt'
+        self._write_cloud_csv(test_sequencing_file, 'attagc', bucket=bucket_name)
+
+        genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 2
+        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 3
+
+        # Run the CVL Reconciliation report workflow
+        genomic_pipeline.create_cvl_reconciliation_report()  # run_id = 4
+
+        # finally run the manifest workflow
+        genomic_pipeline.create_cvl_manifests()  # run_id = 5
+
+        # Test Genomic Set Member updated with CVL Array Manifest job run
+        with self.member_dao.session() as member_session:
+            test_member_1 = member_session.query(
+                GenomicSet.genomicSetName,
+                GenomicSetMember.biobankId,
+                GenomicSetMember.sexAtBirth,
+                GenomicSetMember.nyFlag,
+                GenomicSetMember.cvlManifestArrJobRunId,
+                GenomicGCValidationMetrics.siteId).filter(
+                GenomicGCValidationMetrics.biobankId == GenomicSetMember.biobankId,
+                GenomicSet.id == GenomicSetMember.genomicSetId,
+                GenomicSetMember.id == 1
+            ).one()
+
+        self.assertEqual(5, test_member_1.cvlManifestArrJobRunId)
+
+        # Test the manifest file contents
+        expected_cvl_columns = (
+            "genomic_set_name",
+            "biobank_id",
+            "sex_at_birth",
+            "ny_flag",
+            "site_id",
+            "secondary_validation",
+        )
+        sub_folder = config.getSetting(config.GENOMIC_CVL_MANIFEST_SUBFOLDER)
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/cvl_arr_manifest_5.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            missing_cols = set(expected_cvl_columns) - set(csv_reader.fieldnames)
+            self.assertEqual(0, len(missing_cols))
+            rows = list(csv_reader)
+            self.assertEqual(1, len(rows))
+            self.assertEqual(test_member_1.biobankId, rows[0]['biobank_id'])
+            self.assertEqual(test_member_1.sexAtBirth, rows[0]['sex_at_birth'])
+            self.assertEqual(test_member_1.nyFlag, int(rows[0]['ny_flag']))
+            self.assertEqual(test_member_1.siteId, int(rows[0]['site_id']))
+
+        # Test the job controller updated the file_processed records
+
+        # Array
+        file_record = self.file_processed_dao.get(3)  # remember, CVL report is id #2
+        self.assertEqual(5, file_record.runId)
+        self.assertEqual(f'{sub_folder}/cvl_arr_manifest_5.csv', file_record.fileName)
 
         # Test the job result
         run_obj = self.job_run_dao.get(5)
