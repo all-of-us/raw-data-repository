@@ -4,7 +4,9 @@ Create Participant Workflow
 
 Creating a Participant
 ============================================================
-To create a Participant, send a POST request to the ``/Participant`` resource with an empty JSON object in the request body.  The response is a Participant object with newly-created ids.
+To create a Participant, send a POST request to the ``/Participant`` resource with an empty JSON object or an ``externalId`` in the request body.  The response is a Participant object with newly-created ids.
+The optional ``externalId`` should be an internal (to the calling client) ID used to confirm the participant does not already exist.
+If the ``externalId`` does already exist in the RDR system, the existing participant is returned.
 
 Examples
 ------------------------------------------------------------
@@ -15,7 +17,7 @@ Examples
     ::
 
       POST /rdr/v1/Participant
-      Body: {}
+      Body: {} or {externalId: <internal id>}
 
     **Response**:
 
