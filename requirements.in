@@ -50,6 +50,7 @@ dnspython
 xmltodict
 netaddr
 jira
+stanford-theme
 
 ## testing
 coverage
