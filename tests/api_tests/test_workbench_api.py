@@ -5,7 +5,9 @@ from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchResea
 from rdr_service.participant_enums import WorkbenchWorkspaceUserRole, WorkbenchInstitutionNonAcademic, \
     WorkbenchResearcherSexAtBirth, WorkbenchResearcherEthnicity, WorkbenchResearcherEducation, \
     WorkbenchResearcherDisability, WorkbenchResearcherDegree, WorkbenchWorkspaceSexAtBirth, \
-    WorkbenchWorkspaceGenderIdentity, WorkbenchWorkspaceSexualOrientation
+    WorkbenchWorkspaceGenderIdentity, WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, \
+    WorkbenchWorkspaceDisabilityStatus, WorkbenchWorkspaceAccessToCare, WorkbenchWorkspaceEducationLevel, \
+    WorkbenchWorkspaceIncomeLevel
 
 
 class WorkbenchApiTest(BaseTestCase):
@@ -309,9 +311,17 @@ class WorkbenchApiTest(BaseTestCase):
                 "findingsFromStudy": 'string',
                 "focusOnUnderrepresentedPopulations": True,
                 "workspaceDemographic": {
+                    "raceEthnicity": ['AIAN', 'MENA'],
+                    "age": ['AGE_0_11', 'AGE_65_74'],
                     "sexAtBirth": "INTERSEX",
                     "genderIdentity": "OTHER_THAN_MAN_WOMAN",
-                    "sexualOrientation": "OTHER_THAN_STRAIGHT"
+                    "sexualOrientation": "OTHER_THAN_STRAIGHT",
+                    "geography": "RURAL",
+                    "disabilityStatus": "DISABILITY",
+                    "accessToCare": "NOT_EASILY_ACCESS_CARE",
+                    "educationLevel": "LESS_THAN_HIGH_SCHOOL",
+                    "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
+                    "others": "string"
                 }
             }
         ]
@@ -329,6 +339,15 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].sexAtBirth, WorkbenchWorkspaceSexAtBirth("INTERSEX"))
         self.assertEqual(results[0].genderIdentity, WorkbenchWorkspaceGenderIdentity("OTHER_THAN_MAN_WOMAN"))
         self.assertEqual(results[0].sexualOrientation, WorkbenchWorkspaceSexualOrientation("OTHER_THAN_STRAIGHT"))
+        self.assertEqual(results[0].geography, WorkbenchWorkspaceGeography("RURAL"))
+        self.assertEqual(results[0].disabilityStatus, WorkbenchWorkspaceDisabilityStatus("DISABILITY"))
+        self.assertEqual(results[0].accessToCare, WorkbenchWorkspaceAccessToCare("NOT_EASILY_ACCESS_CARE"))
+        self.assertEqual(results[0].educationLevel, WorkbenchWorkspaceEducationLevel("LESS_THAN_HIGH_SCHOOL"))
+        self.assertEqual(results[0].incomeLevel,
+                         WorkbenchWorkspaceIncomeLevel("BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT"))
+        self.assertEqual(results[0].others, 'string')
+        self.assertEqual(results[0].raceEthnicity, [1, 5])
+        self.assertEqual(results[0].age, [1, 3])
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 0)
 
         workspace_history_dao = WorkbenchWorkspaceHistoryDao()
