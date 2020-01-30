@@ -1,11 +1,10 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, UniqueConstraint, JSON, event
+from sqlalchemy import Column, ForeignKey, Integer, String, UniqueConstraint, JSON, event, Boolean
 from sqlalchemy.orm import relationship
 from rdr_service.model.field_types import BlobUTF8
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, UTCDateTime6
-from rdr_service.participant_enums import WorkbenchInstitutionNoAcademic, WorkbenchResearcherSexualOrientation, \
-    WorkbenchResearcherSexAtBirth, WorkbenchResearcherEthnicity, WorkbenchResearcherEducation, \
-    WorkbenchResearcherDisability
+from rdr_service.participant_enums import WorkbenchInstitutionNonAcademic, WorkbenchResearcherSexAtBirth, \
+    WorkbenchResearcherEthnicity, WorkbenchResearcherEducation, WorkbenchResearcherDisability, WorkbenchResearcherDegree
 
 
 class WorkbenchResearcherBase(object):
@@ -25,10 +24,11 @@ class WorkbenchResearcherBase(object):
     race = Column("race", JSON)
     sexAtBirth = Column("sex_at_birth", Enum(WorkbenchResearcherSexAtBirth),
                         default=WorkbenchResearcherSexAtBirth.UNSET)
-    sexualOrientation = Column("sexual_orientation", Enum(WorkbenchResearcherSexualOrientation),
-                               default=WorkbenchResearcherSexualOrientation.UNSET)
     education = Column("education", Enum(WorkbenchResearcherEducation), default=WorkbenchResearcherEducation.UNSET)
+    degree = Column("degree", Enum(WorkbenchResearcherDegree), default=WorkbenchResearcherDegree.UNSET)
     disability = Column("disability", Enum(WorkbenchResearcherDisability), default=WorkbenchResearcherDisability.UNSET)
+    identifiesAsLgbtq = Column("identifies_as_lgbtq", Boolean)
+    lgbtqIdentity = Column("lgbtq_identity", String(250))
     resource = Column("resource", BlobUTF8, nullable=False)
 
 
@@ -60,8 +60,8 @@ class WorkbenchInstitutionalAffiliations(Base):
     researcherId = Column("researcher_id", Integer, ForeignKey("workbench_researcher.id"), nullable=False)
     institution = Column("institution", String(250))
     role = Column("role", String(80))
-    nonAcademicAffiliation = Column("non_academic_affiliation", Enum(WorkbenchInstitutionNoAcademic),
-                                    default=WorkbenchInstitutionNoAcademic.UNSET)
+    nonAcademicAffiliation = Column("non_academic_affiliation", Enum(WorkbenchInstitutionNonAcademic),
+                                    default=WorkbenchInstitutionNonAcademic.UNSET)
 
 
 class WorkbenchResearcherHistory(WorkbenchResearcherBase, Base):
@@ -90,8 +90,8 @@ class WorkbenchInstitutionalAffiliationsHistory(Base):
     researcherId = Column("researcher_id", Integer, ForeignKey("workbench_researcher_history.id"), nullable=False)
     institution = Column("institution", String(250))
     role = Column("role", String(80))
-    nonAcademicAffiliation = Column("non_academic_affiliation", Enum(WorkbenchInstitutionNoAcademic),
-                                    default=WorkbenchInstitutionNoAcademic.UNSET)
+    nonAcademicAffiliation = Column("non_academic_affiliation", Enum(WorkbenchInstitutionNonAcademic),
+                                    default=WorkbenchInstitutionNonAcademic.UNSET)
 
 
 event.listen(WorkbenchResearcher, "before_insert", model_insert_listener)

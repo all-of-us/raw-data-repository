@@ -98,9 +98,23 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "commercialPurpose": True,
                 "educational": True,
                 "otherPurpose": True,
-                "reasonForInvestigation": 'reasonForInvestigation string',
+                "scientificApproaches": 'reasonForInvestigation string',
                 "intendToStudy": 'intendToStudy string',
-                "findingsFromStudy": 'findingsFromStudy string'
+                "findingsFromStudy": 'findingsFromStudy string',
+                "focusOnUnderrepresentedPopulations": True,
+                "workspaceDemographic": {
+                    "raceEthnicity": ['AIAN', 'MENA'],
+                    "age": ['AGE_0_11', 'AGE_65_74'],
+                    "sexAtBirth": "UNSET",
+                    "genderIdentity": "OTHER_THAN_MAN_WOMAN",
+                    "sexualOrientation": "OTHER_THAN_STRAIGHT",
+                    "geography": "RURAL",
+                    "disabilityStatus": "DISABILITY",
+                    "accessToCare": "NOT_EASILY_ACCESS_CARE",
+                    "educationLevel": "LESS_THAN_HIGH_SCHOOL",
+                    "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
+                    "others": "string"
+                }
             },
             {
                 "workspaceId": 1,
@@ -133,7 +147,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "commercialPurpose": False,
                 "educational": False,
                 "otherPurpose": False,
-                "reasonForInvestigation": 'reasonForInvestigation string2',
+                "scientificApproaches": 'reasonForInvestigation string2',
                 "intendToStudy": 'intendToStudy string2',
                 "findingsFromStudy": 'findingsFromStudy string2'
             }
@@ -158,9 +172,23 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'otherPurposeDetails': 'other purpose details str', 'methodsDevelopment': True,
                        'controlSet': True, 'ancestry': True, 'socialBehavioral': True, 'populationHealth': True,
                        'drugDevelopment': True, 'commercialPurpose': True, 'educational': True, 'otherPurpose': True,
-                       'reasonForInvestigation': 'reasonForInvestigation string',
+                       'scientificApproaches': 'reasonForInvestigation string',
                        'intendToStudy': 'intendToStudy string',
-                       'findingsFromStudy': 'findingsFromStudy string'
+                       'findingsFromStudy': 'findingsFromStudy string',
+                       'focusOnUnderrepresentedPopulations': True,
+                       'workspaceDemographic': {
+                           "raceEthnicity": ['AIAN', 'MENA'],
+                           "age": ['AGE_0_11', 'AGE_65_74'],
+                           "sexAtBirth": None,
+                           "genderIdentity": "OTHER_THAN_MAN_WOMAN",
+                           "sexualOrientation": "OTHER_THAN_STRAIGHT",
+                           "geography": "RURAL",
+                           "disabilityStatus": "DISABILITY",
+                           "accessToCare": "NOT_EASILY_ACCESS_CARE",
+                           "educationLevel": "LESS_THAN_HIGH_SCHOOL",
+                           "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
+                           "others": "string"
+                       }
                        },
                       result)
         self.assertIn({'workspaceId': 1, 'name': 'workspace name str 2', 'creationTime': '2019-11-25T17:43:41.085000',
@@ -174,9 +202,23 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'otherPurposeDetails': 'other purpose details str 2', 'methodsDevelopment': False,
                        'controlSet': False, 'ancestry': False, 'socialBehavioral': False, 'populationHealth': False,
                        'drugDevelopment': False, 'commercialPurpose': False, 'educational': False,
-                       'otherPurpose': False, 'reasonForInvestigation': 'reasonForInvestigation string2',
+                       'otherPurpose': False, 'scientificApproaches': 'reasonForInvestigation string2',
                        'intendToStudy': 'intendToStudy string2',
-                       'findingsFromStudy': 'findingsFromStudy string2'
+                       'findingsFromStudy': 'findingsFromStudy string2',
+                       'focusOnUnderrepresentedPopulations': None,
+                       'workspaceDemographic': {
+                           "raceEthnicity": None,
+                           "age": None,
+                           "sexAtBirth": None,
+                           "genderIdentity": None,
+                           "sexualOrientation": None,
+                           "geography": None,
+                           "disabilityStatus": None,
+                           "accessToCare": None,
+                           "educationLevel": None,
+                           "incomeLevel": None,
+                           "others": None
+                       }
                        },
                       result)
 
@@ -197,8 +239,22 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'otherPurposeDetails': 'other purpose details str', 'methodsDevelopment': True,
                        'controlSet': True, 'ancestry': True, 'socialBehavioral': True, 'populationHealth': True,
                        'drugDevelopment': True, 'commercialPurpose': True, 'educational': True, 'otherPurpose': True,
-                       'reasonForInvestigation': 'reasonForInvestigation string',
+                       'scientificApproaches': 'reasonForInvestigation string',
                        'intendToStudy': 'intendToStudy string',
-                       'findingsFromStudy': 'findingsFromStudy string'
+                       'findingsFromStudy': 'findingsFromStudy string',
+                       'focusOnUnderrepresentedPopulations': True,
+                       'workspaceDemographic': {
+                           "raceEthnicity": ['AIAN', 'MENA'],
+                           "age": ['AGE_0_11', 'AGE_65_74'],
+                           "sexAtBirth": None,
+                           "genderIdentity": "OTHER_THAN_MAN_WOMAN",
+                           "sexualOrientation": "OTHER_THAN_STRAIGHT",
+                           "geography": "RURAL",
+                           "disabilityStatus": "DISABILITY",
+                           "accessToCare": "NOT_EASILY_ACCESS_CARE",
+                           "educationLevel": "LESS_THAN_HIGH_SCHOOL",
+                           "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
+                           "others": "string"
+                       }
                        },
                       result)
