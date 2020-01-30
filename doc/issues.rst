@@ -3,6 +3,7 @@ RDR Issues
 ************************************************************
 .. toctree::
    :maxdepth: 1
+
 If you would like to file a potential bug or change to this documentation
 submit an RDR request via the Jira Service Desk:
 
