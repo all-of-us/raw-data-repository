@@ -23,7 +23,7 @@ ENABLE_FOR_TESTS="\
   --enable=bad-indentation,broad-except,bare-except,logging-too-many-args \
   --enable=unused-argument,redefined-outer-name,redefined-builtin,superfluous-parens \
   --enable=syntax-error \
-  --max-line-length=119 \
+  --max-line-length=120 \
   --enable=trailing-whitespace,unused-import,unused-variable,undefined-variable"
 ENABLE_FOR_ALL="$ENABLE_FOR_TESTS --enable=bad-whitespace,line-too-long,unused-import,unused-variable"
 PYLINT_OPTS="-r n --disable=all --score=n"
