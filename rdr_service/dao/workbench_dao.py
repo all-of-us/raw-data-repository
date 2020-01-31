@@ -401,7 +401,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         if row.accessToCare else None,
                         "educationLevel": str(WorkbenchWorkspaceEducationLevel(row.educationLevel))
                         if row.educationLevel else None,
-                        "incomeLevel": str(WorkbenchWorkspaceIncomeLevel(row.incomeLevel)) if row.incomeLevel else None,
+                        "incomeLevel": str(WorkbenchWorkspaceIncomeLevel(row.incomeLevel))
+                        if row.incomeLevel else None,
                         "others": row.others
                     }
                 }
@@ -529,7 +530,8 @@ class WorkbenchResearcherDao(UpdatableDao):
                     try:
                         WorkbenchInstitutionNonAcademic(institution.get('nonAcademicAffiliation'))
                     except TypeError:
-                        raise BadRequest(f"Invalid nonAcademicAffiliation: {institution.get('nonAcademicAffiliation')}")
+                        raise BadRequest(
+                            f"Invalid nonAcademicAffiliation: {institution.get('nonAcademicAffiliation')}")
 
     def from_client_json(self, resource_json, client_id=None):  # pylint: disable=unused-argument
         self._validate(resource_json)

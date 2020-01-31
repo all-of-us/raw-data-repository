@@ -677,13 +677,23 @@ class ManifestDefinitionProvider:
         Creates the manifest definitions to use when generating the manifest
         based on manifest type
         """
-        # Set each Manifes Definition as an instance of ManifestDef()
+        # Set each Manifest Definition as an instance of ManifestDef()
+        # DRC Broad CVL WGS Manifest
         self.MANIFEST_DEFINITIONS[GenomicManifestTypes.DRC_CVL_WGS] = self.ManifestDef(
             job_run_field='cvlManifestWgsJobRunId',
             source_data=self._get_source_data_query(GenomicManifestTypes.DRC_CVL_WGS),
             destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{getSetting(GENOMIC_CVL_MANIFEST_SUBFOLDER)}/cvl_manifest_{self.job_run_id}.csv',
+            output_filename=f'{getSetting(GENOMIC_CVL_MANIFEST_SUBFOLDER)}/cvl_wgs_manifest_{self.job_run_id}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.DRC_CVL_WGS),
+        )
+
+        # Color Array CVL Manifest
+        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.DRC_CVL_ARR] = self.ManifestDef(
+            job_run_field='cvlManifestArrJobRunId',
+            source_data=self._get_source_data_query(GenomicManifestTypes.DRC_CVL_ARR),
+            destination_bucket=f'{self.bucket_name}',
+            output_filename=f'{getSetting(GENOMIC_CVL_MANIFEST_SUBFOLDER)}/cvl_arr_manifest_{self.job_run_id}.csv',
+            columns=self._get_manifest_columns(GenomicManifestTypes.DRC_CVL_ARR),
         )
 
     def _get_source_data_query(self, manifest_type):
@@ -693,6 +703,8 @@ class ManifestDefinitionProvider:
         :return: query object
         """
         query_sql = ""
+
+        # DRC Broad CVL WGS Manifest
         if manifest_type == GenomicManifestTypes.DRC_CVL_WGS:
             query_sql = """
                 SELECT s.genomic_set_name
@@ -709,6 +721,27 @@ class ManifestDefinitionProvider:
                 WHERE gcv.processing_status = "pass"
                     AND m.reconcile_cvl_job_run_id IS NOT NULL
                     AND m.cvl_manifest_wgs_job_run_id IS NULL
+                    AND m.genome_type = "aou_wgs"                    
+            """
+
+        # Color Array CVL Manifest
+        if manifest_type == GenomicManifestTypes.DRC_CVL_ARR:
+            query_sql = """
+                SELECT s.genomic_set_name
+                    , m.biobank_id
+                    , m.sex_at_birth
+                    , m.ny_flag
+                    , gcv.site_id
+                    , NULL as secondary_validation
+                FROM genomic_set_member m
+                    JOIN genomic_set s
+                        ON s.id = m.genomic_set_id
+                    JOIN genomic_gc_validation_metrics gcv
+                        ON gcv.genomic_set_member_id = m.id
+                WHERE gcv.processing_status = "pass"
+                    AND m.reconcile_cvl_job_run_id IS NOT NULL
+                    AND m.cvl_manifest_wgs_job_run_id IS NULL
+                    AND m.genome_type = "aou_array"                    
             """
         return query_sql
 
@@ -719,7 +752,8 @@ class ManifestDefinitionProvider:
         :return: column tuple
         """
         columns = tuple()
-        if manifest_type == GenomicManifestTypes.DRC_CVL_WGS:
+        if manifest_type in [GenomicManifestTypes.DRC_CVL_WGS,
+                             GenomicManifestTypes.DRC_CVL_ARR]:
             columns = (
                 "genomic_set_name",
                 "biobank_id",
