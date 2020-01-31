@@ -52,7 +52,7 @@ Create a new QuestionnaireResponse in the RDR. Body is a `FHIR DSTU2 Questionnai
 
 * ``subject``: a reference to the participant, in the form ``Patient/:pid``. The :pid variable of this refernce must match the participant ID supplied in the POST URL.
 
-.. note:: Note the use of the word "Patient" here, which comes from FHIR.
+.. note:: Note the use of the word "Patient" here, which comes from the FHIR spec.
 
 * ``questionnaire``: a reference to the questionnaire for which this response has been written, in the form ``Questionnaire/:qid`` or ``Questionnaire/:qid/_history/:version`` (the latter indicating the version of the questionnaire in use)
 * ``linkId`` for each question, corresponding to a ``linkId`` specified in the questionnaire.

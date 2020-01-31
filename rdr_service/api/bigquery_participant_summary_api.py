@@ -1,5 +1,6 @@
 import json
 
+from flask import request
 from rdr_service.config import GAE_PROJECT
 from werkzeug.exceptions import NotFound
 
@@ -43,7 +44,7 @@ class BQParticipantSummaryApi(BaseApi):
                     records = BigQueryJob.get_rows(response)
                     if len(records) == 1:
                         obj = records[0]
-                        log_api_request(obj)
+                        log_api_request(log=request.log_record, model_obj=obj)
                         return obj
 
         raise NotFound("participant not found")
