@@ -3,8 +3,14 @@ from sqlalchemy.orm import relationship
 from rdr_service.model.field_types import BlobUTF8
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, UTCDateTime6
-from rdr_service.participant_enums import WorkbenchInstitutionNonAcademic, WorkbenchResearcherSexAtBirth, \
-    WorkbenchResearcherEthnicity, WorkbenchResearcherEducation, WorkbenchResearcherDisability, WorkbenchResearcherDegree
+from rdr_service.participant_enums import (
+    WorkbenchInstitutionNonAcademic,
+    WorkbenchResearcherSexAtBirth,
+    WorkbenchResearcherEthnicity,
+    WorkbenchResearcherEducation,
+    WorkbenchResearcherDisability,
+    WorkbenchResearcherDegree
+)
 
 
 class WorkbenchResearcherBase(object):
