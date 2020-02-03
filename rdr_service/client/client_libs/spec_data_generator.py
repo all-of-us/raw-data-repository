@@ -67,15 +67,17 @@ class DataGeneratorClass(object):
     Fetch a google doc spreadsheet in CSV format
     :param doc_id: document id
     :return: A list object with rows from spreadsheet
+    https://docs.google.com/spreadsheets/d/11wyE9w48gWkXshh8gLGhTS4hdXxATuPESgmcFdorIkY/export?format=csv
     """
         url = "https://docs.google.com/spreadsheets/d/{0}/export?format=csv".format(doc_id)
         response = urllib.request.urlopen(url)
         if response.code != 200:  # urllib2 already raises urllib2.HTTPError for some of these.
             return None
 
+        data = response.read()
         # Convert csv file to a list of row data
         csv_data = list()
-        for row in csv.reader(response):
+        for row in csv.reader(data):
             csv_data.append(row)
 
         return csv_data
