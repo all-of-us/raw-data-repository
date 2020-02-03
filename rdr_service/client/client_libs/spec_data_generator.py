@@ -346,7 +346,7 @@ class DataGeneratorClass(object):
             hpo = p_data.get("_HPO", None)
             pm = p_data.get("_PM", None)
             site_id = p_data.get("_HPOSite", None)
-            bio_orders = p_data.get("_BIOOrder", "1SAL2|1ED04")
+            bio_orders = p_data.get("_BIOOrder", None)
             bio_orders_mayo = p_data.get("_BIOOrderMayo", None)
             ppi_modules = p_data.get("_PPIModule", "ConsentPII|TheBasics")
 
