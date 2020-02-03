@@ -67,7 +67,6 @@ class DataGeneratorClass(object):
     Fetch a google doc spreadsheet in CSV format
     :param doc_id: document id
     :return: A list object with rows from spreadsheet
-    https://docs.google.com/spreadsheets/d/11wyE9w48gWkXshh8gLGhTS4hdXxATuPESgmcFdorIkY/export?format=csv
     """
         url = "https://docs.google.com/spreadsheets/d/{0}/export?format=csv".format(doc_id)
         response = urllib.request.urlopen(url)
