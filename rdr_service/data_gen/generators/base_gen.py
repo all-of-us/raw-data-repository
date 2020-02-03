@@ -46,7 +46,7 @@ class BaseGen(object):
                 key = os.path.basename(filename).replace(".txt", "")
                 # decode and encode are required for the cryillic names in the files.
                 self._app_data[key] = [
-                    line.strip().decode("utf-8").encode("utf-8") for line in open(filename, "rb").readlines()
+                    line.strip().decode("utf-8") for line in open(filename, "rb").readlines()
                 ]
 
             if filename.endswith(".csv"):
