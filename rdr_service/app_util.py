@@ -149,7 +149,12 @@ def get_account_origin_id():
     """
     auth_email = get_oauth_id()
     user_info = lookup_user_info(auth_email)
-    client_id = user_info.get('clientId')
+
+    # Check for InProcess client
+    if not user_info and config.GAE_PROJECT != 'all-of-us-rdr-prod':
+        return 'configurator'
+
+    client_id = user_info.get('clientId', None)
     from rdr_service.api_util import DEV_MAIL
     if not client_id:
         if auth_email == DEV_MAIL:

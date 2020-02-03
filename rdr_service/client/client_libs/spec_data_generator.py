@@ -73,9 +73,10 @@ class DataGeneratorClass(object):
         if response.code != 200:  # urllib2 already raises urllib2.HTTPError for some of these.
             return None
 
+        data = response.read()
         # Convert csv file to a list of row data
         csv_data = list()
-        for row in csv.reader(response):
+        for row in csv.reader(data):
             csv_data.append(row)
 
         return csv_data
@@ -344,7 +345,7 @@ class DataGeneratorClass(object):
             hpo = p_data.get("_HPO", None)
             pm = p_data.get("_PM", None)
             site_id = p_data.get("_HPOSite", None)
-            bio_orders = p_data.get("_BIOOrder", "1SAL2|1ED04")
+            bio_orders = p_data.get("_BIOOrder", None)
             bio_orders_mayo = p_data.get("_BIOOrderMayo", None)
             ppi_modules = p_data.get("_PPIModule", "ConsentPII|TheBasics")
 
