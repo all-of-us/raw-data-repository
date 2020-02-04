@@ -407,8 +407,6 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             }
 
         consents = dict()
-
-
         study_consent = ehr_consent = pm_complete = False
         # iterate over consents
         for consent in ro_summary['consents']:
