@@ -647,13 +647,12 @@ class WorkbenchResearcherEthnicity(messages.Enum):
 
 class WorkbenchResearcherGender(messages.Enum):
     UNSET = 0
-    MALE = 1
-    FEMALE = 2
+    MAN = 1
+    WOMAN = 2
     NON_BINARY = 3
     TRANSGENDER = 4
-    INTERSEX = 5
-    NONE = 6
-    PREFER_NOT_TO_ANSWER = 7
+    NONE_DESCRIBE_ME = 5
+    PREFER_NOT_TO_ANSWER = 6
 
 
 class WorkbenchResearcherRace(messages.Enum):

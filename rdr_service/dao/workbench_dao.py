@@ -3,7 +3,7 @@ import sqlalchemy
 
 from werkzeug.exceptions import BadRequest
 from dateutil.parser import parse
-from sqlalchemy import desc
+from sqlalchemy import desc, and_
 from sqlalchemy.orm import subqueryload
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
@@ -338,7 +338,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                                      WorkbenchResearcher.id == WorkbenchInstitutionalAffiliations.researcherId),
                 WorkbenchResearcher.id == WorkbenchWorkspaceUser.researcherId
             )
-        ).where(WorkbenchWorkspaceUser.role == WorkbenchWorkspaceUserRole.OWNER)
+        ).where(and_(WorkbenchWorkspaceUser.role == WorkbenchWorkspaceUserRole.OWNER,
+                     WorkbenchWorkspace.excludeFromPublicDirectory == 0))
 
         if status is not None:
             query = query.where(WorkbenchWorkspace.status == status)
@@ -476,12 +477,14 @@ class WorkbenchResearcherDao(UpdatableDao):
             except TypeError:
                 raise BadRequest(f"Invalid ethnicity status: {item.get('ethnicity')}")
 
-            try:
-                if item.get('sexAtBirth') is None:
-                    item['sexAtBirth'] = 'UNSET'
-                WorkbenchResearcherSexAtBirth(item.get('sexAtBirth'))
-            except TypeError:
-                raise BadRequest(f"Invalid sexAtBirth status: {item.get('sexAtBirth')}")
+            if item.get('sexAtBirth') is not None:
+                set_at_birth_array = []
+                for set_at_birth in item.get('sexAtBirth'):
+                    try:
+                        set_at_birth_array.append(int(WorkbenchResearcherSexAtBirth(set_at_birth)))
+                    except TypeError:
+                        raise BadRequest(f"Invalid sexAtBirth status: {set_at_birth}")
+                item['sexAtBirth'] = set_at_birth_array
 
             try:
                 if item.get('education') is None:
@@ -553,7 +556,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 zipCode=item.get('zipCode'),
                 country=item.get('country'),
                 ethnicity=WorkbenchResearcherEthnicity(item.get('ethnicity', 'UNSET')),
-                sexAtBirth=WorkbenchResearcherSexAtBirth(item.get('sexAtBirth', 'UNSET')),
+                sexAtBirth=item.get('sexAtBirth'),
                 identifiesAsLgbtq=item.get('identifiesAsLgbtq'),
                 lgbtqIdentity=item.get('lgbtqIdentity') if item.get('identifiesAsLgbtq') else None,
                 education=WorkbenchResearcherEducation(item.get('education', 'UNSET')),
