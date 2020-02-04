@@ -24,7 +24,7 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
 from dateutil.parser import parse
 from rdr_service.api_util import HIERARCHY_CONTENT_SYSTEM_PREFIX
-from rdr_service.data_gen.fake_participant_generator import FakeParticipantGenerator
+from rdr_service.tools.import_participants import _setup_questionnaires, import_participant
 from rdr_service.data_gen.in_process_client import InProcessClient
 
 
@@ -329,16 +329,31 @@ class OrganizationHierarchySyncDao(BaseDao):
             n = 20  # number of participants
             logging.info(f'Generating {n} fake participants for {new_site.googleGroup}.')
             auth_header = {'Authorization': request.headers.get('Authorization')}
-            fake_gen = FakeParticipantGenerator(client=InProcessClient(headers=auth_header),
-                                                withdrawn_percent=0,
-                                                suspended_percent=0)
-            for _ in range(n):
-                fake_gen.generate_participant(
-                    include_physical_measurements=False,
-                    include_biobank_orders=False,
-                    requested_hpo=None,
-                    requested_site=new_site
+            client = InProcessClient(headers=auth_header)
+            questionnaire_to_questions, consent_questionnaire_id_and_version = _setup_questionnaires(client)
+            consent_questions = questionnaire_to_questions[consent_questionnaire_id_and_version]
+            participants = {
+                "zip_code": "20001",
+                "date_of_birth": "1933-3-3",
+                "gender_identity": "GenderIdentity_Woman",
+                "withdrawalStatus": "NOT_WITHDRAWN",
+                "suspensionStatus": "NOT_SUSPENDED",
+            }
+            for p in range(1, n+1):
+                participant = participants
+                participant.update({"last_name": new_site.googleGroup.split("-")[-1]})
+                participant.update({"first_name": "Participant {}".format(p)})
+                participant.update({"site": new_site.googleGroup})
+
+                import_participant(
+                    participant,
+                    client,
+                    consent_questionnaire_id_and_version,
+                    questionnaire_to_questions,
+                    consent_questions,
                 )
+
+            logging.info(f"{n} participants imported.")
 
     def _get_type(self, hierarchy_org_obj):
         obj_type = None
