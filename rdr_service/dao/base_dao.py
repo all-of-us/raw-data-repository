@@ -17,7 +17,7 @@ from sqlalchemy.engine.result import ResultProxy
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 
-from rdr_service import api_util, config
+from rdr_service import api_util
 from rdr_service.code_constants import ORIGINATING_SOURCES
 from rdr_service.dao import database_factory
 from rdr_service.model.participant import Participant
@@ -169,10 +169,6 @@ class BaseDao(object):
         pid = obj.participantId
         email = app_util.get_oauth_id()
         user_info = app_util.lookup_user_info(email)
-        # Check for InProcess client
-        if not user_info and config.GAE_PROJECT != 'all-of-us-rdr-prod':
-            return 'configurator'
-
         base_name = user_info.get('clientId')
         if email == api_util.DEV_MAIL and base_name is None:
             base_name = 'example'  # account for temp configs that dont create the key
