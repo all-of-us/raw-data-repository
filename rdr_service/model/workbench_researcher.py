@@ -28,8 +28,7 @@ class WorkbenchResearcherBase(object):
     ethnicity = Column("ethnicity", Enum(WorkbenchResearcherEthnicity), default=WorkbenchResearcherEthnicity.UNSET)
     gender = Column("gender", JSON)
     race = Column("race", JSON)
-    sexAtBirth = Column("sex_at_birth", Enum(WorkbenchResearcherSexAtBirth),
-                        default=WorkbenchResearcherSexAtBirth.UNSET)
+    sexAtBirth = Column("sex_at_birth", JSON)
     education = Column("education", Enum(WorkbenchResearcherEducation), default=WorkbenchResearcherEducation.UNSET)
     degree = Column("degree", Enum(WorkbenchResearcherDegree), default=WorkbenchResearcherDegree.UNSET)
     disability = Column("disability", Enum(WorkbenchResearcherDisability), default=WorkbenchResearcherDisability.UNSET)

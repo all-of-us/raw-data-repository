@@ -21,9 +21,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "zipCode": "string",
                 "country": "string",
                 "ethnicity": "HISPANIC",
-                "gender": ["MALE"],
+                "gender": ["MAN"],
                 "race": ["AIAN"],
-                "sexAtBirth": "FEMALE",
+                "sexAtBirth": ["FEMALE"],
                 "sexualOrientation": "BISEXUAL",
                 "affiliations": [
                     {
@@ -46,9 +46,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "zipCode": "string2",
                 "country": "string2",
                 "ethnicity": "HISPANIC",
-                "sexAtBirth": "FEMALE",
                 "sexualOrientation": "BISEXUAL",
-                "gender": ["MALE", "FEMALE"],
+                "gender": ["MAN", "WOMAN"],
                 "race": ["AIAN", "WHITE"],
                 "affiliations": [
                     {
@@ -85,7 +84,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                         "status": "ACTIVE"
                     }
                 ],
-                "excludeFromPublicDirectory": True,
+                "excludeFromPublicDirectory": False,
                 "diseaseFocusedResearch": True,
                 "diseaseFocusedResearchName": "disease focused research name str",
                 "otherPurposeDetails": "other purpose details str",
@@ -167,7 +166,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                                                             {'institution': 'institution22',
                                                              'role': 'institution role 22',
                                                              'nonAcademicAffiliation': 'INDUSTRY'}]}],
-                       'excludeFromPublicDirectory': True, 'diseaseFocusedResearch': True,
+                       'excludeFromPublicDirectory': False, 'diseaseFocusedResearch': True,
                        'diseaseFocusedResearchName': 'disease focused research name str',
                        'otherPurposeDetails': 'other purpose details str', 'methodsDevelopment': True,
                        'controlSet': True, 'ancestry': True, 'socialBehavioral': True, 'populationHealth': True,
@@ -234,7 +233,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                                                             {'institution': 'institution22',
                                                              'role': 'institution role 22',
                                                              'nonAcademicAffiliation': 'INDUSTRY'}]}],
-                       'excludeFromPublicDirectory': True, 'diseaseFocusedResearch': True,
+                       'excludeFromPublicDirectory': False, 'diseaseFocusedResearch': True,
                        'diseaseFocusedResearchName': 'disease focused research name str',
                        'otherPurposeDetails': 'other purpose details str', 'methodsDevelopment': True,
                        'controlSet': True, 'ancestry': True, 'socialBehavioral': True, 'populationHealth': True,
