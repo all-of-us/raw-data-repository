@@ -9,6 +9,7 @@ import argparse
 # pylint: disable=broad-except
 import csv
 import datetime
+import io
 import logging
 import os
 import random
@@ -62,31 +63,38 @@ class DataGeneratorClass(object):
             if "127.0.0.1" not in self._host and "localhost" not in self._host:
                 self._oauth_token = gcp_get_app_access_token()
 
-    def _gdoc_csv_data(self, doc_id):
+    def _gdoc_csv_data(self, doc_id, gid):
         """
-    Fetch a google doc spreadsheet in CSV format
-    :param doc_id: document id
-    :return: A list object with rows from spreadsheet
-    """
-        url = "https://docs.google.com/spreadsheets/d/{0}/export?format=csv".format(doc_id)
+        Fetch a google doc spreadsheet in CSV format
+        :param doc_id: google document id
+        :param gid: google doc gid
+        :return: A list object with rows from spreadsheet
+        """
+        url = f"https://docs.google.com/spreadsheets/d/{doc_id}/export?format=csv"
+        if gid:
+            url += f"&gid={gid}"
         response = urllib.request.urlopen(url)
         if response.code != 200:  # urllib2 already raises urllib2.HTTPError for some of these.
             return None
 
-        data = response.read()
-        # Convert csv file to a list of row data
         csv_data = list()
-        for row in csv.reader(data):
-            csv_data.append(row)
+        data = response.read().decode('utf-8')
+        if '<html' in data:
+            return None
+
+        # Convert csv file to a list of row data
+        with io.StringIO(data) as handle:
+            for row in csv.reader(handle, delimiter=','):
+                csv_data.append(row)
 
         return csv_data
 
     def _local_csv_data(self, filename):
         """
-    Read local spreadsheet csv
-    :param filename:
-    :return:
-    """
+        Read local spreadsheet csv
+        :param filename:
+        :return:
+        """
         if not os.path.exists(filename):
             return None
 
@@ -212,12 +220,32 @@ class DataGeneratorClass(object):
         code, resp = make_api_request(
             self._host, self._gen_url, req_type="POST", json_data=data, headers=gcp_make_auth_header()
         )
-        if code == 200 and resp:
-            p_obj.update(resp)
-            return p_obj, hpo_site
+        if not resp or code not in [200, 201]:
+            _logger.error("create participant failure: [Http {0}: {1}].".format(code, resp))
+            return None
 
-        _logger.error("create participant response failure: [Http {0}: {1}].".format(code, resp))
-        return None
+        p_obj.update(resp)
+
+        if hpo_site.id:
+            resp['site'] = hpo_site.id
+            headers = gcp_make_auth_header()
+            headers['If-Match'] = resp['meta']['versionId']
+
+            data["api"] = f"Participant/{p_obj.participantId}"
+            data["data"] = resp
+            data["timestamp"] = clock.CLOCK.now().isoformat()
+            data["method"] = 'PUT'
+
+            code, resp = make_api_request(
+                self._host, self._gen_url, req_type="POST", json_data=data, headers=headers)
+
+        if not resp or code not in [200, 201]:
+            _logger.error("update participant failure: [Http {0}: {1}].".format(code, resp))
+            return None
+
+        return p_obj, hpo_site
+
+
 
     def submit_physical_measurements(self, participant_id, site):
         """
@@ -325,7 +353,8 @@ class DataGeneratorClass(object):
     :return: Exit code value
     """
         # load participant spreadsheet from bucket or local file.
-        csv_data = self._local_csv_data(self.args.src_csv) or self._gdoc_csv_data(self.args.src_csv)
+        csv_data = self._local_csv_data(self.args.src_csv) or \
+                                self._gdoc_csv_data(self.args.src_csv, self.args.google_gid)
         if not csv_data:
             _logger.error("unable to fetch participant source spreadsheet [{0}].".format(self.args.src_csv))
             return 1
@@ -452,6 +481,7 @@ def run():
         "--horiz", help="participant data is horizontal in the spreadsheet", default=False, action="store_true"
     )  # noqa
     parser.add_argument("--src-csv", help="participant list csv (file/google doc id)", required=True)  # noqa
+    parser.add_argument("--google-gid", help="google doc gid", required=False)  #noqa
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
