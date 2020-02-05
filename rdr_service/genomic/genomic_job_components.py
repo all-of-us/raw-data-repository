@@ -491,8 +491,8 @@ class GenomicReconciler:
         """
         try:
             # extract only columns we need
-            cvl_columns = ('biobank_id', 'member_id')
-            report_data = ((m.biobankId, m.id) for m in members)
+            cvl_columns = ('biobank_id', 'sample_id', 'member_id')
+            report_data = ((m.biobankId, m.sampleId, m.id) for m in members)
 
             # Use SQL exporter
             exporter = SqlExporter(self.bucket_name)

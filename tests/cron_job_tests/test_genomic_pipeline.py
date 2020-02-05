@@ -1147,6 +1147,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the reconciliation file contents
         expected_cvl_columns = (
             "biobank_id",
+            "sample_id",
             "member_id"
         )
         cvl_subfolder = config.getSetting(config.GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER)
@@ -1158,6 +1159,7 @@ class GenomicPipelineTest(BaseTestCase):
             rows = list(csv_reader)
             self.assertEqual(1, len(rows))
             self.assertEqual(test_member_2.biobankId, rows[0]['biobank_id'])
+            self.assertEqual(test_member_2.sampleId, rows[0]['sample_id'])
             self.assertEqual(test_member_2.id, int(rows[0]['member_id']))
 
         # Test the job controller updated the file_processed records
