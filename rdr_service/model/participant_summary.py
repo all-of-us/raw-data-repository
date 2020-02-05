@@ -39,9 +39,9 @@ WITHDRAWN_PARTICIPANT_FIELDS = [
     "lastName",
     "dateOfBirth",
     "consentForStudyEnrollment",
-    "consentForStudyEnrollmentTime",
+    "consentForStudyEnrollmentAuthored",
     "consentForElectronicHealthRecords",
-    "consentForElectronicHealthRecordsTime",
+    "consentForElectronicHealthRecordsAuthored",
 ]
 
 # The period of time for which withdrawn participants will still be returned in results for
