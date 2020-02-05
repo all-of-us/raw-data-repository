@@ -241,9 +241,11 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         for workspace in workspaces:
             exist = self._get_workspace_by_workspace_id_with_session(session, workspace.workspaceSourceId)
             if exist:
-                session.delete(exist)
-                session.flush()
-            session.add(workspace)
+                for attr_name in workspace.__dict__.keys():
+                    if not attr_name.startswith('_'):
+                        setattr(exist, attr_name, getattr(workspace, attr_name))
+            else:
+                session.add(workspace)
         self._insert_history(session, workspaces)
 
         return workspaces
@@ -592,9 +594,11 @@ class WorkbenchResearcherDao(UpdatableDao):
         for researcher in researchers:
             exist = self._get_researcher_by_user_id_with_session(session, researcher.userSourceId)
             if exist:
-                session.delete(exist)
-                session.flush()
-            session.add(researcher)
+                for attr_name in researcher.__dict__.keys():
+                    if not attr_name.startswith('_'):
+                        setattr(exist, attr_name, getattr(researcher, attr_name))
+            else:
+                session.add(researcher)
         self._insert_history(session, researchers)
         return researchers
 

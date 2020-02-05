@@ -406,17 +406,28 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 'enrollment_status_id': int(status),
             }
 
-        study_consent = ehr_consent = dvehr_consent = pm_complete = False
+        consents = dict()
+        study_consent = ehr_consent = pm_complete = False
         # iterate over consents
         for consent in ro_summary['consents']:
             if consent['consent'] == 'ConsentPII':
                 study_consent = True
-            if consent['consent'] == 'EHRConsentPII_ConsentPermission' and \
-                consent['consent_value'] == 'ConsentPermission_Yes':
+            if consent['consent'] == 'EHRConsentPII_ConsentPermission':
+                consents['EHRConsent'] = (consent['consent_value'], consent['consent_date'])
+            if consent['consent'] == 'DVEHRSharing_AreYouInterested':
+                consents['DVEHRConsent'] = (consent['consent_value'], consent['consent_date'])
+
+        if 'EHRConsent' in consents and 'DVEHRConsent' in consents:
+            if consents['DVEHRConsent'] == 'DVEHRSharing_Yes' and consents['EHRConsent'][0] != 'ConsentPermission_No':
                 ehr_consent = True
-            if consent['consent'] == 'DVEHRSharing_AreYouInterested' and \
-                consent['consent_value'] == 'DVEHRSharing_Yes':
-                dvehr_consent = True
+            if consents['EHRConsent'][0] == 'ConsentPermission_Yes':
+                ehr_consent = True
+        elif 'EHRConsent' in consents:
+            if consents['EHRConsent'][0] == 'ConsentPermission_Yes':
+                ehr_consent = True
+        elif 'DVEHRConnset' in consents:
+            if consents['DVEHRConsent'][0] == 'DVEHRSharing_Yes':
+                ehr_consent = True
 
         # check physical measurements
         if 'pm' in ro_summary:
@@ -445,7 +456,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         if study_consent is True:
             status = EnrollmentStatusV2.PARTICIPANT
-        if status == EnrollmentStatusV2.PARTICIPANT and (ehr_consent is True or dvehr_consent is True):
+        if status == EnrollmentStatusV2.PARTICIPANT and ehr_consent is True:
             status = EnrollmentStatusV2.FULLY_CONSENTED
         if status == EnrollmentStatusV2.FULLY_CONSENTED and pm_complete and 'modules' in ro_summary and\
                         baseline_module_count >= len(self._baseline_modules) and \
