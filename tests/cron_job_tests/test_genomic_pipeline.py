@@ -1261,11 +1261,13 @@ class GenomicPipelineTest(BaseTestCase):
             test_member_1 = member_session.query(
                 GenomicSet.genomicSetName,
                 GenomicSetMember.biobankId,
+                GenomicSetMember.sampleId,
                 GenomicSetMember.sexAtBirth,
                 GenomicSetMember.nyFlag,
                 GenomicSetMember.cvlManifestArrJobRunId,
                 GenomicGCValidationMetrics.siteId).filter(
                 GenomicGCValidationMetrics.biobankId == GenomicSetMember.biobankId,
+                GenomicGCValidationMetrics.sampleId == GenomicSetMember.sampleId,
                 GenomicSet.id == GenomicSetMember.genomicSetId,
                 GenomicSetMember.id == 1
             ).one()
@@ -1276,6 +1278,7 @@ class GenomicPipelineTest(BaseTestCase):
         expected_cvl_columns = (
             "genomic_set_name",
             "biobank_id",
+            "sample_id",
             "sex_at_birth",
             "ny_flag",
             "site_id",
@@ -1289,6 +1292,7 @@ class GenomicPipelineTest(BaseTestCase):
             rows = list(csv_reader)
             self.assertEqual(1, len(rows))
             self.assertEqual(test_member_1.biobankId, rows[0]['biobank_id'])
+            self.assertEqual(test_member_1.sampleId, rows[0]['sample_id'])
             self.assertEqual(test_member_1.sexAtBirth, rows[0]['sex_at_birth'])
             self.assertEqual(test_member_1.nyFlag, int(rows[0]['ny_flag']))
             self.assertEqual(test_member_1.siteId, int(rows[0]['site_id']))

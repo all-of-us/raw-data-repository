@@ -406,7 +406,7 @@ class GenomicReconciler:
         genomic_set_member
         :return: result code
         """
-        members = self._get_members_for_cvl_reconciliation()
+        members = self.member_dao.get_members_for_cvl_reconciliation()
         if members:
             cvl_subfolder = getSetting(GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER)
             self.cvl_file_name = f"{cvl_subfolder}/cvl_report_{self.run_id}.csv"
@@ -482,13 +482,6 @@ class GenomicReconciler:
         return self.member_dao.update_member_sequencing_file(member,
                                                              job_run_id,
                                                              seq_file_name)
-
-    def _get_members_for_cvl_reconciliation(self):
-        """
-        Retrieves GenomicSetMembers from DB
-        :return: list of GenomicSetMembers to add to CVL recon report
-        """
-        return self.member_dao.get_members_for_cvl_reconciliation()
 
     def _write_cvl_report_to_file(self, members):
         """
@@ -703,6 +696,7 @@ class ManifestDefinitionProvider:
             query_sql = """
                 SELECT s.genomic_set_name
                     , m.biobank_id
+                    , m.sample_id
                     , m.sex_at_birth
                     , m.ny_flag
                     , gcv.site_id
@@ -723,6 +717,7 @@ class ManifestDefinitionProvider:
             query_sql = """
                 SELECT s.genomic_set_name
                     , m.biobank_id
+                    , m.sample_id
                     , m.sex_at_birth
                     , m.ny_flag
                     , gcv.site_id
@@ -751,6 +746,7 @@ class ManifestDefinitionProvider:
             columns = (
                 "genomic_set_name",
                 "biobank_id",
+                "sample_id",
                 "sex_at_birth",
                 "ny_flag",
                 "site_id",
@@ -799,7 +795,7 @@ class ManifestCompiler:
             self._write_and_upload_manifest(source_data)
             results = []
             for row in source_data:
-                member = self.member_dao.get_member_from_biobank_id(row.biobank_id)
+                member = self.member_dao.get_member_from_sample_id(row.sample_id)
                 results.append(
                     self.member_dao.update_member_job_run_id(
                         member,
