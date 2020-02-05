@@ -40,7 +40,7 @@ from rdr_service.dao.genomics_dao import (
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.genomic.genomic_biobank_menifest_handler import create_and_upload_genomic_biobank_manifest_file
+from rdr_service.genomic.genomic_biobank_manifest_handler import create_and_upload_genomic_biobank_manifest_file
 from rdr_service.genomic.validation import (
     GENOMIC_VALID_AGE,
     GENOMIC_VALID_CONSENT_CUTOFF,
@@ -50,6 +50,7 @@ from rdr_service.config import (
     getSetting,
     GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
     GENOMIC_CVL_MANIFEST_SUBFOLDER,
+    DNA_SAMPLE_TEST_CODES,
 )
 
 class GenomicFileIngester:
@@ -610,6 +611,7 @@ class GenomicBiobankSamplesCoupler:
                     ParticipantSummary.sampleStatus1ED04 == SampleStatus.RECEIVED,
                     ParticipantSummary.sampleStatus1SAL2 == SampleStatus.RECEIVED
                 ),
+                BiobankStoredSample.test.in_(("1ED04", "1SAL2")),
                 BiobankStoredSample.rdrCreated > from_date).all()
         return list(zip(*result))
 

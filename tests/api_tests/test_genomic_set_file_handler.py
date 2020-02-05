@@ -11,7 +11,7 @@ from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.genomic import genomic_biobank_menifest_handler, genomic_set_file_handler
+from rdr_service.genomic import genomic_biobank_manifest_handler, genomic_set_file_handler
 from rdr_service.model.biobank_dv_order import BiobankDVOrder
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.genomics import (
@@ -353,7 +353,7 @@ class GenomicSetFileHandlerTest(BaseTestCase):
         )
 
         now = clock.CLOCK.now()
-        genomic_biobank_menifest_handler.create_and_upload_genomic_biobank_manifest_file(genomic_set.id, now)
+        genomic_biobank_manifest_handler.create_and_upload_genomic_biobank_manifest_file(genomic_set.id, now)
 
         bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
         # convert UTC to CDT

@@ -185,6 +185,14 @@ class GenomicPipelineTest(BaseTestCase):
             biobankOrderId=participant.participantId,
             identifiers=[BiobankOrderIdentifier(system="https://www.pmi-ops.org", value="12345678")],
         )
+        self._make_stored_sample(
+            test='1SAL2',
+            confirmed=clock.CLOCK.now(),
+            created=clock.CLOCK.now(),
+            biobankId=1,
+            biobankOrderIdentifier='12345678',
+            biobankStoredSampleId=1,
+        )
 
         participant2 = self._make_participant()
         self._make_summary(participant2)
@@ -192,6 +200,14 @@ class GenomicPipelineTest(BaseTestCase):
             participantId=participant2.participantId,
             biobankOrderId=participant2.participantId,
             identifiers=[BiobankOrderIdentifier(system="https://www.pmi-ops.org", value="12345679")],
+        )
+        self._make_stored_sample(
+            test='1SAL2',
+            confirmed=clock.CLOCK.now(),
+            created=clock.CLOCK.now(),
+            biobankId=2,
+            biobankOrderIdentifier='12345679',
+            biobankStoredSampleId=2,
         )
 
         participant3 = self._make_participant()
@@ -201,6 +217,14 @@ class GenomicPipelineTest(BaseTestCase):
             biobankOrderId=participant3.participantId,
             identifiers=[BiobankOrderIdentifier(system="https://www.pmi-ops.org", value="12345680")],
         )
+        self._make_stored_sample(
+                test='1SAL2',
+                confirmed=clock.CLOCK.now(),
+                created=clock.CLOCK.now(),
+                biobankId=3,
+                biobankOrderIdentifier='12345680',
+                biobankStoredSampleId=3,
+            )
 
         samples_file = test_data.open_genomic_set_file("Genomic-Test-Set-test-2.csv")
 
@@ -389,7 +413,7 @@ class GenomicPipelineTest(BaseTestCase):
         for member in members:
             self.assertIn(member.packageId, ["PKG-XXXX-XXXX1", "PKG-XXXX-XXXX2", "PKG-XXXX-XXXX3"])
             self.assertIn(member.biobankOrderClientId, ["12345678", "12345679", "12345680"])
-            self.assertIn(member.sampleId, ['19224001502', '19224001510', '19224001518'])
+            self.assertIn(member.sampleId, ['1', '2', '3'])
             self.assertIn(member.sampleType, ['DNA'])
 
     def test_wrong_file_name_case(self):
@@ -564,6 +588,17 @@ class GenomicPipelineTest(BaseTestCase):
         for test_file in end_to_end_test_files:
             self._create_ingestion_test_file(test_file, bucket_name)
 
+        for p in (1, 2):
+            self._make_participant()
+            self._make_stored_sample(
+                test='1SAL2',
+                confirmed=clock.CLOCK.now(),
+                created=clock.CLOCK.now(),
+                biobankId=p,
+                biobankOrderIdentifier=str(p),
+                biobankStoredSampleId=p,
+            )
+
         # run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()
 
@@ -627,7 +662,7 @@ class GenomicPipelineTest(BaseTestCase):
         for record in gc_metrics:
             if record.biobankId == '2':
                 # test SEQ File inserted correctly
-                self.assertEqual('1002', record.sampleId)
+                self.assertEqual('2', record.sampleId)
                 self.assertEqual('10002', record.limsId)
                 self.assertEqual(2, record.meanCoverage)
                 self.assertEqual(2, record.genomeCoverage)
@@ -640,7 +675,7 @@ class GenomicPipelineTest(BaseTestCase):
             else:
                 # Test GEN file data inserted correctly
                 self.assertEqual('1', record.biobankId)
-                self.assertEqual('1001', record.sampleId)
+                self.assertEqual('1', record.sampleId)
                 self.assertEqual('10001', record.limsId)
                 self.assertEqual(1, record.callRate)
                 self.assertEqual(4, record.contamination)
@@ -746,6 +781,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.participantId = participant_id
         genomic_set_member.sexAtBirth = sex_at_birth
         genomic_set_member.biobankId = biobankId
+        genomic_set_member.sampleId = participant_id
         genomic_set_member.genomeType = genome_type
         genomic_set_member.nyFlag = 1 if ny_flag == "Y" else 0
         genomic_set_member.biobankOrderId = biobank_order_id
@@ -806,7 +842,16 @@ class GenomicPipelineTest(BaseTestCase):
                     system=u'c', value=u'e{}'.format(
                         participant.participantId))]
             )
-
+            sample_args = {
+                'test': '1SAL2',
+                'confirmed': clock.CLOCK.now(),
+                'created': clock.CLOCK.now(),
+                'biobankId': p,
+                'biobankOrderIdentifier': f'e{participant.participantId}',
+                'biobankStoredSampleId': p,
+            }
+            with clock.FakeClock(clock.CLOCK.now()):
+                self._make_stored_sample(**sample_args)
             # Fake genomic set members.
             gt = 'aou_wgs'
             if arr_override and p == 1:
@@ -817,7 +862,7 @@ class GenomicPipelineTest(BaseTestCase):
                 biobank_order_id=biobank_order.biobankOrderId,
                 validation_status=GenomicSetMemberStatus.VALID,
                 validation_flags=None,
-                biobankId=f'{p}',
+                biobankId=p,
                 sex_at_birth='F', genome_type=gt, ny_flag='Y',
             )
 
@@ -1000,7 +1045,7 @@ class GenomicPipelineTest(BaseTestCase):
                                      collectedSiteId=1 if bid == 100002 else 2,
                                      identifiers=[test_identifier])
             sample_args = {
-                'test': '1UR10',
+                'test': '1UR10' if bid == 100005 else '1SAL2',
                 'confirmed': fake_datetime_new,
                 'created': fake_datetime_old,
                 'biobankId': bid,
@@ -1036,8 +1081,10 @@ class GenomicPipelineTest(BaseTestCase):
         for member in new_genomic_members:
             if member.biobankId == '100002':
                 self.assertEqual(1, member.nyFlag)
+                self.assertEqual('100002', member.sampleId)
             if member.biobankId == '100003':
                 self.assertEqual(0, member.nyFlag)
+                self.assertEqual('100003', member.sampleId)
 
         # Test manifest file was created correctly
         bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
@@ -1045,6 +1092,7 @@ class GenomicPipelineTest(BaseTestCase):
         class ExpectedCsvColumns(object):
             VALUE = "value"
             BIOBANK_ID = "biobank_id"
+            SAMPLE_ID = "sample_id"
             SEX_AT_BIRTH = "sex_at_birth"
             GENOME_TYPE = "genome_type"
             NY_FLAG = "ny_flag"
@@ -1061,9 +1109,11 @@ class GenomicPipelineTest(BaseTestCase):
             rows = list(csv_reader)
 
             self.assertEqual("T100002", rows[0][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100002, int(rows[0][ExpectedCsvColumns.SAMPLE_ID]))
             self.assertEqual("F", rows[0][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("Y", rows[0][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("T100003", rows[1][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100003, int(rows[1][ExpectedCsvColumns.SAMPLE_ID]))
             self.assertEqual("F", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[1][ExpectedCsvColumns.NY_FLAG])
 
