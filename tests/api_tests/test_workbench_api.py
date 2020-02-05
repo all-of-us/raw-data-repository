@@ -505,3 +505,121 @@ class WorkbenchApiTest(BaseTestCase):
 
         self.send_post('workbench/directory/workspaces', request_data=request_json,
                        expected_status=http.client.BAD_REQUEST)
+
+    def test_update_researcher_in_use(self):
+        # create researchers first
+        researchers_json = [
+            {
+                "userId": 0,
+                "creationTime": "2019-11-26T21:21:13.056Z",
+                "modifiedTime": "2019-11-26T21:21:13.056Z",
+                "givenName": "string",
+                "familyName": "string",
+                "streetAddress1": "string",
+                "streetAddress2": "string",
+                "city": "string",
+                "state": "string",
+                "zipCode": "string",
+                "country": "string",
+                "ethnicity": "HISPANIC",
+                "gender": ["MAN"],
+                "race": ["ASIAN"],
+                "affiliations": [
+                    {
+                        "institution": "institution_string",
+                        "role": "string",
+                        "nonAcademicAffiliation": True
+                    }
+                ]
+            }
+        ]
+        self.send_post('workbench/directory/researchers', request_data=researchers_json)
+
+        # test create workspace
+        request_json = [
+            {
+                "workspaceId": 0,
+                "name": "string",
+                "creationTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "status": "ACTIVE",
+                "workspaceUsers": [
+                    {
+                        "userId": 0,
+                        "role": "READER",
+                        "status": "ACTIVE"
+                    }
+                ],
+                "excludeFromPublicDirectory": True,
+                "diseaseFocusedResearch": True,
+                "diseaseFocusedResearchName": "string",
+                "otherPurposeDetails": "string",
+                "methodsDevelopment": True,
+                "controlSet": True,
+                "ancestry": True,
+                "socialBehavioral": True,
+                "populationHealth": True,
+                "drugDevelopment": True,
+                "commercialPurpose": True,
+                "educational": True,
+                "otherPurpose": True,
+                "scientificApproaches": 'string',
+                "intendToStudy": 'string',
+                "findingsFromStudy": 'string',
+                "focusOnUnderrepresentedPopulations": True,
+                "workspaceDemographic": {
+                    "raceEthnicity": ['AIAN', 'MENA'],
+                    "age": ['AGE_0_11', 'AGE_65_74'],
+                    "sexAtBirth": "INTERSEX",
+                    "genderIdentity": "OTHER_THAN_MAN_WOMAN",
+                    "sexualOrientation": "OTHER_THAN_STRAIGHT",
+                    "geography": "RURAL",
+                    "disabilityStatus": "DISABILITY",
+                    "accessToCare": "NOT_EASILY_ACCESS_CARE",
+                    "educationLevel": "LESS_THAN_HIGH_SCHOOL",
+                    "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
+                    "others": "string"
+                }
+            }
+        ]
+
+        self.send_post('workbench/directory/workspaces', request_data=request_json)
+
+        update_researchers_json = [
+            {
+                "userId": 0,
+                "creationTime": "2019-11-26T21:21:13.056Z",
+                "modifiedTime": "2019-11-26T21:21:13.056Z",
+                "givenName": "string_modify2",
+                "familyName": "string_modify2",
+                "streetAddress1": "string2",
+                "streetAddress2": "string2",
+                "city": "string2",
+                "state": "string2",
+                "zipCode": "string2",
+                "country": "string2",
+                "ethnicity": "HISPANIC",
+                "gender": ["WOMAN"],
+                "race": ["ASIAN"],
+                "affiliations": [
+                    {
+                        "institution": "institution_string_modify",
+                        "role": "string",
+                        "nonAcademicAffiliation": True
+                    }
+                ]
+            }
+        ]
+
+        self.send_post('workbench/directory/researchers', request_data=update_researchers_json)
+
+        researcher_dao = WorkbenchResearcherDao()
+        self.assertEqual(researcher_dao.count(), 1)
+        results = researcher_dao.get_all_with_children()
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].givenName, 'string_modify2')
+        self.assertEqual(results[0].gender, [2])
+        self.assertEqual(len(results[0].workbenchInstitutionalAffiliations), 1)
+        self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'institution_string_modify')
+
+
