@@ -349,7 +349,7 @@ class GenomicReconciler:
             unreconciled_metrics = self.metrics_dao.get_null_set_members()
             results = []
             for metric in unreconciled_metrics:
-                member = self._lookup_member(metric.biobankId)
+                member = self.member_dao.get_member_from_sample_id(metric.sampleId)
                 results.append(
                     self.metrics_dao.update_metric_set_member_id(
                         metric, member.id)
@@ -379,13 +379,13 @@ class GenomicReconciler:
             results = []
             for seq_file_name in file_list:
                 logging.info(f'Reconciling Sequencing File: {seq_file_name}')
-                seq_biobank_id = self._parse_seq_filename(
+                seq_sample_id = self._parse_seq_filename(
                     seq_file_name)
-                if seq_biobank_id == GenomicSubProcessResult.INVALID_FILE_NAME:
+                if seq_sample_id == GenomicSubProcessResult.INVALID_FILE_NAME:
                     logging.info(f'Filename unable to be parsed: f{seq_file_name}')
-                    return seq_biobank_id
+                    return seq_sample_id
                 else:
-                    member = self._lookup_member(seq_biobank_id)
+                    member = self.member_dao.get_member_from_sample_id(seq_sample_id)
                     if member:
                         # Updates the relevant fields for reconciliation
                         results.append(
@@ -424,14 +424,6 @@ class GenomicReconciler:
                 else GenomicSubProcessResult.ERROR
 
         return GenomicSubProcessResult.NO_FILES
-
-    def _lookup_member(self, biobank_id):
-        """
-        Calls the DAO to query for a genomic set member from a biobank ID
-        :param biobank_id:
-        :return: GenomicSetMember object
-        """
-        return self.member_dao.get_member_with_biobank_id(biobank_id)
 
     def _get_sequence_files(self, bucket_name):
         """
@@ -807,7 +799,7 @@ class ManifestCompiler:
             self._write_and_upload_manifest(source_data)
             results = []
             for row in source_data:
-                member = self.member_dao.get_member_with_biobank_id(row.biobank_id)
+                member = self.member_dao.get_member_from_biobank_id(row.biobank_id)
                 results.append(
                     self.member_dao.update_member_job_run_id(
                         member,
