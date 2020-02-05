@@ -5,7 +5,6 @@ from rdr_service.model.base import Base, model_insert_listener, model_update_lis
 from rdr_service.model.utils import Enum, UTCDateTime6
 from rdr_service.participant_enums import (
     WorkbenchInstitutionNonAcademic,
-    WorkbenchResearcherSexAtBirth,
     WorkbenchResearcherEthnicity,
     WorkbenchResearcherEducation,
     WorkbenchResearcherDisability,

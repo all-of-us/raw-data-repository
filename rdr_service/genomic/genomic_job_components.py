@@ -50,7 +50,6 @@ from rdr_service.config import (
     getSetting,
     GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
     GENOMIC_CVL_MANIFEST_SUBFOLDER,
-    DNA_SAMPLE_TEST_CODES,
 )
 
 class GenomicFileIngester:

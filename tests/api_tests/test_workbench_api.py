@@ -3,7 +3,7 @@ from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchResearcherHistoryDao, \
     WorkbenchWorkspaceDao, WorkbenchWorkspaceHistoryDao
 from rdr_service.participant_enums import WorkbenchWorkspaceUserRole, WorkbenchInstitutionNonAcademic, \
-    WorkbenchResearcherSexAtBirth, WorkbenchResearcherEthnicity, WorkbenchResearcherEducation, \
+    WorkbenchResearcherEthnicity, WorkbenchResearcherEducation, \
     WorkbenchResearcherDisability, WorkbenchResearcherDegree, WorkbenchWorkspaceSexAtBirth, \
     WorkbenchWorkspaceGenderIdentity, WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, \
     WorkbenchWorkspaceDisabilityStatus, WorkbenchWorkspaceAccessToCare, WorkbenchWorkspaceEducationLevel, \
