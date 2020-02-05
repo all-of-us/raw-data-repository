@@ -315,7 +315,7 @@ class GenomicSetMemberDao(UpdatableDao):
 
     def get_member_from_sample_id(self, sample_id):
         """
-        Retrieves a genomic set member record matching the biobank Id
+        Retrieves a genomic set member record matching the sample_id
         :param sample_id:
         :return: a GenomicSetMember object
         """
