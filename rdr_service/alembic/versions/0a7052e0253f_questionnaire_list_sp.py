@@ -22,15 +22,15 @@ sp_questionnaire_list = ReplaceableObject(
         (IN participant_id int)
     SELECT
           qr.participant_id,
-          qr.questionnaire_id,
-          qr.questionnaire_response_id,
-          c.value as module_name,
-          c.code_id,
+          c.value as questionnaire_name,          
           qr.created,
           qr.authored,          
           q.semantic_version,
           q.version,
-          qr.language
+          qr.language,
+          qr.questionnaire_id,
+          qr.questionnaire_response_id,
+          c.code_id
     FROM questionnaire_response qr
       INNER JOIN questionnaire_concept qc
                  ON qr.questionnaire_id = qc.questionnaire_id
