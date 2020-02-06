@@ -6,7 +6,7 @@ from rdr_service.participant_enums import WorkbenchWorkspaceUserRole, WorkbenchI
     WorkbenchResearcherEducation, WorkbenchResearcherDisability, WorkbenchResearcherDegree, \
     WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, WorkbenchWorkspaceSexualOrientation, \
     WorkbenchWorkspaceGeography, WorkbenchWorkspaceDisabilityStatus, WorkbenchWorkspaceAccessToCare, \
-    WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel
+    WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, WorkbenchResearcherEthnicity
 
 
 class WorkbenchApiTest(BaseTestCase):
@@ -28,14 +28,14 @@ class WorkbenchApiTest(BaseTestCase):
                 "state": "string",
                 "zipCode": "string",
                 "country": "string",
-                "ethnicity": ["HISPANIC"],
+                "ethnicity": "HISPANIC",
                 "sexAtBirth": ["FEMALE", "INTERSEX"],
                 "identifiesAsLgbtq": False,
                 "lgbtqIdentity": "string",
                 "gender": ["MAN", "WOMAN"],
                 "race": ["AIAN", "WHITE"],
                 "education": "COLLEGE_GRADUATE",
-                "degree": "PHD",
+                "degree": ["PHD", "MBA"],
                 "disability": "YES",
                 "affiliations": [
                     {
@@ -56,9 +56,9 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].gender, [1, 2])
         self.assertEqual(results[0].race, [1, 5])
         self.assertEqual(results[0].sexAtBirth, [1, 3])
-        self.assertEqual(results[0].ethnicity, [1])
+        self.assertEqual(results[0].ethnicity, WorkbenchResearcherEthnicity('HISPANIC'))
         self.assertEqual(results[0].education, WorkbenchResearcherEducation('COLLEGE_GRADUATE'))
-        self.assertEqual(results[0].degree, WorkbenchResearcherDegree('PHD'))
+        self.assertEqual(results[0].degree, [1, 8])
         self.assertEqual(results[0].disability, WorkbenchResearcherDisability('YES'))
         self.assertEqual(results[0].identifiesAsLgbtq, False)
         self.assertEqual(results[0].lgbtqIdentity, None)
@@ -75,7 +75,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].race, [1, 5])
         self.assertEqual(results[0].identifiesAsLgbtq, False)
         self.assertEqual(results[0].sexAtBirth, [1, 3])
-        self.assertEqual(results[0].ethnicity, [1])
+        self.assertEqual(results[0].ethnicity, WorkbenchResearcherEthnicity('HISPANIC'))
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string')
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].nonAcademicAffiliation,
                          WorkbenchInstitutionNonAcademic('INDUSTRY'))
@@ -94,7 +94,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "state": "string",
                 "zipCode": "string",
                 "country": "string",
-                "ethnicity": ["NOT_HISPANIC"],
+                "ethnicity": "NOT_HISPANIC",
                 "gender": ["WOMAN", "NONE_DESCRIBE_ME"],
                 "race": ["NHOPI", "WHITE"],
                 "sexAtBirth": ["INTERSEX"],
@@ -121,7 +121,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "state": "string2",
                 "zipCode": "string2",
                 "country": "string2",
-                "ethnicity": ["PREFER_NOT_TO_ANSWER"],
+                "ethnicity": "PREFER_NOT_TO_ANSWER",
                 # "gender": ["MALE", "INTERSEX"], # test no gender in the payload, will store None in DB
                 # "race": ["WHITE", "AA"], # test no race in the payload, will store None in DB
                 "affiliations": [
@@ -150,7 +150,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].identifiesAsLgbtq, True)
         self.assertEqual(results[0].lgbtqIdentity, "string")
         self.assertEqual(results[0].sexAtBirth, [3])
-        self.assertEqual(results[0].ethnicity, [2])
+        self.assertEqual(results[0].ethnicity, WorkbenchResearcherEthnicity('NOT_HISPANIC'))
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string_modify')
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].nonAcademicAffiliation,
                          WorkbenchInstitutionNonAcademic('EDUCATIONAL_INSTITUTION'))
@@ -161,7 +161,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[1].gender, None)
         self.assertEqual(results[1].race, None)
         self.assertEqual(results[1].identifiesAsLgbtq, None)
-        self.assertEqual(results[1].ethnicity, [3])
+        self.assertEqual(results[1].ethnicity, WorkbenchResearcherEthnicity('PREFER_NOT_TO_ANSWER'))
 
         researcher_history_dao = WorkbenchResearcherHistoryDao()
         self.assertEqual(researcher_history_dao.count(), 3)
@@ -172,7 +172,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].gender, [1, 2])
         self.assertEqual(results[0].race, [1, 5])
         self.assertEqual(results[0].sexAtBirth, [1, 3])
-        self.assertEqual(results[0].ethnicity, [1])
+        self.assertEqual(results[0].ethnicity, WorkbenchResearcherEthnicity('HISPANIC'))
         self.assertEqual(results[0].education, WorkbenchResearcherEducation('COLLEGE_GRADUATE'))
         self.assertEqual(results[0].disability, WorkbenchResearcherDisability('YES'))
 
@@ -182,14 +182,14 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[1].gender, [2, 5])
         self.assertEqual(results[1].race, [4, 5])
         self.assertEqual(results[1].sexAtBirth, [3])
-        self.assertEqual(results[1].ethnicity, [2])
+        self.assertEqual(results[1].ethnicity, WorkbenchResearcherEthnicity('NOT_HISPANIC'))
 
         self.assertEqual(results[2].userSourceId, 1)
         self.assertEqual(results[2].givenName, 'string2')
         self.assertEqual(len(results[2].workbenchInstitutionalAffiliations), 2)
         self.assertEqual(results[2].gender, None)
         self.assertEqual(results[2].race, None)
-        self.assertEqual(results[2].ethnicity, [3])
+        self.assertEqual(results[2].ethnicity, WorkbenchResearcherEthnicity('PREFER_NOT_TO_ANSWER'))
 
     def test_invalid_input_for_researchers(self):
         request_json = [
@@ -204,7 +204,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "state": "string",
                 "zipCode": "string",
                 "country": "string",
-                "ethnicity": ["NOT_HISPANIC"],
+                "ethnicity": "NOT_HISPANIC",
                 "gender": "string",
                 "race": "string",
                 "affiliations": [
@@ -235,7 +235,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "state": "string",
                 "zipCode": "string",
                 "country": "string",
-                "ethnicity": ["HISPANIC"],
+                "ethnicity": "HISPANIC",
                 "gender": ["MAN"],
                 "race": ["ASIAN"],
                 "affiliations": [
@@ -258,7 +258,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "state": "string2",
                 "zipCode": "string2",
                 "country": "string2",
-                "ethnicity": ["NOT_HISPANIC"],
+                "ethnicity": "NOT_HISPANIC",
                 "gender": ["WOMAN"],
                 "race": ["NHOPI"],
                 "affiliations": [
@@ -520,7 +520,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "state": "string",
                 "zipCode": "string",
                 "country": "string",
-                "ethnicity": ["HISPANIC"],
+                "ethnicity": "HISPANIC",
                 "gender": ["MAN"],
                 "race": ["ASIAN"],
                 "affiliations": [
@@ -597,7 +597,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "state": "string2",
                 "zipCode": "string2",
                 "country": "string2",
-                "ethnicity": ["HISPANIC"],
+                "ethnicity": "HISPANIC",
                 "gender": ["WOMAN"],
                 "race": ["ASIAN"],
                 "affiliations": [
