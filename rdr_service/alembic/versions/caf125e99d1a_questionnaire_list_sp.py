@@ -1,18 +1,16 @@
-"""questionnaire list sp
+"""questionnaire_list_sp
 
-Revision ID: 0a7052e0253f
-Revises: e968d868a097
-Create Date: 2020-02-05 15:56:20.552056
+Revision ID: caf125e99d1a
+Revises: 6d1953c656f6
+Create Date: 2020-02-06 13:54:09.287689
 
 """
 from alembic import op
-
 from rdr_service.dao.alembic_utils import ReplaceableObject
 
-
 # revision identifiers, used by Alembic.
-revision = '0a7052e0253f'
-down_revision = 'e968d868a097'
+revision = 'caf125e99d1a'
+down_revision = '6d1953c656f6'
 branch_labels = None
 depends_on = None
 
