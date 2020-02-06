@@ -30,7 +30,8 @@ from rdr_service.participant_enums import (
     SampleStatus,
     GenomicSetStatus,
     GenomicManifestTypes,
-)
+    GenomicJob,
+    GenomicSubProcessStatus)
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,
@@ -40,7 +41,10 @@ from rdr_service.dao.genomics_dao import (
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.genomic.genomic_biobank_manifest_handler import create_and_upload_genomic_biobank_manifest_file
+from rdr_service.genomic.genomic_biobank_manifest_handler import (
+    create_and_upload_genomic_biobank_manifest_file,
+    process_genomic_manifest_result_file_from_bucket,
+)
 from rdr_service.genomic.validation import (
     GENOMIC_VALID_AGE,
     GENOMIC_VALID_CONSENT_CUTOFF,
@@ -52,66 +56,110 @@ from rdr_service.config import (
     GENOMIC_CVL_MANIFEST_SUBFOLDER,
 )
 
+
 class GenomicFileIngester:
     """
     This class ingests a file from a source GC bucket into the destination table
     """
 
-    def __init__(self):
+    def __init__(self, job_id=None,
+                 job_run_id=None,
+                 bucket=None,
+                 archive_folder=None,
+                 sub_folder=None):
 
+        self.job_id = job_id
+        self.job_run_id = job_run_id
         self.file_obj = None
         self.file_queue = deque()
 
+        self.bucket_name = bucket
+        self.archive_folder_name = archive_folder
+        self.sub_folder_name = sub_folder
+
         # Sub Components
         self.file_validator = None
-        self.dao = GenomicGCValidationMetricsDao()
+        self.file_mover = GenomicFileMover(archive_folder=self.archive_folder_name)
+        self.metrics_dao = GenomicGCValidationMetricsDao()
         self.file_processed_dao = GenomicFileProcessedDao()
+        self.member_dao = GenomicSetMemberDao()
 
-    def generate_file_processing_queue(self, bucket_name, archive_folder_name, job_run_id):
+        self.file_name_conventions = {
+            GenomicJob.METRICS_INGESTION: 'datamanifest',
+            GenomicJob.BB_RETURN_MANIFEST: 'Manifest-Result',
+        }
+
+    def generate_file_processing_queue(self):
         """
         Creates the list of files to be ingested in this run.
         Ordering is currently arbitrary;
         """
-        files = self._get_uningested_file_names_from_bucket(bucket_name, archive_folder_name)
+        files = self._get_uningested_file_names_from_bucket()
         if files == GenomicSubProcessResult.NO_FILES:
             return files
         else:
             for file_name in files:
-                file_path = "/" + bucket_name + "/" + file_name
-                new_file_record = self._create_file_record(job_run_id,
-                                                           file_path,
-                                                           bucket_name,
-                                                           file_name)
+                file_path = "/" + self.bucket_name + "/" + file_name
+                new_file_record = self.file_processed_dao.insert_file_record(
+                    self.job_run_id,
+                    file_path,
+                    self.bucket_name,
+                    file_name)
+
                 self.file_queue.append(new_file_record)
 
-    def _get_uningested_file_names_from_bucket(self,
-                                               bucket_name,
-                                               archive_folder_name):
+    def _get_uningested_file_names_from_bucket(self):
         """
         Searches the bucket for un-processed files.
-        :param bucket_name:
         :return: list of filenames or NO_FILES result code
         """
-        files = list_blobs('/' + bucket_name)
+        files = list_blobs('/' + self.bucket_name)
         files = [s.name for s in files
-                 if archive_folder_name not in s.name.lower()
-                 if 'datamanifest' in s.name.lower()]
+                 if self.archive_folder_name not in s.name.lower()
+                 if self.file_name_conventions[self.job_id] in s.name.lower()]
         if not files:
-            logging.info('No files in cloud bucket {}'.format(bucket_name))
+            logging.info('No files in cloud bucket {}'.format(self.bucket_name))
             return GenomicSubProcessResult.NO_FILES
         return files
 
-    def _create_file_record(self, run_id, path, bucket_name, file_name):
-        return self.file_processed_dao.insert_file_record(run_id, path,
-                                                   bucket_name, file_name)
-
-    def _get_file_queue_for_run(self, run_id):
-        return self.file_processed_dao.get_files_for_run(run_id)
-
-    def ingest_gc_validation_metrics_file(self, file_obj):
+    def do_ingestion(self):
         """
-        Process to ingest the cell line data from
-        the GC bucket and write to the database
+        Main method of the ingestor component,
+        generates a queue and processes each file
+        :return: result code
+        """
+        file_queue_result = self.generate_file_processing_queue()
+
+        if file_queue_result == GenomicSubProcessResult.NO_FILES:
+            logging.info('No files to process.')
+            return file_queue_result
+        else:
+            logging.info('Processing files in queue.')
+            results = []
+            while len(self.file_queue) > 0:
+                try:
+                    ingestion_result = self._ingest_genomic_file(
+                        self.file_queue[0])
+                    file_ingested = self.file_queue.popleft()
+                    results.append(ingestion_result == GenomicSubProcessResult.SUCCESS)
+                    logging.info(f'Ingestion attempt for {file_ingested.fileName}: {ingestion_result}')
+                    self.update_file_processed(
+                        file_ingested.id,
+                        GenomicSubProcessStatus.COMPLETED,
+                        ingestion_result
+                    )
+
+                    self.file_mover.archive_file(file_ingested)
+
+                except IndexError:
+                    logging.info('No files left in file queue.')
+            return GenomicSubProcessResult.SUCCESS if all(results) \
+                else GenomicSubProcessResult.ERROR
+
+    def _ingest_genomic_file(self, file_obj):
+        """
+        Process to ingest file data from
+        a bucket and write to the database
         :param: file_obj: A genomic file object
         :return: A GenomicSubProcessResultCode
         """
@@ -123,19 +171,27 @@ class GenomicFileIngester:
         if data_to_ingest == GenomicSubProcessResult.ERROR:
             return GenomicSubProcessResult.ERROR
         elif data_to_ingest:
-            # Validate the
-            validation_result = self.file_validator.validate_ingestion_file(
-                self.file_obj.fileName, data_to_ingest)
-
-            if validation_result != GenomicSubProcessResult.SUCCESS:
-                return validation_result
-
             logging.info("Data to ingest from {}".format(self.file_obj.fileName))
-            return self._process_gc_metrics_data_for_insert(data_to_ingest)
 
+            if self.job_id == GenomicJob.METRICS_INGESTION:
+                logging.info("Validating GC metrics file.")
+                validation_result = self.file_validator.validate_ingestion_file(
+                    self.file_obj.fileName, data_to_ingest)
+                if validation_result != GenomicSubProcessResult.SUCCESS:
+                    return validation_result
+                return self._process_gc_metrics_data_for_insert(data_to_ingest)
+
+            if self.job_id == GenomicJob.BB_RETURN_MANIFEST:
+                return self.ingest_bb_return_manifest()
+
+            return GenomicSubProcessResult.ERROR
         else:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
+
+    def ingest_bb_return_manifest(self):
+        result = process_genomic_manifest_result_file_from_bucket()
+        return GenomicSubProcessResult.ERROR
 
     def update_file_processed(self, file_id, status, result):
         """Updates the genomic_file_processed record """
@@ -190,7 +246,7 @@ class GenomicFileIngester:
             obj_to_insert = row_copy
             gc_metrics_batch.append(obj_to_insert)
 
-        return self.dao.insert_gc_validation_metrics_batch(gc_metrics_batch)
+        return self.metrics_dao.insert_gc_validation_metrics_batch(gc_metrics_batch)
 
 
 class GenomicFileValidator:

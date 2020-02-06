@@ -13,6 +13,7 @@ from rdr_service.participant_enums import (
     GenomicJob,
     GenomicManifestTypes
 )
+import rdr_service.config as config
 
 
 def process_genomic_water_line():
@@ -36,6 +37,29 @@ def process_genomic_water_line():
 
     genomic_biobank_manifest_handler.process_genomic_manifest_result_file_from_bucket()
     genomic_center_manifest_handler.process_genotyping_manifest_files()
+
+
+def new_participant_workflow():
+    """
+    Entrypoint for New Participant Workflow,
+    Sources from newly-created biobank_stored_samples
+    from the BiobankSamplesPipeline.
+    """
+    with GenomicJobController(GenomicJob.NEW_PARTICIPANT_WORKFLOW) as controller:
+        controller.run_new_participant_workflow()
+
+
+def biobank_return_manifest_workflow():
+    """
+    Entrypoint for New Participant Workflow,
+    Sources from newly-created biobank_stored_samples
+    from the BiobankSamplesPipeline.
+    """
+    with GenomicJobController(GenomicJob.BB_RETURN_MANIFEST,
+                              bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
+                              archive_folder_name=config.GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME
+                              ) as controller:
+        controller.run_biobank_return_manifest_workflow()
 
 
 def ingest_genomic_centers_metrics_files():
@@ -62,16 +86,6 @@ def reconcile_metrics_vs_sequencing():
     """
     with GenomicJobController(GenomicJob.RECONCILE_SEQUENCING) as controller:
         controller.run_reconciliation_to_sequencing()
-
-
-def new_participant_workflow():
-    """
-    Entrypoint for New Participant Workflow,
-    Sources from newly-created biobank_stored_samples
-    from the BiobankSamplesPipeline.
-    """
-    with GenomicJobController(GenomicJob.NEW_PARTICIPANT_WORKFLOW) as controller:
-        controller.run_new_participant_workflow()
 
 
 def create_cvl_reconciliation_report():

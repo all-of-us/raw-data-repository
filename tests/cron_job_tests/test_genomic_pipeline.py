@@ -1120,6 +1120,22 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
+    # def test_biobank_return_manifest_workflow(self):
+    #     self._create_fake_datasets_for_gc_tests(3)
+    #
+    #     # TODO: Setup Test file
+    #     bucket_name = config.getSetting(config.GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME)
+    #     self._create_ingestion_test_file(
+    #         'Genomic-Manifest-Result-Test-BB-Workflow.csv', bucket_name)
+    #
+    #     # TODO: Run workflow
+    #     genomic_pipeline.biobank_return_manifest_workflow()
+    #
+    #     # TODO: Test file contents were ingested
+    #
+    #     # Test the end-to-end result code
+    #     self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
+
     def test_cvl_reconciliation_report_end_to_end(self):
         # Create fake genomic dataset and reconcile the sequencing data
         # Create the fake ingested data
