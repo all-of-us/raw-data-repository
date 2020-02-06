@@ -7,7 +7,7 @@ from rdr_service.participant_enums import (
     WorkbenchInstitutionNonAcademic,
     WorkbenchResearcherEducation,
     WorkbenchResearcherDisability,
-    WorkbenchResearcherDegree
+    WorkbenchResearcherEthnicity
 )
 
 
@@ -23,12 +23,12 @@ class WorkbenchResearcherBase(object):
     state = Column("state", String(80))
     zipCode = Column("zip_code", String(80))
     country = Column("country", String(80))
-    ethnicity = Column("ethnicity", JSON)
+    ethnicity = Column("ethnicity", Enum(WorkbenchResearcherEthnicity), default=WorkbenchResearcherEthnicity.UNSET)
     gender = Column("gender", JSON)
     race = Column("race", JSON)
     sexAtBirth = Column("sex_at_birth", JSON)
     education = Column("education", Enum(WorkbenchResearcherEducation), default=WorkbenchResearcherEducation.UNSET)
-    degree = Column("degree", Enum(WorkbenchResearcherDegree), default=WorkbenchResearcherDegree.UNSET)
+    degree = Column("degree", JSON)
     disability = Column("disability", Enum(WorkbenchResearcherDisability), default=WorkbenchResearcherDisability.UNSET)
     identifiesAsLgbtq = Column("identifies_as_lgbtq", Boolean)
     lgbtqIdentity = Column("lgbtq_identity", String(250))

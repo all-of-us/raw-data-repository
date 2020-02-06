@@ -473,14 +473,12 @@ class WorkbenchResearcherDao(UpdatableDao):
             if item.get('familyName') is None:
                 raise BadRequest('User familyName can not be NULL')
 
-            if item.get('ethnicity') is not None:
-                ethnicity_array = []
-                for ethnicity in item.get('ethnicity'):
-                    try:
-                        ethnicity_array.append(int(WorkbenchResearcherEthnicity(ethnicity)))
-                    except TypeError:
-                        raise BadRequest(f"Invalid ethnicity: {ethnicity}")
-                item['ethnicity'] = ethnicity_array
+            try:
+                if item.get('ethnicity') is None:
+                    item['ethnicity'] = 'UNSET'
+                WorkbenchResearcherEthnicity(item.get('ethnicity'))
+            except TypeError:
+                raise BadRequest(f"Invalid ethnicity: {item.get('ethnicity')}")
 
             if item.get('sexAtBirth') is not None:
                 set_at_birth_array = []
@@ -499,12 +497,14 @@ class WorkbenchResearcherDao(UpdatableDao):
             except TypeError:
                 raise BadRequest(f"Invalid education: {item.get('education')}")
 
-            try:
-                if item.get('degree') is None:
-                    item['degree'] = 'UNSET'
-                WorkbenchResearcherDegree(item.get('degree'))
-            except TypeError:
-                raise BadRequest(f"Invalid degree: {item.get('degree')}")
+            if item.get('degree') is not None:
+                degree_array = []
+                for degree in item.get('degree'):
+                    try:
+                        degree_array.append(int(WorkbenchResearcherDegree(degree)))
+                    except TypeError:
+                        raise BadRequest(f"Invalid degree: {degree}")
+                item['degree'] = degree_array
 
             try:
                 if item.get('disability') is None:
@@ -560,12 +560,12 @@ class WorkbenchResearcherDao(UpdatableDao):
                 state=item.get('state'),
                 zipCode=item.get('zipCode'),
                 country=item.get('country'),
-                ethnicity=item.get('ethnicity'),
+                ethnicity=WorkbenchResearcherEthnicity(item.get('ethnicity', 'UNSET')),
                 sexAtBirth=item.get('sexAtBirth'),
                 identifiesAsLgbtq=item.get('identifiesAsLgbtq'),
                 lgbtqIdentity=item.get('lgbtqIdentity') if item.get('identifiesAsLgbtq') else None,
                 education=WorkbenchResearcherEducation(item.get('education', 'UNSET')),
-                degree=WorkbenchResearcherDegree(item.get('degree', 'UNSET')),
+                degree=item.get('degree'),
                 disability=WorkbenchResearcherDisability(item.get('disability', 'UNSET')),
                 gender=item.get('gender'),
                 race=item.get('race'),
