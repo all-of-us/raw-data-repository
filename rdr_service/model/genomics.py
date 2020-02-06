@@ -84,7 +84,8 @@ class GenomicSetMember(Base):
 
     validatedTime = Column("validated_time", DateTime, nullable=True)
 
-    sampleId = Column('sample_id', String(80), nullable=True)
+    sampleId = Column('sample_id', String(80),
+                      ForeignKey("biobank_stored_sample.biobank_stored_sample_id"), nullable=True)
     sampleType = Column('sample_type', String(50), nullable=True)
 
     consentForRor = Column('consent_for_ror', String(10), nullable=True)
@@ -184,7 +185,8 @@ class GenomicGCValidationMetrics(Base):
 
     biobankId = Column('biobank_id', String(80), nullable=False)
     # Ingested Data
-    sampleId = Column('sample_id', String(80), nullable=True)
+    sampleId = Column('sample_id', String(80),
+                      ForeignKey("biobank_stored_sample.biobank_stored_sample_id"), nullable=True)
     limsId = Column('lims_id', String(80), nullable=True)
     callRate = Column('call_rate', Integer, nullable=True)
     meanCoverage = Column('mean_coverage', Integer, nullable=True)

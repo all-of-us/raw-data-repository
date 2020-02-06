@@ -2,10 +2,10 @@ import logging
 
 from rdr_service.dao.genomics_dao import GenomicSetDao
 from rdr_service.genomic import (
-    genomic_biobank_menifest_handler,
+    genomic_biobank_manifest_handler,
     genomic_set_file_handler,
     validation,
-    genomic_center_menifest_handler
+    genomic_center_manifest_handler
 )
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.participant_enums import (
@@ -26,7 +26,7 @@ def process_genomic_water_line():
         validation.validate_and_update_genomic_set_by_id(genomic_set_id, dao)
         genomic_set = dao.get(genomic_set_id)
         if genomic_set.genomicSetStatus == GenomicSetStatus.VALID:
-            genomic_biobank_menifest_handler.create_and_upload_genomic_biobank_manifest_file(genomic_set_id)
+            genomic_biobank_manifest_handler.create_and_upload_genomic_biobank_manifest_file(genomic_set_id)
             logging.info("Validation passed, generate biobank manifest file successfully.")
         else:
             logging.info("Validation failed.")
@@ -34,8 +34,8 @@ def process_genomic_water_line():
     else:
         logging.info("No file found or nothing read from genomic set file")
 
-    genomic_biobank_menifest_handler.process_genomic_manifest_result_file_from_bucket()
-    genomic_center_menifest_handler.process_genotyping_manifest_files()
+    genomic_biobank_manifest_handler.process_genomic_manifest_result_file_from_bucket()
+    genomic_center_manifest_handler.process_genotyping_manifest_files()
 
 
 def ingest_genomic_centers_metrics_files():

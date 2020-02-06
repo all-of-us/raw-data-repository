@@ -40,7 +40,7 @@ from rdr_service.dao.genomics_dao import (
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.genomic.genomic_biobank_menifest_handler import create_and_upload_genomic_biobank_manifest_file
+from rdr_service.genomic.genomic_biobank_manifest_handler import create_and_upload_genomic_biobank_manifest_file
 from rdr_service.genomic.validation import (
     GENOMIC_VALID_AGE,
     GENOMIC_VALID_CONSENT_CUTOFF,
@@ -348,7 +348,7 @@ class GenomicReconciler:
             unreconciled_metrics = self.metrics_dao.get_null_set_members()
             results = []
             for metric in unreconciled_metrics:
-                member = self._lookup_member(metric.biobankId)
+                member = self.member_dao.get_member_from_sample_id(metric.sampleId)
                 results.append(
                     self.metrics_dao.update_metric_set_member_id(
                         metric, member.id)
@@ -378,13 +378,13 @@ class GenomicReconciler:
             results = []
             for seq_file_name in file_list:
                 logging.info(f'Reconciling Sequencing File: {seq_file_name}')
-                seq_biobank_id = self._parse_seq_filename(
+                seq_sample_id = self._parse_seq_filename(
                     seq_file_name)
-                if seq_biobank_id == GenomicSubProcessResult.INVALID_FILE_NAME:
+                if seq_sample_id == GenomicSubProcessResult.INVALID_FILE_NAME:
                     logging.info(f'Filename unable to be parsed: f{seq_file_name}')
-                    return seq_biobank_id
+                    return seq_sample_id
                 else:
-                    member = self._lookup_member(seq_biobank_id)
+                    member = self.member_dao.get_member_from_sample_id(seq_sample_id)
                     if member:
                         # Updates the relevant fields for reconciliation
                         results.append(
@@ -405,7 +405,7 @@ class GenomicReconciler:
         genomic_set_member
         :return: result code
         """
-        members = self._get_members_for_cvl_reconciliation()
+        members = self.member_dao.get_members_for_cvl_reconciliation()
         if members:
             cvl_subfolder = getSetting(GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER)
             self.cvl_file_name = f"{cvl_subfolder}/cvl_report_{self.run_id}.csv"
@@ -423,14 +423,6 @@ class GenomicReconciler:
                 else GenomicSubProcessResult.ERROR
 
         return GenomicSubProcessResult.NO_FILES
-
-    def _lookup_member(self, biobank_id):
-        """
-        Calls the DAO to query for a genomic set member from a biobank ID
-        :param biobank_id:
-        :return: GenomicSetMember object
-        """
-        return self.member_dao.get_member_with_biobank_id(biobank_id)
 
     def _get_sequence_files(self, bucket_name):
         """
@@ -490,13 +482,6 @@ class GenomicReconciler:
                                                              job_run_id,
                                                              seq_file_name)
 
-    def _get_members_for_cvl_reconciliation(self):
-        """
-        Retrieves GenomicSetMembers from DB
-        :return: list of GenomicSetMembers to add to CVL recon report
-        """
-        return self.member_dao.get_members_for_cvl_reconciliation()
-
     def _write_cvl_report_to_file(self, members):
         """
         writes data to csv file in bucket
@@ -505,8 +490,8 @@ class GenomicReconciler:
         """
         try:
             # extract only columns we need
-            cvl_columns = ('biobank_id', 'member_id')
-            report_data = ((m.biobankId, m.id) for m in members)
+            cvl_columns = ('biobank_id', 'sample_id', 'member_id')
+            report_data = ((m.biobankId, m.sampleId, m.id) for m in members)
 
             # Use SQL exporter
             exporter = SqlExporter(self.bucket_name)
@@ -610,6 +595,7 @@ class GenomicBiobankSamplesCoupler:
                     ParticipantSummary.sampleStatus1ED04 == SampleStatus.RECEIVED,
                     ParticipantSummary.sampleStatus1SAL2 == SampleStatus.RECEIVED
                 ),
+                BiobankStoredSample.test.in_(("1ED04", "1SAL2")),
                 BiobankStoredSample.rdrCreated > from_date).all()
         return list(zip(*result))
 
@@ -709,6 +695,7 @@ class ManifestDefinitionProvider:
             query_sql = """
                 SELECT s.genomic_set_name
                     , m.biobank_id
+                    , m.sample_id
                     , m.sex_at_birth
                     , m.ny_flag
                     , gcv.site_id
@@ -729,6 +716,7 @@ class ManifestDefinitionProvider:
             query_sql = """
                 SELECT s.genomic_set_name
                     , m.biobank_id
+                    , m.sample_id
                     , m.sex_at_birth
                     , m.ny_flag
                     , gcv.site_id
@@ -757,6 +745,7 @@ class ManifestDefinitionProvider:
             columns = (
                 "genomic_set_name",
                 "biobank_id",
+                "sample_id",
                 "sex_at_birth",
                 "ny_flag",
                 "site_id",
@@ -805,7 +794,7 @@ class ManifestCompiler:
             self._write_and_upload_manifest(source_data)
             results = []
             for row in source_data:
-                member = self.member_dao.get_member_with_biobank_id(row.biobank_id)
+                member = self.member_dao.get_member_from_sample_id(row.sample_id)
                 results.append(
                     self.member_dao.update_member_job_run_id(
                         member,
