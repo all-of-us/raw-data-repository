@@ -242,7 +242,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             exist = self._get_workspace_by_workspace_id_with_session(session, workspace.workspaceSourceId)
             if exist:
                 for attr_name in workspace.__dict__.keys():
-                    if not attr_name.startswith('_'):
+                    if not attr_name.startswith('_') and attr_name != 'created':
                         setattr(exist, attr_name, getattr(workspace, attr_name))
             else:
                 session.add(workspace)
@@ -472,12 +472,15 @@ class WorkbenchResearcherDao(UpdatableDao):
                 raise BadRequest('User givenName can not be NULL')
             if item.get('familyName') is None:
                 raise BadRequest('User familyName can not be NULL')
-            try:
-                if item.get('ethnicity') is None:
-                    item['ethnicity'] = 'UNSET'
-                WorkbenchResearcherEthnicity(item.get('ethnicity'))
-            except TypeError:
-                raise BadRequest(f"Invalid ethnicity status: {item.get('ethnicity')}")
+
+            if item.get('ethnicity') is not None:
+                ethnicity_array = []
+                for ethnicity in item.get('ethnicity'):
+                    try:
+                        ethnicity_array.append(int(WorkbenchResearcherEthnicity(ethnicity)))
+                    except TypeError:
+                        raise BadRequest(f"Invalid ethnicity: {ethnicity}")
+                item['ethnicity'] = ethnicity_array
 
             if item.get('sexAtBirth') is not None:
                 set_at_birth_array = []
@@ -485,7 +488,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                     try:
                         set_at_birth_array.append(int(WorkbenchResearcherSexAtBirth(set_at_birth)))
                     except TypeError:
-                        raise BadRequest(f"Invalid sexAtBirth status: {set_at_birth}")
+                        raise BadRequest(f"Invalid sexAtBirth: {set_at_birth}")
                 item['sexAtBirth'] = set_at_birth_array
 
             try:
@@ -494,21 +497,21 @@ class WorkbenchResearcherDao(UpdatableDao):
                 # Checking for validation of item passed in only.
                 WorkbenchResearcherEducation(item.get('education'))
             except TypeError:
-                raise BadRequest(f"Invalid education status: {item.get('education')}")
+                raise BadRequest(f"Invalid education: {item.get('education')}")
 
             try:
                 if item.get('degree') is None:
                     item['degree'] = 'UNSET'
                 WorkbenchResearcherDegree(item.get('degree'))
             except TypeError:
-                raise BadRequest(f"Invalid degree status: {item.get('degree')}")
+                raise BadRequest(f"Invalid degree: {item.get('degree')}")
 
             try:
                 if item.get('disability') is None:
                     item['disability'] = 'UNSET'
                 WorkbenchResearcherDisability(item.get('disability'))
             except TypeError:
-                raise BadRequest(f"Invalid disability status: {item.get('disability')}")
+                raise BadRequest(f"Invalid disability: {item.get('disability')}")
 
             if item.get('gender') is not None:
                 gender_array = []
@@ -516,7 +519,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                     try:
                         gender_array.append(int(WorkbenchResearcherGender(gender)))
                     except TypeError:
-                        raise BadRequest(f"Invalid gender status: {gender}")
+                        raise BadRequest(f"Invalid gender: {gender}")
                 item['gender'] = gender_array
 
             if item.get('race') is not None:
@@ -525,7 +528,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                     try:
                         race_array.append(int(WorkbenchResearcherRace(race)))
                     except TypeError:
-                        raise BadRequest(f"Invalid race status: {race}")
+                        raise BadRequest(f"Invalid race: {race}")
                 item['race'] = race_array
 
             if item.get('affiliations') is not None:
@@ -557,7 +560,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 state=item.get('state'),
                 zipCode=item.get('zipCode'),
                 country=item.get('country'),
-                ethnicity=WorkbenchResearcherEthnicity(item.get('ethnicity', 'UNSET')),
+                ethnicity=item.get('ethnicity'),
                 sexAtBirth=item.get('sexAtBirth'),
                 identifiesAsLgbtq=item.get('identifiesAsLgbtq'),
                 lgbtqIdentity=item.get('lgbtqIdentity') if item.get('identifiesAsLgbtq') else None,
@@ -595,7 +598,7 @@ class WorkbenchResearcherDao(UpdatableDao):
             exist = self._get_researcher_by_user_id_with_session(session, researcher.userSourceId)
             if exist:
                 for attr_name in researcher.__dict__.keys():
-                    if not attr_name.startswith('_'):
+                    if not attr_name.startswith('_') and attr_name != 'created':
                         setattr(exist, attr_name, getattr(researcher, attr_name))
             else:
                 session.add(researcher)
