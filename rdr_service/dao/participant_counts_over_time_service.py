@@ -198,7 +198,7 @@ class ParticipantCountsOverTimeService(BaseDao):
             "awardee_ids": awardee_ids,
         }
         filters_sql_ps = self.get_facets_sql(facets, stratification)
-        filters_sql_p = self.get_facets_sql(facets, stratification, table_prefix="p")
+        filters_sql_p = self.get_facets_sql(facets, stratification, participant_origins, table_prefix="p")
 
         if str(history) == "TRUE" and stratification == Stratifications.TOTAL:
             dao = MetricsEnrollmentStatusCacheDao(version=version)
@@ -288,11 +288,12 @@ class ParticipantCountsOverTimeService(BaseDao):
 
         return results_by_date
 
-    def get_facets_sql(self, facets, stratification, table_prefix="ps"):
+    def get_facets_sql(self, facets, stratification, participant_origins=None, table_prefix="ps"):
         """Helper function to transform facets/filters selection into SQL
 
     :param facets: Object representing facets and filters to apply to query results
     :param stratification: How to stratify (layer) results, as in a stacked bar chart
+    :param participant_origins: indicate array of participant_origins
     :param table_prefix: Either 'ps' (for participant_summary) or 'p' (for participant)
     :return: SQL for 'WHERE' clause, reflecting filters specified in UI
     """
@@ -360,6 +361,10 @@ class ParticipantCountsOverTimeService(BaseDao):
             "not_withdrawn": WithdrawalStatus.NOT_WITHDRAWN,
         }
         facets_sql += " AND p.is_ghost_id IS NOT TRUE "
+
+        if participant_origins:
+            facets_sql += " AND p.participant_origin in ({}) "\
+                .format(",".join(["'" + origin + "'" for origin in participant_origins]))
 
         return facets_sql
 

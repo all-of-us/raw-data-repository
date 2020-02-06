@@ -834,6 +834,103 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self.assertEqual(core_count_day_3, 1)
         self.assertEqual(core_count_day_4, 2)
 
+    def test_get_counts_with_enrollment_status_v2_with_participant_origin(self):
+        # REGISTERED @ time 1
+        p0 = Participant(participantId=5, biobankId=8, participantOrigin='a')
+        self._insert(p0, "Alice2", "Aardvark2", "PITT", time_int=self.time1)
+
+        # PARTICIPANT @ time 1
+        p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
+        self._insert(p1, "Alice", "Aardvark", "PITT", time_int=self.time1, time_study=self.time1)
+
+        # MEMBER @ time 2
+        p2 = Participant(participantId=2, biobankId=5, participantOrigin='b')
+        self._insert(
+            p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time1, time_study=self.time1, time_mem=self.time2
+        )
+
+        # FULL PARTICIPANT @ time 2
+        p3 = Participant(participantId=3, biobankId=6, participantOrigin='b')
+        self._insert(
+            p3,
+            "Chad",
+            "Caterpillar",
+            "AZ_TUCSON",
+            time_int=self.time1,
+            time_study=self.time1,
+            time_mem=self.time1,
+            time_fp=self.time2,
+            time_fp_stored=self.time3,
+        )
+
+        # FULL PARTICIPANT @ time 3
+        p4 = Participant(participantId=4, biobankId=7, participantOrigin='b')
+        self._insert(
+            p4,
+            "Debra",
+            "Dinosaur",
+            "PITT",
+            time_int=self.time1,
+            time_study=self.time1,
+            time_mem=self.time1,
+            time_fp=self.time3,
+            time_fp_stored=self.time5,
+        )
+
+        qs = """
+          bucketSize=1
+          &stratification=ENROLLMENT_STATUS
+          &startDate=2017-12-30
+          &endDate=2018-01-04
+          &enrollmentStatus=PARTICIPANT,CORE_PARTICIPANT
+          &version=2
+          &origin=b
+          """
+
+        qs = "".join(qs.split())  # Remove all whitespace
+
+        response = self.send_get("ParticipantCountsOverTime", query_string=qs)
+
+        registered_count_day_1 = response[0]["metrics"]["REGISTERED"]
+        registered_count_day_2 = response[1]["metrics"]["REGISTERED"]
+        registered_count_day_3 = response[2]["metrics"]["REGISTERED"]
+        registered_count_day_4 = response[3]["metrics"]["REGISTERED"]
+
+        participant_count_day_1 = response[0]["metrics"]["PARTICIPANT"]
+        participant_count_day_2 = response[1]["metrics"]["PARTICIPANT"]
+        participant_count_day_3 = response[2]["metrics"]["PARTICIPANT"]
+        participant_count_day_4 = response[3]["metrics"]["PARTICIPANT"]
+
+        consented_count_day_1 = response[0]["metrics"]["FULLY_CONSENTED"]
+        consented_count_day_2 = response[1]["metrics"]["FULLY_CONSENTED"]
+        consented_count_day_3 = response[2]["metrics"]["FULLY_CONSENTED"]
+        consented_count_day_4 = response[3]["metrics"]["FULLY_CONSENTED"]
+
+        core_count_day_1 = response[0]["metrics"]["CORE_PARTICIPANT"]
+        core_count_day_2 = response[1]["metrics"]["CORE_PARTICIPANT"]
+        core_count_day_3 = response[2]["metrics"]["CORE_PARTICIPANT"]
+        core_count_day_4 = response[3]["metrics"]["CORE_PARTICIPANT"]
+
+        self.assertEqual(registered_count_day_1, 0)
+        self.assertEqual(registered_count_day_2, 0)
+        self.assertEqual(registered_count_day_3, 0)
+        self.assertEqual(registered_count_day_4, 0)
+
+        self.assertEqual(participant_count_day_1, 0)
+        self.assertEqual(participant_count_day_2, 1)
+        self.assertEqual(participant_count_day_3, 0)
+        self.assertEqual(participant_count_day_4, 0)
+
+        self.assertEqual(consented_count_day_1, 0)
+        self.assertEqual(consented_count_day_2, 0)
+        self.assertEqual(consented_count_day_3, 0)
+        self.assertEqual(consented_count_day_4, 0)
+
+        self.assertEqual(core_count_day_1, 0)
+        self.assertEqual(core_count_day_2, 0)
+        self.assertEqual(core_count_day_3, 1)
+        self.assertEqual(core_count_day_4, 2)
+
     def test_get_counts_with_enrollment_status_v2_with_awardee_filter(self):
         # REGISTERED @ time 1
         p0 = Participant(participantId=5, biobankId=8)
