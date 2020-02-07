@@ -723,7 +723,8 @@ class GenomicPipelineTest(BaseTestCase):
 
     def _create_ingestion_test_file(self,
                                     test_data_filename,
-                                    bucket_name):
+                                    bucket_name,
+                                    folder=None):
         test_data_file = test_data.open_genomic_set_file(test_data_filename)
 
         input_filename = '{}{}.csv'.format(
@@ -733,6 +734,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._write_cloud_csv(input_filename,
                               test_data_file,
+                              folder=folder,
                               bucket=bucket_name)
 
     def _create_fake_genomic_set(self,
@@ -824,7 +826,7 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_stat_list.sort(key=lambda s: s.updated)
         return bucket_stat_list[-1].name
 
-    def _create_fake_datasets_for_gc_tests(self, count, arr_override=False):
+    def _create_fake_datasets_for_gc_tests(self, count, arr_override=False, **kwargs):
         # fake genomic_set
         genomic_test_set = self._create_fake_genomic_set(
             genomic_set_name="genomic-test-set-cell-line",
@@ -854,7 +856,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self._make_stored_sample(**sample_args)
             # Fake genomic set members.
             gt = 'aou_wgs'
-            if arr_override and p == 1:
+            if arr_override and p in kwargs['array_participants']:
                 gt = 'aou_array'
             self._create_fake_genomic_member(
                 genomic_set_id=genomic_test_set.id,
@@ -1120,6 +1122,55 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
+    def test_biobank_return_manifest_workflow(self):
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+                                                array_participants=range(1, 4))
+        # Setup Test file
+        manifest_result_file = test_data.open_genomic_set_file("Genomic-Manifest-Result-Test-BB-Workflow.csv")
+
+        manifest_result_filename = "Genomic-Manifest-Result-AoU-1-v1%s.csv" % self._naive_utc_to_naive_central(
+            clock.CLOCK.now()
+        ).strftime(genomic_set_file_handler.INPUT_CSV_TIME_FORMAT)
+
+        self._write_cloud_csv(
+            manifest_result_filename,
+            manifest_result_file,
+            bucket=_FAKE_BIOBANK_SAMPLE_BUCKET,
+            folder=_FAKE_BUCKET_RESULT_FOLDER,
+        )
+
+        # Run workflow
+        genomic_pipeline.biobank_return_manifest_workflow()
+
+        # Test file contents were ingested
+        members = self.member_dao.get_all()
+        members.sort(key=lambda m: m.id)
+        for i in range(1, 4):
+            self.assertEqual(f'PKG-XXXX-XXXX{i}', members[i-1].packageId)
+            self.assertEqual(f'100{i}', members[i - 1].biobankOrderClientId)
+
+        # Test file processing queue
+        files_processed = self.file_processed_dao.get_all()
+        self.assertEqual(len(files_processed), 1)
+
+        # Test the files were moved to archive folder
+        bucket_list = list_blobs('/' + _FAKE_BIOBANK_SAMPLE_BUCKET)
+        archive_files = [s.name.split('/')[2] for s in bucket_list
+                         if s.name.lower().startswith(f'{_FAKE_BUCKET_RESULT_FOLDER}/processed_by_rdr')]
+        bucket_files = [s.name for s in bucket_list
+                        if s.name.lower().endswith('.csv')]
+
+        self.assertEqual(files_processed[0].fileStatus,
+                         GenomicSubProcessStatus.COMPLETED)
+        self.assertEqual(files_processed[0].fileResult,
+                         GenomicSubProcessResult.SUCCESS)
+
+        self.assertNotIn(files_processed[0].fileName, bucket_files)
+        self.assertIn(files_processed[0].fileName, archive_files)
+
+        # Test the end-to-end result code
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
+
     def test_cvl_reconciliation_report_end_to_end(self):
         # Create fake genomic dataset and reconcile the sequencing data
         # Create the fake ingested data
@@ -1242,7 +1293,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_cvl_array_manifest_end_to_end(self):
-        self._create_fake_datasets_for_gc_tests(3, arr_override=True)
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True, array_participants=[1])
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         self._create_ingestion_test_file('GC_AoU_GEN_TestDataManifest.csv',
                                          bucket_name)
