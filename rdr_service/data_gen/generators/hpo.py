@@ -44,8 +44,11 @@ class HPOGen(BaseGen):
         if len(self._hpo_awardees) > 0:
             return
 
-        project = gcp_get_project_short_name().upper()
-        if project not in ['PROD', 'STABLE', 'STAGING']:
+        try:
+            project = gcp_get_project_short_name().upper()
+            if project not in ['PROD', 'STABLE', 'STAGING']:
+                project = 'TEST'
+        except FileNotFoundError:
             project = 'TEST'
 
         paths = ["data", "../data", "rdr_service/data"]
