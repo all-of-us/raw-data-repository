@@ -3,11 +3,10 @@ from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchResearcherHistoryDao, \
     WorkbenchWorkspaceDao, WorkbenchWorkspaceHistoryDao
 from rdr_service.participant_enums import WorkbenchWorkspaceUserRole, WorkbenchInstitutionNonAcademic, \
-    WorkbenchResearcherEthnicity, WorkbenchResearcherEducation, \
-    WorkbenchResearcherDisability, WorkbenchResearcherDegree, WorkbenchWorkspaceSexAtBirth, \
-    WorkbenchWorkspaceGenderIdentity, WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, \
-    WorkbenchWorkspaceDisabilityStatus, WorkbenchWorkspaceAccessToCare, WorkbenchWorkspaceEducationLevel, \
-    WorkbenchWorkspaceIncomeLevel
+    WorkbenchResearcherEducation, WorkbenchResearcherDisability, WorkbenchResearcherDegree, \
+    WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, WorkbenchWorkspaceSexualOrientation, \
+    WorkbenchWorkspaceGeography, WorkbenchWorkspaceDisabilityStatus, WorkbenchWorkspaceAccessToCare, \
+    WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, WorkbenchResearcherEthnicity
 
 
 class WorkbenchApiTest(BaseTestCase):
@@ -36,7 +35,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "gender": ["MAN", "WOMAN"],
                 "race": ["AIAN", "WHITE"],
                 "education": "COLLEGE_GRADUATE",
-                "degree": "PHD",
+                "degree": ["PHD", "MBA"],
                 "disability": "YES",
                 "affiliations": [
                     {
@@ -59,7 +58,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].sexAtBirth, [1, 3])
         self.assertEqual(results[0].ethnicity, WorkbenchResearcherEthnicity('HISPANIC'))
         self.assertEqual(results[0].education, WorkbenchResearcherEducation('COLLEGE_GRADUATE'))
-        self.assertEqual(results[0].degree, WorkbenchResearcherDegree('PHD'))
+        self.assertEqual(results[0].degree, [1, 8])
         self.assertEqual(results[0].disability, WorkbenchResearcherDisability('YES'))
         self.assertEqual(results[0].identifiesAsLgbtq, False)
         self.assertEqual(results[0].lgbtqIdentity, None)
@@ -205,7 +204,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "state": "string",
                 "zipCode": "string",
                 "country": "string",
-                "ethnicity": "string",
+                "ethnicity": "NOT_HISPANIC",
                 "gender": "string",
                 "race": "string",
                 "affiliations": [

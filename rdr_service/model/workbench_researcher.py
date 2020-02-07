@@ -5,10 +5,9 @@ from rdr_service.model.base import Base, model_insert_listener, model_update_lis
 from rdr_service.model.utils import Enum, UTCDateTime6
 from rdr_service.participant_enums import (
     WorkbenchInstitutionNonAcademic,
-    WorkbenchResearcherEthnicity,
     WorkbenchResearcherEducation,
     WorkbenchResearcherDisability,
-    WorkbenchResearcherDegree
+    WorkbenchResearcherEthnicity
 )
 
 
@@ -29,7 +28,7 @@ class WorkbenchResearcherBase(object):
     race = Column("race", JSON)
     sexAtBirth = Column("sex_at_birth", JSON)
     education = Column("education", Enum(WorkbenchResearcherEducation), default=WorkbenchResearcherEducation.UNSET)
-    degree = Column("degree", Enum(WorkbenchResearcherDegree), default=WorkbenchResearcherDegree.UNSET)
+    degree = Column("degree", JSON)
     disability = Column("disability", Enum(WorkbenchResearcherDisability), default=WorkbenchResearcherDisability.UNSET)
     identifiesAsLgbtq = Column("identifies_as_lgbtq", Boolean)
     lgbtqIdentity = Column("lgbtq_identity", String(250))
