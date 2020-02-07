@@ -51,9 +51,7 @@ def new_participant_workflow():
 
 def biobank_return_manifest_workflow():
     """
-    Entrypoint for New Participant Workflow,
-    Sources from newly-created biobank_stored_samples
-    from the BiobankSamplesPipeline.
+    Entrypoint for Biobank Return Manifest Ingestion,
     """
     with GenomicJobController(GenomicJob.BB_RETURN_MANIFEST,
                               bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
