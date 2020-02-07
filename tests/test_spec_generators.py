@@ -34,6 +34,9 @@ class TestSpecParticipant(BaseTestCase, SpecParticipantMixin):
         'WhatRaceEthnicity_Asian': 'WhatRaceEthnicity_NHPI,WhatRaceEthnicity_Asian'
     }
 
+    def setUp(self):
+        super().setUp(with_data=True)
+
     def test_create_spec_participant(self):
         """
         Create a basic spec participant

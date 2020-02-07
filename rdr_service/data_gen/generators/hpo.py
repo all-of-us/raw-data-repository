@@ -39,19 +39,20 @@ class HPOGen(BaseGen):
 
     def _load_hpo_data(self):
         """
-    Load the awardees.csv and sites.csv files once
-    """
+        Load the awardees.csv and sites.csv files once
+        """
         if len(self._hpo_awardees) > 0:
             return
 
-        try:
+        paths = ["data", "../data"]
+        if 'UNITTEST_FLAG' in os.environ:
+            paths = ["tests/test-data/fixtures"]
+            project = 'TEST'
+        else:
             project = gcp_get_project_short_name().upper()
             if project not in ['PROD', 'STABLE', 'STAGING']:
                 project = 'TEST'
-        except FileNotFoundError:
-            project = 'TEST'
 
-        paths = ["data", "../data", "rdr_service/data"]
         for path in paths:
             if os.path.exists(os.path.join(os.curdir, path)):
                 awardee_file = os.path.join(os.curdir, path, "awardees.csv")

@@ -76,6 +76,7 @@ class SpecParticipantMixin:
         # Update participant if have assigned a specific hpo site to this participant.
         if hpo_site.id:
             headers = {'If-Match': response['meta']['versionId']}
+            response['organization'] = hpo_site.org_id
             response['site'] = hpo_site.id
 
             response = self.send_put(f'Participant/{p_obj.participantId}', response, headers=headers)

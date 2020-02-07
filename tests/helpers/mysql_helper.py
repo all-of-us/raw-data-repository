@@ -7,8 +7,11 @@
 #
 #
 import atexit
+import csv
 import importlib
+import io
 import os
+import random
 import re
 import shlex
 import shutil
@@ -29,6 +32,7 @@ from rdr_service.model import compiler  # pylint: disable=unused-import
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
+from rdr_service.model.site_enums import ObsoleteStatus
 from rdr_service.participant_enums import UNSET_HPO_ID, OrganizationType
 from rdr_service.services.system_utils import find_mysqld_executable, pid_is_running, which, \
     run_external_program
@@ -136,6 +140,7 @@ def _initialize_database(with_data=True, with_consent_codes=False):
     config.override_setting('unittest_db_connection_string', db_conn_str)
 
     if with_data:
+        # _setup_hpos()
         _setup_hpos()
 
     if with_consent_codes:
@@ -289,6 +294,89 @@ def _setup_consent_codes():
         session.add(module)
 
         session.commit()
+
+
+def _convert_csv_column_to_dict(csv_data, column):
+    """
+    Return a dictionary object with keys from the first column and values from the specified
+    column.
+    :param csv_data: File-like CSV text downloaded from Google spreadsheets. (See main doc.)
+    :return: dict of fields and values for given column
+    """
+    results = dict()
+
+    for row in csv_data:
+        key = row[0]
+        data = row[1:][column]
+
+        if data:
+            if key not in results:
+                results[key] = data.strip() if data else ""
+            else:
+                # append multiple choice questions
+                results[key] += "|{0}".format(data.strip())
+
+    return results
+
+
+def _prep_awardee_csv_data(filename):
+    """
+
+    :param filename: csv file to load and transform.
+    :return: dict
+    """
+    csv_data = list()
+    with open(filename, 'rb') as h:
+        data = h.read().decode('utf-8')
+
+    # Convert csv file to a list of row data
+    with io.StringIO(data) as handle:
+        for row in csv.reader(handle, delimiter=','):
+            csv_data.append(row)
+
+    # Pivot the csv data
+    csv_data = list(zip(*csv_data))
+    return csv_data
+
+
+def _setup_all_awardees():
+    """
+    Import all the awardee data found in tests/test-data/fixtures.
+    """
+    hpo_data = _prep_awardee_csv_data('tests/test-data/fixtures/awardees.csv')
+    org_data = _prep_awardee_csv_data('tests/test-data/fixtures/organizations.csv')
+    site_data = _prep_awardee_csv_data('tests/test-data/fixtures/sites.csv')
+    dao = HPODao()
+    #
+    # Import HPO records
+    #
+    for column in range(0, len(hpo_data[0]) - 1):
+        data = _convert_csv_column_to_dict(hpo_data, column)
+        dao.insert(HPO(hpoId=column+1, displayName=data['Name'], name=data['Awardee ID'],
+                       organizationType=OrganizationType(data['Type']), isObsolete=ObsoleteStatus.ACTIVE))
+    #
+    # Import Organization records
+    #
+    with dao.session() as session:
+        for column in range(0, len(org_data[0]) - 1):
+            data = _convert_csv_column_to_dict(org_data, column)
+            result = session.query(HPO.hpoId).filter(HPO.name == data['Awardee ID']).first()
+            dao.insert(Organization(externalId=data['Organization ID'], displayName=data['Name'], hpoId=result.hpoId))
+    #
+    # Import Site records
+    #
+    with dao.session() as session:
+        for column in range(0, len(site_data[0]) - 1):
+            data = _convert_csv_column_to_dict(site_data, column)
+            result = session.query(Organization.hpoId, Organization.organizationId).\
+                            filter(Organization.externalId == data['Organization ID']).first()
+            try:
+                mayo_link_id = data['MayoLINK Client #']
+            except KeyError:
+                mayo_link_id = str(random.randint(7040000, 7999999))
+            dao.insert(Site(siteName=data['Site'], googleGroup=data['Site ID / Google Group'].lower(),
+                        mayolinkClientNumber=mayo_link_id, hpoId=result.hpoId,
+                        organizationId=result.organizationId))
 
 
 def _setup_hpos():

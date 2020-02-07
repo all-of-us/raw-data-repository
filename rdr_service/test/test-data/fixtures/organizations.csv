@@ -44,6 +44,7 @@ SEEC,SEEC_EMORY,Emory University
 SEEC,SEEC_UF,University of Florida
 SEEC,SEEC_MOREHOUSE,Morehouse School of Medicine
 SEEC,SEEC_MIAMI,University of Miami
+SEEC,SEEC_JACKSON,Jackson Health System
 SOUTHERN,SOUTHERN_UAB,University of Alabama Birmingham
 SOUTHERN,SOUTHERN_UASB,University of South Alabama
 SOUTHERN,SOUTHERN_HUNTSVILLE,Huntsville Hospital
@@ -63,6 +64,7 @@ TRANS_AM,TRANS_AM_SPECTRUM,Spectrum Health System
 TRANS_AM,TRANS_AM_BAYLOR,Baylor Scott and White Health 
 TRANS_AM,TRANS_AM_MEYERS,Reliant Medical Group (Meyers Primary Care)
 TRANS_AM,TRANS_AM_ESSENTIA,Essentia Health
+TRANS_AM,TRANS_AM_HEALTH_PARTNERS,HealthPartners Institute
 VA,VA_BOSTON_VAMC,VA Boston Healthcare System
 VA,VA_PALO_ALTO_VAMC,VA Palo Alto Health Care System
 VA,VA_ATLANTA_VAMC,VA Atlanta Medical Center
@@ -82,3 +84,5 @@ WISCONSIN,WISCONSIN_MEDICAL_COLLEGE,Medical College of Wisconsin
 WISCONSIN,WISCONSIN_MEDICAL_COLLEGE_SSHC,MCW - Sixteenth Street Community Health Center (SSHC 16th)
 WISCONSIN,WISCONSIN_UW_MADISON,"University of Wisconsin, Madison"
 WISCONSIN,WISCONSIN_SWEDISH_AMERICAN,"Swedish American Regional Center, UW Health "
+WISCONSIN,WISCONSIN_UW_MADISON_CCEHP,Center for Community Engagement and Health Partnerships
+WISCONSIN,WISCONSIN_GUNDERSEN,Gundersen Health System
