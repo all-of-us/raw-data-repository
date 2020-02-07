@@ -43,7 +43,8 @@ from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file,
-    process_genomic_manifest_result_file_from_bucket,
+    update_package_id_from_manifest_result_file,
+    _get_genomic_set_id_from_filename
 )
 from rdr_service.genomic.validation import (
     GENOMIC_VALID_AGE,
@@ -86,7 +87,7 @@ class GenomicFileIngester:
 
         self.file_name_conventions = {
             GenomicJob.METRICS_INGESTION: 'datamanifest',
-            GenomicJob.BB_RETURN_MANIFEST: 'Manifest-Result',
+            GenomicJob.BB_RETURN_MANIFEST: 'manifest-result',
         }
 
     def generate_file_processing_queue(self):
@@ -104,7 +105,7 @@ class GenomicFileIngester:
                     self.job_run_id,
                     file_path,
                     self.bucket_name,
-                    file_name)
+                    file_name.split('/')[-1])
 
                 self.file_queue.append(new_file_record)
 
@@ -113,7 +114,8 @@ class GenomicFileIngester:
         Searches the bucket for un-processed files.
         :return: list of filenames or NO_FILES result code
         """
-        files = list_blobs('/' + self.bucket_name)
+        bucket = '/' + self.bucket_name
+        files = list_blobs(bucket, prefix=self.sub_folder_name)
         files = [s.name for s in files
                  if self.archive_folder_name not in s.name.lower()
                  if self.file_name_conventions[self.job_id] in s.name.lower()]
@@ -122,7 +124,7 @@ class GenomicFileIngester:
             return GenomicSubProcessResult.NO_FILES
         return files
 
-    def do_ingestion(self):
+    def generate_file_queue_and_do_ingestion(self):
         """
         Main method of the ingestor component,
         generates a queue and processes each file
@@ -143,7 +145,8 @@ class GenomicFileIngester:
                     file_ingested = self.file_queue.popleft()
                     results.append(ingestion_result == GenomicSubProcessResult.SUCCESS)
                     logging.info(f'Ingestion attempt for {file_ingested.fileName}: {ingestion_result}')
-                    self.update_file_processed(
+
+                    self.file_processed_dao.update_file_record(
                         file_ingested.id,
                         GenomicSubProcessStatus.COMPLETED,
                         ingestion_result
@@ -158,44 +161,48 @@ class GenomicFileIngester:
 
     def _ingest_genomic_file(self, file_obj):
         """
-        Process to ingest file data from
-        a bucket and write to the database
+        Reads a file object from bucket and inserts into DB
         :param: file_obj: A genomic file object
         :return: A GenomicSubProcessResultCode
         """
         self.file_obj = file_obj
         self.file_validator = GenomicFileValidator()
 
-        data_to_ingest = self._retrieve_data_from_path(self.file_obj.filePath)
+        if self.job_id == GenomicJob.BB_RETURN_MANIFEST:
+            logging.info("Ingesting Manifest Result Files...")
+            return self._ingest_bb_return_manifest()
 
-        if data_to_ingest == GenomicSubProcessResult.ERROR:
-            return GenomicSubProcessResult.ERROR
-        elif data_to_ingest:
-            logging.info("Data to ingest from {}".format(self.file_obj.fileName))
-
-            if self.job_id == GenomicJob.METRICS_INGESTION:
+        if self.job_id == GenomicJob.METRICS_INGESTION:
+            data_to_ingest = self._retrieve_data_from_path(self.file_obj.filePath)
+            if data_to_ingest == GenomicSubProcessResult.ERROR:
+                return GenomicSubProcessResult.ERROR
+            elif data_to_ingest:
+                logging.info("Data to ingest from {}".format(self.file_obj.fileName))
                 logging.info("Validating GC metrics file.")
                 validation_result = self.file_validator.validate_ingestion_file(
                     self.file_obj.fileName, data_to_ingest)
                 if validation_result != GenomicSubProcessResult.SUCCESS:
                     return validation_result
                 return self._process_gc_metrics_data_for_insert(data_to_ingest)
+            else:
+                logging.info("No data to ingest.")
+                return GenomicSubProcessResult.NO_FILES
 
-            if self.job_id == GenomicJob.BB_RETURN_MANIFEST:
-                return self.ingest_bb_return_manifest()
-
-            return GenomicSubProcessResult.ERROR
-        else:
-            logging.info("No data to ingest.")
-            return GenomicSubProcessResult.NO_FILES
-
-    def ingest_bb_return_manifest(self):
-        result = process_genomic_manifest_result_file_from_bucket()
         return GenomicSubProcessResult.ERROR
 
-    def update_file_processed(self, file_id, status, result):
-        """Updates the genomic_file_processed record """
-        self.file_processed_dao.update_file_record(file_id, status, result)
+    def _ingest_bb_return_manifest(self):
+        """
+        Processes the Biobank return manifest file data
+        Uses genomic_biobank_manifest_handler functions.
+        :return: Result Code
+        """
+        try:
+            genomic_set_id = _get_genomic_set_id_from_filename(self.file_obj.fileName)
+            with open_cloud_file(self.file_obj.filePath) as csv_file:
+                update_package_id_from_manifest_result_file(genomic_set_id, csv_file)
+            return GenomicSubProcessResult.SUCCESS
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR
 
     def _retrieve_data_from_path(self, path):
         """
@@ -370,7 +377,7 @@ class GenomicFileMover:
         :return:
         """
         source_path = file_obj.filePath if file_obj else file_path
-        file_name = file_obj.fileName if file_obj else file_path.split('/')[-1]
+        file_name = source_path.split('/')[-1]
         archive_path = source_path.replace(file_name,
                                            f"{self.archive_folder}/"
                                            f"{file_name}")

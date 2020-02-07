@@ -1,4 +1,4 @@
 value,biobank_id,sex_at_birth,genome_type,ny_flag,request_id,package_id
-12345678,T1,M,aou_array,Y,,PKG-XXXX-XXXX1
-12345679,T2,F,aou_array,N,,PKG-XXXX-XXXX2
-12345680,T3,M,aou_array,N,,PKG-XXXX-XXXX3
+1001,T1,M,aou_array,Y,,PKG-XXXX-XXXX1
+1002,T2,F,aou_array,N,,PKG-XXXX-XXXX2
+1003,T3,M,aou_array,N,,PKG-XXXX-XXXX3

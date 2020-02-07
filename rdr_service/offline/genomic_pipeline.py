@@ -57,7 +57,7 @@ def biobank_return_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.BB_RETURN_MANIFEST,
                               bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
-                              archive_folder_name=config.GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME
+                              sub_folder_name=config.GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME
                               ) as controller:
         controller.run_biobank_return_manifest_workflow()
 

@@ -14,7 +14,6 @@ from rdr_service.config import (
 )
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
-    GenomicSubProcessStatus,
 )
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
@@ -34,14 +33,14 @@ class GenomicJobController:
 
     def __init__(self, job_id,
                  bucket_name=GENOMIC_GC_METRICS_BUCKET_NAME,
-                 sub_folder_name=GENOMIC_GC_PROCESSED_FOLDER_NAME,
+                 sub_folder_name=None,
                  archive_folder_name=GENOMIC_GC_PROCESSED_FOLDER_NAME
                  ):
 
         self.job_id = job_id
         self.job_run = None
         self.bucket_name = getSetting(bucket_name)
-        self.sub_folder_name = sub_folder_name
+        self.sub_folder_name = getSetting(sub_folder_name) if sub_folder_name else None
         self.archive_folder_name = archive_folder_name
 
         self.subprocess_results = set()
@@ -77,7 +76,7 @@ class GenomicJobController:
                                             sub_folder=self.sub_folder_name)
         try:
             logging.info('Running Validation Metrics Ingestion Workflow.')
-            self.job_result = self.ingester.do_ingestion()
+            self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
@@ -128,10 +127,14 @@ class GenomicJobController:
         Uses ingester to ingest manifest result files.
         Moves file to archive when done.
         """
-        self.ingester = GenomicFileIngester(job_id=self.job_id)
+        self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                            job_run_id=self.job_run.id,
+                                            bucket=self.bucket_name,
+                                            archive_folder=self.archive_folder_name,
+                                            sub_folder=self.sub_folder_name)
         try:
             logging.info('Running Biobank Return Manifest Workflow.')
-            self.job_result = self.ingester.ingest_bb_return_manifest()
+            self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
