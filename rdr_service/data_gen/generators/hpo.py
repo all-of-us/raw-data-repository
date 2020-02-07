@@ -48,7 +48,7 @@ class HPOGen(BaseGen):
         if project not in ['PROD', 'STABLE', 'STAGING']:
             project = 'TEST'
 
-        paths = ["data", "../data"]
+        paths = ["data", "../data", "rdr_service/data"]
         for path in paths:
             if os.path.exists(os.path.join(os.curdir, path)):
                 awardee_file = os.path.join(os.curdir, path, "awardees.csv")
@@ -157,8 +157,8 @@ class HPOGen(BaseGen):
 
         for site in self._hpo_sites:
             if (
-                site_id == site["Site ID / Google Group"]
-                or "hpo-site-{0}".format(site_id) == site["Site ID / Google Group"]
+                site_id.lower() == site["Site ID / Google Group"].lower()
+                or "hpo-site-{0}".format(site_id).lower() == site["Site ID / Google Group"].lower()
             ):
                 # find related HPO
                 for awardee in self._hpo_awardees:
