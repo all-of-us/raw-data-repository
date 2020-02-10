@@ -1,7 +1,3 @@
-from rdr_service.participant_enums import EnrollmentStatus, SampleStatus, QuestionnaireStatus, \
-    PhysicalMeasurementsStatus
-from tests.helpers.unittest_base import BaseTestCase
-from datetime import datetime, timedelta
 from datetime import datetime, timedelta
 
 from rdr_service.participant_enums import EnrollmentStatus, PhysicalMeasurementsStatus, QuestionnaireStatus, \
@@ -18,7 +14,7 @@ class CheckEnrollmentStatusTest(BaseTestCase):
     # test core participant meets requirements
     def test_core_meets_req(self):
         from rdr_service.offline.enrollment_check import check_enrollment
-        person, ps_dao = self.setup_core_participant()
+        person, ps_dao = self.setup_participant()
         # missing questionnaires and pm status
         self.assertEqual(check_enrollment(create_ticket=False), False)
         # update required attributes
@@ -30,7 +26,7 @@ class CheckEnrollmentStatusTest(BaseTestCase):
             session.add(person)
         self.assertEqual(check_enrollment(create_ticket=False), True)
 
-    def setup_core_participant(self):
+    def setup_participant(self):
         """ A full participant (core) is defined as:
         completed the primary informed consent process
         HIPAA Authorization/EHR consent
@@ -59,7 +55,6 @@ class CheckEnrollmentStatusTest(BaseTestCase):
             enrollmentStatus=EnrollmentStatus.FULL_PARTICIPANT,
             lastModified=twenty_nine)
 
-        # kwargs = dict(valid_kwargs, **override_kwargs)
         person = self._participant_summary_with_defaults(**valid_kwargs)
         from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
         from rdr_service.dao.participant_dao import ParticipantDao
