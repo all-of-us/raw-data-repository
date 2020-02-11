@@ -99,8 +99,36 @@ class ParticipantCountsOverTimeService(BaseDao):
                             '(enrollment_status_member_time)')
             session.execute('CREATE INDEX idx_sample_time ON metrics_tmp_participant '
                             '(enrollment_status_core_stored_sample_time)')
-            session.execute('CREATE INDEX idx_participant_origin ON metrics_tmp_participant '
-                            '(participant_origin)')
+            session.execute('CREATE INDEX idx_participant_origin ON metrics_tmp_participant (participant_origin)')
+            session.execute('CREATE INDEX idx_date_of_birth ON metrics_tmp_participant (date_of_birth)')
+            session.execute('CREATE INDEX idx_gender_identity ON metrics_tmp_participant (gender_identity)')
+            session.execute('CREATE INDEX idx_state_id ON metrics_tmp_participant (state_id)')
+            session.execute('CREATE INDEX idx_questionnaire_on_the_basics_time ON metrics_tmp_participant '
+                            '(questionnaire_on_the_basics_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_overall_health_time ON metrics_tmp_participant '
+                            '(questionnaire_on_overall_health_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_lifestyle_time ON metrics_tmp_participant '
+                            '(questionnaire_on_lifestyle_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_healthcare_access_time ON metrics_tmp_participant '
+                            '(questionnaire_on_healthcare_access_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_medical_history_time ON metrics_tmp_participant '
+                            '(questionnaire_on_medical_history_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_medications_time ON metrics_tmp_participant '
+                            '(questionnaire_on_medications_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_family_health_time ON metrics_tmp_participant '
+                            '(questionnaire_on_family_health_time)')
+            session.execute('CREATE INDEX idx_physical_measurements_time ON metrics_tmp_participant '
+                            '(physical_measurements_time)')
+            session.execute('CREATE INDEX idx_sample_status_1ed10_time ON metrics_tmp_participant '
+                            '(sample_status_1ed10_time)')
+            session.execute('CREATE INDEX idx_sample_status_2ed10_time ON metrics_tmp_participant '
+                            '(sample_status_2ed10_time)')
+            session.execute('CREATE INDEX idx_sample_status_1ed04_time ON metrics_tmp_participant '
+                            '(sample_status_1ed04_time)')
+            session.execute('CREATE INDEX idx_sample_status_1sal_time ON metrics_tmp_participant '
+                            '(sample_status_1sal_time)')
+            session.execute('CREATE INDEX idx_sample_status_1sal2_time ON metrics_tmp_participant '
+                            '(sample_status_1sal2_time)')
 
             session.execute(participant_sql, params)
 
