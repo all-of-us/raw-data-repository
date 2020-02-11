@@ -4,6 +4,7 @@ import logging
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import observation as fhir_observation
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirabstractbase import FHIRValidationError
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm.attributes import flag_modified
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import clock
@@ -77,11 +78,11 @@ class PhysicalMeasurementsDao(UpdatableDao):
             :param pm_id = physical measurement id
             :returns date from resource of measurement payload - UTC time"""
         with self.session() as session:
-            pm = session.query(PhysicalMeasurements).filter(PhysicalMeasurements.participantId == pid)\
+            record = session.query(PhysicalMeasurements).filter(PhysicalMeasurements.participantId == pid)\
                 .filter(PhysicalMeasurements.physicalMeasurementsId == pm_id).first()
 
-            resource = json.loads(pm.resource)
-            measurement_date = resource['entry'][0]['resource']['date']
+            doc, composition = self.load_record_fhir_doc(record)  # pylint: disable=unused-variable
+            measurement_date = composition['date']
             original_date = parse_date(measurement_date)
             return original_date
 
@@ -127,44 +128,14 @@ class PhysicalMeasurementsDao(UpdatableDao):
         for q in m.qualifiers:
             measurement_data["qualifiers"].add(Concept(q.codeSystem, q.codeValue))
 
-    def backfill_measurements(self):
-        """Updates all physical measurements rows and their children to reflect all the data parsed
-    from the original resource. This is used to backfill created/finalized user and site information
-    and child measurement rows, which weren't originally in the schema."""
-        num_updated = 0
-        with self.session() as session:
-            for pms in session.query(PhysicalMeasurements).all():
-                try:
-
-                    try:
-                        parsed_pms = PhysicalMeasurementsDao.from_client_json(
-                            json.loads(pms.resource), pms.participantId
-                        )
-                    except AttributeError:
-                        logging.warning(
-                            f"Invalid physical measurement JSON with ID {pms.physicalMeasurementsId}; skipping."
-                        )
-                        continue
-                    parsed_pms.physicalMeasurementsId = pms.physicalMeasurementsId
-
-                    self.set_measurement_ids(parsed_pms)
-                    session.merge(parsed_pms)
-                    for measurement in parsed_pms.measurements:
-                        session.merge(measurement)
-                        for submeasurement in measurement.measurements:
-                            session.merge(submeasurement)
-                    num_updated += 1
-                except FHIRValidationError as e:
-                    logging.error(f"Could not parse measurements as FHIR: {pms.resource}; exception = {e}")
-        return num_updated
-
     def get_distinct_measurements(self):
         """Returns metadata about all the distinct physical measurements in use for participants."""
         with self.session() as session:
             measurement_map = {}
             for pms in session.query(PhysicalMeasurements).yield_per(100):
                 try:
-                    parsed_pms = PhysicalMeasurementsDao.from_client_json(json.loads(pms.resource), pms.participantId)
+                    doc, composition = self.load_record_fhir_doc(pms)  # pylint: disable=unused-variable
+                    parsed_pms = PhysicalMeasurementsDao.from_client_json(doc, pms.participantId)
                     for measurement in parsed_pms.measurements:
                         PhysicalMeasurementsDao.handle_measurement(measurement_map, measurement)
                 except FHIRValidationError as e:
@@ -232,14 +203,22 @@ class PhysicalMeasurementsDao(UpdatableDao):
             ParticipantDao().validate_participant_id(session, participant_id)
         return super(PhysicalMeasurementsDao, self)._initialize_query(session, query_def)
 
-    def _measurements_as_dict(self, measurements):
+    @staticmethod
+    def _measurements_as_dict(measurements):
         result = measurements.asdict()
         del result["physicalMeasurementsId"]
         del result["created"]
         del result["logPositionId"]
-        result["resource"] = json.loads(result["resource"])
-        if result["resource"].get("id"):
-            del result["resource"]["id"]
+
+        try:
+            if result["resource"].get("id", None):
+                del result["resource"]["id"]
+        except AttributeError:
+            x = 1
+
+        # TODO: Future: Delete this code when 'old_resource' is deleted from database.
+        if 'old_resource' in result:
+            del result['old_resource']
         return result
 
     @staticmethod
@@ -260,7 +239,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
         obj.logPosition = LogPosition()
         obj.final = True
         obj.created = clock.CLOCK.now()
-        resource_json = json.loads(obj.resource)
+        resource_json = obj.resource if isinstance(obj.resource, dict) else json.loads(obj.resource)
         finalized_date = resource_json["entry"][0]["resource"].get("date")
         if finalized_date:
             obj.finalized = parse_date(finalized_date)
@@ -300,7 +279,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
         session.flush()
         # Update the resource to contain the ID.
         resource_json["id"] = str(obj.physicalMeasurementsId)
-        obj.resource = json.dumps(resource_json)
+        obj = self.store_record_fhir_doc(obj, resource_json)
         return obj
 
 
@@ -399,8 +378,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
     def _update_amended(self, obj, extension, url, session):
         """Finds the measurements that are being amended; sets the resource status to 'amended',
-    the 'final' flag to False, and sets the new measurements' amendedMeasurementsId field to
-    its ID."""
+        the 'final' flag to False, and sets the new measurements' amendedMeasurementsId field to
+        its ID."""
         value_ref = extension.get("valueReference")
         if value_ref is None:
             raise BadRequest(f"No valueReference in extension {url}.")
@@ -419,48 +398,39 @@ class PhysicalMeasurementsDao(UpdatableDao):
         amended_measurement = self.get_with_session(session, amended_measurement_id)
         if amended_measurement is None:
             raise BadRequest(f"Amendment references unknown PhysicalMeasurement {ref_id}.")
-        amended_resource_json = json.loads(amended_measurement.resource)
-        amended_resource = amended_resource_json["entry"][0]["resource"]
-        amended_resource["status"] = "amended"
+        amended_resource_json, composition = self.load_record_fhir_doc(amended_measurement)
+        composition["status"] = "amended"
         amended_measurement.final = False
-        amended_measurement.resource = json.dumps(amended_resource_json)
+        amended_measurement = self.store_record_fhir_doc(amended_measurement, amended_resource_json)
         session.merge(amended_measurement)
         obj.amendedMeasurementsId = amended_measurement_id
 
+
     def update_with_patch(self, id_, session, resource):
-        measurement = self.get_with_children_with_session(session, id_, for_update=True)
-        return self._do_update_with_patch(session, measurement, resource)
+        record = self.get_with_children_with_session(session, id_, for_update=True)
+        return self._do_update_with_patch(session, record, resource)
 
-    def _do_update_with_patch(self, session, measurement, resource):
-        self._validate_patch_update(measurement, resource)
-        site_id, author = self._validate_and_get_author_and_site(resource)
-        measurement.reason = resource["reason"]
+    def patch(self, id_, resource, p_id):
+        # pylint: disable=unused-argument
+        with self.session() as session:
+            # resource = request.get_json(force=True)
+            order = self.update_with_patch(id_, session, resource)
+            return self.to_client_json(order)
+
+    def _do_update_with_patch(self, session, record, resource):
+        self._validate_patch_update(record, resource)
         if resource["status"].lower() == "cancelled":
-            measurement.cancelledUsername = author
-            measurement.cancelledSiteId = site_id
-            measurement.cancelledTime = clock.CLOCK.now()
-            measurement.status = PhysicalMeasurementsStatus.CANCELLED
-            measurement.createdSiteId = None
-            measurement.finalizedSiteId = None
-            measurement.finalized = None
+            record = self._cancel_record(record, resource)
+
         if resource["status"].lower() == "restored":
-            measurement.cancelledUsername = None
-            measurement.cancelledSiteId = None
-            measurement.cancelledTime = None
-            measurement.status = PhysicalMeasurementsStatus.UNSET
-            measurement.createdSiteId = site_id
-            measurement.finalizedSiteId = site_id
-            measurement.finalizedUsername = author
-            # get original finalized time
-            measurement.finalized = self.get_date_from_pm_resource(measurement.participantId,
-                                                              measurement.physicalMeasurementsId)
+            record = self._restore_record(record, resource)
 
-        logging.info(f"{author} {resource['status']} physical measurement {measurement.physicalMeasurementsId}.")
-        payload = self.add_root_fields_to_resource(measurement)
-        super(PhysicalMeasurementsDao, self)._do_update(session, payload, payload)
-        self._update_participant_summary(session, payload)
+        logging.info(f"{resource['status']} physical measurement {record.physicalMeasurementsId}.")
 
-        return payload
+        super(PhysicalMeasurementsDao, self)._do_update(session, record, record)
+        self._update_participant_summary(session, record)
+
+        return record
 
     @staticmethod
     def make_measurement_id(physical_measurements_id, measurement_count):
@@ -626,8 +596,16 @@ class PhysicalMeasurementsDao(UpdatableDao):
             return extension.get("valueCode")
         return None
 
-    @staticmethod
-    def from_client_json(resource_json, participant_id=None, **unused_kwargs):
+    def to_client_json(self, model):
+        # pylint: disable=unused-argument
+        """Converts the given model to a JSON object to be returned to API clients.
+        Subclasses must implement this unless their model store a model.resource attribute.
+        """
+        doc, composition = self.load_record_fhir_doc(model) # pylint: disable=unused-argument
+        return doc
+
+
+    def from_client_json(self, resource_json, participant_id=None, **unused_kwargs):
         # pylint: disable=unused-argument
         measurements = []
         observations = []
@@ -663,9 +641,15 @@ class PhysicalMeasurementsDao(UpdatableDao):
                     authors = resource.get("author")
                     for author in authors:
                         author_extension = author.get("extension")
+                        # DA-1435 Support author extension as both an object and an array of objects.
+                        # Convert object to list to meet FHIR spec.
+                        if author_extension and not isinstance(author_extension, list):
+                            new_ae = list()
+                            new_ae.append(author_extension)
+                            author_extension = author['extension'] = new_ae
                         reference = author.get("reference")
                         if author_extension and reference:
-                            authoring_step = PhysicalMeasurementsDao.get_authoring_step(author_extension)
+                            authoring_step = PhysicalMeasurementsDao.get_authoring_step(author_extension[0])
                             if authoring_step == _FINALIZED_STATUS:
                                 finalized_username = PhysicalMeasurementsDao.get_author_username(reference)
                             elif authoring_step == _CREATED_STATUS:
@@ -684,18 +668,18 @@ class PhysicalMeasurementsDao(UpdatableDao):
                 measurement = PhysicalMeasurementsDao.from_observation(observation, fullUrl, qualifier_map, first_pass)
                 if measurement:
                     measurements.append(measurement)
-        return PhysicalMeasurements(
+        record = PhysicalMeasurements(
             participantId=participant_id,
-            resource=json.dumps(resource_json),
             measurements=measurements,
             createdSiteId=created_site_id,
             createdUsername=created_username,
             finalizedSiteId=finalized_site_id,
             finalizedUsername=finalized_username,
         )
+        record = self.store_record_fhir_doc(record, resource_json)
+        return record
 
-    @staticmethod
-    def _validate_patch_update(measurement, resource):
+    def _validate_patch_update(self, measurement, resource):
         """validates request of resource"""
         cancelled_required_fields = ["status", "reason", "cancelledInfo"]
         restored_required_fields = ["status", "reason", "restoredInfo"]
@@ -716,11 +700,16 @@ class PhysicalMeasurementsDao(UpdatableDao):
         else:
             raise BadRequest("status is required in restore request.")
 
-    def _validate_and_get_author_and_site(self, resource):
-        """returns author and site based on resource cancelledInfo/restoredInfo. Validation that
-    these exists is handled by _validate_patch_update"""
+    def _get_patch_args(self, resource):
+        """
+        returns author and site based on resource cancelledInfo/restoredInfo. Validation that
+        these exists is handled by _validate_patch_update
+        :param resource: Request JSON Payload
+        :return: Tuple (site_id, author, reason)
+        """
         site_id = None
         author = None
+        reason = resource.get("reason", None)
 
         if "cancelledInfo" in resource:
             site_id = self.get_location_site_id(_LOCATION_PREFIX + resource["cancelledInfo"]["site"]["value"])
@@ -730,32 +719,151 @@ class PhysicalMeasurementsDao(UpdatableDao):
             site_id = self.get_location_site_id(_LOCATION_PREFIX + resource["restoredInfo"]["site"]["value"])
             author = self.get_author_username(_AUTHOR_PREFIX + resource["restoredInfo"]["author"]["value"])
 
-        return site_id, author
-
-    def patch(self, id_, resource, p_id):
-        # pylint: disable=unused-argument
-        with self.session() as session:
-            # resource = request.get_json(force=True)
-            order = self.update_with_patch(id_, session, resource)
-            return self.to_client_json(order)
+        return site_id, author, reason
 
     @staticmethod
-    def add_root_fields_to_resource(order):
-        cancelled_fields = ["cancelledUsername", "cancelledSiteId", "cancelledTime"]
-        order_resource = json.loads(order.resource)
-        order_resource["reason"] = order.reason
-        if order.status == PhysicalMeasurementsStatus.CANCELLED:
-            order_resource["status"] = "CANCELLED"
-            order_resource["cancelledUsername"] = order.cancelledUsername
-            order_resource["cancelledSiteId"] = order.cancelledSiteId
-            order_resource["cancelledTime"] = str(order.cancelledTime)
+    def load_record_fhir_doc(record):
+        """
+        Retrieve the FHIR document from the DB record.
+        :param record: Measurement DB record
+        :return: Tuple (FHIR document dict, Composition entry)
+        """
+        # DA-1435 Support old/new resource field type
+        if str(PhysicalMeasurements.resource.property.columns[0].type) == 'JSON':
+            doc = record.resource
+        else:
+            doc = json.loads(record.resource)
 
-        if order.status == PhysicalMeasurementsStatus.UNSET:
-            order_resource["status"] = "RESTORED"
-            for field in cancelled_fields:
-                if field in order_resource:
-                    del order_resource[field]
+        composition = None
 
-        order_resource = json.dumps(order_resource)
-        order.resource = order_resource
-        return order
+        for entry in doc['entry']:
+            resource = entry['resource']
+            if resource['resourceType'].lower() == 'composition':
+                composition = resource
+
+        return doc, composition
+
+    @staticmethod
+    def store_record_fhir_doc(record, doc):
+        """
+        Store the FHIR document into the DB record.
+        :param record: Measurement DB record
+        :param doc: FHIR document dict
+        :return: Measurement DB record
+
+        Note: Later on after all older fhir documents have been upgraded, 'old_resource' can go away.
+        """
+        if isinstance(doc, str):
+            doc = json.loads(doc)
+        # DA-1435 Support old/new resource field type
+        if str(PhysicalMeasurements.resource.property.columns[0].type) == 'JSON':
+            record.resource = doc
+            record.old_resource = json.dumps(doc)
+        else:
+            record.resource = json.dumps(doc)
+            record.old_resource = doc
+
+        # sqlalchemy does not mark the 'resource' field as dirty, we need to force it.
+        flag_modified(record, 'resource')
+        flag_modified(record, 'old_resource')
+
+        return record
+
+    def _cancel_record(self, record, resource):
+        """
+        Cancel the Physical Measurements record.
+        :param record: Measurement DB record
+        :param resource: Request JSON payload
+        :return: Measurement record
+        """
+        site_id, author, reason = self._get_patch_args(resource)
+        record.cancelledUsername = author
+        record.cancelledSiteId = site_id
+        record.reason = reason
+        record.cancelledTime = clock.CLOCK.now()
+        record.status = PhysicalMeasurementsStatus.CANCELLED
+        record.createdSiteId = None
+        record.finalizedSiteId = None
+        record.finalized = None
+
+        doc, composition = self.load_record_fhir_doc(record)
+
+        composition['status'] = 'entered_in_error'
+        # remove all restored entries if found
+        extensions = list()
+        for ext in composition['extension']:
+            if 'restore' not in ext['url']:
+                extensions.append(ext)
+
+        extensions.append({
+            'url': 'http://terminology.pmi-ops.org/StructureDefinition/cancelled-site',
+            'valueInteger': site_id
+        })
+        extensions.append({
+            'url': 'http://terminology.pmi-ops.org/StructureDefinition/cancelled-time',
+            'valueString': record.cancelledTime.isoformat()
+        })
+        extensions.append({
+            'url': 'http://terminology.pmi-ops.org/StructureDefinition/cancelled-username',
+            'valueString': author
+        })
+        extensions.append({
+            'url': 'http://terminology.pmi-ops.org/StructureDefinition/cancelled-reason',
+            'valueString': reason
+        })
+
+        composition['extension'] = extensions
+
+        record = self.store_record_fhir_doc(record, doc)
+        return record
+
+    def _restore_record(self, record, resource):
+        """
+        Restore a cancelled Physical Measurements record.
+        :param record: Measurement DB record
+        :param resource: Request JSON payload
+        :return: Measurement record
+        """
+        site_id, author, reason = self._get_patch_args(resource)
+        record.cancelledUsername = None
+        record.cancelledSiteId = None
+        record.cancelledTime = None
+        record.reason = reason
+        record.status = PhysicalMeasurementsStatus.UNSET
+        record.createdSiteId = site_id
+        record.finalizedSiteId = site_id
+        record.finalizedUsername = author
+        # get original finalized time
+        record.finalized = self.get_date_from_pm_resource(record.participantId,
+                                                          record.physicalMeasurementsId)
+
+        doc, composition = self.load_record_fhir_doc(record)
+
+        composition['status'] = 'final'
+        # remove all cancel entries if found
+        extensions = list()
+        for ext in composition['extension']:
+            if 'cancel' not in ext['url']:
+                extensions.append(ext)
+
+        extensions.append({
+            'url': 'http://terminology.pmi-ops.org/StructureDefinition/restore-site',
+            'valueInteger': site_id
+        })
+        extensions.append({
+            'url': 'http://terminology.pmi-ops.org/StructureDefinition/restore-time',
+            'valueString': clock.CLOCK.now().isoformat()
+        })
+        extensions.append({
+            'url': 'http://terminology.pmi-ops.org/StructureDefinition/restore-username',
+            'valueString': author
+        })
+        extensions.append({
+            'url': 'http://terminology.pmi-ops.org/StructureDefinition/restore-reason',
+            'valueString': reason
+        })
+
+        composition['extension'] = extensions
+
+        record = self.store_record_fhir_doc(record, doc)
+        return record
