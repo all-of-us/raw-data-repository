@@ -210,11 +210,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
         del result["created"]
         del result["logPositionId"]
 
-        try:
-            if result["resource"].get("id", None):
-                del result["resource"]["id"]
-        except AttributeError:
-            x = 1
+        if result["resource"].get("id", None):
+            del result["resource"]["id"]
 
         # TODO: Future: Delete this code when 'old_resource' is deleted from database.
         if 'old_resource' in result:
@@ -601,7 +598,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
         """Converts the given model to a JSON object to be returned to API clients.
         Subclasses must implement this unless their model store a model.resource attribute.
         """
-        doc, composition = self.load_record_fhir_doc(model) # pylint: disable=unused-argument
+        doc, composition = self.load_record_fhir_doc(model)  # pylint: disable=unused-variable
         return doc
 
 
