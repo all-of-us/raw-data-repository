@@ -1,9 +1,12 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Boolean, UniqueConstraint, event
+from sqlalchemy import Column, ForeignKey, Integer, String, Boolean, UniqueConstraint, event, JSON
 from sqlalchemy.orm import relationship
 from rdr_service.model.field_types import BlobUTF8
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, UTCDateTime6
-from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWorkspaceUserRole
+from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWorkspaceUserRole, \
+    WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, WorkbenchWorkspaceSexualOrientation, \
+    WorkbenchWorkspaceGeography, WorkbenchWorkspaceDisabilityStatus, WorkbenchWorkspaceAccessToCare, \
+    WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel
 
 
 class WorkbenchWorkspaceBase(object):
@@ -25,9 +28,30 @@ class WorkbenchWorkspaceBase(object):
     commercialPurpose = Column("commercial_purpose", Boolean)
     educational = Column("educational", Boolean)
     otherPurpose = Column("other_purpose", Boolean)
-    reasonForInvestigation = Column("reason_for_investigation", String(500))
+    scientificApproaches = Column("scientific_approaches", String(500))
     intendToStudy = Column("intend_to_study", String(500))
     findingsFromStudy = Column("findings_from_study", String(500))
+    ethicalLegalSocialImplications = Column("ethical_legal_social_implications", Boolean)
+    focusOnUnderrepresentedPopulations = Column("focus_on_underrepresented_populations", Boolean)
+    raceEthnicity = Column("race_ethnicity", JSON)
+    age = Column("age", JSON)
+    sexAtBirth = Column("sex_at_birth", Enum(WorkbenchWorkspaceSexAtBirth), default=WorkbenchWorkspaceSexAtBirth.UNSET)
+    genderIdentity = Column("gender_identity", Enum(WorkbenchWorkspaceGenderIdentity),
+                            default=WorkbenchWorkspaceGenderIdentity.UNSET)
+    sexualOrientation = Column("sexual_orientation", Enum(WorkbenchWorkspaceSexualOrientation),
+                               default=WorkbenchWorkspaceSexualOrientation.UNSET)
+    geography = Column("geography", Enum(WorkbenchWorkspaceGeography),
+                       default=WorkbenchWorkspaceGeography.UNSET)
+    disabilityStatus = Column("disability_status", Enum(WorkbenchWorkspaceDisabilityStatus),
+                              default=WorkbenchWorkspaceDisabilityStatus.UNSET)
+    accessToCare = Column("access_to_care", Enum(WorkbenchWorkspaceAccessToCare),
+                          default=WorkbenchWorkspaceAccessToCare.UNSET)
+    educationLevel = Column("education_level", Enum(WorkbenchWorkspaceEducationLevel),
+                            default=WorkbenchWorkspaceEducationLevel.UNSET)
+    incomeLevel = Column("income_level", Enum(WorkbenchWorkspaceIncomeLevel),
+                         default=WorkbenchWorkspaceIncomeLevel.UNSET)
+    others = Column("others", String(500))
+
     resource = Column("resource", BlobUTF8, nullable=False)
 
 

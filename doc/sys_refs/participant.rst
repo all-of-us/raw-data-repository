@@ -11,7 +11,8 @@ Participant System
 
 Overview
 ============================================================
-The Participant system is the core system of the RDR.  All other systems integrate with the Participant System either directly or indirectly.  Participants are initially created via the Participant Portal.  Participants are amended and modified with data from the Data Capture system, generally through the HealthPro client by clinicians.
+The Participant system is the core system of the RDR.  All other systems integrate with the Participant System either directly or indirectly.  Participants are initially created via the Participant Portal.
+Participants are amended and modified with data from the Data Capture system, generally through the HealthPro client or the Participant Portal.
 
 
 Participant data is aggregated and delivered to analysts by the :ref:`Reporting system <reporting>`.

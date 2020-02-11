@@ -134,6 +134,7 @@ def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=No
       SELECT 
         '' as value,
         CONCAT(:prefix, biobank_id) as biobank_id,
+        sample_id,
         sex_at_birth,
         genome_type,
         CASE

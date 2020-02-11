@@ -2,16 +2,18 @@ import logging
 
 from rdr_service.dao.genomics_dao import GenomicSetDao
 from rdr_service.genomic import (
-    genomic_biobank_menifest_handler,
+    genomic_biobank_manifest_handler,
     genomic_set_file_handler,
     validation,
-    genomic_center_menifest_handler,
-    genomic_job_controller
+    genomic_center_manifest_handler
 )
+from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.participant_enums import (
     GenomicSetStatus,
-    GenomicJob
+    GenomicJob,
+    GenomicManifestTypes
 )
+import rdr_service.config as config
 
 
 def process_genomic_water_line():
@@ -25,7 +27,7 @@ def process_genomic_water_line():
         validation.validate_and_update_genomic_set_by_id(genomic_set_id, dao)
         genomic_set = dao.get(genomic_set_id)
         if genomic_set.genomicSetStatus == GenomicSetStatus.VALID:
-            genomic_biobank_menifest_handler.create_and_upload_genomic_biobank_manifest_file(genomic_set_id)
+            genomic_biobank_manifest_handler.create_and_upload_genomic_biobank_manifest_file(genomic_set_id)
             logging.info("Validation passed, generate biobank manifest file successfully.")
         else:
             logging.info("Validation failed.")
@@ -33,41 +35,8 @@ def process_genomic_water_line():
     else:
         logging.info("No file found or nothing read from genomic set file")
 
-    genomic_biobank_menifest_handler.process_genomic_manifest_result_file_from_bucket()
-    genomic_center_menifest_handler.process_genotyping_manifest_files()
-
-
-def ingest_genomic_centers_metrics_files():
-    """
-    Entrypoint for GC Metrics File Ingestion subprocess of genomic_pipeline.
-    """
-    job_id = GenomicJob.METRICS_INGESTION
-
-    run_controller = genomic_job_controller.GenomicJobController(job_id)
-    result = run_controller.ingest_gc_metrics()
-    run_controller.end_run(result)
-
-
-def reconcile_metrics_vs_manifest():
-    """
-    Entrypoint for GC Metrics File reconciliation
-    against Manifest subprocess of genomic_pipeline.
-    """
-    job_id = GenomicJob.RECONCILE_MANIFEST
-    run_controller = genomic_job_controller.GenomicJobController(job_id)
-    result = run_controller.run_reconciliation_to_manifest()
-    run_controller.end_run(result)
-
-
-def reconcile_metrics_vs_sequencing():
-    """
-    Entrypoint for GC Metrics File reconciliation
-    against Sequencing Files subprocess of genomic_pipeline.
-    """
-    job_id = GenomicJob.RECONCILE_SEQUENCING
-    run_controller = genomic_job_controller.GenomicJobController(job_id)
-    result = run_controller.run_reconciliation_to_sequencing()
-    run_controller.end_run(result)
+    genomic_biobank_manifest_handler.process_genomic_manifest_result_file_from_bucket()
+    genomic_center_manifest_handler.process_genotyping_manifest_files()
 
 
 def new_participant_workflow():
@@ -76,10 +45,45 @@ def new_participant_workflow():
     Sources from newly-created biobank_stored_samples
     from the BiobankSamplesPipeline.
     """
-    job_id = GenomicJob.NEW_PARTICIPANT_WORKFLOW
-    run_controller = genomic_job_controller.GenomicJobController(job_id)
-    result = run_controller.run_new_participant_workflow()
-    run_controller.end_run(result)
+    with GenomicJobController(GenomicJob.NEW_PARTICIPANT_WORKFLOW) as controller:
+        controller.run_new_participant_workflow()
+
+
+def biobank_return_manifest_workflow():
+    """
+    Entrypoint for Biobank Return Manifest Ingestion,
+    """
+    with GenomicJobController(GenomicJob.BB_RETURN_MANIFEST,
+                              bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
+                              sub_folder_name=config.GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME
+                              ) as controller:
+        controller.run_biobank_return_manifest_workflow()
+
+
+def ingest_genomic_centers_metrics_files():
+    """
+    Entrypoint for GC Metrics File Ingestion subprocess of genomic_pipeline.
+    """
+    with GenomicJobController(GenomicJob.METRICS_INGESTION) as controller:
+        controller.ingest_gc_metrics()
+
+
+def reconcile_metrics_vs_manifest():
+    """
+    Entrypoint for GC Metrics File reconciliation
+    against Manifest subprocess of genomic_pipeline.
+    """
+    with GenomicJobController(GenomicJob.RECONCILE_MANIFEST) as controller:
+        controller.run_reconciliation_to_manifest()
+
+
+def reconcile_metrics_vs_sequencing():
+    """
+    Entrypoint for GC Metrics File reconciliation
+    against Sequencing Files subprocess of genomic_pipeline.
+    """
+    with GenomicJobController(GenomicJob.RECONCILE_SEQUENCING) as controller:
+        controller.run_reconciliation_to_sequencing()
 
 
 def create_cvl_reconciliation_report():
@@ -87,21 +91,15 @@ def create_cvl_reconciliation_report():
     Entrypoint for CVL reconciliation workflow
     Sources from genomic_set_member and produces CVL reconciliation report CSV
     """
-    job_id = GenomicJob.CVL_RECONCILIATION_REPORT
-    run_controller = genomic_job_controller.GenomicJobController(
-        job_id)
-    result = run_controller.run_cvl_reconciliation_report()
-    run_controller.end_run(result)
+    with GenomicJobController(GenomicJob.CVL_RECONCILIATION_REPORT) as controller:
+        controller.run_cvl_reconciliation_report()
 
 
 def create_cvl_manifests():
     """
     Entrypoint for CVL Manifest workflow
-    Sources from list of biobank_ids in CVL reconciliation report
+    Sources from list of biobank_ids from CVL reconciliation report
     """
-    # So Far only WGS manifest requirements are really defined
-    job_id = GenomicJob.CREATE_MANIFEST_CVL_WGS
-    run_controller = genomic_job_controller.GenomicJobController(
-        job_id)
-    result = run_controller.run_cvl_wgs_manifest()
-    run_controller.end_run(result)
+    with GenomicJobController(GenomicJob.CREATE_CVL_MANIFESTS) as controller:
+        controller.generate_manifest(GenomicManifestTypes.DRC_CVL_WGS)
+        controller.generate_manifest(GenomicManifestTypes.DRC_CVL_ARR)

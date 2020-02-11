@@ -534,6 +534,10 @@ class AppConfigClass(object):
         self._provider.store(self.args.key, config, project=self.gcp_env.project)
         _logger.info(f'Successfully updated {self.args.key} configuration.')
 
+        if self.restart:
+            _logger.info('Restarting instances...')
+            gcp_restart_instances(self.gcp_env.project)
+
         return 0
 
     def get_app_config(self):
@@ -634,9 +638,6 @@ class AppConfigClass(object):
             self.compare_configs()
         else:
             self.get_app_config()
-
-        if self.restart:
-            gcp_restart_instances(self.gcp_env.project)
 
         return 0
 

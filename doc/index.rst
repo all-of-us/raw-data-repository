@@ -7,7 +7,7 @@
 The *All of Us* Raw Data Repository (RDR)
 +++++++++++++++++++++++++++++++++++++++++
 
-.. figure:: img/aou_flow_chart.jpg
+.. figure:: img/rdr_map.png
    :align:  center
    :alt:    All of Us flowchart
 
@@ -25,10 +25,12 @@ Table of Contents
 .. Table of Contents section
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    sys_ref
    api_wf
+   issues
+   ops-data
 
 
 General Concepts
@@ -40,13 +42,14 @@ Terminology Used
 .. glossary::
 
   Participant
-    A participant is a core object in the RDR representing a single person who has initiated the process of joining the *All of Us* research program.  Questionnaire, physical measurements, and biospecimens can be associated to a participant.
+    A participant is a core object in the RDR representing a single person who has initiated the process of joining the *All of Us* research program.  Questionnaires, physical measurements, and biospecimens can be associated to a participant.
 
   Healthcare Provider Organization (HPO)
-    An HPO is an object that represents a healthcare provider that has partnered with the *All of Us* research program to send data to the RDR, usually through the HealthPro client.  A participant will have an associated hpo_id property. A HPO will have Organizations as children.
+    An HPO is an object that represents a health care provider that has partnered with the *All of Us* research program to send data to the RDR, usually through the HealthPro client.
+    A participant may have an associated hpoId property. An HPO will have Organizations as children elements.
 
   Organization
-    An organization has a HPO as a parent and sites as children.
+    An organization has an HPO as a parent and sites as children.
 
   Site
     A site has an organization as a parent and a HPO as a grandparent. A site is associated to a participant and represents the physical location where they entered data or joined.
@@ -77,16 +80,17 @@ The following are the API workflows that the RDR supports and are covered in thi
        *  Create and update Participant information
        *  Create and update Questionnaires and Responses ("PPI", Participant-provided information)
        *  Read data about a participant
-   *  Health Professional Portal to RDR
+   *  Health Professional Portal (HPRO) to RDR
        *  Search Participants
+
           *  At check-in time, look up an individual by name, date of birth, zip code
           *  For a Work Queue, filter participants based on summary information (e.g. age, race)
-       *  Get Participant Summary (by id)
+       *  Get Participant Summary (by ID)
        *  Update a Participant with a new Medical Record Number
        *  Insert results from physical measurements
        *  Insert biospecimen orders
-   *  BioBank to RDR
-       *  Google Cloud Storage “add a csv file to bucket”, performed daily
+   *  Biobank to RDR
+       *  Updates stored Biobank samples via the Biobank reconciliation process
    *  For release management and operational monitoring
        *  Serving version identifier - no auth required
 

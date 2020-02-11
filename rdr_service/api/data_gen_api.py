@@ -196,5 +196,6 @@ class SpecDataGenApi(Resource):
         if not target:
             raise BadRequest({"status": "error", "error": "target api invalid"})
 
-        result = InProcessClient().request_json(target, method, body=data, pretend_date=timestamp)
+        result = InProcessClient().request_json(target, method, body=data, pretend_date=timestamp,
+                                                headers=dict(request.headers))
         return result

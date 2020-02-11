@@ -103,7 +103,7 @@ def run():
     """
     lib_paths = ["rdr_service/tools/tool_libs", "tools/tool_libs", "../tool_libs", "tool_libs", "../../tool_libs"]
     import_path = "rdr_service.tools.tool_libs"
-    _run_tool(lib_paths, import_path)
+    return _run_tool(lib_paths, import_path)
 
 
 # --- Main Program Call ---

@@ -45,6 +45,8 @@ class HPOGen(BaseGen):
             return
 
         project = gcp_get_project_short_name().upper()
+        if project not in ['PROD', 'STABLE', 'STAGING']:
+            project = 'TEST'
 
         paths = ["data", "../data"]
         for path in paths:
@@ -90,7 +92,7 @@ class HPOGen(BaseGen):
                             val = site[
                                 "{0} {1}".format("PTSC Scheduling Status", project)
                             ].upper()  # pylint: disable=unused-variable
-                        except TypeError:
+                        except KeyError:
                             _logger.debug(
                                 "skipping {0}, invalid scheduling status".format(site["Site ID / Google Group"])
                             )
@@ -100,7 +102,7 @@ class HPOGen(BaseGen):
                             val = site[
                                 "{0} {1}".format("Enrolling Status", project)
                             ].upper()  # pylint: disable=unused-variable
-                        except TypeError:
+                        except KeyError:
                             _logger.debug(
                                 "skipping {0}, invalid enrollment status".format(site["Site ID / Google Group"])
                             )

@@ -1,2 +1,2 @@
 Biobank ID,BiobankidSampleid,LIMS ID,Mean Coverage,Genome Coverage,Contamination,Sex Concordance,Aligned Q20 Bases,Processing Status,Notes,Consent for RoR,Withdrawn_status,site_id
-T2,1002,10002,2,2,3,True,4,Pass,This sample passed,Y,1,11002
+T2,2,10002,2,2,3,True,4,Pass,This sample passed,Y,1,11002
