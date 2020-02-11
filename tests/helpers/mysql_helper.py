@@ -140,7 +140,6 @@ def _initialize_database(with_data=True, with_consent_codes=False):
     config.override_setting('unittest_db_connection_string', db_conn_str)
 
     if with_data:
-        # _setup_hpos()
         _setup_hpos()
 
     if with_consent_codes:

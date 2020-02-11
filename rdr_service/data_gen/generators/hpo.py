@@ -68,6 +68,9 @@ class HPOGen(BaseGen):
                     self._hpo_sites = list()
                     for site in sites:
 
+                        # site Ids in the CSV file are mixed-case.
+                        site["Site ID / Google Group"] = site["Site ID / Google Group"].lower()
+
                         if not site["Organization ID"]:
                             _logger.debug("skipping {0}, invalid org id".format(site["Site ID / Google Group"]))
                             continue
@@ -162,7 +165,7 @@ class HPOGen(BaseGen):
         for site in self._hpo_sites:
             if (
                 site_id.lower() == site["Site ID / Google Group"].lower()
-                or "hpo-site-{0}".format(site_id).lower() == site["Site ID / Google Group"].lower()
+                or "hpo-site-{0}".format(site_id).lower() == site["Site ID / Google Group"]
             ):
                 # find related HPO
                 for awardee in self._hpo_awardees:
