@@ -12,7 +12,7 @@ THIRTYONE_DAYS = datetime.now() - timedelta(days=31)
 def check_enrollment(create_ticket=True):
     """For members who are listed as full-member,
      check that necessary requirements are valid"""
-    members = get_last_30_days()
+    members = get_last_31_days()
     results = None
     if members:
         results = check_requirements(members)
@@ -27,7 +27,7 @@ def check_enrollment(create_ticket=True):
         return True
 
 
-def get_last_30_days():
+def get_last_31_days():
     """Gets members with full-member (core) status from last 30 days.
     return: members"""
     with PS_DAO.session() as session:
