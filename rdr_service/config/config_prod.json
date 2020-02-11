@@ -79,7 +79,9 @@
           "35.169.121.55",
           "174.64.55.14/32",
           "52.38.207.188",
-          "34.214.147.89"
+          "34.214.147.89",
+          "52.5.52.224",
+          "34.224.248.155"
         ],
         "ip6": []
       }
@@ -139,10 +141,23 @@
           ]
       }
     },
+    "awardee-arizona@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+      "roles": [
+        "awardee_sa"
+      ],
+      "awardee": "ARIZONA",
+      "whitelisted_ip_ranges": {
+        "ip4": [
+          "206.213.43.100"
+        ]
+      }
+    },
     "awardee-seec@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
-      "roles": ["awardee_sa"],
+      "roles": [
+        "awardee_sa"
+      ],
       "awardee": "SEEC",
-      "whitelisted_ip_ranges" : {
+      "whitelisted_ip_ranges": {
         "ip4": [
           "129.171.150.187",
           "129.171.150.141",
