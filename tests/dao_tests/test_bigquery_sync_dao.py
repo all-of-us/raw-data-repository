@@ -118,12 +118,15 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
         for k, default_value in (
             ('physicalMeasurementsId', 1),
             ('participantId', self.participant_id),
-            ('resource', self.pm_json),
+
             ('createdSiteId', self.site.siteId),
             ('finalizedSiteId', self.site.siteId)):
             if k not in kwargs:
                 kwargs[k] = default_value
-        return PhysicalMeasurements(**kwargs)
+
+        record = PhysicalMeasurements(**kwargs)
+        PhysicalMeasurementsDao.store_record_fhir_doc(record, self.pm_json)
+        return record
 
     def _make_biobank_order(self, **kwargs):
         """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
