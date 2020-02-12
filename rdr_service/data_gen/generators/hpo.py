@@ -39,16 +39,20 @@ class HPOGen(BaseGen):
 
     def _load_hpo_data(self):
         """
-    Load the awardees.csv and sites.csv files once
-    """
+        Load the awardees.csv and sites.csv files once
+        """
         if len(self._hpo_awardees) > 0:
             return
 
-        project = gcp_get_project_short_name().upper()
-        if project not in ['PROD', 'STABLE', 'STAGING']:
-            project = 'TEST'
-
         paths = ["data", "../data"]
+        if 'UNITTEST_FLAG' in os.environ:
+            paths = ["tests/test-data/fixtures"]
+            project = 'TEST'
+        else:
+            project = gcp_get_project_short_name().upper()
+            if project not in ['PROD', 'STABLE', 'STAGING']:
+                project = 'TEST'
+
         for path in paths:
             if os.path.exists(os.path.join(os.curdir, path)):
                 awardee_file = os.path.join(os.curdir, path, "awardees.csv")
@@ -63,6 +67,9 @@ class HPOGen(BaseGen):
                     sites = list(csv.DictReader(handle))
                     self._hpo_sites = list()
                     for site in sites:
+
+                        # site Ids in the CSV file are mixed-case.
+                        site["Site ID / Google Group"] = site["Site ID / Google Group"].lower()
 
                         if not site["Organization ID"]:
                             _logger.debug("skipping {0}, invalid org id".format(site["Site ID / Google Group"]))
@@ -157,8 +164,8 @@ class HPOGen(BaseGen):
 
         for site in self._hpo_sites:
             if (
-                site_id == site["Site ID / Google Group"]
-                or "hpo-site-{0}".format(site_id) == site["Site ID / Google Group"]
+                site_id.lower() == site["Site ID / Google Group"].lower()
+                or "hpo-site-{0}".format(site_id).lower() == site["Site ID / Google Group"]
             ):
                 # find related HPO
                 for awardee in self._hpo_awardees:
