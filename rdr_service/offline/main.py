@@ -105,7 +105,7 @@ def import_biobank_samples():
     # offline service uses basic scaling with has no deadline.
     logging.info("Starting samples import.")
     written, timestamp = biobank_samples_pipeline.upsert_from_latest_csv()
-    logging.info("Import complete (%d written), generating report.", written)
+    logging.info("Import complete %(written)d, generating report.", written)
     # waiting 30 secs for the replica DB synchronization
     time.sleep(30)
     logging.info("Generating reconciliation report.")

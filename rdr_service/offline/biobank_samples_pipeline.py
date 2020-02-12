@@ -12,7 +12,7 @@ import os
 import pytz
 
 from rdr_service import clock, config
-from rdr_service.api_util import open_cloud_file, list_blobs
+from rdr_service.api_util import list_blobs, open_cloud_file
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.code_constants import PPI_SYSTEM, RACE_AIAN_CODE, RACE_QUESTION_CODE
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
@@ -382,6 +382,7 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
     for report_path, report_predicate in zip(report_paths, report_predicates):
         dv_filter = 1 if report_path == path_missing else 0
         with exporter.open_writer(report_path, report_predicate) as report_writer:
+            logging.info(f"Writing {report_path} report.")
             exporter.run_export_with_writer(
                 report_writer,
                 replace_isodate(_RECONCILIATION_REPORT_SQL),
@@ -397,6 +398,7 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
                 },
                 backup=True,
             )
+            logging.info(f"Completed {report_path} report.")
 
     # Now generate the withdrawal report, within the past n days.
     exporter.run_export(
@@ -410,6 +412,7 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
         },
         backup=True,
     )
+    logging.info(f"Completed {path_withdrawals} report.")
 
     # Generate the missing salivary report, within last n days (10 1/20)
     if report_type != "monthly" and path_salivary_missing is not None:
@@ -422,6 +425,7 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
             },
             backup=True,
         )
+    logging.info("Completed monthly reconciliation report.")
 
 
 # Indexes from the SQL query below; used in predicates.
@@ -501,34 +505,34 @@ def _get_status_flag_sql():
         WHEN biobank_order.order_status = {cancelled} THEN 'cancelled'
         WHEN biobank_order.order_status = {unset} AND biobank_order.restored_time IS NOT NULL
           THEN 'restored'
-        ELSE NULL  
+        ELSE NULL
       END edited_cancelled_restored_status_flag,
       CASE
         WHEN biobank_order.order_status = {amended} THEN biobank_order.amended_username
         WHEN biobank_order.order_status = {cancelled} THEN biobank_order.cancelled_username
         WHEN biobank_order.order_status = {unset} AND biobank_order.restored_time IS NOT NULL
           THEN biobank_order.restored_username
-        ELSE NULL  
+        ELSE NULL
       END edited_cancelled_restored_name,
       CASE
         WHEN biobank_order.order_status = {amended} THEN amended_site.site_name
         WHEN biobank_order.order_status = {cancelled} THEN cancelled_site.site_name
         WHEN biobank_order.order_status = {unset} AND biobank_order.restored_time IS NOT NULL
           THEN restored_site.site_name
-        ELSE NULL  
+        ELSE NULL
       END edited_cancelled_restored_site_name,
       CASE
         WHEN biobank_order.order_status = {amended} THEN biobank_order.amended_time
         WHEN biobank_order.order_status = {cancelled} THEN biobank_order.cancelled_time
         WHEN biobank_order.order_status = {unset} AND biobank_order.restored_time IS NOT NULL
           THEN biobank_order.restored_time
-        ELSE NULL  
+        ELSE NULL
       END edited_cancelled_restored_site_time,
       CASE
         WHEN biobank_order.order_status = {amended} OR biobank_order.order_status = {cancelled} OR
              (biobank_order.order_status = {unset} AND biobank_order.restored_time IS NOT NULL)
           THEN biobank_order.amended_reason
-        ELSE NULL  
+        ELSE NULL
       END edited_cancelled_restored_site_reason
   """.format(
         amended=int(BiobankOrderStatus.AMENDED),
@@ -654,8 +658,8 @@ _RECONCILIATION_REPORT_SQL = (
       participant.withdrawal_time IS NULL
       AND NOT EXISTS (
         SELECT 0 FROM participant
-        WHERE participant.participant_id = dv_order.participant_id          
-      )     
+        WHERE participant.participant_id = dv_order.participant_id
+      )
     UNION ALL
     SELECT
       biobank_stored_sample.biobank_id raw_biobank_id,
@@ -702,27 +706,27 @@ _RECONCILIATION_REPORT_SQL = (
     ) AND NOT EXISTS (
       SELECT 0 FROM participant
        WHERE participant.biobank_id = biobank_stored_sample.biobank_id
-         AND participant.withdrawal_time IS NOT NULL)  
-    AND 
+         AND participant.withdrawal_time IS NOT NULL)
+    AND
         (
-            CASE 
-                WHEN 1 = :dv_order_filter THEN 
+            CASE
+                WHEN 1 = :dv_order_filter THEN
                     biobank_stored_sample.biobank_id NOT IN (
-                    SELECT p.biobank_id 
+                    SELECT p.biobank_id
                      FROM participant p
-                        JOIN biobank_dv_order dv 
+                        JOIN biobank_dv_order dv
                         ON p.participant_id = dv.participant_id)
                 ELSE TRUE
             END
         )
-  ) reconciled  
-  WHERE (reconciled.collected IS NOT NULL 
-    AND reconciled.confirmed IS NOT NULL 
-    AND reconciled.collected >= reconciled.confirmed 
+  ) reconciled
+  WHERE (reconciled.collected IS NOT NULL
+    AND reconciled.confirmed IS NOT NULL
+    AND reconciled.collected >= reconciled.confirmed
     AND reconciled.collected >= :n_days_ago)
-  OR (reconciled.collected IS NOT NULL 
-    AND reconciled.confirmed IS NOT NULL 
-    AND reconciled.confirmed >= reconciled.collected 
+  OR (reconciled.collected IS NOT NULL
+    AND reconciled.confirmed IS NOT NULL
+    AND reconciled.confirmed >= reconciled.collected
     AND reconciled.confirmed >= :n_days_ago)
   OR (reconciled.collected IS NULL AND reconciled.confirmed  IS NOT NULL AND reconciled.confirmed >= :n_days_ago)
   OR (reconciled.collected IS NOT NULL AND reconciled.confirmed  IS NULL AND reconciled.collected >= :n_days_ago)
