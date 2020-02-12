@@ -524,6 +524,7 @@ class GenomicJob(messages.Enum):
     CVL_RECONCILIATION_REPORT = 5
     CREATE_CVL_MANIFESTS = 6
     BB_RETURN_MANIFEST = 7
+    BB_GC_MANIFEST = 8
 
 
 class GenomicSubProcessStatus(messages.Enum):

@@ -1171,6 +1171,15 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
 
+    def test_gc_manifest_ingestion_workflow(self):
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+                                                array_participants=range(1, 4))
+
+        genomic_pipeline.genomic_centers_manifest_workflow()
+
+        # Test the end-to-end result code
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
+
     def test_cvl_reconciliation_report_end_to_end(self):
         # Create fake genomic dataset and reconcile the sequencing data
         # Create the fake ingested data
