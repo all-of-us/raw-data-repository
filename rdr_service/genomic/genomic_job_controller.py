@@ -141,8 +141,7 @@ class GenomicJobController:
 
     def run_genomic_centers_manifest_workflow(self):
         """
-        Uses ingester to ingest Genomic Manifest files.
-        Currently leaves files in bucket.
+        Uses GenomicFileIngester to ingest Genomic Manifest files.
         """
         try:
             for gc_bucket_name in self.bucket_name_list:

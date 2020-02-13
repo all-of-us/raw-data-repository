@@ -10,8 +10,8 @@ max_requests_jitter = 50
 
 if os.getenv('GAE_ENV', '').startswith('standard'):
     _port = os.environ.get('PORT', 8081)
-    workers = multiprocessing.cpu_count() * 2 + 1
-    threads = multiprocessing.cpu_count() * 2 + 1
+    workers = multiprocessing.cpu_count() * 2
+    threads = multiprocessing.cpu_count() * 2
 
 bind = "0.0.0.0:{0}".format(_port)
 
