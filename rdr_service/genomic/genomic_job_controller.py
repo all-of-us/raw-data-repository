@@ -142,14 +142,14 @@ class GenomicJobController:
     def run_genomic_centers_manifest_workflow(self):
         """
         Uses ingester to ingest Genomic Manifest files.
-        Leaves files in bucket.
+        Currently leaves files in bucket.
         """
         try:
-            for genomic_center in self.bucket_name_list:
+            for gc_bucket_name in self.bucket_name_list:
                 self.ingester = GenomicFileIngester(job_id=self.job_id,
                                                     job_run_id=self.job_run.id,
-                                                    bucket=self.bucket_name,
-                                                    archive_folder=None,
+                                                    bucket=gc_bucket_name,
+                                                    archive_folder=self.archive_folder_name,
                                                     sub_folder=self.sub_folder_name)
                 self.subprocess_results.add(
                     self.ingester.generate_file_queue_and_do_ingestion()
@@ -218,9 +218,9 @@ class GenomicJobController:
         sub-process results
         :return: result code
         """
-        # Any Validation Failure = a job result of an error
-        yay = GenomicSubProcessResult.SUCCESS
-        return yay if all([r == yay for r in self.subprocess_results]) \
+        # Any Validation Failure = a job result of an error, no files is OK
+        yay = (GenomicSubProcessResult.SUCCESS, GenomicSubProcessResult.NO_FILES)
+        return yay[0] if all([r in yay for r in self.subprocess_results]) \
             else GenomicSubProcessResult.ERROR
 
     def _get_last_successful_run_time(self):

@@ -85,9 +85,11 @@ class GenomicFileIngester:
         self.file_processed_dao = GenomicFileProcessedDao()
         self.member_dao = GenomicSetMemberDao()
 
+        # TODO: Part of downstream tickets to clarify these
         self.file_name_conventions = {
             GenomicJob.METRICS_INGESTION: 'datamanifest',
             GenomicJob.BB_RETURN_MANIFEST: 'manifest-result',
+            GenomicJob.BB_GC_MANIFEST: 'gc-manifest',
         }
 
     def generate_file_processing_queue(self):
@@ -172,6 +174,18 @@ class GenomicFileIngester:
             logging.info("Ingesting Manifest Result Files...")
             return self._ingest_bb_return_manifest()
 
+        if self.job_id == GenomicJob.BB_GC_MANIFEST:
+            logging.info("Ingesting GC Manifest...")
+            data_to_ingest = self._retrieve_data_from_path(self.file_obj.filePath)
+            if data_to_ingest == GenomicSubProcessResult.ERROR:
+                return GenomicSubProcessResult.ERROR
+            elif data_to_ingest:
+                logging.info(f'Ingesting GC manifest data from {self.file_obj.fileName}')
+                return self._ingest_gc_manifest(data_to_ingest)
+            else:
+                logging.info("No data to ingest.")
+                return GenomicSubProcessResult.NO_FILES
+
         if self.job_id == GenomicJob.METRICS_INGESTION:
             data_to_ingest = self._retrieve_data_from_path(self.file_obj.filePath)
             if data_to_ingest == GenomicSubProcessResult.ERROR:
@@ -200,6 +214,23 @@ class GenomicFileIngester:
             genomic_set_id = _get_genomic_set_id_from_filename(self.file_obj.fileName)
             with open_cloud_file(self.file_obj.filePath) as csv_file:
                 update_package_id_from_manifest_result_file(genomic_set_id, csv_file)
+            return GenomicSubProcessResult.SUCCESS
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR
+
+    def _ingest_gc_manifest(self, data):
+        """
+        Updates the GenomicSetMember with GC Manifest data (just manifest
+        :param data:
+        :return: result code
+        """
+        try:
+            for row in data['rows']:
+                sample_id = row['Biobankid Sampleid'].split('_')[-1]
+                member = self.member_dao.get_member_from_sample_id(sample_id)
+                self.member_dao.update_member_job_run_id(member,
+                                                         self.job_run_id,
+                                                         'reconcileGCManifestJobRunId')
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
@@ -418,7 +449,7 @@ class GenomicReconciler:
                 )
                 results.append(
                     self.member_dao.update_member_job_run_id(
-                        member, self.run_id, 'reconcileManifestJobRunId')
+                        member, self.run_id, 'reconcileMetricsBBManifestJobRunId')
                 )
             return GenomicSubProcessResult.SUCCESS \
                 if GenomicSubProcessResult.ERROR not in results \
