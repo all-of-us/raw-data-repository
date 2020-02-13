@@ -99,8 +99,36 @@ class ParticipantCountsOverTimeService(BaseDao):
                             '(enrollment_status_member_time)')
             session.execute('CREATE INDEX idx_sample_time ON metrics_tmp_participant '
                             '(enrollment_status_core_stored_sample_time)')
-            session.execute('CREATE INDEX idx_participant_origin ON metrics_tmp_participant '
-                            '(participant_origin)')
+            session.execute('CREATE INDEX idx_participant_origin ON metrics_tmp_participant (participant_origin)')
+            session.execute('CREATE INDEX idx_date_of_birth ON metrics_tmp_participant (date_of_birth)')
+            session.execute('CREATE INDEX idx_gender_identity ON metrics_tmp_participant (gender_identity)')
+            session.execute('CREATE INDEX idx_state_id ON metrics_tmp_participant (state_id)')
+            session.execute('CREATE INDEX idx_questionnaire_on_the_basics_time ON metrics_tmp_participant '
+                            '(questionnaire_on_the_basics_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_overall_health_time ON metrics_tmp_participant '
+                            '(questionnaire_on_overall_health_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_lifestyle_time ON metrics_tmp_participant '
+                            '(questionnaire_on_lifestyle_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_healthcare_access_time ON metrics_tmp_participant '
+                            '(questionnaire_on_healthcare_access_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_medical_history_time ON metrics_tmp_participant '
+                            '(questionnaire_on_medical_history_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_medications_time ON metrics_tmp_participant '
+                            '(questionnaire_on_medications_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_family_health_time ON metrics_tmp_participant '
+                            '(questionnaire_on_family_health_time)')
+            session.execute('CREATE INDEX idx_physical_measurements_time ON metrics_tmp_participant '
+                            '(physical_measurements_time)')
+            session.execute('CREATE INDEX idx_sample_status_1ed10_time ON metrics_tmp_participant '
+                            '(sample_status_1ed10_time)')
+            session.execute('CREATE INDEX idx_sample_status_2ed10_time ON metrics_tmp_participant '
+                            '(sample_status_2ed10_time)')
+            session.execute('CREATE INDEX idx_sample_status_1ed04_time ON metrics_tmp_participant '
+                            '(sample_status_1ed04_time)')
+            session.execute('CREATE INDEX idx_sample_status_1sal_time ON metrics_tmp_participant '
+                            '(sample_status_1sal_time)')
+            session.execute('CREATE INDEX idx_sample_status_1sal2_time ON metrics_tmp_participant '
+                            '(sample_status_1sal2_time)')
 
             session.execute(participant_sql, params)
 
@@ -198,7 +226,7 @@ class ParticipantCountsOverTimeService(BaseDao):
             "awardee_ids": awardee_ids,
         }
         filters_sql_ps = self.get_facets_sql(facets, stratification)
-        filters_sql_p = self.get_facets_sql(facets, stratification, table_prefix="p")
+        filters_sql_p = self.get_facets_sql(facets, stratification, participant_origins, table_prefix="p")
 
         if str(history) == "TRUE" and stratification == Stratifications.TOTAL:
             dao = MetricsEnrollmentStatusCacheDao(version=version)
@@ -288,11 +316,12 @@ class ParticipantCountsOverTimeService(BaseDao):
 
         return results_by_date
 
-    def get_facets_sql(self, facets, stratification, table_prefix="ps"):
+    def get_facets_sql(self, facets, stratification, participant_origins=None, table_prefix="ps"):
         """Helper function to transform facets/filters selection into SQL
 
     :param facets: Object representing facets and filters to apply to query results
     :param stratification: How to stratify (layer) results, as in a stacked bar chart
+    :param participant_origins: indicate array of participant_origins
     :param table_prefix: Either 'ps' (for participant_summary) or 'p' (for participant)
     :return: SQL for 'WHERE' clause, reflecting filters specified in UI
     """
@@ -360,6 +389,10 @@ class ParticipantCountsOverTimeService(BaseDao):
             "not_withdrawn": WithdrawalStatus.NOT_WITHDRAWN,
         }
         facets_sql += " AND p.is_ghost_id IS NOT TRUE "
+
+        if participant_origins:
+            facets_sql += " AND p.participant_origin in ({}) "\
+                .format(",".join(["'" + origin + "'" for origin in participant_origins]))
 
         return facets_sql
 

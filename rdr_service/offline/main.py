@@ -7,29 +7,26 @@ import time
 import traceback
 from datetime import datetime
 
-from flask import Flask, request, got_request_exception, Response
-from rdr_service.config import GAE_PROJECT  # pylint: disable=unused-import
+from flask import Flask, Response, got_request_exception, request
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import app_util, config
 from rdr_service.api_util import EXPORTER
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
-from rdr_service.dao.metrics_dao import MetricsVersionDao  # pylint: disable=unused-import
 from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import rebuild_bigquery_handler, sync_bigquery_handler
+from rdr_service.offline.enrollment_check import check_enrollment
 from rdr_service.offline.exclude_ghost_participants import mark_ghost_participants
-from rdr_service.offline.metrics_export import MetricsExport  # pylint: disable=unused-import
 from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.offline.participant_maint import skew_duplicate_last_modified
 from rdr_service.offline.patient_status_backfill import backfill_patient_status
 from rdr_service.offline.public_metrics_export import LIVE_METRIC_SET_ID, PublicMetricsExport
 from rdr_service.offline.sa_key_remove import delete_service_account_keys
 from rdr_service.offline.table_exporter import TableExporter
-
-from rdr_service.services.gcp_logging import flask_restful_log_exception_error, end_request_logging, \
-    begin_request_logging
+from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
+    flask_restful_log_exception_error
 
 PREFIX = "/offline/"
 
@@ -108,7 +105,7 @@ def import_biobank_samples():
     # offline service uses basic scaling with has no deadline.
     logging.info("Starting samples import.")
     written, timestamp = biobank_samples_pipeline.upsert_from_latest_csv()
-    logging.info("Import complete (%d written), generating report.", written)
+    logging.info("Import complete %(written)d, generating report.", written)
     # waiting 30 secs for the replica DB synchronization
     time.sleep(30)
     logging.info("Generating reconciliation report.")
@@ -252,9 +249,24 @@ def _stop():
             pass
     return '{ "success": "true" }'
 
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def check_enrollment_status():
+    check_enrollment()
+    return '{ "success": "true" }'
+
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     offline_app = Flask(__name__)
+
+    offline_app.add_url_rule(
+        PREFIX + "EnrollmentStatusCheck",
+        endpoint="enrollmentStatusCheck",
+        view_func=check_enrollment_status,
+        methods=["GET"],
+    )
 
     offline_app.add_url_rule(
         PREFIX + "BiobankSamplesImport",
