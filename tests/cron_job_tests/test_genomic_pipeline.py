@@ -789,8 +789,8 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.biobankOrderId = biobank_order_id
         genomic_set_member.consentForRor = consent_for_ror
         genomic_set_member.sequencingFileName = sequencing_filename
-        genomic_set_member.reconcileManifestJobRunId = recon_manifest_job_id
-        genomic_set_member.reconcileSequencingJobRunId = recon_sequencing_job_id
+        genomic_set_member.reconcileMetricsBBManifestJobRunId = recon_manifest_job_id
+        genomic_set_member.reconcileMetricsSequencingJobRunId = recon_sequencing_job_id
         genomic_set_member.reconcileCvlJobRunId = recon_cvl_job_id
         genomic_set_member.cvlManifestWgsJobRunId = cvl_manifest_wgs_job_id
         genomic_set_member.cvlManifestArrJobRunId = cvl_manifest_arr_job_id
@@ -908,7 +908,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the gc_metrics were updated with reconciliation data
         self.assertEqual(test_set_member.biobankId, gc_metric_record.biobankId)
         self.assertEqual(test_set_member.id, gc_metric_record.genomicSetMemberId)
-        self.assertEqual(2, test_set_member.reconcileManifestJobRunId)
+        self.assertEqual(2, test_set_member.reconcileMetricsBBManifestJobRunId)
 
         run_obj = self.job_run_dao.get(2)
 
@@ -939,7 +939,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the gc_metrics were updated with reconciliation data
         self.assertEqual('GC_sequencing_T2.txt'
                          , gc_record.sequencingFileName)
-        self.assertEqual(2, gc_record.reconcileSequencingJobRunId)
+        self.assertEqual(2, gc_record.reconcileMetricsSequencingJobRunId)
 
         # Test files were moved to archive OK
         bucket_list = list(list_blobs('/' + bucket_name))
@@ -1167,6 +1167,43 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertNotIn(files_processed[0].fileName, bucket_files)
         self.assertIn(files_processed[0].fileName, archive_files)
+
+        # Test the end-to-end result code
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
+
+    def test_gc_manifest_ingestion_workflow(self):
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+                                                array_participants=range(1, 4))
+
+        # Setup Test file
+        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-1.csv")
+
+        gc_manifest_filename = "GC-Manifest-Test-1-v1%s.csv" % self._naive_utc_to_naive_central(
+            clock.CLOCK.now()
+        ).strftime(genomic_set_file_handler.INPUT_CSV_TIME_FORMAT)
+
+        self._write_cloud_csv(
+            gc_manifest_filename,
+            gc_manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=_FAKE_GENOTYPING_FOLDER,
+        )
+
+        genomic_pipeline.genomic_centers_manifest_workflow()
+
+        # Test the data was ingested OK
+        member_1 = self.member_dao.get(1)
+        self.assertEqual(1, member_1.reconcileGCManifestJobRunId)
+
+        member_2 = self.member_dao.get(1)
+        self.assertEqual(1, member_2.reconcileGCManifestJobRunId)
+
+        member_3 = self.member_dao.get(3)
+        self.assertNotEqual(1, member_3.reconcileGCManifestJobRunId)
+
+        # Test file processing queue
+        files_processed = self.file_processed_dao.get_all()
+        self.assertEqual(len(files_processed), 1)
 
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)

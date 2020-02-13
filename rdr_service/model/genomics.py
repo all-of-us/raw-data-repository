@@ -94,12 +94,17 @@ class GenomicSetMember(Base):
                                 String(128), nullable=True)
 
     # Reconciliation and Manifest columns
-    reconcileManifestJobRunId = Column('reconcile_manifest_job_run_id',
-                                       Integer, ForeignKey("genomic_job_run.id"),
-                                       nullable=True)
-    reconcileSequencingJobRunId = Column('reconcile_sequencing_job_run_id',
+    # Reconciled to BB Manifest
+    reconcileMetricsBBManifestJobRunId = Column('reconcile_metrics_bb_manifest_job_run_id',
+                                                Integer, ForeignKey("genomic_job_run.id"),
+                                                nullable=True)
+    # Reconciled to GC manifest
+    reconcileGCManifestJobRunId = Column('reconcile_gc_manifest_job_run_id',
                                          Integer, ForeignKey("genomic_job_run.id"),
                                          nullable=True)
+    reconcileMetricsSequencingJobRunId = Column('reconcile_metrics_sequencing_job_run_id',
+                                                Integer, ForeignKey("genomic_job_run.id"),
+                                                nullable=True)
     reconcileCvlJobRunId = Column('reconcile_cvl_job_run_id',
                                   Integer, ForeignKey("genomic_job_run.id"),
                                   nullable=True)

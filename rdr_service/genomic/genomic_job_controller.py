@@ -10,8 +10,8 @@ from rdr_service import clock
 from rdr_service.config import (
     GENOMIC_GC_METRICS_BUCKET_NAME,
     GENOMIC_GC_PROCESSED_FOLDER_NAME,
-    getSetting
-)
+    getSetting,
+    getSettingList)
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
 )
@@ -34,13 +34,15 @@ class GenomicJobController:
     def __init__(self, job_id,
                  bucket_name=GENOMIC_GC_METRICS_BUCKET_NAME,
                  sub_folder_name=None,
-                 archive_folder_name=GENOMIC_GC_PROCESSED_FOLDER_NAME
+                 archive_folder_name=GENOMIC_GC_PROCESSED_FOLDER_NAME,
+                 bucket_name_list=None
                  ):
 
         self.job_id = job_id
         self.job_run = None
-        self.bucket_name = getSetting(bucket_name)
-        self.sub_folder_name = getSetting(sub_folder_name) if sub_folder_name else None
+        self.bucket_name = getSetting(bucket_name, default="")
+        self.sub_folder_name = getSetting(sub_folder_name, default="")
+        self.bucket_name_list = getSettingList(bucket_name_list, default=[])
         self.archive_folder_name = archive_folder_name
 
         self.subprocess_results = set()
@@ -133,8 +135,25 @@ class GenomicJobController:
                                             archive_folder=self.archive_folder_name,
                                             sub_folder=self.sub_folder_name)
         try:
-            logging.info('Running Biobank Return Manifest Workflow.')
             self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
+    def run_genomic_centers_manifest_workflow(self):
+        """
+        Uses GenomicFileIngester to ingest Genomic Manifest files.
+        """
+        try:
+            for gc_bucket_name in self.bucket_name_list:
+                self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                                    job_run_id=self.job_run.id,
+                                                    bucket=gc_bucket_name,
+                                                    archive_folder=self.archive_folder_name,
+                                                    sub_folder=self.sub_folder_name)
+                self.subprocess_results.add(
+                    self.ingester.generate_file_queue_and_do_ingestion()
+                )
+            self.job_result = self._aggregate_run_results()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
@@ -198,15 +217,10 @@ class GenomicJobController:
         sub-process results
         :return: result code
         """
-        # Any Validation Failure = a job result of an error
-        if GenomicSubProcessResult.ERROR in self.subprocess_results:
-            return GenomicSubProcessResult.ERROR
-        if GenomicSubProcessResult.INVALID_FILE_NAME in self.subprocess_results:
-            return GenomicSubProcessResult.ERROR
-        if GenomicSubProcessResult.INVALID_FILE_STRUCTURE in self.subprocess_results:
-            return GenomicSubProcessResult.ERROR
-
-        return GenomicSubProcessResult.SUCCESS
+        # Any Validation Failure = a job result of an error, no files is OK
+        yay = (GenomicSubProcessResult.SUCCESS, GenomicSubProcessResult.NO_FILES)
+        return yay[0] if all([r in yay for r in self.subprocess_results]) \
+            else GenomicSubProcessResult.ERROR
 
     def _get_last_successful_run_time(self):
         """Return last successful run's starttime from `genomics_job_runs`"""

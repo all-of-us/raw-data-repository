@@ -134,11 +134,12 @@ class GenomicSetMemberDao(UpdatableDao):
 
     def __init__(self):
         super(GenomicSetMemberDao, self).__init__(GenomicSetMember, order_by_ending=["id"])
-        self.valid_job_id_fields = ('reconcileManifestJobRunId',
-                                    'reconcileSequencingJobRunId',
+        self.valid_job_id_fields = ('reconcileMetricsBBManifestJobRunId',
+                                    'reconcileMetricsSequencingJobRunId',
                                     'reconcileCvlJobRunId',
                                     'cvlManifestWgsJobRunId',
-                                    'cvlManifestArrJobRunId')
+                                    'cvlManifestArrJobRunId',
+                                    'reconcileGCManifestJobRunId',)
 
     def get_id(self, obj):
         return obj.id
@@ -351,7 +352,7 @@ class GenomicSetMemberDao(UpdatableDao):
         :param job_run_id:
         :return: query result or result code of error
         """
-        member.reconcileSequencingJobRunId = job_run_id
+        member.reconcileMetricsSequencingJobRunId = job_run_id
         member.sequencingFileName = filename
         try:
             return self.update(member)

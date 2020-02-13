@@ -60,6 +60,19 @@ def biobank_return_manifest_workflow():
         controller.run_biobank_return_manifest_workflow()
 
 
+def genomic_centers_manifest_workflow():
+    """
+    Entrypoint for Biobank to Genomic Centers Manifest Ingestion
+    (really a reconciliation)
+    """
+    with GenomicJobController(GenomicJob.BB_GC_MANIFEST,
+                              bucket_name=None,
+                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
+                              sub_folder_name=config.GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME
+                              ) as controller:
+        controller.run_genomic_centers_manifest_workflow()
+
+
 def ingest_genomic_centers_metrics_files():
     """
     Entrypoint for GC Metrics File Ingestion subprocess of genomic_pipeline.
