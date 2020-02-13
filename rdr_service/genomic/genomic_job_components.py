@@ -220,7 +220,7 @@ class GenomicFileIngester:
 
     def _ingest_gc_manifest(self, data):
         """
-        Updates the GenomicSetMember with GC Manifest data (just manifest
+        Updates the GenomicSetMember with GC Manifest data (just manifest)
         :param data:
         :return: result code
         """
