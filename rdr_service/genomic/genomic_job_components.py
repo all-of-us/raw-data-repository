@@ -327,6 +327,7 @@ class GenomicFileValidator:
             ),
         }
         self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bi', 'rdr')
+        self.VALID_CVL_FACILITIES = ('color', 'uw', 'baylor')
 
     def validate_ingestion_file(self, filename, data_to_validate):
         """
@@ -395,10 +396,23 @@ class GenomicFileValidator:
                           filename_components[3]) is not None
             )
 
+        def cvl_sec_val_manifest_name_rule(fn):
+            """Biobank to GCs manifest name rule"""
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
+            return (
+                len(filename_components) == 4 and
+                filename_components[0] in self.VALID_CVL_FACILITIES and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'cvl' and
+                re.search(r"pkg-[0-9]{4}-[0-9]{5,}\.csv$",
+                          filename_components[3]) is not None
+            )
+
         name_rules = {
             GenomicJob.BB_RETURN_MANIFEST: bb_result_name_rule,
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
             GenomicJob.BB_GC_MANIFEST: bb_to_gc_manifest_name_rule,
+            GenomicJob.CVL_SEC_VAL_MAN: cvl_sec_val_manifest_name_rule,
         }
 
         return name_rules[self.job_id](filename)
