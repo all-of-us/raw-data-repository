@@ -355,9 +355,8 @@ class GenomicFileValidator:
     def validate_filename(self, filename):
         """
         Applies a naming rule to an arbitrary filename
-        Naming rules determined by Genomic Job ID
-        Naming rules are defined as functions and
-        Mapped to a Genomic Job in naming_rules dict.
+        Naming rules are defined as local functions and
+        Mapped to a Genomic Job ID in naming_rules dict.
         :param filename: passed to each name rule as 'fn'
         :return: boolean
         """
@@ -397,7 +396,7 @@ class GenomicFileValidator:
             )
 
         def cvl_sec_val_manifest_name_rule(fn):
-            """Biobank to GCs manifest name rule"""
+            """CVL secondary validation manifest name rule"""
             filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
                 len(filename_components) == 4 and
