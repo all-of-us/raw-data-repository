@@ -9,8 +9,6 @@ import re
 import datetime
 from collections import deque, namedtuple
 
-from sqlalchemy import or_
-
 from rdr_service.api_util import (
     open_cloud_file,
     copy_cloud_file,
@@ -31,7 +29,9 @@ from rdr_service.participant_enums import (
     GenomicSetStatus,
     GenomicManifestTypes,
     GenomicJob,
-    GenomicSubProcessStatus)
+    GenomicSubProcessStatus,
+    Race
+)
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,
@@ -726,27 +726,58 @@ class GenomicBiobankSamplesCoupler:
         :return: list of tuples (bid, pid, biobank_identifier.value, collected_site_id)
         """
         # TODO: add Genomic RoR Consent when that Code is added
+        _new_samples_sql = """
+        SELECT DISTINCT
+          ss.biobank_id,
+          p.participant_id,
+          o.biobank_order_id,
+          o.collected_site_id,
+          ss.test,
+          ss.biobank_stored_sample_id,
+          CASE
+            WHEN p.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
+          END as not_withdrawn, 
+          CASE
+            WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
+          END as general_consent_given,
+          CASE
+            WHEN ps.consent_for_study_enrollment_authored > :consent_cutoff_param THEN 1 ELSE 0
+          END as general_consent_time_valid,
+          CASE
+            WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param*18 DAY) THEN 1 ELSE 0
+          END AS valid_age,
+          CASE
+            WHEN TRUE THEN 0 ELSE 0
+          END AS gror_consent,
+          CASE
+            WHEN ps.race = :ai_param THEN 1 ELSE 0
+          END AS ai_an_flag
+        FROM
+            biobank_stored_sample ss
+            JOIN participant p ON ss.biobank_id = p.biobank_id
+            JOIN biobank_order_identifier oi ON ss.biobank_order_identifier = oi.value
+            JOIN biobank_order o ON oi.biobank_order_id = o.biobank_order_id
+            JOIN participant_summary ps ON ps.participant_id = p.participant_id
+        WHERE TRUE
+            AND (
+                    ps.sample_status_1ed04 = :sample_status_param
+                    OR                    
+                    ps.sample_status_1sal2 = :sample_status_param
+                )
+            AND ss.test IN ("1ED04", "1SAL2")
+            # AND ss.rdr_created > :from_date_param
+        """
+        params = {
+            "sample_status_param": SampleStatus.RECEIVED.__int__(),
+            "dob_param": GENOMIC_VALID_AGE,
+            "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
+            "consent_cutoff_param": GENOMIC_VALID_CONSENT_CUTOFF,
+            "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
+            "from_date_param": from_date,
+            "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
+        }
         with self.samples_dao.session() as session:
-            result = session.query(BiobankStoredSample.biobankId,
-                                   Participant.participantId,
-                                   BiobankOrder.biobankOrderId,
-                                   BiobankOrder.collectedSiteId,
-                                   BiobankStoredSample.biobankStoredSampleId).filter(
-                BiobankStoredSample.biobankId == Participant.biobankId,
-                BiobankOrder.biobankOrderId == BiobankOrderIdentifier.biobankOrderId,
-                BiobankStoredSample.biobankOrderIdentifier == BiobankOrderIdentifier.value,
-                Participant.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                ParticipantSummary.participantId == Participant.participantId,
-                ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
-                ParticipantSummary.consentForStudyEnrollmentTime > GENOMIC_VALID_CONSENT_CUTOFF,
-                ParticipantSummary.dateOfBirth < (
-                    datetime.datetime.now() - datetime.timedelta(days=GENOMIC_VALID_AGE*365)
-                ), or_(
-                    ParticipantSummary.sampleStatus1ED04 == SampleStatus.RECEIVED,
-                    ParticipantSummary.sampleStatus1SAL2 == SampleStatus.RECEIVED
-                ),
-                BiobankStoredSample.test.in_(("1ED04", "1SAL2")),
-                BiobankStoredSample.rdrCreated > from_date).all()
+            result = session.execute(_new_samples_sql, params).fetchall()
         return list(zip(*result))
 
     def _create_new_genomic_set(self):

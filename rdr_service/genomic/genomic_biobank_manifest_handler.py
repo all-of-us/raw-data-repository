@@ -133,15 +133,21 @@ def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=No
     export_sql = """
       SELECT 
         '' as value,
-        CONCAT(:prefix, biobank_id) as biobank_id,
         sample_id,
+        CONCAT(:prefix, biobank_id) as biobank_id,
         sex_at_birth,
         genome_type,
         CASE
           WHEN ny_flag IS TRUE THEN 'Y' ELSE 'N'
         END AS ny_flag,
         '' AS request_id,
-        '' AS package_id
+        '' AS package_id,
+        CASE
+          WHEN validation_status IS 1 THEN 'Y' ELSE 'N'
+        END AS validation_passed,
+        CASE
+          WHEN ai_an IS 1 THEN 'Y' ELSE 'N'
+        END AS ai_an
       FROM genomic_set_member
       WHERE genomic_set_id=:genomic_set_id
       ORDER BY id
