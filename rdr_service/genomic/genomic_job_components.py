@@ -685,7 +685,14 @@ class GenomicBiobankSamplesCoupler:
                                                                  "pids",
                                                                  "order_ids",
                                                                  "site_ids",
-                                                                 "sample_ids"])
+                                                                 "tests",
+                                                                 "sample_ids",
+                                                                 "not_withdrawn",
+                                                                 "gen_consents",
+                                                                 "consent_times",
+                                                                 "valid_ages",
+                                                                 "gror",
+                                                                 "ai_ans"])
             samples_meta = GenomicSampleMeta(*samples)
             logging.info(f'{self.__class__.__name__}: Processing new biobank_ids {samples_meta.bids}')
             new_genomic_set = self._create_new_genomic_set()
@@ -765,7 +772,7 @@ class GenomicBiobankSamplesCoupler:
                     ps.sample_status_1sal2 = :sample_status_param
                 )
             AND ss.test IN ("1ED04", "1SAL2")
-            # AND ss.rdr_created > :from_date_param
+            AND ss.rdr_created > :from_date_param
         """
         params = {
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
