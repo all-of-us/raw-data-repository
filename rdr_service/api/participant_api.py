@@ -14,7 +14,7 @@ class ParticipantApi(UpdatableApi):
     @app_util.auth_required(PTC_AND_HEALTHPRO)
     def get(self, p_id):
         # Make sure participant id is in the correct range of possible values.
-        if not _MIN_ID <= p_id <= _MAX_ID:
+        if isinstance(p_id, int) and not _MIN_ID <= p_id <= _MAX_ID:
             raise NotFound(f"Participant with ID {p_id} is not found.")
         return super().get(p_id)
 

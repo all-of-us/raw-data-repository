@@ -17,7 +17,7 @@ class ParticipantSummaryApi(BaseApi):
     @auth_required(PTC_HEALTHPRO_AWARDEE)
     def get(self, p_id=None):
         # Make sure participant id is in the correct range of possible values.
-        if not _MIN_ID <= p_id <= _MAX_ID:
+        if isinstance(p_id, int) and not _MIN_ID <= p_id <= _MAX_ID:
             raise NotFound(f"Participant with ID {p_id} is not found.")
         auth_awardee = None
         user_email, user_info = get_validated_user_info()
