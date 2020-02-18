@@ -123,6 +123,7 @@ class ParticipantSummary(Base):
     consentForGenomicsROR = Column("consent_for_genomics_ror", Enum(QuestionnaireStatus),
                                    default=QuestionnaireStatus.UNSET)
     consentForGenomicsRORTime = Column("consent_for_genomics_ror_time", UTCDateTime)
+    consentForGenomicsRORAuthored = Column("consent_for_genomics_ror_authored", UTCDateTime)
     consentForElectronicHealthRecords = Column(
         "consent_for_electronic_health_records", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
