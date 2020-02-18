@@ -40,7 +40,7 @@ class ParticipantApiTest(BaseTestCase):
         self.order = BiobankOrderDao()
 
     def test_participant_id_out_of_range(self):
-        response = self.send_get(f"Participant/P{12345678}", expected_status=404)
+        response = self.send_get("Participant/P12345678", expected_status=404)
         self.assertEqual(None, response)
 
         response = self.send_get("Participant/P1234567890", expected_status=404)
