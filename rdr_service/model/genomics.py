@@ -63,7 +63,7 @@ class GenomicSetMember(Base):
 
     genomicSetId = Column("genomic_set_id", Integer, ForeignKey("genomic_set.id"), nullable=False)
 
-    participantId = Column("participant_id", Integer, ForeignKey("participant.participant_id"), nullable=False)
+    participantId = Column("participant_id", Integer, nullable=True)
     nyFlag = Column("ny_flag", Integer, nullable=True)
 
     sexAtBirth = Column("sex_at_birth", String(20), nullable=True)
