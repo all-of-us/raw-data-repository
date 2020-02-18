@@ -126,6 +126,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             {
                 "questionnaireOnHealthcareAccess": "UNSET",
                 "enrollmentStatus": "INTERESTED",
+                "consentForGenomicsROR": "UNSET",
                 "samplesToIsolateDNA": "UNSET",
                 "consentForDvElectronicHealthRecordsSharing": "UNSET",
                 "questionnaireOnOverallHealth": "UNSET",
@@ -726,7 +727,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
         # participants with az_tucson still dont show up in sync.
         setup_participant(t5, self.az_provider_link)
         sync_again = self.send_get(sync_url[index:])
-        self.send_get(sort_by_lastmodified)
         self.assertEqual(len(sync_again["entry"]), 14)
 
     def test_get_summary_list_returns_total(self):
