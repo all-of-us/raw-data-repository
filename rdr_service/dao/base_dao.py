@@ -718,6 +718,12 @@ def save_raw_request_record(log: RequestsLog):
     Save the request payload and possibly link it to a table record
     :param log: RequestsLog dao object
     """
+    # Don't try to save values greater than the max value for a signed 32-bit integer.
+    if isinstance(log.participantId, int) and log.participantId > 0x7FFFFFFF:
+        log.participantId = 0
+    if isinstance(log.fpk_id, int) and log.fpk_id > 0x7FFFFFFF:
+        log.fpk_id = 0
+
     _dao = BaseDao(RequestsLog)
     with _dao.session() as session:
         session.add(log)

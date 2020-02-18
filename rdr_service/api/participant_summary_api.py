@@ -1,9 +1,10 @@
 from flask import request
-from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError
+from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 from rdr_service.api.base_api import BaseApi, make_sync_results_for_request
 from rdr_service.api_util import AWARDEE, DEV_MAIL, PTC_HEALTHPRO_AWARDEE
 from rdr_service.app_util import auth_required, get_validated_user_info
+from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -15,6 +16,9 @@ class ParticipantSummaryApi(BaseApi):
 
     @auth_required(PTC_HEALTHPRO_AWARDEE)
     def get(self, p_id=None):
+        # Make sure participant id is in the correct range of possible values.
+        if not _MIN_ID <= p_id <= _MAX_ID:
+            raise NotFound(f"Participant with ID {p_id} is not found.")
         auth_awardee = None
         user_email, user_info = get_validated_user_info()
         if AWARDEE in user_info["roles"]:
