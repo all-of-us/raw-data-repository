@@ -79,7 +79,7 @@ class GenomicFileIngester:
         self.sub_folder_name = sub_folder
 
         # Sub Components
-        self.file_validator = None
+        self.file_validator = GenomicFileValidator(job_id=self.job_id)
         self.file_mover = GenomicFileMover(archive_folder=self.archive_folder_name)
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.file_processed_dao = GenomicFileProcessedDao()
@@ -120,7 +120,7 @@ class GenomicFileIngester:
         files = list_blobs(bucket, prefix=self.sub_folder_name)
         files = [s.name for s in files
                  if self.archive_folder_name not in s.name.lower()
-                 if self.file_name_conventions[self.job_id] in s.name.lower()]
+                 if self.file_validator.validate_filename(s.name.lower())]
         if not files:
             logging.info('No files in cloud bucket {}'.format(self.bucket_name))
             return GenomicSubProcessResult.NO_FILES
@@ -168,7 +168,6 @@ class GenomicFileIngester:
         :return: A GenomicSubProcessResultCode
         """
         self.file_obj = file_obj
-        self.file_validator = GenomicFileValidator()
 
         if self.job_id == GenomicJob.BB_RETURN_MANIFEST:
             logging.info("Ingesting Manifest Result Files...")
@@ -193,6 +192,7 @@ class GenomicFileIngester:
             elif data_to_ingest:
                 logging.info("Data to ingest from {}".format(self.file_obj.fileName))
                 logging.info("Validating GC metrics file.")
+                self.file_validator.valid_schema = None
                 validation_result = self.file_validator.validate_ingestion_file(
                     self.file_obj.fileName, data_to_ingest)
                 if validation_result != GenomicSubProcessResult.SUCCESS:
@@ -292,10 +292,11 @@ class GenomicFileValidator:
     This class validates the Genomic Centers files
     """
 
-    def __init__(self, filename=None, data=None, schema=None):
+    def __init__(self, filename=None, data=None, schema=None, job_id=None):
         self.filename = filename
         self.data_to_validate = data
         self.valid_schema = schema
+        self.job_id = job_id
 
         self.GC_CSV_SCHEMAS = {
             'seq': (
@@ -325,6 +326,8 @@ class GenomicFileValidator:
                 "site_id"
             ),
         }
+        self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bi', 'rdr')
+        self.VALID_CVL_FACILITIES = ('color', 'uw', 'baylor')
 
     def validate_ingestion_file(self, filename, data_to_validate):
         """
@@ -334,7 +337,7 @@ class GenomicFileValidator:
         :return: result code
         """
         self.filename = filename
-        if not self._check_filename_valid(filename):
+        if not self.validate_filename(filename):
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
         struct_valid_result = self._check_file_structure_valid(
@@ -349,16 +352,69 @@ class GenomicFileValidator:
 
         return GenomicSubProcessResult.SUCCESS
 
-    def _check_filename_valid(self, filename):
-        # TODO: revisit this once naming convention is finalized for other jobs
-        filename_components = filename.split('_')
-        return (
-            len(filename_components) == 5 and
-            filename_components[1].lower() == 'aou' and
-            filename_components[2].lower() in self.GC_CSV_SCHEMAS.keys() and
-            re.search(r"[0-1][0-9][0-3][0-9]20[1-9][0-9]\.csv",
-                      filename_components[4]) is not None
-        )
+    def validate_filename(self, filename):
+        """
+        Applies a naming rule to an arbitrary filename
+        Naming rules are defined as local functions and
+        Mapped to a Genomic Job ID in naming_rules dict.
+        :param filename: passed to each name rule as 'fn'
+        :return: boolean
+        """
+
+        # Naming Rule Definitions
+        def bb_result_name_rule(fn):
+            """Biobank to DRC Result name rule"""
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("-")]
+            return (
+                filename_components[0] == 'genomic' and
+                filename_components[1] == 'manifest' and
+                filename_components[2] in ('aou_array', 'aou_wgs')
+            )
+
+        def gc_validation_metrics_name_rule(fn):
+            """GC metrics file name rule"""
+            filename_components = [x.lower() for x in fn.split("_")]
+            return (
+                len(filename_components) == 5 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] in self.GC_CSV_SCHEMAS.keys() and
+                re.search(r"[0-1][0-9][0-3][0-9]20[1-9][0-9]\.csv",
+                          filename_components[4]) is not None
+            )
+
+        def bb_to_gc_manifest_name_rule(fn):
+            """Biobank to GCs manifest name rule"""
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
+            return (
+                len(filename_components) == 4 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] in ('seq', 'gen') and
+                re.search(r"pkg-[0-9]{4}-[0-9]{5,}\.csv$",
+                          filename_components[3]) is not None
+            )
+
+        def cvl_sec_val_manifest_name_rule(fn):
+            """CVL secondary validation manifest name rule"""
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
+            return (
+                len(filename_components) == 4 and
+                filename_components[0] in self.VALID_CVL_FACILITIES and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'cvl' and
+                re.search(r"pkg-[0-9]{4}-[0-9]{5,}\.csv$",
+                          filename_components[3]) is not None
+            )
+
+        name_rules = {
+            GenomicJob.BB_RETURN_MANIFEST: bb_result_name_rule,
+            GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
+            GenomicJob.BB_GC_MANIFEST: bb_to_gc_manifest_name_rule,
+            GenomicJob.CVL_SEC_VAL_MAN: cvl_sec_val_manifest_name_rule,
+        }
+
+        return name_rules[self.job_id](filename)
 
     def _check_file_structure_valid(self, fields):
         """

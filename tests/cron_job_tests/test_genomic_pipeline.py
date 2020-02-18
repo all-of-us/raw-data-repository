@@ -581,8 +581,8 @@ class GenomicPipelineTest(BaseTestCase):
         # Create the fake Google Cloud CSV files to ingest
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         end_to_end_test_files = (
-            'GC_AoU_GEN_TestDataManifest.csv',
-            'GC_AoU_SEQ_TestDataManifest.csv',
+            'RDR_AoU_GEN_TestDataManifest.csv',
+            'RDR_AoU_SEQ_TestDataManifest.csv',
             'test_empty_wells.csv'
         )
         for test_file in end_to_end_test_files:
@@ -631,22 +631,22 @@ class GenomicPipelineTest(BaseTestCase):
             if "SEQ" in f.fileName:
                 self.assertEqual(
                     f.fileName,
-                    'GC_AoU_SEQ_TestDataManifest_11192019.csv'
+                    'RDR_AoU_SEQ_TestDataManifest_11192019.csv'
                 )
                 self.assertEqual(
                     f.filePath,
                     '/dev_genomics_cell_line_validation/'
-                    'GC_AoU_SEQ_TestDataManifest_11192019.csv'
+                    'RDR_AoU_SEQ_TestDataManifest_11192019.csv'
                 )
             else:
                 self.assertEqual(
                     f.fileName,
-                    'GC_AoU_GEN_TestDataManifest_11192019.csv'
+                    'RDR_AoU_GEN_TestDataManifest_11192019.csv'
                 )
                 self.assertEqual(
                     f.filePath,
                     '/dev_genomics_cell_line_validation/'
-                    'GC_AoU_GEN_TestDataManifest_11192019.csv'
+                    'RDR_AoU_GEN_TestDataManifest_11192019.csv'
                 )
 
             self.assertEqual(f.fileStatus,
@@ -688,8 +688,8 @@ class GenomicPipelineTest(BaseTestCase):
         # Create the fake Google Cloud CSV files to ingest
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         end_to_end_test_files = (
-            'GC_AoU_SEQ_TestBadStructureDataManifest.csv',
-            'GC-AoU-TestBadFilename-DataManifest.csv',
+            'RDR_AoU_SEQ_TestBadStructureDataManifest.csv',
+            'RDR-AoU-TestBadFilename-DataManifest.csv',
             'test_empty_wells.csv'
         )
         for test_file in end_to_end_test_files:
@@ -894,7 +894,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Create the fake Google Cloud CSV files to ingest
         self._create_fake_datasets_for_gc_tests(1)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
-        self._create_ingestion_test_file('GC_AoU_GEN_TestDataManifest.csv',
+        self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name)
 
         # Run the GC Metrics Ingestion workflow
@@ -918,7 +918,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(2)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
-        self._create_ingestion_test_file('GC_AoU_SEQ_TestDataManifest.csv',
+        self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name)
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
@@ -968,7 +968,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(5)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
-        self._create_ingestion_test_file('GC_AoU_SEQ_TestDataManifest.csv',
+        self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name)
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
@@ -982,7 +982,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(2)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
-        self._create_ingestion_test_file('GC_AoU_SEQ_TestDataManifest.csv',
+        self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name)
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
@@ -1128,7 +1128,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Setup Test file
         manifest_result_file = test_data.open_genomic_set_file("Genomic-Manifest-Result-Test-BB-Workflow.csv")
 
-        manifest_result_filename = "Genomic-Manifest-Result-AoU-1-v1%s.csv" % self._naive_utc_to_naive_central(
+        manifest_result_filename = "Genomic-Manifest-AoU_Array-1-v1%s.csv" % self._naive_utc_to_naive_central(
             clock.CLOCK.now()
         ).strftime(genomic_set_file_handler.INPUT_CSV_TIME_FORMAT)
 
@@ -1178,9 +1178,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Setup Test file
         gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-1.csv")
 
-        gc_manifest_filename = "GC-Manifest-Test-1-v1%s.csv" % self._naive_utc_to_naive_central(
-            clock.CLOCK.now()
-        ).strftime(genomic_set_file_handler.INPUT_CSV_TIME_FORMAT)
+        gc_manifest_filename = "RDR_AoU_GEN_PKG-1923-123456.csv"
 
         self._write_cloud_csv(
             gc_manifest_filename,
@@ -1213,7 +1211,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(3)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
-        self._create_ingestion_test_file('GC_AoU_SEQ_TestDataManifest.csv',
+        self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name)
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
@@ -1262,7 +1260,7 @@ class GenomicPipelineTest(BaseTestCase):
     def test_cvl_wgs_manifest_end_to_end(self):
         self._create_fake_datasets_for_gc_tests(3)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
-        self._create_ingestion_test_file('GC_AoU_SEQ_TestDataManifest.csv',
+        self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name)
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
@@ -1332,7 +1330,7 @@ class GenomicPipelineTest(BaseTestCase):
     def test_cvl_array_manifest_end_to_end(self):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True, array_participants=[1])
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
-        self._create_ingestion_test_file('GC_AoU_GEN_TestDataManifest.csv',
+        self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name)
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
