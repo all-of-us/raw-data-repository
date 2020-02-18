@@ -17,6 +17,7 @@ class WorkbenchResearcherBase(object):
     modifiedTime = Column("modified_time", UTCDateTime6, nullable=True)
     givenName = Column("given_name", String(100))
     familyName = Column("family_name", String(100))
+    email = Column("email", String(250))
     streetAddress1 = Column("street_address1", String(250))
     streetAddress2 = Column("street_address2", String(250))
     city = Column("city", String(80))
@@ -65,6 +66,7 @@ class WorkbenchInstitutionalAffiliations(Base):
     role = Column("role", String(80))
     nonAcademicAffiliation = Column("non_academic_affiliation", Enum(WorkbenchInstitutionNonAcademic),
                                     default=WorkbenchInstitutionNonAcademic.UNSET)
+    isVerified = Column("is_verified", Boolean)
 
 
 class WorkbenchResearcherHistory(WorkbenchResearcherBase, Base):
@@ -95,6 +97,7 @@ class WorkbenchInstitutionalAffiliationsHistory(Base):
     role = Column("role", String(80))
     nonAcademicAffiliation = Column("non_academic_affiliation", Enum(WorkbenchInstitutionNonAcademic),
                                     default=WorkbenchInstitutionNonAcademic.UNSET)
+    isVerified = Column("is_verified", Boolean)
 
 
 event.listen(WorkbenchResearcher, "before_insert", model_insert_listener)
