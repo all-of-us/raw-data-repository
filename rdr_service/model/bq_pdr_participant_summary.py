@@ -126,60 +126,25 @@ class BQPDRParticipantSummaryView(BQView):
     __viewdescr__ = 'PDR Participant Summary View'
     __table__ = BQPDRParticipantSummary
     __pk_id__ = 'participant_id'
-    # Manually define the fields, because we need to break out the sub-tables.
+    # We need to build a SQL statement with all fields except sub-tables and remove duplicates.
     __sql__ = """
-    SELECT 
-      ps.participant_id,      
-      ps.participant_origin,
-      ps.addr_state,
-      ps.addr_zip,
-      ps.is_ghost_id,
-      ps.sign_up_time,
-      ps.enrollment_status,
-      ps.enrollment_status_id,
-      ps.enrollment_member,
-      ps.enrollment_core_ordered,
-      ps.enrollment_core_stored,
-      ps.ehr_status,
-      ps.ehr_status_id,
-      ps.ehr_receipt,
-      ps.ehr_update,
-      ps.withdrawal_status,
-      ps.withdrawal_status_id,
-      ps.withdrawal_time,
-      ps.withdrawal_authored,
-      ps.withdrawal_reason,
-      ps.withdrawal_reason_id,
-      ps.withdrawal_reason_justification,
-      ps.hpo,
-      ps.hpo_id,
-      ps.organization,
-      ps.organization_id,
-      ps.site,
-      ps.site_id,
-      ps.date_of_birth,
-      ps.primary_language,
-      ps.education,
-      ps.education_id,
-      ps.income,
-      ps.income_id,
-      ps.sex,
-      ps.sex_id,
-      ps.ubr_sex,
-      ps.ubr_sexual_orientation,
-      ps.ubr_gender_identity,
-      ps.ubr_ethnicity,
-      ps.ubr_geography,
-      ps.ubr_education,
-      ps.ubr_income,
-      ps.ubr_sexual_gender_minority,
-      ps.ubr_overall    
-    FROM (
-        SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
-          FROM `{project}`.{dataset}.pdr_participant 
-      ) ps
-      WHERE ps.modified = ps.max_timestamp and ps.withdrawal_status_id = 1
-  """
+        SELECT 
+          %%FIELD_NAMES%%
+        FROM (
+            SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
+              FROM `{project}`.{dataset}.pdr_participant 
+          ) ps
+          WHERE ps.modified = ps.max_timestamp and ps.withdrawal_status_id = 1
+      """.replace('%%FIELD_NAMES%%', BQPDRParticipantSummarySchema.get_sql_field_names(
+        exclude_fields=[
+            'pm',
+            'genders',
+            'races',
+            'modules',
+            'consents',
+            'biospec'
+        ])
+    )
 
 
 class BQPDRParticipantSummaryWithdrawnView(BQView):

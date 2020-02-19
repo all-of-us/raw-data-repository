@@ -247,7 +247,6 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             else:
                 session.add(workspace)
         self._insert_history(session, workspaces)
-
         return workspaces
 
     def to_client_json(self, obj):
