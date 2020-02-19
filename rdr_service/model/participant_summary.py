@@ -119,6 +119,11 @@ class ParticipantSummary(Base):
     )
     consentForStudyEnrollmentTime = Column("consent_for_study_enrollment_time", UTCDateTime)
     consentForStudyEnrollmentAuthored = Column("consent_for_study_enrollment_authored", UTCDateTime)
+    semanticVersionForPrimaryConsent = Column("semantic_version_for_primary_consent", String(100))
+    consentForGenomicsROR = Column("consent_for_genomics_ror", Enum(QuestionnaireStatus),
+                                   default=QuestionnaireStatus.UNSET)
+    consentForGenomicsRORTime = Column("consent_for_genomics_ror_time", UTCDateTime)
+    consentForGenomicsRORAuthored = Column("consent_for_genomics_ror_authored", UTCDateTime)
     consentForElectronicHealthRecords = Column(
         "consent_for_electronic_health_records", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
