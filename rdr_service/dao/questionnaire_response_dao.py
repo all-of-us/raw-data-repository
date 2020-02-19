@@ -15,6 +15,7 @@ from rdr_service import clock, config
 from rdr_service.code_constants import (
     CABOR_SIGNATURE_QUESTION_CODE,
     CONSENT_FOR_DVEHR_MODULE,
+    CONSENT_FOR_GENOMICS_ROR,
     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
     CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
     CONSENT_PERMISSION_YES_CODE,
@@ -341,7 +342,15 @@ class QuestionnaireResponseDao(BaseDao):
                         new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
                     elif code.value == CONSENT_FOR_DVEHR_MODULE:
                         new_status = dvehr_consent
+                    elif code.value == CONSENT_FOR_GENOMICS_ROR:
+                        print(code)
+                        genomic_consent = False
+                        code = code_dao.get(answer.valueCodeId)
+                        if code and code.value == CONSENT_PERMISSION_YES_CODE:
+                            genomic_consent = True
+
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
+                        participant_summary.semanticVersionForPrimaryConsent = questionnaire_response.questionnaireSemanticVersion
                         # set language of consent to participant summary
                         for extension in resource_json.get("extension", []):
                             if (
