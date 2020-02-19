@@ -291,7 +291,7 @@ class PublicMetricsApiTest(BaseTestCase):
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
         service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao, by_hpo=False)
+        service.refresh_data_for_metrics_cache(dao)
 
         qs = "&stratification=ENROLLMENT_STATUS" "&startDate=2018-01-01" "&endDate=2018-01-08"
 
@@ -1259,7 +1259,7 @@ class PublicMetricsApiTest(BaseTestCase):
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
         service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao, by_hpo=False)
+        service.refresh_data_for_metrics_cache(dao)
 
         qs = "&stratification=TOTAL" "&startDate=2018-01-01" "&endDate=2018-01-08"
 
