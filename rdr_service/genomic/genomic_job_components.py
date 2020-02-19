@@ -703,7 +703,7 @@ class GenomicBiobankSamplesCoupler:
                     samples_meta.gen_consents[i],
                     samples_meta.valid_ages[i],
                     samples_meta.valid_ai_ans[i],
-                    int(samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values())
+                    samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()
                 )
                 valid_flags = self._calculate_validation_flags(validation_criteria)
                 logging.info(f'Creating genomic set member for PID: {samples_meta.pids[i]}')
