@@ -1032,13 +1032,11 @@ class GenomicPipelineTest(BaseTestCase):
         # Setup the biobank order backend
         for bid in test_biobank_ids:
             p = self._make_participant(biobankId=bid)
-            self._make_summary(p,
-                               sexId=intersex_code if bid == 100004 else female_code,
+            self._make_summary(p, sexId=intersex_code if bid == 100004 else female_code,
                                consentForStudyEnrollment=0 if bid == 100006 else 1,
                                sampleStatus1ED04=0,
                                sampleStatus1SAL2=0 if bid == 100005 else 1,
-                               samplesToIsolateDNA=0,
-                               )
+                               samplesToIsolateDNA=0,)
             test_identifier = BiobankOrderIdentifier(
                     system=u'c',
                     value=u'e{}'.format(bid))
@@ -1077,18 +1075,47 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(1, len(new_genomic_set))
 
         new_genomic_members = self.member_dao.get_all()
-        self.assertEqual(2, len(new_genomic_members))
+        self.assertEqual(4, len(new_genomic_members))
 
         # Test GenomicMember's data
+        # Validation is performed in the GenomicBiobankSamplesCoupler query
+        # Testing various flags:
+        # 100001 : Excluded, created before last run,
+        # 100004 : Included, Invalid SAB
+        # 100005 : Excluded, no DNA sample
+        # 100006 : Included, Invalid consent
+        # 100007 : Included, Invalid Indian/Native
         for member in new_genomic_members:
             if member.biobankId == '100002':
+                # 100002 : Included, Valid
                 self.assertEqual(1, member.nyFlag)
                 self.assertEqual('100002', member.sampleId)
+                self.assertEqual('F', member.sexAtBirth)
+                self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
+                self.assertEqual('N', member.ai_an)
             if member.biobankId == '100003':
+                # 100003 : Included, Valid
                 self.assertEqual(0, member.nyFlag)
                 self.assertEqual('100003', member.sampleId)
+                self.assertEqual('F', member.sexAtBirth)
+                self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
+                self.assertEqual('N', member.ai_an)
+            if member.biobankId == '100004':
+                # 100004 : Included, Invalid SAB
+                self.assertEqual(0, member.nyFlag)
+                self.assertEqual('100004', member.sampleId)
+                self.assertEqual('NA', member.sexAtBirth)
+                self.assertEqual(GenomicSetMemberStatus.INVALID, member.validationStatus)
+                self.assertEqual('N', member.ai_an)
+            if member.biobankId == '100006':
+                # 100006 : Included, Invalid consent
+                self.assertEqual(0, member.nyFlag)
+                self.assertEqual('100006', member.sampleId)
+                self.assertEqual('F', member.sexAtBirth)
+                self.assertEqual(GenomicSetMemberStatus.INVALID, member.validationStatus)
+                self.assertEqual('N', member.ai_an)
 
-        # Test manifest file was created correctly
+                # Test manifest file was created correctly
         bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
 
         class ExpectedCsvColumns(object):
@@ -1100,8 +1127,11 @@ class GenomicPipelineTest(BaseTestCase):
             NY_FLAG = "ny_flag"
             REQUEST_ID = "request_id"
             PACKAGE_ID = "package_id"
+            VALIDATION_PASSED = 'validation_passed'
+            AI_AN = 'ai_an'
 
-            ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, REQUEST_ID, PACKAGE_ID)
+            ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG,
+                   REQUEST_ID, PACKAGE_ID, VALIDATION_PASSED, AI_AN)
 
         blob_name = self._find_latest_genomic_set_csv(bucket_name, _FAKE_BUCKET_FOLDER)
         with open_cloud_file(os.path.normpath(bucket_name + '/' + blob_name)) as csv_file:
@@ -1114,10 +1144,29 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(100002, int(rows[0][ExpectedCsvColumns.SAMPLE_ID]))
             self.assertEqual("F", rows[0][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("Y", rows[0][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("Y", rows[0][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("N", rows[0][ExpectedCsvColumns.AI_AN])
+
             self.assertEqual("T100003", rows[1][ExpectedCsvColumns.BIOBANK_ID])
             self.assertEqual(100003, int(rows[1][ExpectedCsvColumns.SAMPLE_ID]))
             self.assertEqual("F", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[1][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("Y", rows[1][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("N", rows[1][ExpectedCsvColumns.AI_AN])
+
+            self.assertEqual("T100004", rows[2][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100004, int(rows[2][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual("NA", rows[2][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("N", rows[2][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("N", rows[2][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("N", rows[2][ExpectedCsvColumns.AI_AN])
+
+            self.assertEqual("T100006", rows[3][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100006, int(rows[3][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual("F", rows[3][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("N", rows[3][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("N", rows[3][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("N", rows[3][ExpectedCsvColumns.AI_AN])
 
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)

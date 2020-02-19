@@ -30,8 +30,9 @@ from rdr_service.participant_enums import (
     GenomicManifestTypes,
     GenomicJob,
     GenomicSubProcessStatus,
-    Race
-)
+    Race,
+    GenomicValidationFlag,
+    GenomicSetMemberStatus)
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,
@@ -685,32 +686,41 @@ class GenomicBiobankSamplesCoupler:
                                                                  "pids",
                                                                  "order_ids",
                                                                  "site_ids",
-                                                                 "tests",
                                                                  "sample_ids",
                                                                  "not_withdrawn",
                                                                  "gen_consents",
                                                                  "consent_times",
                                                                  "valid_ages",
+                                                                 "sabs",
                                                                  "gror",
-                                                                 "ai_ans"])
+                                                                 "valid_ai_ans"])
             samples_meta = GenomicSampleMeta(*samples)
             logging.info(f'{self.__class__.__name__}: Processing new biobank_ids {samples_meta.bids}')
             new_genomic_set = self._create_new_genomic_set()
             # Create genomic set members
             for i, bid in enumerate(samples_meta.bids):
-                # Validate sex at birth
-                sab_code = self._get_sex_at_birth(samples_meta.pids[i])
-                if sab_code not in self._SEX_AT_BIRTH_CODES.values():
-                    continue
+                logging.info(f'Validating sample: {samples_meta.sample_ids}')
+                validation_criteria = {
+                    "not_withdrawn": samples_meta.not_withdrawn[i],
+                    "gen_consent": samples_meta.gen_consents[i],
+                    "consent_time": samples_meta.consent_times[i],
+                    "valid_age": samples_meta.valid_ages[i],
+                    "valid_ai_an": samples_meta.valid_ai_ans[i],
+                    "valid_sab": int(samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()),
+                }
+                valid_flags = self._calculate_validation_flags(**validation_criteria)
                 logging.info(f'Creating genomic set member for PID: {samples_meta.pids[i]}')
                 self._create_new_set_member(
                     biobankId=bid,
                     genomicSetId=new_genomic_set.id,
                     participantId=samples_meta.pids[i],
                     nyFlag=self._get_new_york_flag(samples_meta.site_ids[i]),
-                    sexAtBirth=sab_code,
+                    sexAtBirth=samples_meta.sabs[i],
                     biobankOrderId=samples_meta.order_ids[i],
                     sampleId=samples_meta.sample_ids[i],
+                    validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
+                                      else GenomicSetMemberStatus.VALID),
+                    ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y'
                 )
             # Create & transfer the Biobank Manifest based on the new genomic set
             try:
@@ -739,7 +749,6 @@ class GenomicBiobankSamplesCoupler:
           p.participant_id,
           o.biobank_order_id,
           o.collected_site_id,
-          ss.test,
           ss.biobank_stored_sample_id,
           CASE
             WHEN p.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
@@ -748,23 +757,29 @@ class GenomicBiobankSamplesCoupler:
             WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
           END as general_consent_given,
           CASE
-            WHEN ps.consent_for_study_enrollment_authored > :consent_cutoff_param THEN 1 ELSE 0
+            WHEN ps.consent_for_study_enrollment_time > :consent_cutoff_param THEN 1 ELSE 0
           END as general_consent_time_valid,
           CASE
             WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param*18 DAY) THEN 1 ELSE 0
           END AS valid_age,
           CASE
+            WHEN c.value = "SexAtBirth_Male" THEN "M"
+            WHEN c.value = "SexAtBirth_Female" THEN "F"
+            ELSE "NA"
+          END as sab, 
+          CASE
             WHEN TRUE THEN 0 ELSE 0
           END AS gror_consent,
           CASE
-            WHEN ps.race = :ai_param THEN 1 ELSE 0
-          END AS ai_an_flag
+            WHEN ps.race <> :ai_param THEN 1 ELSE 0
+          END AS valid_ai_an
         FROM
             biobank_stored_sample ss
             JOIN participant p ON ss.biobank_id = p.biobank_id
             JOIN biobank_order_identifier oi ON ss.biobank_order_identifier = oi.value
             JOIN biobank_order o ON oi.biobank_order_id = o.biobank_order_id
             JOIN participant_summary ps ON ps.participant_id = p.participant_id
+            JOIN code c ON c.code_id = ps.sex_id
         WHERE TRUE
             AND (
                     ps.sample_status_1ed04 = :sample_status_param
@@ -778,9 +793,9 @@ class GenomicBiobankSamplesCoupler:
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
             "dob_param": GENOMIC_VALID_AGE,
             "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
-            "consent_cutoff_param": GENOMIC_VALID_CONSENT_CUTOFF,
+            "consent_cutoff_param": GENOMIC_VALID_CONSENT_CUTOFF.strftime("%Y-%m-%d"),
             "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
-            "from_date_param": from_date,
+            "from_date_param": from_date.strftime("%Y-%m-%d"),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
         }
         with self.samples_dao.session() as session:
@@ -825,6 +840,37 @@ class GenomicBiobankSamplesCoupler:
                           .first()
         return self._SEX_AT_BIRTH_CODES.get(
                  result[0].lower().split('_')[-1], 'NA') if result else 'NA'
+
+    def _calculate_validation_flags(self, not_withdrawn, gen_consent, consent_time,
+                                    valid_age, valid_ai_an, valid_sab):
+        """
+        Determines validation and flags for genomic sample
+        FLAGS:
+            GenomicValidationFlag.INVALID_WITHDRAW_STATUS,
+            GenomicValidationFlag.INVALID_CONSENT,
+            GenomicValidationFlag.INVALID_AGE
+        :param not_withdrawn:
+        :param gen_consent:
+        :param consent_time:
+        :param valid_age:
+        :param valid_ai_an:
+        :return: dict(bool(_status), list(_flags))
+        """
+        vals = [x for x in locals().values() if type(x) is int]
+        status = all(vals)  # All conditions must be valid
+
+        # Process validation flags for inserting into genomic_set_member
+        # matches order of positional args
+        validation_flags_lookup = (GenomicValidationFlag.INVALID_WITHDRAW_STATUS,
+                                   GenomicValidationFlag.INVALID_CONSENT,
+                                   GenomicValidationFlag.INVALID_CONSENT,
+                                   GenomicValidationFlag.INVALID_AGE,
+                                   GenomicValidationFlag.INVALID_AIAN,
+                                   GenomicValidationFlag.INVALID_SEX_AT_BIRTH)
+        flags = [f for (v, f) in
+                 zip(map(lambda x: not x, vals), validation_flags_lookup)
+                 if v]
+        return flags
 
 
 class ManifestDefinitionProvider:

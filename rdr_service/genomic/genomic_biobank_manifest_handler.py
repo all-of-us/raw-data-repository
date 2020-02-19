@@ -143,11 +143,9 @@ def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=No
         '' AS request_id,
         '' AS package_id,
         CASE
-          WHEN validation_status IS 1 THEN 'Y' ELSE 'N'
+          WHEN validation_status = 1 THEN 'Y' ELSE 'N'
         END AS validation_passed,
-        CASE
-          WHEN ai_an IS 1 THEN 'Y' ELSE 'N'
-        END AS ai_an
+        ai_an
       FROM genomic_set_member
       WHERE genomic_set_id=:genomic_set_id
       ORDER BY id

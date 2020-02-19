@@ -70,7 +70,7 @@ class GenomicSetMember(Base):
     genomeType = Column("genome_type", String(80), nullable=True)
 
     # American Indian or Alaskan Native
-    ai_an = Column('ai_an', Integer, nullable=True)
+    ai_an = Column('ai_an', String(2), nullable=True)
 
     biobankOrderId = Column(
         "biobank_order_id", String(80), ForeignKey("biobank_order.biobank_order_id"), unique=False, nullable=True
