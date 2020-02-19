@@ -771,7 +771,7 @@ class GenomicBiobankSamplesCoupler:
             WHEN TRUE THEN 0 ELSE 0
           END AS gror_consent,
           CASE
-            WHEN ps.race <> :ai_param THEN 1 ELSE 0
+              WHEN native.participant_id IS NULL THEN 1 ELSE 0
           END AS valid_ai_an
         FROM
             biobank_stored_sample ss
@@ -780,6 +780,12 @@ class GenomicBiobankSamplesCoupler:
             JOIN biobank_order o ON oi.biobank_order_id = o.biobank_order_id
             JOIN participant_summary ps ON ps.participant_id = p.participant_id
             JOIN code c ON c.code_id = ps.sex_id
+            LEFT JOIN (
+              SELECT ra.participant_id
+              FROM participant_race_answers ra 			
+                  JOIN code cr ON cr.code_id = ra.code_id
+                      AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
+            ) native ON native.participant_id = p.participant_id            
         WHERE TRUE
             AND (
                     ps.sample_status_1ed04 = :sample_status_param
