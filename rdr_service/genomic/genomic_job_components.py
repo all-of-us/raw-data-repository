@@ -6,7 +6,6 @@ Components are assembled by the JobController for a particular Genomic Job
 import csv
 import logging
 import re
-import datetime
 from collections import deque, namedtuple
 
 from rdr_service.api_util import (
@@ -15,12 +14,7 @@ from rdr_service.api_util import (
     delete_cloud_file,
     list_blobs
 )
-from rdr_service.model.biobank_stored_sample import BiobankStoredSample
-from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
-from rdr_service.model.participant import Participant
-from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.genomics import GenomicSet, GenomicSetMember
-from rdr_service.model.code import Code
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     WithdrawalStatus,
@@ -663,6 +657,11 @@ class GenomicBiobankSamplesCoupler:
         'male': 'M',
         'female': 'F'
     }
+    _VALIDATION_FLAGS = (GenomicValidationFlag.INVALID_WITHDRAW_STATUS,
+                         GenomicValidationFlag.INVALID_CONSENT,
+                         GenomicValidationFlag.INVALID_AGE,
+                         GenomicValidationFlag.INVALID_AIAN,
+                         GenomicValidationFlag.INVALID_SEX_AT_BIRTH)
 
     def __init__(self, run_id):
         self.samples_dao = BiobankStoredSampleDao()
@@ -689,7 +688,6 @@ class GenomicBiobankSamplesCoupler:
                                                                  "sample_ids",
                                                                  "not_withdrawn",
                                                                  "gen_consents",
-                                                                 "consent_times",
                                                                  "valid_ages",
                                                                  "sabs",
                                                                  "gror",
@@ -700,15 +698,14 @@ class GenomicBiobankSamplesCoupler:
             # Create genomic set members
             for i, bid in enumerate(samples_meta.bids):
                 logging.info(f'Validating sample: {samples_meta.sample_ids}')
-                validation_criteria = {
-                    "not_withdrawn": samples_meta.not_withdrawn[i],
-                    "gen_consent": samples_meta.gen_consents[i],
-                    "consent_time": samples_meta.consent_times[i],
-                    "valid_age": samples_meta.valid_ages[i],
-                    "valid_ai_an": samples_meta.valid_ai_ans[i],
-                    "valid_sab": int(samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()),
-                }
-                valid_flags = self._calculate_validation_flags(**validation_criteria)
+                validation_criteria = (
+                    samples_meta.not_withdrawn[i],
+                    samples_meta.gen_consents[i],
+                    samples_meta.valid_ages[i],
+                    samples_meta.valid_ai_ans[i],
+                    int(samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values())
+                )
+                valid_flags = self._calculate_validation_flags(validation_criteria)
                 logging.info(f'Creating genomic set member for PID: {samples_meta.pids[i]}')
                 self._create_new_set_member(
                     biobankId=bid,
@@ -757,9 +754,6 @@ class GenomicBiobankSamplesCoupler:
             WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
           END as general_consent_given,
           CASE
-            WHEN ps.consent_for_study_enrollment_time > :consent_cutoff_param THEN 1 ELSE 0
-          END as general_consent_time_valid,
-          CASE
             WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param*18 DAY) THEN 1 ELSE 0
           END AS valid_age,
           CASE
@@ -794,6 +788,7 @@ class GenomicBiobankSamplesCoupler:
                 )
             AND ss.test IN ("1ED04", "1SAL2")
             AND ss.rdr_created > :from_date_param
+            AND ps.consent_for_study_enrollment_time > :consent_cutoff_param
         """
         params = {
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
@@ -832,50 +827,16 @@ class GenomicBiobankSamplesCoupler:
         """
         return int(self.site_dao.get(collected_site_id).state == 'NY')
 
-    def _get_sex_at_birth(self, participant_id):
-        """
-        Looks up participant's sex at birth based on code.vale
-        :param participant_id: the id of the participant
-        :return: 'M', 'F', or 'NA'
-        """
-        # Assumes code.values like 'SexAtBirth_Male' and 'SexAtBirth_Female'
-        with self.ps_dao.session() as session:
-            result = session.query(Code.value)\
-                          .filter(Code.codeId == ParticipantSummary.sexId,
-                                  ParticipantSummary.participantId == participant_id)\
-                          .first()
-        return self._SEX_AT_BIRTH_CODES.get(
-                 result[0].lower().split('_')[-1], 'NA') if result else 'NA'
-
-    def _calculate_validation_flags(self, not_withdrawn, gen_consent, consent_time,
-                                    valid_age, valid_ai_an, valid_sab):
+    def _calculate_validation_flags(self, validation_criteria):
         """
         Determines validation and flags for genomic sample
-        FLAGS:
-            GenomicValidationFlag.INVALID_WITHDRAW_STATUS,
-            GenomicValidationFlag.INVALID_CONSENT,
-            GenomicValidationFlag.INVALID_AGE
-        :param not_withdrawn:
-        :param gen_consent:
-        :param consent_time:
-        :param valid_age:
-        :param valid_ai_an:
-        :return: dict(bool(_status), list(_flags))
+        :param validation_criteria:
+        :return: list of validation flags
         """
-        vals = [x for x in locals().values() if type(x) is int]
-        status = all(vals)  # All conditions must be valid
-
         # Process validation flags for inserting into genomic_set_member
-        # matches order of positional args
-        validation_flags_lookup = (GenomicValidationFlag.INVALID_WITHDRAW_STATUS,
-                                   GenomicValidationFlag.INVALID_CONSENT,
-                                   GenomicValidationFlag.INVALID_CONSENT,
-                                   GenomicValidationFlag.INVALID_AGE,
-                                   GenomicValidationFlag.INVALID_AIAN,
-                                   GenomicValidationFlag.INVALID_SEX_AT_BIRTH)
-        flags = [f for (v, f) in
-                 zip(map(lambda x: not x, vals), validation_flags_lookup)
-                 if v]
+        flags = [flag for (passing, flag) in
+                 zip(validation_criteria, self._VALIDATION_FLAGS)
+                 if not passing]
         return flags
 
 
