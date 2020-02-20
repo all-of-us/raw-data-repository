@@ -397,7 +397,7 @@ class GenomicJobRunDao(UpdatableDao):
         return session.query(functions.max(GenomicJobRun.startTime))\
             .filter(GenomicJobRun.jobId == job_id,
                     GenomicJobRun.runResult == GenomicSubProcessResult.SUCCESS)\
-            .one()
+            .one()[0]
 
     def insert_run_record(self, job_id):
         """
