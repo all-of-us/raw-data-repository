@@ -292,6 +292,10 @@ class QuestionnaireResponseDao(BaseDao):
                             something_changed = self._update_field(
                                 participant_summary, summary_field[0], summary_field[1], answer
                             )
+                    elif code.value == CONSENT_FOR_GENOMICS_ROR:
+                        # TODO: Placeholder for upcoming GROR consents. Req's haven't been decided. (2/20/20)
+                        # NOTE: If you're reading this after end of March 2020 I would encourage you to just delete this block.
+                        pass
                     elif code.value == RACE_QUESTION_CODE:
                         race_code_ids.append(answer.valueCodeId)
 
@@ -343,11 +347,8 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value == CONSENT_FOR_DVEHR_MODULE:
                         new_status = dvehr_consent
                     elif code.value == CONSENT_FOR_GENOMICS_ROR:
-                        print(code)
-                        genomic_consent = False
-                        code = code_dao.get(answer.valueCodeId)
-                        if code and code.value == CONSENT_PERMISSION_YES_CODE:
-                            genomic_consent = True
+                        if code_dao.get(answer.valueCodeId).value != CONSENT_PERMISSION_YES_CODE:
+                            new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
 
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
                         participant_summary.semanticVersionForPrimaryConsent = questionnaire_response.questionnaireSemanticVersion

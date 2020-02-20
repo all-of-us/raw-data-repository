@@ -15,7 +15,7 @@
     }],
     "question": [
       {
-        "linkId":"gror",
+        "linkId":"genomic_consent",
         "text":"consent to gror",
         "type":"choice",
         "concept": [{
