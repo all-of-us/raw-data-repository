@@ -1,7 +1,7 @@
 """ai and foreign keys genomic set member
 
 Revision ID: da3c59138805
-Revises: f5520e9dde27
+Revises: 6f26f7c49be7
 Create Date: 2020-02-19 15:04:32.203546
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = 'da3c59138805'
-down_revision = 'f5520e9dde27'
+down_revision = '6f26f7c49be7'
 branch_labels = None
 depends_on = None
 
