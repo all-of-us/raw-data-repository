@@ -294,8 +294,8 @@ class QuestionnaireResponseDao(BaseDao):
                             )
                     elif code.value == CONSENT_FOR_GENOMICS_ROR:
                         # TODO: Placeholder for upcoming GROR consents. Req's haven't been decided. (2/20/20)
-                        # NOTE: If you're reading this after end of March 2020
                         # I would encourage you to just delete this block.
+                        # NOTE: If you're reading this after end of March 2020
                         pass
                     elif code.value == RACE_QUESTION_CODE:
                         race_code_ids.append(answer.valueCodeId)
