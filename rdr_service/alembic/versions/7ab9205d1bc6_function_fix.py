@@ -1,7 +1,7 @@
 """function fix
 
 Revision ID: 7ab9205d1bc6
-Revises: 6f26f7c49be7
+Revises: da3c59138805
 Create Date: 2020-02-20 10:27:24.133396
 
 """
@@ -12,7 +12,7 @@ from rdr_service.dao.alembic_utils import ReplaceableObject
 
 # revision identifiers, used by Alembic.
 revision = '7ab9205d1bc6'
-down_revision = '6f26f7c49be7'
+down_revision = 'da3c59138805'
 branch_labels = None
 depends_on = None
 
