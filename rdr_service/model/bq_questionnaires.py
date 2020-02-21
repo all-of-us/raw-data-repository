@@ -49,6 +49,19 @@ class _BQModuleSchema(BQSchema):
 
         dao = BigQuerySyncDao(backup=True)
 
+        # Load module field data from the code table if available.
+        results = dao.call_proc('sp_get_code_module_items', args=[self._module])
+        if results:
+            for row in results:
+                if row['code_type'] != 3:
+                    continue
+                field = dict()
+                field['name'] = row['value']
+                field['type'] = BQFieldTypeEnum.STRING.name
+                field['mode'] = BQFieldModeEnum.NULLABLE.name
+                field['enum'] = None
+                fields.append(field)
+
         # This query makes better use of the indexes.
         _sql_term = text("""
             select convert(qh.resource using utf8) as resource
@@ -95,17 +108,25 @@ class _BQModuleSchema(BQSchema):
                 if name[:1] not in string.ascii_letters and name[:1] != '_':
                     logging.warning(f'Field {name} must start with a character or underscore, skipping.')
 
-                field = dict()
-                field['name'] = name
-                field['type'] = BQFieldTypeEnum.STRING.name
-                field['mode'] = BQFieldModeEnum.NULLABLE.name
-                field['enum'] = None
-                fields.append(field)
+                # flag duplicate fields.
+                found = False
+                for fld in fields:
+                    if fld['name'] == name:
+                        found = True
+                        break
+
+                if not found:
+                    field = dict()
+                    field['name'] = name
+                    field['type'] = BQFieldTypeEnum.STRING.name
+                    field['mode'] = BQFieldModeEnum.NULLABLE.name
+                    field['enum'] = None
+                    fields.append(field)
 
             # There seems to be duplicate column definitions we need to remove in some of the modules.
-            tmpflds = [i for n, i in enumerate(fields) if i not in fields[n + 1:]]
-
-            return tmpflds
+            # tmpflds = [i for n, i in enumerate(fields) if i not in fields[n + 1:]]
+            # return tmpflds
+            return fields
 
 
 #
