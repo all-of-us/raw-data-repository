@@ -14,7 +14,6 @@ class _BQModuleSchema(BQSchema):
     """
     _module = ''
     _excluded_fields = ()
-    _allowed_chars = string.ascii_letters + string.digits + '_'
 
     def __init__(self):
         """ add the field list to our self. """
@@ -25,6 +24,25 @@ class _BQModuleSchema(BQSchema):
     def get_module_name(self):
         """ Return the questionnaire module name """
         return self._module
+
+    @staticmethod
+    def field_name_is_valid(name):
+        """
+        Check that the field name meets BigQuery naming requirements.
+        :param name: field name to check
+        :return: True if valid otherwise False, error message.
+        """
+        # Check and make sure there are no other characters that are not allowed.
+        # Fields must contain only letters, numbers, and underscores, start with a letter or underscore,
+        # and be at most 128 characters long.
+        allowed_chars = string.ascii_letters + string.digits + '_'
+        if not all(c in allowed_chars for c in name):
+            return False, f'Field {name} contains invalid characters, skipping.'
+        if len(name) > 128:
+            return False, f'Field {name} must be less than 128 characters, skipping.'
+        if name[:1] not in string.ascii_letters and name[:1] != '_':
+            return False, f'Field {name} must start with a character or underscore, skipping.'
+        return True, ''
 
     def get_fields(self):
         """
@@ -48,6 +66,27 @@ class _BQModuleSchema(BQSchema):
                        'mode': BQFieldModeEnum.REQUIRED.name})
 
         dao = BigQuerySyncDao(backup=True)
+
+        # Load module field data from the code table if available.
+        results = dao.call_proc('sp_get_code_module_items', args=[self._module])
+        if results:
+            for row in results:
+                if row['code_type'] != 3:
+                    continue
+
+                # Verify field name meets BigQuery requirements.
+                name = row['value']
+                is_valid, msg = self.field_name_is_valid(name)
+                if not is_valid:
+                    logging.warning(msg)
+                    continue
+
+                field = dict()
+                field['name'] = name
+                field['type'] = BQFieldTypeEnum.STRING.name
+                field['mode'] = BQFieldModeEnum.NULLABLE.name
+                field['enum'] = None
+                fields.append(field)
 
         # This query makes better use of the indexes.
         _sql_term = text("""
@@ -83,29 +122,31 @@ class _BQModuleSchema(BQSchema):
                 if name in self._excluded_fields:
                     continue
 
-                # Check and make sure there are no other characters that are not allowed.
-                # Fields must contain only letters, numbers, and underscores, start with a letter or underscore,
-                # and be at most 128 characters long.
-                if not all(c in self._allowed_chars for c in name):
-                    logging.warning(f'Field {name} contains invalid characters, skipping.')
+                # Verify field name meets BigQuery requirements.
+                is_valid, msg = self.field_name_is_valid(name)
+                if not is_valid:
+                    logging.warning(msg)
                     continue
-                if len(name) > 128:
-                    logging.warning(f'Field {name} must be less than 128 characters, skipping.')
-                    continue
-                if name[:1] not in string.ascii_letters and name[:1] != '_':
-                    logging.warning(f'Field {name} must start with a character or underscore, skipping.')
 
-                field = dict()
-                field['name'] = name
-                field['type'] = BQFieldTypeEnum.STRING.name
-                field['mode'] = BQFieldModeEnum.NULLABLE.name
-                field['enum'] = None
-                fields.append(field)
+                # flag duplicate fields.
+                found = False
+                for fld in fields:
+                    if fld['name'] == name:
+                        found = True
+                        break
+
+                if not found:
+                    field = dict()
+                    field['name'] = name
+                    field['type'] = BQFieldTypeEnum.STRING.name
+                    field['mode'] = BQFieldModeEnum.NULLABLE.name
+                    field['enum'] = None
+                    fields.append(field)
 
             # There seems to be duplicate column definitions we need to remove in some of the modules.
-            tmpflds = [i for n, i in enumerate(fields) if i not in fields[n + 1:]]
-
-            return tmpflds
+            # tmpflds = [i for n, i in enumerate(fields) if i not in fields[n + 1:]]
+            # return tmpflds
+            return fields
 
 
 #

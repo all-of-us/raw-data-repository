@@ -230,5 +230,3 @@ class BQParticipantSummaryView(BQView):
     __viewname__ = 'v_participant_summary'
     __viewdescr__ = 'Participant Summary View'
     __table__ = BQParticipantSummary
-    _show_created = True
-    _show_modified = True

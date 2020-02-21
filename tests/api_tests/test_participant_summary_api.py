@@ -730,6 +730,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         sync_again = self.send_get(sync_url[index:])
         self.assertGreaterEqual(len(sync_again["entry"]), 14)
 
+
     def test_get_summary_list_returns_total(self):
         page_size = 10
         num_participants = 20

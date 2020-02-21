@@ -33,10 +33,15 @@
           "35.169.80.249",
           "34.205.219.39",
           "174.64.55.14/32",
-          "54.88.38.181"
+          "54.88.38.181",
+          "34.200.35.239"
         ],
         "ip6": []
       }
+    },
+    "vibrent-drc-qa@vibrent-drc-qa-165017.iam.gserviceaccount.com": {
+      "clientId": "vibrent",
+      "roles": ["ptc"]
     },
     "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
       "roles": [

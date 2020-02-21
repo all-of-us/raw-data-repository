@@ -6,10 +6,7 @@ Components are assembled by the JobController for a particular Genomic Job
 import csv
 import logging
 import re
-import datetime
 from collections import deque, namedtuple
-
-from sqlalchemy import or_
 
 from rdr_service.api_util import (
     open_cloud_file,
@@ -17,12 +14,7 @@ from rdr_service.api_util import (
     delete_cloud_file,
     list_blobs
 )
-from rdr_service.model.biobank_stored_sample import BiobankStoredSample
-from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
-from rdr_service.model.participant import Participant
-from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.genomics import GenomicSet, GenomicSetMember
-from rdr_service.model.code import Code
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     WithdrawalStatus,
@@ -31,7 +23,10 @@ from rdr_service.participant_enums import (
     GenomicSetStatus,
     GenomicManifestTypes,
     GenomicJob,
-    GenomicSubProcessStatus)
+    GenomicSubProcessStatus,
+    Race,
+    GenomicValidationFlag,
+    GenomicSetMemberStatus)
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,
@@ -79,7 +74,7 @@ class GenomicFileIngester:
         self.sub_folder_name = sub_folder
 
         # Sub Components
-        self.file_validator = None
+        self.file_validator = GenomicFileValidator(job_id=self.job_id)
         self.file_mover = GenomicFileMover(archive_folder=self.archive_folder_name)
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.file_processed_dao = GenomicFileProcessedDao()
@@ -120,7 +115,7 @@ class GenomicFileIngester:
         files = list_blobs(bucket, prefix=self.sub_folder_name)
         files = [s.name for s in files
                  if self.archive_folder_name not in s.name.lower()
-                 if self.file_name_conventions[self.job_id] in s.name.lower()]
+                 if self.file_validator.validate_filename(s.name.lower())]
         if not files:
             logging.info('No files in cloud bucket {}'.format(self.bucket_name))
             return GenomicSubProcessResult.NO_FILES
@@ -168,7 +163,6 @@ class GenomicFileIngester:
         :return: A GenomicSubProcessResultCode
         """
         self.file_obj = file_obj
-        self.file_validator = GenomicFileValidator()
 
         if self.job_id == GenomicJob.BB_RETURN_MANIFEST:
             logging.info("Ingesting Manifest Result Files...")
@@ -193,6 +187,7 @@ class GenomicFileIngester:
             elif data_to_ingest:
                 logging.info("Data to ingest from {}".format(self.file_obj.fileName))
                 logging.info("Validating GC metrics file.")
+                self.file_validator.valid_schema = None
                 validation_result = self.file_validator.validate_ingestion_file(
                     self.file_obj.fileName, data_to_ingest)
                 if validation_result != GenomicSubProcessResult.SUCCESS:
@@ -292,10 +287,11 @@ class GenomicFileValidator:
     This class validates the Genomic Centers files
     """
 
-    def __init__(self, filename=None, data=None, schema=None):
+    def __init__(self, filename=None, data=None, schema=None, job_id=None):
         self.filename = filename
         self.data_to_validate = data
         self.valid_schema = schema
+        self.job_id = job_id
 
         self.GC_CSV_SCHEMAS = {
             'seq': (
@@ -325,6 +321,8 @@ class GenomicFileValidator:
                 "site_id"
             ),
         }
+        self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bi', 'rdr')
+        self.VALID_CVL_FACILITIES = ('color', 'uw', 'baylor')
 
     def validate_ingestion_file(self, filename, data_to_validate):
         """
@@ -334,7 +332,7 @@ class GenomicFileValidator:
         :return: result code
         """
         self.filename = filename
-        if not self._check_filename_valid(filename):
+        if not self.validate_filename(filename):
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
         struct_valid_result = self._check_file_structure_valid(
@@ -349,16 +347,69 @@ class GenomicFileValidator:
 
         return GenomicSubProcessResult.SUCCESS
 
-    def _check_filename_valid(self, filename):
-        # TODO: revisit this once naming convention is finalized for other jobs
-        filename_components = filename.split('_')
-        return (
-            len(filename_components) == 5 and
-            filename_components[1].lower() == 'aou' and
-            filename_components[2].lower() in self.GC_CSV_SCHEMAS.keys() and
-            re.search(r"[0-1][0-9][0-3][0-9]20[1-9][0-9]\.csv",
-                      filename_components[4]) is not None
-        )
+    def validate_filename(self, filename):
+        """
+        Applies a naming rule to an arbitrary filename
+        Naming rules are defined as local functions and
+        Mapped to a Genomic Job ID in naming_rules dict.
+        :param filename: passed to each name rule as 'fn'
+        :return: boolean
+        """
+
+        # Naming Rule Definitions
+        def bb_result_name_rule(fn):
+            """Biobank to DRC Result name rule"""
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("-")]
+            return (
+                filename_components[0] == 'genomic' and
+                filename_components[1] == 'manifest' and
+                filename_components[2] in ('aou_array', 'aou_wgs')
+            )
+
+        def gc_validation_metrics_name_rule(fn):
+            """GC metrics file name rule"""
+            filename_components = [x.lower() for x in fn.split("_")]
+            return (
+                len(filename_components) == 5 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] in self.GC_CSV_SCHEMAS.keys() and
+                re.search(r"[0-1][0-9][0-3][0-9]20[1-9][0-9]\.csv",
+                          filename_components[4]) is not None
+            )
+
+        def bb_to_gc_manifest_name_rule(fn):
+            """Biobank to GCs manifest name rule"""
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
+            return (
+                len(filename_components) == 4 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] in ('seq', 'gen') and
+                re.search(r"pkg-[0-9]{4}-[0-9]{5,}\.csv$",
+                          filename_components[3]) is not None
+            )
+
+        def cvl_sec_val_manifest_name_rule(fn):
+            """CVL secondary validation manifest name rule"""
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
+            return (
+                len(filename_components) == 4 and
+                filename_components[0] in self.VALID_CVL_FACILITIES and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'cvl' and
+                re.search(r"pkg-[0-9]{4}-[0-9]{5,}\.csv$",
+                          filename_components[3]) is not None
+            )
+
+        name_rules = {
+            GenomicJob.BB_RETURN_MANIFEST: bb_result_name_rule,
+            GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
+            GenomicJob.BB_GC_MANIFEST: bb_to_gc_manifest_name_rule,
+            GenomicJob.CVL_SEC_VAL_MAN: cvl_sec_val_manifest_name_rule,
+        }
+
+        return name_rules[self.job_id](filename)
 
     def _check_file_structure_valid(self, fields):
         """
@@ -606,6 +657,11 @@ class GenomicBiobankSamplesCoupler:
         'male': 'M',
         'female': 'F'
     }
+    _VALIDATION_FLAGS = (GenomicValidationFlag.INVALID_WITHDRAW_STATUS,
+                         GenomicValidationFlag.INVALID_CONSENT,
+                         GenomicValidationFlag.INVALID_AGE,
+                         GenomicValidationFlag.INVALID_AIAN,
+                         GenomicValidationFlag.INVALID_SEX_AT_BIRTH)
 
     def __init__(self, run_id):
         self.samples_dao = BiobankStoredSampleDao()
@@ -629,25 +685,39 @@ class GenomicBiobankSamplesCoupler:
                                                                  "pids",
                                                                  "order_ids",
                                                                  "site_ids",
-                                                                 "sample_ids"])
+                                                                 "sample_ids",
+                                                                 "not_withdrawn",
+                                                                 "gen_consents",
+                                                                 "valid_ages",
+                                                                 "sabs",
+                                                                 "gror",
+                                                                 "valid_ai_ans"])
             samples_meta = GenomicSampleMeta(*samples)
             logging.info(f'{self.__class__.__name__}: Processing new biobank_ids {samples_meta.bids}')
             new_genomic_set = self._create_new_genomic_set()
             # Create genomic set members
             for i, bid in enumerate(samples_meta.bids):
-                # Validate sex at birth
-                sab_code = self._get_sex_at_birth(samples_meta.pids[i])
-                if sab_code not in self._SEX_AT_BIRTH_CODES.values():
-                    continue
+                logging.info(f'Validating sample: {samples_meta.sample_ids}')
+                validation_criteria = (
+                    samples_meta.not_withdrawn[i],
+                    samples_meta.gen_consents[i],
+                    samples_meta.valid_ages[i],
+                    samples_meta.valid_ai_ans[i],
+                    samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()
+                )
+                valid_flags = self._calculate_validation_flags(validation_criteria)
                 logging.info(f'Creating genomic set member for PID: {samples_meta.pids[i]}')
                 self._create_new_set_member(
                     biobankId=bid,
                     genomicSetId=new_genomic_set.id,
                     participantId=samples_meta.pids[i],
                     nyFlag=self._get_new_york_flag(samples_meta.site_ids[i]),
-                    sexAtBirth=sab_code,
+                    sexAtBirth=samples_meta.sabs[i],
                     biobankOrderId=samples_meta.order_ids[i],
                     sampleId=samples_meta.sample_ids[i],
+                    validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
+                                      else GenomicSetMemberStatus.VALID),
+                    ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y'
                 )
             # Create & transfer the Biobank Manifest based on the new genomic set
             try:
@@ -670,27 +740,67 @@ class GenomicBiobankSamplesCoupler:
         :return: list of tuples (bid, pid, biobank_identifier.value, collected_site_id)
         """
         # TODO: add Genomic RoR Consent when that Code is added
+        _new_samples_sql = """
+        SELECT DISTINCT
+          ss.biobank_id,
+          p.participant_id,
+          o.biobank_order_id,
+          o.collected_site_id,
+          ss.biobank_stored_sample_id,
+          CASE
+            WHEN p.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
+          END as not_withdrawn, 
+          CASE
+            WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
+          END as general_consent_given,
+          CASE
+            WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param*18 DAY) THEN 1 ELSE 0
+          END AS valid_age,
+          CASE
+            WHEN c.value = "SexAtBirth_Male" THEN "M"
+            WHEN c.value = "SexAtBirth_Female" THEN "F"
+            ELSE "NA"
+          END as sab, 
+          CASE
+            WHEN TRUE THEN 0 ELSE 0
+          END AS gror_consent,
+          CASE
+              WHEN native.participant_id IS NULL THEN 1 ELSE 0
+          END AS valid_ai_an
+        FROM
+            biobank_stored_sample ss
+            JOIN participant p ON ss.biobank_id = p.biobank_id
+            JOIN biobank_order_identifier oi ON ss.biobank_order_identifier = oi.value
+            JOIN biobank_order o ON oi.biobank_order_id = o.biobank_order_id
+            JOIN participant_summary ps ON ps.participant_id = p.participant_id
+            JOIN code c ON c.code_id = ps.sex_id
+            LEFT JOIN (
+              SELECT ra.participant_id
+              FROM participant_race_answers ra 			
+                  JOIN code cr ON cr.code_id = ra.code_id
+                      AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
+            ) native ON native.participant_id = p.participant_id            
+        WHERE TRUE
+            AND (
+                    ps.sample_status_1ed04 = :sample_status_param
+                    OR                    
+                    ps.sample_status_1sal2 = :sample_status_param
+                )
+            AND ss.test IN ("1ED04", "1SAL2")
+            AND ss.rdr_created > :from_date_param
+            AND ps.consent_for_study_enrollment_time > :consent_cutoff_param
+        """
+        params = {
+            "sample_status_param": SampleStatus.RECEIVED.__int__(),
+            "dob_param": GENOMIC_VALID_AGE,
+            "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
+            "consent_cutoff_param": GENOMIC_VALID_CONSENT_CUTOFF.strftime("%Y-%m-%d"),
+            "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
+            "from_date_param": from_date.strftime("%Y-%m-%d"),
+            "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
+        }
         with self.samples_dao.session() as session:
-            result = session.query(BiobankStoredSample.biobankId,
-                                   Participant.participantId,
-                                   BiobankOrder.biobankOrderId,
-                                   BiobankOrder.collectedSiteId,
-                                   BiobankStoredSample.biobankStoredSampleId).filter(
-                BiobankStoredSample.biobankId == Participant.biobankId,
-                BiobankOrder.biobankOrderId == BiobankOrderIdentifier.biobankOrderId,
-                BiobankStoredSample.biobankOrderIdentifier == BiobankOrderIdentifier.value,
-                Participant.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                ParticipantSummary.participantId == Participant.participantId,
-                ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
-                ParticipantSummary.consentForStudyEnrollmentTime > GENOMIC_VALID_CONSENT_CUTOFF,
-                ParticipantSummary.dateOfBirth < (
-                    datetime.datetime.now() - datetime.timedelta(days=GENOMIC_VALID_AGE*365)
-                ), or_(
-                    ParticipantSummary.sampleStatus1ED04 == SampleStatus.RECEIVED,
-                    ParticipantSummary.sampleStatus1SAL2 == SampleStatus.RECEIVED
-                ),
-                BiobankStoredSample.test.in_(("1ED04", "1SAL2")),
-                BiobankStoredSample.rdrCreated > from_date).all()
+            result = session.execute(_new_samples_sql, params).fetchall()
         return list(zip(*result))
 
     def _create_new_genomic_set(self):
@@ -717,20 +827,17 @@ class GenomicBiobankSamplesCoupler:
         """
         return int(self.site_dao.get(collected_site_id).state == 'NY')
 
-    def _get_sex_at_birth(self, participant_id):
+    def _calculate_validation_flags(self, validation_criteria):
         """
-        Looks up participant's sex at birth based on code.vale
-        :param participant_id: the id of the participant
-        :return: 'M', 'F', or 'NA'
+        Determines validation and flags for genomic sample
+        :param validation_criteria:
+        :return: list of validation flags
         """
-        # Assumes code.values like 'SexAtBirth_Male' and 'SexAtBirth_Female'
-        with self.ps_dao.session() as session:
-            result = session.query(Code.value)\
-                          .filter(Code.codeId == ParticipantSummary.sexId,
-                                  ParticipantSummary.participantId == participant_id)\
-                          .first()
-        return self._SEX_AT_BIRTH_CODES.get(
-                 result[0].lower().split('_')[-1], 'NA') if result else 'NA'
+        # Process validation flags for inserting into genomic_set_member
+        flags = [flag for (passing, flag) in
+                 zip(validation_criteria, self._VALIDATION_FLAGS)
+                 if not passing]
+        return flags
 
 
 class ManifestDefinitionProvider:

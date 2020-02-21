@@ -16,7 +16,8 @@ from rdr_service.api_util import EXPORTER
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
 from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status
 from rdr_service.offline.base_pipeline import send_failure_alert
-from rdr_service.offline.bigquery_sync import rebuild_bigquery_handler, sync_bigquery_handler
+from rdr_service.offline.bigquery_sync import rebuild_bigquery_handler, sync_bigquery_handler, \
+    daily_rebuild_bigquery_handler
 from rdr_service.offline.enrollment_check import check_enrollment
 from rdr_service.offline.exclude_ghost_participants import mark_ghost_participants
 from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
@@ -214,6 +215,13 @@ def bigquery_rebuild_cron():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
+def bigquery_daily_rebuild_cron():
+    daily_rebuild_bigquery_handler()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
 def bigquery_sync():
     sync_bigquery_handler()
     return '{"success": "true"}'
@@ -330,6 +338,11 @@ def _build_pipeline_app():
 
     offline_app.add_url_rule(
         PREFIX + "BigQueryRebuild", endpoint="bigquery_rebuild", view_func=bigquery_rebuild_cron, methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        PREFIX + "BigQueryDailyRebuild", endpoint="bigquery_daily_rebuild", view_func=bigquery_daily_rebuild_cron,
+        methods=["GET"]
     )
 
     offline_app.add_url_rule(

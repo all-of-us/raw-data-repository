@@ -144,4 +144,13 @@ class BigQueryRecordTest(unittest.TestCase):
         new_data = record.to_dict()
         self.assertEqual(self.full_data, new_data)
 
+    def test_schema_sql_field_list(self):
+        """ Test generating a sql field list from schema """
+        sql_fields = BQTestSchema.get_sql_field_names()
+        self.assertEqual('descr, timestamp, nested', sql_fields)
+
+        sql_fields = BQTestSchema.get_sql_field_names(exclude_fields=['timestamp'])
+        self.assertEqual('descr, nested', sql_fields)
+
+
     # TODO: Future: Test REQUIRED/NULLABLE BQ constraints when combining schema and data.

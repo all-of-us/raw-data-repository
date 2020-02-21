@@ -361,8 +361,8 @@ class MetricsCacheType(messages.Enum):
 
 
 # M2API age buckets
-AGE_BUCKETS_METRICS_V2_API = ["0-17", "18-25", "26-35", "36-45", "46-55", "56-65", "66-75", "76-85", "86-"]
-AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API = ["18-29", "30-39", "40-49", "50-59", "60-69", "70-79", "80-89", "90-"]
+AGE_BUCKETS_METRICS_V2_API = ["0-17", "18-25", "26-35", "36-45", "46-55", "56-65", "66-75", "76-85", "86-", "UNSET"]
+AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API = ["18-29", "30-39", "40-49", "50-59", "60-69", "70-79", "80-89", "90-", "UNSET"]
 
 
 class MetricsAPIVersion(messages.Enum):
@@ -512,6 +512,7 @@ class GenomicValidationFlag(messages.Enum):
     INVALID_WITHDRAW_STATUS = 7
     INVALID_AGE = 8
     INVALID_DUP_PARTICIPANT = 9
+    INVALID_AIAN = 10
 
 
 class GenomicJob(messages.Enum):
@@ -525,6 +526,7 @@ class GenomicJob(messages.Enum):
     CREATE_CVL_MANIFESTS = 6
     BB_RETURN_MANIFEST = 7
     BB_GC_MANIFEST = 8
+    CVL_SEC_VAL_MAN = 9
 
 
 class GenomicSubProcessStatus(messages.Enum):

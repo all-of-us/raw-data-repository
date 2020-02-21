@@ -19,6 +19,11 @@ BQ_TABLES = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRPersonalMedicalHistory'),
 
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummary'),
+
+    ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcher'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQRWBInstitutionalAffiliations'),
+    ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspace'),
+    ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceUsers'),
 ]
 
 BQ_VIEWS = [
@@ -46,4 +51,16 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRFamilyHistoryView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRHealthcareAccessView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRPersonalMedicalHistoryView'),
+
+    ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherView'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherGenderView'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherRaceView'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherSexAtBirthView'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherDegreeView'),
+    ('rdr_service.model.bq_workbench_researcher', 'BQRWBInstitutionalAffiliationsView'),
+
+    ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceView'),
+    ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceRaceEthnicityView'),
+    ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceAgeView'),
+    ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceUsersView'),
 ]

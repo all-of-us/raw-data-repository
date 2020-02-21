@@ -70,23 +70,23 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     raise BadRequest(f"Invalid user status: {user.get('status')}")
 
             if item.get("focusOnUnderrepresentedPopulations") and item.get("workspaceDemographic"):
+                race_ethnicity_array = []
                 if item.get("workspaceDemographic").get('raceEthnicity') is not None:
-                    race_ethnicity_array = []
                     for race_ethnicity in item.get("workspaceDemographic").get('raceEthnicity'):
                         try:
                             race_ethnicity_array.append(int(WorkbenchWorkspaceRaceEthnicity(race_ethnicity)))
                         except TypeError:
                             raise BadRequest(f"Invalid raceEthnicity for workspaceDemographic: {race_ethnicity}")
-                    item['raceEthnicity'] = race_ethnicity_array
+                item['raceEthnicity'] = race_ethnicity_array
 
+                age_array = []
                 if item.get("workspaceDemographic").get('age') is not None:
-                    age_array = []
                     for age in item.get("workspaceDemographic").get('age'):
                         try:
                             age_array.append(int(WorkbenchWorkspaceAge(age)))
                         except TypeError:
                             raise BadRequest(f"Invalid age for workspaceDemographic: {age}")
-                    item['age'] = age_array
+                item['age'] = age_array
 
                 try:
                     if item.get("workspaceDemographic").get('sexAtBirth') is None:
@@ -247,7 +247,6 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             else:
                 session.add(workspace)
         self._insert_history(session, workspaces)
-
         return workspaces
 
     def to_client_json(self, obj):
@@ -480,14 +479,14 @@ class WorkbenchResearcherDao(UpdatableDao):
             except TypeError:
                 raise BadRequest(f"Invalid ethnicity: {item.get('ethnicity')}")
 
+            set_at_birth_array = []
             if item.get('sexAtBirth') is not None:
-                set_at_birth_array = []
                 for set_at_birth in item.get('sexAtBirth'):
                     try:
                         set_at_birth_array.append(int(WorkbenchResearcherSexAtBirth(set_at_birth)))
                     except TypeError:
                         raise BadRequest(f"Invalid sexAtBirth: {set_at_birth}")
-                item['sexAtBirth'] = set_at_birth_array
+            item['sexAtBirth'] = set_at_birth_array
 
             try:
                 if item.get('education') is None:
@@ -497,14 +496,14 @@ class WorkbenchResearcherDao(UpdatableDao):
             except TypeError:
                 raise BadRequest(f"Invalid education: {item.get('education')}")
 
+            degree_array = []
             if item.get('degree') is not None:
-                degree_array = []
                 for degree in item.get('degree'):
                     try:
                         degree_array.append(int(WorkbenchResearcherDegree(degree)))
                     except TypeError:
                         raise BadRequest(f"Invalid degree: {degree}")
-                item['degree'] = degree_array
+            item['degree'] = degree_array
 
             try:
                 if item.get('disability') is None:
@@ -513,23 +512,23 @@ class WorkbenchResearcherDao(UpdatableDao):
             except TypeError:
                 raise BadRequest(f"Invalid disability: {item.get('disability')}")
 
+            gender_array = []
             if item.get('gender') is not None:
-                gender_array = []
                 for gender in item.get('gender'):
                     try:
                         gender_array.append(int(WorkbenchResearcherGender(gender)))
                     except TypeError:
                         raise BadRequest(f"Invalid gender: {gender}")
-                item['gender'] = gender_array
+            item['gender'] = gender_array
 
+            race_array = []
             if item.get('race') is not None:
-                race_array = []
                 for race in item.get('race'):
                     try:
                         race_array.append(int(WorkbenchResearcherRace(race)))
                     except TypeError:
                         raise BadRequest(f"Invalid race: {race}")
-                item['race'] = race_array
+            item['race'] = race_array
 
             if item.get('affiliations') is not None:
                 for institution in item.get('affiliations'):
@@ -554,6 +553,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 modifiedTime=parse(item.get('modifiedTime')),
                 givenName=item.get('givenName'),
                 familyName=item.get('familyName'),
+                email=item.get('email'),
                 streetAddress1=item.get('streetAddress1'),
                 streetAddress2=item.get('streetAddress2'),
                 city=item.get('city'),
@@ -569,7 +569,8 @@ class WorkbenchResearcherDao(UpdatableDao):
                 disability=WorkbenchResearcherDisability(item.get('disability', 'UNSET')),
                 gender=item.get('gender'),
                 race=item.get('race'),
-                workbenchInstitutionalAffiliations=self._get_affiliations(item.get('affiliations')),
+                workbenchInstitutionalAffiliations=self._get_affiliations(item.get('affiliations'),
+                                                                          item.get('verifiedInstitutionalAffiliation')),
                 resource=json.dumps(item)
             )
 
@@ -577,7 +578,7 @@ class WorkbenchResearcherDao(UpdatableDao):
 
         return researchers
 
-    def _get_affiliations(self, affiliations_json):
+    def _get_affiliations(self, affiliations_json, verified_affiliation_json):
         now = clock.CLOCK.now()
         affiliations = []
         if affiliations_json is not None:
@@ -591,6 +592,15 @@ class WorkbenchResearcherDao(UpdatableDao):
                                                                                            'UNSET'))
                 )
                 affiliations.append(affiliation_obj)
+        if verified_affiliation_json is not None:
+            verified_affiliation_obj = WorkbenchInstitutionalAffiliations(
+                created=now,
+                modified=now,
+                institution=verified_affiliation_json.get('institutionShortName'),
+                role=verified_affiliation_json.get('institutionalRole'),
+                isVerified=True
+            )
+            affiliations.append(verified_affiliation_obj)
         return affiliations
 
     def insert_with_session(self, session, researchers):
@@ -628,6 +638,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                     modified=affiliation.modified,
                     institution=affiliation.institution,
                     role=affiliation.role,
+                    isVerified=affiliation.isVerified,
                     nonAcademicAffiliation=affiliation.nonAcademicAffiliation
                 )
                 affiliations_history.append(affiliation_obj)

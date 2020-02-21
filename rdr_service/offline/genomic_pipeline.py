@@ -49,17 +49,6 @@ def new_participant_workflow():
         controller.run_new_participant_workflow()
 
 
-def biobank_return_manifest_workflow():
-    """
-    Entrypoint for Biobank Return Manifest Ingestion,
-    """
-    with GenomicJobController(GenomicJob.BB_RETURN_MANIFEST,
-                              bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
-                              sub_folder_name=config.GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME
-                              ) as controller:
-        controller.run_biobank_return_manifest_workflow()
-
-
 def genomic_centers_manifest_workflow():
     """
     Entrypoint for Biobank to Genomic Centers Manifest Ingestion
