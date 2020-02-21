@@ -209,7 +209,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 educationLevel=WorkbenchWorkspaceEducationLevel(item.get('educationLevel', 'UNSET')),
                 incomeLevel=WorkbenchWorkspaceIncomeLevel(item.get('incomeLevel', 'UNSET')),
                 raceEthnicity=item.get("raceEthnicity") if item.get("raceEthnicity") else [],
-                age=item.get("age") if item.get("age") else [],
+                age=item.get("age", []),
                 others=item.get('others'),
                 workbenchWorkspaceUser=self._get_users(item.get('workspaceUsers')),
                 resource=json.dumps(item)
