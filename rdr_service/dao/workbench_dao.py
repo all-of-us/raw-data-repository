@@ -208,7 +208,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 accessToCare=WorkbenchWorkspaceAccessToCare(item.get('accessToCare', 'UNSET')),
                 educationLevel=WorkbenchWorkspaceEducationLevel(item.get('educationLevel', 'UNSET')),
                 incomeLevel=WorkbenchWorkspaceIncomeLevel(item.get('incomeLevel', 'UNSET')),
-                raceEthnicity=item.get("raceEthnicity") if item.get("raceEthnicity") else [],
+                raceEthnicity=item.get("raceEthnicity", []),
                 age=item.get("age", []),
                 others=item.get('others'),
                 workbenchWorkspaceUser=self._get_users(item.get('workspaceUsers')),
