@@ -223,9 +223,11 @@ class GenomicFileIngester:
             for row in data['rows']:
                 sample_id = row['Biobankid Sampleid'].split('_')[-1]
                 member = self.member_dao.get_member_from_sample_id(sample_id)
-                self.member_dao.update_member_job_run_id(member,
-                                                         self.job_run_id,
-                                                         'reconcileGCManifestJobRunId')
+                member.packageId = row['Package Id']
+                member.reconcileGCManifestJobRunId = self.job_run_id
+                if member.validationStatus != GenomicSetMemberStatus.VALID:
+                    print(f'Invalid member found: {member.biobankId}')
+                self.member_dao.update(member)
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
             return GenomicSubProcessResult.ERROR

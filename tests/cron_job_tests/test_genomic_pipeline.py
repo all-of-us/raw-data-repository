@@ -1212,7 +1212,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Setup Test file
         gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-1.csv")
 
-        gc_manifest_filename = "RDR_AoU_GEN_PKG-1923-123456.csv"
+        gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
 
         self._write_cloud_csv(
             gc_manifest_filename,
@@ -1224,14 +1224,13 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.genomic_centers_manifest_workflow()
 
         # Test the data was ingested OK
-        member_1 = self.member_dao.get(1)
-        self.assertEqual(1, member_1.reconcileGCManifestJobRunId)
-
-        member_2 = self.member_dao.get(1)
-        self.assertEqual(1, member_2.reconcileGCManifestJobRunId)
-
-        member_3 = self.member_dao.get(3)
-        self.assertNotEqual(1, member_3.reconcileGCManifestJobRunId)
+        for member in self.member_dao.get_all():
+            if member.id in [1, 2]:
+                self.assertEqual(1, member.reconcileGCManifestJobRunId)
+                # Package ID represents that BB sample was reconciled to GC Manifest
+                self.assertEqual("PKG-1908-218051", member.packageId)
+            if member.id == 3:
+                self.assertNotEqual(1, member.reconcileGCManifestJobRunId)
 
         # Test file processing queue
         files_processed = self.file_processed_dao.get_all()
