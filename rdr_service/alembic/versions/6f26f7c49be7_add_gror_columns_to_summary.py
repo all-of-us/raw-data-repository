@@ -1,7 +1,7 @@
 """add gror columns to summary
 
 Revision ID: 6f26f7c49be7
-Revises: f5520e9dde27
+Revises: 64e68e221460
 Create Date: 2020-02-17 14:42:24.710777
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = '6f26f7c49be7'
-down_revision = 'f5520e9dde27'
+down_revision = '64e68e221460'
 branch_labels = None
 depends_on = None
 
