@@ -15,6 +15,7 @@ from rdr_service import clock, config
 from rdr_service.code_constants import (
     CABOR_SIGNATURE_QUESTION_CODE,
     CONSENT_FOR_DVEHR_MODULE,
+    CONSENT_FOR_GENOMICS_ROR,
     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
     CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
     CONSENT_PERMISSION_YES_CODE,
@@ -291,6 +292,11 @@ class QuestionnaireResponseDao(BaseDao):
                             something_changed = self._update_field(
                                 participant_summary, summary_field[0], summary_field[1], answer
                             )
+                    elif code.value == CONSENT_FOR_GENOMICS_ROR:
+                        # TODO: Placeholder for upcoming GROR consents. Req's haven't been decided. (2/20/20)
+                        # I would encourage you to just delete this block.
+                        # NOTE: If you're reading this after end of March 2020
+                        pass
                     elif code.value == RACE_QUESTION_CODE:
                         race_code_ids.append(answer.valueCodeId)
 
@@ -341,7 +347,13 @@ class QuestionnaireResponseDao(BaseDao):
                         new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
                     elif code.value == CONSENT_FOR_DVEHR_MODULE:
                         new_status = dvehr_consent
+                    elif code.value == CONSENT_FOR_GENOMICS_ROR:
+                        if code_dao.get(answer.valueCodeId).value != CONSENT_PERMISSION_YES_CODE:
+                            new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
+                        participant_summary.semanticVersionForPrimaryConsent = \
+                            questionnaire_response.questionnaireSemanticVersion
                         # set language of consent to participant summary
                         for extension in resource_json.get("extension", []):
                             if (
