@@ -133,6 +133,15 @@ Participant Summary Field List
   consentForCABoRTimeAuthored
       indicates the time at which the participant completed California Bill of Rights consent, regardless of when it was sent to RDR
 
+  consentForGenomicsROR
+      indicates whether genomic return of results consent has been recieved.
+
+  consentForGenomicsRORTime
+      indicates the time the genomic return of results was recieved by the RDR.
+
+  consentForGenomicsRORAuthored
+      indicates the time the participant signed the genomic return of results.
+
   questionnaireOnOverallHealth
       indicates status for Overall Health PPI module.
 
@@ -396,6 +405,9 @@ Participant Summary Field List
 
   sampleStatus1SALTime
       The datetime in UTC in which the biobank processed the sample.
+
+  semanticVersionForPrimaryConsent
+      The human readable version of primary consent the participant signed.
 
   numCompletedBaselinePPIModules
       The count of how many of [questionnaireOnTheBasics, questionnaireOnOverallHealth, questionnaireOnLifestyle] the participant has completed.
