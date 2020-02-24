@@ -707,7 +707,7 @@ class GenomicBiobankSamplesCoupler:
                 )
                 valid_flags = self._calculate_validation_flags(validation_criteria)
                 logging.info(f'Creating genomic set member for PID: {samples_meta.pids[i]}')
-                self._create_new_set_member(
+                new_member_obj = GenomicSetMember(
                     biobankId=bid,
                     genomicSetId=new_genomic_set.id,
                     participantId=samples_meta.pids[i],
@@ -719,6 +719,7 @@ class GenomicBiobankSamplesCoupler:
                                       else GenomicSetMemberStatus.VALID),
                     ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y'
                 )
+                self.member_dao.insert(new_member_obj)
             # Create & transfer the Biobank Manifest based on the new genomic set
             try:
                 create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id)
