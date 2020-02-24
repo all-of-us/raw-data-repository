@@ -195,9 +195,11 @@ def update_ehr_status_cron():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_pipeline_handler():
-    genomic_pipeline.process_genomic_water_line()
-    genomic_pipeline.ingest_genomic_centers_metrics_files()
-    genomic_pipeline.reconcile_metrics_vs_manifest()
+    # Only test the BB manifest portion (New Participant Workflow)
+    # genomic_pipeline.process_genomic_water_line()
+    # genomic_pipeline.ingest_genomic_centers_metrics_files()
+    # genomic_pipeline.reconcile_metrics_vs_manifest()
+    genomic_pipeline.new_participant_workflow()
     return '{"success": "true"}'
 
 

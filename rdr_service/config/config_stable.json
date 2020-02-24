@@ -253,7 +253,7 @@
     "genotyping_sample_manifests"
   ],
   "genomic_biobank_manifest_folder_name": [
-    "genomic_water_line_test"
+    "genomic_samples_manifests"
   ],
   "genomic_biobank_manifest_result_folder_name": [
     "genomic_water_line_test_results"
