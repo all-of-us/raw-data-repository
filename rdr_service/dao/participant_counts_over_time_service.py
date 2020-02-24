@@ -30,7 +30,7 @@ from rdr_service.participant_enums import (
     WithdrawalStatus,
 )
 
-CACHE_START_DATE = datetime.datetime.strptime("2017-04-01", "%Y-%m-%d").date()
+CACHE_START_DATE = datetime.datetime.strptime("2017-01-01", "%Y-%m-%d").date()
 
 
 class ParticipantCountsOverTimeService(BaseDao):
@@ -57,8 +57,6 @@ class ParticipantCountsOverTimeService(BaseDao):
             for index_name in index_name_list:
                 if index_name != 'PRIMARY':
                     session.execute('ALTER TABLE  metrics_tmp_participant DROP INDEX  {}'.format(index_name))
-                else:
-                    session.execute('ALTER TABLE  metrics_tmp_participant DROP PRIMARY KEY')
 
             session.execute('ALTER TABLE metrics_tmp_participant MODIFY first_name VARCHAR(255)')
             session.execute('ALTER TABLE metrics_tmp_participant MODIFY last_name VARCHAR(255)')
@@ -66,84 +64,45 @@ class ParticipantCountsOverTimeService(BaseDao):
             session.execute('ALTER TABLE metrics_tmp_participant MODIFY participant_origin VARCHAR(80)')
 
             columns_cursor = session.execute('SELECT * FROM metrics_tmp_participant LIMIT 0')
-            summary_fields = ['consent_for_study_enrollment_time', 'enrollment_status_member_time',
-                              'questionnaire_on_the_basics_time', 'questionnaire_on_overall_health_time',
-                              'questionnaire_on_lifestyle_time', 'questionnaire_on_healthcare_access_time',
-                              'questionnaire_on_medical_history_time', 'questionnaire_on_medications_time',
-                              'questionnaire_on_family_health_time', 'physical_measurements_time',
-                              'sample_status_1ed10_time', 'sample_status_2ed10_time', 'sample_status_1ed04_time',
-                              'sample_status_1sal_time', 'sample_status_1sal2_time', 'primary_language', 'state_id',
-                              'questionnaire_on_the_basics', 'gender_identity']
-            participant_fields = ['participant_id', 'sign_up_time', 'hpo_id', 'participant_origin']
 
-            for column in columns_cursor.keys():
-                if column not in summary_fields and column not in participant_fields:
-                    session.execute('ALTER TABLE metrics_tmp_participant DROP COLUMN {}'.format(column))
+            participant_fields = ['participant_id', 'biobank_id', 'sign_up_time', 'withdrawal_status',
+                                  'hpo_id', 'organization_id', 'site_id', 'participant_origin']
 
             def get_field_name(name):
                 if name in participant_fields:
                     return 'p.' + name
-                elif name in summary_fields:
+                else:
                     return 'ps.' + name
 
-            columns = filter(None, map(get_field_name, columns_cursor.keys()))
+            columns = map(get_field_name, columns_cursor.keys())
             columns_str = ','.join(columns)
-
-            session.execute('ALTER TABLE metrics_tmp_participant ADD COLUMN registered_flag BOOLEAN')
-            session.execute('ALTER TABLE metrics_tmp_participant ADD COLUMN participant_flag BOOLEAN')
-            session.execute('ALTER TABLE metrics_tmp_participant ADD COLUMN consented_flag BOOLEAN')
-            session.execute('ALTER TABLE metrics_tmp_participant ADD COLUMN core_flag BOOLEAN')
-            session.execute('ALTER TABLE metrics_tmp_participant ADD COLUMN day DATE')
-            session.execute('ALTER TABLE metrics_tmp_participant ADD COLUMN hpo_name VARCHAR(20)')
-            session.execute('ALTER TABLE metrics_tmp_participant ADD COLUMN age INT')
-
-            enrollment_status_criteria_arr = [
-                'c.day>=DATE(p.sign_up_time) '
-                'AND (ps.consent_for_study_enrollment_time IS NULL '
-                'OR DATE(ps.consent_for_study_enrollment_time)>c.day)',  # registered
-                'ps.consent_for_study_enrollment_time IS NOT NULL '
-                'AND c.day>=DATE(ps.consent_for_study_enrollment_time) '
-                'AND (ps.enrollment_status_member_time IS NULL '
-                'OR c.day < DATE(ps.enrollment_status_member_time))',  # participant
-                'ps.enrollment_status_member_time IS NOT NULL '
-                'AND c.day>=DATE(ps.enrollment_status_member_time) '
-                'AND (ps.enrollment_status_core_stored_sample_time IS NULL '
-                'OR c.day < DATE(ps.enrollment_status_core_stored_sample_time))',  # consented
-                'ps.enrollment_status_core_stored_sample_time IS NOT NULL '
-                'AND c.day>=DATE(ps.enrollment_status_core_stored_sample_time)'  # core
-            ]
-
-            flag_str = ','.join(enrollment_status_criteria_arr)
-
-            columns_str = columns_str + ', ' + flag_str + \
-                          ', c.day, h.name, ' \
-                          '(Date_format(From_Days(To_Days(c.day) - To_Days(date_of_birth)), \'%Y\') + 0)'
 
             participant_sql = """
               INSERT INTO metrics_tmp_participant
               SELECT
               """ + columns_str + """
-              FROM calendar c,
-              participant p 
+              FROM participant p
               left join participant_summary ps on p.participant_id = ps.participant_id
-              left join hpo h on p.hpo_id = h.hpo_id
               WHERE p.hpo_id <> :test_hpo_id
               AND p.is_ghost_id IS NOT TRUE
               AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
               AND p.withdrawal_status = :not_withdraw
-              AND DATE(p.sign_up_time) <= c.day
-              AND c.day BETWEEN :start_date AND :end_date
             """
-            start_date = CACHE_START_DATE
-            end_date = datetime.datetime.now().date() + datetime.timedelta(days=10)
             params = {'test_hpo_id': self.test_hpo_id, 'test_email_pattern': self.test_email_pattern,
-                      'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN), 'start_date': start_date,
-                      'end_date': end_date}
-            session.execute(participant_sql, params)
-            session.execute('CREATE INDEX idx_participant_id ON metrics_tmp_participant (participant_id)')
+                      'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN)}
+
             session.execute('CREATE INDEX idx_hpo_id ON metrics_tmp_participant (hpo_id)')
-            session.execute('CREATE INDEX idx_calender_day ON metrics_tmp_participant (day)')
-            session.execute('CREATE INDEX idx_age ON metrics_tmp_participant (age)')
+            session.execute('CREATE INDEX idx_sign_up_time ON metrics_tmp_participant (sign_up_time)')
+            session.execute('CREATE INDEX idx_consent_time ON metrics_tmp_participant '
+                            '(consent_for_study_enrollment_time)')
+            session.execute('CREATE INDEX idx_member_time ON metrics_tmp_participant '
+                            '(enrollment_status_member_time)')
+            session.execute('CREATE INDEX idx_sample_time ON metrics_tmp_participant '
+                            '(enrollment_status_core_stored_sample_time)')
+            session.execute('CREATE INDEX idx_participant_origin ON metrics_tmp_participant '
+                            '(participant_origin)')
+
+            session.execute(participant_sql, params)
 
             participant_origin_sql = """
                 INSERT INTO metrics_tmp_participant_origin
@@ -190,6 +149,7 @@ class ParticipantCountsOverTimeService(BaseDao):
         )
         job_status_obj = MetricsCacheJobStatus(**kwargs)
         status_obj = status_dao.insert(job_status_obj)
+
         hpo_dao = HPODao()
         hpo_list = hpo_dao.get_all()
         for hpo in hpo_list:
@@ -200,7 +160,11 @@ class ParticipantCountsOverTimeService(BaseDao):
 
     def insert_cache_by_hpo(self, dao, hpo_id, updated_time):
         sql_arr = dao.get_metrics_cache_sql()
-        params = {'hpo_id': hpo_id, 'date_inserted': updated_time}
+        start_date = CACHE_START_DATE
+        end_date = datetime.datetime.now().date() + datetime.timedelta(days=10)
+
+        params = {'hpo_id': hpo_id, 'start_date': start_date, 'end_date': end_date,
+                  'date_inserted': updated_time}
         with dao.session() as session:
             for sql in sql_arr:
                 session.execute(sql, params)

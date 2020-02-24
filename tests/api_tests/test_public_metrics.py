@@ -234,7 +234,7 @@ class PublicMetricsApiTest(BaseTestCase):
         summary.enrollmentStatusCoreStoredSampleTime = time_fp_stored
 
         if time_study is not None:
-            with FakeClock(time_study):
+            with FakeClock(time_mem):
                 summary.consentForStudyEnrollmentTime = time_study
 
         if time_mem is not None:
@@ -708,7 +708,6 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time2,
-            time_study=self.time2,
             time_mem=self.time3,
             gender_identity=2,
         )
@@ -731,7 +730,6 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time3,
-            time_study=self.time3,
             time_mem=self.time5,
             gender_identity=5,
         )
@@ -754,7 +752,6 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time4,
-            time_study=self.time4,
             time_mem=self.time5,
             gender_identity=5,
         )
@@ -776,7 +773,6 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time5,
-            time_study=self.time5,
             time_mem=self.time5,
             gender_identity=7,
         )
@@ -825,7 +821,6 @@ class PublicMetricsApiTest(BaseTestCase):
         qs = "&stratification=GENDER_IDENTITY" "&startDate=2017-12-31" "&endDate=2018-01-08" "&version=2"
 
         results = self.send_get("PublicMetrics", query_string=qs)
-
         self.assertIn(
             {
                 "date": "2017-12-31",
@@ -926,7 +921,24 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         results = self.send_get("PublicMetrics", query_string=qs)
-
+        self.assertIn(
+            {
+                "date": "2017-12-31",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "Other/Additional Options": 0,
+                    "Non-Binary": 0,
+                    "UNMAPPED": 0,
+                    "Transgender": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 0,
+                    "More than one gender identity": 0,
+                },
+            },
+            results,
+        )
         self.assertIn(
             {
                 "date": "2018-01-01",
@@ -1010,7 +1022,42 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         results = self.send_get("PublicMetrics", query_string=qs)
-
+        self.assertIn(
+            {
+                "date": "2017-12-31",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "Other/Additional Options": 0,
+                    "Non-Binary": 0,
+                    "UNMAPPED": 0,
+                    "Transgender": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 0,
+                    "More than one gender identity": 0,
+                },
+            },
+            results,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-01",
+                "metrics": {
+                    "Woman": 0,
+                    "PMI_Skip": 0,
+                    "Other/Additional Options": 0,
+                    "Non-Binary": 0,
+                    "UNMAPPED": 0,
+                    "Transgender": 0,
+                    "Prefer not to say": 0,
+                    "UNSET": 0,
+                    "Man": 0,
+                    "More than one gender identity": 0,
+                },
+            },
+            results,
+        )
         self.assertIn(
             {
                 "date": "2018-01-02",
@@ -1113,7 +1160,15 @@ class PublicMetricsApiTest(BaseTestCase):
             {
                 "date": "2017-12-31",
                 "metrics": {
-                    "30-39": 1
+                    "50-59": 0,
+                    "60-69": 0,
+                    "30-39": 1,
+                    "40-49": 0,
+                    "UNSET": 0,
+                    "80-89": 0,
+                    "90-": 0,
+                    "18-29": 0,
+                    "70-79": 0,
                 },
             },
             results,
@@ -1122,8 +1177,15 @@ class PublicMetricsApiTest(BaseTestCase):
             {
                 "date": "2018-01-01",
                 "metrics": {
+                    "50-59": 0,
+                    "60-69": 0,
                     "30-39": 1,
-                    "18-29": 1
+                    "40-49": 0,
+                    "18-29": 1,
+                    "80-89": 0,
+                    "90-": 0,
+                    "UNSET": 0,
+                    "70-79": 0,
                 },
             },
             results,
@@ -1132,8 +1194,15 @@ class PublicMetricsApiTest(BaseTestCase):
             {
                 "date": "2018-01-02",
                 "metrics": {
+                    "50-59": 0,
+                    "60-69": 0,
                     "30-39": 1,
-                    "18-29": 2
+                    "40-49": 0,
+                    "18-29": 2,
+                    "80-89": 0,
+                    "70-79": 0,
+                    "UNSET": 0,
+                    "90-": 0,
                 },
             },
             results,
@@ -1142,8 +1211,15 @@ class PublicMetricsApiTest(BaseTestCase):
             {
                 "date": "2018-01-03",
                 "metrics": {
+                    "50-59": 0,
+                    "60-69": 0,
                     "30-39": 1,
-                    "18-29": 3
+                    "40-49": 0,
+                    "18-29": 3,
+                    "80-89": 0,
+                    "70-79": 0,
+                    "UNSET": 0,
+                    "90-": 0,
                 },
             },
             results,
@@ -1155,9 +1231,34 @@ class PublicMetricsApiTest(BaseTestCase):
 
         self.assertIn(
             {
+                "date": "2017-12-31",
+                "metrics": {
+                    "50-59": 0,
+                    "60-69": 0,
+                    "30-39": 0,
+                    "40-49": 0,
+                    "UNSET": 0,
+                    "80-89": 0,
+                    "90-": 0,
+                    "18-29": 0,
+                    "70-79": 0,
+                },
+            },
+            results,
+        )
+        self.assertIn(
+            {
                 "date": "2018-01-01",
                 "metrics": {
-                    "18-29": 1
+                    "50-59": 0,
+                    "60-69": 0,
+                    "30-39": 0,
+                    "40-49": 0,
+                    "18-29": 1,
+                    "80-89": 0,
+                    "90-": 0,
+                    "UNSET": 0,
+                    "70-79": 0,
                 },
             },
             results,
@@ -1166,7 +1267,15 @@ class PublicMetricsApiTest(BaseTestCase):
             {
                 "date": "2018-01-02",
                 "metrics": {
-                    "18-29": 2
+                    "50-59": 0,
+                    "60-69": 0,
+                    "30-39": 0,
+                    "40-49": 0,
+                    "18-29": 2,
+                    "80-89": 0,
+                    "70-79": 0,
+                    "UNSET": 0,
+                    "90-": 0,
                 },
             },
             results,
@@ -1175,7 +1284,15 @@ class PublicMetricsApiTest(BaseTestCase):
             {
                 "date": "2018-01-03",
                 "metrics": {
-                    "18-29": 3
+                    "50-59": 0,
+                    "60-69": 0,
+                    "30-39": 0,
+                    "40-49": 0,
+                    "18-29": 3,
+                    "80-89": 0,
+                    "70-79": 0,
+                    "UNSET": 0,
+                    "90-": 0,
                 },
             },
             results,
@@ -1190,12 +1307,53 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
         results = self.send_get("PublicMetrics", query_string=qs)
-
+        self.assertIn(
+            {
+                "date": "2017-12-31",
+                "metrics": {
+                    "50-59": 0,
+                    "60-69": 0,
+                    "30-39": 0,
+                    "40-49": 0,
+                    "UNSET": 0,
+                    "80-89": 0,
+                    "90-": 0,
+                    "18-29": 0,
+                    "70-79": 0,
+                },
+            },
+            results,
+        )
+        self.assertIn(
+            {
+                "date": "2018-01-01",
+                "metrics": {
+                    "50-59": 0,
+                    "60-69": 0,
+                    "30-39": 0,
+                    "40-49": 0,
+                    "18-29": 0,
+                    "80-89": 0,
+                    "90-": 0,
+                    "UNSET": 0,
+                    "70-79": 0,
+                },
+            },
+            results,
+        )
         self.assertIn(
             {
                 "date": "2018-01-02",
                 "metrics": {
-                    "18-29": 1
+                    "50-59": 0,
+                    "60-69": 0,
+                    "30-39": 0,
+                    "40-49": 0,
+                    "18-29": 1,
+                    "80-89": 0,
+                    "70-79": 0,
+                    "UNSET": 0,
+                    "90-": 0,
                 },
             },
             results,
@@ -1204,7 +1362,15 @@ class PublicMetricsApiTest(BaseTestCase):
             {
                 "date": "2018-01-03",
                 "metrics": {
-                    "18-29": 1
+                    "50-59": 0,
+                    "60-69": 0,
+                    "30-39": 0,
+                    "40-49": 0,
+                    "18-29": 1,
+                    "80-89": 0,
+                    "70-79": 0,
+                    "UNSET": 0,
+                    "90-": 0,
                 },
             },
             results,
@@ -1213,7 +1379,15 @@ class PublicMetricsApiTest(BaseTestCase):
             {
                 "date": "2018-01-04",
                 "metrics": {
-                    "18-29": 3
+                    "50-59": 0,
+                    "60-69": 0,
+                    "30-39": 0,
+                    "40-49": 0,
+                    "18-29": 3,
+                    "80-89": 0,
+                    "70-79": 0,
+                    "UNSET": 0,
+                    "90-": 0,
                 },
             },
             results,
@@ -1314,22 +1488,17 @@ class PublicMetricsApiTest(BaseTestCase):
             return participant
 
         p1 = setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
-        self.update_participant_summary(p1["participantId"][1:], time_study=self.time1, time_mem=self.time2)
-
+        self.update_participant_summary(p1["participantId"][1:], time_mem=self.time2)
         p2 = setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
-        self.update_participant_summary(p2["participantId"][1:], time_study=self.time2, time_mem=self.time3,
-                                        time_fp_stored=self.time5)
+        self.update_participant_summary(p2["participantId"][1:], time_mem=self.time3, time_fp_stored=self.time5)
         p3 = setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
-        self.update_participant_summary(p3["participantId"][1:], time_study=self.time3, time_mem=self.time4)
+        self.update_participant_summary(p3["participantId"][1:], time_mem=self.time4)
         p4 = setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
-        self.update_participant_summary(p4["participantId"][1:], time_study=self.time4, time_mem=self.time5)
+        self.update_participant_summary(p4["participantId"][1:], time_mem=self.time5)
         p5 = setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
-        self.update_participant_summary(p5["participantId"][1:], time_study=self.time4, time_mem=self.time4,
-                                        time_fp_stored=self.time5)
-        p6 = setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
-        self.update_participant_summary(p6["participantId"][1:], time_study=self.time2)
-        p7 = setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
-        self.update_participant_summary(p7["participantId"][1:], time_study=self.time3)
+        self.update_participant_summary(p5["participantId"][1:], time_mem=self.time4, time_fp_stored=self.time5)
+        setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
+        setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
         service = ParticipantCountsOverTimeService()
         service.init_tmp_table()
@@ -1690,7 +1859,7 @@ class PublicMetricsApiTest(BaseTestCase):
             },
             results,
         )
-    #
+
     def test_public_metrics_get_region_api(self):
 
         code1 = Code(
@@ -2078,13 +2247,12 @@ class PublicMetricsApiTest(BaseTestCase):
     def test_public_metrics_get_language_api(self):
 
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1, time_study=self.time1,
-                     primary_language="en")
+        self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1, primary_language="en")
 
         p2 = Participant(participantId=2, biobankId=5)
         self._insert(
-            p2, "Bob", "Builder", "AZ_TUCSON", "AZ_TUCSON_BANNER_HEALTH", time_int=self.time2, time_study=self.time2,
-            primary_language="es")
+            p2, "Bob", "Builder", "AZ_TUCSON", "AZ_TUCSON_BANNER_HEALTH", time_int=self.time2, primary_language="es"
+        )
 
         p3 = Participant(participantId=3, biobankId=6)
         self._insert(
@@ -2094,7 +2262,6 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time1,
-            time_study=self.time1,
             time_mem=self.time3,
             time_fp_stored=self.time4,
             primary_language="en",
@@ -2108,7 +2275,6 @@ class PublicMetricsApiTest(BaseTestCase):
             "AZ_TUCSON",
             "AZ_TUCSON_BANNER_HEALTH",
             time_int=self.time1,
-            time_study=self.time1,
             time_mem=self.time2,
             time_fp_stored=self.time4,
         )
@@ -2120,6 +2286,7 @@ class PublicMetricsApiTest(BaseTestCase):
         qs = "&stratification=LANGUAGE" "&startDate=2017-12-30" "&endDate=2018-01-03"
 
         results = self.send_get("PublicMetrics", query_string=qs)
+        self.assertIn({"date": "2017-12-30", "metrics": {"EN": 0, "UNSET": 0, "ES": 0}}, results)
         self.assertIn({"date": "2017-12-31", "metrics": {"EN": 1, "UNSET": 2, "ES": 0}}, results)
         self.assertIn({"date": "2018-01-03", "metrics": {"EN": 1, "UNSET": 2, "ES": 1}}, results)
 
