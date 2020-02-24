@@ -271,19 +271,73 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
 
     def get_metrics_cache_sql(self):
         sql = """
-            INSERT INTO metrics_enrollment_status_cache
+            insert into metrics_enrollment_status_cache
               SELECT
                 :date_inserted AS date_inserted,
-                hpo_id,
-                hpo_name,
-                day as c_date,
-                SUM(registered_flag=1) AS registered_count,
-                SUM(participant_flag=1) AS participant_count,
-                SUM(consented_flag=1) AS consented_count,
-                SUM(core_flag=1) AS core_count,
-                participant_origin
-                FROM metrics_tmp_participant
-                GROUP BY date_inserted, hpo_id, hpo_name, c_date, participant_origin
+                :hpo_id AS hpo_id,
+                (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS name,
+                c.day AS date,
+                IFNULL((
+                  SELECT SUM(results.enrollment_count)
+                  FROM
+                  (
+                    SELECT DATE(ps.sign_up_time) AS sign_up_time,
+                           DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
+                           ps.participant_origin,
+                           count(*) enrollment_count
+                    FROM metrics_tmp_participant ps
+                    WHERE ps.hpo_id = :hpo_id
+                    GROUP BY DATE(ps.sign_up_time), DATE(ps.consent_for_study_enrollment_time), ps.participant_origin
+                  ) AS results
+                  WHERE c.day>=DATE(sign_up_time) AND (consent_for_study_enrollment_time IS NULL OR DATE(consent_for_study_enrollment_time)>c.day)
+                  and results.participant_origin = d.participant_origin
+                ),0) AS registered_count,
+                IFNULL((
+                  SELECT SUM(results.enrollment_count)
+                  FROM
+                  (
+                    SELECT DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
+                           DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                           ps.participant_origin,
+                           count(*) enrollment_count
+                    FROM metrics_tmp_participant ps
+                    WHERE ps.hpo_id = :hpo_id
+                    GROUP BY DATE(ps.consent_for_study_enrollment_time), DATE(ps.enrollment_status_member_time), ps.participant_origin
+                  ) AS results
+                  WHERE consent_for_study_enrollment_time IS NOT NULL AND c.day>=DATE(consent_for_study_enrollment_time) AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
+                  and results.participant_origin = d.participant_origin
+                ),0) AS participant_count,
+                IFNULL((
+                  SELECT SUM(results.enrollment_count)
+                  FROM
+                  (
+                    SELECT DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                           DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
+                           ps.participant_origin,
+                           count(*) enrollment_count
+                    FROM metrics_tmp_participant ps
+                    WHERE ps.hpo_id = :hpo_id
+                    GROUP BY DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time), ps.participant_origin
+                  ) AS results
+                  WHERE enrollment_status_member_time IS NOT NULL AND day>=DATE(enrollment_status_member_time) AND (enrollment_status_core_stored_sample_time IS NULL OR day < DATE(enrollment_status_core_stored_sample_time))
+                  and results.participant_origin = d.participant_origin
+                ),0) AS consented_count,
+                IFNULL((
+                  SELECT SUM(results.enrollment_count)
+                  FROM
+                  (
+                    SELECT DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
+                           ps.participant_origin, count(*) enrollment_count
+                    FROM metrics_tmp_participant ps
+                    WHERE ps.hpo_id = :hpo_id
+                    GROUP BY DATE(ps.enrollment_status_core_stored_sample_time), ps.participant_origin
+                  ) AS results
+                  WHERE enrollment_status_core_stored_sample_time IS NOT NULL AND day>=DATE(enrollment_status_core_stored_sample_time)
+                  and results.participant_origin = d.participant_origin
+                ),0) AS core_count,
+                d.participant_origin
+              FROM calendar c, metrics_tmp_participant_origin d
+              WHERE c.day BETWEEN :start_date AND :end_date
               ;
         """
 
@@ -547,13 +601,27 @@ class MetricsGenderCacheDao(BaseDao):
               'core' as enrollment_status,
               :hpo_id AS hpo_id,
               (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
-              day,
+              c.day AS date,
               '{gender_name}' AS gender_name,
-              SUM(core_flag=1) AS gender_count,
+              IFNULL((
+                SELECT SUM(results.gender_count)
+                FROM
+                (
+                  SELECT DATE(ps.sign_up_time) as day,
+                         DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                         COUNT(*) gender_count
+                  FROM metrics_tmp_participant ps
+                  LEFT JOIN {answers_table_sql} pga ON ps.participant_id = pga.participant_id
+                  WHERE ps.hpo_id = :hpo_id AND {gender_condition}
+                  GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                ) AS results
+                WHERE results.day <= c.day
+                AND enrollment_status_core_stored_sample_time IS NOT NULL
+                AND DATE(enrollment_status_core_stored_sample_time) <= c.day
+              ),0) AS gender_count,
               '' as participant_origin
-            FROM metrics_tmp_participant ps LEFT JOIN {answers_table_sql} pga ON ps.participant_id = pga.participant_id
-            WHERE ps.hpo_id = :hpo_id AND {gender_condition}
-            GROUP BY day
+            FROM calendar c
+            WHERE c.day BETWEEN :start_date AND :end_date
             UNION ALL
             SELECT
               :date_inserted AS date_inserted,
@@ -561,13 +629,26 @@ class MetricsGenderCacheDao(BaseDao):
               'registered' as enrollment_status,
               :hpo_id AS hpo_id,
               (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
-              day,
+              c.day AS date,
               '{gender_name}' AS gender_name,
-              SUM(registered_flag=1 or participant_flag=1) AS gender_count,
+              IFNULL((
+                SELECT SUM(results.gender_count)
+                FROM
+                (
+                  SELECT DATE(ps.sign_up_time) as day,
+                         DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
+                         COUNT(*) gender_count
+                  FROM metrics_tmp_participant ps
+                  LEFT JOIN {answers_table_sql} pga ON ps.participant_id = pga.participant_id
+                  WHERE ps.hpo_id = :hpo_id AND {gender_condition}
+                  GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_member_time)
+                ) AS results
+                WHERE results.day <= c.day
+                AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
+              ),0) AS gender_count,
               '' as participant_origin
-            FROM metrics_tmp_participant ps LEFT JOIN {answers_table_sql} pga ON ps.participant_id = pga.participant_id
-            WHERE ps.hpo_id = :hpo_id AND {gender_condition}
-            GROUP BY day
+            FROM calendar c
+            WHERE c.day BETWEEN :start_date AND :end_date
             UNION ALL
             SELECT
               :date_inserted AS date_inserted,
@@ -575,13 +656,29 @@ class MetricsGenderCacheDao(BaseDao):
               'consented' as enrollment_status,
               :hpo_id AS hpo_id,
               (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
-              day,
+              c.day AS date,
               '{gender_name}' AS gender_name,
-              SUM(consented_flag=1) AS gender_count,
+              IFNULL((
+                SELECT SUM(results.gender_count)
+                FROM
+                (
+                  SELECT DATE(ps.sign_up_time) as day,
+                         DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
+                         DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                         COUNT(*) gender_count
+                  FROM metrics_tmp_participant ps
+                  LEFT JOIN {answers_table_sql} pga ON ps.participant_id = pga.participant_id
+                  WHERE ps.hpo_id = :hpo_id AND {gender_condition}
+                  GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                ) AS results
+                WHERE results.day <= c.day
+                AND enrollment_status_member_time IS NOT NULL
+                AND DATE(enrollment_status_member_time) <= c.day
+                AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
+              ),0) AS gender_count,
               '' as participant_origin
-            FROM metrics_tmp_participant ps LEFT JOIN {answers_table_sql} pga ON ps.participant_id = pga.participant_id
-            WHERE ps.hpo_id = :hpo_id AND {gender_condition}
-            GROUP BY day
+            FROM calendar c
+            WHERE c.day BETWEEN :start_date AND :end_date
             """
             for gender_name, gender_condition in zip(self.gender_names, gender_conditions):
                 sub_query = sql_template.format(cache_type=self.cache_type,
@@ -594,10 +691,19 @@ class MetricsGenderCacheDao(BaseDao):
             sql_arr.append(sql)
         else:
             enrollment_status_criteria_arr = [
-                ('registered', 'registered_flag=1'),
-                ('participant', 'participant_flag=1'),
-                ('consented', 'consented_flag=1'),
-                ('core', 'core_flag=1')
+                ('registered', 'c.day>=DATE(ps.sign_up_time) '
+                               'AND (ps.consent_for_study_enrollment_time IS NULL OR '
+                               'DATE(ps.consent_for_study_enrollment_time)>c.day)'),
+                ('participant', 'ps.consent_for_study_enrollment_time IS NOT NULL '
+                                'AND c.day>=DATE(ps.consent_for_study_enrollment_time) '
+                                'AND (ps.enrollment_status_member_time IS NULL '
+                                'OR c.day < DATE(ps.enrollment_status_member_time))'),
+                ('consented', 'ps.enrollment_status_member_time IS NOT NULL '
+                              'AND c.day>=DATE(ps.enrollment_status_member_time) '
+                              'AND (ps.enrollment_status_core_stored_sample_time IS NULL '
+                              'OR c.day < DATE(ps.enrollment_status_core_stored_sample_time))'),
+                ('core', 'ps.enrollment_status_core_stored_sample_time IS NOT NULL '
+                         'AND c.day>=DATE(ps.enrollment_status_core_stored_sample_time)')
             ]
             gender_conditions = [
                 ' ps.gender_identity IS NULL ',
@@ -621,13 +727,15 @@ class MetricsGenderCacheDao(BaseDao):
                   '{enrollment_status}' AS enrollment_status,
                   :hpo_id AS hpo_id,
                   (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
-                  day AS date,
+                  c.day AS date,
                   '{gender_name}' AS gender_name,
-                  SUM({enrollment_status_criteria}) as gender_count,
+                  COUNT(*) as gender_count,
                   participant_origin
-                FROM metrics_tmp_participant ps
-                WHERE {gender_condition}
+                FROM metrics_tmp_participant ps, calendar c
+                WHERE {enrollment_status_criteria}
+                AND {gender_condition}
                 AND ps.hpo_id = :hpo_id
+                AND c.day BETWEEN :start_date AND :end_date
                 GROUP BY date, participant_origin
                 """
                 for gender_name, gender_condition in zip(self.gender_names, gender_conditions):
@@ -802,18 +910,133 @@ class MetricsAgeCacheDao(BaseDao):
         return client_json
 
     def get_metrics_cache_sql(self):
-        sql = 'INSERT INTO metrics_age_cache '
+        sql = """
+          insert into metrics_age_cache
+            SELECT
+              :date_inserted AS date_inserted,
+              'core' as enrollment_status,
+              '{cache_type}' as type,
+              :hpo_id AS hpo_id,
+              (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+              c.day AS date,
+              'UNSET' AS age_range,
+              IFNULL((
+                SELECT SUM(results.age_count)
+                FROM
+                (
+                  SELECT DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                         participant_origin,
+                         count(*) age_count
+                  FROM metrics_tmp_participant ps
+                  WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NULL
+                  GROUP BY DATE(ps.enrollment_status_core_stored_sample_time), participant_origin
+                ) AS results
+                WHERE enrollment_status_core_stored_sample_time IS NOT NULL
+                AND DATE(enrollment_status_core_stored_sample_time) <= c.day
+                AND results.participant_origin = d.participant_origin
+              ),0) AS age_count,
+              d.participant_origin
+            FROM calendar c, metrics_tmp_participant_origin d
+            WHERE c.day BETWEEN :start_date AND :end_date
+            UNION ALL
+            SELECT
+              :date_inserted AS date_inserted,
+              'registered' as enrollment_status,
+              '{cache_type}' as type,
+              :hpo_id AS hpo_id,
+              (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+              c.day AS date,
+              'UNSET' AS age_range,
+              IFNULL((
+                SELECT SUM(results.age_count)
+                FROM
+                (
+                  SELECT DATE(ps.sign_up_time) AS day,
+                         DATE(ps.consent_for_study_enrollment_time) as consent_for_study_enrollment_time,
+                         participant_origin,
+                         count(*) age_count
+                  FROM metrics_tmp_participant ps
+                  WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NULL
+                  GROUP BY DATE(ps.sign_up_time), DATE(ps.consent_for_study_enrollment_time), participant_origin
+                ) AS results
+                WHERE results.day <= c.day
+                AND (consent_for_study_enrollment_time is NULL OR DATE(consent_for_study_enrollment_time)>c.day)
+                AND results.participant_origin = d.participant_origin
+              ),0) AS age_count,
+              d.participant_origin
+            FROM calendar c, metrics_tmp_participant_origin d
+            WHERE c.day BETWEEN :start_date AND :end_date
+            UNION ALL
+            SELECT
+              :date_inserted AS date_inserted,
+              'participant' as enrollment_status,
+              '{cache_type}' as type,
+              :hpo_id AS hpo_id,
+              (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+              c.day AS date,
+              'UNSET' AS age_range,
+              IFNULL((
+                SELECT SUM(results.age_count)
+                FROM
+                (
+                  SELECT DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
+                         DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
+                         participant_origin,
+                         count(*) age_count
+                  FROM metrics_tmp_participant ps
+                  WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NULL
+                  GROUP BY DATE(ps.consent_for_study_enrollment_time), DATE(ps.enrollment_status_member_time), participant_origin
+                ) AS results
+                WHERE consent_for_study_enrollment_time IS NOT NULL
+                AND c.day>=DATE(consent_for_study_enrollment_time)
+                AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
+                AND results.participant_origin = d.participant_origin
+              ),0) AS age_count,
+              d.participant_origin
+            FROM calendar c, metrics_tmp_participant_origin d
+            WHERE c.day BETWEEN :start_date AND :end_date
+            UNION ALL
+            SELECT
+              :date_inserted AS date_inserted,
+              'consented' as enrollment_status,
+              '{cache_type}' as type,
+              :hpo_id AS hpo_id,
+              (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+              c.day AS date,
+              'UNSET' AS age_range,
+              IFNULL((
+                SELECT SUM(results.age_count)
+                FROM
+                (
+                  SELECT DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
+                         DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                         participant_origin,
+                         count(*) age_count
+                  FROM metrics_tmp_participant ps
+                  WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NULL
+                  GROUP BY DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time), participant_origin
+                ) AS results
+                WHERE enrollment_status_member_time IS NOT NULL
+                AND DATE(enrollment_status_member_time) <= c.day
+                AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
+                AND results.participant_origin = d.participant_origin
+              ),0) AS age_count,
+              d.participant_origin
+            FROM calendar c, metrics_tmp_participant_origin d
+            WHERE c.day BETWEEN :start_date AND :end_date
+            UNION ALL
+        """.format(cache_type=str(self.cache_type))
+
         age_ranges_conditions = []
         for age_range in self.age_ranges:
-            if age_range != 'UNSET':
-                age_borders = [_f for _f in age_range.split("-") if _f]
-                if len(age_borders) == 2:
-                    age_ranges_conditions.append(' age BETWEEN ' + age_borders[0] + ' AND '
-                                                 + age_borders[1], )
-                else:
-                    age_ranges_conditions.append(' age >= ' + age_borders[0])
-
-        age_ranges_conditions.append(' age IS NULL')
+            age_borders = [_f for _f in age_range.split("-") if _f]
+            if len(age_borders) == 2:
+                age_ranges_conditions.append(' AND (Date_format(From_Days(To_Days(c.day) - To_Days(dob)), '
+                                             '\'%Y\') + 0) BETWEEN ' + age_borders[0] + ' AND '
+                                             + age_borders[1], )
+            else:
+                age_ranges_conditions.append(' AND (Date_format(From_Days(To_Days(c.day) - To_Days(dob)), '
+                                             '\'%Y\') + 0) >= ' + age_borders[0])
 
         sub_queries = []
         sql_template = """
@@ -823,13 +1046,28 @@ class MetricsAgeCacheDao(BaseDao):
             '{cache_type}' as type,
             :hpo_id AS hpo_id,
             (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
-            day as date,
+            c.day as date,
             '{age_range}' AS age_range,
-            SUM(core_flag=1) AS age_count,
-            participant_origin
-          FROM metrics_tmp_participant
-          WHERE hpo_id = :hpo_id AND {age_range_condition}
-          GROUP BY date, participant_origin
+            IFNULL((
+              SELECT SUM(results.age_count)
+              FROM
+              (
+                SELECT DATE(ps.date_of_birth) AS dob,
+                       DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                       participant_origin,
+                       count(*) age_count
+                FROM metrics_tmp_participant ps
+                WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NOT NULL
+                GROUP BY DATE(ps.date_of_birth), DATE(ps.enrollment_status_core_stored_sample_time), participant_origin
+              ) AS results
+              WHERE enrollment_status_core_stored_sample_time IS NOT NULL
+              AND DATE(enrollment_status_core_stored_sample_time) <= c.day
+              AND results.participant_origin = d.participant_origin
+              {age_range_condition}
+            ),0) AS age_count,
+            d.participant_origin
+          FROM calendar c, metrics_tmp_participant_origin d
+          WHERE c.day BETWEEN :start_date AND :end_date
           UNION ALL
           SELECT
             :date_inserted AS date_inserted,
@@ -837,13 +1075,28 @@ class MetricsAgeCacheDao(BaseDao):
             '{cache_type}' as type,
             :hpo_id AS hpo_id,
             (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
-            day as date,
+            c.day as date,
             '{age_range}' AS age_range,
-            SUM(registered_flag=1) AS age_count,
-            participant_origin
-          FROM metrics_tmp_participant
-          WHERE hpo_id = :hpo_id AND {age_range_condition}
-          GROUP BY date, participant_origin
+            IFNULL((
+              SELECT SUM(results.age_count)
+              FROM
+              (
+                SELECT DATE(ps.sign_up_time) AS day,
+                       DATE(ps.date_of_birth) AS dob,
+                       DATE(ps.consent_for_study_enrollment_time) as consent_for_study_enrollment_time,
+                       participant_origin,
+                       count(*) age_count
+                FROM metrics_tmp_participant ps
+                WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NOT NULL
+                GROUP BY DATE(ps.sign_up_time), DATE(ps.date_of_birth), DATE(ps.consent_for_study_enrollment_time), participant_origin
+              ) AS results
+              WHERE results.day <= c.day AND (consent_for_study_enrollment_time is NULL OR DATE(consent_for_study_enrollment_time)>c.day)
+              AND results.participant_origin = d.participant_origin
+              {age_range_condition}
+            ),0) AS age_count,
+            d.participant_origin
+          FROM calendar c, metrics_tmp_participant_origin d
+          WHERE c.day BETWEEN :start_date AND :end_date
           UNION ALL
           SELECT
             :date_inserted AS date_inserted,
@@ -851,13 +1104,29 @@ class MetricsAgeCacheDao(BaseDao):
             '{cache_type}' as type,
             :hpo_id AS hpo_id,
             (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
-            day as date,
+            c.day as date,
             '{age_range}' AS age_range,
-            SUM(participant_flag=1) AS age_count,
-            participant_origin
-          FROM metrics_tmp_participant
-          WHERE hpo_id = :hpo_id AND {age_range_condition}
-          GROUP BY date, participant_origin
+            IFNULL((
+              SELECT SUM(results.age_count)
+              FROM
+              (
+                SELECT DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
+                       DATE(ps.date_of_birth) AS dob,
+                       DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
+                       participant_origin,
+                       count(*) age_count
+                FROM metrics_tmp_participant ps
+                WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NOT NULL
+                GROUP BY DATE(ps.consent_for_study_enrollment_time), DATE(ps.date_of_birth), DATE(ps.enrollment_status_member_time), participant_origin
+              ) AS results
+              WHERE consent_for_study_enrollment_time IS NOT NULL AND consent_for_study_enrollment_time <= c.day
+              AND (enrollment_status_member_time is null or DATE(enrollment_status_member_time)>c.day)
+              AND results.participant_origin = d.participant_origin
+              {age_range_condition}
+            ),0) AS age_count,
+            d.participant_origin
+          FROM calendar c, metrics_tmp_participant_origin d
+          WHERE c.day BETWEEN :start_date AND :end_date
           UNION ALL
           SELECT
             :date_inserted AS date_inserted,
@@ -865,13 +1134,30 @@ class MetricsAgeCacheDao(BaseDao):
             '{cache_type}' as type,
             :hpo_id AS hpo_id,
             (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
-            day as date,
+            c.day as date,
             '{age_range}' AS age_range,
-            SUM(consented_flag=1) AS age_count,
-            participant_origin
-          FROM metrics_tmp_participant
-          WHERE hpo_id = :hpo_id AND {age_range_condition}
-          GROUP BY date, participant_origin
+            IFNULL((
+              SELECT SUM(results.age_count)
+              FROM
+              (
+                SELECT DATE(ps.date_of_birth) AS dob,
+                       DATE(ps.enrollment_status_member_time) as enrollment_status_member_time,
+                       DATE(ps.enrollment_status_core_stored_sample_time) as enrollment_status_core_stored_sample_time,
+                       participant_origin,
+                       count(*) age_count
+                FROM metrics_tmp_participant ps
+                WHERE ps.hpo_id = :hpo_id AND ps.date_of_birth IS NOT NULL
+                GROUP BY DATE(ps.date_of_birth), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time), participant_origin
+              ) AS results
+              WHERE enrollment_status_member_time IS NOT NULL
+              AND DATE(enrollment_status_member_time) <= c.day
+              AND (enrollment_status_core_stored_sample_time is null or DATE(enrollment_status_core_stored_sample_time)>c.day)
+              AND results.participant_origin = d.participant_origin
+              {age_range_condition}
+            ),0) AS age_count,
+            d.participant_origin
+          FROM calendar c, metrics_tmp_participant_origin d
+          WHERE c.day BETWEEN :start_date AND :end_date
         """
 
         for age_range, age_range_condition in zip(self.age_ranges, age_ranges_conditions):
@@ -880,7 +1166,7 @@ class MetricsAgeCacheDao(BaseDao):
                                             age_range_condition=age_range_condition)
             sub_queries.append(sub_query)
 
-        sql += ' UNION ALL '.join(sub_queries)
+        sql += ' union all '.join(sub_queries)
 
         return [sql]
 
@@ -1130,7 +1416,7 @@ class MetricsRaceCacheDao(BaseDao):
                 consented as consented_flag,
                 core as core_flag,
                 hpo_id,
-                hpo_name,
+                (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
                 day,
                 SUM(American_Indian_Alaska_Native) AS American_Indian_Alaska_Native,
                 SUM(Asian) AS Asian,
@@ -1147,13 +1433,18 @@ class MetricsRaceCacheDao(BaseDao):
                 FROM
                 (
                   SELECT p.hpo_id,
-                         p.hpo_name,
                          day,
                          p.participant_origin,
-                         registered_flag AS registered,
-                         participant_flag AS participant,
-                         consented_flag AS consented,
-                         core_flag AS core,
+                         CASE WHEN DATE(sign_up_time)<=calendar.day AND (consent_for_study_enrollment_time IS NULL OR DATE(consent_for_study_enrollment_time)>calendar.day)
+                                   THEN 1 ELSE 0 END AS registered,
+                         CASE WHEN (consent_for_study_enrollment_time IS NOT NULL AND DATE(consent_for_study_enrollment_time)<=calendar.day) AND
+                                   (enrollment_status_member_time IS NULL OR DATE(enrollment_status_member_time)>calendar.day)
+                             THEN 1 ELSE 0 END AS participant,
+                         CASE WHEN (enrollment_status_member_time IS NOT NULL AND DATE(enrollment_status_member_time)<=calendar.day) AND
+                                   (enrollment_status_core_stored_sample_time IS NULL OR DATE(enrollment_status_core_stored_sample_time)>calendar.day)
+                             THEN 1 ELSE 0 END AS consented,
+                         CASE WHEN enrollment_status_core_stored_sample_time IS NOT NULL AND DATE(enrollment_status_core_stored_sample_time)<=calendar.day
+                             THEN 1 ELSE 0 END AS core,
                          CASE WHEN WhatRaceEthnicity_AIAN=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS American_Indian_Alaska_Native,
                          CASE WHEN WhatRaceEthnicity_Asian=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Asian,
                          CASE WHEN WhatRaceEthnicity_Black=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Black_African_American,
@@ -1182,34 +1473,57 @@ class MetricsRaceCacheDao(BaseDao):
                            ELSE 0
                          END AS No_Ancestry_Checked
                   FROM (
-                         SELECT ps.participant_id,
-                                   ps.hpo_id,
-                                   ps.hpo_name,
-                                   day,
-                                   registered_flag,
-                                   participant_flag,
-                                   consented_flag,
-                                   core_flag,
-                                   participant_origin,
-                                   MAX(q.code_id = {WhatRaceEthnicity_Hispanic}) AS WhatRaceEthnicity_Hispanic,
-                                   MAX(q.code_id = {WhatRaceEthnicity_Black}) AS WhatRaceEthnicity_Black,
-                                   MAX(q.code_id = {WhatRaceEthnicity_White}) AS WhatRaceEthnicity_White,
-                                   MAX(q.code_id = {WhatRaceEthnicity_AIAN}) AS WhatRaceEthnicity_AIAN,
-                                   MAX(q.code_id IS NULL) AS UNSET,
-                                   MAX(q.code_id = {WhatRaceEthnicity_RaceEthnicityNoneOfThese}) AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
-                                   MAX(q.code_id = {WhatRaceEthnicity_Asian}) AS WhatRaceEthnicity_Asian,
-                                   MAX(q.code_id = {PMI_PreferNotToAnswer}) AS PMI_PreferNotToAnswer,
-                                   MAX(q.code_id = {WhatRaceEthnicity_MENA}) AS WhatRaceEthnicity_MENA,
-                                   MAX(q.code_id = {PMI_Skip}) AS PMI_Skip,
-                                   MAX(q.code_id = {WhatRaceEthnicity_NHPI}) AS WhatRaceEthnicity_NHPI,
-                                   COUNT(*) as Number_of_Answer
-                            FROM metrics_tmp_participant ps
-                            LEFT JOIN participant_race_answers q ON ps.participant_id = q.participant_id
-                            WHERE ps.hpo_id=:hpo_id AND ps.questionnaire_on_the_basics = 1
-                            GROUP BY participant_id, hpo_id, hpo_name, day, registered_flag, participant_flag, consented_flag, core_flag, participant_origin
-                       ) p
+                         SELECT participant_id,
+                                hpo_id,
+                                sign_up_time,
+                                consent_for_study_enrollment_time,
+                                enrollment_status_member_time,
+                                enrollment_status_core_stored_sample_time,
+                                participant_origin,
+                                MAX(WhatRaceEthnicity_Hispanic)                 AS WhatRaceEthnicity_Hispanic,
+                                MAX(WhatRaceEthnicity_Black)                    AS WhatRaceEthnicity_Black,
+                                MAX(WhatRaceEthnicity_White)                    AS WhatRaceEthnicity_White,
+                                MAX(WhatRaceEthnicity_AIAN)                     AS WhatRaceEthnicity_AIAN,
+                                MAX(UNSET)                                      AS UNSET,
+                                MAX(WhatRaceEthnicity_RaceEthnicityNoneOfThese) AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
+                                MAX(WhatRaceEthnicity_Asian)                    AS WhatRaceEthnicity_Asian,
+                                MAX(PMI_PreferNotToAnswer)                      AS PMI_PreferNotToAnswer,
+                                MAX(WhatRaceEthnicity_MENA)                     AS WhatRaceEthnicity_MENA,
+                                MAX(PMI_Skip)                                   AS PMI_Skip,
+                                MAX(WhatRaceEthnicity_NHPI)                     AS WhatRaceEthnicity_NHPI,
+                                COUNT(*) as Number_of_Answer
+                         FROM (
+                                SELECT ps.participant_id,
+                                       ps.hpo_id,
+                                       ps.sign_up_time,
+                                       consent_for_study_enrollment_time,
+                                       ps.enrollment_status_member_time,
+                                       ps.enrollment_status_core_stored_sample_time,
+                                       ps.participant_origin,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_Hispanic} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_Black} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Black,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_White} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_White,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_AIAN} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_AIAN,
+                                       CASE WHEN q.code_id IS NULL THEN 1 ELSE 0 END AS UNSET,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_RaceEthnicityNoneOfThese} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_Asian} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Asian,
+                                       CASE WHEN q.code_id = {PMI_PreferNotToAnswer} THEN 1 ELSE 0 END   AS PMI_PreferNotToAnswer,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_MENA} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_MENA,
+                                       CASE WHEN q.code_id = {PMI_Skip} THEN 1 ELSE 0 END   AS PMI_Skip,
+                                       CASE WHEN q.code_id = {WhatRaceEthnicity_NHPI} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_NHPI
+                                FROM metrics_tmp_participant ps
+                                LEFT JOIN participant_race_answers q ON ps.participant_id = q.participant_id
+                                WHERE ps.hpo_id=:hpo_id AND ps.questionnaire_on_the_basics = 1
+                              ) x
+                         GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time, participant_origin
+                       ) p,
+                       calendar, metrics_tmp_participant_origin po
+                  WHERE calendar.day >= :start_date
+                    AND calendar.day <= :end_date
+                    AND calendar.day >= Date(p.sign_up_time)
+                    AND p.participant_origin = po.participant_origin
                 ) y
-                GROUP BY day, hpo_id, hpo_name, registered, participant, consented, core, participant_origin
+                GROUP BY day, hpo_id, registered, participant, consented, core, participant_origin
                 ;
             """.format(cache_type=self.cache_type,
                        Race_WhatRaceEthnicity=race_code_dict['Race_WhatRaceEthnicity'],
@@ -1235,7 +1549,7 @@ class MetricsRaceCacheDao(BaseDao):
                       consented as consented_flag,
                       core as core_flag,
                       hpo_id,
-                      hpo_name,
+                      (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
                       day,
                       SUM(American_Indian_Alaska_Native) AS American_Indian_Alaska_Native,
                       SUM(Asian) AS Asian,
@@ -1252,13 +1566,18 @@ class MetricsRaceCacheDao(BaseDao):
                       FROM
                       (
                         SELECT p.hpo_id,
-                               p.hpo_name,
                                day,
                                p.participant_origin,
-                               registered_flag AS registered,
-                               participant_flag AS participant,
-                               consented_flag AS consented,
-                               core_flag AS core,
+                               CASE WHEN DATE(sign_up_time)<=calendar.day AND (consent_for_study_enrollment_time IS NULL OR DATE(consent_for_study_enrollment_time)>calendar.day)
+                                   THEN 1 ELSE 0 END AS registered,
+                               CASE WHEN (consent_for_study_enrollment_time IS NOT NULL AND DATE(consent_for_study_enrollment_time)<=calendar.day) AND
+                                         (enrollment_status_member_time IS NULL OR DATE(enrollment_status_member_time)>calendar.day)
+                                   THEN 1 ELSE 0 END AS participant,
+                               CASE WHEN (enrollment_status_member_time IS NOT NULL AND DATE(enrollment_status_member_time)<=calendar.day) AND
+                                         (enrollment_status_core_stored_sample_time IS NULL OR DATE(enrollment_status_core_stored_sample_time)>calendar.day)
+                                   THEN 1 ELSE 0 END AS consented,
+                               CASE WHEN enrollment_status_core_stored_sample_time IS NOT NULL AND DATE(enrollment_status_core_stored_sample_time)<=calendar.day
+                                   THEN 1 ELSE 0 END AS core,
                                CASE WHEN WhatRaceEthnicity_AIAN=1 THEN 1 ELSE 0 END AS American_Indian_Alaska_Native,
                                CASE WHEN WhatRaceEthnicity_Asian=1 THEN 1 ELSE 0 END AS Asian,
                                CASE WHEN WhatRaceEthnicity_Black=1 THEN 1 ELSE 0 END AS Black_African_American,
@@ -1287,34 +1606,57 @@ class MetricsRaceCacheDao(BaseDao):
                                  ELSE 0
                                END AS No_Ancestry_Checked
                         FROM (
-                               SELECT ps.participant_id,
-                                       ps.hpo_id,
-                                       ps.hpo_name,
-                                       day,
-                                       registered_flag,
-                                       participant_flag,
-                                       consented_flag,
-                                       core_flag,
-                                       participant_origin,
-                                       MAX(q.code_id = {WhatRaceEthnicity_Hispanic}) AS WhatRaceEthnicity_Hispanic,
-                                       MAX(q.code_id = {WhatRaceEthnicity_Black}) AS WhatRaceEthnicity_Black,
-                                       MAX(q.code_id = {WhatRaceEthnicity_White}) AS WhatRaceEthnicity_White,
-                                       MAX(q.code_id = {WhatRaceEthnicity_AIAN}) AS WhatRaceEthnicity_AIAN,
-                                       MAX(q.code_id IS NULL) AS UNSET,
-                                       MAX(q.code_id = {WhatRaceEthnicity_RaceEthnicityNoneOfThese}) AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
-                                       MAX(q.code_id = {WhatRaceEthnicity_Asian}) AS WhatRaceEthnicity_Asian,
-                                       MAX(q.code_id = {PMI_PreferNotToAnswer}) AS PMI_PreferNotToAnswer,
-                                       MAX(q.code_id = {WhatRaceEthnicity_MENA}) AS WhatRaceEthnicity_MENA,
-                                       MAX(q.code_id = {PMI_Skip}) AS PMI_Skip,
-                                       MAX(q.code_id = {WhatRaceEthnicity_NHPI}) AS WhatRaceEthnicity_NHPI,
-                                       COUNT(*) as Number_of_Answer
-                                FROM metrics_tmp_participant ps
-                                LEFT JOIN participant_race_answers q ON ps.participant_id = q.participant_id
-                                WHERE ps.hpo_id=:hpo_id AND ps.questionnaire_on_the_basics = 1
-                                GROUP BY participant_id, hpo_id, hpo_name, day, registered_flag, participant_flag, consented_flag, core_flag, participant_origin
-                             ) p
+                               SELECT participant_id,
+                                      hpo_id,
+                                      sign_up_time,
+                                      consent_for_study_enrollment_time,
+                                      enrollment_status_member_time,
+                                      enrollment_status_core_stored_sample_time,
+                                      participant_origin,
+                                      MAX(WhatRaceEthnicity_Hispanic)                 AS WhatRaceEthnicity_Hispanic,
+                                      MAX(WhatRaceEthnicity_Black)                    AS WhatRaceEthnicity_Black,
+                                      MAX(WhatRaceEthnicity_White)                    AS WhatRaceEthnicity_White,
+                                      MAX(WhatRaceEthnicity_AIAN)                     AS WhatRaceEthnicity_AIAN,
+                                      MAX(UNSET)                                      AS UNSET,
+                                      MAX(WhatRaceEthnicity_RaceEthnicityNoneOfThese) AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
+                                      MAX(WhatRaceEthnicity_Asian)                    AS WhatRaceEthnicity_Asian,
+                                      MAX(PMI_PreferNotToAnswer)                      AS PMI_PreferNotToAnswer,
+                                      MAX(WhatRaceEthnicity_MENA)                     AS WhatRaceEthnicity_MENA,
+                                      MAX(PMI_Skip)                                   AS PMI_Skip,
+                                      MAX(WhatRaceEthnicity_NHPI)                     AS WhatRaceEthnicity_NHPI,
+                                      COUNT(*) as Number_of_Answer
+                               FROM (
+                                      SELECT ps.participant_id,
+                                             ps.hpo_id,
+                                             ps.sign_up_time,
+                                             consent_for_study_enrollment_time,
+                                             ps.enrollment_status_member_time,
+                                             ps.enrollment_status_core_stored_sample_time,
+                                             ps.participant_origin,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_Hispanic} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_Black} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Black,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_White} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_White,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_AIAN} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_AIAN,
+                                             CASE WHEN q.code_id IS NULL THEN 1 ELSE 0 END AS UNSET,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_RaceEthnicityNoneOfThese} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_Asian} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Asian,
+                                             CASE WHEN q.code_id = {PMI_PreferNotToAnswer} THEN 1 ELSE 0 END   AS PMI_PreferNotToAnswer,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_MENA} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_MENA,
+                                             CASE WHEN q.code_id = {PMI_Skip} THEN 1 ELSE 0 END   AS PMI_Skip,
+                                             CASE WHEN q.code_id = {WhatRaceEthnicity_NHPI} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_NHPI
+                                      FROM metrics_tmp_participant ps
+                                      LEFT JOIN participant_race_answers q ON ps.participant_id = q.participant_id
+                                      WHERE ps.hpo_id=:hpo_id AND ps.questionnaire_on_the_basics = 1
+                                    ) x
+                               GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time, participant_origin
+                             ) p,
+                             calendar, metrics_tmp_participant_origin po
+                        WHERE calendar.day >= :start_date
+                          AND calendar.day <= :end_date
+                          AND calendar.day >= Date(p.sign_up_time)
+                          AND p.participant_origin = po.participant_origin
                       ) y
-                      GROUP BY day, hpo_id, hpo_name, registered, participant, consented, core, participant_origin
+                      GROUP BY day, hpo_id, registered, participant, consented, core, participant_origin
                       ;
                 """.format(cache_type=self.cache_type,
                            Race_WhatRaceEthnicity=race_code_dict['Race_WhatRaceEthnicity'],
@@ -1601,22 +1943,86 @@ class MetricsRegionCacheDao(BaseDao):
           INSERT INTO metrics_region_cache
             SELECT
               :date_inserted AS date_inserted,
-              CASE 
-                WHEN registered_flag IS TRUE THEN 'registered'
-                WHEN participant_flag IS TRUE THEN 'participant'
-                WHEN consented_flag IS TRUE THEN 'consented'
-                WHEN core_flag IS TRUE THEN 'core'
-              END AS enrollment_status,
+              'core' as enrollment_status,
               :hpo_id AS hpo_id,
-              hpo_name,
-              day,
-              IFNULL(value,'UNSET') AS state_name,
-              count(participant_id) AS state_count,
-              participant_origin
+              (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+              c.day,
+              IFNULL(ps.value,'UNSET') AS state_name,
+              count(ps.participant_id) AS state_count,
+              ps.participant_origin
             FROM
-              metrics_tmp_participant, code
-            WHERE  state_id=code_id AND hpo_id=:hpo_id
-            GROUP BY day, registered_flag, participant_flag, consented_flag, core_flag, hpo_id, hpo_name, value, participant_origin
+              (SELECT participant_id, participant_origin, hpo_id, value, enrollment_status_core_stored_sample_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              metrics_tmp_participant_origin po,
+              calendar c
+            WHERE ps.hpo_id=:hpo_id
+            AND ps.participant_origin = po.participant_origin
+            AND ps.enrollment_status_core_stored_sample_time IS NOT NULL
+            AND DATE(ps.enrollment_status_core_stored_sample_time) <= c.day
+            AND c.day BETWEEN :start_date AND :end_date
+            GROUP BY c.day, ps.hpo_id, ps.value, ps.participant_origin
+            UNION ALL
+            SELECT
+              :date_inserted AS date_inserted,
+              'registered' as enrollment_status,
+              :hpo_id AS hpo_id,
+              (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+              c.day,
+              IFNULL(ps.value,'UNSET') AS state_name,
+              count(ps.participant_id) AS state_count,
+              ps.participant_origin
+            FROM
+              (SELECT participant_id, participant_origin, hpo_id, value, sign_up_time, consent_for_study_enrollment_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              metrics_tmp_participant_origin po,
+              calendar c
+            WHERE ps.hpo_id=:hpo_id
+            AND ps.participant_origin = po.participant_origin
+            AND ps.sign_up_time IS NOT NULL
+            AND DATE(ps.sign_up_time) <= c.day
+            AND (ps.consent_for_study_enrollment_time IS NULL OR DATE(ps.consent_for_study_enrollment_time)>c.day)
+            AND c.day BETWEEN :start_date AND :end_date
+            GROUP BY c.day, ps.hpo_id, ps.value, ps.participant_origin
+            UNION ALL
+            SELECT
+              :date_inserted AS date_inserted,
+              'participant' as enrollment_status,
+              :hpo_id AS hpo_id,
+              (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+              c.day,
+              IFNULL(ps.value,'UNSET') AS state_name,
+              count(ps.participant_id) AS state_count,
+              ps.participant_origin
+            FROM
+              (SELECT participant_id, participant_origin, hpo_id, value, consent_for_study_enrollment_time, enrollment_status_member_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              metrics_tmp_participant_origin po,
+              calendar c
+            WHERE ps.hpo_id=:hpo_id
+            AND ps.participant_origin = po.participant_origin
+            AND ps.consent_for_study_enrollment_time IS NOT NULL
+            AND DATE(ps.consent_for_study_enrollment_time) <= c.day
+            AND (ps.enrollment_status_member_time is null or DATE(ps.enrollment_status_member_time)>c.day)
+            AND c.day BETWEEN :start_date AND :end_date
+            GROUP BY c.day, ps.hpo_id, ps.value, ps.participant_origin
+            UNION ALL
+            SELECT
+              :date_inserted AS date_inserted,
+              'consented' as enrollment_status,
+              :hpo_id AS hpo_id,
+              (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+              c.day,
+              IFNULL(ps.value,'UNSET') AS state_name,
+              count(ps.participant_id) AS state_count,
+              ps.participant_origin
+            FROM
+              (SELECT participant_id, participant_origin, hpo_id, value, enrollment_status_member_time, enrollment_status_core_stored_sample_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              metrics_tmp_participant_origin po,
+              calendar c
+            WHERE ps.hpo_id=:hpo_id
+            AND ps.participant_origin = po.participant_origin
+            AND ps.enrollment_status_member_time IS NOT NULL
+            AND DATE(ps.enrollment_status_member_time) <= c.day
+            AND (ps.enrollment_status_core_stored_sample_time is null or DATE(ps.enrollment_status_core_stored_sample_time)>c.day)
+            AND c.day BETWEEN :start_date AND :end_date
+            GROUP BY c.day, ps.hpo_id, ps.value, ps.participant_origin
             ;
         """
 
@@ -1933,113 +2339,130 @@ class MetricsLifecycleCacheDao(BaseDao):
         return client_json
 
     def get_metrics_cache_sql(self):
+        sql_arr = []
         if self.cache_type == MetricsCacheType.METRICS_V2_API:
-            sql = """
+            enrollment_status_criteria_arr = [
+                ('registered', 'calendar.day>=DATE(sign_up_time) '
+                               'AND (consent_for_study_enrollment_time IS NULL OR '
+                               'DATE(consent_for_study_enrollment_time)>calendar.day)'),
+                ('participant', 'consent_for_study_enrollment_time IS NOT NULL '
+                                'AND calendar.day>=DATE(consent_for_study_enrollment_time) '
+                                'AND (enrollment_status_member_time IS NULL '
+                                'OR calendar.day < DATE(enrollment_status_member_time))'),
+                ('consented', 'enrollment_status_member_time IS NOT NULL '
+                              'AND calendar.day>=DATE(enrollment_status_member_time) '
+                              'AND (enrollment_status_core_stored_sample_time IS NULL '
+                              'OR calendar.day < DATE(enrollment_status_core_stored_sample_time))'),
+                ('core', 'enrollment_status_core_stored_sample_time IS NOT NULL '
+                         'AND calendar.day>=DATE(enrollment_status_core_stored_sample_time)')
+            ]
+            for item in enrollment_status_criteria_arr:
+                sql = """
                 insert into metrics_lifecycle_cache
                   select
                     :date_inserted AS date_inserted,
-                    CASE 
-                      WHEN registered_flag IS TRUE THEN 'registered'
-                      WHEN participant_flag IS TRUE THEN 'participant'
-                      WHEN consented_flag IS TRUE THEN 'consented'
-                      WHEN core_flag IS TRUE THEN 'core'
-                    END AS enrollment_status,
+                    '{enrollment_status}' as enrollment_status,
                     '{cache_type}' as type,
                     ps.hpo_id,
-                    hpo_name,
+                    (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
                     day,
-                    SUM(CASE WHEN DATE(ps.sign_up_time) <= day THEN 1 ELSE 0 END) AS registered,
-                    SUM(CASE WHEN DATE(ps.consent_for_study_enrollment_time) <= day THEN 1 ELSE 0 END) AS consent_enrollment,
-                    SUM(CASE WHEN DATE(ps.enrollment_status_member_time) <= day THEN 1 ELSE 0 END) AS consent_complete,
+                    SUM(CASE WHEN DATE(ps.sign_up_time) <= calendar.day THEN 1 ELSE 0 END) AS registered,
+                    SUM(CASE WHEN DATE(ps.consent_for_study_enrollment_time) <= calendar.day THEN 1 ELSE 0 END) AS consent_enrollment,
+                    SUM(CASE WHEN DATE(ps.enrollment_status_member_time) <= calendar.day THEN 1 ELSE 0 END) AS consent_complete,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_the_basics_time) <= day AND
-                        DATE(ps.consent_for_study_enrollment_time) <= day
+                        DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                        DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                       THEN 1 ELSE 0
                     END) AS ppi_basics,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_overall_health_time) <= day AND
-                        DATE(ps.consent_for_study_enrollment_time) <= day
+                        DATE(ps.questionnaire_on_overall_health_time) <= calendar.day AND
+                        DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                       THEN 1 ELSE 0
                     END) AS ppi_overall_health,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_lifestyle_time) <= day AND
-                        DATE(ps.consent_for_study_enrollment_time) <= day
+                        DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND
+                        DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                       THEN 1 ELSE 0
                     END) AS ppi_lifestyle,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_healthcare_access_time) <= day AND
-                        DATE(ps.questionnaire_on_the_basics_time) <= day AND
-                        DATEDIFF(day, DATE(ps.consent_for_study_enrollment_time)) > 90
+                        DATE(ps.questionnaire_on_healthcare_access_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                        DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
                       THEN 1 ELSE 0
                     END) AS ppi_healthcare_access,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_medical_history_time) <= day AND
-                        DATE(ps.questionnaire_on_the_basics_time) <= day AND
-                        DATEDIFF(day, DATE(ps.consent_for_study_enrollment_time)) > 90
+                        DATE(ps.questionnaire_on_medical_history_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                        DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
                       THEN 1 ELSE 0
                     END) AS ppi_medical_history,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_medications_time) <= day AND
-                        DATE(ps.consent_for_study_enrollment_time) <= day
+                        DATE(ps.questionnaire_on_medications_time) <= calendar.day AND
+                        DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                       THEN 1 ELSE 0
                     END) AS ppi_medications,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_family_health_time) <= day AND
-                        DATE(ps.questionnaire_on_the_basics_time) <= day AND
-                        DATEDIFF(day, DATE(ps.consent_for_study_enrollment_time)) > 90
+                        DATE(ps.questionnaire_on_family_health_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                        DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
                       THEN 1 ELSE 0
                     END) AS ppi_family_health,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_lifestyle_time) <= day AND
-                        DATE(ps.questionnaire_on_overall_health_time) <= day AND
-                        DATE(ps.questionnaire_on_the_basics_time) <= day AND
-                        DATE(ps.consent_for_study_enrollment_time) <= day
+                        DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_overall_health_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                        DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                       THEN 1 ELSE 0
                     END) AS ppi_complete,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_the_basics_time) <= day AND
-                        DATEDIFF(day, DATE(ps.consent_for_study_enrollment_time)) > 90
+                        DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                        DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
                       THEN 1 ELSE 0
                     END) AS retention_modules_eligible,
                     SUM(CASE
                       WHEN
-                        DATE(ps.questionnaire_on_the_basics_time) <= day AND
-                        DATE(ps.questionnaire_on_healthcare_access_time) <= day AND
-                        DATE(ps.questionnaire_on_family_health_time) <= day AND
-                        DATE(ps.questionnaire_on_medical_history_time) <= day AND
-                        DATEDIFF(day, DATE(ps.consent_for_study_enrollment_time)) > 90
+                        DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_healthcare_access_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_family_health_time) <= calendar.day AND
+                        DATE(ps.questionnaire_on_medical_history_time) <= calendar.day AND
+                        DATEDIFF(calendar.day, DATE(ps.consent_for_study_enrollment_time)) > 90
                       THEN 1 ELSE 0
                     END) AS retention_modules_complete,
                     SUM(CASE
                       WHEN
-                        DATE(ps.physical_measurements_time) <= day AND
-                        DATE(ps.consent_for_study_enrollment_time) <= day
+                        DATE(ps.physical_measurements_time) <= calendar.day AND
+                        DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                       THEN 1 ELSE 0
                     END) AS physical_measurement,
                     SUM(CASE
                       WHEN
-                        DATE(ps.sample_status_1ed10_time) <= day OR
-                        DATE(ps.sample_status_2ed10_time) <= day OR
-                        DATE(ps.sample_status_1ed04_time) <= day OR
-                        DATE(ps.sample_status_1sal_time) <= day OR
-                        DATE(ps.sample_status_1sal2_time) <= day
+                        DATE(ps.sample_status_1ed10_time) <= calendar.day OR
+                        DATE(ps.sample_status_2ed10_time) <= calendar.day OR
+                        DATE(ps.sample_status_1ed04_time) <= calendar.day OR
+                        DATE(ps.sample_status_1sal_time) <= calendar.day OR
+                        DATE(ps.sample_status_1sal2_time) <= calendar.day
                       THEN 1 ELSE 0
                     END) AS sample_received,
-                    SUM(core_flag=1) AS core_participant,
+                    SUM(CASE WHEN DATE(ps.enrollment_status_core_stored_sample_time) <= calendar.day THEN 1 ELSE 0 END) AS core_participant,
                     ps.participant_origin
-                  from metrics_tmp_participant ps
-                  WHERE ps.hpo_id = :hpo_id
-                  GROUP BY day, registered_flag, participant_flag, consented_flag, core_flag, ps.hpo_id, hpo_name, ps.participant_origin;
-            """.format(cache_type=self.cache_type)
+                  from metrics_tmp_participant ps, metrics_tmp_participant_origin po,
+                       calendar
+                  WHERE {enrollment_status_criteria}
+                  AND ps.participant_origin = po.participant_origin
+                  AND ps.hpo_id = :hpo_id AND calendar.day BETWEEN :start_date AND :end_date
+                  GROUP BY day, ps.hpo_id, ps.participant_origin;
+              """.format(enrollment_status=item[0], cache_type=self.cache_type,
+                         enrollment_status_criteria=item[1])
+                sql_arr.append(sql)
         else:
             sql = """
             insert into metrics_lifecycle_cache
@@ -2048,95 +2471,98 @@ class MetricsLifecycleCacheDao(BaseDao):
                 '' as enrollment_status,
                 '{cache_type}' as type,
                 ps.hpo_id,
-                hpo_name,
+                (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
                 day,
-                SUM(CASE WHEN DATE(ps.sign_up_time) <= day THEN 1 ELSE 0 END) AS registered,
-                SUM(CASE WHEN DATE(ps.consent_for_study_enrollment_time) <= day THEN 1 ELSE 0 END) AS consent_enrollment,
-                SUM(CASE WHEN DATE(ps.enrollment_status_member_time) <= day THEN 1 ELSE 0 END) AS consent_complete,
+                SUM(CASE WHEN DATE(ps.sign_up_time) <= calendar.day THEN 1 ELSE 0 END) AS registered,
+                SUM(CASE WHEN DATE(ps.consent_for_study_enrollment_time) <= calendar.day THEN 1 ELSE 0 END) AS consent_enrollment,
+                SUM(CASE WHEN DATE(ps.enrollment_status_member_time) <= calendar.day THEN 1 ELSE 0 END) AS consent_complete,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_the_basics_time) <= day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= day
+                    DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                    DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                   THEN 1 ELSE 0
                 END) AS ppi_basics,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_overall_health_time) <= day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= day
+                    DATE(ps.questionnaire_on_overall_health_time) <= calendar.day AND
+                    DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                   THEN 1 ELSE 0
                 END) AS ppi_overall_health,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_lifestyle_time) <= day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= day
+                    DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND
+                    DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                   THEN 1 ELSE 0
                 END) AS ppi_lifestyle,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_healthcare_access_time) <= day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= day
+                    DATE(ps.questionnaire_on_healthcare_access_time) <= calendar.day AND
+                    DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                   THEN 1 ELSE 0
                 END) AS ppi_healthcare_access,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_medical_history_time) <= day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= day
+                    DATE(ps.questionnaire_on_medical_history_time) <= calendar.day AND
+                    DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                   THEN 1 ELSE 0
                 END) AS ppi_medical_history,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_medications_time) <= day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= day
+                    DATE(ps.questionnaire_on_medications_time) <= calendar.day AND
+                    DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                   THEN 1 ELSE 0
                 END) AS ppi_medications,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_family_health_time) <= day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= day
+                    DATE(ps.questionnaire_on_family_health_time) <= calendar.day AND
+                    DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                   THEN 1 ELSE 0
                 END) AS ppi_family_health,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_lifestyle_time) <= day AND
-                    DATE(ps.questionnaire_on_overall_health_time) <= day AND
-                    DATE(ps.questionnaire_on_the_basics_time) <= day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= day
+                    DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND
+                    DATE(ps.questionnaire_on_overall_health_time) <= calendar.day AND
+                    DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+                    DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                   THEN 1 ELSE 0
                 END) AS ppi_complete,
                 SUM(CASE
                   WHEN
-                    DATE(ps.consent_for_study_enrollment_time) <= day
+                    DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                   THEN 1 ELSE 0
                 END) AS retention_modules_eligible,
                 SUM(CASE
                   WHEN
-                    DATE(ps.questionnaire_on_healthcare_access_time) <= day AND
-                    DATE(ps.questionnaire_on_family_health_time) <= day AND
-                    DATE(ps.questionnaire_on_medical_history_time) <= day
+                    DATE(ps.questionnaire_on_healthcare_access_time) <= calendar.day AND
+                    DATE(ps.questionnaire_on_family_health_time) <= calendar.day AND
+                    DATE(ps.questionnaire_on_medical_history_time) <= calendar.day
                   THEN 1 ELSE 0
                 END) AS retention_modules_complete,
                 SUM(CASE
                   WHEN
-                    DATE(ps.physical_measurements_time) <= day AND
-                    DATE(ps.consent_for_study_enrollment_time) <= day
+                    DATE(ps.physical_measurements_time) <= calendar.day AND
+                    DATE(ps.consent_for_study_enrollment_time) <= calendar.day
                   THEN 1 ELSE 0
                 END) AS physical_measurement,
                 SUM(CASE
                   WHEN
-                    DATE(ps.sample_status_1ed10_time) <= day OR
-                    DATE(ps.sample_status_2ed10_time) <= day OR
-                    DATE(ps.sample_status_1ed04_time) <= day OR
-                    DATE(ps.sample_status_1sal_time) <= day OR
-                    DATE(ps.sample_status_1sal2_time) <= day
+                    DATE(ps.sample_status_1ed10_time) <= calendar.day OR
+                    DATE(ps.sample_status_2ed10_time) <= calendar.day OR
+                    DATE(ps.sample_status_1ed04_time) <= calendar.day OR
+                    DATE(ps.sample_status_1sal_time) <= calendar.day OR
+                    DATE(ps.sample_status_1sal2_time) <= calendar.day
                   THEN 1 ELSE 0
                 END) AS sample_received,
-                SUM(core_flag=1) AS core_participant,
+                SUM(CASE WHEN DATE(ps.enrollment_status_core_stored_sample_time) <= calendar.day THEN 1 ELSE 0 END) AS core_participant,
                 ps.participant_origin
-              from metrics_tmp_participant ps
-                WHERE ps.hpo_id = :hpo_id
-              GROUP BY day, ps.hpo_id, hpo_name, ps.participant_origin;
+              from metrics_tmp_participant ps, metrics_tmp_participant_origin po,
+                   calendar
+              WHERE ps.participant_origin = po.participant_origin
+                AND ps.hpo_id = :hpo_id AND calendar.day BETWEEN :start_date AND :end_date
+              GROUP BY day, ps.hpo_id, ps.participant_origin;
           """.format(cache_type=self.cache_type)
-        return [sql]
+            sql_arr.append(sql)
+        return sql_arr
 
 
 class MetricsLanguageCacheDao(BaseDao):
@@ -2278,14 +2704,19 @@ class MetricsLanguageCacheDao(BaseDao):
         """
 
         enrollment_status_and_criteria_list = [
-            ['registered', 'registered_flag=1 or participant_flag=1'],
-            ['consented', 'consented_flag'],
-            ['core', 'core_flag']
+            ['registered', ' c.day>=DATE(sign_up_time) AND (enrollment_status_member_time IS NULL '
+                           'OR c.day < DATE(enrollment_status_member_time)) '],
+            ['consented', ' enrollment_status_member_time IS NOT NULL '
+                          'AND day>=DATE(enrollment_status_member_time) '
+                          'AND (enrollment_status_core_stored_sample_time IS NULL '
+                          'OR day < DATE(enrollment_status_core_stored_sample_time)) '],
+            ['core', ' enrollment_status_core_stored_sample_time IS NOT NULL '
+                     'AND day>=DATE(enrollment_status_core_stored_sample_time) ']
         ]
         language_and_criteria_list = [
-            ['EN', ' AND primary_language like \'%en%\' '],
-            ['ES', ' AND primary_language like \'%es%\' '],
-            ['UNSET', ' AND primary_language is NULL ']
+            ['EN', ' AND ps.primary_language like \'%en%\' '],
+            ['ES', ' AND ps.primary_language like \'%es%\' '],
+            ['UNSET', ' AND ps.primary_language is NULL ']
         ]
 
         sql_template = """
@@ -2293,14 +2724,26 @@ class MetricsLanguageCacheDao(BaseDao):
           :date_inserted AS date_inserted,
           '{0}' as enrollment_status,
           :hpo_id AS hpo_id,
-          hpo_name,
-          day,
+          (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+          c.day,
           '{1}' AS language_name,
-          SUM({3}) as language_count
-          FROM metrics_tmp_participant
-          WHERE hpo_id = :hpo_id
-          {2}
-          GROUP BY day, hpo_id, hpo_name
+          IFNULL((
+              SELECT SUM(results.count)
+              FROM
+              (
+                SELECT DATE(ps.sign_up_time) AS sign_up_time,
+                       DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                       DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
+                       count(*) count
+                FROM metrics_tmp_participant ps
+                WHERE ps.hpo_id = :hpo_id
+                  {2}
+                GROUP BY DATE(ps.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+              ) AS results
+              WHERE {3}
+            ),0) AS language_count
+          FROM calendar c
+          WHERE c.day BETWEEN :start_date AND :end_date
         """
 
         sub_queries = []
