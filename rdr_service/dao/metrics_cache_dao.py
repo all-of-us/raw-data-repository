@@ -622,7 +622,7 @@ class MetricsGenderCacheDao(BaseDao):
               '' as participant_origin
             FROM calendar c
             WHERE c.day BETWEEN :start_date AND :end_date
-            UNION ALL
+            UNION
             SELECT
               :date_inserted AS date_inserted,
               '{cache_type}' as type,
@@ -649,7 +649,7 @@ class MetricsGenderCacheDao(BaseDao):
               '' as participant_origin
             FROM calendar c
             WHERE c.day BETWEEN :start_date AND :end_date
-            UNION ALL
+            UNION
             SELECT
               :date_inserted AS date_inserted,
               '{cache_type}' as type,
@@ -687,7 +687,7 @@ class MetricsGenderCacheDao(BaseDao):
                                                 answers_table_sql=answers_table_sql)
                 sub_queries.append(sub_query)
 
-            sql += ' union all '.join(sub_queries)
+            sql += ' union '.join(sub_queries)
             sql_arr.append(sql)
         else:
             enrollment_status_criteria_arr = [
@@ -745,7 +745,7 @@ class MetricsGenderCacheDao(BaseDao):
                                                     gender_condition=gender_condition)
                     sub_queries.append(sub_query)
 
-                sql += ' union all '.join(sub_queries)
+                sql += ' union '.join(sub_queries)
                 sql_arr.append(sql)
         return sql_arr
 
@@ -938,7 +938,7 @@ class MetricsAgeCacheDao(BaseDao):
               d.participant_origin
             FROM calendar c, metrics_tmp_participant_origin d
             WHERE c.day BETWEEN :start_date AND :end_date
-            UNION ALL
+            UNION
             SELECT
               :date_inserted AS date_inserted,
               'registered' as enrollment_status,
@@ -966,7 +966,7 @@ class MetricsAgeCacheDao(BaseDao):
               d.participant_origin
             FROM calendar c, metrics_tmp_participant_origin d
             WHERE c.day BETWEEN :start_date AND :end_date
-            UNION ALL
+            UNION
             SELECT
               :date_inserted AS date_inserted,
               'participant' as enrollment_status,
@@ -995,7 +995,7 @@ class MetricsAgeCacheDao(BaseDao):
               d.participant_origin
             FROM calendar c, metrics_tmp_participant_origin d
             WHERE c.day BETWEEN :start_date AND :end_date
-            UNION ALL
+            UNION
             SELECT
               :date_inserted AS date_inserted,
               'consented' as enrollment_status,
@@ -1024,7 +1024,7 @@ class MetricsAgeCacheDao(BaseDao):
               d.participant_origin
             FROM calendar c, metrics_tmp_participant_origin d
             WHERE c.day BETWEEN :start_date AND :end_date
-            UNION ALL
+            UNION
         """.format(cache_type=str(self.cache_type))
 
         age_ranges_conditions = []
@@ -1068,7 +1068,7 @@ class MetricsAgeCacheDao(BaseDao):
             d.participant_origin
           FROM calendar c, metrics_tmp_participant_origin d
           WHERE c.day BETWEEN :start_date AND :end_date
-          UNION ALL
+          UNION
           SELECT
             :date_inserted AS date_inserted,
             'registered' as enrollment_status,
@@ -1097,7 +1097,7 @@ class MetricsAgeCacheDao(BaseDao):
             d.participant_origin
           FROM calendar c, metrics_tmp_participant_origin d
           WHERE c.day BETWEEN :start_date AND :end_date
-          UNION ALL
+          UNION
           SELECT
             :date_inserted AS date_inserted,
             'participant' as enrollment_status,
@@ -1127,7 +1127,7 @@ class MetricsAgeCacheDao(BaseDao):
             d.participant_origin
           FROM calendar c, metrics_tmp_participant_origin d
           WHERE c.day BETWEEN :start_date AND :end_date
-          UNION ALL
+          UNION
           SELECT
             :date_inserted AS date_inserted,
             'consented' as enrollment_status,
@@ -1166,7 +1166,7 @@ class MetricsAgeCacheDao(BaseDao):
                                             age_range_condition=age_range_condition)
             sub_queries.append(sub_query)
 
-        sql += ' union all '.join(sub_queries)
+        sql += ' union '.join(sub_queries)
 
         return [sql]
 
@@ -1951,7 +1951,7 @@ class MetricsRegionCacheDao(BaseDao):
               count(ps.participant_id) AS state_count,
               ps.participant_origin
             FROM
-              (SELECT participant_id, participant_origin, hpo_id, value, enrollment_status_core_stored_sample_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              (SELECT participant_id, participant_origin, hpo_id, email, value, enrollment_status_core_stored_sample_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
               metrics_tmp_participant_origin po,
               calendar c
             WHERE ps.hpo_id=:hpo_id
@@ -1960,7 +1960,7 @@ class MetricsRegionCacheDao(BaseDao):
             AND DATE(ps.enrollment_status_core_stored_sample_time) <= c.day
             AND c.day BETWEEN :start_date AND :end_date
             GROUP BY c.day, ps.hpo_id, ps.value, ps.participant_origin
-            UNION ALL
+            union
             SELECT
               :date_inserted AS date_inserted,
               'registered' as enrollment_status,
@@ -1971,7 +1971,7 @@ class MetricsRegionCacheDao(BaseDao):
               count(ps.participant_id) AS state_count,
               ps.participant_origin
             FROM
-              (SELECT participant_id, participant_origin, hpo_id, value, sign_up_time, consent_for_study_enrollment_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              (SELECT participant_id, participant_origin, hpo_id, email, value, sign_up_time, consent_for_study_enrollment_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
               metrics_tmp_participant_origin po,
               calendar c
             WHERE ps.hpo_id=:hpo_id
@@ -1981,7 +1981,7 @@ class MetricsRegionCacheDao(BaseDao):
             AND (ps.consent_for_study_enrollment_time IS NULL OR DATE(ps.consent_for_study_enrollment_time)>c.day)
             AND c.day BETWEEN :start_date AND :end_date
             GROUP BY c.day, ps.hpo_id, ps.value, ps.participant_origin
-            UNION ALL
+            union
             SELECT
               :date_inserted AS date_inserted,
               'participant' as enrollment_status,
@@ -1992,7 +1992,7 @@ class MetricsRegionCacheDao(BaseDao):
               count(ps.participant_id) AS state_count,
               ps.participant_origin
             FROM
-              (SELECT participant_id, participant_origin, hpo_id, value, consent_for_study_enrollment_time, enrollment_status_member_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              (SELECT participant_id, participant_origin, hpo_id, email, value, consent_for_study_enrollment_time, enrollment_status_member_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
               metrics_tmp_participant_origin po,
               calendar c
             WHERE ps.hpo_id=:hpo_id
@@ -2002,7 +2002,7 @@ class MetricsRegionCacheDao(BaseDao):
             AND (ps.enrollment_status_member_time is null or DATE(ps.enrollment_status_member_time)>c.day)
             AND c.day BETWEEN :start_date AND :end_date
             GROUP BY c.day, ps.hpo_id, ps.value, ps.participant_origin
-            UNION ALL
+            union
             SELECT
               :date_inserted AS date_inserted,
               'consented' as enrollment_status,
@@ -2013,7 +2013,7 @@ class MetricsRegionCacheDao(BaseDao):
               count(ps.participant_id) AS state_count,
               ps.participant_origin
             FROM
-              (SELECT participant_id, participant_origin, hpo_id, value, enrollment_status_member_time, enrollment_status_core_stored_sample_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
+              (SELECT participant_id, participant_origin, hpo_id, email, value, enrollment_status_member_time, enrollment_status_core_stored_sample_time FROM metrics_tmp_participant, code WHERE state_id=code_id) ps,
               metrics_tmp_participant_origin po,
               calendar c
             WHERE ps.hpo_id=:hpo_id
@@ -2754,7 +2754,7 @@ class MetricsLanguageCacheDao(BaseDao):
                                                 status_pairs[1])
                 sub_queries.append(sub_query)
 
-        sql = sql + ' UNION ALL '.join(sub_queries)
+        sql = sql + ' UNION '.join(sub_queries)
 
         return [sql]
 
