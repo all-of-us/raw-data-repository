@@ -412,12 +412,11 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         with FakeClock(TIME_3):
             response = self.send_get("Participant/%s/Summary" % participant_id)
-            #self.assertEqual(response["email"], "UNSET") #NOTE: changing suspension logic.
-            #self.assertEqual(response["city"], "UNSET") #NOTE: changing suspension logic.
+            self.assertNotEqual(response["email"], "UNSET")  # email is random so just make sure it's something
+            self.assertEqual(response["city"], "Austin")
             self.assertEqual(response["streetAddress"], "1234 Main Street")
             self.assertEqual(response["zipCode"], "78751")
             self.assertEqual(response["phoneNumber"], "512-555-5555")
-            #self.assertEqual(response["loginPhoneNumber"], "UNSET") #NOTE: changing suspension logic.
             self.assertEqual(response["recontactMethod"], "NO_CONTACT")
             self.assertEqual(response["language"], "en")
             self.assertEqual(response["education"], "highschool")
@@ -2177,7 +2176,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", ps_3["recontactMethod"])
         self.assertEqual("hpo-site-monroeville", ps_3["site"])
         self.assertIsNone(ps_3.get("withdrawalTime"))
-        #self.assertIsNotNone(ps_3["suspensionTime"]) #NOTE: changing suspension logic.
         self.assertEqual("example", ps_3["participantOrigin"])
 
         # One day after participant 2 withdraws, the participant is still returned.
@@ -2249,10 +2247,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03", [[]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=ge2016-01-03", [[ps_2]])
-            #self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED", [[ps_1, ps_2]]) #NOTE: changing suspension logic.
-            #self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NO_CONTACT", [[ps_3]]) #NOTE: changing suspension logic.
+            self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED", [[ps_1, ps_2], [ps_3]])
+            self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NO_CONTACT", [[]])
             self.assertResponses("ParticipantSummary?_count=2&suspensionTime=lt2016-01-03", [[]])
-            #self.assertResponses("ParticipantSummary?_count=2&suspensionTime=ge2016-01-03", [[ps_3]]) #NOTE: changing suspension logic.
+            self.assertResponses("ParticipantSummary?_count=2&suspensionTime=ge2016-01-03", [[]])
             self.assertResponses("ParticipantSummary?_count=2&physicalMeasurementsCreatedSite=UNSET", [[ps_1]])
             self.assertResponses(
                 "ParticipantSummary?_count=2&" + "physicalMeasurementsCreatedSite=hpo-site-monroeville", [[ps_2, ps_3]]
@@ -2299,8 +2297,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             BaseTestCase.switch_auth_user("example@example.com", 'example')
 
         self.assertEqual(ps_1, new_ps_1)
-        #self.assertEqual(ps_3, new_ps_3) #NOTE: changing suspension logic.
-        #self.assertEqual("vibrent", new_ps_2["participantOrigin"])
+        self.assertEqual(ps_3, new_ps_3)
         self.assertEqual("Mary", new_ps_2["firstName"])
         self.assertEqual("Q", new_ps_2["middleName"])
         self.assertEqual("Jones", new_ps_2["lastName"])
@@ -2333,8 +2330,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         # Sort order does not affect whether withdrawn participants are included.
         with FakeClock(TIME_5):
             BaseTestCase.switch_auth_user("example@hpro.com", 'hpro')
-            #self.assertResponses("ParticipantSummary?_count=2&_sort=firstName", [[ps_1, ps_3], [new_ps_2]]) #NOTE: changing suspension logic.
-            #self.assertResponses("ParticipantSummary?_count=2&_sort:asc=firstName", [[ps_1, ps_3], [new_ps_2]]) #NOTE: changing suspension logic.
+            self.assertResponses("ParticipantSummary?_count=2&_sort=firstName", [[ps_1, ps_3], [new_ps_2]])
+            self.assertResponses("ParticipantSummary?_count=2&_sort:asc=firstName", [[ps_1, ps_3], [new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&_sort:desc=firstName", [[new_ps_2, ps_3], [ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&_sort=dateOfBirth", [[new_ps_2, ps_1], [ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&_sort:desc=dateOfBirth", [[ps_3, ps_1], [new_ps_2]])
@@ -2352,7 +2349,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03", [[]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=ge2016-01-03", [[new_ps_2]])
-            #self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED", [[ps_1]]) #NOTE: changing suspension logic.
+            self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED", [[ps_1, ps_3]])
 
             self.assertResponses("ParticipantSummary?_count=2&lastModified=lt2016-01-04", [[ps_3]])
             BaseTestCase.switch_auth_user("example@example.com", 'example')
@@ -2600,7 +2597,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", ps_3["recontactMethod"])
         self.assertEqual("hpo-site-monroeville", ps_3["site"])
         self.assertIsNone(ps_3.get("withdrawalTime"))
-        #self.assertIsNotNone(ps_3["suspensionTime"]) #NOTE: changing suspension logic.
 
         # One day after participant 2 withdraws, the participant is still returned.
         with FakeClock(TIME_4):
@@ -2670,10 +2666,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03", [[]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=ge2016-01-03", [[ps_2]])
-            #self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED", [[ps_1, ps_2]]) #NOTE: changing suspension logic.
-            #self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NO_CONTACT", [[ps_3]]) #NOTE: changing suspension logic.
+            self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED", [[ps_1, ps_2], [ps_3]])
+            self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NO_CONTACT", [[]])
             self.assertResponses("ParticipantSummary?_count=2&suspensionTime=lt2016-01-03", [[]])
-            #self.assertResponses("ParticipantSummary?_count=2&suspensionTime=ge2016-01-03", [[ps_3]]) #NOTE: changing suspension logic.
+            self.assertResponses("ParticipantSummary?_count=2&suspensionTime=ge2016-01-03", [[]])
             self.assertResponses("ParticipantSummary?_count=2&physicalMeasurementsCreatedSite=UNSET", [[ps_1]])
             self.assertResponses(
                 "ParticipantSummary?_count=2&" + "physicalMeasurementsCreatedSite=hpo-site-monroeville", [[ps_2, ps_3]]
@@ -2713,7 +2709,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             new_ps_2 = self.send_get("Participant/%s/Summary" % participant_id_2)
             new_ps_3 = self.send_get("Participant/%s/Summary" % participant_id_3)
         self.assertEqual(ps_1, new_ps_1)
-        #self.assertEqual(ps_3, new_ps_3) #NOTE: changing suspension logic.
+        self.assertEqual(ps_3, new_ps_3)
         self.assertEqual("Mary", new_ps_2["firstName"])
         self.assertEqual("Q", new_ps_2["middleName"])
         self.assertEqual("Jones", new_ps_2["lastName"])
@@ -2750,8 +2746,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         # include it; queries that ask for withdrawn participants get back participant 2 only.
         # Sort order does not affect whether withdrawn participants are included.
         with FakeClock(TIME_5):
-            #self.assertResponses("ParticipantSummary?_count=2&_sort=firstName", [[ps_1, ps_3], [new_ps_2]]) #NOTE: changing suspension logic.
-            #self.assertResponses("ParticipantSummary?_count=2&_sort:asc=firstName", [[ps_1, ps_3], [new_ps_2]]) #NOTE: changing suspension logic.
+            self.assertResponses("ParticipantSummary?_count=2&_sort=firstName", [[ps_1, ps_3], [new_ps_2]])
+            self.assertResponses("ParticipantSummary?_count=2&_sort:asc=firstName", [[ps_1, ps_3], [new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&_sort:desc=firstName", [[new_ps_2, ps_3], [ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&_sort=dateOfBirth", [[new_ps_2, ps_1], [ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&_sort:desc=dateOfBirth", [[ps_3, ps_1], [new_ps_2]])
@@ -2769,7 +2765,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03", [[]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=ge2016-01-03", [[new_ps_2]])
-            #self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED", [[ps_1]]) #NOTE: changing suspension logic.
+            self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED", [[ps_1, ps_3]])
 
             self.assertResponses("ParticipantSummary?_count=2&lastModified=lt2016-01-04", [[ps_3]])
 
@@ -2975,7 +2971,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         BaseTestCase.switch_auth_user("example@example.com", None)  # simulate an awardee GET
         response = self.send_get("ParticipantSummary?_includeTotal=true")
         BaseTestCase.switch_auth_user("example@example.com", "example")
-        #self.assertEqual(response['total'], 0) #NOTE: changing suspension logic.
+        self.assertEqual(response['total'], 1)
 
 def _add_code_answer(code_answers, link_id, code):
     if code:
