@@ -717,7 +717,22 @@ class GenomicBiobankSamplesCoupler:
                     sampleId=samples_meta.sample_ids[i],
                     validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
                                       else GenomicSetMemberStatus.VALID),
-                    ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y'
+                    validationFlags=valid_flags,
+                    ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
+                    genomeType="aou_array",
+                    biobankOrderClientId=None,
+                    packageId=None,
+                    validatedTime=None,
+                    sampleType=None,
+                    consentForRor=None,
+                    withdrawnStatus=None,
+                    sequencingFileName=None,
+                    reconcileMetricsBBManifestJobRunId=None,
+                    reconcileGCManifestJobRunId=None,
+                    reconcileMetricsSequencingJobRunId=None,
+                    reconcileCvlJobRunId=None,
+                    cvlManifestWgsJobRunId=None,
+                    cvlManifestArrJobRunId=None
                 )
                 logging.info(f'member obj: {new_member_obj.__dict__}')
                 self.member_dao.insert(new_member_obj)
