@@ -1347,7 +1347,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
         service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        service.refresh_data_for_metrics_cache(dao, by_hpo=False)
         results = dao.get_latest_version_from_cache("2018-01-01", "2018-01-08")
 
         self.assertIn(
@@ -1414,7 +1414,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao(version=MetricsAPIVersion.V2)
         service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        service.refresh_data_for_metrics_cache(dao, by_hpo=False)
         results = dao.get_latest_version_from_cache("2018-01-01", "2018-01-08")
 
         self.assertIn(
@@ -1489,7 +1489,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
         service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        service.refresh_data_for_metrics_cache(dao, by_hpo=False)
         results = dao.get_latest_version_from_cache("2018-01-01", "2018-01-08")
         self.assertIn({"date": "2018-01-01", "metrics": {"consented": 0, "core": 0, "registered": 3}}, results)
         self.assertIn({"date": "2018-01-02", "metrics": {"consented": 1, "core": 0, "registered": 2}}, results)
@@ -1524,7 +1524,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
         service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        service.refresh_data_for_metrics_cache(dao, by_hpo=False)
 
         qs = """
           &stratification=ENROLLMENT_STATUS
@@ -1602,7 +1602,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
         service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        service.refresh_data_for_metrics_cache(dao, by_hpo=False)
 
         qs = """
           &stratification=ENROLLMENT_STATUS
@@ -1798,7 +1798,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
         service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        service.refresh_data_for_metrics_cache(dao, by_hpo=False)
 
         qs = """
           &stratification=ENROLLMENT_STATUS
@@ -1866,7 +1866,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
         service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        service.refresh_data_for_metrics_cache(dao, by_hpo=False)
 
         qs = """
           &stratification=ENROLLMENT_STATUS
@@ -3443,7 +3443,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
         service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        service.refresh_data_for_metrics_cache(dao, by_hpo=False)
 
         qs = """
           &stratification=TOTAL
@@ -3481,7 +3481,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
         service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        service.refresh_data_for_metrics_cache(dao, by_hpo=False)
 
         qs = """
               &stratification=TOTAL
@@ -3548,7 +3548,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
         service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        service.refresh_data_for_metrics_cache(dao, by_hpo=False)
 
         qs = """
           &stratification=TOTAL
@@ -3586,7 +3586,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         service = ParticipantCountsOverTimeService()
         dao = MetricsEnrollmentStatusCacheDao()
         service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        service.refresh_data_for_metrics_cache(dao, by_hpo=False)
 
         qs = """
               &stratification=TOTAL

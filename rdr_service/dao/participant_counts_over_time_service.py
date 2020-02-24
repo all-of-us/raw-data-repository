@@ -30,7 +30,7 @@ from rdr_service.participant_enums import (
     WithdrawalStatus,
 )
 
-CACHE_START_DATE = datetime.datetime.strptime("2017-04-01", "%Y-%m-%d").date()
+CACHE_START_DATE = datetime.datetime.strptime("2017-01-01", "%Y-%m-%d").date()
 
 
 class ParticipantCountsOverTimeService(BaseDao):
@@ -66,27 +66,17 @@ class ParticipantCountsOverTimeService(BaseDao):
             session.execute('ALTER TABLE metrics_tmp_participant MODIFY participant_origin VARCHAR(80)')
 
             columns_cursor = session.execute('SELECT * FROM metrics_tmp_participant LIMIT 0')
-            summary_fields = ['consent_for_study_enrollment_time', 'enrollment_status_member_time',
-                              'questionnaire_on_the_basics_time', 'questionnaire_on_overall_health_time',
-                              'questionnaire_on_lifestyle_time', 'questionnaire_on_healthcare_access_time',
-                              'questionnaire_on_medical_history_time', 'questionnaire_on_medications_time',
-                              'questionnaire_on_family_health_time', 'physical_measurements_time',
-                              'sample_status_1ed10_time', 'sample_status_2ed10_time', 'sample_status_1ed04_time',
-                              'sample_status_1sal_time', 'sample_status_1sal2_time', 'primary_language', 'state_id',
-                              'questionnaire_on_the_basics', 'gender_identity']
-            participant_fields = ['participant_id', 'sign_up_time', 'hpo_id', 'participant_origin']
 
-            for column in columns_cursor.keys():
-                if column not in summary_fields and column not in participant_fields:
-                    session.execute('ALTER TABLE metrics_tmp_participant DROP COLUMN {}'.format(column))
+            participant_fields = ['participant_id', 'biobank_id', 'sign_up_time', 'withdrawal_status',
+                                  'hpo_id', 'organization_id', 'site_id', 'participant_origin']
 
             def get_field_name(name):
                 if name in participant_fields:
                     return 'p.' + name
-                elif name in summary_fields:
+                else:
                     return 'ps.' + name
 
-            columns = filter(None, map(get_field_name, columns_cursor.keys()))
+            columns = map(get_field_name, columns_cursor.keys())
             columns_str = ','.join(columns)
 
             session.execute('ALTER TABLE metrics_tmp_participant ADD COLUMN registered_flag BOOLEAN')
@@ -140,8 +130,44 @@ class ParticipantCountsOverTimeService(BaseDao):
                       'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN), 'start_date': start_date,
                       'end_date': end_date}
             session.execute(participant_sql, params)
-            session.execute('CREATE INDEX idx_participant_id ON metrics_tmp_participant (participant_id)')
             session.execute('CREATE INDEX idx_hpo_id ON metrics_tmp_participant (hpo_id)')
+            session.execute('CREATE INDEX idx_sign_up_time ON metrics_tmp_participant (sign_up_time)')
+            session.execute('CREATE INDEX idx_consent_time ON metrics_tmp_participant '
+                            '(consent_for_study_enrollment_time)')
+            session.execute('CREATE INDEX idx_member_time ON metrics_tmp_participant '
+                            '(enrollment_status_member_time)')
+            session.execute('CREATE INDEX idx_sample_time ON metrics_tmp_participant '
+                            '(enrollment_status_core_stored_sample_time)')
+            session.execute('CREATE INDEX idx_participant_origin ON metrics_tmp_participant (participant_origin)')
+            session.execute('CREATE INDEX idx_date_of_birth ON metrics_tmp_participant (date_of_birth)')
+            session.execute('CREATE INDEX idx_gender_identity ON metrics_tmp_participant (gender_identity)')
+            session.execute('CREATE INDEX idx_state_id ON metrics_tmp_participant (state_id)')
+            session.execute('CREATE INDEX idx_questionnaire_on_the_basics_time ON metrics_tmp_participant '
+                            '(questionnaire_on_the_basics_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_overall_health_time ON metrics_tmp_participant '
+                            '(questionnaire_on_overall_health_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_lifestyle_time ON metrics_tmp_participant '
+                            '(questionnaire_on_lifestyle_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_healthcare_access_time ON metrics_tmp_participant '
+                            '(questionnaire_on_healthcare_access_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_medical_history_time ON metrics_tmp_participant '
+                            '(questionnaire_on_medical_history_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_medications_time ON metrics_tmp_participant '
+                            '(questionnaire_on_medications_time)')
+            session.execute('CREATE INDEX idx_questionnaire_on_family_health_time ON metrics_tmp_participant '
+                            '(questionnaire_on_family_health_time)')
+            session.execute('CREATE INDEX idx_physical_measurements_time ON metrics_tmp_participant '
+                            '(physical_measurements_time)')
+            session.execute('CREATE INDEX idx_sample_status_1ed10_time ON metrics_tmp_participant '
+                            '(sample_status_1ed10_time)')
+            session.execute('CREATE INDEX idx_sample_status_2ed10_time ON metrics_tmp_participant '
+                            '(sample_status_2ed10_time)')
+            session.execute('CREATE INDEX idx_sample_status_1ed04_time ON metrics_tmp_participant '
+                            '(sample_status_1ed04_time)')
+            session.execute('CREATE INDEX idx_sample_status_1sal_time ON metrics_tmp_participant '
+                            '(sample_status_1sal_time)')
+            session.execute('CREATE INDEX idx_sample_status_1sal2_time ON metrics_tmp_participant '
+                            '(sample_status_1sal2_time)')
             session.execute('CREATE INDEX idx_calender_day ON metrics_tmp_participant (day)')
             session.execute('CREATE INDEX idx_age ON metrics_tmp_participant (age)')
 
@@ -155,7 +181,7 @@ class ParticipantCountsOverTimeService(BaseDao):
 
     def refresh_metrics_cache_data(self):
 
-        self.refresh_data_for_metrics_cache(MetricsEnrollmentStatusCacheDao())
+        self.refresh_data_for_metrics_cache(MetricsEnrollmentStatusCacheDao(), by_hpo=False)
         logging.info("Refresh MetricsEnrollmentStatusCache done.")
         self.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
         logging.info("Refresh MetricsGenderCache for Metrics2API done.")
@@ -178,7 +204,7 @@ class ParticipantCountsOverTimeService(BaseDao):
         self.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
         logging.info("Refresh MetricsLifecycleCache for Public Metrics API done.")
 
-    def refresh_data_for_metrics_cache(self, dao):
+    def refresh_data_for_metrics_cache(self, dao, by_hpo=True):
         status_dao = MetricsCacheJobStatusDao()
         updated_time = datetime.datetime.now()
         kwargs = dict(
@@ -190,10 +216,13 @@ class ParticipantCountsOverTimeService(BaseDao):
         )
         job_status_obj = MetricsCacheJobStatus(**kwargs)
         status_obj = status_dao.insert(job_status_obj)
-        hpo_dao = HPODao()
-        hpo_list = hpo_dao.get_all()
-        for hpo in hpo_list:
-            self.insert_cache_by_hpo(dao, hpo.hpoId, updated_time)
+        if by_hpo:
+            hpo_dao = HPODao()
+            hpo_list = hpo_dao.get_all()
+            for hpo in hpo_list:
+                self.insert_cache_by_hpo(dao, hpo.hpoId, updated_time)
+        else:
+            self.insert_cache_by_hpo(dao, None, updated_time)
 
         status_dao.set_to_complete(status_obj)
         dao.delete_old_records()

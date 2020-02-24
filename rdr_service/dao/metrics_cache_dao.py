@@ -283,7 +283,6 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                 SUM(core_flag=1) AS core_count,
                 participant_origin
                 FROM metrics_tmp_participant
-                WHERE hpo_id=:hpo_id
                 GROUP BY date_inserted, hpo_id, hpo_name, c_date, participant_origin
               ;
         """
@@ -546,43 +545,43 @@ class MetricsGenderCacheDao(BaseDao):
               :date_inserted AS date_inserted,
               '{cache_type}' as type,
               'core' as enrollment_status,
-              hpo_id,
-              hpo_name,
+              :hpo_id AS hpo_id,
+              (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
               day,
               '{gender_name}' AS gender_name,
               SUM(core_flag=1) AS gender_count,
               '' as participant_origin
             FROM metrics_tmp_participant ps LEFT JOIN {answers_table_sql} pga ON ps.participant_id = pga.participant_id
             WHERE ps.hpo_id = :hpo_id AND {gender_condition}
-            GROUP BY hpo_id, hpo_name, day
+            GROUP BY day
             UNION ALL
             SELECT
               :date_inserted AS date_inserted,
               '{cache_type}' as type,
               'registered' as enrollment_status,
-              hpo_id,
-              hpo_name,
+              :hpo_id AS hpo_id,
+              (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
               day,
               '{gender_name}' AS gender_name,
               SUM(registered_flag=1 or participant_flag=1) AS gender_count,
               '' as participant_origin
             FROM metrics_tmp_participant ps LEFT JOIN {answers_table_sql} pga ON ps.participant_id = pga.participant_id
             WHERE ps.hpo_id = :hpo_id AND {gender_condition}
-            GROUP BY hpo_id, hpo_name, day
+            GROUP BY day
             UNION ALL
             SELECT
               :date_inserted AS date_inserted,
               '{cache_type}' as type,
               'consented' as enrollment_status,
-              hpo_id,
-              hpo_name,
+              :hpo_id AS hpo_id,
+              (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
               day,
               '{gender_name}' AS gender_name,
               SUM(consented_flag=1) AS gender_count,
               '' as participant_origin
             FROM metrics_tmp_participant ps LEFT JOIN {answers_table_sql} pga ON ps.participant_id = pga.participant_id
             WHERE ps.hpo_id = :hpo_id AND {gender_condition}
-            GROUP BY hpo_id, hpo_name, day
+            GROUP BY day
             """
             for gender_name, gender_condition in zip(self.gender_names, gender_conditions):
                 sub_query = sql_template.format(cache_type=self.cache_type,
@@ -620,8 +619,8 @@ class MetricsGenderCacheDao(BaseDao):
                   :date_inserted AS date_inserted,
                   '{cache_type}' AS type,
                   '{enrollment_status}' AS enrollment_status,
-                  hpo_id,
-                  hpo_name,
+                  :hpo_id AS hpo_id,
+                  (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
                   day AS date,
                   '{gender_name}' AS gender_name,
                   SUM({enrollment_status_criteria}) as gender_count,
@@ -629,7 +628,7 @@ class MetricsGenderCacheDao(BaseDao):
                 FROM metrics_tmp_participant ps
                 WHERE {gender_condition}
                 AND ps.hpo_id = :hpo_id
-                GROUP BY hpo_id, hpo_name, date, participant_origin
+                GROUP BY date, participant_origin
                 """
                 for gender_name, gender_condition in zip(self.gender_names, gender_conditions):
                     sub_query = sql_template.format(cache_type=self.cache_type, enrollment_status=item[0],
@@ -822,57 +821,57 @@ class MetricsAgeCacheDao(BaseDao):
             :date_inserted AS date_inserted,
             'core' as enrollment_status,
             '{cache_type}' as type,
-            hpo_id,
-            hpo_name,
+            :hpo_id AS hpo_id,
+            (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
             day as date,
             '{age_range}' AS age_range,
             SUM(core_flag=1) AS age_count,
             participant_origin
           FROM metrics_tmp_participant
           WHERE hpo_id = :hpo_id AND {age_range_condition}
-          GROUP BY hpo_id, hpo_name, date, participant_origin
+          GROUP BY date, participant_origin
           UNION ALL
           SELECT
             :date_inserted AS date_inserted,
             'registered' as enrollment_status,
             '{cache_type}' as type,
-            hpo_id,
-            hpo_name,
+            :hpo_id AS hpo_id,
+            (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
             day as date,
             '{age_range}' AS age_range,
             SUM(registered_flag=1) AS age_count,
             participant_origin
           FROM metrics_tmp_participant
           WHERE hpo_id = :hpo_id AND {age_range_condition}
-          GROUP BY hpo_id, hpo_name, date, participant_origin
+          GROUP BY date, participant_origin
           UNION ALL
           SELECT
             :date_inserted AS date_inserted,
             'participant' as enrollment_status,
             '{cache_type}' as type,
-            hpo_id,
-            hpo_name,
+            :hpo_id AS hpo_id,
+            (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
             day as date,
             '{age_range}' AS age_range,
             SUM(participant_flag=1) AS age_count,
             participant_origin
           FROM metrics_tmp_participant
           WHERE hpo_id = :hpo_id AND {age_range_condition}
-          GROUP BY hpo_id, hpo_name, date, participant_origin
+          GROUP BY date, participant_origin
           UNION ALL
           SELECT
             :date_inserted AS date_inserted,
             'consented' as enrollment_status,
             '{cache_type}' as type,
-            hpo_id,
-            hpo_name,
+            :hpo_id AS hpo_id,
+            (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
             day as date,
             '{age_range}' AS age_range,
             SUM(consented_flag=1) AS age_count,
             participant_origin
           FROM metrics_tmp_participant
           WHERE hpo_id = :hpo_id AND {age_range_condition}
-          GROUP BY hpo_id, hpo_name, date, participant_origin
+          GROUP BY date, participant_origin
         """
 
         for age_range, age_range_condition in zip(self.age_ranges, age_ranges_conditions):
