@@ -11554,6 +11554,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         results3 = self.send_get("ParticipantCountsOverTime", query_string=qs3)
 
         self.assertNotIn({"date": "2017-12-31", "metrics": {"EN": 0, "UNSET": 1, "ES": 0}, "hpo": "UNSET"}, results3)
+        self.assertIn({"date": "2018-01-02", "metrics": {"EN": 0, "ES": 0, "UNSET": 0}, "hpo": "UNSET"}, results3)
         self.assertIn({"date": "2018-01-01", "metrics": {"EN": 0, "ES": 0, "UNSET": 1}, "hpo": "AZ_TUCSON"}, results3)
         self.assertIn({"date": "2018-01-02", "metrics": {"EN": 1, "ES": 0, "UNSET": 1}, "hpo": "AZ_TUCSON"}, results3)
 
