@@ -719,6 +719,7 @@ class GenomicBiobankSamplesCoupler:
                                       else GenomicSetMemberStatus.VALID),
                     ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y'
                 )
+                logging.info(f'member obj: {new_member_obj.__dict__}')
                 self.member_dao.insert(new_member_obj)
             # Create & transfer the Biobank Manifest based on the new genomic set
             try:
