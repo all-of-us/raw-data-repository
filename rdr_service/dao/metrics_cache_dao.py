@@ -1240,7 +1240,9 @@ class MetricsRaceCacheDao(BaseDao):
                                       func.sum(MetricsRaceCache.multiAncestry)
                                       .label('multiAncestry'),
                                       func.sum(MetricsRaceCache.noAncestryChecked)
-                                      .label('noAncestryChecked')
+                                      .label('noAncestryChecked'),
+                                      func.sum(MetricsRaceCache.unsetNoBasics)
+                                      .label('unsetNoBasics')
                                       )
                 if self.version == MetricsAPIVersion.V2:
                     query = query.filter(MetricsRaceCache.dateInserted == last_inserted_date,
@@ -1292,7 +1294,9 @@ class MetricsRaceCacheDao(BaseDao):
                                       func.sum(MetricsRaceCache.multiAncestry)
                                       .label('multiAncestry'),
                                       func.sum(MetricsRaceCache.noAncestryChecked)
-                                      .label('noAncestryChecked')
+                                      .label('noAncestryChecked'),
+                                      func.sum(MetricsRaceCache.unsetNoBasics)
+                                      .label('unsetNoBasics')
                                       )
                 query = query.filter(MetricsRaceCache.dateInserted == last_inserted_date,
                                      MetricsRaceCache.type == self.cache_type)
@@ -1360,7 +1364,8 @@ class MetricsRaceCacheDao(BaseDao):
                     'None_Of_These_Fully_Describe_Me': int(record.noneOfTheseFullyDescribeMe),
                     'Prefer_Not_To_Answer': int(record.preferNotToAnswer),
                     'Multi_Ancestry': int(record.multiAncestry),
-                    'No_Ancestry_Checked': int(record.noAncestryChecked)
+                    'No_Ancestry_Checked': int(record.noAncestryChecked),
+                    'Unset_No_Basics': int(record.unsetNoBasics)
                 }
             }
             client_json.append(new_item)
@@ -1382,7 +1387,8 @@ class MetricsRaceCacheDao(BaseDao):
                     'None_Of_These_Fully_Describe_Me': int(record.noneOfTheseFullyDescribeMe),
                     'Prefer_Not_To_Answer': int(record.preferNotToAnswer),
                     'Multi_Ancestry': int(record.multiAncestry),
-                    'No_Ancestry_Checked': int(record.noAncestryChecked)
+                    'No_Ancestry_Checked': int(record.noAncestryChecked),
+                    'Unset_No_Basics': int(record.unsetNoBasics)
                 }
             }
             client_json.append(new_item)
@@ -1432,7 +1438,8 @@ class MetricsRaceCacheDao(BaseDao):
                 SUM(Prefer_Not_To_Answer) AS Prefer_Not_To_Answer,
                 SUM(Multi_Ancestry) AS Multi_Ancestry,
                 SUM(No_Ancestry_Checked) AS No_Ancestry_Checked,
-                participant_origin
+                participant_origin,
+                SUM(Unset_No_Basics) AS Unset_No_Basics
                 FROM
                 (
                   SELECT p.hpo_id,
@@ -1471,10 +1478,11 @@ class MetricsRaceCacheDao(BaseDao):
                            ELSE 0
                          END AS Multi_Ancestry,
                          CASE
-                           WHEN (PMI_Skip = 1 AND Number_of_Answer=1) OR UNSET = 1
+                           WHEN (PMI_Skip = 1 AND Number_of_Answer=1) OR (HasBasicsSurvey = 1 AND UNSET = 1)
                              THEN 1
                            ELSE 0
-                         END AS No_Ancestry_Checked
+                         END AS No_Ancestry_Checked,
+                         CASE WHEN HasBasicsSurvey = 0 THEN 1 ELSE 0 END AS Unset_No_Basics
                   FROM (
                          SELECT participant_id,
                                 hpo_id,
@@ -1494,6 +1502,7 @@ class MetricsRaceCacheDao(BaseDao):
                                 MAX(WhatRaceEthnicity_MENA)                     AS WhatRaceEthnicity_MENA,
                                 MAX(PMI_Skip)                                   AS PMI_Skip,
                                 MAX(WhatRaceEthnicity_NHPI)                     AS WhatRaceEthnicity_NHPI,
+                                MAX(questionnaire_on_the_basics) AS HasBasicsSurvey,
                                 COUNT(*) as Number_of_Answer
                          FROM (
                                 SELECT ps.participant_id,
@@ -1503,6 +1512,7 @@ class MetricsRaceCacheDao(BaseDao):
                                        ps.enrollment_status_member_time,
                                        ps.enrollment_status_core_stored_sample_time,
                                        ps.participant_origin,
+                                       ps.questionnaire_on_the_basics,
                                        CASE WHEN q.code_id = {WhatRaceEthnicity_Hispanic} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
                                        CASE WHEN q.code_id = {WhatRaceEthnicity_Black} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Black,
                                        CASE WHEN q.code_id = {WhatRaceEthnicity_White} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_White,
@@ -1516,7 +1526,6 @@ class MetricsRaceCacheDao(BaseDao):
                                        CASE WHEN q.code_id = {WhatRaceEthnicity_NHPI} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_NHPI
                                 FROM {temp_table_name} ps
                                 LEFT JOIN participant_race_answers q ON ps.participant_id = q.participant_id
-                                WHERE ps.questionnaire_on_the_basics = 1
                               ) x
                          GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time, participant_origin
                        ) p,
@@ -1566,7 +1575,8 @@ class MetricsRaceCacheDao(BaseDao):
                       SUM(Prefer_Not_To_Answer) AS Prefer_Not_To_Answer,
                       SUM(Multi_Ancestry) AS Multi_Ancestry,
                       SUM(No_Ancestry_Checked) AS No_Ancestry_Checked,
-                      participant_origin
+                      participant_origin,
+                      SUM(Unset_No_Basics) AS Unset_No_Basics
                       FROM
                       (
                         SELECT p.hpo_id,
@@ -1605,10 +1615,11 @@ class MetricsRaceCacheDao(BaseDao):
                                  ELSE 0
                                END AS Multi_Ancestry,
                                CASE
-                                 WHEN (PMI_Skip = 1 AND Number_of_Answer=1) OR UNSET = 1
+                                 WHEN (PMI_Skip = 1 AND Number_of_Answer=1) OR (HasBasicsSurvey = 1 AND UNSET = 1)
                                    THEN 1
                                  ELSE 0
-                               END AS No_Ancestry_Checked
+                               END AS No_Ancestry_Checked,
+                               CASE WHEN HasBasicsSurvey = 0 THEN 1 ELSE 0 END AS Unset_No_Basics
                         FROM (
                                SELECT participant_id,
                                       hpo_id,
@@ -1628,6 +1639,7 @@ class MetricsRaceCacheDao(BaseDao):
                                       MAX(WhatRaceEthnicity_MENA)                     AS WhatRaceEthnicity_MENA,
                                       MAX(PMI_Skip)                                   AS PMI_Skip,
                                       MAX(WhatRaceEthnicity_NHPI)                     AS WhatRaceEthnicity_NHPI,
+                                      MAX(questionnaire_on_the_basics) AS HasBasicsSurvey,
                                       COUNT(*) as Number_of_Answer
                                FROM (
                                       SELECT ps.participant_id,
@@ -1637,6 +1649,7 @@ class MetricsRaceCacheDao(BaseDao):
                                              ps.enrollment_status_member_time,
                                              ps.enrollment_status_core_stored_sample_time,
                                              ps.participant_origin,
+                                             ps.questionnaire_on_the_basics,
                                              CASE WHEN q.code_id = {WhatRaceEthnicity_Hispanic} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
                                              CASE WHEN q.code_id = {WhatRaceEthnicity_Black} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Black,
                                              CASE WHEN q.code_id = {WhatRaceEthnicity_White} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_White,
@@ -1650,7 +1663,6 @@ class MetricsRaceCacheDao(BaseDao):
                                              CASE WHEN q.code_id = {WhatRaceEthnicity_NHPI} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_NHPI
                                       FROM {temp_table_name} ps
                                       LEFT JOIN participant_race_answers q ON ps.participant_id = q.participant_id
-                                      WHERE ps.questionnaire_on_the_basics = 1
                                     ) x
                                GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time, participant_origin
                              ) p,

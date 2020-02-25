@@ -1457,12 +1457,14 @@ class PublicMetricsApiTest(BaseTestCase):
 
         questionnaire_id = self.create_demographics_questionnaire()
 
-        def setup_participant(when, race_code_list, providerLink=self.provider_link):
+        def setup_participant(when, race_code_list, providerLink=self.provider_link, no_demographic=False):
             # Set up participant, questionnaire, and consent
             with FakeClock(when):
                 participant = self.send_post("Participant", {"providerLink": [providerLink]})
                 participant_id = participant["participantId"]
                 self.send_consent(participant_id)
+                if no_demographic:
+                    return participant
                 # Populate some answers to the questionnaire
                 answers = {
                     "race": race_code_list,
@@ -1492,6 +1494,7 @@ class PublicMetricsApiTest(BaseTestCase):
         p2 = setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
         self.update_participant_summary(p2["participantId"][1:], time_mem=self.time3, time_fp_stored=self.time5)
         p3 = setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
+        setup_participant(self.time3, [PMI_SKIP_CODE], self.provider_link, no_demographic=True)
         self.update_participant_summary(p3["participantId"][1:], time_mem=self.time4)
         p4 = setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
         self.update_participant_summary(p4["participantId"][1:], time_mem=self.time5)
@@ -1523,6 +1526,7 @@ class PublicMetricsApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
             },
             results,
@@ -1542,6 +1546,7 @@ class PublicMetricsApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
             },
             results,
@@ -1561,6 +1566,7 @@ class PublicMetricsApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 1
                 },
             },
             results,
@@ -1584,6 +1590,7 @@ class PublicMetricsApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
             },
             results,
@@ -1603,6 +1610,7 @@ class PublicMetricsApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
             },
             results,
@@ -1632,6 +1640,7 @@ class PublicMetricsApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
             },
             results,
@@ -1651,6 +1660,7 @@ class PublicMetricsApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
             },
             results,
@@ -1660,12 +1670,14 @@ class PublicMetricsApiTest(BaseTestCase):
 
         questionnaire_id = self.create_demographics_questionnaire()
 
-        def setup_participant(when, race_code_list, providerLink=self.provider_link):
+        def setup_participant(when, race_code_list, providerLink=self.provider_link, no_demographic=False):
             # Set up participant, questionnaire, and consent
             with FakeClock(when):
                 participant = self.send_post("Participant", {"providerLink": [providerLink]})
                 participant_id = participant["participantId"]
                 self.send_consent(participant_id)
+                if no_demographic:
+                    return participant
                 # Populate some answers to the questionnaire
                 answers = {
                     "race": race_code_list,
@@ -1696,12 +1708,16 @@ class PublicMetricsApiTest(BaseTestCase):
         self.update_participant_summary(p2["participantId"][1:], time_mem=self.time3, time_fp_stored=self.time5)
         p3 = setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
         self.update_participant_summary(p3["participantId"][1:], time_mem=self.time4)
+        # Setup participant with no demographic questionnaire.
+        setup_participant(self.time3, [PMI_SKIP_CODE], self.provider_link, no_demographic=True)
+
         p4 = setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
         self.update_participant_summary(p4["participantId"][1:], time_mem=self.time5)
         p5 = setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
         self.update_participant_summary(p5["participantId"][1:], time_mem=self.time4, time_fp_stored=self.time5)
         setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
         setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
+
 
         service = ParticipantCountsOverTimeService()
         service.init_tmp_table()
@@ -1726,6 +1742,7 @@ class PublicMetricsApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 1,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
             },
             results,
@@ -1745,6 +1762,7 @@ class PublicMetricsApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 1,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
             },
             results,
@@ -1764,6 +1782,7 @@ class PublicMetricsApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 1,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 1
                 },
             },
             results,
@@ -1787,6 +1806,7 @@ class PublicMetricsApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
             },
             results,
@@ -1806,6 +1826,7 @@ class PublicMetricsApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
             },
             results,
@@ -1836,6 +1857,7 @@ class PublicMetricsApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 2,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
             },
             results,
@@ -1855,6 +1877,7 @@ class PublicMetricsApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 1,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
             },
             results,
