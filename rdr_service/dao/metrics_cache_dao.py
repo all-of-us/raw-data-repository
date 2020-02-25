@@ -1482,7 +1482,7 @@ class MetricsRaceCacheDao(BaseDao):
                              THEN 1
                            ELSE 0
                          END AS No_Ancestry_Checked,
-                         CASE WHEN HasBasicsSurvey = 0 AND UNSET = 1 THEN 1 ELSE 0 END AS Unset_No_Basics
+                         CASE WHEN HasBasicsSurvey = 0 THEN 1 ELSE 0 END AS Unset_No_Basics
                   FROM (
                          SELECT participant_id,
                                 hpo_id,
@@ -1526,8 +1526,6 @@ class MetricsRaceCacheDao(BaseDao):
                                        CASE WHEN q.code_id = {WhatRaceEthnicity_NHPI} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_NHPI
                                 FROM {temp_table_name} ps
                                 LEFT JOIN participant_race_answers q ON ps.participant_id = q.participant_id
-                                WHERE ps.questionnaire_on_the_basics = 1
-                                    OR (ps.questionnaire_on_the_basics = 0 AND q.code_id is NULL)
                               ) x
                          GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time, participant_origin
                        ) p,
@@ -1621,7 +1619,7 @@ class MetricsRaceCacheDao(BaseDao):
                                    THEN 1
                                  ELSE 0
                                END AS No_Ancestry_Checked,
-                               CASE WHEN HasBasicsSurvey = 0 AND UNSET = 1 THEN 1 ELSE 0 END AS Unset_No_Basics
+                               CASE WHEN HasBasicsSurvey = 0 THEN 1 ELSE 0 END AS Unset_No_Basics
                         FROM (
                                SELECT participant_id,
                                       hpo_id,
@@ -1665,8 +1663,6 @@ class MetricsRaceCacheDao(BaseDao):
                                              CASE WHEN q.code_id = {WhatRaceEthnicity_NHPI} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_NHPI
                                       FROM {temp_table_name} ps
                                       LEFT JOIN participant_race_answers q ON ps.participant_id = q.participant_id
-                                      WHERE ps.questionnaire_on_the_basics = 1
-                                            OR (ps.questionnaire_on_the_basics = 0 AND q.code_id is NULL)
                                     ) x
                                GROUP BY participant_id, hpo_id, sign_up_time, consent_for_study_enrollment_time, enrollment_status_member_time, enrollment_status_core_stored_sample_time, participant_origin
                              ) p,
