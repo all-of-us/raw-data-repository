@@ -29,6 +29,7 @@ from rdr_service.participant_enums import (
     TEST_HPO_NAME,
     WithdrawalStatus,
 )
+from rdr_service.dao.metrics_cache_dao import TEMP_TABLE_PREFIX
 
 CACHE_START_DATE = datetime.datetime.strptime("2017-01-01", "%Y-%m-%d").date()
 
@@ -41,76 +42,85 @@ class ParticipantCountsOverTimeService(BaseDao):
 
     def init_tmp_table(self):
         with self.session() as session:
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore')
-                session.execute('DROP TABLE IF EXISTS metrics_tmp_participant;')
-                session.execute('DROP TABLE IF EXISTS metrics_tmp_participant_origin;')
-            session.execute('CREATE TABLE metrics_tmp_participant LIKE participant_summary')
+            hpo_dao = HPODao()
+            hpo_list = hpo_dao.get_all()
+            for hpo in hpo_list:
+                if hpo.hpoId == self.test_hpo_id:
+                    continue
+                temp_table_name = TEMP_TABLE_PREFIX + str(hpo.hpoId)
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore')
+                    session.execute('DROP TABLE IF EXISTS {};'.format(temp_table_name))
+
+                session.execute('CREATE TABLE {} LIKE participant_summary'.format(temp_table_name))
+
+                indexes_cursor = session.execute('SHOW INDEX FROM {}'.format(temp_table_name))
+                index_name_list = []
+                for index in indexes_cursor:
+                    index_name_list.append(index[2])
+                index_name_list = list(set(index_name_list))
+
+                for index_name in index_name_list:
+                    if index_name != 'PRIMARY':
+                        session.execute('ALTER TABLE {} DROP INDEX  {}'.format(temp_table_name, index_name))
+
+                session.execute('ALTER TABLE {} MODIFY first_name VARCHAR(255)'.format(temp_table_name))
+                session.execute('ALTER TABLE {} MODIFY last_name VARCHAR(255)'.format(temp_table_name))
+                session.execute('ALTER TABLE {} MODIFY suspension_status SMALLINT'.format(temp_table_name))
+                session.execute('ALTER TABLE {} MODIFY participant_origin VARCHAR(80)'.format(temp_table_name))
+
+                columns_cursor = session.execute('SELECT * FROM {} LIMIT 0'.format(temp_table_name))
+
+                participant_fields = ['participant_id', 'biobank_id', 'sign_up_time', 'withdrawal_status',
+                                      'hpo_id', 'organization_id', 'site_id', 'participant_origin']
+
+                def get_field_name(name):
+                    if name in participant_fields:
+                        return 'p.' + name
+                    else:
+                        return 'ps.' + name
+
+                columns = map(get_field_name, columns_cursor.keys())
+                columns_str = ','.join(columns)
+
+                participant_sql = """
+                  INSERT INTO 
+                  """ + temp_table_name + """
+                  SELECT
+                  """ + columns_str + """
+                  FROM participant p
+                  left join participant_summary ps on p.participant_id = ps.participant_id
+                  WHERE p.hpo_id <> :test_hpo_id
+                  AND p.is_ghost_id IS NOT TRUE
+                  AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                  AND p.withdrawal_status = :not_withdraw
+                  AND p.hpo_id = :hpo_id
+                """
+                params = {'test_hpo_id': self.test_hpo_id, 'test_email_pattern': self.test_email_pattern,
+                          'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN), 'hpo_id': hpo.hpoId}
+
+                session.execute('CREATE INDEX idx_sign_up_time ON {} (sign_up_time)'.format(temp_table_name))
+                session.execute('CREATE INDEX idx_consent_time ON {} (consent_for_study_enrollment_time)'
+                                .format(temp_table_name))
+                session.execute('CREATE INDEX idx_member_time ON {} (enrollment_status_member_time)'
+                                .format(temp_table_name))
+                session.execute('CREATE INDEX idx_sample_time ON {} (enrollment_status_core_stored_sample_time)'
+                                .format(temp_table_name))
+                session.execute('CREATE INDEX idx_participant_origin ON {} (participant_origin)'
+                                .format(temp_table_name))
+
+                session.execute(participant_sql, params)
+                logging.info('crete temp table for hpo_id: ' + str(hpo.hpoId))
+
+            session.execute('DROP TABLE IF EXISTS metrics_tmp_participant_origin;')
             session.execute('CREATE TABLE metrics_tmp_participant_origin (participant_origin VARCHAR(50))')
-
-            indexes_cursor = session.execute('SHOW INDEX FROM metrics_tmp_participant')
-            index_name_list = []
-            for index in indexes_cursor:
-                index_name_list.append(index[2])
-            index_name_list = list(set(index_name_list))
-
-            for index_name in index_name_list:
-                if index_name != 'PRIMARY':
-                    session.execute('ALTER TABLE  metrics_tmp_participant DROP INDEX  {}'.format(index_name))
-
-            session.execute('ALTER TABLE metrics_tmp_participant MODIFY first_name VARCHAR(255)')
-            session.execute('ALTER TABLE metrics_tmp_participant MODIFY last_name VARCHAR(255)')
-            session.execute('ALTER TABLE metrics_tmp_participant MODIFY suspension_status SMALLINT')
-            session.execute('ALTER TABLE metrics_tmp_participant MODIFY participant_origin VARCHAR(80)')
-
-            columns_cursor = session.execute('SELECT * FROM metrics_tmp_participant LIMIT 0')
-
-            participant_fields = ['participant_id', 'biobank_id', 'sign_up_time', 'withdrawal_status',
-                                  'hpo_id', 'organization_id', 'site_id', 'participant_origin']
-
-            def get_field_name(name):
-                if name in participant_fields:
-                    return 'p.' + name
-                else:
-                    return 'ps.' + name
-
-            columns = map(get_field_name, columns_cursor.keys())
-            columns_str = ','.join(columns)
-
-            participant_sql = """
-              INSERT INTO metrics_tmp_participant
-              SELECT
-              """ + columns_str + """
-              FROM participant p
-              left join participant_summary ps on p.participant_id = ps.participant_id
-              WHERE p.hpo_id <> :test_hpo_id
-              AND p.is_ghost_id IS NOT TRUE
-              AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-              AND p.withdrawal_status = :not_withdraw
-            """
-            params = {'test_hpo_id': self.test_hpo_id, 'test_email_pattern': self.test_email_pattern,
-                      'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN)}
-
-            session.execute('CREATE INDEX idx_hpo_id ON metrics_tmp_participant (hpo_id)')
-            session.execute('CREATE INDEX idx_sign_up_time ON metrics_tmp_participant (sign_up_time)')
-            session.execute('CREATE INDEX idx_consent_time ON metrics_tmp_participant '
-                            '(consent_for_study_enrollment_time)')
-            session.execute('CREATE INDEX idx_member_time ON metrics_tmp_participant '
-                            '(enrollment_status_member_time)')
-            session.execute('CREATE INDEX idx_sample_time ON metrics_tmp_participant '
-                            '(enrollment_status_core_stored_sample_time)')
-            session.execute('CREATE INDEX idx_participant_origin ON metrics_tmp_participant '
-                            '(participant_origin)')
-
-            session.execute(participant_sql, params)
-
             participant_origin_sql = """
                 INSERT INTO metrics_tmp_participant_origin
                 SELECT DISTINCT participant_origin FROM participant
             """
             session.execute(participant_origin_sql)
 
-            logging.info('Init tmp table for metrics cron job.')
+            logging.info('Init temp table for metrics cron job.')
 
     def refresh_metrics_cache_data(self):
 
@@ -153,13 +163,15 @@ class ParticipantCountsOverTimeService(BaseDao):
         hpo_dao = HPODao()
         hpo_list = hpo_dao.get_all()
         for hpo in hpo_list:
+            if hpo.hpoId == self.test_hpo_id:
+                continue
             self.insert_cache_by_hpo(dao, hpo.hpoId, updated_time)
 
         status_dao.set_to_complete(status_obj)
         dao.delete_old_records()
 
     def insert_cache_by_hpo(self, dao, hpo_id, updated_time):
-        sql_arr = dao.get_metrics_cache_sql()
+        sql_arr = dao.get_metrics_cache_sql(hpo_id)
         start_date = CACHE_START_DATE
         end_date = datetime.datetime.now().date() + datetime.timedelta(days=10)
 
