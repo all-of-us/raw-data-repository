@@ -98,6 +98,67 @@ def rebuild_bigquery_handler():
     bq_site_update()
 
 
+def daily_rebuild_bigquery_handler():
+    """
+    Cron job handler, setup queued tasks to with participants that need to be rebuilt.
+    Tasks call the default API service, so we want to use small batch sizes.
+    """
+    batch_size = 250
+
+    ro_dao = BigQuerySyncDao(backup=True)
+    with ro_dao.session() as ro_session:
+
+        sql = """
+            select bqs.pk_id as participantId
+        from participant_summary ps
+             JOIN bigquery_sync bqs ON bqs.pk_id = ps.participant_id
+        where ps.enrollment_status = 3
+            and JSON_EXTRACT(resource, "$.enrollment_status_id") <> 3;
+        """
+
+        participants = ro_session.execute(sql)
+        if not participants:
+            logging.info(f'No participants found to rebuild.')
+            return
+
+        count = 0
+        batch_count = 0
+        batch = list()
+
+        # queue up a batch of participant ids and send them to be rebuilt.
+        for p in participants:
+
+            batch.append({'pid': p.participantId})
+            count += 1
+
+            if count == batch_size:
+                payload = {'batch': batch}
+
+                if config.GAE_PROJECT == 'localhost':
+                    rebuild_bq_participant_task(payload)
+                else:
+                    task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
+                                        queue='bigquery-rebuild')
+                    task.execute(quiet=True)
+                batch_count += 1
+                # reset for next batch
+                batch = list()
+                count = 0
+
+        # send last batch if needed.
+        if count:
+            payload = {'batch': batch}
+            batch_count += 1
+            if config.GAE_PROJECT == 'localhost':
+                rebuild_bq_participant_task(payload)
+            else:
+                task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
+                                    queue='bigquery-rebuild')
+                task.execute(quiet=True)
+
+        logging.info(f'Submitted {batch_count} tasks.')
+
+
 def rebuild_bq_participant_task(payload):
     """
     Loop through all participants in batch and generate the BQ participant summary data and

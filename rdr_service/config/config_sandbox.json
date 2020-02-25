@@ -25,6 +25,9 @@
   "consent_pdf_bucket": {
     "vibrent": "ptc-uploads-pmi-drc-api-sandbox"
   },
+  "genomic_biobank_manifest_folder_name": [
+    "genomic_samples_manifests"
+  ],
   "metrics_shards": [
     "10"
   ]

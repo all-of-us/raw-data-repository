@@ -186,6 +186,29 @@ class BQSchema(object):
         fields.sort(key=operator.attrgetter('_count'))
         return fields
 
+    @classmethod
+    def get_sql_field_names(cls, exclude_fields=None):
+        """
+        Return a list of schema field names ready for a SQL statement.
+        :param exclude_fields: list of fields to exclude.
+        :return: formatted string
+        """
+        if exclude_fields is None:
+            exclude_fields = []
+        fields = list()
+        for key in dir(cls):
+            field = getattr(cls, key)
+            if isinstance(field, BQField):
+                name = field['name']
+                if name in exclude_fields:
+                    continue
+                fields.append(field)
+
+        # sort the BQField objects in the original order they are defined.
+        fields.sort(key=operator.attrgetter('_count'))
+
+        return ', '.join([fld['name'] for fld in fields])
+
     def to_json(self):
         """
         Return the json representation of the schema.
@@ -382,8 +405,6 @@ class BQView(object):
     __table__ = None  # type: BQTable
     __pk_id__ = 'id'  # type: str
     __sql__ = None  # type: str
-    _show_created = False
-    _show_modified = False
 
     def __init__(self):
 
@@ -391,28 +412,16 @@ class BQView(object):
             tbl = self.__table__()
             fields = tbl.get_schema().get_fields()
 
-            fld_list = list()
-            for field in fields:
-
-                fld_name = field['name']
-                if fld_name == 'id':  # as a good policy, we don't usually ever show 'id' to users.
-                    continue
-                if fld_name == 'created' and not self._show_created:
-                    continue
-                if fld_name == 'modified' and not self._show_modified:
-                    continue
-                fld_list.append(field['name'])
-
             self.__sql__ = """
         SELECT {fields} 
-      """.format(fields=', '.join(fld_list))
+      """.format(fields=', '.join([f['name'] for f in fields]))
 
             self.__sql__ += """
                 FROM (
                   SELECT *, MAX(modified) OVER (PARTITION BY %%pk_id%%) AS max_timestamp
                     FROM `{project}`.{dataset}.%%table%% 
-                ) c
-                WHERE c.modified = c.max_timestamp 
+                ) t
+                WHERE t.modified = t.max_timestamp 
               """.replace('%%table%%', tbl.get_name()).replace('%%pk_id%%', self.__pk_id__)
 
     def get_table(self):

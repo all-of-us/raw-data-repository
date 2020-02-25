@@ -14,7 +14,7 @@ from rdr_service.config import (
     getSettingList)
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
-)
+    GenomicSubProcessStatus)
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
     GenomicFileMover,
@@ -210,7 +210,7 @@ class GenomicJobController:
 
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""
-        self.job_run_dao.update_run_record(self.job_run.id, self.job_result)
+        self.job_run_dao.update_run_record(self.job_run.id, self.job_result, GenomicSubProcessStatus.COMPLETED)
 
     def _aggregate_run_results(self):
         """

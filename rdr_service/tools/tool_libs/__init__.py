@@ -73,7 +73,7 @@ class GCPEnvConfigObject(object):
 
         return config
 
-    def get_app_db_config(self):
+    def get_app_db_config(self, project=None):
         """
         Get the application database config.
         :return: dict
@@ -82,12 +82,15 @@ class GCPEnvConfigObject(object):
         import warnings
         warnings.filterwarnings("ignore", "Your application has authenticated using end user credentials")
 
+        if not project:
+            project = self.project
+
         provider = GoogleCloudDatastoreConfigProvider()
-        if not self.project or self.project == 'localhost':
+        if not project or project == 'localhost':
             file = os.path.join(self.git_project, 'rdr_service/.configs/db_config.json')
             config = json.loads(open(file, 'r').read())
         else:
-            config = provider.load('db_config', project=self.project)
+            config = provider.load('db_config', project=project)
 
         return config
 
@@ -155,7 +158,7 @@ class GCPEnvConfigObject(object):
             self._sql_proxy_process.terminate()
             self._sql_proxy_process = None
 
-        db_config = self.get_app_db_config()
+        db_config = self.get_app_db_config(project=project)
 
         # If localhost project, just point to the local instance of mysql.
         if (project and project == 'localhost') or (self.project and self.project == 'localhost'):

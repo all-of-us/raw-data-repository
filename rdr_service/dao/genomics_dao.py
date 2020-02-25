@@ -411,11 +411,11 @@ class GenomicJobRunDao(UpdatableDao):
 
         return self.insert(job_run)
 
-    def update_run_record(self, run_id, result):
+    def update_run_record(self, run_id, result, status):
         with self.session() as session:
-            return self._update_run_record_with_session(session, run_id, result)
+            return self._update_run_record_with_session(session, run_id, result, status)
 
-    def _update_run_record_with_session(self, session, run_id, result):
+    def _update_run_record_with_session(self, session, run_id, result, status):
         """
         UPDATES the job_run record.
         :param run_id: the ID of the current genomic's job
@@ -427,6 +427,7 @@ class GenomicJobRunDao(UpdatableDao):
                 .values(
                 {
                     GenomicJobRun.runResult: sqlalchemy.bindparam("run_result_param"),
+                    GenomicJobRun.runStatus: sqlalchemy.bindparam("run_status_param"),
                     GenomicJobRun.endTime: sqlalchemy.bindparam("end_time_param"),
                 }
             )
@@ -434,6 +435,7 @@ class GenomicJobRunDao(UpdatableDao):
         query_params = {
             "run_id_param": run_id,
             "run_result_param": result,
+            "run_status_param": status,
             "end_time_param": clock.CLOCK.now()
         }
         return session.execute(query, query_params)

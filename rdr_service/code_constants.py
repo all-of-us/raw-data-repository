@@ -66,6 +66,7 @@ CONSENT_PERMISSION_YES_CODE = "ConsentPermission_Yes"
 CONSENT_PERMISSION_NO_CODE = "ConsentPermission_No"
 
 # Module names for questionnaires / consent forms
+CONSENT_FOR_GENOMICS_ROR = "gRORConsent_ConsentPermission"
 CONSENT_FOR_STUDY_ENROLLMENT_MODULE = "ConsentPII"
 CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE = "EHRConsentPII"
 CONSENT_FOR_DVEHR_MODULE = "DVEHRSharing"

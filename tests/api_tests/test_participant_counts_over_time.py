@@ -1819,6 +1819,9 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {"date": "2018-01-06", "metrics": {"consented": 0, "core": 0, "registered": 1}, "hpo": "UNSET"}, response
         )
         self.assertIn(
+            {"date": "2018-01-01", "metrics": {"consented": 0, "core": 0, "registered": 0}, "hpo": "PITT"}, response
+        )
+        self.assertIn(
             {"date": "2018-01-03", "metrics": {"consented": 1, "core": 0, "registered": 0}, "hpo": "PITT"}, response
         )
         self.assertIn(
@@ -2959,7 +2962,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2017-12-31",
                 "metrics": {
-                    "36-45": 1
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 1,
+                    "26-35": 0,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "UNSET",
             },
@@ -2969,7 +2981,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-01",
                 "metrics": {
-                    "26-35": 1
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -2979,7 +3000,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-02",
                 "metrics": {
-                    "26-35": 2
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 2,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -2989,8 +3019,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-06",
                 "metrics": {
+                    "0-17": 0,
                     "18-25": 1,
-                    "26-35": 2
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 2,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3000,8 +3038,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-08",
                 "metrics": {
+                    "0-17": 0,
                     "18-25": 1,
-                    "26-35": 2
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 2,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3018,7 +3064,15 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2017-12-31",
                 "metrics": {
-                    "30-39": 1
+                    "50-59": 0,
+                    "60-69": 0,
+                    "30-39": 1,
+                    "40-49": 0,
+                    "UNSET": 0,
+                    "80-89": 0,
+                    "90-": 0,
+                    "18-29": 0,
+                    "70-79": 0,
                 },
             },
             results,
@@ -3027,8 +3081,15 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-01",
                 "metrics": {
+                    "50-59": 0,
+                    "60-69": 0,
                     "30-39": 1,
-                    "18-29": 1
+                    "40-49": 0,
+                    "18-29": 1,
+                    "80-89": 0,
+                    "90-": 0,
+                    "UNSET": 0,
+                    "70-79": 0,
                 },
             },
             results,
@@ -3037,8 +3098,15 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-02",
                 "metrics": {
+                    "50-59": 0,
+                    "60-69": 0,
                     "30-39": 1,
-                    "18-29": 2
+                    "40-49": 0,
+                    "18-29": 2,
+                    "80-89": 0,
+                    "70-79": 0,
+                    "UNSET": 0,
+                    "90-": 0,
                 },
             },
             results,
@@ -3047,8 +3115,15 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-03",
                 "metrics": {
+                    "50-59": 0,
+                    "60-69": 0,
                     "30-39": 1,
-                    "18-29": 3
+                    "40-49": 0,
+                    "18-29": 3,
+                    "80-89": 0,
+                    "70-79": 0,
+                    "UNSET": 0,
+                    "90-": 0,
                 },
             },
             results,
@@ -3062,20 +3137,20 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         dob4 = datetime.date(1998, 10, 10)
 
         p1 = Participant(participantId=1, biobankId=4, participantOrigin='a')
-        self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, time_study=self.time1, dob=dob1)
+        self._insert(p1, "Alice", "Aardvark", "UNSET", time_int=self.time1, dob=dob1)
 
         p2 = Participant(participantId=2, biobankId=5, participantOrigin='a')
-        self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, time_study=self.time2, dob=dob2)
+        self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, dob=dob2)
 
         p3 = Participant(participantId=3, biobankId=6, participantOrigin='b')
-        self._insert(p3, "Chad", "Caterpillar", "AZ_TUCSON", time_int=self.time3, time_study=self.time3, dob=dob3)
+        self._insert(p3, "Chad", "Caterpillar", "AZ_TUCSON", time_int=self.time3, dob=dob3)
 
         p4 = Participant(participantId=4, biobankId=7, participantOrigin='b')
-        self._insert(p4, "Chad2", "Caterpillar2", "AZ_TUCSON", time_int=self.time4, time_study=self.time4, dob=dob4)
+        self._insert(p4, "Chad2", "Caterpillar2", "AZ_TUCSON", time_int=self.time4, dob=dob4)
 
         # ghost participant should be filtered out
         p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-        self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, time_study=self.time1, dob=dob3)
+        self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, dob=dob3)
 
         service = ParticipantCountsOverTimeService()
         service.init_tmp_table()
@@ -3096,7 +3171,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2017-12-31",
                 "metrics": {
-                    "36-45": 1
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 1,
+                    "26-35": 0,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "UNSET",
             },
@@ -3106,7 +3190,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-01",
                 "metrics": {
-                    "26-35": 1
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3116,7 +3209,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-02",
                 "metrics": {
-                    "26-35": 2
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 2,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3126,8 +3228,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-06",
                 "metrics": {
+                    "0-17": 0,
                     "18-25": 1,
-                    "26-35": 2
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 2,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3137,8 +3247,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-08",
                 "metrics": {
+                    "0-17": 0,
                     "18-25": 1,
-                    "26-35": 2
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 2,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3161,7 +3279,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2017-12-31",
                 "metrics": {
-                    "36-45": 1
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 1,
+                    "26-35": 0,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "UNSET",
             },
@@ -3171,7 +3298,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-01",
                 "metrics": {
-                    "26-35": 1
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3181,7 +3317,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-02",
                 "metrics": {
-                    "26-35": 1
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3191,7 +3336,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-06",
                 "metrics": {
-                    "26-35": 1
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3201,7 +3355,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-08",
                 "metrics": {
-                    "26-35": 1
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3251,7 +3414,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2017-12-31",
                 "metrics": {
-                    "36-45": 1
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 1,
+                    "26-35": 0,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "UNSET",
             },
@@ -3261,7 +3433,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-01",
                 "metrics": {
-                    "26-35": 1
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3271,7 +3452,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-02",
                 "metrics": {
-                    "26-35": 2
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 2,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3281,7 +3471,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-06",
                 "metrics": {
-                    "26-35": 2
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 2,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3291,7 +3490,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-08",
                 "metrics": {
-                    "18-25": 1
+                    "0-17": 0,
+                    "18-25": 1,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 0,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "PITT",
             },
@@ -3315,7 +3523,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-01",
                 "metrics": {
-                    "26-35": 1
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3325,7 +3542,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-02",
                 "metrics": {
-                    "26-35": 1
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3335,7 +3561,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-08",
                 "metrics": {
-                    "18-25": 1
+                    "0-17": 0,
+                    "18-25": 1,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 0,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "PITT",
             },
@@ -3385,9 +3620,37 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         self.assertIn(
             {
+                "date": "2018-01-01",
+                "metrics": {
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 0,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
+                },
+                "hpo": "AZ_TUCSON",
+            },
+            response,
+        )
+        self.assertIn(
+            {
                 "date": "2018-01-02",
                 "metrics": {
-                    "26-35": 1
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 1,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3397,7 +3660,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-06",
                 "metrics": {
-                    "26-35": 2
+                    "0-17": 0,
+                    "18-25": 0,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 2,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -3407,7 +3679,16 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             {
                 "date": "2018-01-08",
                 "metrics": {
-                    "18-25": 1
+                    "0-17": 0,
+                    "18-25": 1,
+                    "46-55": 0,
+                    "86-": 0,
+                    "76-85": 0,
+                    "36-45": 0,
+                    "26-35": 0,
+                    "66-75": 0,
+                    "UNSET": 0,
+                    "56-65": 0,
                 },
                 "hpo": "PITT",
             },
@@ -11425,12 +11706,10 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
     def test_refresh_metrics_language_cache_data(self):
 
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1, time_study=self.time1,
-                     primary_language="en")
+        self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1, primary_language="en")
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, time_study=self.time2,
-                     primary_language="es")
+        self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, primary_language="es")
 
         p3 = Participant(participantId=3, biobankId=6)
         self._insert(
@@ -11439,7 +11718,6 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             "Caterpillar",
             "AZ_TUCSON",
             time_int=self.time1,
-            time_study=self.time1,
             time_mem=self.time3,
             time_fp_stored=self.time4,
             primary_language="en",
@@ -11452,7 +11730,6 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             "Caterpillar2",
             "AZ_TUCSON",
             time_int=self.time1,
-            time_study=self.time1,
             time_mem=self.time2,
             time_fp_stored=self.time4,
         )
@@ -11463,19 +11740,19 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         service.refresh_data_for_metrics_cache(dao)
         results = dao.get_latest_version_from_cache("2017-12-30", "2018-01-03")
 
+        self.assertIn({"date": "2017-12-30", "metrics": {"EN": 0, "UNSET": 0, "ES": 0}, "hpo": "UNSET"}, results)
         self.assertIn({"date": "2017-12-31", "metrics": {"EN": 0, "UNSET": 1, "ES": 0}, "hpo": "UNSET"}, results)
+        self.assertIn({"date": "2017-12-30", "metrics": {"EN": 0, "UNSET": 0, "ES": 0}, "hpo": "AZ_TUCSON"}, results)
         self.assertIn({"date": "2017-12-31", "metrics": {"EN": 1, "UNSET": 1, "ES": 0}, "hpo": "AZ_TUCSON"}, results)
         self.assertIn({"date": "2018-01-01", "metrics": {"EN": 1, "UNSET": 1, "ES": 1}, "hpo": "AZ_TUCSON"}, results)
 
     def test_metrics_language_cache_api(self):
 
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1, time_study=self.time1,
-                     primary_language="en")
+        self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1, primary_language="en")
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, time_study=self.time2,
-                     primary_language="es")
+        self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, primary_language="es")
 
         p3 = Participant(participantId=3, biobankId=6)
         self._insert(
@@ -11484,7 +11761,6 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             "Caterpillar",
             "AZ_TUCSON",
             time_int=self.time1,
-            time_study=self.time1,
             time_mem=self.time3,
             time_fp_stored=self.time4,
             primary_language="en",
@@ -11497,7 +11773,6 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             "Caterpillar2",
             "AZ_TUCSON",
             time_int=self.time1,
-            time_study=self.time1,
             time_mem=self.time2,
             time_fp_stored=self.time4,
         )
@@ -11519,7 +11794,9 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         results1 = self.send_get("ParticipantCountsOverTime", query_string=qs1)
 
+        self.assertIn({"date": "2017-12-30", "metrics": {"EN": 0, "UNSET": 0, "ES": 0}, "hpo": "UNSET"}, results1)
         self.assertIn({"date": "2017-12-31", "metrics": {"EN": 0, "UNSET": 1, "ES": 0}, "hpo": "UNSET"}, results1)
+        self.assertIn({"date": "2017-12-30", "metrics": {"EN": 0, "UNSET": 0, "ES": 0}, "hpo": "AZ_TUCSON"}, results1)
         self.assertIn({"date": "2017-12-31", "metrics": {"EN": 1, "UNSET": 1, "ES": 0}, "hpo": "AZ_TUCSON"}, results1)
         self.assertIn({"date": "2018-01-01", "metrics": {"EN": 1, "UNSET": 1, "ES": 1}, "hpo": "AZ_TUCSON"}, results1)
 
@@ -11536,7 +11813,9 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         results2 = self.send_get("ParticipantCountsOverTime", query_string=qs2)
 
+        self.assertNotIn({"date": "2017-12-30", "metrics": {"EN": 0, "UNSET": 0, "ES": 0}, "hpo": "UNSET"}, results2)
         self.assertNotIn({"date": "2017-12-31", "metrics": {"EN": 0, "UNSET": 1, "ES": 0}, "hpo": "UNSET"}, results2)
+        self.assertIn({"date": "2017-12-30", "metrics": {"EN": 0, "UNSET": 0, "ES": 0}, "hpo": "AZ_TUCSON"}, results2)
         self.assertIn({"date": "2017-12-31", "metrics": {"EN": 1, "UNSET": 1, "ES": 0}, "hpo": "AZ_TUCSON"}, results2)
         self.assertIn({"date": "2018-01-01", "metrics": {"EN": 1, "UNSET": 1, "ES": 1}, "hpo": "AZ_TUCSON"}, results2)
 
@@ -11561,12 +11840,10 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
     def test_refresh_metrics_language_cache_data_for_public_metrics_api(self):
 
         p1 = Participant(participantId=1, biobankId=4)
-        self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1, time_study=self.time1,
-                     primary_language="en")
+        self._insert(p1, "Alice", "Aardvark", "UNSET", unconsented=True, time_int=self.time1, primary_language="en")
 
         p2 = Participant(participantId=2, biobankId=5)
-        self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, time_study=self.time2,
-                     primary_language="es")
+        self._insert(p2, "Bob", "Builder", "AZ_TUCSON", time_int=self.time2, primary_language="es")
 
         p3 = Participant(participantId=3, biobankId=6)
         self._insert(
@@ -11575,7 +11852,6 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             "Caterpillar",
             "AZ_TUCSON",
             time_int=self.time1,
-            time_study=self.time1,
             time_mem=self.time3,
             time_fp_stored=self.time4,
             primary_language="en",
@@ -11588,7 +11864,6 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             "Caterpillar2",
             "AZ_TUCSON",
             time_int=self.time1,
-            time_study=self.time1,
             time_mem=self.time2,
             time_fp_stored=self.time4,
         )
@@ -11599,6 +11874,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         service.refresh_data_for_metrics_cache(dao)
         results = dao.get_latest_version_from_cache("2017-12-30", "2018-01-03")
 
+        self.assertIn({"date": "2017-12-30", "metrics": {"EN": 0, "UNSET": 0, "ES": 0}}, results)
         self.assertIn({"date": "2017-12-31", "metrics": {"EN": 1, "UNSET": 2, "ES": 0}}, results)
         self.assertIn({"date": "2018-01-03", "metrics": {"EN": 1, "UNSET": 2, "ES": 1}}, results)
 

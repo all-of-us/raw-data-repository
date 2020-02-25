@@ -57,17 +57,18 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             except TypeError:
                 raise BadRequest(f"Invalid workspace status: {item.get('status')}")
 
-            for user in item.get('workspaceUsers'):
-                if user.get('userId') is None:
-                    raise BadRequest('Workspace user ID can not be NULL')
-                try:
-                    WorkbenchWorkspaceUserRole(user.get('role'))
-                except TypeError:
-                    raise BadRequest(f"Invalid user role: {user.get('role')}")
-                try:
-                    WorkbenchWorkspaceStatus(user.get('status'))
-                except TypeError:
-                    raise BadRequest(f"Invalid user status: {user.get('status')}")
+            if item.get('workspaceUsers'):
+                for user in item.get('workspaceUsers'):
+                    if user.get('userId') is None:
+                        raise BadRequest('Workspace user ID can not be NULL')
+                    try:
+                        WorkbenchWorkspaceUserRole(user.get('role'))
+                    except TypeError:
+                        raise BadRequest(f"Invalid user role: {user.get('role')}")
+                    try:
+                        WorkbenchWorkspaceStatus(user.get('status'))
+                    except TypeError:
+                        raise BadRequest(f"Invalid user status: {user.get('status')}")
 
             if item.get("focusOnUnderrepresentedPopulations") and item.get("workspaceDemographic"):
                 race_ethnicity_array = []
@@ -207,8 +208,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 accessToCare=WorkbenchWorkspaceAccessToCare(item.get('accessToCare', 'UNSET')),
                 educationLevel=WorkbenchWorkspaceEducationLevel(item.get('educationLevel', 'UNSET')),
                 incomeLevel=WorkbenchWorkspaceIncomeLevel(item.get('incomeLevel', 'UNSET')),
-                raceEthnicity=item.get("raceEthnicity"),
-                age=item.get("age"),
+                raceEthnicity=item.get("raceEthnicity", []),
+                age=item.get("age", []),
                 others=item.get('others'),
                 workbenchWorkspaceUser=self._get_users(item.get('workspaceUsers')),
                 resource=json.dumps(item)
@@ -219,6 +220,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         return workspaces
 
     def _get_users(self, workspace_users_json):
+        if workspace_users_json is None:
+            return []
         researcher_dao = WorkbenchResearcherDao()
         now = clock.CLOCK.now()
         workspace_users = []
@@ -247,7 +250,6 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             else:
                 session.add(workspace)
         self._insert_history(session, workspaces)
-
         return workspaces
 
     def to_client_json(self, obj):

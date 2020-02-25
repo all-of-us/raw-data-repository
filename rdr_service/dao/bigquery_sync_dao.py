@@ -28,6 +28,9 @@ class BigQueryGenerator(object):
         :param w_session: Session from a writable BigQuerySyncDao object
         :param project_id: Project ID override value.
         """
+        if not isinstance(pk_id, int):
+            raise ValueError('Invalid primary key value, value must be an integer.')
+
         if not w_dao or not w_session:
             raise ValueError('Invalid BigQuerySyncDao dao or session argument.')
 
