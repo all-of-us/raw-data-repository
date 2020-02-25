@@ -3892,12 +3892,14 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         questionnaire_id = self.create_demographics_questionnaire()
 
-        def setup_participant(when, race_code_list, providerLink=self.provider_link):
+        def setup_participant(when, race_code_list, providerLink=self.provider_link, no_demographic=False):
             # Set up participant, questionnaire, and consent
             with FakeClock(when):
                 participant = self.send_post("Participant", {"providerLink": [providerLink]})
                 participant_id = participant["participantId"]
                 self.send_consent(participant_id)
+                if no_demographic:
+                    return participant
                 # Populate some answers to the questionnaire
                 answers = {
                     "race": race_code_list,
@@ -3925,6 +3927,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
         setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
         setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
+        setup_participant(self.time3, [PMI_SKIP_CODE], self.az_provider_link, no_demographic=True)
         setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
         setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
 
@@ -3953,6 +3956,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
                 "hpo": "PITT",
             },
@@ -3974,6 +3978,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
                 "hpo": "PITT",
             },
@@ -3995,6 +4000,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -4016,6 +4022,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 1
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -4026,12 +4033,14 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         questionnaire_id = self.create_demographics_questionnaire()
 
-        def setup_participant(when, race_code_list, providerLink=self.provider_link):
+        def setup_participant(when, race_code_list, providerLink=self.provider_link, no_demographic=False):
             # Set up participant, questionnaire, and consent
             with FakeClock(when):
                 participant = self.send_post("Participant", {"providerLink": [providerLink]})
                 participant_id = participant["participantId"]
                 self.send_consent(participant_id)
+                if no_demographic:
+                    return participant
                 # Populate some answers to the questionnaire
                 answers = {
                     "race": race_code_list,
@@ -4059,6 +4068,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
         setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
         setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
+        setup_participant(self.time3, [PMI_SKIP_CODE], self.az_provider_link, no_demographic=True)
         setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
         setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
 
@@ -4087,6 +4097,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
             },
             results,
@@ -4106,6 +4117,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
             },
             results,
@@ -4125,6 +4137,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 1
                 },
             },
             results,
@@ -4134,12 +4147,14 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
 
         questionnaire_id = self.create_demographics_questionnaire()
 
-        def setup_participant(when, race_code_list, providerLink=self.provider_link):
+        def setup_participant(when, race_code_list, providerLink=self.provider_link, no_demographic=False):
             # Set up participant, questionnaire, and consent
             with FakeClock(when):
                 participant = self.send_post("Participant", {"providerLink": [providerLink]})
                 participant_id = participant["participantId"]
                 self.send_consent(participant_id)
+                if no_demographic:
+                    return participant
                 # Populate some answers to the questionnaire
                 answers = {
                     "race": race_code_list,
@@ -4167,6 +4182,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
         setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
         setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
+        setup_participant(self.time3, [PMI_SKIP_CODE], self.az_provider_link, no_demographic=True)
         setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
         setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
         setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
@@ -4203,6 +4219,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
                 "hpo": "PITT",
             },
@@ -4224,6 +4241,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
                 "hpo": "PITT",
             },
@@ -4245,6 +4263,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -4266,6 +4285,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 1
                 },
                 "hpo": "AZ_TUCSON",
             },
@@ -4347,6 +4367,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
                 "hpo": "PITT",
             },
@@ -4368,6 +4389,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
                 "hpo": "PITT",
             },
@@ -4460,6 +4482,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
                 "hpo": "PITT",
             },
@@ -4481,6 +4504,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
                 "hpo": "PITT",
             },
@@ -4518,6 +4542,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
                 "hpo": "PITT",
             },
@@ -4539,6 +4564,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
                     "Hispanic_Latino_Spanish": 0,
                     "Native_Hawaiian_other_Pacific_Islander": 0,
                     "Asian": 0,
+                    "Unset_No_Basics": 0
                 },
                 "hpo": "PITT",
             },
@@ -11899,9 +11925,10 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         for link_id in self.code_link_ids:
             if link_id in kwargs:
                 if link_id == "race":
-                    for race_code in kwargs[link_id]:
-                        concept = Concept(PPI_SYSTEM, race_code)
-                        answers["code_answers"].append((link_id, concept))
+                    if kwargs[link_id]:
+                        for race_code in kwargs[link_id]:
+                            concept = Concept(PPI_SYSTEM, race_code)
+                            answers["code_answers"].append((link_id, concept))
                 else:
                     concept = Concept(PPI_SYSTEM, kwargs[link_id])
                     answers["code_answers"].append((link_id, concept))
