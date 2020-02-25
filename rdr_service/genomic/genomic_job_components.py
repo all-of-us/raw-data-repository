@@ -697,7 +697,7 @@ class GenomicBiobankSamplesCoupler:
             new_genomic_set = self._create_new_genomic_set()
             # Create genomic set members
             for i, bid in enumerate(samples_meta.bids):
-                logging.info(f'Validating sample: {samples_meta.sample_ids}')
+                logging.info(f'Validating sample: {samples_meta.sample_ids[i]}')
                 validation_criteria = (
                     samples_meta.not_withdrawn[i],
                     samples_meta.gen_consents[i],
@@ -707,7 +707,7 @@ class GenomicBiobankSamplesCoupler:
                 )
                 valid_flags = self._calculate_validation_flags(validation_criteria)
                 logging.info(f'Creating genomic set member for PID: {samples_meta.pids[i]}')
-                self._create_new_set_member(
+                new_member_obj = GenomicSetMember(
                     biobankId=bid,
                     genomicSetId=new_genomic_set.id,
                     participantId=samples_meta.pids[i],
@@ -717,8 +717,11 @@ class GenomicBiobankSamplesCoupler:
                     sampleId=samples_meta.sample_ids[i],
                     validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
                                       else GenomicSetMemberStatus.VALID),
-                    ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y'
+                    validationFlags=valid_flags,
+                    ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
+                    genomeType="aou_array",
                 )
+                self.member_dao.insert(new_member_obj)
             # Create & transfer the Biobank Manifest based on the new genomic set
             try:
                 create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id)
@@ -754,7 +757,7 @@ class GenomicBiobankSamplesCoupler:
             WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
           END as general_consent_given,
           CASE
-            WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param*18 DAY) THEN 1 ELSE 0
+            WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param*365 DAY) THEN 1 ELSE 0
           END AS valid_age,
           CASE
             WHEN c.value = "SexAtBirth_Male" THEN "M"
