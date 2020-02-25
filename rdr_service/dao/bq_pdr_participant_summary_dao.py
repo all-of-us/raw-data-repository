@@ -1,4 +1,5 @@
 import os
+import dateutil
 
 from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum
 from rdr_service.dao.bigquery_sync_dao import BigQueryGenerator
@@ -89,6 +90,7 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
             'ubr_education': 0,
             'ubr_income': 0,
             'ubr_sexual_gender_minority': 0,
+            'ubr_age_at_consent': 0,
             'ubr_overall': 0,
         }
         birth_sex = 'unknown'
@@ -150,6 +152,26 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
         # ubr_sexual_gender_minority
         if data['ubr_sex'] == 1 or data['ubr_gender_identity'] == 1:
             data['ubr_sexual_gender_minority'] = 1
+
+        # ubr_age_at_consent
+        if hasattr(ps_bqr, 'date_of_birth') and ps_bqr.date_of_birth and \
+                ps_bqr.consents and len(ps_bqr.consents) > 0:
+
+            consent_date = None
+            for consent_type in ['ConsentPII', 'EHRConsentPII_ConsentPermission', 'DVEHRSharing_AreYouInterested']:
+                if consent_date:
+                    break
+                for consent in ps_bqr.consents:
+                    if consent['consent'] == consent_type and \
+                                consent['consent_value'] in ['ConsentPermission_Yes', 'DVEHRSharing_Yes']:
+                        consent_date = consent['consent_date']
+                        break
+
+            if consent_date:
+                age = int((dateutil.parser.parse(consent_date.isoformat()) -
+                                dateutil.parser.parse(ps_bqr.date_of_birth)).days / 365)
+                if not 18 <= age <= 65:
+                    data['ubr_age_at_consent'] = 1
 
         # pylint: disable=unused-variable
         for key, value in data.items():
