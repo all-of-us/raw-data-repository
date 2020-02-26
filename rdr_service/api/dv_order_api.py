@@ -6,7 +6,7 @@ from werkzeug.exceptions import BadRequest, Conflict, MethodNotAllowed
 
 from rdr_service.api.base_api import UpdatableApi
 from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO, DV_FHIR_URL
-from rdr_service.app_util import ObjDict, auth_required, get_oauth_id
+from rdr_service.app_util import ObjDict, auth_required, get_oauth_id, get_account_origin_id
 from rdr_service.dao.dv_order_dao import DvOrderDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
 from rdr_service.model.utils import from_client_participant_id
@@ -120,6 +120,7 @@ class DvOrderApi(UpdatableApi):
             response = self.dao.send_order(resource, p_id)
             merged_resource = merge_dicts(response, resource)
             merged_resource["id"] = _id
+            merged_resource["orderOrigin"] = get_account_origin_id()
             logging.info(f"Sending salivary order to biobank for participant: {p_id}")
             self.dao.insert_biobank_order(p_id, merged_resource)
 
@@ -263,6 +264,7 @@ class DvOrderApi(UpdatableApi):
             response = self.dao.send_order(resource, p_id)
             merged_resource = merge_dicts(response, resource)
             merged_resource["id"] = _id
+            merged_resource["orderOrigin"] = get_account_origin_id()
             logging.info(f"Sending salivary order to biobank for participant: {p_id}")
             self.dao.insert_biobank_order(p_id, merged_resource)
 
