@@ -225,8 +225,27 @@ class GenomicFileIngester:
                 member = self.member_dao.get_member_from_sample_id(sample_id)
                 member.packageId = row['Package Id']
                 member.reconcileGCManifestJobRunId = self.job_run_id
+                member.gcManifestBoxStorageUnitId = row['Box_Storageunit_Id']
+                member.gcManifestBoxPlateId = row['Box Id/plate Id']
+                member.gcManifestWellPosition = row['Well Position']
+                member.gcManifestParentSampleId = row['Parent Sample Id']
+                member.gcManifestMatrixId = row['Matrix Id']
+                member.gcManifestTreatments = row['Treatments']
+                member.gcManifestQuantity_ul = row['Quantity (ul)']
+                member.gcManifestTotalConcentration_ng_per_ul = row['Total Concentration (ng/ul)']
+                member.gcManifestTotalDNA_ng = row['Total Dna(ng)']
+                member.gcManifestVisitDescription = row['Visit Description']
+                member.gcManifestSampleSource = row['Sample Source']
+                member.gcManifestStudy = row['Study']
+                member.gcManifestTrackingNumber = row['Tracking Number']
+                member.gcManifestContact = row['Contact']
+                member.gcManifestEmail = row['Email']
+                member.gcManifestStudyPI = row['Study_PI']
+                member.gcManifestTestName = row['Test Name']
+                member.gcManifestFailureMode = row['Failure Mode']
+                member.gcManifestFailureDescription = row['Failure Mode Desc']
                 if member.validationStatus != GenomicSetMemberStatus.VALID:
-                    print(f'Invalid member found: {member.biobankId}')
+                    logging.warning(f'Invalid member found: {member.biobankId}')
                 self.member_dao.update(member)
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
