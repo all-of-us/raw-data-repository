@@ -712,6 +712,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
         elif (
             model.withdrawalStatus != WithdrawalStatus.NO_USE and model.suspensionStatus == SuspensionStatus.NO_CONTACT
+            and model.suspensionTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
         ):
             for i in SUSPENDED_PARTICIPANT_FIELDS:
                 result[i] = UNSET
