@@ -251,9 +251,11 @@ class GenomicFileIngester:
                 row_copy = dict(zip([key.lower() for key in row], row.values()))
                 sample_id = row_copy['biobankid sampleid'].split('_')[-1]
                 member = self.member_dao.get_member_from_sample_id(sample_id)
-
+                if member is None:
+                    logging.warning(f'Invalid sample ID: {sample_id}')
+                    continue
                 if member.validationStatus != GenomicSetMemberStatus.VALID:
-                    logging.warning(f'Invalid member found BID: {member.biobankId}')
+                    logging.warning(f'Invalidated member found BID: {member.biobankId}')
 
                 for key in gc_manifest_column_mappings.keys():
                     try:
