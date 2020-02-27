@@ -175,6 +175,11 @@ class GenomicFileIngester:
                 return GenomicSubProcessResult.ERROR
             elif data_to_ingest:
                 logging.info(f'Ingesting GC manifest data from {self.file_obj.fileName}')
+                self.file_validator.valid_schema = None
+                validation_result = self.file_validator.validate_ingestion_file(
+                    self.file_obj.fileName, data_to_ingest)
+                if validation_result != GenomicSubProcessResult.SUCCESS:
+                    return validation_result
                 return self._ingest_gc_manifest(data_to_ingest)
             else:
                 logging.info("No data to ingest.")
@@ -215,17 +220,51 @@ class GenomicFileIngester:
 
     def _ingest_gc_manifest(self, data):
         """
-        Updates the GenomicSetMember with GC Manifest data (just manifest)
+        Updates the GenomicSetMember with GC Manifest data
         :param data:
         :return: result code
         """
+        gc_manifest_column_mappings = {
+            'packageId': 'package id',
+            'gcManifestBoxStorageUnitId': 'box_storageunit_id',
+            'gcManifestBoxPlateId': 'box id/plate id',
+            'gcManifestWellPosition': 'well position',
+            'gcManifestParentSampleId': 'parent sample id',
+            'gcManifestMatrixId': 'matrix id',
+            'gcManifestTreatments': 'treatments',
+            'gcManifestQuantity_ul': 'quantity (ul)',
+            'gcManifestTotalConcentration_ng_per_ul': 'total concentration (ng/ul)',
+            'gcManifestTotalDNA_ng': 'total dna(ng)',
+            'gcManifestVisitDescription': 'visit description',
+            'gcManifestSampleSource': 'sample source',
+            'gcManifestStudy': 'study',
+            'gcManifestTrackingNumber': 'tracking number',
+            'gcManifestContact': 'contact',
+            'gcManifestEmail': 'email',
+            'gcManifestStudyPI': 'study_pi',
+            'gcManifestTestName': 'test name',
+            'gcManifestFailureMode': 'failure mode',
+            'gcManifestFailureDescription': 'failure mode desc',
+        }
         try:
             for row in data['rows']:
-                sample_id = row['Biobankid Sampleid'].split('_')[-1]
+                row_copy = dict(zip([key.lower() for key in row], row.values()))
+                sample_id = row_copy['biobankid sampleid'].split('_')[-1]
                 member = self.member_dao.get_member_from_sample_id(sample_id)
-                self.member_dao.update_member_job_run_id(member,
-                                                         self.job_run_id,
-                                                         'reconcileGCManifestJobRunId')
+                if member is None:
+                    logging.warning(f'Invalid sample ID: {sample_id}')
+                    continue
+                if member.validationStatus != GenomicSetMemberStatus.VALID:
+                    logging.warning(f'Invalidated member found BID: {member.biobankId}')
+
+                for key in gc_manifest_column_mappings.keys():
+                    try:
+                        member.__setattr__(key, row_copy[gc_manifest_column_mappings[key]])
+                    except KeyError:
+                        member.__setattr__(key, None)
+
+                member.reconcileGCManifestJobRunId = self.job_run_id
+                self.member_dao.update(member)
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
@@ -266,13 +305,7 @@ class GenomicFileIngester:
         # add to insert batch gc metrics record
         for row in data_to_ingest['rows']:
             # change all key names to lower
-            row_copy = row.copy()
-            for key in row.keys():
-                val = row_copy.pop(key)
-                key_lower = key.lower()
-                row_copy[key_lower] = val
-
-            # row_copy['member_id'] = 1
+            row_copy = dict(zip([key.lower() for key in row], row.values()))
             row_copy['file_id'] = self.file_obj.id
             row_copy['biobank id'] = row_copy['biobank id'].replace('T', '')
 
@@ -293,7 +326,7 @@ class GenomicFileValidator:
         self.valid_schema = schema
         self.job_id = job_id
 
-        self.GC_CSV_SCHEMAS = {
+        self.GC_METRICS_SCHEMAS = {
             'seq': (
                 "biobank id",
                 "biobankidsampleid",
@@ -323,6 +356,37 @@ class GenomicFileValidator:
         }
         self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bi', 'rdr')
         self.VALID_CVL_FACILITIES = ('color', 'uw', 'baylor')
+
+        self.GC_MANIFEST_SCHEMA = (
+            "package id",
+            "biobankid sampleid",
+            "box_storageunit_id",
+            "box id/plate id",
+            "well position",
+            "sample id",
+            "parent sample id",
+            "matrix id",
+            "collection date",
+            "biobank id",
+            "sex at birth",
+            "age",
+            "ny state (y/n)",
+            "sample type",
+            "treatments",
+            "quantity (ul)",
+            "total concentration (ng/ul)",
+            "total dna(ng)",
+            "visit description",
+            "sample source",
+            "study",
+            "tracking number",
+            "contact",
+            "email",
+            "study_pi",
+            "test name",
+            "failure mode",
+            "failure mode desc"
+        )
 
     def validate_ingestion_file(self, filename, data_to_validate):
         """
@@ -373,7 +437,7 @@ class GenomicFileValidator:
                 len(filename_components) == 5 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
-                filename_components[2] in self.GC_CSV_SCHEMAS.keys() and
+                filename_components[2] in self.GC_METRICS_SCHEMAS.keys() and
                 re.search(r"[0-1][0-9][0-3][0-9]20[1-9][0-9]\.csv",
                           filename_components[4]) is not None
             )
@@ -436,8 +500,11 @@ class GenomicFileValidator:
             (tuple from the CSV_SCHEMA or result code of INVALID_FILE_NAME).
         """
         try:
-            file_type = filename.lower().split("_")[2]
-            return self.GC_CSV_SCHEMAS[file_type]
+            if self.job_id == GenomicJob.METRICS_INGESTION:
+                file_type = filename.lower().split("_")[2]
+                return self.GC_METRICS_SCHEMAS[file_type]
+            if self.job_id == GenomicJob.BB_GC_MANIFEST:
+                return self.GC_MANIFEST_SCHEMA
         except (IndexError, KeyError):
             return GenomicSubProcessResult.INVALID_FILE_NAME
 

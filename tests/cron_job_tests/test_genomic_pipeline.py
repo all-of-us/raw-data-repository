@@ -1212,7 +1212,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Setup Test file
         gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-1.csv")
 
-        gc_manifest_filename = "RDR_AoU_GEN_PKG-1923-123456.csv"
+        gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
 
         self._write_cloud_csv(
             gc_manifest_filename,
@@ -1224,14 +1224,32 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.genomic_centers_manifest_workflow()
 
         # Test the data was ingested OK
-        member_1 = self.member_dao.get(1)
-        self.assertEqual(1, member_1.reconcileGCManifestJobRunId)
-
-        member_2 = self.member_dao.get(1)
-        self.assertEqual(1, member_2.reconcileGCManifestJobRunId)
-
-        member_3 = self.member_dao.get(3)
-        self.assertNotEqual(1, member_3.reconcileGCManifestJobRunId)
+        for member in self.member_dao.get_all():
+            if member.id in [1, 2]:
+                self.assertEqual(1, member.reconcileGCManifestJobRunId)
+                # Package ID represents that BB sample was reconciled to GC Manifest
+                self.assertEqual("PKG-1908-218051", member.packageId)
+                self.assertEqual("SU-0026388097", member.gcManifestBoxStorageUnitId)
+                self.assertEqual("BX-00299188", member.gcManifestBoxPlateId)
+                self.assertEqual(f"A0{member.id}", member.gcManifestWellPosition)
+                # self.assertEqual("", member.gcManifestParentSampleId)
+                # self.assertEqual("", member.gcManifestMatrixId)
+                self.assertEqual("TE", member.gcManifestTreatments)
+                self.assertEqual(40, member.gcManifestQuantity_ul)
+                self.assertEqual(60, member.gcManifestTotalConcentration_ng_per_ul)
+                self.assertEqual(2400, member.gcManifestTotalDNA_ng)
+                self.assertEqual("All", member.gcManifestVisitDescription)
+                self.assertEqual("Other", member.gcManifestSampleSource)
+                self.assertEqual("PMI Coriell Samples Only", member.gcManifestStudy)
+                self.assertEqual("475523957339", member.gcManifestTrackingNumber)
+                self.assertEqual("Samantha Wirkus", member.gcManifestContact)
+                self.assertEqual("Wirkus.Samantha@mayo.edu", member.gcManifestEmail)
+                self.assertEqual("Josh Denny", member.gcManifestStudyPI)
+                self.assertEqual("aou_array", member.gcManifestTestName)
+                self.assertEqual("", member.gcManifestFailureMode)
+                self.assertEqual("", member.gcManifestFailureDescription)
+            if member.id == 3:
+                self.assertNotEqual(1, member.reconcileGCManifestJobRunId)
 
         # Test file processing queue
         files_processed = self.file_processed_dao.get_all()

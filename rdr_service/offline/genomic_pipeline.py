@@ -52,7 +52,6 @@ def new_participant_workflow():
 def genomic_centers_manifest_workflow():
     """
     Entrypoint for Biobank to Genomic Centers Manifest Ingestion
-    (really a reconciliation)
     """
     with GenomicJobController(GenomicJob.BB_GC_MANIFEST,
                               bucket_name=None,
