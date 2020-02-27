@@ -46,7 +46,21 @@ def upgrade_rdr():
     op.execute("ALTER TABLE genomic_set_member_history ADD COLUMN reconcile_gc_manifest_job_run_id int(11);")
     op.execute("ALTER TABLE genomic_set_member_history ADD COLUMN reconcile_metrics_bb_manifest_job_run_id int(11);")
     op.execute("ALTER TABLE genomic_set_member_history ADD COLUMN reconcile_metrics_sequencing_job_run_id int(11);")
-    op.execute("ALTER TABLE genomic_set_member_history ADD COLUMN validation_flags varchar(80) AFTER validated_time")
+
+    # Only add validation flags if it doesn't already exist (stable and prod have it)
+    val_flag_column_exists_sql = """
+                SELECT count(*) 
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = 'rdr'
+                    AND TABLE_NAME = 'genomic_set_member_history'
+                    AND COLUMN_NAME = 'validation_flags'
+            """
+    connection = op.get_bind()
+    val_flag_exists = connection.execute(val_flag_column_exists_sql).fetchone()[0]
+    if val_flag_exists == 0:
+        op.execute(
+            "ALTER TABLE genomic_set_member_history ADD COLUMN validation_flags varchar(80) AFTER validated_time")
+
     op.execute("ALTER TABLE genomic_set_member_history ADD COLUMN ai_an varchar(2);")
     # ### end Alembic commands ###
 
