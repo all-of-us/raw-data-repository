@@ -248,6 +248,7 @@ class DvOrderDao(UpdatableDao):
         obj.created = datetime.datetime.now()
         obj.orderStatus = BiobankOrderStatus.UNSET
         obj.biobankOrderId = resource["biobankOrderId"]
+        obj.orderOrigin = resource.get("orderOrigin")
         test = self.get(resource["id"])
         obj.dvOrders = [test]
         bod = BiobankOrderDao()

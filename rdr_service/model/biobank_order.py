@@ -65,6 +65,8 @@ class BiobankOrderBase(object):
     processedNote = Column("processed_note", UnicodeText)
     finalizedNote = Column("finalized_note", UnicodeText)
 
+    orderOrigin = Column("order_origin", String(80))
+
     @declared_attr
     def participantId(cls):
         return Column("participant_id", Integer, ForeignKey("participant.participant_id"), nullable=False)

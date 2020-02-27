@@ -9,6 +9,7 @@ from werkzeug.exceptions import BadRequest, Conflict, PreconditionFailed
 
 from rdr_service import clock
 from rdr_service.api_util import get_site_id_by_site_value as get_site
+from rdr_service.app_util import get_account_origin_id
 from rdr_service.code_constants import BIOBANK_TESTS_SET, HEALTHPRO_USERNAME_SYSTEM, SITE_ID_SYSTEM
 from rdr_service.dao.base_dao import FhirMixin, FhirProperty, UpdatableDao
 from rdr_service.dao.participant_dao import ParticipantDao, raise_if_withdrawn
@@ -84,6 +85,7 @@ class _FhirBiobankOrder(FhirMixin, DomainResource):
         FhirProperty("version", int, required=False),
         FhirProperty("status", str, required=False),
         FhirProperty("amendedReason", str, required=False),
+        FhirProperty("origin", str, required=False)
     ]
 
 
@@ -347,6 +349,7 @@ class BiobankOrderDao(UpdatableDao):
             raise BadRequest(f"Invalid created date {resource.created.origval}.")
 
         order = BiobankOrder(participantId=participant_id, created=resource.created.date.replace(tzinfo=None))
+        order.orderOrigin = get_account_origin_id()
 
         if not resource.created_info:
             raise BadRequest("Created Info is required, but was missing in request.")
@@ -451,6 +454,7 @@ class BiobankOrderDao(UpdatableDao):
         resource.processed_info = self._to_handling_info(model.processedUsername, model.processedSiteId)
         resource.finalized_info = self._to_handling_info(model.finalizedUsername, model.finalizedSiteId)
         resource.amendedReason = model.amendedReason
+        resource.origin = model.orderOrigin
 
         restored = getattr(model, "restoredSiteId")
         if model.orderStatus == BiobankOrderStatus.CANCELLED:

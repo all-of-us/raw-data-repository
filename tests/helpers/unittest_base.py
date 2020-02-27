@@ -347,7 +347,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
     def _clean_and_format_response_json(self, input_obj):
         obj = self.sort_lists(copy.deepcopy(input_obj))
-        for ephemeral_key in ("meta", "lastModified"):
+        for ephemeral_key in ("meta", "lastModified", "origin"):
             if ephemeral_key in obj:
                 del obj[ephemeral_key]
         s = self.pretty(obj)

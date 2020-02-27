@@ -352,6 +352,12 @@ class BiobankOrderApiTest(BaseTestCase):
         _strip_fields(full_order_json)
         self.assertEqual(full_order_json, result)
 
+        # check order origin
+        biobank_order_id = result["identifier"][1]["value"]
+        get_path = "Participant/{}/BiobankOrder/{}".format(to_client_participant_id(123), biobank_order_id)
+        get_result = self.send_get(get_path)
+        self.assertEqual(get_result["origin"], "example")
+
     def test_biobank_history_on_insert(self):
         with self.bio_dao.session() as session:
             self.summary_dao.insert(self.participant_summary(self.participant))
@@ -533,6 +539,8 @@ def _strip_fields(order_json):
         del order_json["created"]
     if order_json.get("id"):
         del order_json["id"]
+    if order_json.get("origin"):
+        del order_json["origin"]
     if order_json.get("version"):
         del order_json["version"]
     for sample in order_json["samples"]:
