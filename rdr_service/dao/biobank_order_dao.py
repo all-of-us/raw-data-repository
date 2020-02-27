@@ -210,6 +210,13 @@ class BiobankOrderDao(UpdatableDao):
             .yield_per(batch_size)
         )
 
+    def insert_mayolink_create_order_history(self, mayolink_create_order_history):
+        with self.session() as session:
+            self.insert_mayolink_create_order_history_with_session(session, mayolink_create_order_history)
+
+    def insert_mayolink_create_order_history_with_session(self, session, mayolink_create_order_history):
+        session.add(mayolink_create_order_history)
+
     def _get_order_status_and_time(self, sample, order):
         if sample.finalized:
             return (OrderStatus.FINALIZED, sample.finalized)

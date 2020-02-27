@@ -1,4 +1,6 @@
 import datetime
+import json
+import logging
 
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import BadRequest, Conflict, NotFound
@@ -21,7 +23,8 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
 from rdr_service.model.biobank_dv_order import BiobankDVOrder
-from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
+from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample, \
+    MayolinkCreateOrderHistory
 from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.participant_enums import BiobankOrderStatus, OrderShipmentStatus, OrderShipmentTrackingStatus
@@ -255,6 +258,20 @@ class DvOrderDao(UpdatableDao):
         obj.samples = [BiobankOrderedSample(test="1SAL2", processingRequired=False, description="salivary pilot kit")]
         self._add_identifiers_and_main_id(obj, app_util.ObjectView(resource))
         bod.insert(obj)
+
+    def insert_mayolink_create_order_history(self, pid, resource, request_payload, response_payload):
+        mayolink_create_order_history = MayolinkCreateOrderHistory()
+        mayolink_create_order_history.requestParticipantId = pid
+        mayolink_create_order_history.requestTestCode = '1SAL2'
+        mayolink_create_order_history.requestOrderId = resource.get("biobankOrderId")
+        mayolink_create_order_history.requestOrderStatus = resource.get("biobankStatus")
+        try:
+            mayolink_create_order_history.requestPayload = json.dumps(request_payload)
+            mayolink_create_order_history.responsePayload = json.dumps(response_payload)
+        except TypeError:
+            logging.info(f"TypeError when create mayolink_create_order_history")
+        biobank_order_dao = BiobankOrderDao()
+        biobank_order_dao.insert_mayolink_create_order_history(mayolink_create_order_history)
 
     def _add_identifiers_and_main_id(self, order, resource):
         order.identifiers = []

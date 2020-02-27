@@ -123,6 +123,7 @@ class DvOrderApi(UpdatableApi):
             merged_resource["orderOrigin"] = get_account_origin_id()
             logging.info(f"Sending salivary order to biobank for participant: {p_id}")
             self.dao.insert_biobank_order(p_id, merged_resource)
+            self.dao.insert_mayolink_create_order_history(p_id, merged_resource, resource, response)
 
         response = super(DvOrderApi, self).put(
             bo_id, participant_id=p_id, skip_etag=True, resource=merged_resource
@@ -267,6 +268,7 @@ class DvOrderApi(UpdatableApi):
             merged_resource["orderOrigin"] = get_account_origin_id()
             logging.info(f"Sending salivary order to biobank for participant: {p_id}")
             self.dao.insert_biobank_order(p_id, merged_resource)
+            self.dao.insert_mayolink_create_order_history(p_id, merged_resource, resource, response)
 
         response = super(DvOrderApi, self).put(
             bo_id, participant_id=p_id, skip_etag=True, resource=merged_resource
