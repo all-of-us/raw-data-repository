@@ -14,7 +14,8 @@ from rdr_service.model.biobank_order import (
     BiobankOrder,
     BiobankOrderIdentifierHistory,
     BiobankOrderedSampleHistory,
-    BiobankOrderHistory
+    BiobankOrderHistory,
+    MayolinkCreateOrderHistory
 )
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
@@ -136,6 +137,9 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
             # there should be one ordered sample in the BiobankOrderedSample table
             samples = session.query(BiobankOrderedSample).all()
             self.assertEqual(1, len(samples))
+
+            mayolink_history_records = session.query(MayolinkCreateOrderHistory).all()
+            self.assertEqual(1, len(mayolink_history_records))
 
     def test_missing_authoredOn_works(self):
         """authoredOn may not be sent in payload."""
