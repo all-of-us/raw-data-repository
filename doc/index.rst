@@ -99,5 +99,6 @@ The following are the API workflows that the RDR supports and are covered in thi
 
 Further Reading
 ================================================================================
+* `Data Dictionary <https://docs.google.com/spreadsheets/d/1Ye-WH5s7OSpPAROpTNUNco5ZsWa4y2OAtf1pvLBdty0/edit#gid=1352645238>`_
 * `All of Us <https://www.joinallofus.org/en/about>`_
 * `RDR on GitHub <https://github.com/all-of-us/raw-data-repository>`_
