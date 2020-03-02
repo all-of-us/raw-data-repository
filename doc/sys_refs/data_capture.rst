@@ -16,6 +16,7 @@ Overview
 ============================================================
 The Data-Capture System is a module that facilitates the capture and modification of data elements associated to a participant (eg. gender, age, height, medical history, etc.).  These data elements are managed through the Questionnaire subsystem via a Codebook, a data structure that acts as both a data-dictionary and a data-model for questions, answers, and questionnaire concepts.  Physical measurements and electronic health records (EHRs) for a participant are also included in this system, however this data is not managed by the Questionnaire subsystem.
 
+View the RDR `Data Dictionary <https://docs.google.com/spreadsheets/d/1Ye-WH5s7OSpPAROpTNUNco5ZsWa4y2OAtf1pvLBdty0/edit#gid=1352645238>`_
 
 Components
 ============================================================
