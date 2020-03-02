@@ -1,9 +1,9 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UnicodeText
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UnicodeText, event
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
-
-from rdr_service.model.base import Base
-from rdr_service.model.utils import Enum, UTCDateTime
+from rdr_service.model.field_types import BlobUTF8
+from rdr_service.model.base import Base, model_insert_listener, model_update_listener
+from rdr_service.model.utils import Enum, UTCDateTime, UTCDateTime6
 from rdr_service.participant_enums import BiobankOrderStatus
 
 
@@ -182,3 +182,24 @@ class BiobankOrderIdentifierHistory(BiobankOrderIdentifierBase, Base):
     __tablename__ = "biobank_order_identifier_history"
 
     version = Column("version", Integer, primary_key=True)
+
+
+class MayolinkCreateOrderHistory(Base):
+    __tablename__ = "mayolink_create_order_history"
+
+    # Primary Key
+    id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
+    # have mysql set the creation data for each new order
+    created = Column("created", UTCDateTime6, nullable=True)
+    # have mysql always update the modified data when the record is changed
+    modified = Column("modified", UTCDateTime6, nullable=True)
+    requestParticipantId = Column("request_participant_id", Integer)
+    requestTestCode = Column("request_test_code", String(80))
+    requestOrderId = Column("response_order_id", String(80))
+    requestOrderStatus = Column("response_order_status", String(80))
+    requestPayload = Column("request_payload", BlobUTF8)
+    responsePayload = Column("response_payload", BlobUTF8)
+
+
+event.listen(MayolinkCreateOrderHistory, "before_insert", model_insert_listener)
+event.listen(MayolinkCreateOrderHistory, "before_update", model_update_listener)
