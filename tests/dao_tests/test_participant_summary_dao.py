@@ -958,14 +958,15 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         for k, default_value in (
             ("physicalMeasurementsId", 1),
             ("participantId", self.participant.participantId),
-            ("resource", self.measurement_json),
             ("createdSiteId", 1),
             ("finalized", TIME_3),
             ("finalizedSiteId", 2),
         ):
             if k not in kwargs:
                 kwargs[k] = default_value
-        return PhysicalMeasurements(**kwargs)
+        record = PhysicalMeasurements(**kwargs)
+        PhysicalMeasurementsDao.store_record_fhir_doc(record, self.measurement_json)
+        return record
 
 
 def _with_token(query, token):

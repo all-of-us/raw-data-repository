@@ -284,6 +284,18 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self._insert_measurements(datetime.datetime.utcnow().isoformat())
         self.assertNotEqual(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
 
+    def get_composition_resource_from_fhir_doc(self, data):
+        """
+        Return the Composition object from the PM Bundle
+        :param data: dict
+        :return: dict
+        """
+        for entry in data['entry']:
+            if entry['resource'].get('resourceType', '') == 'Composition':
+                return entry['resource']
+        return None
+
+
     def test_cancel_a_physical_measurement(self):
         _id = self.participant_id.strip("P")
         self.send_consent(self.participant_id)
@@ -299,10 +311,27 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.send_patch(path, cancel_info)
 
         response = self.send_get(path)
-        self.assertEqual(response["status"], "CANCELLED")
-        self.assertEqual(response["reason"], "a mistake was made.")
-        self.assertEqual(response["cancelledUsername"], "mike@pmi-ops.org")
-        self.assertEqual(response["cancelledSiteId"], 1)
+        composition = self.get_composition_resource_from_fhir_doc(response)
+        self.assertEqual(composition["status"], "entered_in_error")
+        count = 0
+        for ext in composition['extension']:
+            if 'cancelled-site' in ext['url']:
+                self.assertEqual(ext['valueInteger'], 1)
+                count += 1
+            if 'cancelled-username' in ext['url']:
+                self.assertEqual(ext['valueString'], 'mike@pmi-ops.org')
+                count += 1
+            if 'cancelled-reason' in ext['url']:
+                self.assertEqual(ext['valueString'], 'a mistake was made.')
+                count += 1
+            if 'authored-location' in ext['url']:
+                self.assertEqual(ext['valueReference'], 'Location/hpo-site-monroeville')
+                count += 1
+            if 'finalized-location' in ext['url']:
+                self.assertEqual(ext['valueReference'], 'Location/hpo-site-bannerphoenix')
+                count += 1
+        self.assertEqual(count, 5)
+
         ps = self.send_get("ParticipantSummary?participantId=%s" % _id)
         # should be completed because of other valid PM
         self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsStatus"], "COMPLETED")
@@ -325,10 +354,27 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
 
         path = path + "/" + response["id"]
         response = self.send_get(path)
-        self.assertEqual(response["status"], "CANCELLED")
-        self.assertEqual(response["reason"], "a mistake was made.")
-        self.assertEqual(response["cancelledUsername"], "mike@pmi-ops.org")
-        self.assertEqual(response["cancelledSiteId"], 1)
+        composition = self.get_composition_resource_from_fhir_doc(response)
+        self.assertEqual(composition["status"], "entered_in_error")
+        count = 0
+        for ext in composition['extension']:
+            if 'cancelled-site' in ext['url']:
+                self.assertEqual(ext['valueInteger'], 1)
+                count += 1
+            if 'cancelled-username' in ext['url']:
+                self.assertEqual(ext['valueString'], 'mike@pmi-ops.org')
+                count += 1
+            if 'cancelled-reason' in ext['url']:
+                self.assertEqual(ext['valueString'], 'a mistake was made.')
+                count += 1
+            if 'authored-location' in ext['url']:
+                self.assertEqual(ext['valueReference'], 'Location/hpo-site-monroeville')
+                count += 1
+            if 'finalized-location' in ext['url']:
+                self.assertEqual(ext['valueReference'], 'Location/hpo-site-bannerphoenix')
+                count += 1
+        self.assertEqual(count, 5)
+
         ps = self.send_get("ParticipantSummary?participantId=%s" % _id)
         # should be completed because of other valid PM
         self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsStatus"], "COMPLETED")
@@ -353,10 +399,26 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.send_patch(path, cancel_info)
 
         response = self.send_get(path)
-        self.assertEqual(response["status"], "CANCELLED")
-        self.assertEqual(response["reason"], "a mistake was made.")
-        self.assertEqual(response["cancelledUsername"], "mike@pmi-ops.org")
-        self.assertEqual(response["cancelledSiteId"], 1)
+        composition = self.get_composition_resource_from_fhir_doc(response)
+        self.assertEqual(composition["status"], "entered_in_error")
+        count = 0
+        for ext in composition['extension']:
+            if 'cancelled-site' in ext['url']:
+                self.assertEqual(ext['valueInteger'], 1)
+                count += 1
+            if 'cancelled-username' in ext['url']:
+                self.assertEqual(ext['valueString'], 'mike@pmi-ops.org')
+                count += 1
+            if 'cancelled-reason' in ext['url']:
+                self.assertEqual(ext['valueString'], 'a mistake was made.')
+                count += 1
+            if 'authored-location' in ext['url']:
+                self.assertEqual(ext['valueReference'], 'Location/hpo-site-monroeville')
+                count += 1
+            if 'finalized-location' in ext['url']:
+                self.assertEqual(ext['valueReference'], 'Location/hpo-site-bannerphoenix')
+                count += 1
+        self.assertEqual(count, 5)
 
         ps = self.send_get("ParticipantSummary?participantId=%s" % _id)
 
@@ -378,10 +440,27 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.send_patch(path, cancel_info)
 
         response = self.send_get(path)
-        self.assertEqual(response["status"], "CANCELLED")
-        self.assertEqual(response["reason"], "a mistake was made.")
-        self.assertEqual(response["cancelledUsername"], "mike@pmi-ops.org")
-        self.assertEqual(response["cancelledSiteId"], 1)
+        composition = self.get_composition_resource_from_fhir_doc(response)
+        self.assertEqual(composition["status"], "entered_in_error")
+        count = 0
+        for ext in composition['extension']:
+            if 'cancelled-site' in ext['url']:
+                self.assertEqual(ext['valueInteger'], 1)
+                count += 1
+            if 'cancelled-username' in ext['url']:
+                self.assertEqual(ext['valueString'], 'mike@pmi-ops.org')
+                count += 1
+            if 'cancelled-reason' in ext['url']:
+                self.assertEqual(ext['valueString'], 'a mistake was made.')
+                count += 1
+            if 'authored-location' in ext['url']:
+                self.assertEqual(ext['valueReference'], 'Location/hpo-site-monroeville')
+                count += 1
+            if 'finalized-location' in ext['url']:
+                self.assertEqual(ext['valueReference'], 'Location/hpo-site-bannerphoenix')
+                count += 1
+        self.assertEqual(count, 5)
+
         ps = self.send_get("ParticipantSummary?participantId=%s" % _id)
         self.assertEqual(ps["entry"][0]["resource"]["physicalMeasurementsStatus"], "CANCELLED")
         self.assertNotIn("physicalMeasurementsTime", ps["entry"][0]["resource"])
@@ -402,12 +481,26 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.send_patch(path, restored_info)
 
         response = self.send_get(path)
-        self.assertEqual(response["status"], "RESTORED")
-        self.assertEqual(response["reason"], "need to restore")
+        composition = self.get_composition_resource_from_fhir_doc(response)
+        self.assertEqual(composition["status"], "final")
+        count = 0
+        cancelled = 0
+        for ext in composition['extension']:
+            if 'restore-site' in ext['url']:
+                self.assertEqual(ext['valueInteger'], 1)
+                count += 1
+            if 'restore-username' in ext['url']:
+                self.assertEqual(ext['valueString'], 'me')
+                count += 1
+            if 'restore-reason' in ext['url']:
+                self.assertEqual(ext['valueString'], 'need to restore')
+                count += 1
+            if 'cancelled' in ext['url']:
+                cancelled += 1
+        self.assertEqual(count, 3)
         # Response should not contain cancelledInfo
-        self.assertTrue("cancelledUsername" not in response)
-        self.assertTrue("cancelledSiteId" not in response)
-        self.assertTrue("cancelledTime" not in response)
+        self.assertEqual(cancelled, 0)
+
         ps_3 = self.send_get("Participant/%s/Summary" % self.participant_id)
         self.assertEqual(ps_3['physicalMeasurementsFinalizedTime'], ps['physicalMeasurementsFinalizedTime'])
 
@@ -441,7 +534,20 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         cancel_info = BaseTestCase.get_restore_or_cancel_info()
         self.send_patch(path, cancel_info)
         response = self.send_get(path)
-        self.assertEqual(response["status"], "CANCELLED")
-        self.assertEqual(response["reason"], "a mistake was made.")
-        self.assertEqual(response["cancelledUsername"], "mike@pmi-ops.org")
-        self.assertEqual(response["cancelledSiteId"], 1)
+        composition = self.get_composition_resource_from_fhir_doc(response)
+        self.assertEqual(composition["status"], "entered_in_error")
+        count = 0
+        for ext in composition['extension']:
+            if 'cancelled-site' in ext['url']:
+                self.assertEqual(ext['valueInteger'], 1)
+                count += 1
+            if 'cancelled-username' in ext['url']:
+                self.assertEqual(ext['valueString'], 'mike@pmi-ops.org')
+                count += 1
+            if 'cancelled-reason' in ext['url']:
+                self.assertEqual(ext['valueString'], 'a mistake was made.')
+                count += 1
+            if 'amends' in ext['url']:
+                self.assertIn('PhysicalMeasurements/', ext['valueReference']['reference'])
+                count += 1
+        self.assertEqual(count, 4)
