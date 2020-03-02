@@ -1,7 +1,7 @@
 """new pm resource
 
 Revision ID: 7aed6936ccee
-Revises: 30000d39475f
+Revises: 7aad615d6979
 Create Date: 2020-01-29 08:51:35.381339
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = '7aed6936ccee'
-down_revision = '30000d39475f'
+down_revision = '7aad615d6979'
 branch_labels = None
 depends_on = None
 
