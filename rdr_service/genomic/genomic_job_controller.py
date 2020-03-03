@@ -185,7 +185,7 @@ class GenomicJobController:
 
     def generate_manifest(self, manifest_type):
         """
-        Creates the CVL WGS manifest using ManifestCompiler component
+        Creates Genomic manifest using ManifestCompiler component
         """
         self.manifest_compiler = ManifestCompiler(run_id=self.job_run.id,
                                                   bucket_name=self.bucket_name)

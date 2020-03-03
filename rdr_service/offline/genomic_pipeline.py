@@ -87,6 +87,14 @@ def reconcile_metrics_vs_sequencing():
         controller.run_reconciliation_to_sequencing()
 
 
+def gem_a1_manifest_workflow():
+    """
+    Entrypoint for GEM A1 Workflow
+    First workflow in GEM Workflow
+    """
+    with GenomicJobController(GenomicJob.GEM_A1_MANIFEST) as controller:
+        controller.generate_manifest(GenomicManifestTypes.GEM_A1)
+
 def create_cvl_reconciliation_report():
     """
     Entrypoint for CVL reconciliation workflow
@@ -103,4 +111,3 @@ def create_cvl_manifests():
     """
     with GenomicJobController(GenomicJob.CREATE_CVL_MANIFESTS) as controller:
         controller.generate_manifest(GenomicManifestTypes.DRC_CVL_WGS)
-        controller.generate_manifest(GenomicManifestTypes.DRC_CVL_ARR)

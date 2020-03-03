@@ -138,7 +138,7 @@ class GenomicSetMemberDao(UpdatableDao):
                                     'reconcileMetricsSequencingJobRunId',
                                     'reconcileCvlJobRunId',
                                     'cvlManifestWgsJobRunId',
-                                    'cvlManifestArrJobRunId',
+                                    'gemA1ManifestJobRunId',
                                     'reconcileGCManifestJobRunId',)
 
     def get_id(self, obj):

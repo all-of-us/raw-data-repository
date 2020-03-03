@@ -527,6 +527,7 @@ class GenomicJob(messages.Enum):
     BB_RETURN_MANIFEST = 7
     BB_GC_MANIFEST = 8
     CVL_SEC_VAL_MAN = 9
+    GEM_A1_MANIFEST = 10
 
 
 class GenomicSubProcessStatus(messages.Enum):
@@ -552,7 +553,7 @@ class GenomicManifestTypes(messages.Enum):
     BIOBANK_GC = 2
     GC_DRC = 3
     DRC_CVL_WGS = 4
-    DRC_CVL_ARR = 5
+    GEM_A1 = 5
 
 
 class WorkbenchWorkspaceStatus(messages.Enum):

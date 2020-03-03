@@ -79,6 +79,9 @@
   "genomic_cvl_manifest_subfolder": [
     "cvl_manifests"
   ],
+  "genomic_gem_a1_manifest_subfolder": [
+    "gem_a1_manifests"
+  ],
   "ghost_id_bucket": [
     "all-of-us-rdr-test-ghost-accounts"
   ],

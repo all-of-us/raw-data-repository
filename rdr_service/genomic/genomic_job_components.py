@@ -50,6 +50,7 @@ from rdr_service.config import (
     getSetting,
     GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
     GENOMIC_CVL_MANIFEST_SUBFOLDER,
+    GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
 )
 
 
@@ -945,12 +946,12 @@ class ManifestDefinitionProvider:
         )
 
         # Color Array CVL Manifest
-        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.DRC_CVL_ARR] = self.ManifestDef(
-            job_run_field='cvlManifestArrJobRunId',
-            source_data=self._get_source_data_query(GenomicManifestTypes.DRC_CVL_ARR),
+        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.GEM_A1] = self.ManifestDef(
+            job_run_field='gemA1ManifestJobRunId',
+            source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A1),
             destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{getSetting(GENOMIC_CVL_MANIFEST_SUBFOLDER)}/cvl_arr_manifest_{self.job_run_id}.csv',
-            columns=self._get_manifest_columns(GenomicManifestTypes.DRC_CVL_ARR),
+            output_filename=f'{getSetting(GENOMIC_GEM_A1_MANIFEST_SUBFOLDER)}/AoU_GEM_Manifest_{self.job_run_id}.csv',
+            columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A1),
         )
 
     def _get_source_data_query(self, manifest_type):
@@ -982,25 +983,23 @@ class ManifestDefinitionProvider:
                     AND m.genome_type = "aou_wgs"                    
             """
 
-        # Color Array CVL Manifest
-        if manifest_type == GenomicManifestTypes.DRC_CVL_ARR:
+        # Color GEM A1 Manifest
+        if manifest_type == GenomicManifestTypes.GEM_A1:
             query_sql = """
-                SELECT s.genomic_set_name
-                    , m.biobank_id
+                SELECT m.biobank_id
                     , m.sample_id
                     , m.sex_at_birth
-                    , m.ny_flag
-                    , gcv.site_id
-                    , NULL as secondary_validation
+                    , m.consent_for_ror
                 FROM genomic_set_member m
-                    JOIN genomic_set s
-                        ON s.id = m.genomic_set_id
                     JOIN genomic_gc_validation_metrics gcv
                         ON gcv.genomic_set_member_id = m.id
                 WHERE gcv.processing_status = "pass"
-                    AND m.reconcile_cvl_job_run_id IS NOT NULL
-                    AND m.cvl_manifest_wgs_job_run_id IS NULL
-                    AND m.genome_type = "aou_array"                    
+                    AND m.sequencing_file_name IS NOT NULL
+                    # AND m.reconcile_gc_manifest_job_run_id IS NOT NULL
+                    AND m.reconcile_metrics_bb_manifest_job_run_id IS NOT NULL
+                    AND m.reconcile_metrics_sequencing_job_run_id IS NOT NULL
+                    AND m.genome_type = "aou_array"
+                    # AND m.consent_for_ror = 1
             """
         return query_sql
 
@@ -1011,8 +1010,7 @@ class ManifestDefinitionProvider:
         :return: column tuple
         """
         columns = tuple()
-        if manifest_type in [GenomicManifestTypes.DRC_CVL_WGS,
-                             GenomicManifestTypes.DRC_CVL_ARR]:
+        if manifest_type == GenomicManifestTypes.DRC_CVL_WGS:
             columns = (
                 "genomic_set_name",
                 "biobank_id",
@@ -1021,6 +1019,12 @@ class ManifestDefinitionProvider:
                 "ny_flag",
                 "site_id",
                 "secondary_validation",
+            )
+        elif manifest_type == GenomicManifestTypes.GEM_A1:
+            columns = (
+                'biobank_id',
+                'sample_id',
+                "sex_at_birth",
             )
         return columns
 
