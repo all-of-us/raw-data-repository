@@ -870,10 +870,10 @@ class GenomicPipelineTest(BaseTestCase):
                 validation_flags=None,
                 biobankId=p,
                 sex_at_birth='F', genome_type=gt, ny_flag='Y',
-                sequencing_filename=kwargs.get('sequencing_filename', None),
-                recon_bb_manifest_job_id=kwargs.get('', None),
-                recon_sequencing_job_id=kwargs.get('recon_seq_id', None),
-                recon_gc_manifest_job_id=kwargs.get('recon_gc_man_id', None),
+                sequencing_filename=kwargs.get('sequencing_filename'),
+                recon_bb_manifest_job_id=kwargs.get('bb_man_id'),
+                recon_sequencing_job_id=kwargs.get('recon_seq_id'),
+                recon_gc_manifest_job_id=kwargs.get('recon_gc_man_id'),
             )
 
     def _update_site_states(self):
