@@ -1402,6 +1402,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 3
 
         # finally run the manifest workflow
+        bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
         genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 4
 
         # Test Genomic Set Member updated with GEM Array Manifest job run

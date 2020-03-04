@@ -92,7 +92,8 @@ def gem_a1_manifest_workflow():
     Entrypoint for GEM A1 Workflow
     First workflow in GEM Workflow
     """
-    with GenomicJobController(GenomicJob.GEM_A1_MANIFEST) as controller:
+    with GenomicJobController(GenomicJob.GEM_A1_MANIFEST,
+                              bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
         controller.generate_manifest(GenomicManifestTypes.GEM_A1)
 
 def create_cvl_reconciliation_report():
