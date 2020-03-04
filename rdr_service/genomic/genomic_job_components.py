@@ -995,11 +995,11 @@ class ManifestDefinitionProvider:
                         ON gcv.genomic_set_member_id = m.id
                 WHERE gcv.processing_status = "pass"
                     AND m.sequencing_file_name IS NOT NULL
-                    # AND m.reconcile_gc_manifest_job_run_id IS NOT NULL
+                    AND m.reconcile_gc_manifest_job_run_id IS NOT NULL
                     AND m.reconcile_metrics_bb_manifest_job_run_id IS NOT NULL
                     AND m.reconcile_metrics_sequencing_job_run_id IS NOT NULL
                     AND m.genome_type = "aou_array"
-                    # AND m.consent_for_ror = 1
+                    # TODO: AND m.consent_for_ror = 1
             """
         return query_sql
 

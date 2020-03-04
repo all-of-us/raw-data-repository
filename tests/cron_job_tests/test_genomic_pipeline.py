@@ -873,7 +873,7 @@ class GenomicPipelineTest(BaseTestCase):
                 sequencing_filename=kwargs.get('sequencing_filename', None),
                 recon_bb_manifest_job_id=kwargs.get('', None),
                 recon_sequencing_job_id=kwargs.get('recon_seq_id', None),
-                # reconcileGCManifestJobRunId=kwargs.get('recon_gc_man_id', None),
+                recon_gc_manifest_job_id=kwargs.get('recon_gc_man_id', None),
             )
 
     def _update_site_states(self):
@@ -1386,24 +1386,29 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_gem_a1_manifest_end_to_end(self):
+        # Need GC Manifest for source query : run_id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.BB_GC_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
                                                 array_participants=range(1, 4),
-                                                )
+                                                recon_gc_man_id=1)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name)
-        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
         # Test sequencing file (required for CVL)
         test_sequencing_file = 'GC_sequencing_T1.txt'
         self._write_cloud_csv(test_sequencing_file, 'attagc', bucket=bucket_name)
 
-        genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 2
-        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 3
+        genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 3
+        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 4
 
         # finally run the manifest workflow
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
-        genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 4
+        genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 5
 
         # Test Genomic Set Member updated with GEM Array Manifest job run
         with self.member_dao.session() as member_session:
@@ -1421,7 +1426,7 @@ class GenomicPipelineTest(BaseTestCase):
                 GenomicSetMember.id == 1
             ).one()
 
-        self.assertEqual(4, test_member_1.gemA1ManifestJobRunId)
+        self.assertEqual(5, test_member_1.gemA1ManifestJobRunId)
 
         # Test the manifest file contents
         expected_cvl_columns = (
@@ -1430,7 +1435,7 @@ class GenomicPipelineTest(BaseTestCase):
             "sex_at_birth",
         )
         sub_folder = config.getSetting(config.GENOMIC_GEM_A1_MANIFEST_SUBFOLDER)
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_Manifest_4.csv')) as csv_file:
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_Manifest_5.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             missing_cols = set(expected_cvl_columns) - set(csv_reader.fieldnames)
             self.assertEqual(0, len(missing_cols))
@@ -1442,8 +1447,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Array
         file_record = self.file_processed_dao.get(2)  # remember, GC Metrics is #1
-        self.assertEqual(4, file_record.runId)
-        self.assertEqual(f'{sub_folder}/AoU_GEM_Manifest_4.csv', file_record.fileName)
+        self.assertEqual(5, file_record.runId)
+        self.assertEqual(f'{sub_folder}/AoU_GEM_Manifest_5.csv', file_record.fileName)
 
         # Test the job result
         run_obj = self.job_run_dao.get(4)
