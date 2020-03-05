@@ -92,12 +92,12 @@ class DvOrderDao(UpdatableDao):
                     "postal_code": str(summary.zipCode),
                     "phone": str(summary.phoneNumber),
                     "account_number": None,
-                    "race": summary.race,
+                    "race": str(summary.race),
                     "ethnic_group": None,
                 },
                 "physician": {"name": "None", "phone": None, "npi": None},  # must be a string value, not None.
                 "report_notes": fhir_resource.extension.get(url=DV_ORDER_URL).valueString,
-                "tests": {"test": {"code": "1SAL2", "name": "PMI Saliva, FDA Kit", "comments": None}},
+                "tests": [{"test": {"code": "1SAL2", "name": "PMI Saliva, FDA Kit", "comments": None}}],
                 "comments": "Salivary Kit Order, direct from participant",
             }
         }

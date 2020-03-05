@@ -1,3 +1,5 @@
+import logging
+import json
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import fhirdate
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.backboneelement import BackboneElement
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainResource
@@ -5,16 +7,18 @@ from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirdate import FHIRDate
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.identifier import Identifier
 from sqlalchemy import or_
 from sqlalchemy.orm import subqueryload
-from werkzeug.exceptions import BadRequest, Conflict, PreconditionFailed
-
+from werkzeug.exceptions import BadRequest, Conflict, PreconditionFailed, ServiceUnavailable
+from rdr_service.api.mayolink_api import MayoLinkApi
 from rdr_service import clock
-from rdr_service.api_util import get_site_id_by_site_value as get_site
+from rdr_service.api_util import get_site_id_by_site_value as get_site, format_json_code
 from rdr_service.app_util import get_account_origin_id
-from rdr_service.code_constants import BIOBANK_TESTS_SET, HEALTHPRO_USERNAME_SYSTEM, SITE_ID_SYSTEM
+from rdr_service.code_constants import BIOBANK_TESTS_SET, HEALTHPRO_USERNAME_SYSTEM, SITE_ID_SYSTEM, \
+    QUEST_SITE_ID_SYSTEM, QUEST_BIOBANK_ORDER_ORIGIN, KIT_ID_SYSTEM, QUEST_USERNAME_SYSTEM
 from rdr_service.dao.base_dao import FhirMixin, FhirProperty, UpdatableDao
 from rdr_service.dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.site_dao import SiteDao
+from rdr_service.dao.code_dao import CodeDao
 from rdr_service.model.biobank_order import (
     BiobankOrder,
     BiobankOrderHistory,
@@ -22,11 +26,13 @@ from rdr_service.model.biobank_order import (
     BiobankOrderIdentifierHistory,
     BiobankOrderedSample,
     BiobankOrderedSampleHistory,
+    MayolinkCreateOrderHistory
 )
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.participant import Participant
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.participant_enums import BiobankOrderStatus, OrderStatus
+from rdr_service.model.config_utils import to_client_biobank_id
 
 
 def _ToFhirDate(dt):
@@ -322,16 +328,22 @@ class BiobankOrderDao(UpdatableDao):
         site_id = None
         username = None
         if handling_info.site:
-            if handling_info.site.system != SITE_ID_SYSTEM:
+            if handling_info.site.system == QUEST_SITE_ID_SYSTEM:
+                site_id = None
+                # TODO - check with CE for what site value will they use in the payload
+            elif handling_info.site.system == SITE_ID_SYSTEM:
+                site = SiteDao().get_by_google_group(handling_info.site.value)
+                if not site:
+                    raise BadRequest(f"Unrecognized site: {handling_info.site.value}")
+                site_id = site.siteId
+            else:
                 raise BadRequest(f"Invalid site system: {handling_info.site.system}")
-            site = SiteDao().get_by_google_group(handling_info.site.value)
-            if not site:
-                raise BadRequest(f"Unrecognized site: {handling_info.site.value}")
-            site_id = site.siteId
+
         if handling_info.author:
-            if handling_info.author.system != HEALTHPRO_USERNAME_SYSTEM:
+            if handling_info.author.system in [QUEST_USERNAME_SYSTEM, HEALTHPRO_USERNAME_SYSTEM]:
+                username = handling_info.author.value
+            else:
                 raise BadRequest(f"Invalid author system: {handling_info.author.system}")
-            username = handling_info.author.value
         return username, site_id
 
     def _to_handling_info(self, username, site_id):
@@ -362,7 +374,7 @@ class BiobankOrderDao(UpdatableDao):
             raise BadRequest("Created Info is required, but was missing in request.")
         order.sourceUsername, order.sourceSiteId = self._parse_handling_info(resource.created_info)
         order.collectedUsername, order.collectedSiteId = self._parse_handling_info(resource.collected_info)
-        if order.collectedSiteId is None:
+        if order.collectedSiteId is None and order.orderOrigin != QUEST_BIOBANK_ORDER_ORIGIN:
             raise BadRequest("Collected site is required in request.")
         order.processedUsername, order.processedSiteId = self._parse_handling_info(resource.processed_info)
         order.finalizedUsername, order.finalizedSiteId = self._parse_handling_info(resource.finalized_info)
@@ -376,7 +388,12 @@ class BiobankOrderDao(UpdatableDao):
                 f"Participant ID {participant_id} from path and {resource.subject} \
                 in request do not match, should be {self._participant_id_to_subject(participant_id)}."
             )
-        self._add_identifiers_and_main_id(order, resource)
+
+        biobank_order_id = None
+        if order.orderOrigin == QUEST_BIOBANK_ORDER_ORIGIN:
+            biobank_order_id = self._make_mayolink_order(participant_id, resource)
+
+        self._add_identifiers_and_main_id(order, resource, biobank_order_id)
         self._add_samples(order, resource)
 
         # order.finalizedTime uses the time from biobank_ordered_sample.finalized
@@ -392,15 +409,97 @@ class BiobankOrderDao(UpdatableDao):
         order.version = expected_version
         return order
 
+    def _make_mayolink_order(self, participant_id, resource):
+        mayo = MayoLinkApi()
+        summary = ParticipantSummaryDao().get(participant_id)
+        if not summary:
+            raise BadRequest("No summary for participant id: {}".format(participant_id))
+        code_dict = summary.asdict()
+        code_dao = CodeDao()
+        format_json_code(code_dict, code_dao, "genderIdentityId")
+        format_json_code(code_dict, code_dao, "stateId")
+        if "genderIdentity" in code_dict and code_dict["genderIdentity"]:
+            if code_dict["genderIdentity"] == "GenderIdentity_Woman":
+                gender_val = "F"
+            elif code_dict["genderIdentity"] == "GenderIdentity_Man":
+                gender_val = "M"
+            else:
+                gender_val = "U"
+        else:
+            gender_val = "U"
+        if not resource.samples:
+            raise BadRequest("No sample found in the payload")
+        collected_time = resource.samples[0].collected.date.replace(tzinfo=None)
+
+        kit_id = None
+        for item in resource.identifier:
+            if item.system == KIT_ID_SYSTEM:
+                kit_id = item.value
+
+        order = {
+            "order": {
+                "collected": str(collected_time),
+                "account": "",
+                "number": kit_id,
+                "patient": {
+                    "medical_record_number": str(to_client_biobank_id(summary.biobankId)),
+                    "first_name": "*",
+                    "last_name": str(to_client_biobank_id(summary.biobankId)),
+                    "middle_name": "",
+                    "birth_date": "3/3/1933",
+                    "gender": gender_val,
+                    "address1": summary.streetAddress,
+                    "address2": summary.streetAddress2,
+                    "city": summary.city,
+                    "state": code_dict["state"],
+                    "postal_code": str(summary.zipCode),
+                    "phone": str(summary.phoneNumber),
+                    "account_number": None,
+                    "race": str(summary.race),
+                    "ethnic_group": None,
+                },
+                "physician": {"name": "None", "phone": None, "npi": None},
+                "report_notes": "",
+                "tests": [],
+                "comments": "",
+            }
+        }
+        test_codes = []
+        for sample in resource.samples:
+            sample_dict = {"test": {"code": sample.test, "name": sample.description, "comments": None}}
+            order['order']['tests'].append(sample_dict)
+            test_codes.append(sample.test)
+        response = mayo.post(order)
+        try:
+            biobank_order_id = response["orders"]["order"]["number"]
+            mayo_order_status = response["orders"]["order"]["status"]
+            mayolink_create_order_history = MayolinkCreateOrderHistory()
+            mayolink_create_order_history.requestParticipantId = participant_id
+            mayolink_create_order_history.requestTestCode = ','.join(test_codes)
+            mayolink_create_order_history.requestOrderId = biobank_order_id
+            mayolink_create_order_history.requestOrderStatus = mayo_order_status
+            try:
+                mayolink_create_order_history.requestPayload = json.dumps(order)
+                mayolink_create_order_history.responsePayload = json.dumps(response)
+            except TypeError:
+                logging.info(f"TypeError when create mayolink_create_order_history")
+            self.insert_mayolink_create_order_history(mayolink_create_order_history)
+
+        except KeyError:
+            raise ServiceUnavailable("Failed to get biobank order id from MayoLink API")
+        return biobank_order_id
+
     @classmethod
-    def _add_identifiers_and_main_id(cls, order, resource):
+    def _add_identifiers_and_main_id(cls, order, resource, biobank_order_id):
         found_main_id = False
         for i in resource.identifier:
             order.identifiers.append(BiobankOrderIdentifier(system=i.system, value=i.value))
             if i.system == BiobankOrder._MAIN_ID_SYSTEM:
                 order.biobankOrderId = i.value
                 found_main_id = True
-        if not found_main_id:
+        if not found_main_id and biobank_order_id:
+            order.biobankOrderId = biobank_order_id
+        elif not found_main_id and biobank_order_id is None:
             raise BadRequest(f"No identifier for system {BiobankOrder._MAIN_ID_SYSTEM}, required for primary key.")
 
     @classmethod
