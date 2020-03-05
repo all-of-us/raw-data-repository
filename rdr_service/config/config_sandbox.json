@@ -22,6 +22,9 @@
   "biobank_samples_bucket_name": [
     "sandbox_biobank_samples_upload_bucket"
   ],
+  "genomic_gem_a1_manifest_subfolder": [
+    "gem_a1_manifests"
+  ],
   "consent_pdf_bucket": {
     "vibrent": "ptc-uploads-pmi-drc-api-sandbox"
   },

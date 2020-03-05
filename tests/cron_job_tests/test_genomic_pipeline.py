@@ -772,11 +772,12 @@ class GenomicPipelineTest(BaseTestCase):
         ny_flag="Y",
         consent_for_ror="Y",
         sequencing_filename=None,
-        recon_manifest_job_id=None,
+        recon_bb_manifest_job_id=None,
+        recon_gc_manifest_job_id=None,
         recon_sequencing_job_id=None,
         recon_cvl_job_id=None,
         cvl_manifest_wgs_job_id=None,
-        cvl_manifest_arr_job_id=None,
+        gem_a1_manifest_job_id=None,
     ):
         genomic_set_member = GenomicSetMember()
         genomic_set_member.genomicSetId = genomic_set_id
@@ -791,11 +792,12 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.biobankOrderId = biobank_order_id
         genomic_set_member.consentForRor = consent_for_ror
         genomic_set_member.sequencingFileName = sequencing_filename
-        genomic_set_member.reconcileMetricsBBManifestJobRunId = recon_manifest_job_id
+        genomic_set_member.reconcileMetricsBBManifestJobRunId = recon_bb_manifest_job_id
+        genomic_set_member.reconcileGCManifestJobRunId = recon_gc_manifest_job_id
         genomic_set_member.reconcileMetricsSequencingJobRunId = recon_sequencing_job_id
         genomic_set_member.reconcileCvlJobRunId = recon_cvl_job_id
         genomic_set_member.cvlManifestWgsJobRunId = cvl_manifest_wgs_job_id
-        genomic_set_member.cvlManifestArrJobRunId = cvl_manifest_arr_job_id
+        genomic_set_member.gemA1ManifestJobRunId = gem_a1_manifest_job_id
 
         member_dao = GenomicSetMemberDao()
         member_dao.insert(genomic_set_member)
@@ -868,6 +870,10 @@ class GenomicPipelineTest(BaseTestCase):
                 validation_flags=None,
                 biobankId=p,
                 sex_at_birth='F', genome_type=gt, ny_flag='Y',
+                sequencing_filename=kwargs.get('sequencing_filename'),
+                recon_bb_manifest_job_id=kwargs.get('bb_man_id'),
+                recon_sequencing_job_id=kwargs.get('recon_seq_id'),
+                recon_gc_manifest_job_id=kwargs.get('recon_gc_man_id'),
             )
 
     def _update_site_states(self):
@@ -1379,27 +1385,32 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(5)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    def test_cvl_array_manifest_end_to_end(self):
-        self._create_fake_datasets_for_gc_tests(3, arr_override=True, array_participants=[1])
+    def test_gem_a1_manifest_end_to_end(self):
+        # Need GC Manifest for source query : run_id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.BB_GC_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+                                                array_participants=range(1, 4),
+                                                recon_gc_man_id=1)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name)
-        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
         # Test sequencing file (required for CVL)
         test_sequencing_file = 'GC_sequencing_T1.txt'
         self._write_cloud_csv(test_sequencing_file, 'attagc', bucket=bucket_name)
 
-        genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 2
-        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 3
-
-        # Run the CVL Reconciliation report workflow
-        genomic_pipeline.create_cvl_reconciliation_report()  # run_id = 4
+        genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 3
+        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 4
 
         # finally run the manifest workflow
-        genomic_pipeline.create_cvl_manifests()  # run_id = 5
+        bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
+        genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 5
 
-        # Test Genomic Set Member updated with CVL Array Manifest job run
+        # Test Genomic Set Member updated with GEM Array Manifest job run
         with self.member_dao.session() as member_session:
             test_member_1 = member_session.query(
                 GenomicSet.genomicSetName,
@@ -1407,7 +1418,7 @@ class GenomicPipelineTest(BaseTestCase):
                 GenomicSetMember.sampleId,
                 GenomicSetMember.sexAtBirth,
                 GenomicSetMember.nyFlag,
-                GenomicSetMember.cvlManifestArrJobRunId,
+                GenomicSetMember.gemA1ManifestJobRunId,
                 GenomicGCValidationMetrics.siteId).filter(
                 GenomicGCValidationMetrics.biobankId == GenomicSetMember.biobankId,
                 GenomicGCValidationMetrics.sampleId == GenomicSetMember.sampleId,
@@ -1415,20 +1426,16 @@ class GenomicPipelineTest(BaseTestCase):
                 GenomicSetMember.id == 1
             ).one()
 
-        self.assertEqual(5, test_member_1.cvlManifestArrJobRunId)
+        self.assertEqual(5, test_member_1.gemA1ManifestJobRunId)
 
         # Test the manifest file contents
         expected_cvl_columns = (
-            "genomic_set_name",
             "biobank_id",
             "sample_id",
             "sex_at_birth",
-            "ny_flag",
-            "site_id",
-            "secondary_validation",
         )
-        sub_folder = config.getSetting(config.GENOMIC_CVL_MANIFEST_SUBFOLDER)
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/cvl_arr_manifest_5.csv')) as csv_file:
+        sub_folder = config.getSetting(config.GENOMIC_GEM_A1_MANIFEST_SUBFOLDER)
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_Manifest_5.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             missing_cols = set(expected_cvl_columns) - set(csv_reader.fieldnames)
             self.assertEqual(0, len(missing_cols))
@@ -1437,16 +1444,12 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(test_member_1.biobankId, rows[0]['biobank_id'])
             self.assertEqual(test_member_1.sampleId, rows[0]['sample_id'])
             self.assertEqual(test_member_1.sexAtBirth, rows[0]['sex_at_birth'])
-            self.assertEqual(test_member_1.nyFlag, int(rows[0]['ny_flag']))
-            self.assertEqual(test_member_1.siteId, int(rows[0]['site_id']))
-
-        # Test the job controller updated the file_processed records
 
         # Array
-        file_record = self.file_processed_dao.get(3)  # remember, CVL report is id #2
+        file_record = self.file_processed_dao.get(2)  # remember, GC Metrics is #1
         self.assertEqual(5, file_record.runId)
-        self.assertEqual(f'{sub_folder}/cvl_arr_manifest_5.csv', file_record.fileName)
+        self.assertEqual(f'{sub_folder}/AoU_GEM_Manifest_5.csv', file_record.fileName)
 
         # Test the job result
-        run_obj = self.job_run_dao.get(5)
+        run_obj = self.job_run_dao.get(4)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)

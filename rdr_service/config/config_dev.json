@@ -41,6 +41,12 @@
   "genomic_gc_metrics_bucket_name": [
     "dev_genomics_cell_line_validation"
   ],
+  "genomic_gem_bucket_name": [
+    "genomics-color-dryrun"
+  ],
+  "genomic_gem_a1_manifest_subfolder": [
+    "gem_a1_manifests"
+  ],
   "metrics_shards": [
     "10"
   ],
