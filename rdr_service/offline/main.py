@@ -119,6 +119,7 @@ def biobank_daily_reconciliation_report():
     # iterate new list and write reports
     biobank_samples_pipeline.write_reconciliation_report(timestamp)
     logging.info("Generated reconciliation report.")
+    return '{"success": "true"}'
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
