@@ -10,7 +10,7 @@ cron:
   timezone: America/New_York
   target: offline
 - description: Daily reconciliation report
-  url: /offline/DailyyReconciliationReport
+  url: /offline/DailyReconciliationReport
   schedule: every day 03:00
   timezone: America/New_York
   target: offline
