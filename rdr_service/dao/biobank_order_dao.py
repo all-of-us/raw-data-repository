@@ -473,20 +473,20 @@ class BiobankOrderDao(UpdatableDao):
         try:
             biobank_order_id = response["orders"]["order"]["number"]
             mayo_order_status = response["orders"]["order"]["status"]
-            mayolink_create_order_history = MayolinkCreateOrderHistory()
-            mayolink_create_order_history.requestParticipantId = participant_id
-            mayolink_create_order_history.requestTestCode = ','.join(test_codes)
-            mayolink_create_order_history.requestOrderId = biobank_order_id
-            mayolink_create_order_history.requestOrderStatus = mayo_order_status
-            try:
-                mayolink_create_order_history.requestPayload = json.dumps(order)
-                mayolink_create_order_history.responsePayload = json.dumps(response)
-            except TypeError:
-                logging.info(f"TypeError when create mayolink_create_order_history")
-            self.insert_mayolink_create_order_history(mayolink_create_order_history)
-
         except KeyError:
             raise ServiceUnavailable("Failed to get biobank order id from MayoLink API")
+
+        mayolink_create_order_history = MayolinkCreateOrderHistory()
+        mayolink_create_order_history.requestParticipantId = participant_id
+        mayolink_create_order_history.requestTestCode = ','.join(test_codes)
+        mayolink_create_order_history.requestOrderId = biobank_order_id
+        mayolink_create_order_history.requestOrderStatus = mayo_order_status
+        try:
+            mayolink_create_order_history.requestPayload = json.dumps(order)
+            mayolink_create_order_history.responsePayload = json.dumps(response)
+        except TypeError:
+            logging.info(f"TypeError when create mayolink_create_order_history")
+        self.insert_mayolink_create_order_history(mayolink_create_order_history)
         return biobank_order_id
 
     @classmethod
