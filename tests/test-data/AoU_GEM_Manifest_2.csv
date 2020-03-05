@@ -1,0 +1,4 @@
+﻿biobank_id,sample_id,sex_at_birth,Success / Fail
+1,1,F,Y
+2,2,M,Y
+3,3,M,N

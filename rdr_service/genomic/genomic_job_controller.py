@@ -208,6 +208,21 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
+    def run_gem_a2_workflow(self):
+        """
+        Uses ingester to ingest manifest result files.
+        Moves file to archive when done.
+        """
+        self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                            job_run_id=self.job_run.id,
+                                            bucket=self.bucket_name,
+                                            archive_folder=self.archive_folder_name,
+                                            sub_folder=self.sub_folder_name)
+        try:
+            self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""
         self.job_run_dao.update_run_record(self.job_run.id, self.job_result, GenomicSubProcessStatus.COMPLETED)
