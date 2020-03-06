@@ -117,6 +117,13 @@
         "exporter"
       ]
     },
+    "awardee-chc@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "COMM_HEALTH",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["151.181.44.122"]
+      }
+    },
     "awardee-tach@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
       "roles": [
         "awardee_sa"
