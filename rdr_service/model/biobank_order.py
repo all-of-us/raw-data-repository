@@ -194,7 +194,7 @@ class MayolinkCreateOrderHistory(Base):
     # have mysql always update the modified data when the record is changed
     modified = Column("modified", UTCDateTime6, nullable=True)
     requestParticipantId = Column("request_participant_id", Integer)
-    requestTestCode = Column("request_test_code", String(80))
+    requestTestCode = Column("request_test_code", String(500))
     requestOrderId = Column("response_order_id", String(80))
     requestOrderStatus = Column("response_order_status", String(80))
     requestPayload = Column("request_payload", BlobUTF8)

@@ -7,7 +7,11 @@ PPI_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi"
 PPI_EXTRA_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi-extra"
 
 SITE_ID_SYSTEM = "https://www.pmi-ops.org/site-id"
+QUEST_SITE_ID_SYSTEM = "https://www.pmi-ops.org/quest-site"
 HEALTHPRO_USERNAME_SYSTEM = "https://www.pmi-ops.org/healthpro-username"
+QUEST_USERNAME_SYSTEM = "https://www.pmi-ops.org/quest-user"
+KIT_ID_SYSTEM = "https://orders.mayomedicallaboratories.com/kit-id"
+QUEST_BIOBANK_ORDER_ORIGIN = 'careevolution'
 FIRST_NAME_QUESTION_CODE = "PIIName_First"
 LAST_NAME_QUESTION_CODE = "PIIName_Last"
 MIDDLE_NAME_QUESTION_CODE = "PIIName_Middle"

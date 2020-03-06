@@ -1,5 +1,6 @@
 import datetime
 import http.client
+import mock
 
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, RACE_NONE_OF_THESE_CODE
@@ -35,6 +36,32 @@ class BiobankOrderApiTest(BaseTestCase):
         self.summary_dao = ParticipantSummaryDao()
         self.bio_dao = BiobankOrderDao()
         self.path = "Participant/%s/BiobankOrder" % to_client_participant_id(self.participant.participantId)
+        self.mayolink_response = {
+            "orders": {
+                "order": {
+                    "status": "Queued",
+                    "reference_number": "somebarcodenumber",
+                    "received": "2016-12-01T12:00:00-05:00",
+                    "number": "WEB1ABCD1234",
+                    "patient": {"medical_record_number": "PAT-123-456"},
+                }
+            }
+        }
+
+        mayolinkapi_patcher = mock.patch(
+            "rdr_service.dao.biobank_order_dao.MayoLinkApi",
+            **{"return_value.post.return_value": self.mayolink_response}
+        )
+        mayolinkapi_patcher.start()
+        self.addCleanup(mayolinkapi_patcher.stop)
+
+    @mock.patch('rdr_service.dao.biobank_order_dao.get_account_origin_id')
+    def test_create_quest_order(self, quest_origin):
+        quest_origin.return_value = 'careevolution'
+        self.summary_dao.insert(self.participant_summary(self.participant))
+        order_json = load_biobank_order_json(self.participant.participantId, filename="quest_biobank_order_1.json")
+        result = self.send_post(self.path, order_json)
+        self.assertEqual(result['id'], 'WEB1ABCD1234')
 
     def test_cancel_order(self):
         self.summary_dao.insert(self.participant_summary(self.participant))
