@@ -732,10 +732,11 @@ class PhysicalMeasurementsDao(UpdatableDao):
             doc = json.loads(record.resource)
 
         composition = None
+        entries = doc.get('entry', list())
 
-        for entry in doc['entry']:
-            resource = entry['resource']
-            if resource['resourceType'].lower() == 'composition':
+        for entry in entries:
+            resource = entry.get('resource', None)
+            if resource and 'resourceType' in resource and resource['resourceType'].lower() == 'composition':
                 composition = resource
 
         return doc, composition
