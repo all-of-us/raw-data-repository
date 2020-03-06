@@ -1477,6 +1477,14 @@ class GenomicPipelineTest(BaseTestCase):
         # Run Workflow
         genomic_pipeline.gem_a2_manifest_workflow()  # run_id 2
 
+        # Test gem_pass field
+        members = self.member_dao.get_all()
+        for member in members:
+            if member.biobankId in (1, 2):
+                self.assertEqual("Y", member.gemPass)
+            if member.biobankId == 3:
+                self.assertEqual("Y", member.gemPass)
+
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
         self.assertEqual(2, file_record.runId)

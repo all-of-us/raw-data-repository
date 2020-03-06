@@ -185,7 +185,7 @@ class GenomicFileIngester:
                 return self._process_gc_metrics_data_for_insert(data_to_ingest)
 
             if self.job_id == GenomicJob.GEM_A2_MANIFEST:
-                return self._ingest_gem_a2_manifest()
+                return self._ingest_gem_a2_manifest(data_to_ingest)
         else:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
@@ -256,15 +256,23 @@ class GenomicFileIngester:
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
-    def _ingest_gem_a2_manifest(self):
+    def _ingest_gem_a2_manifest(self, file_data):
         """
         Processes the GEM A2 manifest file data
         Updates GenomicSetMember object with gem_pass field.
         :return: Result Code
         """
         try:
+            for row in file_data['rows']:
+                sample_id = row['sample_id']
+                member = self.member_dao.get_member_from_sample_id(sample_id)
+                if member is None:
+                    logging.warning(f'Invalid sample ID: {sample_id}')
+                    continue
+                member.gemPass = row['Success / Fail']
+                self.member_dao.update(member)
             return GenomicSubProcessResult.SUCCESS
-        except RuntimeError:
+        except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
     def _retrieve_data_from_path(self, path):
