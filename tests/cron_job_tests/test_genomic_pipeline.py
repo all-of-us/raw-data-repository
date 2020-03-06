@@ -1475,12 +1475,13 @@ class GenomicPipelineTest(BaseTestCase):
                                          bucket_name, folder=sub_folder,
                                          include_timestamp=False)
         # Run Workflow
-        genomic_pipeline.gem_a2_manifest_workflow()
+        genomic_pipeline.gem_a2_manifest_workflow()  # run_id 2
 
         # Test Files Processed
-        file_record = self.file_processed_dao.get(1)  # remember is #1
+        file_record = self.file_processed_dao.get(1)
         self.assertEqual(2, file_record.runId)
-        self.assertEqual(f'{sub_folder}/AoU_GEM_Manifest_2.csv', file_record.fileName)
+        self.assertEqual(f'/{bucket_name}/{sub_folder}/AoU_GEM_Manifest_2.csv', file_record.filePath)
+        self.assertEqual('AoU_GEM_Manifest_2.csv', file_record.fileName)
 
         # Test the job result
         run_obj = self.job_run_dao.get(2)

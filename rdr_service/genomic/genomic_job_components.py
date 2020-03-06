@@ -504,9 +504,8 @@ class GenomicFileValidator:
         if self.valid_schema == GenomicSubProcessResult.INVALID_FILE_NAME:
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
-        return tuple(
-            [field.lower() for field in fields]
-        ) == self.valid_schema
+        cases = tuple([field.lower().replace('\ufeff', '') for field in fields])
+        return cases == self.valid_schema
 
     def _set_schema(self, filename):
         """Since the schemas are different for WGS and Array metrics files,
