@@ -1,7 +1,7 @@
 from flask import request
 from flask_restful import Resource
 from werkzeug.exceptions import BadRequest
-from rdr_service.api_util import STOREFRONT
+from rdr_service.api_util import STOREFRONT_AND_REDCAP
 from rdr_service.app_util import auth_required
 from rdr_service.dao.workbench_dao import WorkbenchWorkspaceDao
 from rdr_service.participant_enums import WorkbenchWorkspaceStatus
@@ -11,7 +11,7 @@ class ResearchProjectsDirectoryApi(Resource):
     def __init__(self):
         self.workspace_dao = WorkbenchWorkspaceDao()
 
-    @auth_required(STOREFRONT)
+    @auth_required(STOREFRONT_AND_REDCAP)
     def get(self):
         params = {
             'status': request.args.get('status')
