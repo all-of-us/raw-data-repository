@@ -1,0 +1,137 @@
+{
+    "subject": "Patient/%(client_participant_id)s",
+    "identifier": [
+        {
+            "system": "https://orders.mayomedicallaboratories.com/kit-id",
+            "value": "KIT-12345678"
+        },
+        {
+            "system": "https://fedex.com/tracking-number",
+            "value": "1234567890AB"
+        },
+        {
+            "system": "http://careevolution.com/Patient",
+            "value": "545720e3-4e9b-4dfb-929b-56a683802c25"
+        },
+        {
+            "system": "http://questdiagnostics.com/PerfSite",
+            "value": "0123456789ABCDE"
+        },
+        {
+            "system": "http://questdiagnostics.com/ClientNumber",
+            "value": "0123456789ABCDE"
+        },
+        {
+            "system": "http://questdiagnostics.com/RequeistionNumber",
+            "value": "0123456789ABCDE"
+        },
+        {
+            "system": "http://questdiagnostics.com/QuestUserID",
+            "value": "JimBob"
+        }
+    ],
+    "createdInfo": {
+        "author": {
+          "system": "https://www.pmi-ops.org/quest-user",
+          "value": "QuestUser"
+        },
+        "site": {
+         "system": "https://www.pmi-ops.org/quest-site",
+         "value": "QuestSite"
+        }
+    },
+    "processedInfo": {
+        "author": {
+          "system": "https://www.pmi-ops.org/quest-user",
+          "value": "QuestUser"
+        },
+        "site": {
+         "system": "https://www.pmi-ops.org/quest-site",
+         "value": "QuestSite"
+        }
+    },
+    "collectedInfo": {
+        "author": {
+          "system": "https://www.pmi-ops.org/quest-user",
+          "value": "QuestUser"
+        },
+        "site": {
+         "system": "https://www.pmi-ops.org/quest-site",
+         "value": "QuestSite"
+        }
+    },
+    "finalizedInfo": {
+        "author": {
+          "system": "https://www.pmi-ops.org/quest-user",
+          "value": "QuestUser"
+        },
+        "site": {
+          "system": "https://www.pmi-ops.org/quest-site",
+          "value": "QuestSite"
+        }
+    },
+    "created": "2019-12-04T16:13:10Z",
+    "samples": [
+        {
+            "test": "1SS08",
+            "description": "Serum SST 8 mL",
+            "processingRequired": true,
+            "collected": "2019-12-04T11:02:00Z",
+            "processed": "2019-12-04T13:45:22Z",
+            "finalized": "2019-12-04T13:45:22Z"
+        },
+        {
+            "test": "1PS08",
+            "description": "Serum PST 8 mL",
+            "processingRequired": true,
+            "collected": "2019-12-04T11:02:00Z",
+            "processed": "2019-12-04T13:45:22Z",
+            "finalized": "2019-12-04T13:45:22Z"
+        },
+        {
+            "test": "1HEP4",
+            "description": "Sodium Heparin 4 mL",
+            "processingRequired": false,
+            "collected": "2019-12-04T11:02:00Z",
+            "finalized": "2019-12-04T13:45:22Z"
+        },
+        {
+            "test": "1ED04",
+            "description": "EDTA 4 mL",
+            "processingRequired": false,
+            "collected": "2019-12-04T11:02:00Z",
+            "finalized": "2019-12-04T13:45:22Z"
+        },
+        {
+            "test": "1ED10",
+            "description": "EDTA 10 mL",
+            "processingRequired": false,
+            "collected": "2019-12-04T11:02:00Z",
+            "finalized": "2019-12-04T13:45:22Z"
+        },
+        {
+            "test": "1CFD9",
+            "description": "10 mL Cell Free DNA",
+            "processingRequired": false,
+            "collected": "2019-12-04T11:02:00Z",
+            "finalized": "2019-12-04T13:45:22Z"
+        },
+        {
+            "test": "1PXR2",
+            "description": "2.5 mL Paxgene RNA",
+            "processingRequired": false,
+            "collected": "2019-12-04T11:02:00Z",
+            "finalized": "2019-12-04T13:45:22Z"
+        },
+        {
+            "test": "1UR10",
+            "description": "Urine 10 mL",
+            "processingRequired": false,
+            "collected": "2019-12-04T11:02:00Z",
+            "finalized": "2019-12-04T13:45:22Z"
+        }
+    ],
+    "notes": {
+        "finalized": "Lorem ipsum dolor sit amet"
+    }
+}
