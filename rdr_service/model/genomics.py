@@ -141,6 +141,7 @@ class GenomicSetMember(Base):
     gemA2ManifestJobRunId = Column('gem_a2_manifest_job_run_id',
                                     Integer, ForeignKey("genomic_job_run.id"),
                                     nullable=True)
+    gemPass = Column('gem_pass', String(10), nullable=True)
 
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
