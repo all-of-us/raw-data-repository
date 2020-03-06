@@ -19,6 +19,11 @@
       "awardee": "PITT",
       "comment": "for testing service account access to participant summary api"
     },
+    "aou-redcap-sandbox-staging@appspot.gserviceaccount.com": {
+      "roles": ["redcap"],
+      "clientId": "redcap",
+      "comment": "for redcap testing"
+    },
     "vibrent-drc-qa@vibrent-drc-qa-165017.iam.gserviceaccount.com": {
       "clientId": "vibrent",
       "roles": ["ptc"]

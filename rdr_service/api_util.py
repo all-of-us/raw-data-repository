@@ -14,6 +14,7 @@ AWARDEE = "awardee_sa"
 STOREFRONT = "storefront"
 EXPORTER = "exporter"
 WORKBENCH = "workbench"
+REDCAP = 'redcap'
 DEV_MAIL = "example@example.com"
 RDR_AND_PTC = [RDR, PTC]
 PTC_AND_HEALTHPRO = [PTC, HEALTHPRO]
