@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import signal
-import time
 import traceback
 from datetime import datetime
 
@@ -105,7 +104,7 @@ def import_biobank_samples():
     # Note that crons always have a 10 minute deadline instead of the normal 60s; additionally our
     # offline service uses basic scaling with has no deadline.
     logging.info("Starting samples import.")
-    written, timestamp = biobank_samples_pipeline.upsert_from_latest_csv()
+    written, _ = biobank_samples_pipeline.upsert_from_latest_csv()
     logging.info("Import complete %(written)d, generating report.", written)
     return json.dumps({"written": written})
 
