@@ -210,8 +210,7 @@ class GenomicJobController:
 
     def run_gem_a2_workflow(self):
         """
-        Uses ingester to ingest manifest result files.
-        Moves file to archive when done.
+        Ingests GEM A2 Manifest
         """
         self.ingester = GenomicFileIngester(job_id=self.job_id,
                                             job_run_id=self.job_run.id,

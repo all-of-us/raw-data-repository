@@ -1482,6 +1482,7 @@ class GenomicPipelineTest(BaseTestCase):
         for member in members:
             if member.biobankId in (1, 2):
                 self.assertEqual("Y", member.gemPass)
+                self.assertEqual(2, member.gemA2ManifestJobRunId)
             if member.biobankId == 3:
                 self.assertEqual("Y", member.gemPass)
 
