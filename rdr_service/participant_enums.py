@@ -528,6 +528,7 @@ class GenomicJob(messages.Enum):
     BB_GC_MANIFEST = 8
     CVL_SEC_VAL_MAN = 9
     GEM_A1_MANIFEST = 10
+    GEM_A2_MANIFEST = 11
 
 
 class GenomicSubProcessStatus(messages.Enum):
