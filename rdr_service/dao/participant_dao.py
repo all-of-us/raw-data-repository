@@ -133,6 +133,7 @@ class ParticipantDao(UpdatableDao):
     def _validate_update(self, session, obj, existing_obj):
         # Withdrawal and suspension have default values assigned on insert, so they should always have
         # explicit values in updates.
+
         if obj.withdrawalStatus is None:
             raise BadRequest("missing withdrawal status in update")
         if obj.suspensionStatus is None:

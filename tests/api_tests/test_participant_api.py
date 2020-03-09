@@ -259,6 +259,24 @@ class ParticipantApiTest(BaseTestCase):
             response["hpoId"] = "PITT"
             self.assertJsonResponseMatches(response, update_response)
 
+        participant = self.send_get(path)
+        self.assertEqual(participant["withdrawalStatus"], "NO_USE")
+
+    def test_early_out_withdrawal(self):
+        """If a participant withdraws before consent/participant summary it is called early out."""
+        with FakeClock(TIME_1):
+            response = self.send_post("Participant", self.participant)
+            participant_id = response["participantId"]
+            response["providerLink"] = [self.provider_link_2]
+            response["withdrawalStatus"] = "EARLY_OUT"
+            response["suspensionStatus"] = "NOT_SUSPENDED"
+            response["withdrawalReason"] = "TEST"
+            response["withdrawalReasonJustification"] = "This was a test account."
+            path = "Participant/%s" % participant_id
+            self.send_put(path, response, headers={"If-Match": 'W/"1"'})
+            participant = self.send_get(path)
+            self.assertEqual(participant["withdrawalStatus"], "EARLY_OUT")
+
     def test_administrative_withdrawal_with_authored_time(self):
         with FakeClock(TIME_1):
             response = self.send_post("Participant", self.participant)

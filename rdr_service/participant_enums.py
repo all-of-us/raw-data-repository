@@ -334,6 +334,7 @@ class WithdrawalStatus(messages.Enum):
 
     NOT_WITHDRAWN = 1
     NO_USE = 2
+    EARLY_OUT = 3
 
 
 class WithdrawalReason(messages.Enum):
