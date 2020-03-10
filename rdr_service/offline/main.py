@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import signal
-import time
 import traceback
 from datetime import datetime
 
@@ -105,16 +104,21 @@ def import_biobank_samples():
     # Note that crons always have a 10 minute deadline instead of the normal 60s; additionally our
     # offline service uses basic scaling with has no deadline.
     logging.info("Starting samples import.")
-    written, timestamp = biobank_samples_pipeline.upsert_from_latest_csv()
+    written, _ = biobank_samples_pipeline.upsert_from_latest_csv()
     logging.info("Import complete %(written)d, generating report.", written)
-    # waiting 30 secs for the replica DB synchronization
-    time.sleep(30)
+    return json.dumps({"written": written})
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def biobank_daily_reconciliation_report():
+    # TODO: setup to only run after import_biobank_samples completion instead of 1hr after start.
+    timestamp = biobank_samples_pipeline.get_last_biobank_sample_file_info()[2]
     logging.info("Generating reconciliation report.")
     # iterate new list and write reports
     biobank_samples_pipeline.write_reconciliation_report(timestamp)
     logging.info("Generated reconciliation report.")
-    return json.dumps({"written": written})
-
+    return '{"success": "true"}'
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
@@ -285,6 +289,12 @@ def _build_pipeline_app():
         methods=["GET"],
     )
 
+    offline_app.add_url_rule(
+        PREFIX + "DailyReconciliationReport",
+        endpoint="dailyReconciliationReport",
+        view_func=biobank_daily_reconciliation_report,
+        methods=["GET"],
+    )
     offline_app.add_url_rule(
         PREFIX + "MonthlyReconciliationReport",
         endpoint="monthlyReconciliationReport",
