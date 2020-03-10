@@ -20,7 +20,7 @@ from rdr_service.model.code import CodeType
 from rdr_service.model.hpo import HPO
 from rdr_service.participant_enums import (ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType, TEST_HPO_ID,
                                            TEST_HPO_NAME)
-from rdr_service.test.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id
+from tests.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id
 from tests.helpers.unittest_base import BaseTestCase
 
 TIME_1 = datetime.datetime(2016, 1, 1)

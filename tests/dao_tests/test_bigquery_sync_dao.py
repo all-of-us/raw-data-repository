@@ -13,7 +13,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.hpo import HPO
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.site import Site
-from rdr_service.test.test_data import load_measurement_json
+from tests.test_data import load_measurement_json
 from tests.helpers.unittest_base import BaseTestCase, QuestionnaireTestMixin
 
 
