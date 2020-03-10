@@ -513,6 +513,7 @@ class GenomicValidationFlag(messages.Enum):
     INVALID_AGE = 8
     INVALID_DUP_PARTICIPANT = 9
     INVALID_AIAN = 10
+    INVALID_SUSPENSION_STATUS = 11
 
 
 class GenomicJob(messages.Enum):
