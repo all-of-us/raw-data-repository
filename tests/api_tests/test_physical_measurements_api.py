@@ -9,7 +9,7 @@ from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.measurements import Measurement
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import UNSET_HPO_ID
-from rdr_service.test.test_data import data_path, load_measurement_json, load_measurement_json_amendment
+from tests.test_data import data_path, load_measurement_json, load_measurement_json_amendment
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -325,10 +325,10 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
                 self.assertEqual(ext['valueString'], 'a mistake was made.')
                 count += 1
             if 'authored-location' in ext['url']:
-                self.assertEqual(ext['valueReference'], 'Location/hpo-site-monroeville')
+                self.assertEqual(ext['valueString'], 'Location/hpo-site-monroeville')
                 count += 1
             if 'finalized-location' in ext['url']:
-                self.assertEqual(ext['valueReference'], 'Location/hpo-site-bannerphoenix')
+                self.assertEqual(ext['valueString'], 'Location/hpo-site-bannerphoenix')
                 count += 1
         self.assertEqual(count, 5)
 
@@ -368,10 +368,10 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
                 self.assertEqual(ext['valueString'], 'a mistake was made.')
                 count += 1
             if 'authored-location' in ext['url']:
-                self.assertEqual(ext['valueReference'], 'Location/hpo-site-monroeville')
+                self.assertEqual(ext['valueString'], 'Location/hpo-site-monroeville')
                 count += 1
             if 'finalized-location' in ext['url']:
-                self.assertEqual(ext['valueReference'], 'Location/hpo-site-bannerphoenix')
+                self.assertEqual(ext['valueString'], 'Location/hpo-site-bannerphoenix')
                 count += 1
         self.assertEqual(count, 5)
 
@@ -413,10 +413,10 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
                 self.assertEqual(ext['valueString'], 'a mistake was made.')
                 count += 1
             if 'authored-location' in ext['url']:
-                self.assertEqual(ext['valueReference'], 'Location/hpo-site-monroeville')
+                self.assertEqual(ext['valueString'], 'Location/hpo-site-monroeville')
                 count += 1
             if 'finalized-location' in ext['url']:
-                self.assertEqual(ext['valueReference'], 'Location/hpo-site-bannerphoenix')
+                self.assertEqual(ext['valueString'], 'Location/hpo-site-bannerphoenix')
                 count += 1
         self.assertEqual(count, 5)
 
@@ -454,10 +454,10 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
                 self.assertEqual(ext['valueString'], 'a mistake was made.')
                 count += 1
             if 'authored-location' in ext['url']:
-                self.assertEqual(ext['valueReference'], 'Location/hpo-site-monroeville')
+                self.assertEqual(ext['valueString'], 'Location/hpo-site-monroeville')
                 count += 1
             if 'finalized-location' in ext['url']:
-                self.assertEqual(ext['valueReference'], 'Location/hpo-site-bannerphoenix')
+                self.assertEqual(ext['valueString'], 'Location/hpo-site-bannerphoenix')
                 count += 1
         self.assertEqual(count, 5)
 

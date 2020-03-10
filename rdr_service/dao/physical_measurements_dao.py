@@ -622,7 +622,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
                     if not extensions:
                         logging.warning("No extensions in composition resource (expected site info).")
                     for extension in extensions:
-                        value_reference = extension.get("valueReference")
+                        # DA-1499 convert to 'valueString' key value instead of 'valueReference'.
+                        value_reference = extension.get("valueString")
+                        if not value_reference:
+                            value_reference = extension.get("valueReference")
                         if value_reference:
                             url = extension.get("url")
                             if url == _CREATED_LOC_EXTENSION:
