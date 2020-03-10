@@ -23,7 +23,7 @@ from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept,
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus
 from tests import test_data
-from rdr_service.test.test_data import (
+from tests.test_data import (
     consent_code,
     email_code,
     first_name_code,

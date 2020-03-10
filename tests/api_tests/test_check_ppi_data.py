@@ -5,7 +5,7 @@ from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant import Participant
 from rdr_service.model.utils import to_client_participant_id
-from rdr_service.test.test_data import email_code, first_name_code
+from tests.test_data import email_code, first_name_code
 from tests.helpers.unittest_base import BaseTestCase
 
 
