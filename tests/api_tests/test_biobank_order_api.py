@@ -63,6 +63,43 @@ class BiobankOrderApiTest(BaseTestCase):
         result = self.send_post(self.path, order_json)
         self.assertEqual(result['id'], 'WEB1ABCD1234')
 
+    @mock.patch('rdr_service.dao.biobank_order_dao.get_account_origin_id')
+    def test_get_orders_by_participant_id(self, quest_origin):
+        quest_origin.return_value = 'careevolution'
+        self.summary_dao.insert(self.participant_summary(self.participant))
+        order_json = load_biobank_order_json(self.participant.participantId, filename="quest_biobank_order_1.json")
+        self.send_post(self.path, order_json)
+
+        quest_origin.return_value = 'hpro'
+        order_json = load_biobank_order_json(self.participant.participantId, filename="biobank_order_2.json")
+        self.send_post(self.path, order_json)
+
+        get_path = "Participant/%s/BiobankOrder" % to_client_participant_id(self.participant.participantId)
+        result = self.send_get(get_path)
+        self.assertEqual(result['total'], 2)
+        self.assertEqual(len(result['data']), 2)
+        if result['data'][0]['origin'] == 'careevolution':
+            self.assertEqual(result['data'][1]['origin'], 'hpro')
+        else:
+            self.assertEqual(result['data'][1]['origin'], 'careevolution')
+
+    @mock.patch('rdr_service.dao.biobank_order_dao.get_account_origin_id')
+    def test_get_orders_by_kit_id(self, quest_origin):
+        quest_origin.return_value = 'careevolution'
+        self.summary_dao.insert(self.participant_summary(self.participant))
+        order_json = load_biobank_order_json(self.participant.participantId, filename="quest_biobank_order_1.json")
+        self.send_post(self.path, order_json)
+
+        quest_origin.return_value = 'hpro'
+        order_json = load_biobank_order_json(self.participant.participantId, filename="biobank_order_2.json")
+        self.send_post(self.path, order_json)
+
+        get_path = "BiobankOrder?kit-id=KIT-12345678"
+        result = self.send_get(get_path)
+        self.assertEqual(result['total'], 1)
+        self.assertEqual(len(result['data']), 1)
+        self.assertEqual(result['data'][0]['origin'], 'careevolution')
+
     def test_cancel_order(self):
         self.summary_dao.insert(self.participant_summary(self.participant))
         order_json = load_biobank_order_json(self.participant.participantId, filename="biobank_order_2.json")

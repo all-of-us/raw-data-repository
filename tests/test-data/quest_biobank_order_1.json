@@ -14,20 +14,8 @@
             "value": "545720e3-4e9b-4dfb-929b-56a683802c25"
         },
         {
-            "system": "http://questdiagnostics.com/PerfSite",
-            "value": "0123456789ABCDE"
-        },
-        {
-            "system": "http://questdiagnostics.com/ClientNumber",
-            "value": "0123456789ABCDE"
-        },
-        {
-            "system": "http://questdiagnostics.com/RequeistionNumber",
-            "value": "0123456789ABCDE"
-        },
-        {
-            "system": "http://questdiagnostics.com/QuestUserID",
-            "value": "JimBob"
+            "system": "http://questdiagnostics.com/PerfSite|ClientNumber|RequisitionNumber",
+            "value": "TMP|97502840|7544935648"
         }
     ],
     "createdInfo": {

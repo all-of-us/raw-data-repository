@@ -193,6 +193,27 @@ class BiobankOrderDao(UpdatableDao):
         with self.session() as session:
             return session.query(BiobankOrder).filter(BiobankOrder.participantId == pid).all()
 
+    def get_biobank_orders_with_children_for_participant(self, pid):
+        """Retrieves all ordered with children for a participant."""
+        if pid is None:
+            raise BadRequest("invalid participant id")
+        with self.session() as session:
+            return session.query(BiobankOrder).\
+                options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples)).\
+                filter(BiobankOrder.participantId == pid).all()
+
+    def get_biobank_order_by_kit_id(self, kit_id):
+        if kit_id is None:
+            raise BadRequest("invalid kit id")
+        with self.session() as session:
+            return (session.query(BiobankOrder).
+                    join(BiobankOrderIdentifier).
+                    options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples)).
+                    filter(BiobankOrder.biobankOrderId == BiobankOrderIdentifier.biobankOrderId,
+                           BiobankOrderIdentifier.system == KIT_ID_SYSTEM,
+                           BiobankOrderIdentifier.value == kit_id)
+                    .all()
+                    )
     def get_ordered_samples_for_participant(self, participant_id):
         """Retrieves all ordered samples for a participant."""
         with self.session() as session:
