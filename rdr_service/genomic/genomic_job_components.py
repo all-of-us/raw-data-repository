@@ -26,7 +26,9 @@ from rdr_service.participant_enums import (
     GenomicSubProcessStatus,
     Race,
     GenomicValidationFlag,
-    GenomicSetMemberStatus)
+    GenomicSetMemberStatus,
+    SuspensionStatus,
+)
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,
@@ -751,6 +753,7 @@ class GenomicBiobankSamplesCoupler:
         'female': 'F'
     }
     _VALIDATION_FLAGS = (GenomicValidationFlag.INVALID_WITHDRAW_STATUS,
+                         GenomicValidationFlag.INVALID_SUSPENSION_STATUS,
                          GenomicValidationFlag.INVALID_CONSENT,
                          GenomicValidationFlag.INVALID_AGE,
                          GenomicValidationFlag.INVALID_AIAN,
@@ -779,7 +782,8 @@ class GenomicBiobankSamplesCoupler:
                                                                  "order_ids",
                                                                  "site_ids",
                                                                  "sample_ids",
-                                                                 "not_withdrawn",
+                                                                 "valid_withdrawal_status",
+                                                                 "valid_suspension_status",
                                                                  "gen_consents",
                                                                  "valid_ages",
                                                                  "sabs",
@@ -792,7 +796,8 @@ class GenomicBiobankSamplesCoupler:
             for i, bid in enumerate(samples_meta.bids):
                 logging.info(f'Validating sample: {samples_meta.sample_ids[i]}')
                 validation_criteria = (
-                    samples_meta.not_withdrawn[i],
+                    samples_meta.valid_withdrawal_status[i],
+                    samples_meta.valid_suspension_status[i],
                     samples_meta.gen_consents[i],
                     samples_meta.valid_ages[i],
                     samples_meta.valid_ai_ans[i],
@@ -845,7 +850,10 @@ class GenomicBiobankSamplesCoupler:
           ss.biobank_stored_sample_id,
           CASE
             WHEN p.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
-          END as not_withdrawn, 
+          END as valid_withdrawal_status,
+          CASE
+            WHEN p.suspension_status = :suspension_param THEN 1 ELSE 0
+          END as valid_suspension_status,
           CASE
             WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
           END as general_consent_given,
@@ -894,6 +902,7 @@ class GenomicBiobankSamplesCoupler:
             "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
             "from_date_param": from_date.strftime("%Y-%m-%d"),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
+            "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
         }
         with self.samples_dao.session() as session:
             result = session.execute(_new_samples_sql, params).fetchall()
@@ -1018,12 +1027,15 @@ class ManifestDefinitionProvider:
                 FROM genomic_set_member m
                     JOIN genomic_gc_validation_metrics gcv
                         ON gcv.genomic_set_member_id = m.id
+                    JOIN participant_summary ps
+                        ON ps.participant_id = m.participant_id
                 WHERE gcv.processing_status = "pass"
                     AND m.sequencing_file_name IS NOT NULL
                     AND m.reconcile_gc_manifest_job_run_id IS NOT NULL
                     AND m.reconcile_metrics_bb_manifest_job_run_id IS NOT NULL
                     AND m.reconcile_metrics_sequencing_job_run_id IS NOT NULL
                     AND m.genome_type = "aou_array"
+                    AND ps.suspension_status = 1
                     # TODO: AND m.consent_for_ror = 1
             """
         return query_sql
