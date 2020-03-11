@@ -52,6 +52,7 @@ GCP_SERVICES = [
 
 # Map project id to App config files.
 GCP_APP_CONFIG_MAP = OrderedDict({
+    "localhost": "config_dev.json",
     "all-of-us-rdr-prod": "config_prod.json",
     "all-of-us-rdr-stable": "config_stable.json",
     "all-of-us-rdr-staging": "config_staging.json",
