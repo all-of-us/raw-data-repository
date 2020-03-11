@@ -58,6 +58,7 @@ _FAKE_GENOMIC_CENTER_BUCKET_B = 'rdr_fake_genomic_center_b_bucket'
 _FAKE_GENOTYPING_FOLDER = 'rdr_fake_genotyping_folder'
 _FAKE_CVL_REPORT_FOLDER = 'fake_cvl_reconciliation_reports'
 _FAKE_CVL_MANIFEST_FOLDER = 'fake_cvl_manifest_folder'
+_FAKE_GEM_BUCKET = 'fake_gem_bucket'
 _OUTPUT_CSV_TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
 _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
@@ -80,6 +81,7 @@ class GenomicPipelineTest(BaseTestCase):
                                 [_FAKE_CVL_REPORT_FOLDER])
         config.override_setting(config.GENOMIC_CVL_MANIFEST_SUBFOLDER,
                                 [_FAKE_CVL_MANIFEST_FOLDER])
+        config.override_setting(config.GENOMIC_GEM_BUCKET_NAME, [_FAKE_GEM_BUCKET])
 
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
@@ -726,12 +728,13 @@ class GenomicPipelineTest(BaseTestCase):
     def _create_ingestion_test_file(self,
                                     test_data_filename,
                                     bucket_name,
-                                    folder=None):
+                                    folder=None,
+                                    include_timestamp=True):
         test_data_file = test_data.open_genomic_set_file(test_data_filename)
 
         input_filename = '{}{}.csv'.format(
             test_data_filename.replace('.csv', ''),
-            '_11192019'
+            '_11192019' if include_timestamp else ''
         )
 
         self._write_cloud_csv(input_filename,
@@ -874,6 +877,7 @@ class GenomicPipelineTest(BaseTestCase):
                 recon_bb_manifest_job_id=kwargs.get('bb_man_id'),
                 recon_sequencing_job_id=kwargs.get('recon_seq_id'),
                 recon_gc_manifest_job_id=kwargs.get('recon_gc_man_id'),
+                gem_a1_manifest_job_id=kwargs.get('gem_a1_run_id'),
             )
 
     def _update_site_states(self):
@@ -1452,4 +1456,42 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the job result
         run_obj = self.job_run_dao.get(4)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_gem_a2_manifest_workflow(self):
+        # Create A1 manifest job run: id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.GEM_A1_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+        # Create genomic set members
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+                                                array_participants=range(1, 4),
+                                                gem_a1_run_id=1)
+        # Set up test A2 manifest
+        bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
+        sub_folder = config.GENOMIC_GEM_A2_MANIFEST_SUBFOLDER
+        self._create_ingestion_test_file('AoU_GEM_Manifest_2.csv',
+                                         bucket_name, folder=sub_folder,
+                                         include_timestamp=False)
+        # Run Workflow
+        genomic_pipeline.gem_a2_manifest_workflow()  # run_id 2
+
+        # Test gem_pass field
+        members = self.member_dao.get_all()
+        for member in members:
+            if member.biobankId in (1, 2):
+                self.assertEqual("Y", member.gemPass)
+                self.assertEqual(2, member.gemA2ManifestJobRunId)
+            if member.biobankId == 3:
+                self.assertEqual("Y", member.gemPass)
+
+        # Test Files Processed
+        file_record = self.file_processed_dao.get(1)
+        self.assertEqual(2, file_record.runId)
+        self.assertEqual(f'/{bucket_name}/{sub_folder}/AoU_GEM_Manifest_2.csv', file_record.filePath)
+        self.assertEqual('AoU_GEM_Manifest_2.csv', file_record.fileName)
+
+        # Test the job result
+        run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)

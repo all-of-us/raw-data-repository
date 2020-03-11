@@ -334,6 +334,7 @@ class WithdrawalStatus(messages.Enum):
 
     NOT_WITHDRAWN = 1
     NO_USE = 2
+    EARLY_OUT = 3
 
 
 class WithdrawalReason(messages.Enum):
@@ -513,6 +514,7 @@ class GenomicValidationFlag(messages.Enum):
     INVALID_AGE = 8
     INVALID_DUP_PARTICIPANT = 9
     INVALID_AIAN = 10
+    INVALID_SUSPENSION_STATUS = 11
 
 
 class GenomicJob(messages.Enum):
@@ -528,6 +530,7 @@ class GenomicJob(messages.Enum):
     BB_GC_MANIFEST = 8
     CVL_SEC_VAL_MAN = 9
     GEM_A1_MANIFEST = 10
+    GEM_A2_MANIFEST = 11
 
 
 class GenomicSubProcessStatus(messages.Enum):

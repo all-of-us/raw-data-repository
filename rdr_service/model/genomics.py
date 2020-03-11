@@ -143,7 +143,6 @@ class GenomicSetMember(Base):
                                     nullable=True)
     gemPass = Column('gem_pass', String(10), nullable=True)
 
-
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
 event.listen(GenomicSetMember, "before_update", model_update_listener)
 

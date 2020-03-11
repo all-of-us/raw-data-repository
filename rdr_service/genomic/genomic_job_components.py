@@ -26,7 +26,9 @@ from rdr_service.participant_enums import (
     GenomicSubProcessStatus,
     Race,
     GenomicValidationFlag,
-    GenomicSetMemberStatus)
+    GenomicSetMemberStatus,
+    SuspensionStatus,
+)
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,
@@ -164,45 +166,31 @@ class GenomicFileIngester:
         :return: A GenomicSubProcessResultCode
         """
         self.file_obj = file_obj
+        data_to_ingest = self._retrieve_data_from_path(self.file_obj.filePath)
 
-        if self.job_id == GenomicJob.BB_RETURN_MANIFEST:
-            logging.info("Ingesting Manifest Result Files...")
-            return self._ingest_bb_return_manifest()
+        if data_to_ingest == GenomicSubProcessResult.ERROR:
+            return GenomicSubProcessResult.ERROR
+        elif data_to_ingest:
+            logging.info(f'Ingesting data from {self.file_obj.fileName}')
+            logging.info("Validating file.")
+            self.file_validator.valid_schema = None
+            validation_result = self.file_validator.validate_ingestion_file(
+                self.file_obj.fileName, data_to_ingest)
 
-        if self.job_id == GenomicJob.BB_GC_MANIFEST:
-            logging.info("Ingesting GC Manifest...")
-            data_to_ingest = self._retrieve_data_from_path(self.file_obj.filePath)
-            if data_to_ingest == GenomicSubProcessResult.ERROR:
-                return GenomicSubProcessResult.ERROR
-            elif data_to_ingest:
-                logging.info(f'Ingesting GC manifest data from {self.file_obj.fileName}')
-                self.file_validator.valid_schema = None
-                validation_result = self.file_validator.validate_ingestion_file(
-                    self.file_obj.fileName, data_to_ingest)
-                if validation_result != GenomicSubProcessResult.SUCCESS:
-                    return validation_result
+            if validation_result != GenomicSubProcessResult.SUCCESS:
+                return validation_result
+
+            if self.job_id == GenomicJob.BB_GC_MANIFEST:
                 return self._ingest_gc_manifest(data_to_ingest)
-            else:
-                logging.info("No data to ingest.")
-                return GenomicSubProcessResult.NO_FILES
 
-        if self.job_id == GenomicJob.METRICS_INGESTION:
-            data_to_ingest = self._retrieve_data_from_path(self.file_obj.filePath)
-            if data_to_ingest == GenomicSubProcessResult.ERROR:
-                return GenomicSubProcessResult.ERROR
-            elif data_to_ingest:
-                logging.info("Data to ingest from {}".format(self.file_obj.fileName))
-                logging.info("Validating GC metrics file.")
-                self.file_validator.valid_schema = None
-                validation_result = self.file_validator.validate_ingestion_file(
-                    self.file_obj.fileName, data_to_ingest)
-                if validation_result != GenomicSubProcessResult.SUCCESS:
-                    return validation_result
+            if self.job_id == GenomicJob.METRICS_INGESTION:
                 return self._process_gc_metrics_data_for_insert(data_to_ingest)
-            else:
-                logging.info("No data to ingest.")
-                return GenomicSubProcessResult.NO_FILES
 
+            if self.job_id == GenomicJob.GEM_A2_MANIFEST:
+                return self._ingest_gem_a2_manifest(data_to_ingest)
+        else:
+            logging.info("No data to ingest.")
+            return GenomicSubProcessResult.NO_FILES
         return GenomicSubProcessResult.ERROR
 
     def _ingest_bb_return_manifest(self):
@@ -268,6 +256,25 @@ class GenomicFileIngester:
                 self.member_dao.update(member)
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
+            return GenomicSubProcessResult.ERROR
+
+    def _ingest_gem_a2_manifest(self, file_data):
+        """
+        Processes the GEM A2 manifest file data
+        Updates GenomicSetMember object with gem_pass field.
+        :return: Result Code
+        """
+        try:
+            for row in file_data['rows']:
+                sample_id = row['sample_id']
+                member = self.member_dao.get_member_from_sample_id(sample_id)
+                if member is None:
+                    logging.warning(f'Invalid sample ID: {sample_id}')
+                    continue
+                member.gemPass = row['Success / Fail']
+                self.member_dao.update(member)
+            return GenomicSubProcessResult.SUCCESS
+        except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
     def _retrieve_data_from_path(self, path):
@@ -389,6 +396,13 @@ class GenomicFileValidator:
             "failure mode desc"
         )
 
+        self.GEM_A2_SCHEMA = (
+            "biobank_id",
+            "sample_id",
+            "sex_at_birth",
+            "success / fail",
+        )
+
     def validate_ingestion_file(self, filename, data_to_validate):
         """
         Procedure to validate an ingestion file
@@ -467,11 +481,23 @@ class GenomicFileValidator:
                           filename_components[3]) is not None
             )
 
+        def gem_a2_manifest_name_rule(fn):
+            """GEM A2 manifest name rule: i.e. AoU_GEM_Manifest_2.csv"""
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
+            return (
+                len(filename_components) == 4 and
+                filename_components[0] == 'aou' and
+                filename_components[1] == 'gem' and
+                re.search(r"^[0-9]+\.csv$",
+                          filename_components[3]) is not None
+            )
+
         name_rules = {
             GenomicJob.BB_RETURN_MANIFEST: bb_result_name_rule,
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
             GenomicJob.BB_GC_MANIFEST: bb_to_gc_manifest_name_rule,
             GenomicJob.CVL_SEC_VAL_MAN: cvl_sec_val_manifest_name_rule,
+            GenomicJob.GEM_A2_MANIFEST: gem_a2_manifest_name_rule,
         }
 
         return name_rules[self.job_id](filename)
@@ -488,9 +514,8 @@ class GenomicFileValidator:
         if self.valid_schema == GenomicSubProcessResult.INVALID_FILE_NAME:
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
-        return tuple(
-            [field.lower() for field in fields]
-        ) == self.valid_schema
+        cases = tuple([field.lower().replace('\ufeff', '') for field in fields])
+        return cases == self.valid_schema
 
     def _set_schema(self, filename):
         """Since the schemas are different for WGS and Array metrics files,
@@ -506,6 +531,8 @@ class GenomicFileValidator:
                 return self.GC_METRICS_SCHEMAS[file_type]
             if self.job_id == GenomicJob.BB_GC_MANIFEST:
                 return self.GC_MANIFEST_SCHEMA
+            if self.job_id == GenomicJob.GEM_A2_MANIFEST:
+                return self.GEM_A2_SCHEMA
         except (IndexError, KeyError):
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
@@ -726,6 +753,7 @@ class GenomicBiobankSamplesCoupler:
         'female': 'F'
     }
     _VALIDATION_FLAGS = (GenomicValidationFlag.INVALID_WITHDRAW_STATUS,
+                         GenomicValidationFlag.INVALID_SUSPENSION_STATUS,
                          GenomicValidationFlag.INVALID_CONSENT,
                          GenomicValidationFlag.INVALID_AGE,
                          GenomicValidationFlag.INVALID_AIAN,
@@ -754,7 +782,8 @@ class GenomicBiobankSamplesCoupler:
                                                                  "order_ids",
                                                                  "site_ids",
                                                                  "sample_ids",
-                                                                 "not_withdrawn",
+                                                                 "valid_withdrawal_status",
+                                                                 "valid_suspension_status",
                                                                  "gen_consents",
                                                                  "valid_ages",
                                                                  "sabs",
@@ -767,7 +796,8 @@ class GenomicBiobankSamplesCoupler:
             for i, bid in enumerate(samples_meta.bids):
                 logging.info(f'Validating sample: {samples_meta.sample_ids[i]}')
                 validation_criteria = (
-                    samples_meta.not_withdrawn[i],
+                    samples_meta.valid_withdrawal_status[i],
+                    samples_meta.valid_suspension_status[i],
                     samples_meta.gen_consents[i],
                     samples_meta.valid_ages[i],
                     samples_meta.valid_ai_ans[i],
@@ -820,7 +850,10 @@ class GenomicBiobankSamplesCoupler:
           ss.biobank_stored_sample_id,
           CASE
             WHEN p.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
-          END as not_withdrawn, 
+          END as valid_withdrawal_status,
+          CASE
+            WHEN p.suspension_status = :suspension_param THEN 1 ELSE 0
+          END as valid_suspension_status,
           CASE
             WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
           END as general_consent_given,
@@ -869,6 +902,7 @@ class GenomicBiobankSamplesCoupler:
             "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
             "from_date_param": from_date.strftime("%Y-%m-%d"),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
+            "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
         }
         with self.samples_dao.session() as session:
             result = session.execute(_new_samples_sql, params).fetchall()
@@ -993,12 +1027,15 @@ class ManifestDefinitionProvider:
                 FROM genomic_set_member m
                     JOIN genomic_gc_validation_metrics gcv
                         ON gcv.genomic_set_member_id = m.id
+                    JOIN participant_summary ps
+                        ON ps.participant_id = m.participant_id
                 WHERE gcv.processing_status = "pass"
                     AND m.sequencing_file_name IS NOT NULL
                     AND m.reconcile_gc_manifest_job_run_id IS NOT NULL
                     AND m.reconcile_metrics_bb_manifest_job_run_id IS NOT NULL
                     AND m.reconcile_metrics_sequencing_job_run_id IS NOT NULL
                     AND m.genome_type = "aou_array"
+                    AND ps.suspension_status = 1
                     # TODO: AND m.consent_for_ror = 1
             """
         return query_sql

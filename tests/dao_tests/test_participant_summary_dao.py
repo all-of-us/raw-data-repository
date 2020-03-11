@@ -24,7 +24,7 @@ from rdr_service.participant_enums import (
     SampleStatus,
 )
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
-from rdr_service.test.test_data import load_measurement_json
+from tests.test_data import load_measurement_json
 from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.mysql_helper_data import PITT_HPO_ID
 
