@@ -66,8 +66,11 @@ class SqlExporter(object):
     @contextlib.contextmanager
     def open_writer(self, file_name, predicate=None):
         gcs_path = "/%s/%s" % (self._bucket_name, file_name)
-        logging.info("Exporting data to %s...", gcs_path)
+        # Logging does not expand in GCloud, so I'm trying this out.
+        message = f"Exporting data to {gcs_path}"
+        logging.info(message)
         with open_cloud_file(gcs_path, mode='w') as dest:
             writer = SqlExportFileWriter(dest, predicate)
             yield writer
-            logging.info("Export to %s complete.", gcs_path)
+            message = f"Export to {gcs_path} complete."
+            logging.info(message)
