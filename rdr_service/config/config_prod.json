@@ -1,0 +1,307 @@
+{
+  "biobank_id_prefix": [
+    "A"
+  ],
+  "biobank_samples_bucket_name": [
+    "prod_biobank_samples_upload_bucket"
+  ],
+  "genomic_set_bucket_name": [
+    "prod_genomic_set_upload"
+  ],
+  "genomic_center_bucket_name": [
+    "prod-genomics-baylor-dryrun", "prod-genomics-broad-dryrun", "prod-genomics-northwest-dryrun", "prod-genomics-color-dryrun"
+  ],
+  "genotyping_sample_manifest_folder_name": [
+    "genotyping_sample_manifests"
+  ],
+  "genomic_biobank_manifest_folder_name": [
+    "genomic_water_line_test"
+  ],
+  "genomic_biobank_manifest_result_folder_name": [
+    "genomic_water_line_test_results"
+  ],
+  "consent_pdf_bucket": {
+    "vibrent": "ptc-uploads-all-of-us-rdr-prod",
+    "careevolution": "ce-uploads-all-of-us-rdr-prod"
+  },
+  "genomic_gc_metrics_bucket_name": [
+    "prod_genomics_cell_line_validation"
+  ],
+  "genomic_cvl_reconciliation_report_subfolder": [
+    "cvl_reconciliation_reports"
+  ],
+  "genomic_cvl_manifest_subfolder": [
+    "cvl_manifests"
+  ],
+  "genomic_gem_bucket_name": [
+    "prod-genomics-color-dryrun"
+  ],
+  "genomic_gem_a1_manifest_subfolder": [
+    "gem_a1_manifests"
+  ],
+  "metrics_shards": [
+    "10"
+  ],
+  "mayolink_creds": ["rdr-mayolink-creds-prod.json"],
+  "mayolink_endpoint": ["https://orders.mayocliniclabs.com/orders/create.xml"],
+  "biobank_status_mail_recipients": [
+    "pmi-drc-alerts+prod@googlegroups.com"
+  ],
+  "internal_status_email_recipients": [
+    "pmi-drc-alerts+prod@googlegroups.com"
+  ],
+  "ghost_id_bucket": [
+    "all-of-us-rdr-prod-ghost-accounts"
+  ],
+  "ehr_status_bigquery_view_participant": [
+    "aou-res-curation-prod.operations_analytics.ehr_upload_pids"
+  ],
+  "ehr_status_bigquery_view_organization": [
+    "aou-res-curation-prod.operations_analytics.table_counts_with_upload_timestamp_for_hpo_sites_v2"
+  ],
+  "hpo_report_config_mixin_path": [
+    "/all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
+  ],
+  "user_info": {
+    "healthpro-prod@appspot.gserviceaccount.com": {
+      "clientId": "hpro",
+      "roles": ["healthpro"]
+    },
+    "all-of-us-rw-prod@appspot.gserviceaccount.com": {
+      "roles": ["workbench"],
+      "clientId": "workbench"
+    },
+    "aou-res-storefront-prod@appspot.gserviceaccount.com": {
+      "roles": ["storefront"]
+    },
+    "vibrent-drc-prod@vibrent-drc-prod-165017.iam.gserviceaccount.com": {
+      "roles": [
+        "ptc"
+      ],
+      "clientId": "vibrent",
+      "whitelisted_ip_ranges": {
+        "ip4": [
+          "34.204.157.148",
+          "35.169.121.55",
+          "174.64.55.14/32",
+          "52.38.207.188",
+          "34.214.147.89",
+          "52.5.52.224",
+          "34.224.248.155"
+        ],
+        "ip6": []
+      }
+    },
+    "care-evolution@all-of-us-rdr-prod.iam.gserviceaccount.com": {
+      "roles": ["ptc"],
+      "clientId": "careevolution",
+      "whitelisted_ip_ranges": {
+        "ip6": [],
+        "ip4": [
+          "52.86.97.51",
+          "52.54.134.172",
+          "52.200.215.173"
+        ]
+      }
+    },
+    "configurator@all-of-us-rdr-prod.iam.gserviceaccount.com": {
+      "clientId": "configurator",
+      "roles": [
+        "ptc",
+        "healthpro",
+        "rdr"
+      ]
+    },
+    "exporter@all-of-us-rdr-prod.iam.gserviceaccount.com": {
+      "roles": [
+        "exporter"
+      ]
+    },
+    "awardee-chc@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "COMM_HEALTH",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["151.181.44.122"]
+      }
+    },
+    "awardee-tach@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": [
+        "awardee_sa"
+      ],
+      "awardee": "TRANS_AM",
+      "whitelisted_ip_ranges": {
+          "ip4": [
+            "150.198.62.92",
+            "161.249.83.116",
+            "161.249.147.132",
+            "161.249.241.64/26",
+            "161.249.150.128/26",
+            "150.198.1.0/24",
+            "150.198.64.0/24",
+            "150.198.124.0/24",
+            "150.198.138.127",
+            "150.198.204.0/24",
+            "216.70.11.254",
+            "208.72.48.248/22",
+            "216.70.11.96/28",
+            "216.70.11.240/28",
+            "216.70.18.0/25",
+            "208.72.48.0/21",
+            "216.70.11.96/28",
+            "216.70.11.240/28",
+            "216.70.18.0/25",
+            "208.72.48.0/21"
+          ]
+      }
+    },
+    "awardee-arizona@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+      "roles": [
+        "awardee_sa"
+      ],
+      "awardee": "ARIZONA",
+      "whitelisted_ip_ranges": {
+        "ip4": [
+          "206.213.43.100"
+        ]
+      }
+    },
+    "awardee-seec@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": [
+        "awardee_sa"
+      ],
+      "awardee": "SEEC",
+      "whitelisted_ip_ranges": {
+        "ip4": [
+          "129.171.150.103",
+          "129.171.150.187",
+          "129.171.150.141",
+          "204.68.92.141",
+          "192.83.232.85",
+          "10.50.1.37"
+        ]
+      }
+    },
+    "awardee-pitt@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": [
+        "awardee_sa"
+      ],
+      "awardee": "PITT",
+      "whitelisted_ip_ranges": {
+        "ip4": [
+          "130.49.241.192/28",
+          "136.142.111.123",
+          "136.142.111.122",
+          "155.247.164.243"
+        ]
+      }
+    },
+    "awardee-ne@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "NE_PMC",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["170.223.207.49/28", "170.223.207.64"]
+      },
+        "description": "/28 mask covers 170.223.207.48-63"
+    },
+    "awardee-wisconsin@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "WISCONSIN",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["192.236.17.40-49"]
+      },
+        "description": "/28 mask covers 170.223.207.48-63"
+    },
+    "awardee-california@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "CAL_PMC",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["128.195.50.121"]
+      }
+    },
+    "awardee-chs@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "CHEROKEE",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["40.128.118.80"]
+      }
+    },
+    "awardee-sanysidro@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "SAN_YSIDRO",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["70.183.84.153/28"]
+      }
+    },
+    "vumc-appscan@all-of-us-rdr-prod.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro"],
+      "whitelisted_ip_ranges" : {
+        "ip4": ["160.129.251.78"]
+      }
+    },
+    "awardee-newyork@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "COLUMBIA",
+      "whitelisted_ip_ranges" : {
+        "ip4": [
+          "157.139.237.172",
+          "157.139.9.22",
+          "140.251.21.110",
+          "157.139.9.228",
+          "157.139.21.56"
+        ]
+      }
+    },
+    "coalfire-scan@all-of-us-rdr-prod.iam.gserviceaccount.com": {
+      "comment": "Penetration testing for Coalfire, PD-334, ROC-230",
+      "roles": ["ptc", "healthpro"],
+      "whitelisted_ip_ranges": {
+        "ip4": [
+                "192.81.133.103",
+                "74.207.236.177",
+                "45.79.100.105",
+                "173.230.139.170",
+                "52.11.110.146",
+                "199.127.201.80",
+                "199.127.201.81",
+                "199.127.201.122",
+                "199.127.201.123",
+                "199.127.201.124",
+                "96.90.174.96/29",
+                "96.90.174.109",
+                "50.78.81.213",
+                "8.44.144.96",
+                "45.33.19.185",
+                "45.56.64.112",
+                "45.33.122.251",
+                "45.79.83.180"
+        ]
+      }
+    },
+    "awardee-columbia@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "COLUMBIA",
+      "whitelisted_ip_ranges" : {
+        "ip4": [
+          "10.115.115.90",
+          "10.115.115.88",
+          "156.145.115.188",
+          "156.145.115.105"
+        ]
+      }
+    },
+    "awardee-illinois@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "ILLINOIS",
+      "whitelisted_ip_ranges" : {
+        "ip4": [
+          "10.105.197.20",
+          "131.193.169.188",
+          "165.124.250.41",
+          "165.124.199.1/28",
+          "165.124.167.1"
+        ]
+      }
+    }
+  }
+}
+
