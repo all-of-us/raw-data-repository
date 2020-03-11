@@ -50,19 +50,6 @@ GCP_SERVICES = [
     'offline',
 ]
 
-# Map project id to App config files.
-GCP_APP_CONFIG_MAP = OrderedDict({
-    "localhost": "config_dev.json",
-    "all-of-us-rdr-prod": "config_prod.json",
-    "all-of-us-rdr-stable": "config_stable.json",
-    "all-of-us-rdr-staging": "config_staging.json",
-    "all-of-us-rdr-sandbox": "config_sandbox.json",
-    "pmi-drc-api-test": "config_test.json",
-    "all-of-us-rdr-careevo-test": "config_test_careevo.json",
-    "all-of-us-rdr-ptsc-1-test": "config_test_ptsc_1.json",
-    "all-of-us-rdr-ptsc-2-test": "config_test_ptsc_2.json",
-    "all-of-us-rdr-ptsc-3-test": "config_test_ptsc_3.json",
-})
 
 # Map GCP app service to configuration yaml files.
 GCP_SERVICE_CONFIG_MAP = OrderedDict({
