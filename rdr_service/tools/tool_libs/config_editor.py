@@ -82,7 +82,7 @@ class ProgramTemplateClass(object):
                 if user:
                     users += f'[~accountid:{user.accountId}]'
             comment = f'App configuration has changed for: *{config_root}*.\n'
-            # comment += f'For developer approval: {users}'
+            comment += f'For developer approval: {users}'
             jira.add_ticket_comment(ticket, comment)
 
     def run(self):
