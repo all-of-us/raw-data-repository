@@ -82,7 +82,7 @@ class ProgramTemplateClass(object):
                 if user:
                     users += f'[~accountid:{user.accountId}]'
             comment = f'App configuration has changed for: *{config_root}*.\n'
-            comment += f'For developer approval: {users}'
+            # comment += f'For developer approval: {users}'
             jira.add_ticket_comment(ticket, comment)
 
     def run(self):
@@ -155,6 +155,9 @@ class ProgramTemplateClass(object):
         filename = f"/app_engine_configs/{config_root}/{self.args.key}.{datetime.utcnow().isoformat()}.json"
         with self.gcsp.open(filename, mode='wt') as fo:
             fo.write(edited_config.encode('utf-8'))
+        if self.args.base_config:
+            with open('config/base_config.json', 'w+') as h:
+                h.write(edited_config)
 
         if self.args.jira_ticket:
             _logger.info(f'Updating JIRA ticket {self.args.jira_ticket}...')
