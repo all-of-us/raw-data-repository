@@ -44,6 +44,14 @@
         "ip4": ["0.0.0.0/0"]
       }
     },
+    "biobank-samples@pmi-drc-api-test.iam.gserviceaccount.com": {
+      "roles": ["healthpro"],
+      "clientId": "biobank",
+      "whitelisted_ip_ranges": {
+        "ip6": ["::0/0"],
+        "ip4": ["0.0.0.0/0"]
+      }
+    },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
       "clientId": "configurator",
       "roles": ["ptc", "healthpro", "rdr"]
