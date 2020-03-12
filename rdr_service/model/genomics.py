@@ -233,6 +233,12 @@ class GenomicGCValidationMetrics(Base):
     notes = Column('notes', String(128), nullable=True)
     siteId = Column('site_id', Integer, nullable=True)
 
+    # Genotyping Data (Array) reconciliation
+    idatRedReceived = Column('idat_red_received', Integer, nullable=False, default=0)
+    idatGreenReceived = Column('idat_green_received', Integer, nullable=False, default=0)
+    vcfReceived = Column('vcf_received', Integer, nullable=False, default=0)
+    tbiReceived = Column('tbi_received', Integer, nullable=False, default=0)
+
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
 event.listen(GenomicGCValidationMetrics, 'before_update', model_update_listener)
