@@ -938,11 +938,11 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    def test_gc_metrics_reconciliation_vs_sequencing_end_to_end(self):
+    def test_gc_metrics_reconciliation_vs_genotyping_data(self):
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(2)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
-        self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
+        self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name)
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
@@ -978,11 +978,6 @@ class GenomicPipelineTest(BaseTestCase):
             if test_file == 'GC_bad_name.txt' or test_file == 'GC_sequencing_T3.txt':
                 # test bad sequence file name or no gc_metrics is ignored
                 self.assertIn(test_file, bucket_files)
-            else:
-                # test the reconciled data files were moved
-                self.assertNotIn(test_file, bucket_files)
-                self.assertIn(f'{config.GENOMIC_GC_PROCESSED_FOLDER_NAME}/{test_file}',
-                              archive_files)
 
         run_obj = self.job_run_dao.get(2)
 
