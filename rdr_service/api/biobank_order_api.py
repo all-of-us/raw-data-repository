@@ -1,6 +1,5 @@
 from flask import request
 
-from werkzeug.exceptions import BadRequest
 from rdr_service.api.base_api import UpdatableApi
 from rdr_service.api_util import HEALTHPRO, PTC_AND_HEALTHPRO
 from rdr_service.app_util import auth_required
@@ -28,25 +27,17 @@ class BiobankOrderApi(UpdatableApi):
         return super(BiobankOrderApi, self).patch(bo_id)
 
     def list(self, participant_id):
-        kit_id = request.args.get('kit-id')
-        dao = BiobankOrderDao()
-        if participant_id is not None:
-            # return all biobank order by participant id
-            items = dao.get_biobank_orders_with_children_for_participant(participant_id)
-            result = {'data': [], 'total': len(items)}
-            for item in items:
-                response_json = self.dao.to_client_json(item)
-                result['data'].append(response_json)
-            return result
-        elif kit_id is not None:
-            # return all biobank order by kit id
-            items = dao.get_biobank_order_by_kit_id(kit_id)
-            result = {'data': [], 'total': len(items)}
-            for item in items:
-                response_json = self.dao.to_client_json(item)
-                result['data'].append(response_json)
-            return result
-        else:
-            raise BadRequest("invalid parameters")
+        kwargs = {
+            'participant_id': participant_id,
+            'kit_id': request.args.get('kitId'),
+            'start_date': request.args.get('startDate'),
+            'end_date': request.args.get('endDate'),
+            'origin': request.args.get('origin'),
+            'page': request.args.get('page'),
+            'page_size': request.args.get('pageSize')
+        }
+        return BiobankOrderDao().handle_list_queries(**kwargs)
+
+
 
 

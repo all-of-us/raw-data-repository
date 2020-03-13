@@ -94,11 +94,64 @@ class BiobankOrderApiTest(BaseTestCase):
         order_json = load_biobank_order_json(self.participant.participantId, filename="biobank_order_2.json")
         self.send_post(self.path, order_json)
 
-        get_path = "BiobankOrder?kit-id=KIT-12345678"
+        get_path = "BiobankOrder?kitId=KIT-12345678"
         result = self.send_get(get_path)
         self.assertEqual(result['total'], 1)
         self.assertEqual(len(result['data']), 1)
         self.assertEqual(result['data'][0]['origin'], 'careevolution')
+
+    @mock.patch('rdr_service.dao.biobank_order_dao.get_account_origin_id')
+    def test_get_orders_by_kit_id(self, quest_origin):
+        quest_origin.return_value = 'careevolution'
+        self.summary_dao.insert(self.participant_summary(self.participant))
+        order_json = load_biobank_order_json(self.participant.participantId, filename="quest_biobank_order_1.json")
+        self.send_post(self.path, order_json)
+
+        quest_origin.return_value = 'hpro'
+        order_json = load_biobank_order_json(self.participant.participantId, filename="biobank_order_2.json")
+        self.send_post(self.path, order_json)
+
+        p2 = Participant(participantId=456, biobankId=666)
+        self.participant_dao.insert(p2)
+        self.summary_dao.insert(self.participant_summary(p2))
+        order_json = load_biobank_order_json(p2.participantId, filename="biobank_order_2.json")
+        p2_path = "Participant/%s/BiobankOrder" % to_client_participant_id(p2.participantId)
+        self.send_post(p2_path, order_json)
+
+        p3 = Participant(participantId=789, biobankId=777)
+        self.participant_dao.insert(p3)
+        self.summary_dao.insert(self.participant_summary(p3))
+        order_json = load_biobank_order_json(p3.participantId, filename="biobank_order_2.json")
+        p3_path = "Participant/%s/BiobankOrder" % to_client_participant_id(p3.participantId)
+        self.send_post(p3_path, order_json)
+
+        p4 = Participant(participantId=1244, biobankId=888)
+        self.participant_dao.insert(p4)
+        self.summary_dao.insert(self.participant_summary(p4))
+        order_json = load_biobank_order_json(p4.participantId, filename="biobank_order_4.json")
+        p4_path = "Participant/%s/BiobankOrder" % to_client_participant_id(p4.participantId)
+        self.send_post(p4_path, order_json)
+
+        get_path = "BiobankOrder?origin=hpro&startDate=2016-01-04&endDate=2016-01-05&page=1&pageSize=2"
+        result = self.send_get(get_path)
+        self.assertEqual(result['total'], 3)
+        self.assertEqual(len(result['data']), 2)
+        get_path = "BiobankOrder?origin=hpro&startDate=2016-01-03&endDate=2016-01-04&page=2&pageSize=2"
+        result = self.send_get(get_path)
+        self.assertEqual(result['total'], 3)
+        self.assertEqual(len(result['data']), 1)
+        get_path = "BiobankOrder?origin=hpro&startDate=2016-01-03&endDate=2016-01-04&page=3&pageSize=2"
+        result = self.send_get(get_path)
+        self.assertEqual(result['total'], 3)
+        self.assertEqual(len(result['data']), 0)
+        get_path = "BiobankOrder?origin=hpro&startDate=2019-12-03&endDate=2019-12-04&page=1&pageSize=2"
+        result = self.send_get(get_path)
+        self.assertEqual(result['total'], 0)
+        self.assertEqual(len(result['data']), 0)
+        get_path = "BiobankOrder?origin=careevolution&startDate=2019-12-03&endDate=2019-12-04&page=1&pageSize=2"
+        result = self.send_get(get_path)
+        self.assertEqual(result['total'], 1)
+        self.assertEqual(len(result['data']), 1)
 
     def test_cancel_order(self):
         self.summary_dao.insert(self.participant_summary(self.participant))
