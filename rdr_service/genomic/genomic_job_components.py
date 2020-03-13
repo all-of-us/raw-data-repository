@@ -586,6 +586,7 @@ class GenomicReconciler:
         # Dao components
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
+        self.file_dao = GenomicFileProcessedDao()
 
         # Other components
         self.file_mover = file_mover
@@ -608,40 +609,28 @@ class GenomicReconciler:
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
-    def reconcile_metrics_to_sequencing(self, bucket_name):
+    def reconcile_metrics_to_genotyping_data(self, bucket_name):
         """ The main method for the metrics vs. sequencing reconciliation
         :param bucket_name: the bucket to look for sequencin files
         :return: result code
         """
-        file_list = self._get_sequence_files(bucket_name)
+        metrics = self.metrics_dao.get_with_missing_gen_files()
+        # Iterate over metrics, searching the bucket for filenames
+        for metric in metrics:
+            file = self.file_dao.get(metric.genomicFileProcessedId)
 
-        if file_list == GenomicSubProcessResult.NO_FILES:
-            logging.info('No sequencing files to reconcile.')
-            return file_list
-        else:
-            # iterate over seq file list and update metrics
-            results = []
-            for seq_file_name in file_list:
-                logging.info(f'Reconciling Sequencing File: {seq_file_name}')
-                seq_sample_id = self._parse_seq_filename(
-                    seq_file_name)
-                if seq_sample_id == GenomicSubProcessResult.INVALID_FILE_NAME:
-                    logging.info(f'Filename unable to be parsed: f{seq_file_name}')
-                    return seq_sample_id
-                else:
-                    member = self.member_dao.get_member_from_sample_id(seq_sample_id)
-                    if member:
-                        # Updates the relevant fields for reconciliation
-                        results.append(
-                            self._update_genomic_set_member_seq_reconciliation(member,
-                                                                               seq_file_name,
-                                                                               self.run_id))
-                        # Archive the file
-                        seq_file_path = "/" + bucket_name + "/" + seq_file_name
-                        self.file_mover.archive_file(file_path=seq_file_path)
-            return GenomicSubProcessResult.SUCCESS \
-                if GenomicSubProcessResult.ERROR not in results \
-                else GenomicSubProcessResult.ERROR
+            file_types = (('idatRedReceived', "_red.idat"),
+                          ('idatGreenReceived', "_green.idat"),
+                          ('vcfReceived', ".vcf"),
+                          ('tbiReceived', ".vcf.gz.tbi"))
+            for file_type in file_types:
+                if not getattr(metric, file_type[0]):
+                    filename = f"{metric.chipwellbarcode}{file_type[1]}"
+                    setattr(metric, file_type[0],
+                            self._check_genotyping_file_exists(file.bucketName, filename))
+            self.metrics_dao.update(metric)
+
+        return GenomicSubProcessResult.SUCCESS
 
     def generate_cvl_reconciliation_report(self):
         """
@@ -668,6 +657,12 @@ class GenomicReconciler:
                 else GenomicSubProcessResult.ERROR
 
         return GenomicSubProcessResult.NO_FILES
+
+    def _check_genotyping_file_exists(self, bucket_name, filename):
+        files = list_blobs('/' + bucket_name)
+        filenames = [f.name for f in files if filename in f.name]
+        return 1 if len(filenames) > 0 else 0
+
 
     def _get_sequence_files(self, bucket_name):
         """
@@ -704,15 +699,6 @@ class GenomicReconciler:
             return filename.lower().split('_')[-1].split('.')[0][1:]
         except IndexError:
             return GenomicSubProcessResult.INVALID_FILE_NAME
-
-    def _get_sequence_metrics_by_biobank_id(self, biobank_id):
-        """
-        Calls the metrics DAO
-        :param biobank_id:
-        :return: list of GenomicGCValidationMetrics
-        objects with null sequencing_file_name
-        """
-        return self.metrics_dao.get_metrics_by_biobank_id(biobank_id)
 
     def _update_genomic_set_member_seq_reconciliation(self, member, seq_file_name, job_run_id):
         """

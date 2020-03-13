@@ -924,28 +924,27 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
         # Test the reconciliation process
-        # TODO: Rename files
         sequencing_test_files = (
             f'test_data_folder/10001_R01C01.vcf.gz',
             f'test_data_folder/10001_R01C01.vcf.gz.tbi',
-            f'test_data_folder/10001_R01C01.idat',
-            f'test_data_folder/10001_R01C01.idat',
+            f'test_data_folder/10001_R01C01_red.idat.gz',
         )
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
 
-        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 2
+        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 2
 
-        gc_record = self.member_dao.get(2)
+        gc_record = self.metrics_dao.get(1)
 
         # Test the gc_metrics were updated with reconciliation data
-        # self.assertEqual('GC_sequencing_T2.txt'
-        #                  , gc_record.sequencingFileName)
-        # self.assertEqual(2, gc_record.reconcileMetricsSequencingJobRunId)
+        self.assertEqual(1, gc_record.vcfReceived)
+        self.assertEqual(1, gc_record.tbiReceived)
+        self.assertEqual(1, gc_record.idatRedReceived)
+        self.assertEqual(0, gc_record.idatGreenReceived)
 
-        # run_obj = self.job_run_dao.get(2)
-        #
-        # self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+        run_obj = self.job_run_dao.get(2)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_sequencing_reconciliation_no_files(self):
         # Create the fake ingested data
@@ -955,7 +954,7 @@ class GenomicPipelineTest(BaseTestCase):
                                          bucket_name)
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
-        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 2
+        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 2
 
         run_obj = self.job_run_dao.get(2)
 
@@ -973,11 +972,11 @@ class GenomicPipelineTest(BaseTestCase):
         test_file = 'GC_sequencing_T2.txt'
         self._write_cloud_csv(test_file, 'attagc', bucket=bucket_name)
 
-        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 2
+        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 2
 
         self._write_cloud_csv(test_file, 'attagc', bucket=bucket_name)
 
-        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 3
+        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 3
 
         # Test files were moved to archive OK
         bucket_list = list(list_blobs('/' + bucket_name))
@@ -1240,7 +1239,7 @@ class GenomicPipelineTest(BaseTestCase):
         test_sequencing_file = 'GC_sequencing_T2.txt'
         self._write_cloud_csv(test_sequencing_file, 'attagc', bucket=bucket_name)
 
-        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 2
+        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 2
 
         # Run the CVL Reconciliation report workflow
         genomic_pipeline.create_cvl_reconciliation_report()  # run_id = 3
@@ -1297,7 +1296,7 @@ class GenomicPipelineTest(BaseTestCase):
         self._write_cloud_csv(test_sequencing_file, 'attagc', bucket=bucket_name)
 
         genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 3
-        genomic_pipeline.reconcile_metrics_vs_sequencing()  # run_id = 4
+        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 4
 
         # finally run the manifest workflow
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)

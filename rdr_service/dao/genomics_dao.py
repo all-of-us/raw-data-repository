@@ -608,6 +608,23 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 .all()
             )
 
+    def get_with_missing_gen_files(self):
+        """
+        Retrieves all gc metrics with missing genotyping files
+        :return: list of returned GenomicGCValidationMetrics objects
+        """
+        with self.session() as session:
+            return (
+                session.query(GenomicGCValidationMetrics)
+                .filter(
+                    (GenomicGCValidationMetrics.idatRedReceived == 0) |
+                    (GenomicGCValidationMetrics.idatGreenReceived == 0) |
+                    (GenomicGCValidationMetrics.vcfReceived == 0) |
+                    (GenomicGCValidationMetrics.tbiReceived == 0)
+                )
+                .all()
+            )
+
     def get_metrics_by_member_id(self, member_id):
         """
         Retrieves gc metric record with the member_id
