@@ -1021,10 +1021,12 @@ class ManifestDefinitionProvider:
                     JOIN participant_summary ps
                         ON ps.participant_id = m.participant_id
                 WHERE gcv.processing_status = "pass"
-                    AND m.sequencing_file_name IS NOT NULL
                     AND m.reconcile_gc_manifest_job_run_id IS NOT NULL
                     AND m.reconcile_metrics_bb_manifest_job_run_id IS NOT NULL
-                    AND m.reconcile_metrics_sequencing_job_run_id IS NOT NULL
+                    AND gcv.idat_green_received = 1
+                    AND gcv.idat_red_received = 1
+                    AND gcv.tbi_received = 1
+                    AND gcv.vcf_received = 1
                     AND m.genome_type = "aou_array"
                     AND ps.suspension_status = 1
                     # TODO: AND m.consent_for_ror = 1
