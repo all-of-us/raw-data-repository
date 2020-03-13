@@ -44,7 +44,13 @@ class JiraTicketHandler:
         """param: user = email
            return: username"""
         un_resource = self._jira_connection.search_users(user)
-        return un_resource[0].name if len(un_resource) >= 1 else user
+        try:
+            #TODO: this was throwing error: jira.resources.User object has no attribute 'name'
+            # Which is weird because Jira docs says the function returns a list.
+            user_name = un_resource[0].name if len(un_resource) >= 1 else user
+        except AttributeError:
+            user_name = user
+        return user_name
 
     def find_ticket_from_summary(self, summary, board_id=_JIRA_BOARD_ID):
         """
