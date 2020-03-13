@@ -273,7 +273,7 @@ class DeployAppClass(object):
             for i in names:
                 user = self._jira_handler.search_user(i)
                 if user:
-                    tmp_list.append('[~accountid:' + user.accountId + ']')
+                    tmp_list.append(f'[~accountid:{user.accountId}]')
 
             tag_unames[position] = tmp_list
 

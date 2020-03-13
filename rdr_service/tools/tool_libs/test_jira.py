@@ -56,8 +56,13 @@ class JiraTestClass:
 
         tickets = jira.find_ticket_from_summary(summary, board_id='DAT')
         issue = None
-        uname = jira.search_user('michael.mead@vumc.org')
-        comment = f"Ready for QA: [~{uname}]."
+        user = jira.search_user('michael.mead@vumc.org')
+        if user:
+            comment = f"Ready for QA: [~accountid:{user.accountId}]."
+        else:
+            msg = f'Error: JIRA user (michael.mead@vumc.org) not found.'
+            _LOGGER.error(msg)
+            comment = msg
 
         if tickets:
             print(f'tickets: {tickets}')
