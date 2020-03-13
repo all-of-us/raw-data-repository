@@ -1,6 +1,6 @@
 from sqlalchemy import (
     Column, DateTime, ForeignKey, Integer,
-    String, Numeric, SmallInteger, UniqueConstraint, event
+    String, SmallInteger, UniqueConstraint, event
 )
 from sqlalchemy.orm import relationship
 

@@ -381,7 +381,7 @@ class GenomicSetMemberDao(UpdatableDao):
         """
         with self.session() as session:
             members = session.query(GenomicSetMember).filter(
-                GenomicSetMember.__getattribute__(GenomicSetMember,field) == None,
+                getattr(GenomicSetMember, field) == None,
             ).all()
         return members
 

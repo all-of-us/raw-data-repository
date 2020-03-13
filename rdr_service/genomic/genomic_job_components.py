@@ -53,7 +53,6 @@ from rdr_service.config import (
     GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
     GENOMIC_CVL_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
-    BIOBANK_ID_PREFIX,
 )
 
 
@@ -598,7 +597,6 @@ class GenomicReconciler:
             unreconciled_members = self.member_dao.get_null_field_members('reconcileMetricsBBManifestJobRunId')
             results = []
             for member in unreconciled_members:
-                metric = self.metrics_dao.get_metrics_by_member_id(member.id)
                 results.append(
                     self.member_dao.update_member_job_run_id(
                         member, self.run_id, 'reconcileMetricsBBManifestJobRunId')
@@ -609,9 +607,8 @@ class GenomicReconciler:
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
-    def reconcile_metrics_to_genotyping_data(self, bucket_name):
+    def reconcile_metrics_to_genotyping_data(self):
         """ The main method for the metrics vs. sequencing reconciliation
-        :param bucket_name: the bucket to look for sequencin files
         :return: result code
         """
         metrics = self.metrics_dao.get_with_missing_gen_files()
