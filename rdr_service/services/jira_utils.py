@@ -21,11 +21,17 @@ class JiraTicketHandler:
         self._jira_password = os.environ.get('JIRA_API_USER_PASSWORD', None)
         self._jira_watchers = os.environ.get('JIRA_WATCHER_NAMES', None)
         self._jira_connection = None
-        self._required_tags = {'drc_analytics': ['alpha.parrott@vumc.org'],
-                               'qa': ['rohini.chavan@vumc.org', 'ashton.e.rollings@vumc.org'],
-                               'change_management_board': ['charissa.r.rotundo@vumc.org', 'neil.bible@vumc.org'],
-                               'change_manager': \
-                               ['asmita.gauchan@vumc.org', 'bhinnata.piya@vumc.org', 'katherine.j.worley@vumc.org']}
+        self.required_tags = {
+            'drc_analytics': ['alpha.parrott@vumc.org'],
+            'qa': ['rohini.chavan@vumc.org', 'ashton.e.rollings@vumc.org'],
+            'change_management_board': ['charissa.r.rotundo@vumc.org', 'neil.bible@vumc.org'],
+            'change_manager': ['asmita.gauchan@vumc.org', 'bhinnata.piya@vumc.org', 'katherine.j.worley@vumc.org']
+        }
+        self.developer_tags = {
+            'developers': ['yu.wang.3@vumc.org', 'robert.m.abram.1@vumc.org', 'michael.mead@vumc.org',
+                           'joshua.d.kanuch@vumc.org']
+        }
+
         self._connect_to_jira()
 
     def _connect_to_jira(self):
@@ -40,11 +46,16 @@ class JiraTicketHandler:
     def current_user(self):
         return self._jira_connection.current_user()
 
-    def search_user(self, user: str) -> str:
-        """param: user = email
-           return: username"""
-        un_resource = self._jira_connection.search_users(user)
-        return un_resource[0].name if len(un_resource) >= 1 else user
+    def search_user(self, email):
+        """
+        Search for user in JIRA system.
+        :param email: JIRA user email address.
+        :return: User object or None.
+        """
+        un_resource = self._jira_connection.search_users(email)
+        if un_resource and len(un_resource) >= 1:
+            return un_resource[0]
+        return None
 
     def find_ticket_from_summary(self, summary, board_id=_JIRA_BOARD_ID):
         """
@@ -56,6 +67,16 @@ class JiraTicketHandler:
         tickets = self._jira_connection.search_issues(
                         f'project = "{board_id}" and summary ~ "{summary}" order by created desc')
         return tickets
+
+    def get_ticket(self, ticket_id):
+        """
+        Retrieve the JIRA ticket from the given id.
+        :param ticket_id: JIRA ticket id, IE: DA-1234
+        :return: ticket object or None
+        """
+        if not ticket_id or not isinstance(ticket_id, str):
+            raise ValueError('Invalid JIRA ticket ID value.')
+        return self._jira_connection.issue(ticket_id)
 
     def create_ticket(self, summary, descr, issue_type="Task", board_id=_JIRA_BOARD_ID):
         """

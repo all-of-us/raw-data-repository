@@ -16,11 +16,12 @@ from yaml import Loader as yaml_loader
 from rdr_service.services.system_utils import setup_logging, setup_i18n, git_current_branch, \
     git_checkout_branch, is_git_branch_clean, make_api_request
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
-from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, GCP_APP_CONFIG_MAP
+from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP
 from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
     gcp_application_default_creds_exist, gcp_restart_instances
 from rdr_service.tools.tool_libs.alembic import AlembicManagerClass
 from rdr_service.services.jira_utils import JiraTicketHandler
+
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -100,7 +101,7 @@ class DeployAppClass(object):
 
         return config_file
 
-    def setup_config_files(self):
+    def setup_service_config_files(self):
         """
         Using the deploy types, create the service yaml files in the git project root.
         :return: list of configuration files
@@ -243,7 +244,7 @@ class DeployAppClass(object):
             return 1
 
         _logger.info('Preparing configuration files...')
-        config_files = self.setup_config_files()
+        config_files = self.setup_service_config_files()
 
         # Install app config
         _logger.info(self.add_jira_comment(f"Updating config for '{self.gcp_env.project}'"))
@@ -267,10 +268,12 @@ class DeployAppClass(object):
 
     def tag_people(self):
         tag_unames = {}
-        for position, names in self._jira_handler._required_tags.items():
+        for position, names in self._jira_handler.required_tags.items():
             tmp_list = []
             for i in names:
-                tmp_list.append('[~' + self._jira_handler.search_user(i) + ']')
+                user = self._jira_handler.search_user(i)
+                if user:
+                    tmp_list.append('[~accountid:' + user.accountId + ']')
 
             tag_unames[position] = tmp_list
 
@@ -484,16 +487,21 @@ class AppConfigClass(object):
         if not hasattr(self.args, 'key'):
             setattr(self.args, 'key', 'current_config')
 
-    def get_local_app_config(self):
+    def get_bucket_app_config(self):
         """
-        Combine local app config files and return it.
+        Combine saved bucket app config files and return it.
         :return: dict
         """
-        base_config_file = os.path.join(self._config_dir, 'base_config.json')
-        base_config = json.loads(open(base_config_file, 'r').read())
-
-        proj_config_file = os.path.join(self._config_dir, GCP_APP_CONFIG_MAP[self.gcp_env.project])
-        proj_config = json.loads(open(proj_config_file, 'r').read())
+        # pylint: disable=unused-variable
+        base_config_str, filename = self.gcp_env.get_latest_config_from_bucket('base-config', self.args.key)
+        if not base_config_str:
+            raise FileNotFoundError('Error: base app configuration not found in bucket.')
+        base_config = json.loads(base_config_str)
+        # pylint: disable=unused-variable
+        proj_config_str, filename = self.gcp_env.get_latest_config_from_bucket(self.gcp_env.project, self.args.key)
+        if not base_config_str:
+            raise FileNotFoundError(f'Error: {self.gcp_env.project} configuration not found in bucket.')
+        proj_config = json.loads(proj_config_str)
 
         config = {**base_config, **proj_config}
 
@@ -522,7 +530,7 @@ class AppConfigClass(object):
         Put the local config into the cloud datastore.
         """
         if not hasattr(self.args, 'from_file') or not self.args.from_file:
-            config = self.get_local_app_config()
+            config = self.get_bucket_app_config()
         else:
             config = self.get_config_from_file()
 
@@ -540,31 +548,33 @@ class AppConfigClass(object):
 
         return 0
 
-    def get_app_config(self):
+    def get_cloud_app_config(self, display=True):
         """
-        Get the cloud datastore config
+        Get the cloud datastore config.
+        :param display: Print the config to stdout.
         """
         config = self._provider.load(self.args.key, project=self.gcp_env.project)
 
         if self.args.to_file:
             open(self.args.to_file, 'w').write(json.dumps(config, indent=2, sort_keys=True))
 
-        # Mask passwords when writing to stdout.
-        for k, v in config.items():  # pylint: disable=unused-variable
-            if 'db_connection_string' in k:
-                parts = config[k].split('@')
-                config[k] = parts[0][:parts[0].rfind(':') + 1] + '*********@' + parts[1]
-            if 'password' in k:
-                config[k] = '********'
+        if display:
+            # Mask passwords when writing to stdout.
+            for k, v in config.items():  # pylint: disable=unused-variable
+                if 'db_connection_string' in k:
+                    parts = config[k].split('@')
+                    config[k] = parts[0][:parts[0].rfind(':') + 1] + '*********@' + parts[1]
+                if 'password' in k:
+                    config[k] = '********'
 
-        print(json.dumps(config, indent=2, sort_keys=True))
+            print(json.dumps(config, indent=2, sort_keys=True))
 
     def compare_configs(self):
         """
         Compare the remote and local configs for changes.
         """
         if not self.args.from_file:
-            local_config = self.get_local_app_config()
+            local_config = self.get_bucket_app_config()
         else:
             local_config = self.get_config_from_file()
 
@@ -614,6 +624,9 @@ class AppConfigClass(object):
         if self.args.key not in {'current_config', 'db_config', 'geocode_key'}:
             _logger.error('\nInvalid --key argument.\n')
             return 1
+        if self.args.key != 'current_config' and not self.args.from_file:
+            _logger.error('Conflict: Only "current_config" config key may be used without --from-file argument.')
+            return 1
         if self.args.compare and self.args.update:
             _logger.error('\nConflict: --compare and --update args may not be used together.\n')
             return 1
@@ -628,16 +641,12 @@ class AppConfigClass(object):
                 _logger.error('\nRequired: The --from-file arg must be set.\n')
                 return 1
 
-        # https://github.com/googleapis/google-auth-library-python/issues/271
-        import warnings
-        warnings.filterwarnings("ignore", "Your application has authenticated using end user credentials")
-
         if self.args.update:
             return self.update_app_config()
         elif self.args.compare:
             self.compare_configs()
         else:
-            self.get_app_config()
+            self.get_cloud_app_config()
 
         return 0
 
@@ -717,8 +726,8 @@ def run():
     config_parser.add_argument('--compare', help='Compare app config to local config.', default=False,
                                action="store_true")  # noqa
     config_parser.add_argument('--update', help='update cloud app config.', default=False, action="store_true")  # noqa
-    config_parser.add_argument('--to-file', help='export config to file', default='', type=str)  # noqa
-    config_parser.add_argument('--from-file', help='import config from file', default='', type=str)  # noqa
+    config_parser.add_argument('--to-file', help='download config to file', default='', type=str)  # noqa
+    config_parser.add_argument('--from-file', help='upload config from file', default='', type=str)  # noqa
 
     config_parser = subparser.add_parser("test")
     config_parser.add_argument('--run-single-util', help='runs single gcp util command, good for testing',

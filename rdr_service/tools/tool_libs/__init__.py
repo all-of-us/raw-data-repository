@@ -5,9 +5,13 @@ import os
 import time
 import traceback
 import random
+from datetime import datetime
+from dateutil.parser import ParserError, parse
+
+from google.api_core.exceptions import NotFound
 
 from rdr_service.config import GoogleCloudDatastoreConfigProvider
-from rdr_service.services.gcp_config import GCP_APP_CONFIG_MAP
+from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.services.gcp_utils import gcp_activate_sql_proxy, gcp_cleanup, gcp_initialize, gcp_format_sql_instance
 from rdr_service.services.system_utils import remove_pidfile, write_pidfile_or_die, git_project_root, TerminalColors
 
@@ -27,6 +31,10 @@ class GCPEnvConfigObject(object):
         """
         :param items: dict of config key value pairs
         """
+        # https://github.com/googleapis/google-auth-library-python/issues/271
+        import warnings
+        warnings.filterwarnings("ignore", "Your application has authenticated using end user credentials")
+
         for key, val in items.items():
             self.__dict__[key] = val
 
@@ -54,83 +62,84 @@ class GCPEnvConfigObject(object):
         # Turn off terminal colors.
         _logger.info(self.terminal_colors.reset)
 
-    def get_app_config(self):
+    def get_app_config(self, config_key='current_config', project=None):
         """
-        Get the application config.
+        Get the running application config.
         :return: dict
         """
-        # https://github.com/googleapis/google-auth-library-python/issues/271
-        import warnings
-        warnings.filterwarnings("ignore", "Your application has authenticated using end user credentials")
+        if not project:
+            project = self.project
 
-        provider = GoogleCloudDatastoreConfigProvider()
         # See if we should use local configs or cloud configs.
-        if not self.project or self.project == 'localhost':
-            file = os.path.join(self.git_project, 'rdr_service/.configs/current_config.json')
+        if not project or project == 'localhost':
+            file = os.path.join(self.git_project, f'rdr_service/.configs/{config_key}.json')
             config = json.loads(open(file, 'r').read())
         else:
-            config = provider.load('current_config', project=self.project)
+            provider = GoogleCloudDatastoreConfigProvider()
+            config = provider.load(config_key, project=project)
 
         return config
 
     def get_app_db_config(self, project=None):
         """
-        Get the application database config.
+        Get the running application database config.
         :return: dict
         """
-        # https://github.com/googleapis/google-auth-library-python/issues/271
-        import warnings
-        warnings.filterwarnings("ignore", "Your application has authenticated using end user credentials")
+        return self.get_app_config(config_key='db_config', project=project)
 
-        if not project:
-            project = self.project
-
-        provider = GoogleCloudDatastoreConfigProvider()
-        if not project or project == 'localhost':
-            file = os.path.join(self.git_project, 'rdr_service/.configs/db_config.json')
-            config = json.loads(open(file, 'r').read())
-        else:
-            config = provider.load('db_config', project=project)
-
-        return config
-
-    def get_local_app_config(self, project: str) -> (dict, None):
+    @staticmethod
+    def get_latest_config_from_bucket(config_root, config_key):
         """
-        Return the local project app configuration for the given project id.
-        :params project: GCP project id
-        :return: dict or none
+        Return the latest configuration file stored in the 'app_engine_configs' bucket.
+        :param config_root: The configuration project root.
+        :param config_key: configuration key.
+        :return: Configuration text or None
         """
-        files = list()
-        if not project or project == 'localhost':
-            files.append(os.path.join(self.git_project, 'rdr_service/.configs/current_config.json'))
+        gcsp = GoogleCloudStorageProvider()
+        ts = datetime.min
+        filename = None
 
-        else:
-            files.append(os.path.join(self.git_project, 'rdr_service/config/base_config.json'))
-            files.append(os.path.join(self.git_project, 'rdr_service/config', GCP_APP_CONFIG_MAP[project]))
+        try:
+            files = list(gcsp.list(f'app_engine_configs', prefix=config_root))
+        except NotFound as e:
+            _logger.error(e)
+            _logger.error('Error: no config files found, aborting.')
+            return 1
 
-        config = dict()
         for file in files:
-            if os.path.exists(file):
-                with open(file, 'r') as handle:
-                    temp_config = json.loads(handle.read())
-                    config = {**config, **temp_config}
-            else:
-                _logger.error(f'Configuration file "{file}" not found.')
-                return None
+            try:
+                f_ts = parse(file.name.split('/')[1].replace(f'{config_key}.', '').replace('.json', ''))
+                if ts < f_ts:
+                    ts = f_ts
+                    filename = file.name.split('/')[1]
+            except ParserError:
+                _logger.warning(f'Warning: skipping invalid config file: {filename}.')
 
-        return config
+        if ts == datetime.min:
+            _logger.error('No configuration file found')
+            return None, None
 
-    def get_gcp_configurator_account(self, project: str) -> (str, None):
+        with gcsp.open(f'/app_engine_configs/{config_root}/{filename}', mode='rt') as h:
+            config = h.read().decode('utf-8')
+
+        return config, filename
+
+
+    def get_gcp_configurator_account(self, project: str = None) -> (str, None):
         """
         Return the GCP app engine configurator account for the given project id.
         :param project: GCP project id
         :return: service account or None
         """
-        config = self.get_local_app_config(project)
+        if not project:
+            project = self.project
+        # pylint: disable=unused-variable
+        config_str, filename = self.get_latest_config_from_bucket(project, 'current_config')
 
-        if not config:
+        if not config_str:
             _logger.error(f'Failed to get local config for "{project}".')
             return None
+        config = json.loads(config_str)
 
         users = config['user_info']
         for user, data in users.items():
