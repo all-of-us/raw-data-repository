@@ -53,6 +53,7 @@ from rdr_service.config import (
     GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
     GENOMIC_CVL_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
+    BIOBANK_ID_PREFIX,
 )
 
 
@@ -313,12 +314,15 @@ class GenomicFileIngester:
         # add to insert batch gc metrics record
         for row in data_to_ingest['rows']:
             # change all key names to lower
-            row_copy = dict(zip([key.lower() for key in row], row.values()))
+            row_copy = dict(zip([key.lower().replace(' ', '_') for key in row],
+                                row.values()))
             row_copy['file_id'] = self.file_obj.id
-            row_copy['biobank id'] = row_copy['biobank id'].replace('T', '')
-
-            obj_to_insert = row_copy
-            gc_metrics_batch.append(obj_to_insert)
+            sample_id = row_copy['biobankid_sampleid'].split('_')[-1]
+            row_copy['member_id'] = self.member_dao.get_member_from_sample_id(int(sample_id)).id
+            if row_copy['member_id'] is not None:
+                gc_metrics_batch.append(row_copy)
+            else:
+                logging.warning(f'Sample ID {sample_id} has no corresponding Genomic Set Member.')
 
         return self.metrics_dao.insert_gc_validation_metrics_batch(gc_metrics_batch)
 
@@ -351,56 +355,59 @@ class GenomicFileValidator:
                 "site_id"
             ),
             'gen': (
-                "biobank id",
-                "biobankidsampleid",
-                "lims id",
-                "call rate",
-                "sex concordance",
+                "biobank_id",
+                "biobankid_sampleid",
+                "lims_id",
+                "chipwellbarcode",
+                "call_rate",
+                "sex_concordance",
                 "contamination",
-                "processing status",
+                "processing_status",
+                "consent_for_ror",
+                "withdrawn_status",
+                "site_id",
                 "notes",
-                "site_id"
             ),
         }
-        self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bi', 'rdr')
+        self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bi', 'jh', 'rdr')
         self.VALID_CVL_FACILITIES = ('color', 'uw', 'baylor')
 
         self.GC_MANIFEST_SCHEMA = (
-            "package id",
-            "biobankid sampleid",
+            "package_id",
+            "biobankid_sampleid",
             "box_storageunit_id",
-            "box id/plate id",
-            "well position",
-            "sample id",
-            "parent sample id",
-            "matrix id",
-            "collection date",
-            "biobank id",
-            "sex at birth",
+            "box_id/plate_id",
+            "well_position",
+            "sample_id",
+            "parent_sample_id",
+            "matrix_id",
+            "collection_date",
+            "biobank_id",
+            "sex_at_birth",
             "age",
-            "ny state (y/n)",
-            "sample type",
+            "ny_state_(y/n)",
+            "sample_type",
             "treatments",
-            "quantity (ul)",
-            "total concentration (ng/ul)",
-            "total dna(ng)",
-            "visit description",
-            "sample source",
+            "quantity_(ul)",
+            "total_concentration_(ng/ul)",
+            "total_dna(ng)",
+            "visit_description",
+            "sample_source",
             "study",
-            "tracking number",
+            "tracking_number",
             "contact",
             "email",
             "study_pi",
-            "test name",
-            "failure mode",
-            "failure mode desc"
+            "test_name",
+            "failure_mode",
+            "failure_mode_desc"
         )
 
         self.GEM_A2_SCHEMA = (
             "biobank_id",
             "sample_id",
             "sex_at_birth",
-            "success / fail",
+            "success_/_fail",
         )
 
     def validate_ingestion_file(self, filename, data_to_validate):
@@ -514,7 +521,8 @@ class GenomicFileValidator:
         if self.valid_schema == GenomicSubProcessResult.INVALID_FILE_NAME:
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
-        cases = tuple([field.lower().replace('\ufeff', '') for field in fields])
+        cases = tuple([field.lower().replace('\ufeff', '').replace(' ', '_')
+                       for field in fields])
         return cases == self.valid_schema
 
     def _set_schema(self, filename):
@@ -585,14 +593,11 @@ class GenomicReconciler:
     def reconcile_metrics_to_manifest(self):
         """ The main method for the metrics vs. manifest reconciliation """
         try:
-            unreconciled_metrics = self.metrics_dao.get_null_set_members()
+
+            unreconciled_members = self.member_dao.get_null_field_members('reconcileMetricsBBManifestJobRunId')
             results = []
-            for metric in unreconciled_metrics:
-                member = self.member_dao.get_member_from_sample_id(metric.sampleId)
-                results.append(
-                    self.metrics_dao.update_metric_set_member_id(
-                        metric, member.id)
-                )
+            for member in unreconciled_members:
+                metric = self.metrics_dao.get_metrics_by_member_id(member.id)
                 results.append(
                     self.member_dao.update_member_job_run_id(
                         member, self.run_id, 'reconcileMetricsBBManifestJobRunId')

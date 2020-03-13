@@ -372,6 +372,19 @@ class GenomicSetMemberDao(UpdatableDao):
             ).all()
         return members
 
+    def get_null_field_members(self, field):
+        """
+        Get the genomic set members with a null value for a field
+        useful for reconciliation processes.
+        :param field: field to lookup null
+        :return: GenomicSetMember list
+        """
+        with self.session() as session:
+            members = session.query(GenomicSetMember).filter(
+                GenomicSetMember.__getattribute__(GenomicSetMember,field) == None,
+            ).all()
+        return members
+
 
 class GenomicJobRunDao(UpdatableDao):
     """ Stub for GenomicJobRun model """
@@ -546,18 +559,17 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
         self.data_mappings = {
             'genomicSetMemberId': 'member_id',
             'genomicFileProcessedId': 'file_id',
-            'biobankId': 'biobank id',
-            'sampleId': 'biobankidsampleid',
-            'limsId': 'lims id',
-            'callRate': 'call rate',
-            'meanCoverage': 'mean coverage',
-            'genomeCoverage': 'genome coverage',
+            'limsId': 'lims_id',
+            'chipwellbarcode': 'chipwellbarcode',
+            'callRate': 'call_rate',
+            'meanCoverage': 'mean_coverage',
+            'genomeCoverage': 'genome_coverage',
             'contamination': 'contamination',
-            'sexConcordance': 'sex concordance',
-            'alignedQ20Bases': 'aligned q20 bases',
-            'processingStatus': 'processing status',
+            'sexConcordance': 'sex_concordance',
+            'alignedQ20Bases': 'aligned_q20_bases',
+            'processingStatus': 'processing_status',
             'notes': 'notes',
-            'consentForRor': 'consent for ror',
+            'consentForRor': 'consent_for_ror',
             'withdrawnStatus': 'withdrawn_status',
             'siteId': 'site_id',
         }
@@ -596,16 +608,16 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 .all()
             )
 
-    def get_metrics_by_biobank_id(self, biobank_id):
+    def get_metrics_by_member_id(self, member_id):
         """
-        Retrieves gc metric record with the biobank_id
-        :param: biobank_id
-        :return: list of returned GenomicGCValidationMetrics objects
+        Retrieves gc metric record with the member_id
+        :param: member_id
+        :return: GenomicGCValidationMetrics object
         """
         with self.session() as session:
             return (
                 session.query(GenomicGCValidationMetrics)
-                .filter(GenomicGCValidationMetrics.biobankId == biobank_id)
+                .filter(GenomicGCValidationMetrics.genomicSetMemberId == member_id)
                 .first()
             )
 

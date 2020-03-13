@@ -38,11 +38,11 @@ def upgrade_rdr():
     # ### end Alembic commands ###
 
     # Change datatypes
-    op.execute('ALTER TABLE genomic_gc_validation_metrics MODIFY `call_rate` DECIMAL;')
-    op.execute('ALTER TABLE genomic_gc_validation_metrics MODIFY `mean_coverage` DECIMAL;')
-    op.execute('ALTER TABLE genomic_gc_validation_metrics MODIFY `genome_coverage` DECIMAL;')
-    op.execute('ALTER TABLE genomic_gc_validation_metrics MODIFY `contamination` DECIMAL;')
-    op.execute('ALTER TABLE genomic_gc_validation_metrics MODIFY `site_id` VARCHAR(80);')
+    op.execute('ALTER TABLE genomic_gc_validation_metrics MODIFY `call_rate` VARCHAR(10);')
+    op.execute('ALTER TABLE genomic_gc_validation_metrics MODIFY `mean_coverage` VARCHAR(10);')
+    op.execute('ALTER TABLE genomic_gc_validation_metrics MODIFY `genome_coverage` VARCHAR(10);')
+    op.execute('ALTER TABLE genomic_gc_validation_metrics MODIFY `contamination` VARCHAR(10);')
+    op.execute('ALTER TABLE genomic_gc_validation_metrics MODIFY `site_id` VARCHAR(10);')
 
 
 def downgrade_rdr():
