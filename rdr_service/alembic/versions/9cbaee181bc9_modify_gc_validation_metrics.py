@@ -42,7 +42,7 @@ def upgrade_rdr():
     op.execute('ALTER TABLE genomic_gc_validation_metrics MODIFY `mean_coverage` VARCHAR(10);')
     op.execute('ALTER TABLE genomic_gc_validation_metrics MODIFY `genome_coverage` VARCHAR(10);')
     op.execute('ALTER TABLE genomic_gc_validation_metrics MODIFY `contamination` VARCHAR(10);')
-    op.execute('ALTER TABLE genomic_gc_validation_metrics MODIFY `site_id` VARCHAR(10);')
+    op.execute('ALTER TABLE genomic_gc_validation_metrics MODIFY `site_id` VARCHAR(80);')
 
 
 def downgrade_rdr():
