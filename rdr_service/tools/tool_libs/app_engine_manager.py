@@ -267,6 +267,8 @@ class DeployAppClass(object):
         return 0 if result else 1
 
     def tag_people(self):
+
+        _logger.info('Updating JIRA ticket...')
         tag_unames = {}
         for position, names in self._jira_handler.required_tags.items():
             tmp_list = []
@@ -283,8 +285,7 @@ class DeployAppClass(object):
             for i in v:
                 comment += i + '\n'
 
-        _logger.info(self.add_jira_comment(comment))
-
+        self.add_jira_comment(comment)
 
     def run(self):
         """
