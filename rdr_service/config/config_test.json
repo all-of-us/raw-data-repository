@@ -1,0 +1,116 @@
+{
+  "allow_nonprod_requests": true,
+  "biobank_id_prefix": ["Y"],
+  "biobank_samples_shards": [
+    "2"
+  ],
+  "user_info": {
+    "pmi-hpo-dev@appspot.gserviceaccount.com": {
+      "roles": ["healthpro"],
+      "clientId": "hpro",
+      "comment": "for HealthPro testing"
+    },
+    "all-of-us-workbench-test@appspot.gserviceaccount.com": {
+      "roles": ["workbench"],
+      "clientId": "workbench"
+    },
+    "awardee-pitt@pmi-drc-api-test.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "PITT",
+      "comment": "for testing service account access to participant summary api"
+    },
+    "aou-redcap-sandbox-staging@appspot.gserviceaccount.com": {
+      "roles": ["redcap"],
+      "clientId": "redcap",
+      "comment": "for redcap testing"
+    },
+    "vibrent-drc-qa@vibrent-drc-qa-165017.iam.gserviceaccount.com": {
+      "clientId": "vibrent",
+      "roles": ["ptc"]
+    },
+    "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro"],
+      "clientId": "vibrent",
+      "whitelisted_ip_ranges": {
+        "ip6": ["::0/0"],
+        "ip4": ["0.0.0.0/0"]
+      }
+    },
+    "care-evolution@pmi-drc-api-test.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro"],
+      "clientId": "careevolution",
+      "whitelisted_ip_ranges": {
+        "ip6": ["::0/0"],
+        "ip4": ["0.0.0.0/0"]
+      }
+    },
+    "biobank-samples@pmi-drc-api-test.iam.gserviceaccount.com": {
+      "roles": ["healthpro"],
+      "clientId": "biobank",
+      "whitelisted_ip_ranges": {
+        "ip6": ["::0/0"],
+        "ip4": ["0.0.0.0/0"]
+      }
+    },
+    "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
+      "clientId": "configurator",
+      "roles": ["ptc", "healthpro", "rdr"]
+    },
+    "exporter@pmi-drc-api-test.iam.gserviceaccount.com": {
+      "roles": ["exporter"]
+    },
+    "aou-res-storefront-staging@appspot.gserviceaccount.com": {
+      "roles": [
+        "storefront"
+      ]
+    }
+  },
+  "biobank_samples_bucket_name": [
+    "test_biobank_samples_upload_bucket"
+  ],
+  "genomic_set_bucket_name": [
+    "test_genomic_set_upload"
+  ],
+  "genomic_center_bucket_name": [
+    "test-genomics-baylor-dryrun", "test-genomics-broad-dryrun", "test-genomics-northwest-dryrun", "test-genomics-color-dryrun"
+  ],
+  "genotyping_sample_manifest_folder_name": [
+    "genotyping_sample_manifests"
+  ],
+  "genomic_biobank_manifest_folder_name": [
+    "genomic_water_line_test"
+  ],
+  "genomic_biobank_manifest_result_folder_name": [
+    "genomic_water_line_test_results"
+  ],
+  "genomic_gc_metrics_bucket_name": [
+    "test_genomics_cell_line_validation"
+  ],
+  "genomic_cvl_reconciliation_report_subfolder": [
+    "cvl_reconciliation_reports"
+  ],
+  "genomic_cvl_manifest_subfolder": [
+    "cvl_manifests"
+  ],
+  "genomic_gem_bucket_name": [
+    "test-genomics-color-dryrun"
+  ],
+  "genomic_gem_a1_manifest_subfolder": [
+    "gem_a1_manifests"
+  ],
+  "ghost_id_bucket": [
+    "all-of-us-rdr-test-ghost-accounts"
+  ],
+  "consent_pdf_bucket": {
+    "vibrent": "ptc-uploads-pmi-drc-api-test",
+    "careevolution": "ce-uploads-pmi-drc-api-test"
+  },
+  "metrics_shards": [
+    "10"
+  ],
+  "service_accounts_with_long_lived_keys":[
+    "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
+  ],
+  "mayolink_creds": ["rdr-mayolink-creds-test.json"],
+  "mayolink_endpoint": ["https://test.orders.mayocliniclabs.com/orders/create.xml"]
+}
