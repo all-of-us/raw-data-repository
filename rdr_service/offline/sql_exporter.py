@@ -1,7 +1,7 @@
 import contextlib
 import csv
 import logging
-
+import tempfile
 from sqlalchemy import text
 
 from rdr_service.api_util import open_cloud_file
@@ -35,11 +35,20 @@ class SqlExporter(object):
     def __init__(self, bucket_name):
         self._bucket_name = bucket_name
 
-    def run_export(self, file_name, sql, query_params=None, backup=False, transformf=None, instance_name=None):
-        with self.open_writer(file_name) as writer:
+
+    def run_export(self, file_name, sql, query_params=None, backup=False, transformf=None, instance_name=None, predicate=None):
+        with tempfile.NamedTemporaryFile() as tmp_file:
+        #with self.open_writer(file_name) as writer:
             self.run_export_with_writer(
-                writer, sql, query_params, backup=backup, transformf=transformf, instance_name=instance_name
+                tmp_file, sql, query_params, backup=backup, transformf=transformf, instance_name=instance_name
             )
+            tmp_file.seek(0)
+            with self.open_writer(file_name, predicate) as cloud_file:
+                data = tmp_file.readlines(4096)
+                while data:
+                    # write to the bucket
+                    cloud_file.write_rows(data)
+                    data = tmp_file.readlines(4096)
 
     def run_export_with_writer(self, writer, sql, query_params, backup=False, transformf=None, instance_name=None):
         with database_factory.make_server_cursor_database(backup, instance_name).session() as session:
@@ -58,7 +67,7 @@ class SqlExporter(object):
                     # Note: transformf accepts an iterable and returns an iterable, the output of this call
                     # may no longer be a row proxy after this point.
                     results = [transformf(r) for r in results]
-                writer.write_rows(results)
+                writer.writelines(results)
                 results = cursor.fetchmany(_BATCH_SIZE)
         finally:
             cursor.close()
