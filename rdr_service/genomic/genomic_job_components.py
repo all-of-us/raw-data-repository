@@ -214,31 +214,32 @@ class GenomicFileIngester:
         :return: result code
         """
         gc_manifest_column_mappings = {
-            'packageId': 'package id',
-            'gcManifestBoxStorageUnitId': 'box_storageunit_id',
-            'gcManifestBoxPlateId': 'box id/plate id',
-            'gcManifestWellPosition': 'well position',
-            'gcManifestParentSampleId': 'parent sample id',
-            'gcManifestMatrixId': 'matrix id',
+            'packageId': 'packageid',
+            'gcManifestBoxStorageUnitId': 'boxstorageunitid',
+            'gcManifestBoxPlateId': 'boxid/plateid',
+            'gcManifestWellPosition': 'wellposition',
+            'gcManifestParentSampleId': 'parentsampleid',
+            'gcManifestMatrixId': 'matrixid',
             'gcManifestTreatments': 'treatments',
-            'gcManifestQuantity_ul': 'quantity (ul)',
-            'gcManifestTotalConcentration_ng_per_ul': 'total concentration (ng/ul)',
-            'gcManifestTotalDNA_ng': 'total dna(ng)',
-            'gcManifestVisitDescription': 'visit description',
-            'gcManifestSampleSource': 'sample source',
+            'gcManifestQuantity_ul': 'quantity(ul)',
+            'gcManifestTotalConcentration_ng_per_ul': 'totalconcentration(ng/ul)',
+            'gcManifestTotalDNA_ng': 'totaldna(ng)',
+            'gcManifestVisitDescription': 'visitdescription',
+            'gcManifestSampleSource': 'samplesource',
             'gcManifestStudy': 'study',
-            'gcManifestTrackingNumber': 'tracking number',
+            'gcManifestTrackingNumber': 'trackingnumber',
             'gcManifestContact': 'contact',
             'gcManifestEmail': 'email',
-            'gcManifestStudyPI': 'study_pi',
-            'gcManifestTestName': 'test name',
-            'gcManifestFailureMode': 'failure mode',
-            'gcManifestFailureDescription': 'failure mode desc',
+            'gcManifestStudyPI': 'studypi',
+            'gcManifestTestName': 'testname',
+            'gcManifestFailureMode': 'failuremode',
+            'gcManifestFailureDescription': 'failuremodedesc',
         }
         try:
             for row in data['rows']:
-                row_copy = dict(zip([key.lower() for key in row], row.values()))
-                sample_id = row_copy['biobankid sampleid'].split('_')[-1]
+                row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                                     for key in row], row.values()))
+                sample_id = row_copy['biobankidsampleid'].split('_')[-1]
                 member = self.member_dao.get_member_from_sample_id(sample_id)
                 if member is None:
                     logging.warning(f'Invalid sample ID: {sample_id}')
@@ -313,10 +314,11 @@ class GenomicFileIngester:
         # add to insert batch gc metrics record
         for row in data_to_ingest['rows']:
             # change all key names to lower
-            row_copy = dict(zip([key.lower().replace(' ', '_') for key in row],
+            row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                                 for key in row],
                                 row.values()))
             row_copy['file_id'] = self.file_obj.id
-            sample_id = row_copy['biobankid_sampleid'].split('_')[-1]
+            sample_id = row_copy['biobankidsampleid'].split('_')[-1]
             row_copy['member_id'] = self.member_dao.get_member_from_sample_id(int(sample_id)).id
             if row_copy['member_id'] is not None:
                 gc_metrics_batch.append(row_copy)
@@ -354,17 +356,17 @@ class GenomicFileValidator:
                 "site_id"
             ),
             'gen': (
-                "biobank_id",
-                "biobankid_sampleid",
-                "lims_id",
+                "biobankid",
+                "biobankidsampleid",
+                "limsid",
                 "chipwellbarcode",
-                "call_rate",
-                "sex_concordance",
+                "callrate",
+                "sexconcordance",
                 "contamination",
-                "processing_status",
-                "consent_for_ror",
-                "withdrawn_status",
-                "site_id",
+                "processingstatus",
+                "consentforror",
+                "withdrawnstatus",
+                "siteid",
                 "notes",
             ),
         }
@@ -372,41 +374,41 @@ class GenomicFileValidator:
         self.VALID_CVL_FACILITIES = ('color', 'uw', 'baylor')
 
         self.GC_MANIFEST_SCHEMA = (
-            "package_id",
-            "biobankid_sampleid",
-            "box_storageunit_id",
-            "box_id/plate_id",
-            "well_position",
-            "sample_id",
-            "parent_sample_id",
-            "matrix_id",
-            "collection_date",
-            "biobank_id",
-            "sex_at_birth",
+            "packageid",
+            "biobankidsampleid",
+            "boxstorageunitid",
+            "boxid/plateid",
+            "wellposition",
+            "sampleid",
+            "parentsampleid",
+            "matrixid",
+            "collectiondate",
+            "biobankid",
+            "sexatbirth",
             "age",
-            "ny_state_(y/n)",
-            "sample_type",
+            "nystate(y/n)",
+            "sampletype",
             "treatments",
-            "quantity_(ul)",
-            "total_concentration_(ng/ul)",
-            "total_dna(ng)",
-            "visit_description",
-            "sample_source",
+            "quantity(ul)",
+            "totalconcentration(ng/ul)",
+            "totaldna(ng)",
+            "visitdescription",
+            "samplesource",
             "study",
-            "tracking_number",
+            "trackingnumber",
             "contact",
             "email",
-            "study_pi",
-            "test_name",
-            "failure_mode",
-            "failure_mode_desc"
+            "studypi",
+            "testname",
+            "failuremode",
+            "failuremodedesc"
         )
 
         self.GEM_A2_SCHEMA = (
-            "biobank_id",
-            "sample_id",
-            "sex_at_birth",
-            "success_/_fail",
+            "biobankid",
+            "sampleid",
+            "sexatbirth",
+            "success/fail",
         )
 
     def validate_ingestion_file(self, filename, data_to_validate):
@@ -520,7 +522,7 @@ class GenomicFileValidator:
         if self.valid_schema == GenomicSubProcessResult.INVALID_FILE_NAME:
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
-        cases = tuple([field.lower().replace('\ufeff', '').replace(' ', '_')
+        cases = tuple([field.lower().replace('\ufeff', '').replace(' ', '').replace('_', '')
                        for field in fields])
         return cases == self.valid_schema
 

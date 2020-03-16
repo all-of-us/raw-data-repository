@@ -559,19 +559,17 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
         self.data_mappings = {
             'genomicSetMemberId': 'member_id',
             'genomicFileProcessedId': 'file_id',
-            'limsId': 'lims_id',
+            'limsId': 'limsid',
             'chipwellbarcode': 'chipwellbarcode',
-            'callRate': 'call_rate',
-            'meanCoverage': 'mean_coverage',
-            'genomeCoverage': 'genome_coverage',
+            'callRate': 'callrate',
+            'meanCoverage': 'meancoverage',
+            'genomeCoverage': 'genomecoverage',
             'contamination': 'contamination',
-            'sexConcordance': 'sex_concordance',
-            'alignedQ20Bases': 'aligned_q20_bases',
-            'processingStatus': 'processing_status',
+            'sexConcordance': 'sexconcordance',
+            'alignedQ20Bases': 'alignedq20bases',
+            'processingStatus': 'processingstatus',
             'notes': 'notes',
-            'consentForRor': 'consent_for_ror',
-            'withdrawnStatus': 'withdrawn_status',
-            'siteId': 'site_id',
+            'siteId': 'siteid',
         }
 
     def get_id(self, obj):
