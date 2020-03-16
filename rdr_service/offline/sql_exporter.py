@@ -37,18 +37,33 @@ class SqlExporter(object):
 
 
     def run_export(self, file_name, sql, query_params=None, backup=False, transformf=None, instance_name=None, predicate=None):
-        with tempfile.NamedTemporaryFile() as tmp_file:
-        #with self.open_writer(file_name) as writer:
+        with tempfile.NamedTemporaryFile(mode='w+') as tmp_file:
+            writer = SqlExportFileWriter(tmp_file, predicate=predicate)
+            # write data to temp file
             self.run_export_with_writer(
-                tmp_file, sql, query_params, backup=backup, transformf=transformf, instance_name=instance_name
+                writer, sql, query_params, backup=backup, transformf=transformf, instance_name=instance_name
             )
             tmp_file.seek(0)
-            with self.open_writer(file_name, predicate) as cloud_file:
-                data = tmp_file.readlines(4096)
+            gcs_path = "/%s/%s" % (self._bucket_name, file_name)
+            # Logging does not expand in GCloud, so I'm trying this out.
+            message = f"Exporting data to {gcs_path}"
+            logging.info(message)
+            with open_cloud_file(gcs_path, mode='w') as cloud_file:
+                data = tmp_file.read(4096)
                 while data:
-                    # write to the bucket
-                    cloud_file.write_rows(data)
+                    cloud_file.write(data)
                     data = tmp_file.readlines(4096)
+            #     tmp_file.write(cloud_file)
+            #     tmp_file.seek(0)
+            #     while data:
+            #         # write to the bucket
+            #         cloud_file.write_rows(data)
+            #         data = tmp_file.read(4096)
+            #
+            #     tmp_file.seek(0)
+            #     self.run_export_with_writer(
+            #         cloud_file, sql, query_params, backup=backup, transformf=transformf, instance_name=instance_name
+            #     )
 
     def run_export_with_writer(self, writer, sql, query_params, backup=False, transformf=None, instance_name=None):
         with database_factory.make_server_cursor_database(backup, instance_name).session() as session:
@@ -60,26 +75,28 @@ class SqlExporter(object):
         # need to break the SQL up into pages, or (more likely) switch to cloud SQL export.
         cursor = session.execute(text(sql), params=query_params)
         try:
-            writer.write_header(list(cursor.keys()))
+            fields = list(cursor.keys())
+            writer.write_header(fields)
             results = cursor.fetchmany(_BATCH_SIZE)
             while results:
                 if transformf:
                     # Note: transformf accepts an iterable and returns an iterable, the output of this call
                     # may no longer be a row proxy after this point.
                     results = [transformf(r) for r in results]
-                writer.writelines(results)
+
+                writer.write_rows(results)
                 results = cursor.fetchmany(_BATCH_SIZE)
         finally:
             cursor.close()
 
-    @contextlib.contextmanager
-    def open_writer(self, file_name, predicate=None):
-        gcs_path = "/%s/%s" % (self._bucket_name, file_name)
-        # Logging does not expand in GCloud, so I'm trying this out.
-        message = f"Exporting data to {gcs_path}"
-        logging.info(message)
-        with open_cloud_file(gcs_path, mode='w') as dest:
-            writer = SqlExportFileWriter(dest, predicate)
-            yield writer
-            message = f"Export to {gcs_path} complete."
-            logging.info(message)
+    # @contextlib.contextmanager
+    # def open_cloud_writer(self, file_name, predicate=None):
+    #     gcs_path = "/%s/%s" % (self._bucket_name, file_name)
+    #     # Logging does not expand in GCloud, so I'm trying this out.
+    #     message = f"Exporting data to {gcs_path}"
+    #     logging.info(message)
+    #     with open_cloud_file(gcs_path, mode='w') as dest:
+    #         writer = SqlExportFileWriter(dest, predicate)
+    #         yield writer
+    #         message = f"Export to {gcs_path} complete."
+    #         logging.info(message)

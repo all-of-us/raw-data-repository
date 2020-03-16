@@ -393,16 +393,10 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
                     "dv_order_filter": dv_filter
                 }
 
-        with exporter.run_export(report_path, replace_isodate(_RECONCILIATION_REPORT_SQL),
-                                 query_params, predicate=report_predicate) as report_writer:
-            logging.info(f"Writing {report_path} report.")
-            exporter.run_export_with_writer(
-                report_writer,
-                replace_isodate(_RECONCILIATION_REPORT_SQL),
-                query_params,
-                backup=True,
-            )
-            logging.info(f"Completed {report_path} report.")
+        logging.info(f"Writing {report_path} report.")
+        exporter.run_export(report_path, replace_isodate(_RECONCILIATION_REPORT_SQL),
+                            query_params, backup=True, predicate=report_predicate)
+        logging.info(f"Completed {report_path} report.")
 
     # Now generate the withdrawal report, within the past n days.
     exporter.run_export(
