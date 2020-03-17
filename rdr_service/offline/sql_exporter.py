@@ -36,7 +36,8 @@ class SqlExporter(object):
         self._bucket_name = bucket_name
 
 
-    def run_export(self, file_name, sql, query_params=None, backup=False, transformf=None, instance_name=None, predicate=None):
+    def run_export(self, file_name, sql, query_params=None, backup=False, transformf=None, instance_name=None,
+                   predicate=None):
         with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
             tmp_file_name = tmp_file.name
             sql_writer = SqlExportFileWriter(tmp_file, predicate=predicate)
