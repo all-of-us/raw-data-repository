@@ -777,7 +777,7 @@ WHERE TRUE
          bo.created < DATE_SUB(now(), INTERVAL :n_days_interval DAY)
      )
      AND bss.biobank_stored_sample_id IS NULL
-     AND dvo.is_test_sample IS NOT TRUE 
+     AND dvo.is_test_sample IS NOT TRUE
     """
 )
 
