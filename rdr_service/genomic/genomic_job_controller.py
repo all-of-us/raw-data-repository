@@ -17,7 +17,6 @@ from rdr_service.participant_enums import (
     GenomicSubProcessStatus)
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
-    GenomicFileMover,
     GenomicReconciler,
     GenomicBiobankSamplesCoupler,
     ManifestCompiler,
@@ -93,19 +92,13 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def run_reconciliation_to_sequencing(self):
+    def run_reconciliation_to_genotyping_data(self):
         """
-        Reconciles the metrics to sequencing file using reconciler component
+        Reconciles the metrics to genotyping files using reconciler component
         """
-        self.file_mover = GenomicFileMover(
-            archive_folder=self.archive_folder_name
-        )
-        self.reconciler = GenomicReconciler(
-            self.job_run.id, self.archive_folder_name, self.file_mover
-        )
+        self.reconciler = GenomicReconciler(self.job_run.id)
         try:
-            self.job_result = self.reconciler.reconcile_metrics_to_sequencing(self.bucket_name)
-
+            self.job_result = self.reconciler.reconcile_metrics_to_genotyping_data()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 

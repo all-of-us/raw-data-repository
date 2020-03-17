@@ -1,2 +1,2 @@
-Biobank ID,BiobankidSampleid,LIMS ID,Call Rate,Sex Concordance,Contamination,Processing Status,Notes,site_id
-T1,1,10001,1,True,4,Pass,This sample passed,11001
+Biobank ID,Biobankid Sampleid,LIMS ID,Chipwellbarcode,Call Rate,Sex Concordance,Contamination,Processing Status,Consent for RoR,Withdrawn_status,site_id,Notes
+T1,T1_1,10001,10001_R01C01,0.996,True,0.00654,Pass,,,JH,This sample passed

@@ -214,31 +214,32 @@ class GenomicFileIngester:
         :return: result code
         """
         gc_manifest_column_mappings = {
-            'packageId': 'package id',
-            'gcManifestBoxStorageUnitId': 'box_storageunit_id',
-            'gcManifestBoxPlateId': 'box id/plate id',
-            'gcManifestWellPosition': 'well position',
-            'gcManifestParentSampleId': 'parent sample id',
-            'gcManifestMatrixId': 'matrix id',
+            'packageId': 'packageid',
+            'gcManifestBoxStorageUnitId': 'boxstorageunitid',
+            'gcManifestBoxPlateId': 'boxid/plateid',
+            'gcManifestWellPosition': 'wellposition',
+            'gcManifestParentSampleId': 'parentsampleid',
+            'gcManifestMatrixId': 'matrixid',
             'gcManifestTreatments': 'treatments',
-            'gcManifestQuantity_ul': 'quantity (ul)',
-            'gcManifestTotalConcentration_ng_per_ul': 'total concentration (ng/ul)',
-            'gcManifestTotalDNA_ng': 'total dna(ng)',
-            'gcManifestVisitDescription': 'visit description',
-            'gcManifestSampleSource': 'sample source',
+            'gcManifestQuantity_ul': 'quantity(ul)',
+            'gcManifestTotalConcentration_ng_per_ul': 'totalconcentration(ng/ul)',
+            'gcManifestTotalDNA_ng': 'totaldna(ng)',
+            'gcManifestVisitDescription': 'visitdescription',
+            'gcManifestSampleSource': 'samplesource',
             'gcManifestStudy': 'study',
-            'gcManifestTrackingNumber': 'tracking number',
+            'gcManifestTrackingNumber': 'trackingnumber',
             'gcManifestContact': 'contact',
             'gcManifestEmail': 'email',
-            'gcManifestStudyPI': 'study_pi',
-            'gcManifestTestName': 'test name',
-            'gcManifestFailureMode': 'failure mode',
-            'gcManifestFailureDescription': 'failure mode desc',
+            'gcManifestStudyPI': 'studypi',
+            'gcManifestTestName': 'testname',
+            'gcManifestFailureMode': 'failuremode',
+            'gcManifestFailureDescription': 'failuremodedesc',
         }
         try:
             for row in data['rows']:
-                row_copy = dict(zip([key.lower() for key in row], row.values()))
-                sample_id = row_copy['biobankid sampleid'].split('_')[-1]
+                row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                                     for key in row], row.values()))
+                sample_id = row_copy['biobankidsampleid'].split('_')[-1]
                 member = self.member_dao.get_member_from_sample_id(sample_id)
                 if member is None:
                     logging.warning(f'Invalid sample ID: {sample_id}')
@@ -313,12 +314,16 @@ class GenomicFileIngester:
         # add to insert batch gc metrics record
         for row in data_to_ingest['rows']:
             # change all key names to lower
-            row_copy = dict(zip([key.lower() for key in row], row.values()))
+            row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                                 for key in row],
+                                row.values()))
             row_copy['file_id'] = self.file_obj.id
-            row_copy['biobank id'] = row_copy['biobank id'].replace('T', '')
-
-            obj_to_insert = row_copy
-            gc_metrics_batch.append(obj_to_insert)
+            sample_id = row_copy['biobankidsampleid'].split('_')[-1]
+            row_copy['member_id'] = self.member_dao.get_member_from_sample_id(int(sample_id)).id
+            if row_copy['member_id'] is not None:
+                gc_metrics_batch.append(row_copy)
+            else:
+                logging.warning(f'Sample ID {sample_id} has no corresponding Genomic Set Member.')
 
         return self.metrics_dao.insert_gc_validation_metrics_batch(gc_metrics_batch)
 
@@ -351,56 +356,59 @@ class GenomicFileValidator:
                 "site_id"
             ),
             'gen': (
-                "biobank id",
+                "biobankid",
                 "biobankidsampleid",
-                "lims id",
-                "call rate",
-                "sex concordance",
+                "limsid",
+                "chipwellbarcode",
+                "callrate",
+                "sexconcordance",
                 "contamination",
-                "processing status",
+                "processingstatus",
+                "consentforror",
+                "withdrawnstatus",
+                "siteid",
                 "notes",
-                "site_id"
             ),
         }
-        self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bi', 'rdr')
+        self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bi', 'jh', 'rdr')
         self.VALID_CVL_FACILITIES = ('color', 'uw', 'baylor')
 
         self.GC_MANIFEST_SCHEMA = (
-            "package id",
-            "biobankid sampleid",
-            "box_storageunit_id",
-            "box id/plate id",
-            "well position",
-            "sample id",
-            "parent sample id",
-            "matrix id",
-            "collection date",
-            "biobank id",
-            "sex at birth",
+            "packageid",
+            "biobankidsampleid",
+            "boxstorageunitid",
+            "boxid/plateid",
+            "wellposition",
+            "sampleid",
+            "parentsampleid",
+            "matrixid",
+            "collectiondate",
+            "biobankid",
+            "sexatbirth",
             "age",
-            "ny state (y/n)",
-            "sample type",
+            "nystate(y/n)",
+            "sampletype",
             "treatments",
-            "quantity (ul)",
-            "total concentration (ng/ul)",
-            "total dna(ng)",
-            "visit description",
-            "sample source",
+            "quantity(ul)",
+            "totalconcentration(ng/ul)",
+            "totaldna(ng)",
+            "visitdescription",
+            "samplesource",
             "study",
-            "tracking number",
+            "trackingnumber",
             "contact",
             "email",
-            "study_pi",
-            "test name",
-            "failure mode",
-            "failure mode desc"
+            "studypi",
+            "testname",
+            "failuremode",
+            "failuremodedesc"
         )
 
         self.GEM_A2_SCHEMA = (
-            "biobank_id",
-            "sample_id",
-            "sex_at_birth",
-            "success / fail",
+            "biobankid",
+            "sampleid",
+            "sexatbirth",
+            "success/fail",
         )
 
     def validate_ingestion_file(self, filename, data_to_validate):
@@ -514,7 +522,8 @@ class GenomicFileValidator:
         if self.valid_schema == GenomicSubProcessResult.INVALID_FILE_NAME:
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
-        cases = tuple([field.lower().replace('\ufeff', '') for field in fields])
+        cases = tuple([field.lower().replace('\ufeff', '').replace(' ', '').replace('_', '')
+                       for field in fields])
         return cases == self.valid_schema
 
     def _set_schema(self, filename):
@@ -578,6 +587,7 @@ class GenomicReconciler:
         # Dao components
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
+        self.file_dao = GenomicFileProcessedDao()
 
         # Other components
         self.file_mover = file_mover
@@ -585,14 +595,10 @@ class GenomicReconciler:
     def reconcile_metrics_to_manifest(self):
         """ The main method for the metrics vs. manifest reconciliation """
         try:
-            unreconciled_metrics = self.metrics_dao.get_null_set_members()
+
+            unreconciled_members = self.member_dao.get_null_field_members('reconcileMetricsBBManifestJobRunId')
             results = []
-            for metric in unreconciled_metrics:
-                member = self.member_dao.get_member_from_sample_id(metric.sampleId)
-                results.append(
-                    self.metrics_dao.update_metric_set_member_id(
-                        metric, member.id)
-                )
+            for member in unreconciled_members:
                 results.append(
                     self.member_dao.update_member_job_run_id(
                         member, self.run_id, 'reconcileMetricsBBManifestJobRunId')
@@ -603,40 +609,27 @@ class GenomicReconciler:
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
-    def reconcile_metrics_to_sequencing(self, bucket_name):
+    def reconcile_metrics_to_genotyping_data(self):
         """ The main method for the metrics vs. sequencing reconciliation
-        :param bucket_name: the bucket to look for sequencin files
         :return: result code
         """
-        file_list = self._get_sequence_files(bucket_name)
+        metrics = self.metrics_dao.get_with_missing_gen_files()
+        # Iterate over metrics, searching the bucket for filenames
+        for metric in metrics:
+            file = self.file_dao.get(metric.genomicFileProcessedId)
 
-        if file_list == GenomicSubProcessResult.NO_FILES:
-            logging.info('No sequencing files to reconcile.')
-            return file_list
-        else:
-            # iterate over seq file list and update metrics
-            results = []
-            for seq_file_name in file_list:
-                logging.info(f'Reconciling Sequencing File: {seq_file_name}')
-                seq_sample_id = self._parse_seq_filename(
-                    seq_file_name)
-                if seq_sample_id == GenomicSubProcessResult.INVALID_FILE_NAME:
-                    logging.info(f'Filename unable to be parsed: f{seq_file_name}')
-                    return seq_sample_id
-                else:
-                    member = self.member_dao.get_member_from_sample_id(seq_sample_id)
-                    if member:
-                        # Updates the relevant fields for reconciliation
-                        results.append(
-                            self._update_genomic_set_member_seq_reconciliation(member,
-                                                                               seq_file_name,
-                                                                               self.run_id))
-                        # Archive the file
-                        seq_file_path = "/" + bucket_name + "/" + seq_file_name
-                        self.file_mover.archive_file(file_path=seq_file_path)
-            return GenomicSubProcessResult.SUCCESS \
-                if GenomicSubProcessResult.ERROR not in results \
-                else GenomicSubProcessResult.ERROR
+            file_types = (('idatRedReceived', "_red.idat"),
+                          ('idatGreenReceived', "_green.idat"),
+                          ('vcfReceived', ".vcf"),
+                          ('tbiReceived', ".vcf.gz.tbi"))
+            for file_type in file_types:
+                if not getattr(metric, file_type[0]):
+                    filename = f"{metric.chipwellbarcode}{file_type[1]}"
+                    setattr(metric, file_type[0],
+                            self._check_genotyping_file_exists(file.bucketName, filename))
+            self.metrics_dao.update(metric)
+
+        return GenomicSubProcessResult.SUCCESS
 
     def generate_cvl_reconciliation_report(self):
         """
@@ -663,6 +656,12 @@ class GenomicReconciler:
                 else GenomicSubProcessResult.ERROR
 
         return GenomicSubProcessResult.NO_FILES
+
+    def _check_genotyping_file_exists(self, bucket_name, filename):
+        files = list_blobs('/' + bucket_name)
+        filenames = [f.name for f in files if filename in f.name]
+        return 1 if len(filenames) > 0 else 0
+
 
     def _get_sequence_files(self, bucket_name):
         """
@@ -699,15 +698,6 @@ class GenomicReconciler:
             return filename.lower().split('_')[-1].split('.')[0][1:]
         except IndexError:
             return GenomicSubProcessResult.INVALID_FILE_NAME
-
-    def _get_sequence_metrics_by_biobank_id(self, biobank_id):
-        """
-        Calls the metrics DAO
-        :param biobank_id:
-        :return: list of GenomicGCValidationMetrics
-        objects with null sequencing_file_name
-        """
-        return self.metrics_dao.get_metrics_by_biobank_id(biobank_id)
 
     def _update_genomic_set_member_seq_reconciliation(self, member, seq_file_name, job_run_id):
         """
@@ -1030,10 +1020,12 @@ class ManifestDefinitionProvider:
                     JOIN participant_summary ps
                         ON ps.participant_id = m.participant_id
                 WHERE gcv.processing_status = "pass"
-                    AND m.sequencing_file_name IS NOT NULL
                     AND m.reconcile_gc_manifest_job_run_id IS NOT NULL
                     AND m.reconcile_metrics_bb_manifest_job_run_id IS NOT NULL
-                    AND m.reconcile_metrics_sequencing_job_run_id IS NOT NULL
+                    AND gcv.idat_green_received = 1
+                    AND gcv.idat_red_received = 1
+                    AND gcv.tbi_received = 1
+                    AND gcv.vcf_received = 1
                     AND m.genome_type = "aou_array"
                     AND ps.suspension_status = 1
                     # TODO: AND m.consent_for_ror = 1

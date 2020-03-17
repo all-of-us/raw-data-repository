@@ -1,4 +1,7 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, UniqueConstraint, event
+from sqlalchemy import (
+    Column, DateTime, ForeignKey, Integer,
+    String, SmallInteger, UniqueConstraint, event
+)
 from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
@@ -129,6 +132,9 @@ class GenomicSetMember(Base):
     reconcileMetricsSequencingJobRunId = Column('reconcile_metrics_sequencing_job_run_id',
                                                 Integer, ForeignKey("genomic_job_run.id"),
                                                 nullable=True)
+    reconcileMetricsGenotypingJobRunId = Column('reconcile_metrics_genotyping_job_run_id',
+                                                Integer, ForeignKey("genomic_job_run.id"),
+                                                nullable=True)
     reconcileCvlJobRunId = Column('reconcile_cvl_job_run_id',
                                   Integer, ForeignKey("genomic_job_run.id"),
                                   nullable=True)
@@ -219,19 +225,24 @@ class GenomicGCValidationMetrics(Base):
     created = Column('created', DateTime, nullable=True)
     modified = Column('modified', DateTime, nullable=True)
 
-    biobankId = Column('biobank_id', String(80), nullable=False)
     # Ingested Data
-    sampleId = Column('sample_id', String(80), nullable=True)
     limsId = Column('lims_id', String(80), nullable=True)
-    callRate = Column('call_rate', Integer, nullable=True)
-    meanCoverage = Column('mean_coverage', Integer, nullable=True)
-    genomeCoverage = Column('genome_coverage', Integer, nullable=True)
-    contamination = Column('contamination', Integer, nullable=True)
+    chipwellbarcode = Column('chipwellbarcode', String(80), nullable=True)
+    callRate = Column('call_rate', String(10), nullable=True)
+    meanCoverage = Column('mean_coverage', String(10), nullable=True)
+    genomeCoverage = Column('genome_coverage', String(10), nullable=True)
+    contamination = Column('contamination', String(10), nullable=True)
     sexConcordance = Column('sex_concordance', String(10), nullable=True)
     alignedQ20Bases = Column('aligned_q20_bases', Integer, nullable=True)
     processingStatus = Column('processing_status', String(15), nullable=True)
     notes = Column('notes', String(128), nullable=True)
-    siteId = Column('site_id', Integer, nullable=True)
+    siteId = Column('site_id', String(80), nullable=True)
+
+    # Genotyping Data (Array) reconciliation
+    idatRedReceived = Column('idat_red_received', SmallInteger, nullable=False, default=0)
+    idatGreenReceived = Column('idat_green_received', SmallInteger, nullable=False, default=0)
+    vcfReceived = Column('vcf_received', SmallInteger, nullable=False, default=0)
+    tbiReceived = Column('tbi_received', SmallInteger, nullable=False, default=0)
 
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
