@@ -206,7 +206,8 @@ class MySqlReconciliationTest(BaseTestCase):
         qr = self.make_questionnaire_response_json(participant_id, self._questionnaire_id, code_answers=code_answers)
         self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
 
-    def _create_dv_order(self, participant_obj, missing=False, received=False):
+    def _create_dv_order(self, participant_obj, missing=False,
+                         received=False, is_test=None):
         dt = 11 if missing else 2
         mayo_create_time = clock.CLOCK.now().replace(microsecond=0) - datetime.timedelta(days=dt)
 
@@ -223,6 +224,7 @@ class MySqlReconciliationTest(BaseTestCase):
             participantId=participant_obj.participantId,
             version=1,
             biobankOrderId=order.biobankOrderId,
+            isTestSample=is_test,
         )
 
         # Samples for the 'received' dv order test
@@ -590,6 +592,8 @@ class MySqlReconciliationTest(BaseTestCase):
         # Participants to test the salivary missing report
         p_missing_salivary = self._insert_participant(race_codes=[RACE_WHITE_CODE])
         self._create_dv_order(p_missing_salivary, missing=True)
+        p_missing_salivary_test = self._insert_participant(race_codes=[RACE_WHITE_CODE])
+        self._create_dv_order(p_missing_salivary_test, missing=True, is_test=True)
 
         p_missing_inside_timeframe = self._insert_participant(race_codes=[RACE_WHITE_CODE])
         self._create_dv_order(p_missing_inside_timeframe, missing=False)
