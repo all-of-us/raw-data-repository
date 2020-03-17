@@ -37,33 +37,20 @@ class SqlExporter(object):
 
 
     def run_export(self, file_name, sql, query_params=None, backup=False, transformf=None, instance_name=None, predicate=None):
-        with tempfile.NamedTemporaryFile(mode='w+') as tmp_file:
-            writer = SqlExportFileWriter(tmp_file, predicate=predicate)
+        with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
+            tmp_file_name = tmp_file.name
+            sql_writer = SqlExportFileWriter(tmp_file, predicate=predicate)
             # write data to temp file
             self.run_export_with_writer(
-                writer, sql, query_params, backup=backup, transformf=transformf, instance_name=instance_name
+                sql_writer, sql, query_params, backup=backup, transformf=transformf, instance_name=instance_name
             )
-            tmp_file.seek(0)
-            gcs_path = "/%s/%s" % (self._bucket_name, file_name)
-            # Logging does not expand in GCloud, so I'm trying this out.
-            message = f"Exporting data to {gcs_path}"
-            logging.info(message)
-            with open_cloud_file(gcs_path, mode='w') as cloud_file:
-                data = tmp_file.read(4096)
-                while data:
-                    cloud_file.write(data)
-                    data = tmp_file.readlines(4096)
-            #     tmp_file.write(cloud_file)
-            #     tmp_file.seek(0)
-            #     while data:
-            #         # write to the bucket
-            #         cloud_file.write_rows(data)
-            #         data = tmp_file.read(4096)
-            #
-            #     tmp_file.seek(0)
-            #     self.run_export_with_writer(
-            #         cloud_file, sql, query_params, backup=backup, transformf=transformf, instance_name=instance_name
-            #     )
+        with open(tmp_file_name) as tmp_file:
+            csv_reader = csv.reader(tmp_file)
+            with self.open_cloud_writer(file_name, predicate) as cloud_writer:
+                headers = next(csv_reader)
+                cloud_writer.write_header(headers)
+                for row in csv_reader:
+                    cloud_writer.write_rows([row])
 
     def run_export_with_writer(self, writer, sql, query_params, backup=False, transformf=None, instance_name=None):
         with database_factory.make_server_cursor_database(backup, instance_name).session() as session:
@@ -89,14 +76,14 @@ class SqlExporter(object):
         finally:
             cursor.close()
 
-    # @contextlib.contextmanager
-    # def open_cloud_writer(self, file_name, predicate=None):
-    #     gcs_path = "/%s/%s" % (self._bucket_name, file_name)
-    #     # Logging does not expand in GCloud, so I'm trying this out.
-    #     message = f"Exporting data to {gcs_path}"
-    #     logging.info(message)
-    #     with open_cloud_file(gcs_path, mode='w') as dest:
-    #         writer = SqlExportFileWriter(dest, predicate)
-    #         yield writer
-    #         message = f"Export to {gcs_path} complete."
-    #         logging.info(message)
+    @contextlib.contextmanager
+    def open_cloud_writer(self, file_name, predicate=None):
+        gcs_path = "/%s/%s" % (self._bucket_name, file_name)
+        # Logging does not expand in GCloud, so I'm trying this out.
+        message = f"Exporting data to {gcs_path}"
+        logging.info(message)
+        with open_cloud_file(gcs_path, mode='w') as dest:
+            writer = SqlExportFileWriter(dest, predicate)
+            yield writer
+            message = f"Export to {gcs_path} complete."
+            logging.info(message)
