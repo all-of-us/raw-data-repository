@@ -1,12 +1,13 @@
 import logging
 import json
+import datetime
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import fhirdate
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.backboneelement import BackboneElement
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainResource
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirdate import FHIRDate
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.identifier import Identifier
-from sqlalchemy import or_
-from sqlalchemy.orm import subqueryload
+from sqlalchemy import or_, cast, Date, and_
+from sqlalchemy.orm import subqueryload, joinedload
 from werkzeug.exceptions import BadRequest, Conflict, PreconditionFailed, ServiceUnavailable
 from rdr_service.api.mayolink_api import MayoLinkApi
 from rdr_service import clock
@@ -141,6 +142,93 @@ class BiobankOrderDao(UpdatableDao):
             )
         self._update_history(session, obj)
         return inserted_obj
+
+    def handle_list_queries(self, participant_id, kit_id, start_date, end_date, origin, page, page_size):
+        if participant_id:
+            # return all biobank order by participant id
+            items = self.get_biobank_orders_with_children_for_participant(participant_id)
+            result = {'data': [], 'total': len(items)}
+            for item in items:
+                response_json = self.to_client_json(item)
+                result['data'].append(response_json)
+            return result
+        elif kit_id:
+            # return all biobank order by kit id
+            items = self.get_biobank_order_by_kit_id(kit_id)
+            result = {'data': [], 'total': len(items)}
+            for item in items:
+                response_json = self.to_client_json(item)
+                result['data'].append(response_json)
+            return result
+        elif start_date and end_date and origin and page and page_size:
+            total, items = self.get_biobank_order_by_time_range(start_date, end_date, int(page), int(page_size), origin)
+            result = {
+                "total": total,
+                "page": int(page),
+                "pageSize": int(page_size),
+                "startDate": start_date,
+                "endDate": end_date,
+                "origin": origin,
+                "data": []
+            }
+            for item in items:
+                response_json = self.to_client_json(item)
+                result['data'].append(response_json)
+            return result
+        else:
+            raise BadRequest("invalid parameters")
+
+    def get_biobank_order_by_time_range(self, start_date, end_date, page, page_size, origin):
+        date_format = "%Y-%m-%d"
+        offset = (page - 1) * page_size
+        if offset < 0:
+            raise BadRequest("invalid parameter: page")
+        try:
+            start_date = datetime.datetime.strptime(start_date, date_format).date()
+        except ValueError:
+            raise BadRequest("Invalid start date: {}".format(start_date))
+        try:
+            end_date = datetime.datetime.strptime(end_date, date_format).date()
+        except ValueError:
+            raise BadRequest("Invalid end date: {}".format(end_date))
+
+        with self.session() as session:
+            total = (
+                session.query(BiobankOrder).filter(
+                    or_(
+                        and_(
+                            cast(BiobankOrder.created, Date) >= start_date,
+                            cast(BiobankOrder.created, Date) <= end_date
+                        ),
+                        and_(
+                            cast(BiobankOrder.finalizedTime, Date) >= start_date,
+                            cast(BiobankOrder.finalizedTime, Date) <= end_date
+                        )
+                    ),
+                ).filter(BiobankOrder.orderOrigin == origin).count()
+            )
+            query = (
+                session.query(BiobankOrder)
+                .options(joinedload(BiobankOrder.identifiers), joinedload(BiobankOrder.samples))
+                .filter(BiobankOrder.orderOrigin == origin)
+                .filter(
+                    or_(
+                        and_(
+                            cast(BiobankOrder.created, Date) >= start_date,
+                            cast(BiobankOrder.created, Date) <= end_date
+                        ),
+                        and_(
+                            cast(BiobankOrder.finalizedTime, Date) >= start_date,
+                            cast(BiobankOrder.finalizedTime, Date) <= end_date
+                        )
+                    ),
+                )
+                .order_by(BiobankOrder.created)
+                .limit(page_size)
+                .offset(offset)
+            )
+            items = query.all()
+        return total, items
 
     def _validate_model(self, session, obj):
         if obj.participantId is None:
