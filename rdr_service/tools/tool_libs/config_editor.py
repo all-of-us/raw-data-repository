@@ -48,15 +48,19 @@ class ProgramTemplateClass(object):
         if not vim:
             raise FileNotFoundError('VIM executable not found.')
 
-        with tempfile.NamedTemporaryFile(prefix=f'{self.args.key}.{config_root}.', suffix='.json') as h:
+        with tempfile.NamedTemporaryFile(prefix=f'{self.args.key}.{config_root}.', suffix='.json', delete=False) as h:
+            filename = h.name
             h.write(config.encode('utf-8'))
             h.flush()
-            # Launch vim for editing config.
-            args = [vim, h.name]
-            call(args)
+        # Launch vim for editing config.
+        args = [vim, filename]
+        call(args)
+        # Now read vim-edited file and return
+        with open(filename, mode='r+b') as h:
             # Read edited file
-            h.seek(0)
-            return h.read().decode('utf-8')
+            config = h.read().decode('utf-8')
+        os.remove(filename)
+        return config
 
     def confirm(self, message):
         """
@@ -114,7 +118,6 @@ class ProgramTemplateClass(object):
 
         while not config_is_valid:
             edited_config = self.edit_config(config_root, edited_config)
-
             # Test changes
             if edited_config == config:
                 _logger.warning('Warning: configuration unchanged.')
