@@ -381,12 +381,8 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
 
     for report_path, report_predicate in zip(report_paths, report_predicates):
         dv_filter = 1 if report_path == path_missing else 0
-        with exporter.open_writer(report_path, report_predicate) as report_writer:
-            logging.info(f"Writing {report_path} report.")
-            exporter.run_export_with_writer(
-                report_writer,
-                replace_isodate(_RECONCILIATION_REPORT_SQL),
-                {
+        #with exporter.open_writer(report_path, report_predicate) as report_writer:
+        query_params = {
                     "race_question_code_id": race_question_code.codeId,
                     "native_american_race_code_id": native_american_race_code.codeId,
                     "biobank_id_prefix": get_biobank_id_prefix(),
@@ -395,10 +391,12 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
                     "tracking_number_system": _TRACKING_NUMBER_SYSTEM,
                     "n_days_ago": now - datetime.timedelta(days=(report_cover_range + 1)),
                     "dv_order_filter": dv_filter
-                },
-                backup=True,
-            )
-            logging.info(f"Completed {report_path} report.")
+                }
+
+        logging.info(f"Writing {report_path} report.")
+        exporter.run_export(report_path, replace_isodate(_RECONCILIATION_REPORT_SQL),
+                            query_params, backup=True, predicate=report_predicate)
+        logging.info(f"Completed {report_path} report.")
 
     # Now generate the withdrawal report, within the past n days.
     exporter.run_export(

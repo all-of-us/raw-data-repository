@@ -725,7 +725,7 @@ class GenomicReconciler:
 
             # Use SQL exporter
             exporter = SqlExporter(self.bucket_name)
-            with exporter.open_writer(self.cvl_file_name) as writer:
+            with exporter.open_cloud_writer(self.cvl_file_name) as writer:
                 writer.write_header(cvl_columns)
                 writer.write_rows(report_data)
             return GenomicSubProcessResult.SUCCESS
@@ -854,7 +854,7 @@ class GenomicBiobankSamplesCoupler:
             WHEN c.value = "SexAtBirth_Male" THEN "M"
             WHEN c.value = "SexAtBirth_Female" THEN "F"
             ELSE "NA"
-          END as sab, 
+          END as sab,
           CASE
             WHEN TRUE THEN 0 ELSE 0
           END AS gror_consent,
@@ -870,14 +870,14 @@ class GenomicBiobankSamplesCoupler:
             JOIN code c ON c.code_id = ps.sex_id
             LEFT JOIN (
               SELECT ra.participant_id
-              FROM participant_race_answers ra 			
+              FROM participant_race_answers ra
                   JOIN code cr ON cr.code_id = ra.code_id
                       AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
-            ) native ON native.participant_id = p.participant_id            
+            ) native ON native.participant_id = p.participant_id
         WHERE TRUE
             AND (
                     ps.sample_status_1ed04 = :sample_status_param
-                    OR                    
+                    OR
                     ps.sample_status_1sal2 = :sample_status_param
                 )
             AND ss.test IN ("1ED04", "1SAL2")
@@ -1004,7 +1004,7 @@ class ManifestDefinitionProvider:
                 WHERE gcv.processing_status = "pass"
                     AND m.reconcile_cvl_job_run_id IS NOT NULL
                     AND m.cvl_manifest_wgs_job_run_id IS NULL
-                    AND m.genome_type = "aou_wgs"                    
+                    AND m.genome_type = "aou_wgs"
             """
 
         # Color GEM A1 Manifest
@@ -1128,7 +1128,7 @@ class ManifestCompiler:
         try:
             # Use SQL exporter
             exporter = SqlExporter(self.bucket_name)
-            with exporter.open_writer(self.manifest_def.output_filename) as writer:
+            with exporter.open_cloud_writer(self.manifest_def.output_filename) as writer:
                 writer.write_header(self.manifest_def.columns)
                 writer.write_rows(source_data)
             return GenomicSubProcessResult.SUCCESS

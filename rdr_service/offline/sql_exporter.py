@@ -1,7 +1,7 @@
 import contextlib
 import csv
 import logging
-
+import tempfile
 from sqlalchemy import text
 
 from rdr_service.api_util import open_cloud_file
@@ -35,11 +35,23 @@ class SqlExporter(object):
     def __init__(self, bucket_name):
         self._bucket_name = bucket_name
 
-    def run_export(self, file_name, sql, query_params=None, backup=False, transformf=None, instance_name=None):
-        with self.open_writer(file_name) as writer:
+
+    def run_export(self, file_name, sql, query_params=None, backup=False, transformf=None, instance_name=None,
+                   predicate=None):
+        with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
+            tmp_file_name = tmp_file.name
+            sql_writer = SqlExportFileWriter(tmp_file, predicate=predicate)
+            # write data to temp file
             self.run_export_with_writer(
-                writer, sql, query_params, backup=backup, transformf=transformf, instance_name=instance_name
+                sql_writer, sql, query_params, backup=backup, transformf=transformf, instance_name=instance_name
             )
+        with open(tmp_file_name) as tmp_file:
+            csv_reader = csv.reader(tmp_file)
+            with self.open_cloud_writer(file_name, predicate) as cloud_writer:
+                headers = next(csv_reader)
+                cloud_writer.write_header(headers)
+                for row in csv_reader:
+                    cloud_writer.write_rows([row])
 
     def run_export_with_writer(self, writer, sql, query_params, backup=False, transformf=None, instance_name=None):
         with database_factory.make_server_cursor_database(backup, instance_name).session() as session:
@@ -51,23 +63,28 @@ class SqlExporter(object):
         # need to break the SQL up into pages, or (more likely) switch to cloud SQL export.
         cursor = session.execute(text(sql), params=query_params)
         try:
-            writer.write_header(list(cursor.keys()))
+            fields = list(cursor.keys())
+            writer.write_header(fields)
             results = cursor.fetchmany(_BATCH_SIZE)
             while results:
                 if transformf:
                     # Note: transformf accepts an iterable and returns an iterable, the output of this call
                     # may no longer be a row proxy after this point.
                     results = [transformf(r) for r in results]
+
                 writer.write_rows(results)
                 results = cursor.fetchmany(_BATCH_SIZE)
         finally:
             cursor.close()
 
     @contextlib.contextmanager
-    def open_writer(self, file_name, predicate=None):
+    def open_cloud_writer(self, file_name, predicate=None):
         gcs_path = "/%s/%s" % (self._bucket_name, file_name)
-        logging.info("Exporting data to %s...", gcs_path)
+        # Logging does not expand in GCloud, so I'm trying this out.
+        message = f"Exporting data to {gcs_path}"
+        logging.info(message)
         with open_cloud_file(gcs_path, mode='w') as dest:
             writer = SqlExportFileWriter(dest, predicate)
             yield writer
-            logging.info("Export to %s complete.", gcs_path)
+            message = f"Export to {gcs_path} complete."
+            logging.info(message)
