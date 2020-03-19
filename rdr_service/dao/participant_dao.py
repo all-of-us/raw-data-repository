@@ -72,6 +72,7 @@ class ParticipantDao(UpdatableDao):
             obj = self.get_with_session(session, id_)
         if obj:
             client = get_account_origin_id()
+            # Care evolution can GET participants from PTSC as long as env < prod.
             if obj.participantOrigin != client and client in ORIGINATING_SOURCES and not is_care_evo_and_not_prod():
                 raise BadRequest('Can not retrieve participant from a different origin')
             return obj

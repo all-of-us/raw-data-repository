@@ -340,6 +340,7 @@ class ParticipantSummaryDao(UpdatableDao):
         filter_client = False
         non_withdrawn_field = self._get_non_withdrawn_filter_field(query_def)
         client_id = self.get_client_id()
+        # Care evolution can GET participants from PTSC if env < prod.
         if client_id in ORIGINATING_SOURCES and not is_care_evo_and_not_prod():
             filter_client = True
         if self._has_withdrawn_filter(query_def):

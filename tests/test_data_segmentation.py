@@ -33,7 +33,7 @@ class ParticipantDataSegmentTest(BaseTestCase):
         for i in response:
             carevo_participant_list.append(i['participantId'])
 
-        # care evolution can not retrieve vibrent participants
+        # care evolution can only retrieve vibrent participants in envs < prod.
         for i in vibrent_participant_list:
             # print('getting participant...')
             self.send_get("Participant/{}".format(i))
