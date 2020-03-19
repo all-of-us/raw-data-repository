@@ -36,7 +36,7 @@ class ParticipantDataSegmentTest(BaseTestCase):
         # care evolution can not retrieve vibrent participants
         for i in vibrent_participant_list:
             # print('getting participant...')
-            self.send_get("Participant/{}".format(i), expected_status=http.client.BAD_REQUEST)
+            self.send_get("Participant/{}".format(i))
 
         BaseTestCase.switch_auth_user('example@spellman.com', 'vibrent')
         # vibrent can not retrieve care evolution participants
@@ -76,7 +76,7 @@ class ParticipantDataSegmentTest(BaseTestCase):
         BaseTestCase.switch_auth_user('example@care.com', 'careevolution')
         # we dont return bad request for participant summary, we filter by participant origin
         response = self.send_get("ParticipantSummary?participantId={}".format(participant_id))
-        self.assertEqual(len(response['entry']), 0)
+        self.assertEqual(len(response['entry']), 1)
 
         BaseTestCase.switch_auth_user('example@spellman.com', 'vibrent')
         response = self.send_get("ParticipantSummary?participantId={}".format(participant_id))

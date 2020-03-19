@@ -329,3 +329,8 @@ def datetime_as_naive_utc(value):
         return value
     else:
         return value.astimezone(pytz.UTC).replace(tzinfo=None)
+
+
+def is_care_evo_and_not_prod():
+    return GAE_PROJECT != "all-of-us-rdr-prod" and get_account_origin_id() == "careevolution"
+
