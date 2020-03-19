@@ -406,22 +406,28 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         with open(data_path("consent_for_genomic_ror_resp.json")) as f:
             resource = json.load(f)
+            resource["subject"]["reference"] = f'Patient/{participant_id}'
+            resource["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
+
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+            summary = self.send_get("Participant/%s/Summary" % participant_id)
+            self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED')
 
         with open(data_path("consent_for_genomic_ror_dont_know.json")) as f:
             dont_know_resp = json.load(f)
 
-        for qr in (resource, dont_know_resp):
-            qr["subject"]["reference"] = f'Patient/{participant_id}'
-            qr["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
+        dont_know_resp["subject"]["reference"] = f'Patient/{participant_id}'
+        dont_know_resp["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
 
-            with FakeClock(TIME_2):
-                self.send_post(_questionnaire_response_url(participant_id), qr)
+        with FakeClock(TIME_2):
+            self.send_post(_questionnaire_response_url(participant_id), dont_know_resp)
 
-            summary = self.send_get("Participant/%s/Summary" % participant_id)
-            self.assertEqual(summary['semanticVersionForPrimaryConsent'], 'v1')
-            self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED')
-            self.assertEqual(summary['consentForGenomicsRORTime'], TIME_2.isoformat())
-            self.assertEqual(summary['consentForGenomicsRORAuthored'], '2019-12-12T09:30:44')
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['semanticVersionForPrimaryConsent'], 'v1')
+        self.assertEqual(summary['consentForGenomicsRORTime'], TIME_2.isoformat())
+        self.assertEqual(summary['consentForGenomicsRORAuthored'], '2019-12-12T09:30:44')
+        self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED_NOT_SURE')
 
         with open(data_path("consent_for_genomic_ror_no.json")) as f:
             resource = json.load(f)
