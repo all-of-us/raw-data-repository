@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, String
-from rdr_service.model.base import Base
+from sqlalchemy import Column, Integer, String, event
 from rdr_service.model.utils import UTCDateTime6
+from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 
 
 class Metadata(Base):
@@ -15,3 +15,7 @@ class Metadata(Base):
     strValue = Column("str_value", String(500), nullable=True)
     intValue = Column("int_value", Integer, nullable=True)
     dateValue = Column("date_value", UTCDateTime6, nullable=True)
+
+
+event.listen(Metadata, "before_insert", model_insert_listener)
+event.listen(Metadata, "before_update", model_update_listener)
