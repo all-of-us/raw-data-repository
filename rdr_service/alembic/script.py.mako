@@ -18,6 +18,7 @@ from rdr_service.participant_enums import WithdrawalStatus, WithdrawalReason, Su
 from rdr_service.participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType, BiobankOrderStatus
 from rdr_service.participant_enums import OrderShipmentTrackingStatus, OrderShipmentStatus
 from rdr_service.participant_enums import MetricSetType, MetricsKey, GenderIdentity
+from rdr_service.participant_enums import WorkbenchReviewType, WorkbenchReviewStatus, WorkbenchDecisionStatus, WorkspaceAccessStatus
 from rdr_service.model.base import add_table_history_table, drop_table_history_table
 from rdr_service.model.code import CodeType
 from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus

@@ -109,7 +109,7 @@ class WorkbenchAudit(Base):
     created = Column("created", UTCDateTime6, nullable=True)
     # have mysql always update the modified data when the record is changed
     modified = Column("modified", UTCDateTime6, nullable=True)
-    workspaceSnapshotId = Column("workspace_snapshot_id", ForeignKey("workbench_workspace_history.workspace_source_id"))
+    workspaceSnapshotId = Column("workspace_snapshot_id", ForeignKey("workbench_workspace_history.id"))
     auditorPmiEmail = Column("auditor_pmi_email", String(250))
     auditReviewType = Column("audit_review_type", Enum(WorkbenchReviewType))
     auditReviewStatus = Column("audit_review_status", Enum(WorkbenchReviewStatus))
