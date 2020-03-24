@@ -100,7 +100,7 @@ class WorkbenchInstitutionalAffiliationsHistory(Base):
     isVerified = Column("is_verified", Boolean)
 
 
-class WorbenchAudit(Base):
+class WorbkenchAudit(Base):
     __tablename__ = "workbench_audit"
 
     # Primary Key
