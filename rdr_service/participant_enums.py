@@ -725,3 +725,31 @@ class WorkbenchResearcherDisability(messages.Enum):
     YES = 1
     NO = 2
     PREFER_NOT_TO_ANSWER = 3
+
+
+class WorkbenchReviewStatus(messages.Enum):
+    NOT_STARTED = 0
+    SECOND_REVIEW_REQUESTED = 1
+    RAB_REVIEW_REQUESTED = 2
+    REVISIONS_REQUESTED = 3
+    REVIEW_COMPLETE = 4
+
+
+class WorkbenchReviewType(messages.Enum):
+    UNSET = 0
+    INITIAL = 1
+    SECONDARY = 2
+    RAB = 3
+
+
+class WorkbenchDecisionStatus(messages.Enum):
+    UNSET = 0
+    APPROVED = 1
+    EXCLUDE = 2
+
+
+class WorkspaceAccessStatus(messages.Enum):
+    DISABLE_WORKSPACE = 0
+    DISABLE_WORKSPACE_AND_REVIEW_RESEARCHER = 1
+    DISABLE_WORKSPACE_OWNER = 2
+

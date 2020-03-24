@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, UniqueConstraint, JSON, event, Boolean
+from sqlalchemy import Column, ForeignKey, Integer, String, UniqueConstraint, JSON, event, Boolean, UnicodeText
 from sqlalchemy.orm import relationship
 from rdr_service.model.field_types import BlobUTF8
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
@@ -7,8 +7,8 @@ from rdr_service.participant_enums import (
     WorkbenchInstitutionNonAcademic,
     WorkbenchResearcherEducation,
     WorkbenchResearcherDisability,
-    WorkbenchResearcherEthnicity
-)
+    WorkbenchResearcherEthnicity,
+    WorkbenchReviewStatus, WorkbenchReviewType, WorkbenchDecisionStatus, WorkspaceAccessStatus)
 
 
 class WorkbenchResearcherBase(object):
@@ -98,6 +98,24 @@ class WorkbenchInstitutionalAffiliationsHistory(Base):
     nonAcademicAffiliation = Column("non_academic_affiliation", Enum(WorkbenchInstitutionNonAcademic),
                                     default=WorkbenchInstitutionNonAcademic.UNSET)
     isVerified = Column("is_verified", Boolean)
+
+
+class WorbenchAudit(Base):
+    __tablename__ = "workbench_audit"
+
+    # Primary Key
+    id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
+    # have mysql set the creation data for each new order
+    created = Column("created", UTCDateTime6, nullable=True)
+    # have mysql always update the modified data when the record is changed
+    modified = Column("modified", UTCDateTime6, nullable=True)
+    workspaceSnapshotId = Column("workspace_snapshot_id", ForeignKey("workbench_workspace_history.workspace_source_id"))
+    auditorPmiEmail = Column("auditor_pmi_email", String(250))
+    auditReviewType = Column("audit_review_type", Enum(WorkbenchReviewType))
+    auditReviewStatus = Column("audit_review_status", Enum(WorkbenchReviewStatus))
+    auditDecisionType = Column("audit_decision_type", Enum(WorkbenchDecisionStatus))
+    auditWorkspaceAccess = Column("audit_workspace_access", Enum(WorkspaceAccessStatus))
+    auditNotes = Column("audit_notes", UnicodeText)
 
 
 event.listen(WorkbenchResearcher, "before_insert", model_insert_listener)
