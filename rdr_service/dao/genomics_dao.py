@@ -3,10 +3,11 @@ import sqlalchemy
 import logging
 
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Load, load_only
 from sqlalchemy.sql import functions
 
 from rdr_service import clock
-from rdr_service.dao.base_dao import UpdatableDao
+from rdr_service.dao.base_dao import UpdatableDao, BaseDao
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
@@ -648,3 +649,42 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
             return self.update(metric_obj)
         except OperationalError:
             return GenomicSubProcessResult.ERROR
+
+
+class GemPiiDao(BaseDao):
+    def __init__(self):
+        super(GemPiiDao, self).__init__(
+            GenomicSetMemberDao, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def to_client_json(self, result):
+        return {
+            "biobank_id": int(result.biobankId),
+            "first_name": result.firstName,
+            "last_name": result.lastName,
+        }
+
+    def from_client_json(self):
+        pass
+
+    def get_by_pid(self, pid):
+
+        with self.session() as session:
+            return (
+                session.query(GenomicSetMember.biobankId,
+                              ParticipantSummary.firstName,
+                              ParticipantSummary.lastName)
+                .join(
+                    ParticipantSummary,
+                    GenomicSetMember.participantId == ParticipantSummary.participantId
+                )
+                .filter(
+                    GenomicSetMember.participantId == pid,
+                    GenomicSetMember.gemPass == "Y",
+                    ParticipantSummary.consentForGenomicsROR == 1,
+                    # TODO: add withdrawal and other fields
+                )
+                .first()
+            )
