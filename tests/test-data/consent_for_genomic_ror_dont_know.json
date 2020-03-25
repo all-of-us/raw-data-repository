@@ -10,7 +10,7 @@
 "answer": [
           {
             "valueCoding": {
-"code": "ConsentPermission_Yes", "display": " I'm not sure right now ",
+"code": "ConsentPermission_NotSure", "display": " I'm not sure right now ",
 "system": "http://terminology.pmi-ops.org/CodeSystem/ppi" }
 } ],
         "linkId": "genomic_consent",

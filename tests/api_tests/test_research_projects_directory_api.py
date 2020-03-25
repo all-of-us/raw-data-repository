@@ -151,12 +151,11 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "findingsFromStudy": 'findingsFromStudy string2'
             }
         ]
-
         self.send_post('workbench/directory/workspaces', request_data=request_json)
 
         # test get research projects directory
         result = self.send_get('researchHub/projectDirectory')
-        self.assertEqual(len(result), 2)
+        self.assertEqual(len(result['data']), 2)
         self.assertIn({'workspaceId': 0, 'name': 'workspace name str', 'creationTime': '2019-11-25T17:43:41.085000',
                        'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'ACTIVE',
                        'workspaceOwner': [{'userId': 1, 'userName': 'given name 2 family name 2',
@@ -189,7 +188,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            "others": "string"
                        }
                        },
-                      result)
+                      result['data'])
         self.assertIn({'workspaceId': 1, 'name': 'workspace name str 2', 'creationTime': '2019-11-25T17:43:41.085000',
                        'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'INACTIVE',
                        'workspaceOwner': [{'userId': 0, 'userName': 'given name 1 family name 1',
@@ -219,11 +218,11 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            "others": None
                        }
                        },
-                      result)
+                      result['data'])
 
         # test get research projects directory with status
         result = self.send_get('researchHub/projectDirectory?status=ACTIVE')
-        self.assertEqual(len(result), 1)
+        self.assertEqual(len(result['data']), 1)
         self.assertIn({'workspaceId': 0, 'name': 'workspace name str', 'creationTime': '2019-11-25T17:43:41.085000',
                        'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'ACTIVE',
                        'workspaceOwner': [{'userId': 1, 'userName': 'given name 2 family name 2',
@@ -256,4 +255,4 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            "others": "string"
                        }
                        },
-                      result)
+                      result['data'])

@@ -7,6 +7,7 @@ from sqlalchemy import desc, and_
 from sqlalchemy.orm import subqueryload
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
+from rdr_service.dao.metadata_dao import MetadataDao, WORKBENCH_LAST_SYNC_KEY
 from rdr_service.model.workbench_workspace import (
     WorkbenchWorkspace,
     WorkbenchWorkspaceHistory,
@@ -427,8 +428,14 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         break
                 if not is_exist_workspace:
                     results.append(record)
+        metadata_dao = MetadataDao()
+        metadata = metadata_dao.get_by_key(WORKBENCH_LAST_SYNC_KEY)
+        if metadata:
+            last_sync_date = metadata.dateValue
+        else:
+            last_sync_date = clock.CLOCK.now()
 
-        return results
+        return {"last_sync_date": last_sync_date, "data": results}
 
 
 class WorkbenchWorkspaceHistoryDao(UpdatableDao):

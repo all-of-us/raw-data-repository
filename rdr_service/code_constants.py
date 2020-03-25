@@ -68,6 +68,7 @@ RACE_NONE_OF_THESE_CODE = "WhatRaceEthnicity_RaceEthnicityNoneOfThese"
 # Consent answer codes
 CONSENT_PERMISSION_YES_CODE = "ConsentPermission_Yes"
 CONSENT_PERMISSION_NO_CODE = "ConsentPermission_No"
+CONSENT_PERMISSION_NOT_SURE = "ConsentPermission_NotSure"
 
 # Module names for questionnaires / consent forms
 CONSENT_FOR_GENOMICS_ROR = "gRORConsent_ConsentPermission"

@@ -19,6 +19,8 @@ from rdr_service.code_constants import (
     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
     CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
     CONSENT_PERMISSION_YES_CODE,
+    CONSENT_PERMISSION_NOT_SURE,
+    CONSENT_PERMISSION_NO_CODE,
     DVEHRSHARING_CONSENT_CODE_NOT_SURE,
     DVEHRSHARING_CONSENT_CODE_YES,
     DVEHR_SHARING_QUESTION_CODE,
@@ -292,11 +294,6 @@ class QuestionnaireResponseDao(BaseDao):
                             something_changed = self._update_field(
                                 participant_summary, summary_field[0], summary_field[1], answer
                             )
-                    elif code.value == CONSENT_FOR_GENOMICS_ROR:
-                        # TODO: Placeholder for upcoming GROR consents. Req's haven't been decided. (2/20/20)
-                        # I would encourage you to just delete this block.
-                        # NOTE: If you're reading this after end of March 2020
-                        pass
                     elif code.value == RACE_QUESTION_CODE:
                         race_code_ids.append(answer.valueCodeId)
 
@@ -348,8 +345,12 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value == CONSENT_FOR_DVEHR_MODULE:
                         new_status = dvehr_consent
                     elif code.value == CONSENT_FOR_GENOMICS_ROR:
-                        if code_dao.get(answer.valueCodeId).value != CONSENT_PERMISSION_YES_CODE:
+                        if code_dao.get(answer.valueCodeId).value == CONSENT_PERMISSION_YES_CODE:
+                            new_status = QuestionnaireStatus.SUBMITTED
+                        elif code_dao.get(answer.valueCodeId).value == CONSENT_PERMISSION_NO_CODE:
                             new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+                        elif code_dao.get(answer.valueCodeId).value == CONSENT_PERMISSION_NOT_SURE:
+                            new_status = QuestionnaireStatus.SUBMITTED_NOT_SURE
 
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
                         participant_summary.semanticVersionForPrimaryConsent = \

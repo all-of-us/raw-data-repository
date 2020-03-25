@@ -37,6 +37,7 @@ from rdr_service.model.workbench_workspace import WorkbenchWorkspace, WorkbenchW
     WorkbenchWorkspaceUser, WorkbenchWorkspaceUserHistory
 from rdr_service.model.workbench_researcher import WorkbenchResearcher, WorkbenchResearcherHistory, \
     WorkbenchInstitutionalAffiliations, WorkbenchInstitutionalAffiliationsHistory
+from rdr_service.model.metadata import Metadata
 
 RETRY_CONNECTION_LIMIT = 10
 
