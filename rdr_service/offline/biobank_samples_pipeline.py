@@ -639,6 +639,7 @@ _RECONCILIATION_REPORT_SQL = (
     LEFT OUTER JOIN
         biobank_dv_order dv_order
     ON dv_order.biobank_order_id = biobank_order.biobank_order_id
+        AND dv_order.is_test_sample IS NOT TRUE 
     LEFT OUTER JOIN
       biobank_stored_sample
     ON """
@@ -713,7 +714,8 @@ _RECONCILIATION_REPORT_SQL = (
                     SELECT p.biobank_id
                      FROM participant p
                         JOIN biobank_dv_order dv
-                        ON p.participant_id = dv.participant_id)
+                        ON p.participant_id = dv.participant_id
+                        AND dv.is_test_sample IS NOT TRUE)
                 ELSE TRUE
             END
         )
@@ -773,6 +775,7 @@ WHERE TRUE
          bo.created < DATE_SUB(now(), INTERVAL :n_days_interval DAY)
      )
      AND bss.biobank_stored_sample_id IS NULL
+     AND dvo.is_test_sample IS NOT TRUE
     """
 )
 

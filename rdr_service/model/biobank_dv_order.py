@@ -1,4 +1,8 @@
-from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, event
+from sqlalchemy import (
+    BigInteger, Column, DateTime,
+    ForeignKey, Integer, String,
+    Text, UniqueConstraint, event, Boolean
+)
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, UTCDateTime6
@@ -111,6 +115,7 @@ class BiobankDVOrder(Base):
     biobankStatus = Column("biobank_status", String(30), nullable=True)
     biobankReceived = Column("biobank_received", UTCDateTime6, nullable=True)
     biobankRequisition = Column("biobank_requisition", Text, nullable=True)
+    isTestSample = Column("is_test_sample", Boolean, default=False)
 
     __table_args__ = (UniqueConstraint("participant_id", "order_id", name="uidx_partic_id_order_id"),)
 
