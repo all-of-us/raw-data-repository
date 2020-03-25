@@ -1,17 +1,18 @@
 """create_metadata_table
 
-Revision ID: 300062d10ac4
-Revises: 9cbaee181bc9
-Create Date: 2020-03-23 15:16:51.775783
+Revision ID: 15c0ea24d179
+Revises: 39f421efaa73
+Create Date: 2020-03-25 10:48:35.049494
 
 """
 from alembic import op
 import sqlalchemy as sa
 import rdr_service.model.utils
 
+
 # revision identifiers, used by Alembic.
-revision = '300062d10ac4'
-down_revision = '9cbaee181bc9'
+revision = '15c0ea24d179'
+down_revision = '39f421efaa73'
 branch_labels = None
 depends_on = None
 
@@ -57,7 +58,6 @@ def downgrade_rdr():
     op.execute('ALTER TABLE workbench_workspace_history MODIFY intend_to_study VARCHAR(500);')
     op.execute('ALTER TABLE workbench_workspace_history MODIFY findings_from_study VARCHAR(500);')
     op.drop_table('metadata')
-
     # ### end Alembic commands ###
 
 
