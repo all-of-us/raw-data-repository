@@ -493,3 +493,23 @@ Participant Summary Field List
 
   participantOrigin
       The sign up portal the participant used to enroll (Vibrent, Care Evolution).
+
+  patientStatus
+      A flag available for sites of in person enrollment. A participant can have a status from multiple sites.
+    example
+     .. code-block:: json
+
+            patientStatus: {
+            “PITT_UPMC”: “YES”,
+            “PITT_TEMPLE”: “NO_ACCESS”,
+            “PITT_SOMETHING”: “NO”
+            }
+
+    .. note::
+      The following values are available.
+        |    Yes: Confirmed in EHR system.
+        |    No: Not found in EHR system.
+        |    No Access: Unable to check EHR system.
+        |    Unknown: Inconclusive search results.
+        |    Not Applicable (will apply to DVs only).
+
