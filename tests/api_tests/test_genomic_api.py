@@ -1,7 +1,5 @@
 import datetime
 
-import mock
-
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service import clock
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -12,20 +10,19 @@ from rdr_service.dao.genomics_dao import (
     GenomicJobRunDao,
     GenomicGCValidationMetricsDao,
 )
-from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.participant import Participant
 
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
     GenomicJobRun,
-    GenomicGCValidationMetrics,
 )
 
 from rdr_service.participant_enums import (
-    GenomicSubProcessResult,
     GenomicJob,
-    SampleStatus)
+    SampleStatus,
+    WithdrawalStatus
+)
 
 
 class GenomicApiTestBase(BaseTestCase):
@@ -113,6 +110,23 @@ class GemApiTest(GenomicApiTestBase):
 
     def test_get_pii_valid_pid(self):
         p1_pii = self.send_get("GemPII/P1")
-        self.assertEqual(p1_pii['biobank_id'], 1)
+        self.assertEqual(p1_pii['biobank_id'], '1')
         self.assertEqual(p1_pii['first_name'], 'TestFN')
         self.assertEqual(p1_pii['last_name'], 'TestLN')
+
+    def test_get_pii_invalid_pid(self):
+        p = self._make_participant()
+        self._make_summary(p, withdrawalStatus=WithdrawalStatus.NO_USE)
+        self._make_set_member(p)
+        self.send_get("GemPII/P2", expected_status=404)
+
+    def test_get_pii_no_gror_consent(self):
+        p = self._make_participant()
+        self._make_summary(p, consentForGenomicsROR=0)
+        self._make_set_member(p)
+        p2_pii = self.send_get("GemPII/P2")
+        self.assertEqual(p2_pii['message'], "No RoR consent.")
+
+    def test_get_pii_bad_request(self):
+        self.send_get("GemPII", expected_status=404)
+        self.send_get("GemPII/P8", expected_status=404)

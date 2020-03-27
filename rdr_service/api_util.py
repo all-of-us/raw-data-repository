@@ -16,6 +16,7 @@ EXPORTER = "exporter"
 WORKBENCH = "workbench"
 REDCAP = 'redcap'
 DEV_MAIL = "example@example.com"
+GEM = "gem"
 RDR_AND_PTC = [RDR, PTC]
 WORKBENCH_AND_REDCAP = [WORKBENCH, REDCAP]
 STOREFRONT_AND_REDCAP = [STOREFRONT, REDCAP]

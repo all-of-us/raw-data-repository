@@ -3,7 +3,6 @@ import sqlalchemy
 import logging
 
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import Load, load_only
 from sqlalchemy.sql import functions
 
 from rdr_service import clock
@@ -15,7 +14,14 @@ from rdr_service.model.genomics import (
     GenomicFileProcessed,
     GenomicGCValidationMetrics
 )
-from rdr_service.participant_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicSubProcessResult
+from rdr_service.participant_enums import (
+    GenomicSetStatus,
+    GenomicSetMemberStatus,
+    GenomicSubProcessResult,
+    QuestionnaireStatus,
+    WithdrawalStatus,
+    SuspensionStatus,
+)
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
@@ -654,37 +660,43 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
 class GemPiiDao(BaseDao):
     def __init__(self):
         super(GemPiiDao, self).__init__(
-            GenomicSetMemberDao, order_by_ending=['id'])
+            GenomicSetMember, order_by_ending=['id'])
 
     def get_id(self, obj):
         pass
 
-    def to_client_json(self, result):
-        return {
-            "biobank_id": int(result.biobankId),
-            "first_name": result.firstName,
-            "last_name": result.lastName,
-        }
-
     def from_client_json(self):
         pass
 
-    def get_by_pid(self, pid):
+    def to_client_json(self, result):
+        if result.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED:
+            return {
+                "biobank_id": result.biobankId,
+                "first_name": result.firstName,
+                "last_name": result.lastName,
+            }
+        else:
+            return {"message": "No RoR consent."}
 
+    def get_by_pid(self, pid):
+        """
+        Returns Biobank ID, First Name, and Last Name for requested PID
+        :param pid:
+        :return: query results for PID
+        """
         with self.session() as session:
             return (
                 session.query(GenomicSetMember.biobankId,
                               ParticipantSummary.firstName,
-                              ParticipantSummary.lastName)
+                              ParticipantSummary.lastName,
+                              ParticipantSummary.consentForGenomicsROR)
                 .join(
                     ParticipantSummary,
-                    GenomicSetMember.participantId == ParticipantSummary.participantId
-                )
-                .filter(
+                    GenomicSetMember.participantId == ParticipantSummary.participantId,
+                ).filter(
                     GenomicSetMember.participantId == pid,
                     GenomicSetMember.gemPass == "Y",
-                    ParticipantSummary.consentForGenomicsROR == 1,
-                    # TODO: add withdrawal and other fields
-                )
-                .first()
+                    ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                    ParticipantSummary.withdrawalStatus == SuspensionStatus.NOT_SUSPENDED,
+                ).first()
             )
