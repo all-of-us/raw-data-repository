@@ -81,7 +81,7 @@ class BQRWBResearcherGenderView(BQView):
     __pk_id__ = 'id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, nt.*
+        SELECT t.id, t.created, t.modified, nt.*
           FROM (
             SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
               FROM `{project}`.{dataset}.rwb_researcher 
@@ -96,7 +96,7 @@ class BQRWBResearcherRaceView(BQView):
     __pk_id__ = 'id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, nt.*
+        SELECT t.id, t.created, t.modified, nt.*
           FROM (
             SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
               FROM `{project}`.{dataset}.rwb_researcher 
@@ -111,7 +111,7 @@ class BQRWBResearcherSexAtBirthView(BQView):
     __pk_id__ = 'id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, nt.*
+        SELECT t.id, t.created, t.modified, nt.*
           FROM (
             SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
               FROM `{project}`.{dataset}.rwb_researcher 
@@ -126,7 +126,7 @@ class BQRWBResearcherDegreeView(BQView):
     __pk_id__ = 'id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, nt.*
+        SELECT t.id, t.created, t.modified, nt.*
           FROM (
             SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
               FROM `{project}`.{dataset}.rwb_researcher 
