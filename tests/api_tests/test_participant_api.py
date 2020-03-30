@@ -269,6 +269,7 @@ class ParticipantApiTest(BaseTestCase):
             participant_id = response["participantId"]
             response["providerLink"] = [self.provider_link_2]
             response["withdrawalStatus"] = "EARLY_OUT"
+            response["withdrawalTimeStamp"] = 1563907344169
             response["suspensionStatus"] = "NOT_SUSPENDED"
             response["withdrawalReason"] = "TEST"
             response["withdrawalReasonJustification"] = "This was a test account."
@@ -276,6 +277,8 @@ class ParticipantApiTest(BaseTestCase):
             self.send_put(path, response, headers={"If-Match": 'W/"1"'})
             participant = self.send_get(path)
             self.assertEqual(participant["withdrawalStatus"], "EARLY_OUT")
+            self.assertEqual(participant["withdrawalTime"], '2018-01-01T00:00:00')
+            self.assertEqual(participant["withdrawalAuthored"], '2019-07-23T18:42:24')
 
     def test_administrative_withdrawal_with_authored_time(self):
         with FakeClock(TIME_1):
