@@ -8,8 +8,10 @@ import sys
 import os
 
 from pprint import pprint
+from rdr_service.dao.code_dao import CodeBookDao
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
+from rdr_service.tools.tool_libs.alembic import AlembicManagerClass
 from rdr_service.services.system_utils import git_project_root, which, run_external_program
 
 _logger = logging.getLogger("rdr_logger")
@@ -45,6 +47,7 @@ class SetupLocalDB:  # pylint: disable=too-many-instance-attributes
         self.root_password_args = f'-p{self.root_password}'
         self.db_connection_string = None
         self.db_user = self.root_db_user
+        self.revision = 'head'
 
     def run(self):
         """
@@ -61,17 +64,39 @@ class SetupLocalDB:  # pylint: disable=too-many-instance-attributes
         for db in ('rdr', 'metrics', 'rdr_tasks'):
             self.create_db(db)
         # TODO:
+        # set local db connection string alembic
+        self.set_local_vars('alembic')
         # upgrade database
+        _logger.info('Updating schema to latest')
+        # TODO: need to replicate auth_setup.sh and upgrade_database.sh
+        # alembic upgrade revision
+        self.alembic_upgrade(self.revision)
         # import data
-        # setup for other than local (upgrade only)
-        # accept all the shell args too
+        self.import_data()
+        # TODO: import codebook
+        # with open(codebookfile) as f:
+        #     codebook_json = json.load(f)
+        #     CodeBookDao().import_codebook(codebook_json)
+
+        # TODO: import questionnaires
+        # TODO: import participants
         return 0
+
+    def import_data(self):
+        data_dir = PROJECT_DIR + '/rdr_service/data/'
+        from rdr_service.tools import import_organizations as orgs
+        orgs.HPOImporter().run(f'{data_dir}awardees.csv', False)
+        orgs.HPODao()._invalidate_cache()
+        orgs.OrganizationImporter().run(f'{data_dir}organizations.csv', False)
+        orgs.HPODao()._invalidate_cache()
+        orgs.SiteImporter().run(f'{data_dir}sites.csv', False)
 
     def set_local_vars(self, user=None):
         if user:
             self.db_user = user
 
         self.db_connection_string = f"mysql+mysqldb://{self.db_user}:{self.rdr_password}@127.0.0.1/?charset=utf8"
+        os.environ['DB_CONNECTION_STRING'] = self.db_connection_string
 
     def set_connection_info(self):
         return {
@@ -135,14 +160,18 @@ class SetupLocalDB:  # pylint: disable=too-many-instance-attributes
         code, so, se = run_external_program(' '.join(args), env=None, shell=True)
 
         if code != 0:
-            _logger.error(f'Error: {se}')
+            _logger.error(f'{se}')
         else:
-            _logger.error(f'Error: {so}')
+            _logger.error(f'{so}')
 
 
-    def finish(self):
-        # TODO: remove db_info_file and create_db_file and exit
-        pass
+    def alembic_upgrade(self, revision):
+        _logger.info('Applying database migrations...')
+        alembic = AlembicManagerClass(self.args, self.gcp_env, ['upgrade', 'head'])
+        alembic.args.quiet = True
+        if alembic.run() != 0:
+            _logger.warning('Deploy process stopped.')
+            return 1
 
 
 def run():
