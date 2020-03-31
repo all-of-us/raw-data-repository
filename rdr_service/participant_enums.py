@@ -531,6 +531,7 @@ class GenomicJob(messages.Enum):
     CVL_SEC_VAL_MAN = 9
     GEM_A1_MANIFEST = 10
     GEM_A2_MANIFEST = 11
+    GEM_A2D_MANIFEST = 12
 
 
 class GenomicSubProcessStatus(messages.Enum):
@@ -557,6 +558,7 @@ class GenomicManifestTypes(messages.Enum):
     GC_DRC = 3
     DRC_CVL_WGS = 4
     GEM_A1 = 5
+    GEM_A2D = 6
 
 
 class WorkbenchWorkspaceStatus(messages.Enum):

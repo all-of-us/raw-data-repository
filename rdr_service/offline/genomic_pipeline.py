@@ -106,6 +106,15 @@ def gem_a2_manifest_workflow():
         controller.run_gem_a2_workflow()
 
 
+def gem_a2d_manifest_workflow():
+    """
+    Entrypoint for GEM A2 Workflow
+    """
+    with GenomicJobController(GenomicJob.GEM_A2D_MANIFEST,
+                              bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
+        controller.generate_manifest(GenomicManifestTypes.GEM_A2D)
+
+
 def create_cvl_reconciliation_report():
     """
     Entrypoint for CVL reconciliation workflow
