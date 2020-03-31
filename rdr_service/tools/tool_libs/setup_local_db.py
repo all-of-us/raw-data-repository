@@ -167,7 +167,7 @@ class SetupLocalDB:  # pylint: disable=too-many-instance-attributes
 
     def alembic_upgrade(self, revision):
         _logger.info('Applying database migrations...')
-        alembic = AlembicManagerClass(self.args, self.gcp_env, ['upgrade', 'head'])
+        alembic = AlembicManagerClass(self.args, self.gcp_env, ['upgrade', revision])
         alembic.args.quiet = True
         if alembic.run() != 0:
             _logger.warning('Deploy process stopped.')
