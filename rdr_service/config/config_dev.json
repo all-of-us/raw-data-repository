@@ -6,7 +6,7 @@
   ],
   "user_info": {
     "example@example.com": {
-      "roles": ["ptc", "healthpro", "exporter", "storefront", "rdr", "workbench"],
+      "roles": ["ptc", "healthpro", "exporter", "storefront", "rdr", "workbench", "gem"],
       "clientId": "example",
       "whitelisted_ip_ranges": {
         "ip6": ["::1/64"],
@@ -14,7 +14,7 @@
       }
     },
       "example@spellman.com": {
-        "roles": ["ptc", "healthpro", "exporter", "storefront", "rdr", "workbench"],
+        "roles": ["ptc", "healthpro", "exporter", "storefront", "rdr", "workbench", "gem"],
         "clientId": "vibrent",
         "whitelisted_ip_ranges": {
           "ip6": ["::1/64"],
