@@ -789,7 +789,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
         doc, composition = self.load_record_fhir_doc(record)
 
-        composition['status'] = 'entered_in_error'
+        composition['status'] = 'entered-in-error'
         # remove all restored entries if found
         extensions = list()
         for ext in composition['extension']:
