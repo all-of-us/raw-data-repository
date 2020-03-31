@@ -8,7 +8,7 @@ import sys
 import os
 
 from pprint import pprint
-from rdr_service.dao.code_dao import CodeBookDao
+#from rdr_service.dao.code_dao import CodeBookDao
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.tools.tool_libs.alembic import AlembicManagerClass
