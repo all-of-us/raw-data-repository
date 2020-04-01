@@ -25,6 +25,7 @@ from rdr_service.api.biobank_order_api import BiobankOrderApi
 from rdr_service.api.check_ppi_data_api import check_ppi_data
 from rdr_service.api.data_gen_api import DataGenApi, SpecDataGenApi
 from rdr_service.api.dv_order_api import DvOrderApi
+from rdr_service.api.genomic_api import GenomicGemPiiApi
 from rdr_service.api.import_codebook_api import import_codebook
 from rdr_service.api.metric_sets_api import MetricSetsApi
 from rdr_service.api.metrics_api import MetricsApi
@@ -253,6 +254,11 @@ api.add_resource(WorkbenchWorkspaceApi,
 api.add_resource(ResearchProjectsDirectoryApi,
                  API_PREFIX + 'researchHub/projectDirectory',
                  endpoint='research.projects.directory',
+                 methods=['GET'])
+
+api.add_resource(GenomicGemPiiApi,
+                 API_PREFIX + "GemPII/<participant_id:p_id>",
+                 endpoint='genomic.gem.pii',
                  methods=['GET'])
 
 # Configuration API for admin use.  # note: temporarily disabled until decided

@@ -65,7 +65,8 @@
         "exporter",
         "storefront",
         "rdr",
-        "workbench"
+        "workbench",
+        "gem"
       ],
       "whitelisted_ip_ranges": {
         "ip6": [

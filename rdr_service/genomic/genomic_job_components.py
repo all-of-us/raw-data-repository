@@ -1028,7 +1028,8 @@ class ManifestDefinitionProvider:
                     AND gcv.vcf_received = 1
                     AND m.genome_type = "aou_array"
                     AND ps.suspension_status = 1
-                    # TODO: AND m.consent_for_ror = 1
+                    AND ps.withdrawal_status = 1
+                    # TODO: AND ps.consent_for_genomics_ror = 1
             """
         return query_sql
 

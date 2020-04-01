@@ -161,7 +161,7 @@ class BQPDRPMView(BQView):
     __viewdescr__ = 'PDR Physical Measurements View'
     __table__ = BQPDRParticipantSummary
     __sql__ = """
-    SELECT ps.participant_id, nt.*
+    SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
         SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
           FROM `{project}`.{dataset}.pdr_participant 
@@ -176,7 +176,7 @@ class BQPDRGenderView(BQView):
     __table__ = BQPDRParticipantSummary
     __pk_id__ = 'participant_id'
     __sql__ = """
-    SELECT ps.participant_id, nt.*
+    SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
         SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
           FROM `{project}`.{dataset}.pdr_participant 
@@ -190,7 +190,7 @@ class BQPDRRaceView(BQView):
     __viewdescr__ = 'PDR Participant Race View'
     __table__ = BQPDRParticipantSummary
     __sql__ = """
-    SELECT ps.participant_id, nt.*
+    SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
         SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
           FROM `{project}`.{dataset}.pdr_participant 
@@ -204,7 +204,7 @@ class BQPDRModuleView(BQView):
     __viewdescr__ = 'PDR Participant Survey Module View'
     __table__ = BQPDRParticipantSummary
     __sql__ = """
-    SELECT ps.participant_id, nt.*
+    SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
         SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
           FROM `{project}`.{dataset}.pdr_participant 
@@ -218,7 +218,7 @@ class BQPDRConsentView(BQView):
     __viewdescr__ = 'PDR Participant Consent View'
     __table__ = BQPDRParticipantSummary
     __sql__ = """
-    SELECT ps.participant_id, nt.*
+    SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
         SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
           FROM `{project}`.{dataset}.pdr_participant 
@@ -232,7 +232,7 @@ class BQPDRBioSpecView(BQView):
     __viewdescr__ = 'PDR Participant BioBank Order View'
     __table__ = BQPDRParticipantSummary
     __sql__ = """
-    SELECT ps.participant_id, nt.*
+    SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
         SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
           FROM `{project}`.{dataset}.pdr_participant 
