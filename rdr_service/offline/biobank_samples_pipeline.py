@@ -597,7 +597,8 @@ _RECONCILIATION_REPORT_SQL = (
     GROUP_CONCAT(edited_cancelled_restored_name) edited_cancelled_restored_name,
     GROUP_CONCAT(edited_cancelled_restored_site_name) edited_cancelled_restored_site_name,
     GROUP_CONCAT(edited_cancelled_restored_site_time) edited_cancelled_restored_site_time,
-    GROUP_CONCAT(edited_cancelled_restored_site_reason) edited_cancelled_restored_site_reason
+    GROUP_CONCAT(edited_cancelled_restored_site_reason) edited_cancelled_restored_site_reason,
+    GROUP_CONCAT(DISTINCT order_origin) biobank_order_origin
   FROM
    (SELECT
       participant.biobank_id raw_biobank_id,
@@ -630,6 +631,7 @@ _RECONCILIATION_REPORT_SQL = (
       biobank_order.collected_note notes_collected,
       biobank_order.processed_note notes_processed,
       biobank_order.finalized_note notes_finalized,
+      biobank_order.order_origin,
       """
     + _get_status_flag_sql()
     + """
@@ -639,7 +641,7 @@ _RECONCILIATION_REPORT_SQL = (
     LEFT OUTER JOIN
         biobank_dv_order dv_order
     ON dv_order.biobank_order_id = biobank_order.biobank_order_id
-        AND dv_order.is_test_sample IS NOT TRUE 
+        AND dv_order.is_test_sample IS NOT TRUE
     LEFT OUTER JOIN
       biobank_stored_sample
     ON """
@@ -691,7 +693,8 @@ _RECONCILIATION_REPORT_SQL = (
       NULL edited_cancelled_restored_name,
       NULL edited_cancelled_restored_site_name,
       NULL edited_cancelled_restored_site_time,
-      NULL edited_cancelled_restored_site_reason
+      NULL edited_cancelled_restored_site_reason,
+      NULL order_origin
     FROM
       biobank_stored_sample
       LEFT OUTER JOIN
