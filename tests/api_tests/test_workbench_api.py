@@ -316,6 +316,7 @@ class WorkbenchApiTest(BaseTestCase):
                     }
                 ],
                 "excludeFromPublicDirectory": True,
+                "reviewRequested": True,
                 "diseaseFocusedResearch": True,
                 "diseaseFocusedResearchName": "string",
                 "otherPurposeDetails": "string",
@@ -358,6 +359,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].scientificApproaches, 'string')
         self.assertEqual(results[0].intendToStudy, 'string')
         self.assertEqual(results[0].focusOnUnderrepresentedPopulations, True)
+        self.assertEqual(results[0].reviewRequested, True)
         self.assertEqual(results[0].sexAtBirth, WorkbenchWorkspaceSexAtBirth("INTERSEX"))
         self.assertEqual(results[0].genderIdentity, WorkbenchWorkspaceGenderIdentity("OTHER_THAN_MAN_WOMAN"))
         self.assertEqual(results[0].sexualOrientation, WorkbenchWorkspaceSexualOrientation("OTHER_THAN_STRAIGHT"))
