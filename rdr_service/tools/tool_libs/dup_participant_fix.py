@@ -53,11 +53,11 @@ class ProgramTemplateClass(object):
 
     def get_biobank_records_for_participant(self, dao, mappings):
         """
-        Return the biobank order and stored samples for Biobank Order ID in mapping.
+        Return the participant, biobank order, and stored sample records mappings.
         :param dao: DAO object to run queries with.
-        :param mappings: Tuple with 4 pid values.
-        :return: Original Participant record, New Participant record,
-        Biobank Order record, Biobank Stored Sample records
+        :param mappings: Tuple with old_pid, new_pid, biobank_order_id.
+        :return: old participant, new participant,
+        biobank order, stored sample records
         """
         with dao.session() as session:
             op = session.query(Participant).filter(Participant.participantId == mappings[0]).first()
@@ -74,10 +74,10 @@ class ProgramTemplateClass(object):
 
     def get_pm_records_for_participant(self, dao, mappings):
         """
-       Return the participant records for each pid in pids.
+       Return the physical measurement and participant records in mappings.
        :param dao: DAO object to run queries with.
-       :param mappings: Tuple with 3 pid values.
-       :return: Original Participant record, New Participant 1 record, New Participant 2 record.
+       :param mappings: Tuple with old_pid, new_pid, and pm_id.
+       :return: old participant, new participant, and pm records
        """
         with dao.session() as session:
             op = session.query(Participant).filter(Participant.participantId == mappings[0]).first()
@@ -113,7 +113,7 @@ class ProgramTemplateClass(object):
 
     def fix_pm(self, dao, op, np, pm):
         """
-        Updates the Biobank Order object to the new PID
+        Updates the Physical Measurement object to the new PID
         :param dao: the dao
         :param np: new participant
         :param pm: physical measurement object
