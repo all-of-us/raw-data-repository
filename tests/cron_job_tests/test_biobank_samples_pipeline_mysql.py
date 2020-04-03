@@ -1291,6 +1291,7 @@ class MySqlReconciliationTest(BaseTestCase):
         self.assertEqual(row["notes_finalized"], "baz")
         self.assertEqual(row["sent_order_id"], "OGoodOrder")
         self.assertEqual(row["biobank_order_origin"], "testOrigin")
+
         # the other sent-and-received rows
         exporter.assertHasRow(
             received, {"biobank_id": to_client_biobank_id(p_on_time.biobankId), "sent_test": BIOBANK_TESTS[1]}
