@@ -13,6 +13,7 @@ import sys
 
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.participant import Participant
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
 
@@ -81,15 +82,10 @@ class ProgramTemplateClass(object):
         with dao.session() as session:
             op = session.query(Participant).filter(Participant.participantId == mappings[0]).first()
             np = session.query(Participant).filter(Participant.participantId == mappings[1]).first()
-            bbo = session.query(BiobankOrder).filter(BiobankOrder.biobankOrderId == mappings[2]).first()
-            ss = session.query(BiobankStoredSample).join(
-                BiobankOrderIdentifier,
-                BiobankOrderIdentifier.value == BiobankStoredSample.biobankOrderIdentifier
-            ).filter(
-                BiobankOrderIdentifier.biobankOrderId == mappings[2]
-            ).all()
-
-        return op, np, bbo, ss
+            pm = session.query(PhysicalMeasurements).filter(
+                PhysicalMeasurements.physicalMeasurementsId == mappings[2]
+            ).first()
+        return op, np, pm
 
     def fix_biobank_order(self, dao, np, bbo):
         """
@@ -114,6 +110,23 @@ class ProgramTemplateClass(object):
         ss.biobankId = np.biobankId
         with dao.session() as session:
             return session.merge(ss)
+
+    def fix_pm(self, dao, op, np, pm):
+        """
+        Updates the Biobank Order object to the new PID
+        :param dao: the dao
+        :param np: new participant
+        :param pm: physical measurement object
+        :return: updated physical measurment object
+        """
+        pid_strings = (str(op.participantId), str(np.participantId))
+        pm.participantId = np.participantId
+        # Update the resource request with the correct PID
+        for entry in pm.resource['entry']:
+            new_ref = entry['resource']['subject']['reference'].replace(*pid_strings)
+            entry['resource']['subject']['reference'] = new_ref
+        with dao.session() as session:
+            return session.merge(pm)
 
     def run(self):
         """
@@ -197,10 +210,10 @@ class ProgramTemplateClass(object):
 
                 # Process Physical Measurement
                 _logger.warning(
-                    f'  reassigning Physical Measurement {physical_measurement.physicalMeasurementId} | '
+                    f'  reassigning Physical Measurement {physical_measurement.physicalMeasurementsId} | '
                     f'{old_p.participantId} -> {new_p.participantId}')
-                updated_pm = self.fix_pm(dao, new_p, physical_measurement)
-                _logger.info(f'  update successful for {updated_pm.physicalMeasurementId}: '
+                updated_pm = self.fix_pm(dao, old_p, new_p, physical_measurement)
+                _logger.info(f'  update successful for PM ID {updated_pm.physicalMeasurementsId}: '
                              f'{updated_pm.participantId}')
 
         return 0
