@@ -1,4 +1,5 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UnicodeText, event
+from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 from rdr_service.model.field_types import BlobUTF8
@@ -199,6 +200,103 @@ class MayolinkCreateOrderHistory(Base):
     requestOrderStatus = Column("response_order_status", String(80))
     requestPayload = Column("request_payload", BlobUTF8)
     responsePayload = Column("response_payload", BlobUTF8)
+
+
+class BiobankSpecimenBase(object):
+    id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column("created", UTCDateTime6, nullable=True)
+    modified = Column("modified", UTCDateTime6, nullable=True)
+
+
+class SpecimenAliquotBase(object):
+    sampleType = Column("sample_type", String(80))
+    status = Column("status", String(100))
+    disposalReason = Column("disposal_reason", String(80))
+    disposalDate = Column("disposal_date", UTCDateTime)
+    freezeThawCount = Column("freeze_thaw_count", Integer)
+    location = Column("location", String(200))
+    quantity = Column("quantity", String(80))
+    quantityUnits = Column("quantity_units", String(80))
+    processingCompleteDate = Column("processing_complete_date", UTCDateTime)
+    deviations = Column('deviations', JSON, nullable=False)
+
+
+class BiobankSpecimen(Base, BiobankSpecimenBase, SpecimenAliquotBase):
+    __tablename__ = "biobank_specimen"
+
+    rlimsId = Column("rlims_id", String(80), unique=True)
+    @declared_attr
+    def participantId(cls):
+        return Column("participant_id", Integer, ForeignKey("participant.participant_id"), nullable=False)
+    orderId = Column("order_id", String(80), ForeignKey("biobank_order.biobank_order_id"), primary_key=True)
+    testCode = Column("test_code", String(80))
+    repositoryId = Column("repository_id", String(80))
+    studyId = Column("study_id", String(80))
+    cohortId = Column("cohort_id", String(80))
+    collectionDate = Column("collection_date", UTCDateTime)
+    confirmedDate = Column("confirmed_date", UTCDateTime)
+
+
+class BiobbankSpecimenAliquotBase(object):
+    @declared_attr
+    def specimen_id(cls):
+        return Column("specimen_id", String(80), ForeignKey("biobank_specimen.id"))
+    @declared_attr
+    def specimen_rlims_id(cls):
+            return Column("specimen_rlims_id", String(80), ForeignKey("biobank_specimen.rlims_id"))
+
+
+class BiobankSpecimenAttribute(Base, BiobankSpecimenBase, BiobbankSpecimenAliquotBase):
+    __tablename__ = "biobank_specimen_attribute"
+    name = Column("name", String(80))
+    value = Column("value", String(80))
+
+
+class BiobankAliquot(Base, BiobankSpecimenBase, BiobbankSpecimenAliquotBase, SpecimenAliquotBase):
+    __tablename__ = "biobank_aliquot"
+    @declared_attr
+    def specimen_id(cls):
+        return Column("specimen_id", String(80), ForeignKey("biobank_specimen.id"))
+
+    @declared_attr
+    def specimen_rlims_id(cls):
+        return Column("specimen_rlims_id", String(80), ForeignKey("biobank_specimen.order_id"))
+    @declared_attr
+    def parent_aliquot_id(cls):
+        return Column("parent_aliquot_id", String(80))
+    @declared_attr
+    def parent_aliquot_rlims_id(cls):
+        return Column("parent_aliquot_rlims_id", String(80))
+    rlimsId = Column("rlims_id", String(80), unique=True)
+    childPlanService = Column("child_plan_service", String(100))
+    initialTreatment = Column("initial_treatment", String(100))
+    containerTypeId = Column("container_type_id", String(100))
+
+
+class BiobankAliquotDataset(Base, BiobankSpecimenBase):
+    __tablename__ = "biobank_aliquot_dataset"
+    @declared_attr
+    def aliquot_id(cls):
+        return Column("aliquot_id", Integer, ForeignKey("biobank_aliquot.id"))
+    @declared_attr
+    def aliquot_rlims_id(cls):
+        return Column("aliquot_rlims_id", String(80), ForeignKey("biobank_aliquot.rlims_id"))
+    rlimsId = Column("rlims_id", String(80), unique=True)
+    name = Column("name", String(80))
+    status = Column("status", String(80))
+
+
+class BiobankAliquotDatasetItem(Base, BiobankSpecimenBase):
+    __tablename__ = "biobank_aliquot_dataset_item"
+    @declared_attr
+    def dataset_id(cls):
+        return Column("dataset_id", String(80), ForeignKey("biobank_aliquot_dataset.id"))
+    @declared_attr
+    def dataset_rlims_id(cls):
+        return Column("dataset_rlims_id", String(80), ForeignKey("biobank_aliquot_dataset.rlims_id"))
+    paramId = Column("param_id", String(80))
+    displayValue = Column("display_value", String(80))
+    displayUnits = Column("display_units", String(80))
 
 
 event.listen(MayolinkCreateOrderHistory, "before_insert", model_insert_listener)
