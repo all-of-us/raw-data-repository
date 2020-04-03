@@ -50,12 +50,13 @@ class ProgramTemplateClass(object):
 
         return p, p1, p2
 
-    def get_biobank_records_for_participants(self, dao, mappings):
+    def get_biobank_records_for_participant(self, dao, mappings):
         """
-        Return the participant records for each pid in pids.
+        Return the biobank order and stored samples for Biobank Order ID in mapping.
         :param dao: DAO object to run queries with.
-        :param mappings: Tuple with 3 pid values.
-        :return: Original Participant record, New Participant 1 record, New Participant 2 record.
+        :param mappings: Tuple with 4 pid values.
+        :return: Original Participant record, New Participant record,
+        Biobank Order record, Biobank Stored Sample records
         """
         with dao.session() as session:
             op = session.query(Participant).filter(Participant.participantId == mappings[0]).first()
@@ -66,7 +67,27 @@ class ProgramTemplateClass(object):
                 BiobankOrderIdentifier.value == BiobankStoredSample.biobankOrderIdentifier
             ).filter(
                 BiobankOrderIdentifier.biobankOrderId == mappings[2]
-            ).first()
+            ).all()
+
+        return op, np, bbo, ss
+
+    def get_pm_records_for_participant(self, dao, mappings):
+        """
+       Return the participant records for each pid in pids.
+       :param dao: DAO object to run queries with.
+       :param mappings: Tuple with 3 pid values.
+       :return: Original Participant record, New Participant 1 record, New Participant 2 record.
+       """
+        with dao.session() as session:
+            op = session.query(Participant).filter(Participant.participantId == mappings[0]).first()
+            np = session.query(Participant).filter(Participant.participantId == mappings[1]).first()
+            bbo = session.query(BiobankOrder).filter(BiobankOrder.biobankOrderId == mappings[2]).first()
+            ss = session.query(BiobankStoredSample).join(
+                BiobankOrderIdentifier,
+                BiobankOrderIdentifier.value == BiobankStoredSample.biobankOrderIdentifier
+            ).filter(
+                BiobankOrderIdentifier.biobankOrderId == mappings[2]
+            ).all()
 
         return op, np, bbo, ss
 
@@ -130,11 +151,18 @@ class ProgramTemplateClass(object):
                         _logger.error(f"   {headers}")
                         return 1
 
+                if self.args.fix_physical_measurements:
+                    headers = mappings_list.pop(0)
+                    if headers != ("old_pid", "new_pid", "pm_id"):
+                        _logger.error("Invalid columns in CSV")
+                        _logger.error(f"   {headers}")
+                        return 1
+
         if self.args.fix_biobank_orders:
             for mapping in mappings_list:
-                old_p, new_p, biobank_order, stored_sample = self.get_biobank_records_for_participants(dao, mapping)
+                old_p, new_p, biobank_order, stored_samples = self.get_biobank_records_for_participant(dao, mapping)
 
-                if not old_p or not new_p or not biobank_order or not stored_sample:
+                if not old_p or not new_p or not biobank_order or not stored_samples:
                     _logger.error(
                         f'  error {old_p.participantId}, {new_p.participantId}, {biobank_order.biobankOrderId}')
                     continue
@@ -148,12 +176,33 @@ class ProgramTemplateClass(object):
                              f'{updated_bbo.participantId}')
 
                 # Process Biobank Stored Samples
+                for sample in stored_samples:
+                    _logger.warning(
+                        f'  reassigning Stored Sample {sample.biobankStoredSampleId} | '
+                        f'{old_p.biobankId} -> {new_p.biobankId}')
+                    updated_ss = self.fix_biobank_stored_sample(dao, new_p, sample)
+                    _logger.info(f'  update successful for {updated_ss.biobankStoredSampleId}: '
+                                 f'{updated_ss.biobankId}')
+
+        if self.args.fix_physical_measurements:
+            for mapping in mappings_list:
+                old_p, new_p, physical_measurement = self.get_pm_records_for_participant(dao, mapping)
+
+                if not old_p or not new_p or not physical_measurement:
+                    _logger.error(
+                        f'  error {old_p.participantId}, '
+                        f'{new_p.participantId}, '
+                        f'{physical_measurement.physicalMeasurementsId}')
+                    continue
+
+                # Process Physical Measurement
                 _logger.warning(
-                    f'  reassigning Stored Sample {stored_sample.biobankStoredSampleId} | '
-                    f'{old_p.biobankId} -> {new_p.biobankId}')
-                updated_ss = self.fix_biobank_stored_sample(dao, new_p, stored_sample)
-                _logger.info(f'  update successful for {updated_ss.biobankStoredSampleId}: '
-                             f'{updated_ss.biobankId}')
+                    f'  reassigning Physical Measurement {physical_measurement.physicalMeasurementId} | '
+                    f'{old_p.participantId} -> {new_p.participantId}')
+                updated_pm = self.fix_pm(dao, new_p, physical_measurement)
+                _logger.info(f'  update successful for {updated_pm.physicalMeasurementId}: '
+                             f'{updated_pm.participantId}')
+
         return 0
 
 
