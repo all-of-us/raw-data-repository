@@ -243,7 +243,7 @@ class BiobbankSpecimenAliquotBase(object):
         return Column("specimen_id", String(80), ForeignKey("biobank_specimen.id"))
     @declared_attr
     def specimen_rlims_id(cls):
-            return Column("specimen_rlims_id", String(80), ForeignKey("biobank_specimen.rlims_id"))
+        return Column("specimen_rlims_id", String(80), ForeignKey("biobank_specimen.rlims_id"))
 
 
 class BiobankSpecimenAttribute(Base, BiobankSpecimenBase, BiobbankSpecimenAliquotBase):
