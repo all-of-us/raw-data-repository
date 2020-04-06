@@ -22,7 +22,7 @@ import rdr_service
 
 # revision identifiers, used by Alembic.
 revision = '15b2f31f3e14'
-down_revision = 'd9742926014b'
+down_revision = 'e66a20e7af08'
 branch_labels = None
 depends_on = None
 
