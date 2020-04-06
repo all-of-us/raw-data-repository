@@ -78,6 +78,36 @@ jobs:
           project-id: all-of-us-rdr-staging
           git-target: << pipeline.git.tag >>
 
+  job_deploy_to_ptsc_1:
+    <<: *job_defaults
+    steps:
+      - deploy-app-steps:
+          project-id: all-of-us-rdr-ptsc-1-test
+          git-target: << pipeline.git.tag >>
+
+  job_deploy_to_ptsc_2:
+    <<: *job_defaults
+    steps:
+      - deploy-app-steps:
+          project-id: all-of-us-rdr-ptsc-2-test
+          git-target: << pipeline.git.tag >>
+
+
+  job_deploy_to_ptsc_3:
+    <<: *job_defaults
+    steps:
+      - deploy-app-steps:
+          project-id: all-of-us-rdr-ptsc-3-test
+          git-target: << pipeline.git.tag >>
+
+
+  job_deploy_to_ce:
+    <<: *job_defaults
+    steps:
+      - deploy-app-steps:
+          project-id: all-of-us-rdr-careevo-test
+          git-target: << pipeline.git.tag >>
+
 workflows:
 
   test_commits_workflow:
@@ -114,6 +144,30 @@ workflows:
   release_workflow:
     jobs:
       - job_deploy_to_staging:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^\d\.\d+\.\d+$/
+      - job_deploy_to_ptsc_1:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^\d\.\d+\.\d+$/
+      - job_deploy_to_ptsc_2:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^\d\.\d+\.\d+$/
+      - job_deploy_to_ptsc_3:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^\d\.\d+\.\d+$/
+      - job_deploy_to_ce:
           filters:
             branches:
               ignore: /.*/
