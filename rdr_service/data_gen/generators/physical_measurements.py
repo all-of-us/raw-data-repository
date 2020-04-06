@@ -149,7 +149,7 @@ class PhysicalMeasurementsGen(BaseGen):
                 "value": value,
             }
         if "string" in measurement["types"]:
-            resource["valueString"] = "".join([random.choice(string.lowercase) for _ in range(20)])
+            resource["valueString"] = "".join([random.choice(string.ascii_lowercase) for _ in range(20)])
         if measurement["valueCodes"]:
             value_code = random.choice(measurement["valueCodes"])
             resource["valueCodeableConcept"] = {

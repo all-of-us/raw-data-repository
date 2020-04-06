@@ -1,7 +1,7 @@
 """biobank specimen aliquots
 
 Revision ID: 15b2f31f3e14
-Revises: ebb0489ffb10
+Revises: d9742926014b
 Create Date: 2020-04-03 15:13:18.257228
 
 """
@@ -22,7 +22,7 @@ import rdr_service
 
 # revision identifiers, used by Alembic.
 revision = '15b2f31f3e14'
-down_revision = 'ebb0489ffb10'
+down_revision = 'd9742926014b'
 branch_labels = None
 depends_on = None
 
