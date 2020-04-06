@@ -44,7 +44,7 @@ from rdr_service.participant_enums import (
     GenomicSubProcessStatus,
     GenomicSubProcessResult,
     GenomicJob,
-    Race)
+    Race, QuestionnaireStatus)
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -173,6 +173,7 @@ class GenomicPipelineTest(BaseTestCase):
             sampleStatus1SAL2=SampleStatus.RECEIVED,
             samplesToIsolateDNA=SampleStatus.RECEIVED,
             consentForStudyEnrollmentTime=datetime.datetime(2019, 1, 1),
+            consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
         )
         kwargs = dict(valid_kwargs, **override_kwargs)
         summary = self._participant_summary_with_defaults(**kwargs)
@@ -1285,7 +1286,7 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    def test_gem_a2d_manifest_workflow(self):
+    def test_gem_a3_manifest_workflow(self):
         # Create A1 manifest job run: id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.GEM_A1_MANIFEST,
                                               startTime=clock.CLOCK.now(),
@@ -1296,8 +1297,12 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
                                                 array_participants=range(1, 4),
                                                 gem_a1_run_id=1)
+        p3 = self.summary_dao.get(3)
+        p3.consentForGenomicsROR = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+        self.summary_dao.update(p3)
+
         # Run Workflow
-        genomic_pipeline.gem_a2_manifest_workflow()  # run_id 2
+        genomic_pipeline.gem_a3_manifest_workflow()  # run_id 2
 
         # Test the job result
         run_obj = self.job_run_dao.get(2)
