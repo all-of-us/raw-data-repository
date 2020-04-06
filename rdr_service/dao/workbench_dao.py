@@ -185,6 +185,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 modifiedTime=parse(item.get('modifiedTime')),
                 status=WorkbenchWorkspaceStatus(item.get('status', 'UNSET')),
                 excludeFromPublicDirectory=item.get('excludeFromPublicDirectory'),
+                reviewRequested=item.get('reviewRequested'),
                 diseaseFocusedResearch=item.get('diseaseFocusedResearch'),
                 diseaseFocusedResearchName=item.get('diseaseFocusedResearchName'),
                 otherPurposeDetails=item.get('otherPurposeDetails'),
