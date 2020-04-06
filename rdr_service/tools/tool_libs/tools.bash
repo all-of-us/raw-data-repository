@@ -41,6 +41,10 @@ _python()
             COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
             return 0
             ;;
+        setup-local-db)
+            COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
+            return 0
+            ;;
         migrate-bq)
             # These are options specific to this tool.
             local toolopts="--dataset --delete"
