@@ -240,7 +240,7 @@ class BiobankSpecimen(Base, BiobankSpecimenBase, SpecimenAliquotBase):
 class BiobbankSpecimenAliquotBase(object):
     @declared_attr
     def specimen_id(cls):
-        return Column("specimen_id", String(80), ForeignKey("biobank_specimen.id"))
+        return Column("specimen_id", Integer, ForeignKey("biobank_specimen.id"))
     @declared_attr
     def specimen_rlims_id(cls):
         return Column("specimen_rlims_id", String(80), ForeignKey("biobank_specimen.rlims_id"))
@@ -256,7 +256,7 @@ class BiobankAliquot(Base, BiobankSpecimenBase, BiobbankSpecimenAliquotBase, Spe
     __tablename__ = "biobank_aliquot"
     @declared_attr
     def specimen_id(cls):
-        return Column("specimen_id", String(80), ForeignKey("biobank_specimen.id"))
+        return Column("specimen_id", Integer, ForeignKey("biobank_specimen.id"))
 
     @declared_attr
     def specimen_rlims_id(cls):
@@ -290,7 +290,7 @@ class BiobankAliquotDatasetItem(Base, BiobankSpecimenBase):
     __tablename__ = "biobank_aliquot_dataset_item"
     @declared_attr
     def dataset_id(cls):
-        return Column("dataset_id", String(80), ForeignKey("biobank_aliquot_dataset.id"))
+        return Column("dataset_id", Integer, ForeignKey("biobank_aliquot_dataset.id"))
     @declared_attr
     def dataset_rlims_id(cls):
         return Column("dataset_rlims_id", String(80), ForeignKey("biobank_aliquot_dataset.rlims_id"))

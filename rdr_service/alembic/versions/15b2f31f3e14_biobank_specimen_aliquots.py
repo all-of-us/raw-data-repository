@@ -10,14 +10,15 @@ import sqlalchemy as sa
 import model.utils
 from sqlalchemy.dialects import mysql
 
-from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
-from rdr_service.participant_enums import WithdrawalStatus, WithdrawalReason, SuspensionStatus, QuestionnaireDefinitionStatus
-from rdr_service.participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType, BiobankOrderStatus
-from rdr_service.participant_enums import OrderShipmentTrackingStatus, OrderShipmentStatus
-from rdr_service.participant_enums import MetricSetType, MetricsKey, GenderIdentity
-from rdr_service.model.base import add_table_history_table, drop_table_history_table
-from rdr_service.model.code import CodeType
-from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
+# from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
+# from rdr_service.participant_enums import WithdrawalStatus, WithdrawalReason, SuspensionStatus, QuestionnaireDefinitionStatus
+# from rdr_service.participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType, BiobankOrderStatus
+# from rdr_service.participant_enums import OrderShipmentTrackingStatus, OrderShipmentStatus
+# from rdr_service.participant_enums import MetricSetType, MetricsKey, GenderIdentity
+# from rdr_service.model.base import add_table_history_table, drop_table_history_table
+# from rdr_service.model.code import CodeType
+# from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
+import rdr_service
 
 # revision identifiers, used by Alembic.
 revision = '15b2f31f3e14'
@@ -83,7 +84,7 @@ def upgrade_rdr():
     sa.Column('child_plan_service', sa.String(length=100), nullable=True),
     sa.Column('initial_treatment', sa.String(length=100), nullable=True),
     sa.Column('container_type_id', sa.String(length=100), nullable=True),
-    sa.Column('specimen_id', sa.String(length=80), nullable=True),
+    sa.Column('specimen_id', sa.Integer(), nullable=True),
     sa.Column('specimen_rlims_id', sa.String(length=80), nullable=True),
     sa.Column('parent_aliquot_id', sa.String(length=80), nullable=True),
     sa.Column('parent_aliquot_rlims_id', sa.String(length=80), nullable=True),
@@ -98,7 +99,7 @@ def upgrade_rdr():
     sa.Column('modified', rdr_service.model.utils.UTCDateTime6(fsp=6), nullable=True),
     sa.Column('name', sa.String(length=80), nullable=True),
     sa.Column('value', sa.String(length=80), nullable=True),
-    sa.Column('specimen_id', sa.String(length=80), nullable=True),
+    sa.Column('specimen_id', sa.Integer(), nullable=True),
     sa.Column('specimen_rlims_id', sa.String(length=80), nullable=True),
     sa.ForeignKeyConstraint(['specimen_id'], ['biobank_specimen.id'], ),
     sa.ForeignKeyConstraint(['specimen_rlims_id'], ['biobank_specimen.rlims_id'], ),
@@ -125,7 +126,7 @@ def upgrade_rdr():
     sa.Column('param_id', sa.String(length=80), nullable=True),
     sa.Column('display_value', sa.String(length=80), nullable=True),
     sa.Column('display_units', sa.String(length=80), nullable=True),
-    sa.Column('dataset_id', sa.String(length=80), nullable=True),
+    sa.Column('dataset_id', sa.Integer(), nullable=True),
     sa.Column('dataset_rlims_id', sa.String(length=80), nullable=True),
     sa.ForeignKeyConstraint(['dataset_id'], ['biobank_aliquot_dataset.id'], ),
     sa.ForeignKeyConstraint(['dataset_rlims_id'], ['biobank_aliquot_dataset.rlims_id'], ),
