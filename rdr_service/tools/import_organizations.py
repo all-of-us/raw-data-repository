@@ -260,7 +260,7 @@ class SiteImporter(CsvImporter):
         try:
             args = parser.parse_args()
             self.stub_geocoding = args.stub_geocoding
-            self.instance = args.instanc,
+            self.instance = args.instance
             self.creds_file = args.creds_file
             if args.project:
                 self.project = args.project
