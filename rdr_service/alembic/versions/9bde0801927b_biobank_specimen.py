@@ -1,8 +1,9 @@
-"""biobank specimen aliquots
+"""biobank specimen
 
-Revision ID: 15b2f31f3e14
-Revises: ebb0489ffb10
-Create Date: 2020-04-03 15:13:18.257228
+
+Revision ID: 9bde0801927b
+Revises: e66a20e7af08
+Create Date: 2020-04-06 14:48:34.437968
 
 """
 from alembic import op
@@ -21,8 +22,8 @@ from sqlalchemy.dialects import mysql
 import rdr_service
 
 # revision identifiers, used by Alembic.
-revision = '15b2f31f3e14'
-down_revision = 'ebb0489ffb10'
+revision = '9bde0801927b'
+down_revision = 'e66a20e7af08'
 branch_labels = None
 depends_on = None
 

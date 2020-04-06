@@ -256,17 +256,20 @@ class OrganizationImporter(CsvImporter):
 
 class SiteImporter(CsvImporter):
     def __init__(self):
-        args = parser.parse_args()
+        self.project = None
+        try:
+            args = parser.parse_args()
+            self.stub_geocoding = args.stub_geocoding
+            self.instance = args.instance
+            self.creds_file = args.creds_file
+            if args.project:
+                self.project = args.project
+        except NameError:
+            pass
         self.organization_dao = OrganizationDao()
-        self.stub_geocoding = args.stub_geocoding
         self.ACTIVE = SiteStatus.ACTIVE
         self.status_exception_list = ["hpo-site-walgreensphoenix"]
-        self.instance = args.instance
-        self.creds_file = args.creds_file
         self.new_sites_list = []
-        self.project = None
-        if args.project:
-            self.project = args.project
 
         if self.project in ENV_LIST:
             self.environment = " " + self.project.split("-")[-1].upper()
@@ -666,7 +669,7 @@ if __name__ == "__main__":
         help="Set sites to have the same lat/lng/time zone rather than geocoding.",
         action="store_true",
     )
-    parser.add_argument("--project", help="Project is used to determine enviroment for specific " "settings")
+    parser.add_argument("--project", help="Project is used to determine environment for specific " "settings")
 
     parser.add_argument(
         "--instance",

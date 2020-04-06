@@ -132,9 +132,6 @@ class GenomicSetMember(Base):
     reconcileMetricsSequencingJobRunId = Column('reconcile_metrics_sequencing_job_run_id',
                                                 Integer, ForeignKey("genomic_job_run.id"),
                                                 nullable=True)
-    reconcileMetricsGenotypingJobRunId = Column('reconcile_metrics_genotyping_job_run_id',
-                                                Integer, ForeignKey("genomic_job_run.id"),
-                                                nullable=True)
     reconcileCvlJobRunId = Column('reconcile_cvl_job_run_id',
                                   Integer, ForeignKey("genomic_job_run.id"),
                                   nullable=True)
