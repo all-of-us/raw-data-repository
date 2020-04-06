@@ -1304,6 +1304,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Run Workflow
         fake_now = datetime.datetime.utcnow()
+        out_time = fake_now.strftime("%Y-%m-%d-%H-%M-%S")
         with clock.FakeClock(fake_now):
             genomic_pipeline.gem_a3_manifest_workflow()  # run_id 2
 
@@ -1317,7 +1318,7 @@ class GenomicPipelineTest(BaseTestCase):
             "biobank_id",
             "sample_id",
         )
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_WD_2.csv')) as csv_file:
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_WD_{out_time}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             missing_cols = set(expected_cvl_columns) - set(csv_reader.fieldnames)
             self.assertEqual(0, len(missing_cols))
@@ -1329,7 +1330,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Array
         file_record = self.file_processed_dao.get(1)  # remember, GC Metrics is #1
         self.assertEqual(2, file_record.runId)
-        self.assertEqual(f'{sub_folder}/AoU_GEM_WD_2.csv', file_record.fileName)
+        self.assertEqual(f'{sub_folder}/AoU_GEM_WD_{out_time}.csv', file_record.fileName)
 
         # Test the job result
         run_obj = self.job_run_dao.get(2)
