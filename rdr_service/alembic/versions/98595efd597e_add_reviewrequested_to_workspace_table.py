@@ -1,16 +1,16 @@
 """add reviewRequested to workspace table
 
-Revision ID: cf455ea926f3
-Revises: e66a20e7af08
-Create Date: 2020-04-03 16:33:50.851173
+Revision ID: 98595efd597e
+Revises: 9bde0801927b
+Create Date: 2020-04-06 15:31:13.382126
 
 """
 from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = 'cf455ea926f3'
-down_revision = 'e66a20e7af08'
+revision = '98595efd597e'
+down_revision = '9bde0801927b'
 branch_labels = None
 depends_on = None
 
