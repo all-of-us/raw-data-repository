@@ -111,7 +111,7 @@ class BQRWBWorkspaceRaceEthnicityView(BQView):
     __pk_id__ = 'id'
     __table__ = BQRWBWorkspace
     __sql__ = """
-        SELECT t.id, nt.*
+        SELECT t.id, t.created, t.modified, nt.*
           FROM (
             SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
               FROM `{project}`.{dataset}.rwb_workspace 
@@ -126,7 +126,7 @@ class BQRWBWorkspaceAgeView(BQView):
     __pk_id__ = 'id'
     __table__ = BQRWBWorkspace
     __sql__ = """
-        SELECT t.id, nt.*
+        SELECT t.id, t.created, t.modified, nt.*
           FROM (
             SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
               FROM `{project}`.{dataset}.rwb_workspace 

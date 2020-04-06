@@ -162,10 +162,10 @@ class ParticipantDao(UpdatableDao):
         super(ParticipantDao, self)._validate_update(session, obj, existing_obj)
         # Once a participant marks their withdrawal status as NO_USE, it can't be changed back.
         # TODO: Consider the future ability to un-withdraw.
-        if (
-            existing_obj.withdrawalStatus == WithdrawalStatus.NO_USE
-            and obj.withdrawalStatus != WithdrawalStatus.NO_USE
-        ):
+        if (existing_obj.withdrawalStatus == WithdrawalStatus.NO_USE
+            and obj.withdrawalStatus != WithdrawalStatus.NO_USE) \
+            or (existing_obj.withdrawalStatus == WithdrawalStatus.EARLY_OUT
+                and obj.withdrawalStatus != WithdrawalStatus.EARLY_OUT):
             raise Forbidden(f"Participant {obj.participantId} has withdrawn, cannot unwithdraw")
 
     def get_for_update(self, session, obj_id):
@@ -187,9 +187,11 @@ class ParticipantDao(UpdatableDao):
 
         need_new_summary = False
         if obj.withdrawalStatus != existing_obj.withdrawalStatus:
-            obj.withdrawalTime = obj.lastModified if obj.withdrawalStatus == WithdrawalStatus.NO_USE else None
+            obj.withdrawalTime = obj.lastModified if obj.withdrawalStatus == WithdrawalStatus.NO_USE \
+                                                     or obj.withdrawalStatus == WithdrawalStatus.EARLY_OUT else None
             obj.withdrawalAuthored = (
-                obj.withdrawalAuthored if obj.withdrawalStatus == WithdrawalStatus.NO_USE else None
+                obj.withdrawalAuthored if obj.withdrawalStatus == WithdrawalStatus.NO_USE
+                                          or obj.withdrawalStatus == WithdrawalStatus.EARLY_OUT else None
             )
 
             need_new_summary = True
@@ -473,5 +475,5 @@ def _get_hpo_name_from_participant(participant):
 
 
 def raise_if_withdrawn(obj):
-    if obj.withdrawalStatus == WithdrawalStatus.NO_USE:
+    if obj.withdrawalStatus == WithdrawalStatus.NO_USE or obj.withdrawalStatus == WithdrawalStatus.EARLY_OUT:
         raise Forbidden(f"Participant {obj.participantId} has withdrawn")

@@ -148,6 +148,9 @@ class GenomicSetMember(Base):
                                     Integer, ForeignKey("genomic_job_run.id"),
                                     nullable=True)
     gemPass = Column('gem_pass', String(10), nullable=True)
+    gemA2DManifestJobRunId = Column('gem_a2d_manifest_job_run_id',
+                                   Integer, ForeignKey("genomic_job_run.id"),
+                                   nullable=True)
 
     gemPtscSentJobRunId = Column('gem_ptsc_sent_job_run_id',
                                  Integer, ForeignKey("genomic_job_run.id"),

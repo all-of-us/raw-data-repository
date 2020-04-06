@@ -312,7 +312,7 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
 
         response = self.send_get(path)
         composition = self.get_composition_resource_from_fhir_doc(response)
-        self.assertEqual(composition["status"], "entered_in_error")
+        self.assertEqual(composition["status"], "entered-in-error")
         count = 0
         for ext in composition['extension']:
             if 'cancelled-site' in ext['url']:
@@ -355,7 +355,7 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         path = path + "/" + response["id"]
         response = self.send_get(path)
         composition = self.get_composition_resource_from_fhir_doc(response)
-        self.assertEqual(composition["status"], "entered_in_error")
+        self.assertEqual(composition["status"], "entered-in-error")
         count = 0
         for ext in composition['extension']:
             if 'cancelled-site' in ext['url']:
@@ -400,7 +400,7 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
 
         response = self.send_get(path)
         composition = self.get_composition_resource_from_fhir_doc(response)
-        self.assertEqual(composition["status"], "entered_in_error")
+        self.assertEqual(composition["status"], "entered-in-error")
         count = 0
         for ext in composition['extension']:
             if 'cancelled-site' in ext['url']:
@@ -441,7 +441,7 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
 
         response = self.send_get(path)
         composition = self.get_composition_resource_from_fhir_doc(response)
-        self.assertEqual(composition["status"], "entered_in_error")
+        self.assertEqual(composition["status"], "entered-in-error")
         count = 0
         for ext in composition['extension']:
             if 'cancelled-site' in ext['url']:
@@ -535,7 +535,7 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         self.send_patch(path, cancel_info)
         response = self.send_get(path)
         composition = self.get_composition_resource_from_fhir_doc(response)
-        self.assertEqual(composition["status"], "entered_in_error")
+        self.assertEqual(composition["status"], "entered-in-error")
         count = 0
         for ext in composition['extension']:
             if 'cancelled-site' in ext['url']:
