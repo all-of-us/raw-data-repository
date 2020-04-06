@@ -22,6 +22,7 @@ from rdr_service.api.cloud_tasks_api import RebuildParticipantsBQTaskApi, Rebuil
     CopyCloudStorageObjectTaskApi, BQRebuildQuestionnaireTaskApi, GenerateBiobankSamplesTaskApi, \
     BQRebuildOneParticipantTaskApi
 from rdr_service.api.biobank_order_api import BiobankOrderApi
+from rdr_service.api.biobank_specimen_api import BiobankSpecimenApi
 from rdr_service.api.check_ppi_data_api import check_ppi_data
 from rdr_service.api.data_gen_api import DataGenApi, SpecDataGenApi
 from rdr_service.api.dv_order_api import DvOrderApi
@@ -232,6 +233,21 @@ api.add_resource(
     endpoint="participant.dv_order",
     methods=["POST", "GET", "PUT"],
 )
+
+# biobank sample aliquot api
+
+api.add_resource(
+    BiobankSpecimenApi,
+    API_PREFIX + "Biobank/specimens/<string:rlims_id>",
+    API_PREFIX + "Biobank/specimens",
+    API_PREFIX + "Biobank/specimens/<string:rlims_id>/status",
+    API_PREFIX + "Biobank/specimens/<string:rlims_id>/disposalStatus",
+    API_PREFIX + "Biobank/specimens/<string:rlims_id>/aliquots/<string: aliquot_rlims_id>",
+    API_PREFIX + "Biobank/aliquots/<string:aliquots_rlims_id>/disposalStatus",
+    API_PREFIX + "Biobank/aliquots/<string:aliquots_rlims_id>/datasets/<string: dataset_rlims_id>",
+    endpoint="biobank",
+    methods=["GET", "PUT"],
+    )
 
 api.add_resource(AwardeeApi, API_PREFIX + "Awardee", API_PREFIX + "Awardee/<string:a_id>",
                         endpoint="awardee", methods=["GET"])
