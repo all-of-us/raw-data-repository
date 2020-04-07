@@ -1207,7 +1207,7 @@ class GenomicPipelineTest(BaseTestCase):
         a1_time = datetime.datetime(2020, 4, 1, 0, 0, 0, 0)
         with clock.FakeClock(a1_time):
             genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 5
-
+        a1f = a1_time.strftime("%Y-%m-%d-%H-%M-%S")
         # Test Genomic Set Member updated with GEM Array Manifest job run
         with self.member_dao.session() as member_session:
             test_member_1 = member_session.query(
@@ -1232,7 +1232,7 @@ class GenomicPipelineTest(BaseTestCase):
             "sex_at_birth",
         )
         sub_folder = config.getSetting(config.GENOMIC_GEM_A1_MANIFEST_SUBFOLDER)
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_Manifest_5.csv')) as csv_file:
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_Manifest_{a1f}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             missing_cols = set(expected_cvl_columns) - set(csv_reader.fieldnames)
             self.assertEqual(0, len(missing_cols))
@@ -1245,7 +1245,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Array
         file_record = self.file_processed_dao.get(2)  # remember, GC Metrics is #1
         self.assertEqual(5, file_record.runId)
-        self.assertEqual(f'{sub_folder}/AoU_GEM_Manifest_5.csv', file_record.fileName)
+        self.assertEqual(f'{sub_folder}/AoU_GEM_Manifest_{a1f}.csv', file_record.fileName)
 
         # Test the job result
         run_obj = self.job_run_dao.get(4)
@@ -1270,9 +1270,9 @@ class GenomicPipelineTest(BaseTestCase):
         # Run A1 Again
         with clock.FakeClock(reconsent_time):
             genomic_pipeline.gem_a1_manifest_workflow()  # run_id 7
-
+        a1f = reconsent_time.strftime("%Y-%m-%d-%H-%M-%S")
         # Test record was included again
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_Manifest_7.csv')) as csv_file:
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_Manifest_{a1f}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             rows = list(csv_reader)
             self.assertEqual(1, len(rows))
