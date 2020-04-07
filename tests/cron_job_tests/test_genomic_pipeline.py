@@ -1308,8 +1308,10 @@ class GenomicPipelineTest(BaseTestCase):
         with clock.FakeClock(fake_now):
             genomic_pipeline.gem_a3_manifest_workflow()  # run_id 2
 
-        # Get the member
+        # Test the member job run ID
         test_member = self.member_dao.get(3)
+        self.assertEqual(2, test_member.gemA2DManifestJobRunId)
+
         # Test the manifest file contents
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
         sub_folder = GENOMIC_GEM_A3_MANIFEST_SUBFOLDER
