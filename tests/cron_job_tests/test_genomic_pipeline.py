@@ -1204,7 +1204,9 @@ class GenomicPipelineTest(BaseTestCase):
 
         # finally run the manifest workflow
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
-        genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 5
+        a1_time = datetime.datetime(2020, 4, 1, 0, 0, 0, 0)
+        with clock.FakeClock(a1_time):
+            genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 5
 
         # Test Genomic Set Member updated with GEM Array Manifest job run
         with self.member_dao.session() as member_session:
@@ -1248,6 +1250,33 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the job result
         run_obj = self.job_run_dao.get(4)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+        # Test Withdrawn and then Reconsented
+        # Do withdraw GROR
+        withdraw_time = datetime.datetime(2020, 4, 2, 0, 0, 0, 0)
+        summary1 = self.summary_dao.get(1)
+        summary1.consentForGenomicsROR = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+        summary1.consentForGenomicsRORAuthored = withdraw_time
+        self.summary_dao.update(summary1)
+        # Run A3 manifest
+        with clock.FakeClock(withdraw_time):
+            genomic_pipeline.gem_a3_manifest_workflow()  # run_id 6
+
+        # Do Reconsent ROR
+        reconsent_time = datetime.datetime(2020, 4, 3, 0, 0, 0, 0)
+        summary1.consentForGenomicsROR = QuestionnaireStatus.SUBMITTED
+        summary1.consentForGenomicsRORAuthored = reconsent_time
+        self.summary_dao.update(summary1)
+        # Run A1 Again
+        with clock.FakeClock(reconsent_time):
+            genomic_pipeline.gem_a1_manifest_workflow()  # run_id 7
+
+        # Test record was included again
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_Manifest_7.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            rows = list(csv_reader)
+            self.assertEqual(1, len(rows))
+            self.assertEqual(test_member_1.biobankId, rows[0]['biobank_id'])
 
     def test_gem_a2_manifest_workflow(self):
         # Create A1 manifest job run: id = 1

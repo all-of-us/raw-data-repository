@@ -1031,6 +1031,7 @@ class ManifestDefinitionProvider:
                         ON gcv.genomic_set_member_id = m.id
                     JOIN participant_summary ps
                         ON ps.participant_id = m.participant_id
+                    LEFT JOIN genomic_job_run a3 ON a3.id = m.gem_a3_manifest_job_run_id
                 WHERE gcv.processing_status = "pass"
                     AND m.reconcile_gc_manifest_job_run_id IS NOT NULL
                     AND m.reconcile_metrics_bb_manifest_job_run_id IS NOT NULL
@@ -1041,7 +1042,12 @@ class ManifestDefinitionProvider:
                     AND m.genome_type = "aou_array"
                     AND ps.suspension_status = 1
                     AND ps.withdrawal_status = 1
-                    # TODO: AND ps.consent_for_genomics_ror = 1                    
+                    AND ps.consent_for_genomics_ror = 1
+                    # For withdrawn consents that have re-consented
+                    AND (m.gem_a1_manifest_job_run_id IS NULL
+                        OR  (  a3.start_time < ps.consent_for_genomics_ror_authored
+                               OR a3.start_time < ps.consent_for_study_enrollment_authored	    		
+                            ))
             """
 
         # Color GEM A3 Manifest | Those with A1 and not A2D
