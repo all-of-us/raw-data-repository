@@ -983,7 +983,7 @@ class ManifestDefinitionProvider:
 
         # Color A3 Manifest
         self.MANIFEST_DEFINITIONS[GenomicManifestTypes.GEM_A3] = self.ManifestDef(
-            job_run_field='gemA2DManifestJobRunId',
+            job_run_field='gemA3ManifestJobRunId',
             source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A3),
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_WD_{now_formatted}.csv',
@@ -1053,7 +1053,7 @@ class ManifestDefinitionProvider:
                         JOIN participant_summary ps
                             ON ps.participant_id = m.participant_id
                     WHERE m.gem_a1_manifest_job_run_id IS NOT NULL                        
-                        AND m.gem_a2d_manifest_job_run_id IS NULL
+                        AND m.gem_a3_manifest_job_run_id IS NULL
                         AND (ps.suspension_status <> 1
                             OR ps.withdrawal_status <> 1
                             OR ps.consent_for_genomics_ror <> 1)     

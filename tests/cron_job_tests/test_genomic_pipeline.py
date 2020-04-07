@@ -1310,7 +1310,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the member job run ID
         test_member = self.member_dao.get(3)
-        self.assertEqual(2, test_member.gemA2DManifestJobRunId)
+        self.assertEqual(2, test_member.gemA3ManifestJobRunId)
 
         # Test the manifest file contents
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
