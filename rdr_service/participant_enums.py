@@ -725,3 +725,23 @@ class WorkbenchResearcherDisability(messages.Enum):
     YES = 1
     NO = 2
     PREFER_NOT_TO_ANSWER = 3
+
+
+class WorkbenchAuditReviewType(messages.Enum):
+    UNSET = 0
+    INITIAL = 1
+    SECOND = 2
+    RAB = 3
+
+
+class WorkbenchAuditWorkspaceDisplayDecision(messages.Enum):
+    UNSET = 0
+    PUBLISH_TO_RESEARCHER_DIRECTORY = 1
+    EXCLUDE_FROM_RESEARCHER_DIRECTORY = 2
+
+
+class WorkbenchAuditWorkspaceAccessDecision(messages.Enum):
+    UNSET = 0
+    DISABLE_WORKSPACE = 1
+    DISABLE_WORKSPACE_AND_REVIEW_RESEARCHERS = 2
+

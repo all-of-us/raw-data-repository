@@ -9,8 +9,8 @@ from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
 from rdr_service.dao.metadata_dao import MetadataDao, WORKBENCH_LAST_SYNC_KEY
 from rdr_service.model.workbench_workspace import (
-    WorkbenchWorkspace,
-    WorkbenchWorkspaceHistory,
+    WorkbenchWorkspaceApproved,
+    WorkbenchWorkspaceSnapshot,
     WorkbenchWorkspaceUser,
     WorkbenchWorkspaceUserHistory
 )
@@ -31,15 +31,15 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
 
 class WorkbenchWorkspaceDao(UpdatableDao):
     def __init__(self):
-        super().__init__(WorkbenchWorkspace, order_by_ending=["id"])
+        super().__init__(WorkbenchWorkspaceApproved, order_by_ending=["id"])
 
     def get_id(self, obj):
         return obj.id
 
     def get_all_with_children(self):
         with self.session() as session:
-            query = session.query(WorkbenchWorkspace).options(
-                subqueryload(WorkbenchWorkspace.workbenchWorkspaceUser)
+            query = session.query(WorkbenchWorkspaceApproved).options(
+                subqueryload(WorkbenchWorkspaceApproved.workbenchWorkspaceUser)
             )
             return query.all()
 
@@ -176,7 +176,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         now = clock.CLOCK.now()
         workspaces = []
         for item in resource_json:
-            workspace = WorkbenchWorkspace(
+            workspace = WorkbenchWorkspaceApproved(
                 created=now,
                 modified=now,
                 workspaceSourceId=item.get('workspaceId'),
@@ -255,7 +255,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         return workspaces
 
     def to_client_json(self, obj):
-        if isinstance(obj, WorkbenchWorkspace):
+        if isinstance(obj, WorkbenchWorkspaceApproved):
             return json.loads(obj.resource)
         elif isinstance(obj, list):
             result = []
@@ -267,7 +267,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         history_researcher_dao = WorkbenchResearcherHistoryDao()
         session.flush()
         for workspace in workspaces:
-            history = WorkbenchWorkspaceHistory()
+            history = WorkbenchWorkspaceSnapshot()
             for k, v in workspace:
                 if k != 'id':
                     setattr(history, k, v)
@@ -287,45 +287,47 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             session.add(history)
 
     def _get_workspace_by_workspace_id_with_session(self, session, workspace_id):
-        return session.query(WorkbenchWorkspace).filter(WorkbenchWorkspace.workspaceSourceId == workspace_id).first()
+        return session.query(WorkbenchWorkspaceApproved)\
+            .filter(WorkbenchWorkspaceApproved.workspaceSourceId == workspace_id).first()
 
     def get_workspaces_with_user_detail(self, status):
 
         query = sqlalchemy.select(
             [
-                WorkbenchWorkspace.workspaceSourceId.label('workspaceId'),
-                WorkbenchWorkspace.name.label('name'),
-                WorkbenchWorkspace.status.label('status'),
-                WorkbenchWorkspace.creationTime.label('creationTime'),
-                WorkbenchWorkspace.modifiedTime.label('modifiedTime'),
-                WorkbenchWorkspace.excludeFromPublicDirectory.label('excludeFromPublicDirectory'),
-                WorkbenchWorkspace.diseaseFocusedResearch.label('diseaseFocusedResearch'),
-                WorkbenchWorkspace.diseaseFocusedResearchName.label('diseaseFocusedResearchName'),
-                WorkbenchWorkspace.otherPurposeDetails.label('otherPurposeDetails'),
-                WorkbenchWorkspace.methodsDevelopment.label('methodsDevelopment'),
-                WorkbenchWorkspace.controlSet.label('controlSet'),
-                WorkbenchWorkspace.ancestry.label('ancestry'),
-                WorkbenchWorkspace.socialBehavioral.label('socialBehavioral'),
-                WorkbenchWorkspace.populationHealth.label('populationHealth'),
-                WorkbenchWorkspace.drugDevelopment.label('drugDevelopment'),
-                WorkbenchWorkspace.commercialPurpose.label('commercialPurpose'),
-                WorkbenchWorkspace.educational.label('educational'),
-                WorkbenchWorkspace.otherPurpose.label('otherPurpose'),
-                WorkbenchWorkspace.scientificApproaches.label('scientificApproaches'),
-                WorkbenchWorkspace.intendToStudy.label('intendToStudy'),
-                WorkbenchWorkspace.findingsFromStudy.label('findingsFromStudy'),
-                WorkbenchWorkspace.focusOnUnderrepresentedPopulations.label('focusOnUnderrepresentedPopulations'),
-                WorkbenchWorkspace.raceEthnicity.label('raceEthnicity'),
-                WorkbenchWorkspace.age.label('age'),
-                WorkbenchWorkspace.sexAtBirth.label('sexAtBirth'),
-                WorkbenchWorkspace.genderIdentity.label('genderIdentity'),
-                WorkbenchWorkspace.sexualOrientation.label('sexualOrientation'),
-                WorkbenchWorkspace.geography.label('geography'),
-                WorkbenchWorkspace.disabilityStatus.label('disabilityStatus'),
-                WorkbenchWorkspace.accessToCare.label('accessToCare'),
-                WorkbenchWorkspace.educationLevel.label('educationLevel'),
-                WorkbenchWorkspace.incomeLevel.label('incomeLevel'),
-                WorkbenchWorkspace.others.label('others'),
+                WorkbenchWorkspaceApproved.workspaceSourceId.label('workspaceId'),
+                WorkbenchWorkspaceApproved.name.label('name'),
+                WorkbenchWorkspaceApproved.status.label('status'),
+                WorkbenchWorkspaceApproved.creationTime.label('creationTime'),
+                WorkbenchWorkspaceApproved.modifiedTime.label('modifiedTime'),
+                WorkbenchWorkspaceApproved.excludeFromPublicDirectory.label('excludeFromPublicDirectory'),
+                WorkbenchWorkspaceApproved.diseaseFocusedResearch.label('diseaseFocusedResearch'),
+                WorkbenchWorkspaceApproved.diseaseFocusedResearchName.label('diseaseFocusedResearchName'),
+                WorkbenchWorkspaceApproved.otherPurposeDetails.label('otherPurposeDetails'),
+                WorkbenchWorkspaceApproved.methodsDevelopment.label('methodsDevelopment'),
+                WorkbenchWorkspaceApproved.controlSet.label('controlSet'),
+                WorkbenchWorkspaceApproved.ancestry.label('ancestry'),
+                WorkbenchWorkspaceApproved.socialBehavioral.label('socialBehavioral'),
+                WorkbenchWorkspaceApproved.populationHealth.label('populationHealth'),
+                WorkbenchWorkspaceApproved.drugDevelopment.label('drugDevelopment'),
+                WorkbenchWorkspaceApproved.commercialPurpose.label('commercialPurpose'),
+                WorkbenchWorkspaceApproved.educational.label('educational'),
+                WorkbenchWorkspaceApproved.otherPurpose.label('otherPurpose'),
+                WorkbenchWorkspaceApproved.scientificApproaches.label('scientificApproaches'),
+                WorkbenchWorkspaceApproved.intendToStudy.label('intendToStudy'),
+                WorkbenchWorkspaceApproved.findingsFromStudy.label('findingsFromStudy'),
+                WorkbenchWorkspaceApproved.focusOnUnderrepresentedPopulations
+                    .label('focusOnUnderrepresentedPopulations'),
+                WorkbenchWorkspaceApproved.raceEthnicity.label('raceEthnicity'),
+                WorkbenchWorkspaceApproved.age.label('age'),
+                WorkbenchWorkspaceApproved.sexAtBirth.label('sexAtBirth'),
+                WorkbenchWorkspaceApproved.genderIdentity.label('genderIdentity'),
+                WorkbenchWorkspaceApproved.sexualOrientation.label('sexualOrientation'),
+                WorkbenchWorkspaceApproved.geography.label('geography'),
+                WorkbenchWorkspaceApproved.disabilityStatus.label('disabilityStatus'),
+                WorkbenchWorkspaceApproved.accessToCare.label('accessToCare'),
+                WorkbenchWorkspaceApproved.educationLevel.label('educationLevel'),
+                WorkbenchWorkspaceApproved.incomeLevel.label('incomeLevel'),
+                WorkbenchWorkspaceApproved.others.label('others'),
 
                 WorkbenchWorkspaceUser.userId.label('userId'),
                 WorkbenchWorkspaceUser.role.label('role'),
@@ -338,17 +340,17 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             ]
         ).select_from(
             sqlalchemy.outerjoin(
-                sqlalchemy.outerjoin(WorkbenchWorkspace, WorkbenchWorkspaceUser,
-                                     WorkbenchWorkspace.id == WorkbenchWorkspaceUser.workspaceId),
+                sqlalchemy.outerjoin(WorkbenchWorkspaceApproved, WorkbenchWorkspaceUser,
+                                     WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId),
                 sqlalchemy.outerjoin(WorkbenchResearcher, WorkbenchInstitutionalAffiliations,
                                      WorkbenchResearcher.id == WorkbenchInstitutionalAffiliations.researcherId),
                 WorkbenchResearcher.id == WorkbenchWorkspaceUser.researcherId
             )
         ).where(and_(WorkbenchWorkspaceUser.role == WorkbenchWorkspaceUserRole.OWNER,
-                     WorkbenchWorkspace.excludeFromPublicDirectory == 0))
+                     WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0))
 
         if status is not None:
-            query = query.where(WorkbenchWorkspace.status == status)
+            query = query.where(WorkbenchWorkspaceApproved.status == status)
 
         results = []
         with self.session() as session:
@@ -441,15 +443,15 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
 class WorkbenchWorkspaceHistoryDao(UpdatableDao):
     def __init__(self):
-        super().__init__(WorkbenchWorkspaceHistory, order_by_ending=["id"])
+        super().__init__(WorkbenchWorkspaceSnapshot, order_by_ending=["id"])
 
     def get_id(self, obj):
         return obj.id
 
     def get_all_with_children(self):
         with self.session() as session:
-            query = session.query(WorkbenchWorkspaceHistory).options(
-                subqueryload(WorkbenchWorkspaceHistory.workbenchWorkspaceUser)
+            query = session.query(WorkbenchWorkspaceSnapshot).options(
+                subqueryload(WorkbenchWorkspaceSnapshot.workbenchWorkspaceUser)
             )
             return query.all()
 
