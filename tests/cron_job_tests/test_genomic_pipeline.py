@@ -45,7 +45,8 @@ from rdr_service.participant_enums import (
     GenomicSubProcessStatus,
     GenomicSubProcessResult,
     GenomicJob,
-    Race, QuestionnaireStatus)
+    Race,
+    QuestionnaireStatus)
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
 

@@ -108,7 +108,7 @@ def gem_a2_manifest_workflow():
 
 def gem_a3_manifest_workflow():
     """
-    Entrypoint for GEM A2 Workflow
+    Entrypoint for GEM A3 Workflow
     """
     with GenomicJobController(GenomicJob.GEM_A3_MANIFEST,
                               bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:

@@ -1050,7 +1050,8 @@ class ManifestDefinitionProvider:
                             ))
             """
 
-        # Color GEM A3 Manifest | Those with A1 and not A2D
+        # Color GEM A3 Manifest
+        # Those with A1 and not A3 or updated consents since sent A3
         if manifest_type == GenomicManifestTypes.GEM_A3:
             query_sql = """
                     SELECT m.biobank_id
@@ -1058,11 +1059,15 @@ class ManifestDefinitionProvider:
                     FROM genomic_set_member m
                         JOIN participant_summary ps
                             ON ps.participant_id = m.participant_id
+                        LEFT JOIN genomic_job_run a3 ON a3.id = m.gem_a3_manifest_job_run_id
                     WHERE m.gem_a1_manifest_job_run_id IS NOT NULL                        
-                        AND m.gem_a3_manifest_job_run_id IS NULL
+                        AND (m.gem_a3_manifest_job_run_id IS NULL
+                            OR (  a3.start_time < ps.consent_for_genomics_ror_authored
+                                  OR a3.start_time < ps.consent_for_study_enrollment_authored	    		
+                            ))
                         AND (ps.suspension_status <> 1
                             OR ps.withdrawal_status <> 1
-                            OR ps.consent_for_genomics_ror <> 1)     
+                            OR ps.consent_for_genomics_ror <> 1)
             """
 
         return query_sql
