@@ -172,7 +172,8 @@ class BiobankOrderDao(UpdatableDao):
                 "data": []
             }
             for item in items:
-                response_json = self.to_client_json(item)
+                response_json = self.to_client_json(item[0])
+                response_json['biobankId'] = item[1]
                 result['data'].append(response_json)
             return result
         else:
@@ -208,8 +209,9 @@ class BiobankOrderDao(UpdatableDao):
                 ).filter(BiobankOrder.orderOrigin == origin).count()
             )
             query = (
-                session.query(BiobankOrder)
+                session.query(BiobankOrder, Participant.biobankId)
                 .options(joinedload(BiobankOrder.identifiers), joinedload(BiobankOrder.samples))
+                .join(Participant, Participant.participantId == BiobankOrder.participantId)
                 .filter(BiobankOrder.orderOrigin == origin)
                 .filter(
                     or_(

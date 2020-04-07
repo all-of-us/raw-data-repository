@@ -101,7 +101,7 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual(result['data'][0]['origin'], 'careevolution')
 
     @mock.patch('rdr_service.dao.biobank_order_dao.get_account_origin_id')
-    def test_get_orders_by_kit_id(self, quest_origin):
+    def test_get_orders_by_time_range(self, quest_origin):
         quest_origin.return_value = 'careevolution'
         self.summary_dao.insert(self.participant_summary(self.participant))
         order_json = load_biobank_order_json(self.participant.participantId, filename="quest_biobank_order_1.json")
@@ -131,11 +131,11 @@ class BiobankOrderApiTest(BaseTestCase):
         order_json = load_biobank_order_json(p4.participantId, filename="biobank_order_4.json")
         p4_path = "Participant/%s/BiobankOrder" % to_client_participant_id(p4.participantId)
         self.send_post(p4_path, order_json)
-
         get_path = "BiobankOrder?origin=hpro&startDate=2016-01-04&endDate=2016-01-05&page=1&pageSize=2"
         result = self.send_get(get_path)
         self.assertEqual(result['total'], 3)
         self.assertEqual(len(result['data']), 2)
+        self.assertIn(result['data'][0]['biobankId'], (555, 666))
         get_path = "BiobankOrder?origin=hpro&startDate=2016-01-03&endDate=2016-01-04&page=2&pageSize=2"
         result = self.send_get(get_path)
         self.assertEqual(result['total'], 3)
