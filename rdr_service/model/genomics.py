@@ -132,9 +132,6 @@ class GenomicSetMember(Base):
     reconcileMetricsSequencingJobRunId = Column('reconcile_metrics_sequencing_job_run_id',
                                                 Integer, ForeignKey("genomic_job_run.id"),
                                                 nullable=True)
-    reconcileMetricsGenotypingJobRunId = Column('reconcile_metrics_genotyping_job_run_id',
-                                                Integer, ForeignKey("genomic_job_run.id"),
-                                                nullable=True)
     reconcileCvlJobRunId = Column('reconcile_cvl_job_run_id',
                                   Integer, ForeignKey("genomic_job_run.id"),
                                   nullable=True)
@@ -148,7 +145,7 @@ class GenomicSetMember(Base):
                                     Integer, ForeignKey("genomic_job_run.id"),
                                     nullable=True)
     gemPass = Column('gem_pass', String(10), nullable=True)
-    gemA2DManifestJobRunId = Column('gem_a2d_manifest_job_run_id',
+    gemA2DManifestJobRunId = Column('gem_a3_manifest_job_run_id',
                                    Integer, ForeignKey("genomic_job_run.id"),
                                    nullable=True)
 

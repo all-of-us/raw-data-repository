@@ -16,6 +16,7 @@ class WorkbenchWorkspaceBase(object):
     modifiedTime = Column("modified_time", UTCDateTime6, nullable=True)
     status = Column("status", Enum(WorkbenchWorkspaceStatus), default=WorkbenchWorkspaceStatus.UNSET)
     excludeFromPublicDirectory = Column("exclude_from_public_directory", Boolean)
+    reviewRequested = Column("review_requested", Boolean)
     diseaseFocusedResearch = Column("disease_focused_research", Boolean)
     diseaseFocusedResearchName = Column("disease_focused_research_name", String(250))
     otherPurposeDetails = Column("other_purpose_details", String(250))
