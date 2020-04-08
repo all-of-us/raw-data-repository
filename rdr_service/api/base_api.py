@@ -316,8 +316,6 @@ class UpdatableApi(BaseApi):
     :return: make_response
     """
         if not resource:
-            resource = request.get_json(force=True)
-        if skip_etag:
             expected_version = self.dao.get_etag(id_, participant_id)
         else:
             etag = request.headers.get("If-Match")

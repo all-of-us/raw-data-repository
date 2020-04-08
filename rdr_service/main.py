@@ -235,16 +235,15 @@ api.add_resource(
 )
 
 # biobank sample aliquot api
-
 api.add_resource(
     BiobankSpecimenApi,
     API_PREFIX + "Biobank/specimens/<string:rlims_id>",
     API_PREFIX + "Biobank/specimens",
     API_PREFIX + "Biobank/specimens/<string:rlims_id>/status",
     API_PREFIX + "Biobank/specimens/<string:rlims_id>/disposalStatus",
-    API_PREFIX + "Biobank/specimens/<string:rlims_id>/aliquots/<string: aliquot_rlims_id>",
+    API_PREFIX + "Biobank/specimens/<string:rlims_id>/aliquots/<string:aliquot_rlims_id>",
     API_PREFIX + "Biobank/aliquots/<string:aliquots_rlims_id>/disposalStatus",
-    API_PREFIX + "Biobank/aliquots/<string:aliquots_rlims_id>/datasets/<string: dataset_rlims_id>",
+    API_PREFIX + "Biobank/aliquots/<string:aliquots_rlims_id>/datasets/<string:dataset_rlims_id>",
     endpoint="biobank",
     methods=["GET", "PUT"],
     )
