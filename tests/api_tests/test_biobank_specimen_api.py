@@ -1,9 +1,11 @@
 import datetime
+
+from rdr_service.api_util import parse_date
 from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant import Participant
-from rdr_service.model.biobank_order import BiobankSpecimen
+from rdr_service.model.biobank_order import BiobankSpecimen, SpecimenAliquotBase
 from tests.helpers.unittest_base import BaseTestCase
 
 TIME_1 = datetime.datetime(2020, 4, 1)
@@ -19,12 +21,25 @@ class BiobankOrderApiTest(BaseTestCase):
         self.summary_dao = ParticipantSummaryDao()
         self.dao = BiobankSpecimenDao()
         self.specimen = BiobankSpecimen(rlimsId='sabrina', participantId=self.participant.participantId,
-                                        orderId='', testCode='1234567', repositoryId='repo id', studyId='study id',
-                                        cohortId='cohort id', collectionDate=TIME_1, confirmedDate=TIME_2)
+                                        orderId='order id', testCode='test 1234567', repositoryId='repo id', studyId='study id',
+                                        cohortId='cohort id', collectionDate=TIME_1, confirmedDate=TIME_2,
+                                        sampleType='sample')
+        self.set_status()
+        self.set_aliquot()
         self.specimen_path = f"Biobank/specimens/{self.specimen.rlimsId}"
-        #self.specimen_path = f"Biobank/specimens"
 
+    def set_status(self):
+        status = {'status': 'good', 'freezeThawCount': 1,
+                  'location': 'Greendale', 'quantity': '1', 'quantityUnits': 'some unit',
+                  'processingCompleteDate': TIME_2, 'deviations': 'no deviation'}
+        self.specimen.status = status
+
+    def set_aliquot(self):
+        aliquot = {}
+        self.specimen.aliquots = aliquot
 
     def test_put_specimen(self):
         payload = self.dao.to_client_json(self.specimen)
+        # payload['collectionDate'] = parse_date(payload['collectionDate'])
+        # payload['confirmedDate'] = parse_date(payload['confirmedDate'])
         result = self.send_put(self.specimen_path, request_data=payload, headers={"if-match": 'W/"1"' })

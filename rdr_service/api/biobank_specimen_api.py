@@ -21,12 +21,8 @@ class BiobankSpecimenApi(UpdatableApi):
     @auth_required(HEALTHPRO)
     def put(self, *args, **kwargs):  # pylint: disable=unused-argument
         resource = request.get_json(force=True)
-        if self.exists(resource):
+        if self.dao.exists(resource):
             return super().put(kwargs['rlims_id'])
         else:
             return super().post(participant_id=resource['participantId'])
-
-    def exists(self, resource):
-        # return True if self.dao.get(resource['id']) else False
-        return True if resource.get('id') else False
 
