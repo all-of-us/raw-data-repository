@@ -13,7 +13,7 @@ _python()
 
 
     # These are the specific tools we support
-    tools="--help migrate-bq verify oauth-token mysql app-engine alembic sync-consents edit-config fix-dup-pids"
+    tools="--help migrate-bq verify oauth-token mysql app-engine alembic sync-consents edit-config fix-dup-pids genomic"
     # These are the standard options all tools support.
     stdopts="--help --debug --log-file --project --account --service-account"
 
@@ -131,6 +131,22 @@ _python()
             # app-engine split-traffic command
             if echo ${COMP_WORDS[@]} | grep -w "app-engine" > /dev/null; then
               local toolopts="--help --key --compare --update --to-file"
+              COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
+            else
+              COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
+            fi
+            return 0
+            ;;
+          genomic)
+            # These are options specific to this tool.
+            local toolopts="resend"
+            COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
+            return 0
+            ;;
+          resend)
+            # app-engine split-traffic command
+            if echo ${COMP_WORDS[@]} | grep -w "genomic" > /dev/null; then
+              local toolopts="--help --manifest --csv --sample"
               COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
             else
               COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
