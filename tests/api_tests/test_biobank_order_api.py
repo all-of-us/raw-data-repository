@@ -135,7 +135,7 @@ class BiobankOrderApiTest(BaseTestCase):
         result = self.send_get(get_path)
         self.assertEqual(result['total'], 3)
         self.assertEqual(len(result['data']), 2)
-        self.assertIn(result['data'][0]['biobankId'], (555, 666))
+        self.assertIn(result['data'][0]['biobankId'][1:], ('555', '666'))
         get_path = "BiobankOrder?origin=hpro&startDate=2016-01-03&endDate=2016-01-04&page=2&pageSize=2"
         result = self.send_get(get_path)
         self.assertEqual(result['total'], 3)
