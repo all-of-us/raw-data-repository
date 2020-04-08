@@ -8,6 +8,7 @@ import logging
 import re
 from collections import deque, namedtuple
 
+from rdr_service import clock
 from rdr_service.api_util import (
     open_cloud_file,
     copy_cloud_file,
@@ -53,6 +54,7 @@ from rdr_service.config import (
     GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
     GENOMIC_CVL_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
+    GENOMIC_GEM_A3_MANIFEST_SUBFOLDER,
 )
 
 
@@ -959,6 +961,7 @@ class ManifestDefinitionProvider:
         Creates the manifest definitions to use when generating the manifest
         based on manifest type
         """
+        now_formatted = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
         # Set each Manifest Definition as an instance of ManifestDef()
         # DRC Broad CVL WGS Manifest
         self.MANIFEST_DEFINITIONS[GenomicManifestTypes.DRC_CVL_WGS] = self.ManifestDef(
@@ -969,13 +972,22 @@ class ManifestDefinitionProvider:
             columns=self._get_manifest_columns(GenomicManifestTypes.DRC_CVL_WGS),
         )
 
-        # Color Array CVL Manifest
+        # Color Array A1 Manifest
         self.MANIFEST_DEFINITIONS[GenomicManifestTypes.GEM_A1] = self.ManifestDef(
             job_run_field='gemA1ManifestJobRunId',
             source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A1),
             destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{getSetting(GENOMIC_GEM_A1_MANIFEST_SUBFOLDER)}/AoU_GEM_Manifest_{self.job_run_id}.csv',
+            output_filename=f'{getSetting(GENOMIC_GEM_A1_MANIFEST_SUBFOLDER)}/AoU_GEM_Manifest_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A1),
+        )
+
+        # Color A3 Manifest
+        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.GEM_A3] = self.ManifestDef(
+            job_run_field='gemA3ManifestJobRunId',
+            source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A3),
+            destination_bucket=f'{self.bucket_name}',
+            output_filename=f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_WD_{now_formatted}.csv',
+            columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A3),
         )
 
     def _get_source_data_query(self, manifest_type):
@@ -1019,6 +1031,7 @@ class ManifestDefinitionProvider:
                         ON gcv.genomic_set_member_id = m.id
                     JOIN participant_summary ps
                         ON ps.participant_id = m.participant_id
+                    LEFT JOIN genomic_job_run a3 ON a3.id = m.gem_a3_manifest_job_run_id
                 WHERE gcv.processing_status = "pass"
                     AND m.reconcile_gc_manifest_job_run_id IS NOT NULL
                     AND m.reconcile_metrics_bb_manifest_job_run_id IS NOT NULL
@@ -1029,8 +1042,34 @@ class ManifestDefinitionProvider:
                     AND m.genome_type = "aou_array"
                     AND ps.suspension_status = 1
                     AND ps.withdrawal_status = 1
-                    # TODO: AND ps.consent_for_genomics_ror = 1
+                    AND ps.consent_for_genomics_ror = 1
+                    # For withdrawn consents that have re-consented
+                    AND (m.gem_a1_manifest_job_run_id IS NULL
+                        OR  (  a3.start_time < ps.consent_for_genomics_ror_authored
+                               OR a3.start_time < ps.consent_for_study_enrollment_authored	    		
+                            ))
             """
+
+        # Color GEM A3 Manifest
+        # Those with A1 and not A3 or updated consents since sent A3
+        if manifest_type == GenomicManifestTypes.GEM_A3:
+            query_sql = """
+                    SELECT m.biobank_id
+                        , m.sample_id
+                    FROM genomic_set_member m
+                        JOIN participant_summary ps
+                            ON ps.participant_id = m.participant_id
+                        LEFT JOIN genomic_job_run a3 ON a3.id = m.gem_a3_manifest_job_run_id
+                    WHERE m.gem_a1_manifest_job_run_id IS NOT NULL                        
+                        AND (m.gem_a3_manifest_job_run_id IS NULL
+                            OR (  a3.start_time < ps.consent_for_genomics_ror_authored
+                                  OR a3.start_time < ps.consent_for_study_enrollment_authored	    		
+                            ))
+                        AND (ps.suspension_status <> 1
+                            OR ps.withdrawal_status <> 1
+                            OR ps.consent_for_genomics_ror <> 1)
+            """
+
         return query_sql
 
     def _get_manifest_columns(self, manifest_type):
@@ -1055,6 +1094,11 @@ class ManifestDefinitionProvider:
                 'biobank_id',
                 'sample_id',
                 "sex_at_birth",
+            )
+        elif manifest_type == GenomicManifestTypes.GEM_A3:
+            columns = (
+                'biobank_id',
+                'sample_id',
             )
         return columns
 
