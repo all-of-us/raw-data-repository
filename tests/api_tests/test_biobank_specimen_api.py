@@ -1,11 +1,10 @@
 import datetime
 
-from rdr_service.api_util import parse_date
 from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant import Participant
-from rdr_service.model.biobank_order import BiobankSpecimen, SpecimenAliquotBase
+from rdr_service.model.biobank_order import BiobankSpecimen
 from tests.helpers.unittest_base import BaseTestCase
 
 TIME_1 = datetime.datetime(2020, 4, 1)
@@ -40,6 +39,5 @@ class BiobankOrderApiTest(BaseTestCase):
 
     def test_put_specimen(self):
         payload = self.dao.to_client_json(self.specimen)
-        # payload['collectionDate'] = parse_date(payload['collectionDate'])
-        # payload['confirmedDate'] = parse_date(payload['confirmedDate'])
         result = self.send_put(self.specimen_path, request_data=payload, headers={"if-match": 'W/"1"' })
+        print(result)
