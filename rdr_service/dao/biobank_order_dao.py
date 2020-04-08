@@ -173,7 +173,7 @@ class BiobankOrderDao(UpdatableDao):
             }
             for item in items:
                 response_json = self.to_client_json(item[0])
-                response_json['biobankId'] = item[1]
+                response_json['biobankId'] = str(to_client_biobank_id(item[1]))
                 result['data'].append(response_json)
             return result
         else:
