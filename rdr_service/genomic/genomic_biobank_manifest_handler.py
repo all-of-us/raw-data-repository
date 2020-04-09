@@ -126,9 +126,10 @@ def update_package_id_from_manifest_result_file(genomic_set_id, csv_file):
         raise DataError(e)
 
 
-def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=None):
+def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=None, bucket_name=None):
     result_filename = _get_output_manifest_file_name(genomic_set_id, timestamp)
-    bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
+    if bucket_name is None:
+        bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
     exporter = SqlExporter(bucket_name)
     export_sql = """
       SELECT 
