@@ -135,6 +135,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         stream_handler = logging.StreamHandler(sys.stdout)
         logger.addHandler(stream_handler)
 
+        # TODO: put logging back to critical
         logger.setLevel(logging.DEBUG)
 
         self.setup_config()
