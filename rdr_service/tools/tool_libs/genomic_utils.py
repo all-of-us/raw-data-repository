@@ -13,7 +13,7 @@ import os
 
 import pytz
 
-from rdr_service import clock
+from rdr_service import clock, config
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
@@ -101,7 +101,8 @@ class ResendSamplesClass(object):
         _logger.info(f"Exporting samples to manifest...")
         filename = f'{self.DRC_BIOBANK_PREFIX}-{str(set_id)}-{self.nowf}.CSV'
         create_and_upload_genomic_biobank_manifest_file(set_id, self.nowts)
-        _logger.warning(f'Manifest exported: {filename}')
+        _logger.warning(f'Manifest Exported:')
+        _logger.warning(f'  {filename} -> {config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)}')
 
     def generate_bb_manifest_from_sample_list(self, samples):
         """
@@ -160,6 +161,22 @@ class ResendSamplesClass(object):
                 for line in lines:
                     samples_list.append(line.strip())
 
+        # Display resend details is about to be done
+        _logger.info('-' * 90)
+        _logger.info('Please confirm the following')
+        _logger.info(f'    Sample Count: {str(len(samples_list))}')
+        _logger.info(f'    Project: {self.args.project}')
+        _logger.info(f'    Manifest: {self.args.manifest}')
+        _logger.info('-' * 90)
+        _logger.info('')
+
+        # Confirm
+        if not self.args.quiet:
+            confirm = input('\nContinue (Y/n)? : ')
+            if confirm and confirm.lower().strip() != 'y':
+                _logger.warning('Aborting the resend.')
+                return 1
+
         # Execute manifest resends
         if self.args.manifest == "DRC_BIOBANK":
             self.generate_bb_manifest_from_sample_list(samples_list)
@@ -188,6 +205,7 @@ def run():
     resend_parser = subparser.add_parser("resend")
     manifest_type_list = [m.name for m in GenomicManifestTypes]
     manifest_help = f"which manifest type to resend: {manifest_type_list}"
+    resend_parser.add_argument("--quiet", help="do not ask for user input", default=False, action="store_true")  # noqa
     resend_parser.add_argument("--manifest", help=manifest_help, default=None)  # noqa
     resend_parser.add_argument("--csv", help="csv file with multiple sample ids to resend", default=None)  # noqa
     resend_parser.add_argument("--samples", help="a comma-separated list of samples to resend", default=None)  # noqa
