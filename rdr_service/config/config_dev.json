@@ -47,6 +47,9 @@
   "genomic_gem_a1_manifest_subfolder": [
     "gem_a1_manifests"
   ],
+  "genomic_biobank_manifest_folder_name": [
+    "genomic_samples_manifests"
+  ],
   "metrics_shards": [
     "10"
   ],

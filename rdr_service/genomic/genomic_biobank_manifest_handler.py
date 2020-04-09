@@ -160,4 +160,4 @@ def _get_output_manifest_file_name(genomic_set_id, timestamp=None):
         _UTC.localize(file_timestamp).astimezone(_US_CENTRAL).replace(tzinfo=None).strftime(OUTPUT_CSV_TIME_FORMAT)
     )
     folder_name = config.getSetting(GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME)
-    return folder_name + "/" + _MANIFEST_FILE_NAME_PREFIX + "-" + str(genomic_set_id) + "-v1" + now_cdt_str + ".CSV"
+    return f'{folder_name}/{_MANIFEST_FILE_NAME_PREFIX}-{str(genomic_set_id)}-{now_cdt_str}.CSV'
