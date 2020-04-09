@@ -1,6 +1,6 @@
 #! /bin/env python
 #
-# Template for RDR tool python program.
+# Utilities for the Genomic System
 #
 
 import argparse
@@ -158,7 +158,6 @@ class ResendSamplesClass(object):
             _logger.error('Please choose a valid manifest type:')
             _logger.error(f'    {[m.name for m in GenomicManifestTypes]}')
             return 1
-        # DRC_BIOBANK
 
         if self.args.csv:
             if not os.path.exists(self.args.csv):
@@ -168,7 +167,6 @@ class ResendSamplesClass(object):
         # Activate the SQL Proxy
         self.gcp_env.activate_sql_proxy()
         self.dao = GenomicSetMemberDao()
-
 
         # Parse samples to resend from CSV or List
         samples_list = list()
