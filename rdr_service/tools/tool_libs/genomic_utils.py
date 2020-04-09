@@ -19,6 +19,7 @@ from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet
 from rdr_service.services.system_utils import setup_logging, setup_i18n
+from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus
 
@@ -42,6 +43,8 @@ class ResendSamplesClass(object):
         self.args = args
         self.gcp_env = gcp_env
         self.dao = None
+        self.gscp = GoogleCloudStorageProvider()
+        self.lsp = LocalFilesystemStorageProvider()
 
         # Genomic attributes
         self.OUTPUT_CSV_TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
@@ -98,11 +101,24 @@ class ResendSamplesClass(object):
         :param set_id:
         :return:
         """
+        project_config = self.gcp_env.get_app_config()
+        bucket_name = project_config.get(config.BIOBANK_SAMPLES_BUCKET_NAME)[0]
+        folder_name = project_config.get(config.GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME)[0]
+
+        # creates local file
         _logger.info(f"Exporting samples to manifest...")
         filename = f'{self.DRC_BIOBANK_PREFIX}-{str(set_id)}-{self.nowf}.CSV'
-        create_and_upload_genomic_biobank_manifest_file(set_id, self.nowts)
-        _logger.warning(f'Manifest Exported:')
-        _logger.warning(f'  {filename} -> {config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)}')
+
+        create_and_upload_genomic_biobank_manifest_file(set_id, self.nowts, bucket_name=bucket_name)
+        local_path = f'{self.lsp.DEFAULT_STORAGE_ROOT}/{bucket_name}/{folder_name}/{filename}'
+
+        # upload file and remove local
+        if self.gcp_env.project != "localhost":
+            self.gscp.upload_from_file(local_path, f"{bucket_name}/{folder_name}/{filename}")
+            os.remove(local_path)
+
+        _logger.info(f'Manifest Exported.')
+        _logger.warning(f'  {filename} -> {bucket_name}')
 
     def generate_bb_manifest_from_sample_list(self, samples):
         """
@@ -110,10 +126,13 @@ class ResendSamplesClass(object):
         get the Genomic Set Members, and export the data
         :return:
         """
-        genset = self.create_new_genomic_set()
         members = self.get_members_for_samples(samples)
-        self.update_members_genomic_set(members, genset.id)
-        self.export_bb_manifest(genset.id)
+        if len(members) > 0:
+            genset = self.create_new_genomic_set()
+            self.update_members_genomic_set(members, genset.id)
+            self.export_bb_manifest(genset.id)
+        else:
+            _logger.error("No genomic set members for specified samples!")
 
     def run(self):
         """
@@ -149,6 +168,7 @@ class ResendSamplesClass(object):
         # Activate the SQL Proxy
         self.gcp_env.activate_sql_proxy()
         self.dao = GenomicSetMemberDao()
+
 
         # Parse samples to resend from CSV or List
         samples_list = list()
