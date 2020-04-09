@@ -1,10 +1,12 @@
 import datetime
 
+import clock
 from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao
+from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant import Participant
-from rdr_service.model.biobank_order import BiobankSpecimen
+from rdr_service.model.biobank_order import BiobankSpecimen, BiobankOrderIdentifier, BiobankOrderedSample, BiobankOrder
 from tests.helpers.unittest_base import BaseTestCase
 
 TIME_1 = datetime.datetime(2020, 4, 1)
@@ -19,8 +21,9 @@ class BiobankOrderApiTest(BaseTestCase):
         self.participant_dao.insert(self.participant)
         self.summary_dao = ParticipantSummaryDao()
         self.dao = BiobankSpecimenDao()
+        self.bo_dao = BiobankOrderDao()
         self.specimen = BiobankSpecimen(rlimsId='sabrina', participantId=self.participant.participantId,
-                                        orderId='order id', testCode='test 1234567', repositoryId='repo id', studyId='study id',
+                                        orderId='', testCode='test 1234567', repositoryId='repo id', studyId='study id',
                                         cohortId='cohort id', collectionDate=TIME_1, confirmedDate=TIME_2,
                                         sampleType='sample')
         self.set_status()
@@ -37,7 +40,45 @@ class BiobankOrderApiTest(BaseTestCase):
         aliquot = {}
         self.specimen.aliquots = aliquot
 
+    def _make_biobank_order(self, **kwargs):
+        """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
+
+        Kwargs pass through to BiobankOrder constructor, overriding defaults.
+        """
+        for k, default_value in (
+            ("biobankOrderId", "1"),
+            ("created", clock.CLOCK.now()),
+            ("participantId", self.participant.participantId),
+            ("sourceSiteId", 1),
+            ("sourceUsername", "fred@pmi-ops.org"),
+            ("collectedSiteId", 1),
+            ("collectedUsername", "joe@pmi-ops.org"),
+            ("processedSiteId", 1),
+            ("processedUsername", "sue@pmi-ops.org"),
+            ("finalizedSiteId", 2),
+            ("finalizedUsername", "bob@pmi-ops.org"),
+            ("identifiers", [BiobankOrderIdentifier(system="a", value="c")]),
+            (
+                "samples",
+                [
+                    BiobankOrderedSample(
+                        biobankOrderId="1",
+                        test='2SST8',
+                        finalized=TIME_2,
+                        description="description",
+                        processingRequired=True,
+                    )
+                ],
+            ),
+        ):
+            if k not in kwargs:
+                kwargs[k] = default_value
+        return BiobankOrder(**kwargs)
+
     def test_put_specimen(self):
+        ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+        bio_order = self.bo_dao.insert(self._make_biobank_order(participantId=self.participant.participantId))
+        self.specimen.orderId = bio_order.biobankOrderId
         payload = self.dao.to_client_json(self.specimen)
         result = self.send_put(self.specimen_path, request_data=payload, headers={"if-match": 'W/"1"' })
         print(result)

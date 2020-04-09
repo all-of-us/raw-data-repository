@@ -37,6 +37,7 @@ class BiobankSpecimenDao(UpdatableDao):
         order.collectionDate = parse_date(order.collectionDate)
         order.confirmedDate = parse_date(order.confirmedDate)
         order.processingCompleteDate = parse_date(order.processingCompleteDate)
+        order.version = 1
         return order
 
     def exists(self, resource):

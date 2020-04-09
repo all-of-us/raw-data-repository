@@ -171,6 +171,8 @@ class BaseApi(Resource):
                 participant_id = getattr(result, 'participantId')
             # Rebuild participant for BigQuery
             if GAE_PROJECT == 'localhost':
+                if type(participant_id) == str:
+                    participant_id = int(participant_id.strip('pP'))
                 bq_participant_summary_update_task(participant_id)
             else:
                 params = {'p_id': participant_id}
