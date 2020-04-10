@@ -65,7 +65,7 @@ _python()
             ;;
         fix-dup-pids)
             # These are options specific to this tool.
-            local toolopts="--csv --participant --fix-biobank-orders --fix-physical-measurements"
+            local toolopts="--csv --participant --fix-biobank-orders --fix-physical-measurements --fix-signup-time"
             COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
             return 0
             ;;

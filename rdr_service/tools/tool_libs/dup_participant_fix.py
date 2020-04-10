@@ -10,12 +10,14 @@ import argparse
 import logging
 import os
 import sys
+import dateutil
 
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.participant import Participant
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
+from rdr_service.model.participant_summary import ParticipantSummary
 
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -37,19 +39,19 @@ class ProgramTemplateClass(object):
         self.args = args
         self.gcp_env = gcp_env
 
-    def get_participant_records(self, dao, pids):
+    def get_participant_records(self, dao, pid):
         """
-        Return the participant records for each pid in pids.
+        Return the participant and summary records for the
+        participant ID in mapping.
         :param dao: DAO object to run queries with.
-        :param pids: Tuple with 3 pid values.
-        :return: Original Participant record, New Participant 1 record, New Participant 2 record.
+        :param pid: Participant ID
+        :return: Participant and ParticipantSummary objects
         """
         with dao.session() as session:
-            p = session.query(Participant).filter(Participant.participantId == pids[0]).first()
-            p1 = session.query(Participant).filter(Participant.participantId == pids[1]).first()
-            p2 = session.query(Participant).filter(Participant.participantId == pids[2]).first()
+            p = session.query(Participant).filter(Participant.participantId == pid).first()
+            ps = session.query(ParticipantSummary).filter(ParticipantSummary.participantId == pid).first()
 
-        return p, p1, p2
+        return p, ps
 
     def get_biobank_records_for_participant(self, dao, mappings):
         """
@@ -115,6 +117,7 @@ class ProgramTemplateClass(object):
         """
         Updates the Physical Measurement object to the new PID
         :param dao: the dao
+        :param op: the old participant
         :param np: new participant
         :param pm: physical measurement object
         :return: updated physical measurment object
@@ -128,22 +131,26 @@ class ProgramTemplateClass(object):
         with dao.session() as session:
             return session.merge(pm)
 
+    def fix_signup_time(self, dao, np, nps, new_time):
+        """
+        Updates the participant and participant_summary signup_time
+        :param dao:
+        :param np:
+        :return:
+        """
+        new_time_dt = dateutil.parser.parse(new_time)
+        np.signUpTime = new_time_dt
+        nps.signUpTime = new_time_dt
+        with dao.session() as session:
+            updated_participant = session.merge(np)
+            updated_summary = session.merge(nps)
+        return updated_participant, updated_summary
+
     def run(self):
         """
         Main program process
         :return: Exit code value
         """
-
-        """
-        Example: Enabling colors in terminals.
-            Using colors in terminal output is supported by using the self.gcp_env.terminal_colors
-            object.  Errors and Warnings are automatically set to Red and Yellow respectively.
-            The terminal_colors object has many predefined colors, but custom colors may be used
-            as well. See rdr_service/services/TerminalColors for more information.
-        """
-        # clr = self.gcp_env.terminal_colors
-        # _logger.info(clr.fmt('This is a blue info line.', clr.fg_bright_blue))
-        # _logger.info(clr.fmt('This is a custom color line', clr.custom_fg_color(156)))
 
         self.gcp_env.activate_sql_proxy()
         dao = ParticipantDao()
@@ -171,13 +178,22 @@ class ProgramTemplateClass(object):
                         _logger.error(f"   {headers}")
                         return 1
 
+                if self.args.fix_signup_time:
+                    headers = mappings_list.pop(0)
+                    if headers != ("new_pid", "signup_time"):
+                        _logger.error("Invalid columns in CSV")
+                        _logger.error(f"   {headers}")
+                        return 1
+
         if self.args.fix_biobank_orders:
             for mapping in mappings_list:
                 old_p, new_p, biobank_order, stored_samples = self.get_biobank_records_for_participant(dao, mapping)
 
                 if not old_p or not new_p or not biobank_order or not stored_samples:
                     _logger.error(
-                        f'  error {old_p.participantId}, {new_p.participantId}, {biobank_order.biobankOrderId}')
+                        f'  ERROR: missing data for {old_p.participantId}, '
+                        f'{new_p.participantId}, '
+                        f'{biobank_order.biobankOrderId}')
                     continue
 
                 # Process Biobank Orders
@@ -203,7 +219,7 @@ class ProgramTemplateClass(object):
 
                 if not old_p or not new_p or not physical_measurement:
                     _logger.error(
-                        f'  error {old_p.participantId}, '
+                        f'  ERROR: missing data for {old_p.participantId}, '
                         f'{new_p.participantId}, '
                         f'{physical_measurement.physicalMeasurementsId}')
                     continue
@@ -215,6 +231,25 @@ class ProgramTemplateClass(object):
                 updated_pm = self.fix_pm(dao, old_p, new_p, physical_measurement)
                 _logger.info(f'  update successful for PM ID {updated_pm.physicalMeasurementsId}: '
                              f'{updated_pm.participantId}')
+
+        if self.args.fix_signup_time:
+            _logger.info("Fixing signup time.")
+            for mapping in mappings_list:
+                np, nps = self.get_participant_records(dao, mapping[0])
+
+                if not np or not nps:
+                    _logger.error(f'  ERROR: no pid {mapping[0]}')
+                    continue
+
+                # Make the updates for signup time
+                _logger.warning(
+                    f'  updating signup_time {np.participantId} | '
+                    f'{np.signUpTime} -> {mapping[1]}')
+                updated_p, updated_s = self.fix_signup_time(dao, np, nps, mapping[1])
+                _logger.info(f'      update successful for participant {updated_p.participantId}: '
+                             f'{updated_p.signUpTime}')
+                _logger.info(f'      update successful for participant summary {updated_s.participantId}: '
+                             f'{updated_s.signUpTime}')
 
         return 0
 
@@ -238,14 +273,19 @@ def run():
     parser.add_argument("--fix-biobank-orders", help="Fix Biobank Orders", default=False, action="store_true")  # noqa
     parser.add_argument("--fix-physical-measurements", help="Fix Physical Measurements",
                         default=False, action="store_true")  # noqa
+    parser.add_argument("--fix-signup-time", help="Fix signup time", default=False, action="store_true")  # noqa
     args = parser.parse_args()
-
-    if not args.fix_biobank_orders and not args.fix_physical_measurements:
-        _logger.error('Either --fix-biobank-orders or --fix-physical-measurements must be provided.')
+    process_args = (args.fix_biobank_orders,
+                    args.fix_physical_measurements,
+                    args.fix_signup_time)
+    if not any(process_args):
+        _logger.error('Either --fix-biobank-orders, --fix-physical-measurements,'
+                      ' or --fix-signup-time must be provided.')
         return 1
 
-    if args.fix_biobank_orders and args.fix_physical_measurements:
-        _logger.error('Arguments --fix_biobank_orders and --fix_physical_measurements may not be used together.')
+    if sum(process_args) > 1:
+        _logger.error('Arguments --fix_biobank_orders, --fix_physical_measurements,'
+                      ' and --fix-signup-time may not be used together.')
         return 1
 
     if not args.participant and not args.csv:
