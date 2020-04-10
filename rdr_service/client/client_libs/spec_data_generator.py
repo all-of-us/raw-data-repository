@@ -25,7 +25,7 @@ from rdr_service.data_gen.generators import (
     PhysicalMeasurementsGen,
     QuestionnaireGen,
     StoredSampleGen,
-)
+    GenomicSetMemberGen)
 from rdr_service.data_gen.generators.hpo import HPOGen
 from rdr_service.tools.tool_libs import GCPProcessContext
 from rdr_service.services.gcp_utils import gcp_get_app_access_token, gcp_get_app_host_name, gcp_make_auth_header
@@ -49,6 +49,7 @@ class DataGeneratorClass(object):
     _qn_gen = None
     _bio_gen = None
     _ss_gen = None
+    _genomic_member_gen = None
 
     def __init__(self, args, gcp_env):
         self.args = args
@@ -348,6 +349,15 @@ class DataGeneratorClass(object):
         _logger.error("module response failure: [Http {0}: {1}].".format(code, resp))
         return None
 
+    def process_genomic_sample(self, stored_sample, pid):
+        if stored_sample.test not in ('1ED04', '1SAL2'):
+            _logger.error(f"Not genomic sample: {stored_sample.test}.")
+            return None
+        self._genomic_member_gen = GenomicSetMemberGen()
+        genset = self._genomic_member_gen.make_new_genomic_set()
+        self._genomic_member_gen.make_new_genomic_set_member(genset.id, stored_sample, pid)
+
+
     def run(self):
         """
     Main program process
@@ -380,7 +390,9 @@ class DataGeneratorClass(object):
             bio_orders_mayo = p_data.get("_BIOOrderMayo", None)
             ppi_modules = p_data.get("_PPIModule", "ConsentPII|TheBasics")
             stored_sample = p_data.get("_StoredSample", None)
-            # TODO: add genomic member and manifest states
+            genomic_sample = p_data.get("_GenomicSample", None)
+            # TODO: Genomic manifests
+            # genomic_manifests = p_data.get("_GenomicManifests", None)
 
             # choose a random starting date, timestamps of all other activities feed off this value.
             start_dt = self._random_date()
@@ -450,6 +462,9 @@ class DataGeneratorClass(object):
                         ss = self._ss_gen.make_stored_sample_for_participant(int(p_obj.participantId[1:]))
                         if ss is not None:
                             _logger.info(f"  stored sample: [{ss.biobankStoredSampleId}] created.")
+                            if genomic_sample.lower().strip() in ["yes", 'y']:
+                                self.process_genomic_sample(ss, int(p_obj.participantId[1:]))
+                                _logger.info("    genomic set member created.")
                         else:
                             _logger.error(f"  stored sample for [{p_obj.participantId}] failed.")
             #
