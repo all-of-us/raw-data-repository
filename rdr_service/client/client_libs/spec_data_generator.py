@@ -24,6 +24,7 @@ from rdr_service.data_gen.generators import (
     ParticipantGen,
     PhysicalMeasurementsGen,
     QuestionnaireGen,
+    StoredSampleGen,
 )
 from rdr_service.data_gen.generators.hpo import HPOGen
 from rdr_service.tools.tool_libs import GCPProcessContext
@@ -47,6 +48,7 @@ class DataGeneratorClass(object):
     _pm_gen = None
     _qn_gen = None
     _bio_gen = None
+    _ss_gen = None
 
     def __init__(self, args, gcp_env):
         self.args = args
@@ -377,6 +379,8 @@ class DataGeneratorClass(object):
             bio_orders = p_data.get("_BIOOrder", None)
             bio_orders_mayo = p_data.get("_BIOOrderMayo", None)
             ppi_modules = p_data.get("_PPIModule", "ConsentPII|TheBasics")
+            stored_sample = p_data.get("_StoredSample", None)
+            # TODO: add genomic member and manifest states
 
             # choose a random starting date, timestamps of all other activities feed off this value.
             start_dt = self._random_date()
@@ -440,6 +444,14 @@ class DataGeneratorClass(object):
                             _logger.info("  biobank order: [{0}] failed.".format(sample))
 
                     sample_dt = self._random_date(sample_dt, datetime.timedelta(days=30))
+                    # Add stored samples if sample marked as 'yes'
+                    if stored_sample.lower().strip() in ["yes", 'y']:
+                        self._ss_gen = StoredSampleGen()
+                        ss = self._ss_gen.make_stored_sample_for_participant(int(p_obj.participantId[1:]))
+                        if ss is not None:
+                            _logger.info(f"  stored sample: [{ss.biobankStoredSampleId}] created.")
+                        else:
+                            _logger.error(f"  stored sample for [{p_obj.participantId}] failed.")
             #
             # process biobank samples that also need to be sent to Mayolink.
             #
