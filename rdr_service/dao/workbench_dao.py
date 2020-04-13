@@ -787,8 +787,7 @@ class WorkbenchWorkspaceAuditDao(UpdatableDao):
     def insert_with_session(self, session, workbench_audit_records):
         for record in workbench_audit_records:
             session.add(record)
-            if record.auditReviewType == WorkbenchAuditReviewType.RAB and \
-                record.auditWorkspaceDisplayDecision == \
+            if record.auditWorkspaceDisplayDecision == \
                 WorkbenchAuditWorkspaceDisplayDecision.PUBLISH_TO_RESEARCHER_DIRECTORY and \
                 record.auditWorkspaceAccessDecision == WorkbenchAuditWorkspaceAccessDecision.UNSET:
                 self.add_approved_workspace_with_session(session, record.workspaceSnapshotId)
