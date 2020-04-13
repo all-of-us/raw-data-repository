@@ -342,6 +342,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     ] if workspace.workbenchWorkspaceUser else [],
                     'workspaceResearchers': [workspace_researcher],
                     "excludeFromPublicDirectory": workspace.excludeFromPublicDirectory,
+                    "reviewRequested": workspace.reviewRequested if workspace.reviewRequested else False,
                     "diseaseFocusedResearch": workspace.diseaseFocusedResearch,
                     "diseaseFocusedResearchName": workspace.diseaseFocusedResearchName,
                     "otherPurposeDetails": workspace.otherPurposeDetails,
@@ -425,6 +426,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         }
                     ] if researcher else [],
                     "excludeFromPublicDirectory": workspace.excludeFromPublicDirectory,
+                    "reviewRequested": workspace.reviewRequested if workspace.reviewRequested else False,
                     "diseaseFocusedResearch": workspace.diseaseFocusedResearch,
                     "diseaseFocusedResearchName": workspace.diseaseFocusedResearchName,
                     "otherPurposeDetails": workspace.otherPurposeDetails,
