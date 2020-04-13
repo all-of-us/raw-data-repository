@@ -7,8 +7,10 @@ Create Date: 2020-04-07 14:54:37.050978
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import mysql
 import rdr_service
 from rdr_service.model.utils import Enum
+from rdr_service.model.field_types import BlobUTF8
 from rdr_service.participant_enums import WorkbenchAuditReviewType, WorkbenchAuditWorkspaceDisplayDecision, \
     WorkbenchAuditWorkspaceAccessDecision
 
@@ -44,6 +46,7 @@ def upgrade_rdr():
     sa.Column('audit_workspace_display_decision', Enum(WorkbenchAuditWorkspaceDisplayDecision), nullable=True),
     sa.Column('audit_workspace_access_decision', Enum(WorkbenchAuditWorkspaceAccessDecision), nullable=True),
     sa.Column('audit_notes', sa.String(length=1000), nullable=True),
+    sa.Column('resource', BlobUTF8(), nullable=False),
     sa.ForeignKeyConstraint(['workspace_snapshot_id'], ['workbench_workspace_snapshot.id'], ),
     sa.PrimaryKeyConstraint('id')
     )

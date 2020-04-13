@@ -1,10 +1,9 @@
 import json
-import sqlalchemy
 
 from werkzeug.exceptions import BadRequest
 from dateutil.parser import parse
-from sqlalchemy import desc, and_
-from sqlalchemy.orm import subqueryload
+from sqlalchemy import desc
+from sqlalchemy.orm import subqueryload, joinedload
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
 from rdr_service.dao.metadata_dao import MetadataDao, WORKBENCH_LAST_SYNC_KEY
@@ -12,7 +11,8 @@ from rdr_service.model.workbench_workspace import (
     WorkbenchWorkspaceApproved,
     WorkbenchWorkspaceSnapshot,
     WorkbenchWorkspaceUser,
-    WorkbenchWorkspaceUserHistory
+    WorkbenchWorkspaceUserHistory,
+    WorkbenchAudit
 )
 from rdr_service.model.workbench_researcher import (
     WorkbenchResearcher,
@@ -26,7 +26,8 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchResearcherDegree, WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, \
     WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, WorkbenchWorkspaceDisabilityStatus, \
     WorkbenchWorkspaceAccessToCare, WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, \
-    WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAge
+    WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAge, WorkbenchAuditWorkspaceAccessDecision, \
+    WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditReviewType
 
 
 class WorkbenchWorkspaceDao(UpdatableDao):
@@ -176,7 +177,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         now = clock.CLOCK.now()
         workspaces = []
         for item in resource_json:
-            workspace = WorkbenchWorkspaceApproved(
+            workspace = WorkbenchWorkspaceSnapshot(
                 created=now,
                 modified=now,
                 workspaceSourceId=item.get('workspaceId'),
@@ -224,14 +225,14 @@ class WorkbenchWorkspaceDao(UpdatableDao):
     def _get_users(self, workspace_users_json):
         if workspace_users_json is None:
             return []
-        researcher_dao = WorkbenchResearcherDao()
+        researcher_history_dao = WorkbenchResearcherHistoryDao()
         now = clock.CLOCK.now()
         workspace_users = []
         for user in workspace_users_json:
-            researcher = researcher_dao.get_researcher_by_user_source_id(user.get('userId'))
+            researcher = researcher_history_dao.get_researcher_history_by_user_source_id(user.get('userId'))
             if not researcher:
                 raise BadRequest('Researcher not found for user ID: {}'.format(user.get('userId')))
-            user_obj = WorkbenchWorkspaceUser(
+            user_obj = WorkbenchWorkspaceUserHistory(
                 created=now,
                 modified=now,
                 researcherId=researcher.id,
@@ -244,18 +245,11 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
     def insert_with_session(self, session, workspaces):
         for workspace in workspaces:
-            exist = self._get_workspace_by_workspace_id_with_session(session, workspace.workspaceSourceId)
-            if exist:
-                for attr_name in workspace.__dict__.keys():
-                    if not attr_name.startswith('_') and attr_name != 'created':
-                        setattr(exist, attr_name, getattr(workspace, attr_name))
-            else:
-                session.add(workspace)
-        self._insert_history(session, workspaces)
+            session.add(workspace)
         return workspaces
 
     def to_client_json(self, obj):
-        if isinstance(obj, WorkbenchWorkspaceApproved):
+        if isinstance(obj, WorkbenchWorkspaceSnapshot):
             return json.loads(obj.resource)
         elif isinstance(obj, list):
             result = []
@@ -263,174 +257,216 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 result.append(json.loads(workspace.resource))
             return result
 
-    def _insert_history(self, session, workspaces):
-        history_researcher_dao = WorkbenchResearcherHistoryDao()
-        session.flush()
-        for workspace in workspaces:
-            history = WorkbenchWorkspaceSnapshot()
-            for k, v in workspace:
-                if k != 'id':
-                    setattr(history, k, v)
-            users_history = []
-            for user in workspace.workbenchWorkspaceUser:
-                history_researcher = history_researcher_dao.get_researcher_history_by_user_source_id(user.userId)
-                user_obj = WorkbenchWorkspaceUserHistory(
-                    created=user.created,
-                    modified=user.modified,
-                    researcherId=history_researcher.id,
-                    userId=user.userId,
-                    role=user.role,
-                    status=user.status
-                )
-                users_history.append(user_obj)
-            history.workbenchWorkspaceUser = users_history
-            session.add(history)
-
-    def _get_workspace_by_workspace_id_with_session(self, session, workspace_id):
+    def get_workspace_by_workspace_id_with_session(self, session, workspace_id):
         return session.query(WorkbenchWorkspaceApproved)\
             .filter(WorkbenchWorkspaceApproved.workspaceSourceId == workspace_id).first()
 
-    def get_workspaces_with_user_detail(self, status):
+    def remove_workspace_by_workspace_id_with_session(self, session, workspace_id):
+        workspace = session.query(WorkbenchWorkspaceApproved) \
+            .options(joinedload(WorkbenchWorkspaceApproved.workbenchWorkspaceUser)) \
+            .filter(WorkbenchWorkspaceApproved.workspaceSourceId == workspace_id).first()
+        if workspace:
+            session.delete(workspace)
 
-        query = sqlalchemy.select(
-            [
-                WorkbenchWorkspaceApproved.workspaceSourceId.label('workspaceId'),
-                WorkbenchWorkspaceApproved.name.label('name'),
-                WorkbenchWorkspaceApproved.status.label('status'),
-                WorkbenchWorkspaceApproved.creationTime.label('creationTime'),
-                WorkbenchWorkspaceApproved.modifiedTime.label('modifiedTime'),
-                WorkbenchWorkspaceApproved.excludeFromPublicDirectory.label('excludeFromPublicDirectory'),
-                WorkbenchWorkspaceApproved.diseaseFocusedResearch.label('diseaseFocusedResearch'),
-                WorkbenchWorkspaceApproved.diseaseFocusedResearchName.label('diseaseFocusedResearchName'),
-                WorkbenchWorkspaceApproved.otherPurposeDetails.label('otherPurposeDetails'),
-                WorkbenchWorkspaceApproved.methodsDevelopment.label('methodsDevelopment'),
-                WorkbenchWorkspaceApproved.controlSet.label('controlSet'),
-                WorkbenchWorkspaceApproved.ancestry.label('ancestry'),
-                WorkbenchWorkspaceApproved.socialBehavioral.label('socialBehavioral'),
-                WorkbenchWorkspaceApproved.populationHealth.label('populationHealth'),
-                WorkbenchWorkspaceApproved.drugDevelopment.label('drugDevelopment'),
-                WorkbenchWorkspaceApproved.commercialPurpose.label('commercialPurpose'),
-                WorkbenchWorkspaceApproved.educational.label('educational'),
-                WorkbenchWorkspaceApproved.otherPurpose.label('otherPurpose'),
-                WorkbenchWorkspaceApproved.scientificApproaches.label('scientificApproaches'),
-                WorkbenchWorkspaceApproved.intendToStudy.label('intendToStudy'),
-                WorkbenchWorkspaceApproved.findingsFromStudy.label('findingsFromStudy'),
-                WorkbenchWorkspaceApproved.focusOnUnderrepresentedPopulations
-                    .label('focusOnUnderrepresentedPopulations'),
-                WorkbenchWorkspaceApproved.raceEthnicity.label('raceEthnicity'),
-                WorkbenchWorkspaceApproved.age.label('age'),
-                WorkbenchWorkspaceApproved.sexAtBirth.label('sexAtBirth'),
-                WorkbenchWorkspaceApproved.genderIdentity.label('genderIdentity'),
-                WorkbenchWorkspaceApproved.sexualOrientation.label('sexualOrientation'),
-                WorkbenchWorkspaceApproved.geography.label('geography'),
-                WorkbenchWorkspaceApproved.disabilityStatus.label('disabilityStatus'),
-                WorkbenchWorkspaceApproved.accessToCare.label('accessToCare'),
-                WorkbenchWorkspaceApproved.educationLevel.label('educationLevel'),
-                WorkbenchWorkspaceApproved.incomeLevel.label('incomeLevel'),
-                WorkbenchWorkspaceApproved.others.label('others'),
-
-                WorkbenchWorkspaceUser.userId.label('userId'),
-                WorkbenchWorkspaceUser.role.label('role'),
-                WorkbenchResearcher.givenName.label('givenName'),
-                WorkbenchResearcher.familyName.label('familyName'),
-
-                WorkbenchInstitutionalAffiliations.institution.label('institution'),
-                WorkbenchInstitutionalAffiliations.role.label('institutionRole'),
-                WorkbenchInstitutionalAffiliations.nonAcademicAffiliation.label('nonAcademicAffiliation')
-            ]
-        ).select_from(
-            sqlalchemy.outerjoin(
-                sqlalchemy.outerjoin(WorkbenchWorkspaceApproved, WorkbenchWorkspaceUser,
-                                     WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId),
-                sqlalchemy.outerjoin(WorkbenchResearcher, WorkbenchInstitutionalAffiliations,
-                                     WorkbenchResearcher.id == WorkbenchInstitutionalAffiliations.researcherId),
-                WorkbenchResearcher.id == WorkbenchWorkspaceUser.researcherId
-            )
-        ).where(and_(WorkbenchWorkspaceUser.role == WorkbenchWorkspaceUserRole.OWNER,
-                     WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0))
-
-        if status is not None:
-            query = query.where(WorkbenchWorkspaceApproved.status == status)
-
+    def get_redcap_audit_workspaces(self, last_snapshot_id):
         results = []
         with self.session() as session:
-            cursor = session.execute(query)
-            for row in cursor:
-                record = {
-                    'workspaceId': row.workspaceId,
-                    'name': row.name,
-                    'creationTime': row.creationTime,
-                    'modifiedTime': row.modifiedTime,
-                    'status': str(WorkbenchWorkspaceStatus(row.status)),
-                    'workspaceOwner': [
-                        {
-                            'userId': row.userId,
-                            'userName': row.givenName + ' ' + row.familyName,
-                            'affiliations': [
-                                {
-                                    "institution": row.institution,
-                                    "role": row.institutionRole,
-                                    "nonAcademicAffiliation": str(WorkbenchInstitutionNonAcademic(
-                                        row.nonAcademicAffiliation if row.nonAcademicAffiliation is not None
-                                        else 'UNSET'))
-                                }
-                            ]
+            query = (
+                session.query(WorkbenchWorkspaceSnapshot, WorkbenchResearcherHistory)
+                    .options(joinedload(WorkbenchWorkspaceSnapshot.workbenchWorkspaceUser),
+                             joinedload(WorkbenchResearcherHistory.workbenchInstitutionalAffiliations))
+                    .filter(WorkbenchWorkspaceUserHistory.researcherId == WorkbenchResearcherHistory.id,
+                            WorkbenchWorkspaceSnapshot.id == WorkbenchWorkspaceUserHistory.workspaceId)
+                    .order_by(WorkbenchWorkspaceSnapshot.id)
+            )
+
+            if last_snapshot_id:
+                query = query.filter(WorkbenchWorkspaceSnapshot.id > last_snapshot_id)
+
+            items = query.all()
+            for workspace, researcher in items:
+                verified_institutional_affiliation = {}
+                affiliations = []
+                if researcher.workbenchInstitutionalAffiliations:
+                    for affiliation in researcher.workbenchInstitutionalAffiliations:
+                        affiliations.append(
+                            {
+                                "institution": affiliation.institution,
+                                "role": affiliation.role,
+                                "isVerified": affiliation.isVerified,
+                                "nonAcademicAffiliation":
+                                    str(WorkbenchInstitutionNonAcademic(affiliation.nonAcademicAffiliation))
+                                    if affiliation.nonAcademicAffiliation else 'UNSET'
+                            }
+                        )
+                        if affiliation.isVerified:
+                            verified_institutional_affiliation = {
+                                "institution": affiliation.institution,
+                                "role": affiliation.role,
+                                "nonAcademicAffiliation":
+                                    str(WorkbenchInstitutionNonAcademic(affiliation.nonAcademicAffiliation))
+                                    if affiliation.nonAcademicAffiliation else 'UNSET'
+                            }
+                workspace_researcher = {
+                            "userId": researcher.userSourceId,
+                            "creationTime": researcher.creationTime,
+                            "modifiedTime": researcher.modifiedTime,
+                            "givenName": researcher.givenName,
+                            "familyName": researcher.familyName,
+                            "email": researcher.email,
+                            "verifiedInstitutionalAffiliation": verified_institutional_affiliation,
+                            "affiliations": affiliations
                         }
-                    ],
-                    "excludeFromPublicDirectory": row.excludeFromPublicDirectory,
-                    "diseaseFocusedResearch": row.diseaseFocusedResearch,
-                    "diseaseFocusedResearchName": row.diseaseFocusedResearchName,
-                    "otherPurposeDetails": row.otherPurposeDetails,
-                    "methodsDevelopment": row.methodsDevelopment,
-                    "controlSet": row.controlSet,
-                    "ancestry": row.ancestry,
-                    "socialBehavioral": row.socialBehavioral,
-                    "populationHealth": row.populationHealth,
-                    "drugDevelopment": row.drugDevelopment,
-                    "commercialPurpose": row.commercialPurpose,
-                    "educational": row.educational,
-                    "otherPurpose": row.otherPurpose,
-                    "scientificApproaches": row.scientificApproaches,
-                    "intendToStudy": row.intendToStudy,
-                    "findingsFromStudy": row.findingsFromStudy,
-                    "focusOnUnderrepresentedPopulations": row.focusOnUnderrepresentedPopulations,
+
+                exist = False
+                for result in results:
+                    if result['snapshotId'] == workspace.id:
+                        result['workspaceResearchers'].append(workspace_researcher)
+                        exist = True
+                        break
+                if exist:
+                    continue
+                record = {
+                    'snapshotId': workspace.id,
+                    'workspaceId': workspace.workspaceSourceId,
+                    'name': workspace.name,
+                    'creationTime': workspace.creationTime,
+                    'modifiedTime': workspace.modifiedTime,
+                    'status': str(WorkbenchWorkspaceStatus(workspace.status)),
+                    'workspaceUsers': [
+                        {
+                            "userId": user.userId,
+                            "role": str(WorkbenchWorkspaceUserRole(user.role)) if user.role else 'UNSET',
+                            "status": str(WorkbenchWorkspaceStatus(user.status)) if user.status else 'UNSET',
+                        } for user in workspace.workbenchWorkspaceUser
+                    ] if workspace.workbenchWorkspaceUser else [],
+                    'workspaceResearchers': [workspace_researcher],
+                    "excludeFromPublicDirectory": workspace.excludeFromPublicDirectory,
+                    "diseaseFocusedResearch": workspace.diseaseFocusedResearch,
+                    "diseaseFocusedResearchName": workspace.diseaseFocusedResearchName,
+                    "otherPurposeDetails": workspace.otherPurposeDetails,
+                    "methodsDevelopment": workspace.methodsDevelopment,
+                    "controlSet": workspace.controlSet,
+                    "ancestry": workspace.ancestry,
+                    "socialBehavioral": workspace.socialBehavioral,
+                    "populationHealth": workspace.populationHealth,
+                    "drugDevelopment": workspace.drugDevelopment,
+                    "commercialPurpose": workspace.commercialPurpose,
+                    "educational": workspace.educational,
+                    "otherPurpose": workspace.otherPurpose,
+                    "scientificApproaches": workspace.scientificApproaches,
+                    "intendToStudy": workspace.intendToStudy,
+                    "findingsFromStudy": workspace.findingsFromStudy,
+                    "focusOnUnderrepresentedPopulations": workspace.focusOnUnderrepresentedPopulations,
                     "workspaceDemographic": {
                         "raceEthnicity": [str(WorkbenchWorkspaceRaceEthnicity(value))
-                                          for value in row.raceEthnicity] if row.raceEthnicity else None,
-                        "age": [str(WorkbenchWorkspaceAge(value)) for value in row.age] if row.age else None,
-                        "sexAtBirth": str(WorkbenchWorkspaceSexAtBirth(row.sexAtBirth)) if row.sexAtBirth else None,
-                        "genderIdentity": str(WorkbenchWorkspaceGenderIdentity(row.genderIdentity))
-                        if row.genderIdentity else None,
-                        "sexualOrientation": str(WorkbenchWorkspaceSexualOrientation(row.sexualOrientation))
-                        if row.sexualOrientation else None,
-                        "geography": str(WorkbenchWorkspaceGeography(row.geography)) if row.geography else None,
-                        "disabilityStatus": str(WorkbenchWorkspaceDisabilityStatus(row.disabilityStatus))
-                        if row.disabilityStatus else None,
-                        "accessToCare": str(WorkbenchWorkspaceAccessToCare(row.accessToCare))
-                        if row.accessToCare else None,
-                        "educationLevel": str(WorkbenchWorkspaceEducationLevel(row.educationLevel))
-                        if row.educationLevel else None,
-                        "incomeLevel": str(WorkbenchWorkspaceIncomeLevel(row.incomeLevel))
-                        if row.incomeLevel else None,
-                        "others": row.others
+                                          for value in workspace.raceEthnicity] if workspace.raceEthnicity else None,
+                        "age": [str(WorkbenchWorkspaceAge(value)) for value in workspace.age]
+                        if workspace.age else None,
+                        "sexAtBirth": str(WorkbenchWorkspaceSexAtBirth(workspace.sexAtBirth))
+                        if workspace.sexAtBirth else None,
+                        "genderIdentity": str(WorkbenchWorkspaceGenderIdentity(workspace.genderIdentity))
+                        if workspace.genderIdentity else None,
+                        "sexualOrientation": str(WorkbenchWorkspaceSexualOrientation(workspace.sexualOrientation))
+                        if workspace.sexualOrientation else None,
+                        "geography": str(WorkbenchWorkspaceGeography(workspace.geography))
+                        if workspace.geography else None,
+                        "disabilityStatus": str(WorkbenchWorkspaceDisabilityStatus(workspace.disabilityStatus))
+                        if workspace.disabilityStatus else None,
+                        "accessToCare": str(WorkbenchWorkspaceAccessToCare(workspace.accessToCare))
+                        if workspace.accessToCare else None,
+                        "educationLevel": str(WorkbenchWorkspaceEducationLevel(workspace.educationLevel))
+                        if workspace.educationLevel else None,
+                        "incomeLevel": str(WorkbenchWorkspaceIncomeLevel(workspace.incomeLevel))
+                        if workspace.incomeLevel else None,
+                        "others": workspace.others
                     }
                 }
-                is_exist_workspace = False
-                for item in results:
-                    if item['workspaceId'] == record['workspaceId']:
-                        is_exist_user = False
-                        for user in item['workspaceOwner']:
-                            if user['userId'] == record['workspaceOwner'][0]['userId']:
-                                user['affiliations'] = user['affiliations'] + \
-                                                       record['workspaceOwner'][0]['affiliations']
-                            is_exist_user = True
-                            break
-                        if not is_exist_user:
-                            item['workspaceOwner'] = item['workspaceOwner'] + record['workspaceOwner']
-                        is_exist_workspace = True
-                        break
-                if not is_exist_workspace:
-                    results.append(record)
+                results.append(record)
+
+        return results
+
+    def get_workspaces_with_user_detail(self, status):
+        results = []
+        with self.session() as session:
+            query = (
+                session.query(WorkbenchWorkspaceApproved, WorkbenchResearcher)
+                    .options(joinedload(WorkbenchResearcher.workbenchInstitutionalAffiliations))
+                    .filter(WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
+                            WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId,
+                            WorkbenchWorkspaceUser.role == WorkbenchWorkspaceUserRole.OWNER,
+                            WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0)
+            )
+            if status is not None:
+                query = query.filter(WorkbenchWorkspaceApproved.status == status)
+
+            items = query.all()
+            for workspace, researcher in items:
+                record = {
+                    'workspaceId': workspace.workspaceSourceId,
+                    'name': workspace.name,
+                    'creationTime': workspace.creationTime,
+                    'modifiedTime': workspace.modifiedTime,
+                    'status': str(WorkbenchWorkspaceStatus(workspace.status)),
+                    'workspaceOwner': [
+                        {
+                            'userId': researcher.userSourceId,
+                            'userName': researcher.givenName + ' ' + researcher.familyName,
+                            'affiliations': [
+                                {
+                                    "institution": affiliation.institution,
+                                    "role": affiliation.role,
+                                    "isVerified": affiliation.isVerified,
+                                    "nonAcademicAffiliation": str(WorkbenchInstitutionNonAcademic(
+                                        affiliation.nonAcademicAffiliation
+                                        if affiliation.nonAcademicAffiliation is not None else 'UNSET'))
+                                } for affiliation in researcher.workbenchInstitutionalAffiliations
+                            ] if researcher.workbenchInstitutionalAffiliations else []
+                        }
+                    ] if researcher else [],
+                    "excludeFromPublicDirectory": workspace.excludeFromPublicDirectory,
+                    "diseaseFocusedResearch": workspace.diseaseFocusedResearch,
+                    "diseaseFocusedResearchName": workspace.diseaseFocusedResearchName,
+                    "otherPurposeDetails": workspace.otherPurposeDetails,
+                    "methodsDevelopment": workspace.methodsDevelopment,
+                    "controlSet": workspace.controlSet,
+                    "ancestry": workspace.ancestry,
+                    "socialBehavioral": workspace.socialBehavioral,
+                    "populationHealth": workspace.populationHealth,
+                    "drugDevelopment": workspace.drugDevelopment,
+                    "commercialPurpose": workspace.commercialPurpose,
+                    "educational": workspace.educational,
+                    "otherPurpose": workspace.otherPurpose,
+                    "scientificApproaches": workspace.scientificApproaches,
+                    "intendToStudy": workspace.intendToStudy,
+                    "findingsFromStudy": workspace.findingsFromStudy,
+                    "focusOnUnderrepresentedPopulations": workspace.focusOnUnderrepresentedPopulations,
+                    "workspaceDemographic": {
+                        "raceEthnicity": [str(WorkbenchWorkspaceRaceEthnicity(value))
+                                          for value in workspace.raceEthnicity] if workspace.raceEthnicity else None,
+                        "age": [str(WorkbenchWorkspaceAge(value)) for value in workspace.age]
+                        if workspace.age else None,
+                        "sexAtBirth": str(WorkbenchWorkspaceSexAtBirth(workspace.sexAtBirth))
+                        if workspace.sexAtBirth else None,
+                        "genderIdentity": str(WorkbenchWorkspaceGenderIdentity(workspace.genderIdentity))
+                        if workspace.genderIdentity else None,
+                        "sexualOrientation": str(WorkbenchWorkspaceSexualOrientation(workspace.sexualOrientation))
+                        if workspace.sexualOrientation else None,
+                        "geography": str(WorkbenchWorkspaceGeography(workspace.geography))
+                        if workspace.geography else None,
+                        "disabilityStatus": str(WorkbenchWorkspaceDisabilityStatus(workspace.disabilityStatus))
+                        if workspace.disabilityStatus else None,
+                        "accessToCare": str(WorkbenchWorkspaceAccessToCare(workspace.accessToCare))
+                        if workspace.accessToCare else None,
+                        "educationLevel": str(WorkbenchWorkspaceEducationLevel(workspace.educationLevel))
+                        if workspace.educationLevel else None,
+                        "incomeLevel": str(WorkbenchWorkspaceIncomeLevel(workspace.incomeLevel))
+                        if workspace.incomeLevel else None,
+                        "others": workspace.others
+                    }
+                }
+                results.append(record)
+
         metadata_dao = MetadataDao()
         metadata = metadata_dao.get_by_key(WORKBENCH_LAST_SYNC_KEY)
         if metadata:
@@ -447,6 +483,11 @@ class WorkbenchWorkspaceHistoryDao(UpdatableDao):
 
     def get_id(self, obj):
         return obj.id
+
+    def get_snapshot_by_id_with_session(self, session, snapshot_id):
+        return session.query(WorkbenchWorkspaceSnapshot)\
+            .options(subqueryload(WorkbenchWorkspaceSnapshot.workbenchWorkspaceUser))\
+            .filter(WorkbenchWorkspaceSnapshot.id == snapshot_id).first()
 
     def get_all_with_children(self):
         with self.session() as session:
@@ -472,7 +513,7 @@ class WorkbenchResearcherDao(UpdatableDao):
 
     def get_researcher_by_user_source_id(self, user_source_id):
         with self.session() as session:
-            return self._get_researcher_by_user_id_with_session(session, user_source_id)
+            return self.get_researcher_by_user_id_with_session(session, user_source_id)
 
     def _validate(self, resource_json):
         for item in resource_json:
@@ -618,7 +659,7 @@ class WorkbenchResearcherDao(UpdatableDao):
 
     def insert_with_session(self, session, researchers):
         for researcher in researchers:
-            exist = self._get_researcher_by_user_id_with_session(session, researcher.userSourceId)
+            exist = self.get_researcher_by_user_id_with_session(session, researcher.userSourceId)
             if exist:
                 for attr_name in researcher.__dict__.keys():
                     if not attr_name.startswith('_') and attr_name != 'created':
@@ -658,7 +699,7 @@ class WorkbenchResearcherDao(UpdatableDao):
             history.workbenchInstitutionalAffiliations = affiliations_history
             session.add(history)
 
-    def _get_researcher_by_user_id_with_session(self, session, user_id):
+    def get_researcher_by_user_id_with_session(self, session, user_id):
         return session.query(WorkbenchResearcher).filter(WorkbenchResearcher.userSourceId == user_id)\
             .order_by(desc(WorkbenchResearcher.created)).first()
 
@@ -673,6 +714,11 @@ class WorkbenchResearcherHistoryDao(UpdatableDao):
                                                                     user_source_id) \
                 .order_by(desc(WorkbenchResearcherHistory.created)).first()
 
+    def get_researcher_history_by_id_with_session(self, researcher_history_id):
+        with self.session() as session:
+            return session.query(WorkbenchResearcherHistory)\
+                .filter(WorkbenchResearcherHistory.id == researcher_history_id).first()
+
     def get_id(self, obj):
         return obj.id
 
@@ -682,3 +728,119 @@ class WorkbenchResearcherHistoryDao(UpdatableDao):
                 subqueryload(WorkbenchResearcherHistory.workbenchInstitutionalAffiliations)
             )
             return query.all()
+
+
+class WorkbenchWorkspaceAuditDao(UpdatableDao):
+    def __init__(self):
+        super().__init__(WorkbenchWorkspaceAuditDao, order_by_ending=["id"])
+        self.workspace_dao = WorkbenchWorkspaceDao()
+        self.workspace_snapshot_dao = WorkbenchWorkspaceHistoryDao()
+
+    def _validate(self, resource_json):
+        for item in resource_json:
+            if item.get('snapshotId') is None:
+                raise BadRequest('snapshotId can not be NULL')
+            if item.get('reviewType') is None:
+                raise BadRequest('reviewType can not be NULL')
+            if item.get('displayDecision') is None:
+                raise BadRequest('displayDecision can not be NULL')
+
+            try:
+                if item.get('accessDecision') is None:
+                    item['accessDecision'] = 'UNSET'
+                WorkbenchAuditWorkspaceAccessDecision(item.get('accessDecision'))
+            except TypeError:
+                raise BadRequest(f"Invalid accessDecision: {item.get('accessDecision')}")
+
+            try:
+                WorkbenchAuditWorkspaceDisplayDecision(item.get('displayDecision'))
+            except TypeError:
+                raise BadRequest(f"Invalid displayDecision: {item.get('displayDecision')}")
+
+            try:
+                WorkbenchAuditReviewType(item.get('reviewType'))
+            except TypeError:
+                raise BadRequest(f"Invalid reviewType: {item.get('reviewType')}")
+
+    def from_client_json(self, resource_json, client_id=None):  # pylint: disable=unused-argument
+        self._validate(resource_json)
+        workbench_audit_records = []
+        for item in resource_json:
+            record = WorkbenchAudit(
+                workspaceSnapshotId=item.get('snapshotId'),
+                auditorPmiEmail=item.get('auditorEmail'),
+                auditReviewType=WorkbenchAuditReviewType(item.get('reviewType', 'UNSET')),
+                auditWorkspaceDisplayDecision=WorkbenchAuditWorkspaceDisplayDecision(
+                    item.get('displayDecision', 'UNSET')),
+                auditWorkspaceAccessDecision=WorkbenchAuditWorkspaceAccessDecision(
+                    item.get('accessDecision', 'UNSET')),
+                auditNotes=item.get('auditorNotes'),
+                resource=json.dumps(item)
+            )
+
+            workbench_audit_records.append(record)
+
+        return workbench_audit_records
+
+    def insert_with_session(self, session, workbench_audit_records):
+        for record in workbench_audit_records:
+            session.add(record)
+            if record.auditReviewType == WorkbenchAuditReviewType.RAB and \
+                record.auditWorkspaceDisplayDecision == \
+                WorkbenchAuditWorkspaceDisplayDecision.PUBLISH_TO_RESEARCHER_DIRECTORY and \
+                record.auditWorkspaceAccessDecision == WorkbenchAuditWorkspaceAccessDecision.UNSET:
+                self.add_approved_workspace_with_session(session, record.workspaceSnapshotId)
+            else:
+                self.remove_approved_workspace_with_session(session, record.workspaceSnapshotId)
+
+        return workbench_audit_records
+
+    def _get_audit_record_by_snapshot_id_with_session(self, session, workspace_snapshot_id):
+        return session.query(WorkbenchAudit).filter(WorkbenchAudit.workspaceSnapshotId == workspace_snapshot_id).first()
+
+    def to_client_json(self, obj):
+        if isinstance(obj, WorkbenchAudit):
+            return json.loads(obj.resource)
+        elif isinstance(obj, list):
+            result = []
+            for record in obj:
+                result.append(json.loads(record.resource))
+            return result
+
+    def remove_approved_workspace_with_session(self, session, workspace_snapshot_id):
+        workspace_snapshot = self.workspace_snapshot_dao.get_snapshot_by_id_with_session(session, workspace_snapshot_id)
+        self.workspace_dao.remove_workspace_by_workspace_id_with_session(session, workspace_snapshot.workspaceSourceId)
+
+    def add_approved_workspace_with_session(self, session, workspace_snapshot_id):
+        workspace_snapshot = self.workspace_snapshot_dao.get_snapshot_by_id_with_session(session, workspace_snapshot_id)
+        exist = self.workspace_dao.get_workspace_by_workspace_id_with_session(session,
+                                                                              workspace_snapshot.workspaceSourceId)
+
+        workspace_approved = WorkbenchWorkspaceApproved()
+        for k, v in workspace_snapshot:
+            if k != 'id':
+                setattr(workspace_approved, k, v)
+        workspace_approved.excludeFromPublicDirectory = False
+        users = []
+        researcher_dao = WorkbenchResearcherDao()
+        for user in workspace_snapshot.workbenchWorkspaceUser:
+            researcher = researcher_dao.get_researcher_by_user_id_with_session(session, user.userId)
+            user_obj = WorkbenchWorkspaceUser(
+                created=user.created,
+                modified=user.modified,
+                researcherId=researcher.id,
+                userId=user.userId,
+                role=user.role,
+                status=user.status
+            )
+            users.append(user_obj)
+        workspace_approved.workbenchWorkspaceUser = users
+
+        if exist:
+            for attr_name in workspace_approved.__dict__.keys():
+                if not attr_name.startswith('_') and attr_name != 'created':
+                    setattr(exist, attr_name, getattr(workspace_approved, attr_name))
+        else:
+            session.add(workspace_approved)
+
+

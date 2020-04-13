@@ -138,6 +138,8 @@ class WorkbenchAudit(Base):
                                           default=WorkbenchAuditWorkspaceAccessDecision.UNSET)
     auditNotes = Column("audit_notes", String(1000))
 
+    resource = Column("resource", BlobUTF8, nullable=False)
+
 
 event.listen(WorkbenchWorkspaceApproved, "before_insert", model_insert_listener)
 event.listen(WorkbenchWorkspaceApproved, "before_update", model_update_listener)
