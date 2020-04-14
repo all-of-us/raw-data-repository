@@ -22,6 +22,7 @@ class BiobankSpecimenApi(UpdatableApi):
     def put(self, *args, **kwargs):  # pylint: disable=unused-argument
         resource = request.get_json(force=True)
         if self.dao.exists(resource):
+            # TODO: rlims_id is unique
             return super().put(kwargs['rlims_id'])
         else:
             return super().post(participant_id=resource['participantId'])

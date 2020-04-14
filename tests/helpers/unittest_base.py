@@ -136,7 +136,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         logger.addHandler(stream_handler)
 
         # TODO: put logging back to critical
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(logging.CRITICAL)
 
         self.setup_config()
         self.setup_storage()

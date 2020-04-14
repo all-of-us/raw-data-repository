@@ -40,7 +40,7 @@ class BiobankSpecimenDao(UpdatableDao):
         order.version = 1
         return order
 
-    def exists(self, resource):
-        # return True if self.dao.get(resource['id']) else False
+    @staticmethod
+    def exists(resource):
         return True if resource.get('id') else False
 

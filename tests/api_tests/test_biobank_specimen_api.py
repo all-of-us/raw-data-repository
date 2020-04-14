@@ -1,6 +1,6 @@
 import datetime
 
-import clock
+from rdr_service import clock
 from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -75,10 +75,24 @@ class BiobankOrderApiTest(BaseTestCase):
                 kwargs[k] = default_value
         return BiobankOrder(**kwargs)
 
-    def test_put_specimen(self):
+    def test_put_new_specimen(self):
         ParticipantSummaryDao().insert(self.participant_summary(self.participant))
         bio_order = self.bo_dao.insert(self._make_biobank_order(participantId=self.participant.participantId))
         self.specimen.orderId = bio_order.biobankOrderId
         payload = self.dao.to_client_json(self.specimen)
-        result = self.send_put(self.specimen_path, request_data=payload, headers={"if-match": 'W/"1"' })
+        result = self.send_put(self.specimen_path, request_data=payload, headers={"if-match": 'W/"1"'})
         print(result)
+
+    def test_put_specimen_exists(self):
+        ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+        bio_order = self.bo_dao.insert(self._make_biobank_order(participantId=self.participant.participantId))
+        self.specimen.orderId = bio_order.biobankOrderId
+        payload = self.dao.to_client_json(self.specimen)
+        result = self.send_put(self.specimen_path, request_data=payload, headers={"if-match": 'W/"1"'})
+        new_payload = payload
+        new_payload['cohortId'] = 'next cohort'
+        new_payload['rlimsId'] = 'next rlimsId'
+        print(result)
+
+        # TODO: Are we handling if-match headers? Not in design.
+        self.send_put(self.specimen_path, request_data=new_payload, headers={"if-match": 'W/"1"'})
