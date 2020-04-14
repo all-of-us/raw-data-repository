@@ -7,9 +7,12 @@ import argparse
 
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
+import csv
 import logging
 import os
 import sys
+from collections import namedtuple
+
 import dateutil
 
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -38,6 +41,7 @@ class ProgramTemplateClass(object):
         """
         self.args = args
         self.gcp_env = gcp_env
+        self.pid_mappings = list()
 
     def get_participant_records(self, dao, pid):
         """
@@ -74,6 +78,16 @@ class ProgramTemplateClass(object):
 
         return op, np, bbo, ss
 
+    def get_biobank_order_for_participant(self, dao, pid):
+        """
+        Return the biobank order, only to be ran for pids with 1 order
+        :param dao:
+        :param pid:
+        :return: biobank order
+        """
+        with dao.session() as session:
+            return session.query(BiobankOrder).filter(BiobankOrder.participantId == pid).first()
+
     def get_pm_records_for_participant(self, dao, mappings):
         """
        Return the physical measurement and participant records in mappings.
@@ -88,6 +102,16 @@ class ProgramTemplateClass(object):
                 PhysicalMeasurements.physicalMeasurementsId == mappings[2]
             ).first()
         return op, np, pm
+
+    def get_pm_for_participant(self, dao, pid):
+        """
+        Return the biobank order, only to be ran for pids with 1 pm
+        :param dao:
+        :param pid:
+        :return: biobank order
+        """
+        with dao.session() as session:
+            return session.query(PhysicalMeasurements).filter(PhysicalMeasurements.participantId == pid).first()
 
     def fix_biobank_order(self, dao, np, bbo):
         """
@@ -136,6 +160,8 @@ class ProgramTemplateClass(object):
         Updates the participant and participant_summary signup_time
         :param dao:
         :param np:
+        :param nps:
+        :param new_time:
         :return:
         """
         new_time_dt = dateutil.parser.parse(new_time)
@@ -145,6 +171,52 @@ class ProgramTemplateClass(object):
             updated_participant = session.merge(np)
             updated_summary = session.merge(nps)
         return updated_participant, updated_summary
+
+    def set_old_to_new_mappings(self):
+        """
+        Reads from old->new PID mapping file and
+        sets the pid_mapping attribute
+        """
+        # get old -> new mappings
+        with open(self.args.mapping_source_csv, encoding='utf-8-sig') as s:
+            reader = csv.reader(s)
+            Mapping = namedtuple("Mapping", next(reader))
+            for mapping in map(Mapping._make, reader):
+                self.pid_mappings.append(mapping)
+
+    def map_biobank_orders(self, old_pids, dao):
+        """
+        Iterates old_pids list and looks up BBO ID
+        writes to temp CSV directory
+        """
+        # Write mapping output
+        with open('.tmp/new_mappings_bbo.csv', 'w', newline='') as out:
+            writer = csv.writer(out)
+            writer.writerow(["old_pid", "new_pid", "biobank_order_id"])
+            for old_pid in old_pids:
+                pid_mapping = filter(lambda x: x.old_pid == old_pid, self.pid_mappings)
+                for i in pid_mapping:
+                    bbo = self.get_biobank_order_for_participant(dao, old_pid)
+                    writer.writerow([i.old_pid, i.new_pid, bbo.biobankOrderId])
+        _logger.info('Biobank Order mapping file generated:')
+        _logger.info('    .tmp/new_mappings_bbo.csv')
+
+    def map_physical_measurements(self, old_pids, dao):
+        """
+        Iterates old_pids list and looks up PM ID
+        writes to temp CSV directory
+        """
+        # Write mapping output
+        with open('.tmp/new_mappings_pm.csv', 'w', newline='') as out:
+            writer = csv.writer(out)
+            writer.writerow(["old_pid", "new_pid", "pm_id"])
+            for old_pid in old_pids:
+                pid_mapping = filter(lambda x: x.old_pid == old_pid, self.pid_mappings)
+                for i in pid_mapping:
+                    pm = self.get_pm_for_participant(dao, old_pid)
+                    writer.writerow([i.old_pid, i.new_pid, pm.physicalMeasurementsId])
+        _logger.info('Physical Measurement mapping file generated:')
+        _logger.info('    .tmp/new_mappings_pm.csv')
 
     def run(self):
         """
@@ -163,29 +235,17 @@ class ProgramTemplateClass(object):
             with open(self.args.csv, encoding='utf-8-sig') as h:
                 lines = h.readlines()
                 for line in lines:
-                    mappings_list.append(tuple(i.strip() for i in line.split(',')))
-                if self.args.fix_biobank_orders:
-                    headers = mappings_list.pop(0)
-                    if headers != ("old_pid", "new_pid", "biobank_order_id"):
-                        _logger.error("Invalid columns in CSV")
-                        _logger.error(f"   {headers}")
-                        return 1
-
-                if self.args.fix_physical_measurements:
-                    headers = mappings_list.pop(0)
-                    if headers != ("old_pid", "new_pid", "pm_id"):
-                        _logger.error("Invalid columns in CSV")
-                        _logger.error(f"   {headers}")
-                        return 1
-
-                if self.args.fix_signup_time:
-                    headers = mappings_list.pop(0)
-                    if headers != ("new_pid", "signup_time"):
-                        _logger.error("Invalid columns in CSV")
-                        _logger.error(f"   {headers}")
-                        return 1
+                    if self.args.generate_mapping:
+                        mappings_list.append(line.strip())
+                    else:
+                        mappings_list.append(tuple(i.strip() for i in line.split(',')))
 
         if self.args.fix_biobank_orders:
+            headers = mappings_list.pop(0)
+            if headers != ("old_pid", "new_pid", "biobank_order_id"):
+                _logger.error("Invalid columns in CSV")
+                _logger.error(f"   {headers}")
+                return 1
             for mapping in mappings_list:
                 old_p, new_p, biobank_order, stored_samples = self.get_biobank_records_for_participant(dao, mapping)
 
@@ -214,6 +274,11 @@ class ProgramTemplateClass(object):
                                  f'{updated_ss.biobankId}')
 
         if self.args.fix_physical_measurements:
+            headers = mappings_list.pop(0)
+            if headers != ("old_pid", "new_pid", "pm_id"):
+                _logger.error("Invalid columns in CSV")
+                _logger.error(f"   {headers}")
+                return 1
             for mapping in mappings_list:
                 old_p, new_p, physical_measurement = self.get_pm_records_for_participant(dao, mapping)
 
@@ -233,6 +298,11 @@ class ProgramTemplateClass(object):
                              f'{updated_pm.participantId}')
 
         if self.args.fix_signup_time:
+            headers = mappings_list.pop(0)
+            if headers != ("new_pid", "signup_time"):
+                _logger.error("Invalid columns in CSV")
+                _logger.error(f"   {headers}")
+                return 1
             _logger.info("Fixing signup time.")
             for mapping in mappings_list:
                 np, nps = self.get_participant_records(dao, mapping[0])
@@ -250,6 +320,24 @@ class ProgramTemplateClass(object):
                              f'{updated_p.signUpTime}')
                 _logger.info(f'      update successful for participant summary {updated_s.participantId}: '
                              f'{updated_s.signUpTime}')
+
+        if self.args.generate_mapping is not None:
+            # generates the mapping file from the ptsc report
+            self.set_old_to_new_mappings()
+
+            headers = mappings_list.pop(0)
+            if headers != "old_pid":
+                _logger.error("Invalid columns in CSV")
+                _logger.error(f"   {headers}")
+                return 1
+
+            if self.args.generate_mapping.lower().strip() == 'bbo':
+                # generate biobank order mappings
+                self.map_biobank_orders(mappings_list, dao)
+
+            if self.args.generate_mapping.lower().strip() == 'pm':
+                # generate pm mappings
+                self.map_physical_measurements(mappings_list, dao)
 
         return 0
 
@@ -274,33 +362,50 @@ def run():
     parser.add_argument("--fix-physical-measurements", help="Fix Physical Measurements",
                         default=False, action="store_true")  # noqa
     parser.add_argument("--fix-signup-time", help="Fix signup time", default=False, action="store_true")  # noqa
+    parser.add_argument("--generate-mapping", help="Create the mapping csv for 'pm' or 'bbo'.", default=None)  # noqa
+    parser.add_argument("--mapping-source-csv", help="Old -> New PID mapping source.", default=None)  # noqa
     args = parser.parse_args()
     process_args = (args.fix_biobank_orders,
                     args.fix_physical_measurements,
-                    args.fix_signup_time)
+                    args.fix_signup_time,
+                    (args.generate_mapping is not None))
     if not any(process_args):
         _logger.error('Either --fix-biobank-orders, --fix-physical-measurements,'
-                      ' or --fix-signup-time must be provided.')
+                      ' --fix-signup-time,'
+                      'or --generate-mapping must be provided')
         return 1
 
     if sum(process_args) > 1:
         _logger.error('Arguments --fix_biobank_orders, --fix_physical_measurements,'
-                      ' and --fix-signup-time may not be used together.')
+                      ' --fix-signup-time, and --generate-mapping '
+                      'may not be used together.')
         return 1
-
-    if not args.participant and not args.csv:
-        _logger.error('Either --csv or --participant argument must be provided.')
-        return 1
-
-    if args.participant and args.csv:
-        _logger.error('Arguments --csv and --participant may not be used together.')
-        return 1
-
-    if args.participant:
-        # Verify that we have a string with 3 comma delimited values.
-        if len(args.participant.split(',')) != 3:
-            _logger.error('Invalid participant argument, must be 3 PIDs in comma delimited format.')
+    if args.generate_mapping is None:
+        if not args.participant and not args.csv:
+            _logger.error('Either --csv or --participant argument must be provided.')
             return 1
+
+        if args.participant and args.csv:
+            _logger.error('Arguments --csv and --participant may not be used together.')
+            return 1
+
+        if args.participant:
+            # Verify that we have a string with 3 comma delimited values.
+            if len(args.participant.split(',')) != 3:
+                _logger.error('Invalid participant argument, must be 3 PIDs in comma delimited format.')
+                return 1
+    else:
+        valid_mapping = ("pm", "bbo")
+        if args.generate_mapping.lower().strip() not in valid_mapping:
+            _logger.error(f'--generate-mapping must be one of {valid_mapping}')
+            return 1
+        if args.mapping_source_csv is None:
+            _logger.error(f'--mapping-source-csv required if --generate-mapping')
+            return 1
+        if not os.path.exists(args.mapping_source_csv):
+            _logger.error(f'File {args.mapping_source_csv} was not found.')
+            return 1
+
 
     if args.csv:
         if not os.path.exists(args.csv):

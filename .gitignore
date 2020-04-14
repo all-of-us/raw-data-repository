@@ -47,3 +47,4 @@ htmlcov/
 /doc/_templates
 
 app.yaml
+/rdr_service/.tmp/
