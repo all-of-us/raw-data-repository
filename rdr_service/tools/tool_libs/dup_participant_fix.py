@@ -16,6 +16,8 @@ from collections import namedtuple
 import dateutil
 
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.biobank_order_dao import BiobankOrderDao
+from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.participant import Participant
@@ -273,6 +275,11 @@ class ProgramTemplateClass(object):
                     _logger.info(f'  update successful for {updated_ss.biobankStoredSampleId}: '
                                  f'{updated_ss.biobankId}')
 
+                # TODO: update participant summary _update_participant_summary(updated_bbo)
+                bbo_dao = BiobankOrderDao()
+                with bbo_dao.session() as session:
+                    bbo_dao._update_participant_summary(session, updated_bbo)
+
         if self.args.fix_physical_measurements:
             headers = mappings_list.pop(0)
             if headers != ("old_pid", "new_pid", "pm_id"):
@@ -296,6 +303,8 @@ class ProgramTemplateClass(object):
                 updated_pm = self.fix_pm(dao, old_p, new_p, physical_measurement)
                 _logger.info(f'  update successful for PM ID {updated_pm.physicalMeasurementsId}: '
                              f'{updated_pm.participantId}')
+
+                # TODO: _update_participant_summary(updated_pm)
 
         if self.args.fix_signup_time:
             headers = mappings_list.pop(0)
@@ -339,6 +348,7 @@ class ProgramTemplateClass(object):
                 # generate pm mappings
                 self.map_physical_measurements(mappings_list, dao)
 
+        # TODO: Fix Patient Status/Update Participant Summary
         return 0
 
 
