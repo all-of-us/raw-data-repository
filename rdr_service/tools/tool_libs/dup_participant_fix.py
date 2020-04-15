@@ -309,7 +309,6 @@ class ProgramTemplateClass(object):
                 _logger.info(f'  update successful for PM ID {updated_pm.physicalMeasurementsId}: '
                              f'{updated_pm.participantId}')
 
-                # TODO: _update_participant_summary(updated_pm)
                 # Update participant summary
                 pm_dao = PhysicalMeasurementsDao()
                 with pm_dao.session() as session:
