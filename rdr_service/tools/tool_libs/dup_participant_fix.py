@@ -275,10 +275,15 @@ class ProgramTemplateClass(object):
                     _logger.info(f'  update successful for {updated_ss.biobankStoredSampleId}: '
                                  f'{updated_ss.biobankId}')
 
-                # TODO: update participant summary _update_participant_summary(updated_bbo)
+                # Update participant summary
                 bbo_dao = BiobankOrderDao()
                 with bbo_dao.session() as session:
-                    bbo_dao._update_participant_summary(session, updated_bbo)
+                    bb_obj = session.query(BiobankOrder).filter(
+                        BiobankOrder.biobankOrderId == updated_bbo.biobankOrderId
+                    ).first()
+                    _logger.warning(
+                        f'    updating participant summary for {bb_obj.participantId}')
+                    bbo_dao._update_participant_summary(session, bb_obj)
 
         if self.args.fix_physical_measurements:
             headers = mappings_list.pop(0)
@@ -305,6 +310,15 @@ class ProgramTemplateClass(object):
                              f'{updated_pm.participantId}')
 
                 # TODO: _update_participant_summary(updated_pm)
+                # Update participant summary
+                pm_dao = PhysicalMeasurementsDao()
+                with pm_dao.session() as session:
+                    pm_obj = session.query(PhysicalMeasurements).filter(
+                        PhysicalMeasurements.participantId == updated_pm.participantId
+                    ).first()
+                    _logger.warning(
+                        f'    updating participant summary for {pm_obj.participantId}')
+                    pm_dao._update_participant_summary(session, pm_obj)
 
         if self.args.fix_signup_time:
             headers = mappings_list.pop(0)
@@ -415,7 +429,6 @@ def run():
         if not os.path.exists(args.mapping_source_csv):
             _logger.error(f'File {args.mapping_source_csv} was not found.')
             return 1
-
 
     if args.csv:
         if not os.path.exists(args.csv):

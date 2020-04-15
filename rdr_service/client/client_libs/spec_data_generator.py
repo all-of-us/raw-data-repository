@@ -390,7 +390,7 @@ class DataGeneratorClass(object):
             bio_orders_mayo = p_data.get("_BIOOrderMayo", None)
             ppi_modules = p_data.get("_PPIModule", "ConsentPII|TheBasics")
             stored_sample = p_data.get("_StoredSample", None)
-            genomic_sample = p_data.get("_GenomicSample", None)
+            genomic_sample = p_data.get("_GenomicSample", 'n')
             # TODO: Genomic manifests
             # genomic_manifests = p_data.get("_GenomicManifests", None)
 
