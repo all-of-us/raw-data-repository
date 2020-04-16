@@ -168,10 +168,14 @@ class ProgramTemplateClass(object):
         """
         new_time_dt = dateutil.parser.parse(new_time)
         np.signUpTime = new_time_dt
-        nps.signUpTime = new_time_dt
+        if nps is not None:
+            nps.signUpTime = new_time_dt
         with dao.session() as session:
             updated_participant = session.merge(np)
-            updated_summary = session.merge(nps)
+            if nps is not None:
+                updated_summary = session.merge(nps)
+            else:
+                updated_summary = None
         return updated_participant, updated_summary
 
     def set_old_to_new_mappings(self):
@@ -329,7 +333,7 @@ class ProgramTemplateClass(object):
             for mapping in mappings_list:
                 np, nps = self.get_participant_records(dao, mapping[0])
 
-                if not np or not nps:
+                if not np and not nps:
                     _logger.error(f'  ERROR: no pid {mapping[0]}')
                     continue
 
@@ -340,8 +344,9 @@ class ProgramTemplateClass(object):
                 updated_p, updated_s = self.fix_signup_time(dao, np, nps, mapping[1])
                 _logger.info(f'      update successful for participant {updated_p.participantId}: '
                              f'{updated_p.signUpTime}')
-                _logger.info(f'      update successful for participant summary {updated_s.participantId}: '
-                             f'{updated_s.signUpTime}')
+                if updated_s is not None:
+                    _logger.info(f'      update successful for participant summary {updated_s.participantId}: '
+                                 f'{updated_s.signUpTime}')
 
         if self.args.generate_mapping is not None:
             # generates the mapping file from the ptsc report
