@@ -16,6 +16,8 @@ from collections import namedtuple
 import dateutil
 
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.biobank_order_dao import BiobankOrderDao
+from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.participant import Participant
@@ -166,10 +168,14 @@ class ProgramTemplateClass(object):
         """
         new_time_dt = dateutil.parser.parse(new_time)
         np.signUpTime = new_time_dt
-        nps.signUpTime = new_time_dt
+        if nps is not None:
+            nps.signUpTime = new_time_dt
         with dao.session() as session:
             updated_participant = session.merge(np)
-            updated_summary = session.merge(nps)
+            if nps is not None:
+                updated_summary = session.merge(nps)
+            else:
+                updated_summary = None
         return updated_participant, updated_summary
 
     def set_old_to_new_mappings(self):
@@ -273,6 +279,16 @@ class ProgramTemplateClass(object):
                     _logger.info(f'  update successful for {updated_ss.biobankStoredSampleId}: '
                                  f'{updated_ss.biobankId}')
 
+                # Update participant summary
+                bbo_dao = BiobankOrderDao()
+                with bbo_dao.session() as session:
+                    bb_obj = session.query(BiobankOrder).filter(
+                        BiobankOrder.biobankOrderId == updated_bbo.biobankOrderId
+                    ).first()
+                    _logger.warning(
+                        f'    updating participant summary for {bb_obj.participantId}')
+                    bbo_dao._update_participant_summary(session, bb_obj)
+
         if self.args.fix_physical_measurements:
             headers = mappings_list.pop(0)
             if headers != ("old_pid", "new_pid", "pm_id"):
@@ -297,6 +313,16 @@ class ProgramTemplateClass(object):
                 _logger.info(f'  update successful for PM ID {updated_pm.physicalMeasurementsId}: '
                              f'{updated_pm.participantId}')
 
+                # Update participant summary
+                pm_dao = PhysicalMeasurementsDao()
+                with pm_dao.session() as session:
+                    pm_obj = session.query(PhysicalMeasurements).filter(
+                        PhysicalMeasurements.participantId == updated_pm.participantId
+                    ).first()
+                    _logger.warning(
+                        f'    updating participant summary for {pm_obj.participantId}')
+                    pm_dao._update_participant_summary(session, pm_obj)
+
         if self.args.fix_signup_time:
             headers = mappings_list.pop(0)
             if headers != ("new_pid", "signup_time"):
@@ -307,7 +333,7 @@ class ProgramTemplateClass(object):
             for mapping in mappings_list:
                 np, nps = self.get_participant_records(dao, mapping[0])
 
-                if not np or not nps:
+                if not np and not nps:
                     _logger.error(f'  ERROR: no pid {mapping[0]}')
                     continue
 
@@ -318,8 +344,9 @@ class ProgramTemplateClass(object):
                 updated_p, updated_s = self.fix_signup_time(dao, np, nps, mapping[1])
                 _logger.info(f'      update successful for participant {updated_p.participantId}: '
                              f'{updated_p.signUpTime}')
-                _logger.info(f'      update successful for participant summary {updated_s.participantId}: '
-                             f'{updated_s.signUpTime}')
+                if updated_s is not None:
+                    _logger.info(f'      update successful for participant summary {updated_s.participantId}: '
+                                 f'{updated_s.signUpTime}')
 
         if self.args.generate_mapping is not None:
             # generates the mapping file from the ptsc report
@@ -339,6 +366,7 @@ class ProgramTemplateClass(object):
                 # generate pm mappings
                 self.map_physical_measurements(mappings_list, dao)
 
+        # TODO: Fix Patient Status/Update Participant Summary
         return 0
 
 
@@ -405,7 +433,6 @@ def run():
         if not os.path.exists(args.mapping_source_csv):
             _logger.error(f'File {args.mapping_source_csv} was not found.')
             return 1
-
 
     if args.csv:
         if not os.path.exists(args.csv):
