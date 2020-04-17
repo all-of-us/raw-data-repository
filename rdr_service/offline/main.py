@@ -373,23 +373,23 @@ def _build_pipeline_app():
 
     # BEGIN Genomic Pipeline Jobs
     offline_app.add_url_rule(
-        PREFIX + "GenomicNewParticipantWorkflow", endpoint="genomic_pipeline",
+        PREFIX + "GenomicNewParticipantWorkflow",
         view_func=genomic_new_participant_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
-        PREFIX + "GenomicGCManifestWorkflow", endpoint="genomic_pipeline",
+        PREFIX + "GenomicGCManifestWorkflow",
         view_func=genomic_gc_manifest_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
-        PREFIX + "GenomicDataManifestWorkflow", endpoint="genomic_pipeline",
+        PREFIX + "GenomicDataManifestWorkflow",
         view_func=genomic_data_manifest_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
-        PREFIX + "GenomicGemA1A2Workflow", endpoint="genomic_pipeline",
+        PREFIX + "GenomicGemA1A2Workflow",
         view_func=genomic_gem_a1_a2_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
-        PREFIX + "GenomicGemA3Workflow", endpoint="genomic_pipeline",
+        PREFIX + "GenomicGemA3Workflow",
         view_func=genomic_gem_a3_workflow, methods=["GET"]
     )
     # END Genomic Pipeline Jobs
