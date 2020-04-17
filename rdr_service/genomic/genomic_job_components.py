@@ -620,8 +620,8 @@ class GenomicReconciler:
         for metric in metrics:
             file = self.file_dao.get(metric.genomicFileProcessedId)
 
-            file_types = (('idatRedReceived', "_red.idat"),
-                          ('idatGreenReceived', "_green.idat"),
+            file_types = (('idatRedReceived', ".red.idat"),
+                          ('idatGreenReceived', ".grn.idat"),
                           ('vcfReceived', ".vcf"),
                           ('tbiReceived', ".vcf.gz.tbi"))
             for file_type in file_types:
