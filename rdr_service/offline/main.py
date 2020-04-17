@@ -198,13 +198,39 @@ def update_ehr_status_cron():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
-def genomic_pipeline_handler():
-    # Only test the BB manifest portion (New Participant Workflow)
-    # genomic_pipeline.process_genomic_water_line()
+def genomic_new_participant_workflow():
     genomic_pipeline.new_participant_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_gc_manifest_workflow():
     genomic_pipeline.genomic_centers_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_data_manifest_workflow():
     genomic_pipeline.ingest_genomic_centers_metrics_files()
     genomic_pipeline.reconcile_metrics_vs_manifest()
+    genomic_pipeline.reconcile_metrics_vs_genotyping_data()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_gem_a1_a2_workflow():
+    genomic_pipeline.gem_a1_manifest_workflow()
+    genomic_pipeline.gem_a2_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_gem_a3_workflow():
+    genomic_pipeline.gem_a3_manifest_workflow()
     return '{"success": "true"}'
 
 
@@ -345,9 +371,28 @@ def _build_pipeline_app():
         PREFIX + "UpdateEhrStatus", endpoint="update_ehr_status", view_func=update_ehr_status_cron, methods=["GET"]
     )
 
+    # BEGIN Genomic Pipeline Jobs
     offline_app.add_url_rule(
-        PREFIX + "GenomicPipeline", endpoint="genomic_pipeline", view_func=genomic_pipeline_handler, methods=["GET"]
+        PREFIX + "GenomicNewParticipantWorkflow", endpoint="genomic_pipeline",
+        view_func=genomic_new_participant_workflow, methods=["GET"]
     )
+    offline_app.add_url_rule(
+        PREFIX + "GenomicGCManifestWorkflow", endpoint="genomic_pipeline",
+        view_func=genomic_gc_manifest_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        PREFIX + "GenomicDataManifestWorkflow", endpoint="genomic_pipeline",
+        view_func=genomic_data_manifest_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        PREFIX + "GenomicGemA1A2Workflow", endpoint="genomic_pipeline",
+        view_func=genomic_gem_a1_a2_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        PREFIX + "GenomicGemA3Workflow", endpoint="genomic_pipeline",
+        view_func=genomic_gem_a3_workflow, methods=["GET"]
+    )
+    # END Genomic Pipeline Jobs
 
     offline_app.add_url_rule(
         PREFIX + "BigQueryRebuild", endpoint="bigquery_rebuild", view_func=bigquery_rebuild_cron, methods=["GET"]
