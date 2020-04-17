@@ -311,6 +311,8 @@ class DeployAppClass(object):
                                 self.args.git_target.replace('.', '-')
 
         running_services = gcp_get_app_versions(running_only=True)
+        if not running_services:
+            running_services = {}
 
         _logger.info(clr.fmt('Deployment Information:', clr.custom_fg_color(156)))
         _logger.info(clr.fmt(''))
