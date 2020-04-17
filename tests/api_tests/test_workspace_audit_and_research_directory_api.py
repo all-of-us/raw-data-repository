@@ -188,6 +188,16 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.assertEqual(len(result['data']), 1)
         self.assertIn({'workspaceId': 0, 'name': 'workspace name str', 'creationTime': '2019-11-25T17:43:41.085000',
                        'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'ACTIVE',
+                       'workspaceUsers': [
+                           {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
+                               {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
+                                'nonAcademicAffiliation': 'INDUSTRY'}]},
+                           {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
+                               {'institution': 'institution2', 'role': 'institution role 2', 'isVerified': None,
+                                'nonAcademicAffiliation': 'UNSET'},
+                               {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
+                                'nonAcademicAffiliation': 'INDUSTRY'}]}
+                       ],
                        'workspaceOwner': [{'userId': 1, 'userName': 'given name 2 family name 2',
                                            'affiliations': [{'institution': 'institution2',
                                                              'role': 'institution role 2',
@@ -227,6 +237,16 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.assertEqual(len(result['data']), 1)
         self.assertIn({'workspaceId': 0, 'name': 'workspace name str', 'creationTime': '2019-11-25T17:43:41.085000',
                        'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'ACTIVE',
+                       'workspaceUsers': [
+                           {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
+                               {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
+                                'nonAcademicAffiliation': 'INDUSTRY'}]},
+                           {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
+                               {'institution': 'institution2', 'role': 'institution role 2', 'isVerified': None,
+                                'nonAcademicAffiliation': 'UNSET'},
+                               {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
+                                'nonAcademicAffiliation': 'INDUSTRY'}]}
+                       ],
                        'workspaceOwner': [{'userId': 1, 'userName': 'given name 2 family name 2',
                                            'affiliations': [{'institution': 'institution2',
                                                              'role': 'institution role 2',
@@ -285,6 +305,16 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.assertEqual(len(result['data']), 1)
         self.assertIn({'workspaceId': 1, 'name': 'workspace name str 2', 'creationTime': '2019-11-25T17:43:41.085000',
                        'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'INACTIVE',
+                       'workspaceUsers': [
+                           {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
+                               {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
+                                'nonAcademicAffiliation': 'INDUSTRY'}]},
+                           {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
+                               {'institution': 'institution2', 'role': 'institution role 2', 'isVerified': None,
+                                'nonAcademicAffiliation': 'UNSET'},
+                               {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
+                                'nonAcademicAffiliation': 'INDUSTRY'}]}
+                       ],
                        'workspaceOwner': [{'userId': 0, 'userName': 'given name 1 family name 1',
                                            'affiliations': [{'institution': 'institution1',
                                                              'role': 'institution role 1',
