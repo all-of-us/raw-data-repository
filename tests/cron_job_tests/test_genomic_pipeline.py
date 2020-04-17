@@ -1194,8 +1194,8 @@ class GenomicPipelineTest(BaseTestCase):
         sequencing_test_files = (
             f'test_data_folder/10001_R01C01.vcf.gz',
             f'test_data_folder/10001_R01C01.vcf.gz.tbi',
-            f'test_data_folder/10001_R01C01_red.idat.gz',
-            f'test_data_folder/10001_R01C01_green.idat.gz',
+            f'test_data_folder/10001_R01C01.red.idat.gz',
+            f'test_data_folder/10001_R01C01.grn.idat.md5',
         )
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
