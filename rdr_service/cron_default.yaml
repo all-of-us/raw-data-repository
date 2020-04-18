@@ -61,7 +61,7 @@ cron:
   target: offline
 - description: Genomic GEM A3 (Delete Report) Manifest Workflow
   url: /offline/GenomicGemA3Workflow
-  schedule: every Monday at 07:00
+  schedule: every monday 07:00
   timezone: America/New_York
   target: offline
 - description: Rebuild BigQuery Data (Manual)
