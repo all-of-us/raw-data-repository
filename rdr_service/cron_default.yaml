@@ -34,11 +34,6 @@ cron:
   schedule: every day 00:10
   timezone: America/New_York
   target: offline
-- description: Genomic pipeline
-  url: /offline/GenomicPipeline
-  schedule: every day 00:00
-  timezone: America/New_York
-  target: offline
 - description: Genomic new participant workflow (Cohort 3) from Biobank Samples
   url: /offline/GenomicNewParticipantWorkflow
   schedule: every day 00:00
