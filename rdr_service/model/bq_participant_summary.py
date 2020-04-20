@@ -34,7 +34,7 @@ class BQConsentCohort(Enum):
     COHORT_CURRENT = 3  # New Participants with consent starting from April 17, 2020.
 
 COHORT_BETA_CUTOFF = date(2018, 4, 24)
-COHORT_LAUNCH_CUTOFF = date(2020, 4, 17)
+COHORT_LAUNCH_CUTOFF = date(2020, 4, 16)
 
 class BQAddressSchema(BQSchema):
     """
