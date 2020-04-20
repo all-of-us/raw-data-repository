@@ -620,9 +620,9 @@ class GenomicReconciler:
         for metric in metrics:
             file = self.file_dao.get(metric.genomicFileProcessedId)
 
-            file_types = (('idatRedReceived', "_red.idat"),
-                          ('idatGreenReceived', "_green.idat"),
-                          ('vcfReceived', ".vcf"),
+            file_types = (('idatRedReceived', ".red.idat.gz"),
+                          ('idatGreenReceived', ".grn.idat.md5"),
+                          ('vcfReceived', ".vcf.gz"),
                           ('tbiReceived', ".vcf.gz.tbi"))
             for file_type in file_types:
                 if not getattr(metric, file_type[0]):
@@ -661,7 +661,7 @@ class GenomicReconciler:
 
     def _check_genotyping_file_exists(self, bucket_name, filename):
         files = list_blobs('/' + bucket_name)
-        filenames = [f.name for f in files if filename in f.name]
+        filenames = [f.name for f in files if f.name.endswith(filename)]
         return 1 if len(filenames) > 0 else 0
 
 
