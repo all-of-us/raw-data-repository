@@ -51,7 +51,7 @@ from rdr_service.participant_enums import (
     TEST_LOGIN_PHONE_NUMBER_PREFIX,
     get_gender_identity,
     get_race,
-)
+    ParticipantCohort)
 
 _QUESTIONNAIRE_PREFIX = "Questionnaire/"
 _QUESTIONNAIRE_HISTORY_SEGMENT = "/_history/"
@@ -355,6 +355,7 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
                         participant_summary.semanticVersionForPrimaryConsent = \
                             questionnaire_response.questionnaireSemanticVersion
+                        participant_summary.consentCohort = ParticipantCohort.COHORT_CURRENT
                         # set language of consent to participant summary
                         for extension in resource_json.get("extension", []):
                             if (
