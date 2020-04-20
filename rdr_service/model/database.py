@@ -39,6 +39,10 @@ from rdr_service.model.workbench_workspace import WorkbenchWorkspaceApproved, Wo
 from rdr_service.model.workbench_researcher import WorkbenchResearcher, WorkbenchResearcherHistory, \
     WorkbenchInstitutionalAffiliations, WorkbenchInstitutionalAffiliationsHistory
 from rdr_service.model.metadata import Metadata
+from rdr_service.model.resource_type import ResourceType
+from rdr_service.model.resource_schema import ResourceSchema
+from rdr_service.model.resource_data import ResourceData
+from rdr_service.model.resource_search_results import ResourceSearchResults
 
 RETRY_CONNECTION_LIMIT = 10
 

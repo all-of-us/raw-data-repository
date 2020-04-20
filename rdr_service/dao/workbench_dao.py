@@ -392,10 +392,10 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         with self.session() as session:
             query = (
                 session.query(WorkbenchWorkspaceApproved, WorkbenchResearcher)
-                    .options(joinedload(WorkbenchResearcher.workbenchInstitutionalAffiliations))
+                    .options(joinedload(WorkbenchWorkspaceApproved.workbenchWorkspaceUser),
+                             joinedload(WorkbenchResearcher.workbenchInstitutionalAffiliations))
                     .filter(WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
                             WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId,
-                            WorkbenchWorkspaceUser.role == WorkbenchWorkspaceUserRole.OWNER,
                             WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0)
             )
             if status is not None:
@@ -403,28 +403,48 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
             items = query.all()
             for workspace, researcher in items:
+                affiliations = []
+                if researcher.workbenchInstitutionalAffiliations:
+                    for affiliation in researcher.workbenchInstitutionalAffiliations:
+                        affiliations.append(
+                            {
+                                "institution": affiliation.institution,
+                                "role": affiliation.role,
+                                "isVerified": affiliation.isVerified,
+                                "nonAcademicAffiliation":
+                                    str(WorkbenchInstitutionNonAcademic(affiliation.nonAcademicAffiliation))
+                                    if affiliation.nonAcademicAffiliation else 'UNSET'
+                            }
+                        )
+                owner_user_id = None
+                for workspace_user in workspace.workbenchWorkspaceUser:
+                    if workspace_user.role == WorkbenchWorkspaceUserRole.OWNER:
+                        owner_user_id = workspace_user.userId
+                user = {
+                    'userId': researcher.userSourceId,
+                    'userName': researcher.givenName + ' ' + researcher.familyName,
+                    'affiliations': affiliations
+                }
+
+                exist = False
+                for result in results:
+                    if result['workspaceId'] == workspace.workspaceSourceId:
+                        result['workspaceUsers'].append(user)
+                        if user.get('userId') == owner_user_id:
+                            result['workspaceOwner'].append(user)
+                        exist = True
+                        break
+                if exist:
+                    continue
+
                 record = {
                     'workspaceId': workspace.workspaceSourceId,
                     'name': workspace.name,
                     'creationTime': workspace.creationTime,
                     'modifiedTime': workspace.modifiedTime,
                     'status': str(WorkbenchWorkspaceStatus(workspace.status)),
-                    'workspaceOwner': [
-                        {
-                            'userId': researcher.userSourceId,
-                            'userName': researcher.givenName + ' ' + researcher.familyName,
-                            'affiliations': [
-                                {
-                                    "institution": affiliation.institution,
-                                    "role": affiliation.role,
-                                    "isVerified": affiliation.isVerified,
-                                    "nonAcademicAffiliation": str(WorkbenchInstitutionNonAcademic(
-                                        affiliation.nonAcademicAffiliation
-                                        if affiliation.nonAcademicAffiliation is not None else 'UNSET'))
-                                } for affiliation in researcher.workbenchInstitutionalAffiliations
-                            ] if researcher.workbenchInstitutionalAffiliations else []
-                        }
-                    ] if researcher else [],
+                    'workspaceUsers': [user] if user else [],
+                    'workspaceOwner': [user] if user.get('userId') == owner_user_id else [],
                     "excludeFromPublicDirectory": workspace.excludeFromPublicDirectory,
                     "reviewRequested": workspace.reviewRequested if workspace.reviewRequested else False,
                     "diseaseFocusedResearch": workspace.diseaseFocusedResearch,
