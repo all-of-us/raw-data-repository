@@ -64,6 +64,22 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual(result['id'], 'WEB1ABCD1234')
 
     @mock.patch('rdr_service.dao.biobank_order_dao.get_account_origin_id')
+    def test_update_biobank_order_from_different_origin(self, quest_origin):
+        quest_origin.return_value = 'careevolution'
+        self.summary_dao.insert(self.participant_summary(self.participant))
+        order_json = load_biobank_order_json(self.participant.participantId, filename="quest_biobank_order_1.json")
+        result = self.send_post(self.path, order_json)
+        self.assertEqual(result['id'], 'WEB1ABCD1234')
+
+        quest_origin.return_value = 'hpro'
+        update_path = self.path + "/" + 'WEB1ABCD1234'
+        update_json = load_biobank_order_json(self.participant.participantId, filename="biobank_order_2.json")
+        update_json['identifier'][1]['value'] = 'WEB1ABCD1234'
+        self.send_put(update_path, request_data=update_json, headers={"If-Match": 'W/"1"'},
+                      expected_status=http.client.BAD_REQUEST)
+
+
+    @mock.patch('rdr_service.dao.biobank_order_dao.get_account_origin_id')
     def test_get_orders_by_participant_id(self, quest_origin):
         quest_origin.return_value = 'careevolution'
         self.summary_dao.insert(self.participant_summary(self.participant))
