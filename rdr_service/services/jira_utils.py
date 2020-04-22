@@ -38,10 +38,13 @@ class JiraTicketHandler:
         """
         Opens a JIRA API connection based on username/pw from env vars.
         """
+        options = jira.JIRA.DEFAULT_OPTIONS
+
         if not self._jira_connection:
             if not self._jira_user or not self._jira_password:
                 raise ValueError('Jira user name or password not set in environment.')
-            self._jira_connection = jira.JIRA(_JIRA_INSTANCE_URL, basic_auth=(self._jira_user, self._jira_password))
+            self._jira_connection = jira.JIRA(
+                _JIRA_INSTANCE_URL, options=options, basic_auth=(self._jira_user, self._jira_password))
 
     def current_user(self):
         return self._jira_connection.current_user()
@@ -118,6 +121,84 @@ class JiraTicketHandler:
         if not comment:
             return
         self._jira_connection.add_comment(ticket, comment)
+
+    def get_ticket_transitions(self, ticket):
+        """
+        Return the transitions for the given ticket.
+        https://jira.readthedocs.io/en/master/examples.html#transitions
+        :param ticket: Jira ticket object
+        :return: list of transitions
+        """
+        return self._jira_connection.transitions(ticket)
+
+    def get_ticket_transition_by_name(self, ticket, name):
+        """
+        Find a transition by name
+        :param ticket:
+        :param name: transition name, IE: "In Progress"
+        :return: transition id
+        """
+        return self._jira_connection.find_transitionid_by_name(ticket, name)
+
+    def set_ticket_transition(self, ticket, transition):
+        """
+        Set the ticket transition.
+        :param ticket: Jira ticket object
+        :param transition: string, transition id.
+        :return: ticket
+        """
+        self._jira_connection.transition_issue(ticket, transition)
+        return ticket
+
+    def get_link_types(self):
+        """
+        Return a list of JIRA link types
+        :return: list
+        """
+        return self._jira_connection.issue_link_types()
+
+    def link_tickets(self, parent, ticket, relation_type):
+        """
+        Link two tickets.
+        :param parent: Ticket to link from
+        :param ticket: Ticket to link to.
+        :param relation_type: Link relation type name, IE: "Relates".
+        :return: ticket
+        """
+        self._jira_connection.create_issue_link(relation_type, parent, ticket)
+
+    def get_board_by_id(self, board_id):
+        """
+        Get a JIRA board object by ID.
+        :param board_id: JIRA board id, IE: PD.
+        :return: board object
+        """
+        boards = self._jira_connection.boards()
+        for board in boards:
+            if board.name.startswith(board_id):
+                return board
+        return None
+
+    def get_active_sprint(self, board):
+        """
+        Return active sprint associated with a board
+        :param board: Jira board object.
+        :return: list
+        """
+        sprints = self._jira_connection.sprints(board.id)
+        for sprint in sprints:
+            if sprint.state == 'ACTIVE':
+                return sprint
+
+    def add_ticket_to_sprint(self, ticket, sprint):
+        """
+        Add a ticket to a JIRA sprint.
+        :param ticket: JIRA Ticket object
+        :param sprint: JIRA Sprint object
+        :return: ticket object
+        """
+        self._jira_connection.add_issues_to_sprint(sprint.id, [ticket.key])
+        return ticket
 
     def get_release_notes_since_tag(self, git_tag):
         """
