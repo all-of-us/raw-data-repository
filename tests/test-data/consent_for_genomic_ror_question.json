@@ -11,7 +11,7 @@
     },
     {
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
-        "code": "gRORConsent_ConsentPermission"
+        "code": "GROR"
     }],
     "question": [
       {
@@ -20,8 +20,8 @@
         "type":"choice",
         "concept": [{
           "system": "http://loinc.org",
-          "code": "gror",
-          "display": "yes to gror"
+          "code": "ResultsConsent_CheckDNA",
+          "display": "Would you like us to check your DNA and tell you what we find?"
         }]
       }
     ]
