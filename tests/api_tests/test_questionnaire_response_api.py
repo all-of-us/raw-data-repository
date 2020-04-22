@@ -14,7 +14,7 @@ from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
 from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.model.utils import from_client_participant_id
-from rdr_service.participant_enums import QuestionnaireDefinitionStatus
+from rdr_service.participant_enums import QuestionnaireDefinitionStatus, ParticipantCohort
 from tests.test_data import data_path
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -289,6 +289,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
+            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -398,6 +399,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
+            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -546,7 +548,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "numberDistinctVisits": 0,
             "ehrStatus": "UNSET",
             "patientStatus": [],
-            "participantOrigin": "example"
+            "participantOrigin": "example",
+            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -739,6 +742,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": 'example',
             "semanticVersionForPrimaryConsent": "v1",
+            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1074,6 +1078,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
+            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1196,6 +1201,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
+            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
         }
         self.assertJsonResponseMatches(expected, summary)
 

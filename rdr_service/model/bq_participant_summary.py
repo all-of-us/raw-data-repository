@@ -1,3 +1,4 @@
+from datetime import date
 from enum import Enum
 
 from rdr_service.model.bq_base import BQTable, BQSchema, BQView, BQField, BQFieldTypeEnum, BQFieldModeEnum, \
@@ -22,6 +23,18 @@ class BQModuleStatusEnum(Enum):
     SUBMITTED_NOT_SURE = 3
     SUBMITTED_INVALID = 4
 
+
+class BQConsentCohort(Enum):
+    """
+    Which cohort does a participant belong too, based on consent date.
+    """
+    UNSET = 0
+    COHORT_BETA = 1  # Beta participants.  Consent before April 24, 2018.
+    COHORT_LAUNCH = 2  # National Launch Participants. Consent between April 24, 2018 and April 16, 2020.
+    COHORT_CURRENT = 3  # New Participants with consent starting from April 17, 2020.
+
+COHORT_BETA_CUTOFF = date(2018, 4, 24)
+COHORT_LAUNCH_CUTOFF = date(2020, 4, 16)
 
 class BQAddressSchema(BQSchema):
     """
@@ -215,6 +228,9 @@ class BQParticipantSummarySchema(BQSchema):
     consents = BQRecordField('consents', schema=BQConsentSchema)
 
     biobank_orders = BQRecordField('biobank_orders', schema=BQBiobankOrderSchema)
+
+    consent_cohort = BQField('consent_cohort', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    consent_cohort_id = BQField('consent_cohort_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQParticipantSummary(BQTable):
