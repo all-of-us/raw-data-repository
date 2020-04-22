@@ -500,8 +500,9 @@ class BiobankOrderDao(UpdatableDao):
                 in request do not match, should be {self._participant_id_to_subject(participant_id)}."
             )
 
-        biobank_order_id = None
-        if order.orderOrigin == QUEST_BIOBANK_ORDER_ORIGIN:
+        biobank_order_id = id_
+        # if id_ is not None, that means it's for update, no need to create new mayolink order
+        if order.orderOrigin == QUEST_BIOBANK_ORDER_ORIGIN and id_ is None:
             biobank_order_id = self._make_mayolink_order(participant_id, resource)
 
         self._add_identifiers_and_main_id(order, resource, biobank_order_id)
@@ -694,6 +695,8 @@ class BiobankOrderDao(UpdatableDao):
         return client_json
 
     def _do_update(self, session, order, existing_obj):
+        if order.orderOrigin != existing_obj.orderOrigin:
+            raise BadRequest(f"Can not update biobank order which was created by other origin")
         order.lastModified = clock.CLOCK.now()
         order.biobankOrderId = existing_obj.biobankOrderId
         order.orderStatus = BiobankOrderStatus.AMENDED
