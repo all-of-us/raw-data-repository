@@ -1,5 +1,6 @@
 import collections
 import datetime
+import dateutil
 import re
 
 import pytz
@@ -194,7 +195,7 @@ class BigQueryJob(object):
             "BOOLEAN": cls._parse_bool,
             "BOOL": cls._parse_bool,
             "TIMESTAMP": cls._parse_timestamp,
-            "DATE": lambda v: datetime.datetime.strptime(v, "%Y-%m-%d").date(),
-            "TIME": lambda v: datetime.datetime.strptime(v, "%H:%M:%S.%f").time(),
-            "DATETIME": lambda v: datetime.datetime.strptime(v.replace("T", " "), "%Y-%m-%d %H:%M:%S.%f"),
+            "DATE": lambda v: dateutil.parser.parse(v).date(),
+            "TIME": lambda v: dateutil.parser.parse(v).time(),
+            "DATETIME": lambda v: dateutil.parser.parse(v),
         }
