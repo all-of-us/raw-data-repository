@@ -268,24 +268,29 @@ class DeployAppClass(object):
 
     def tag_people(self):
 
-        _logger.info('Updating JIRA ticket...')
-        tag_unames = {}
-        for position, names in self._jira_handler.required_tags.items():
-            tmp_list = []
-            for i in names:
-                user = self._jira_handler.search_user(i)
-                if user:
-                    tmp_list.append(f'[~accountid:{user.accountId}]')
+        # Note: Tagging people is broken because the JIRA python library is making an invalid
+        #       API call to Atlassian. See: https://ecosystem.atlassian.net/browse/ACJIRA-1795
+        #       Until this is resolved in a newer JIRA python library (current is: 2.0.0), this code is blocked.
 
-            tag_unames[position] = tmp_list
-
-        comment = "Notification/approval for the following roles: "
-        for k, v in tag_unames.items():  #pylint: disable=invalid-name
-            comment += k + ': \n'
-            for i in v:
-                comment += i + '\n'
-
-        self.add_jira_comment(comment)
+        # _logger.info('Updating JIRA ticket...')
+        # tag_unames = {}
+        # for position, names in self._jira_handler.required_tags.items():
+        #     tmp_list = []
+        #     for i in names:
+        #         user = self._jira_handler.search_user(i)
+        #         if user:
+        #             tmp_list.append(f'[~accountid:{user.accountId}]')
+        #
+        #     tag_unames[position] = tmp_list
+        #
+        # comment = "Notification/approval for the following roles: "
+        # for k, v in tag_unames.items():  #pylint: disable=invalid-name
+        #     comment += k + ': \n'
+        #     for i in v:
+        #         comment += i + '\n'
+        #
+        # self.add_jira_comment(comment)
+        pass
 
     def run(self):
         """
