@@ -44,7 +44,8 @@ if you prefer to use docker, see note below)
 
 #### Then run
 * `tools/setup_env.sh` (get libs, set up git hooks)
-* 
+* `mkdir data` to initialize the directory for local data
+* `tools/export_organizations` to create CSV files for local data
 * `mysql -V` to ensure that you have mysql = 5.7.X
 * `python main.py` (to run your local server) from the root of the project.
 * `tools/setup_local_database.sh` (to create a database in MySQL, upgrade its schema,
