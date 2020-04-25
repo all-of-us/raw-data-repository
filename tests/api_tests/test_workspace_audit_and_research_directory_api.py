@@ -84,7 +84,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                         "status": "ACTIVE"
                     }
                 ],
-                "excludeFromPublicDirectory": True,
+                "excludeFromPublicDirectory": False,
                 "diseaseFocusedResearch": True,
                 "diseaseFocusedResearchName": "disease focused research name str",
                 "otherPurposeDetails": "other purpose details str",
@@ -133,7 +133,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                         "status": "ACTIVE"
                     }
                 ],
-                "excludeFromPublicDirectory": True,
+                "excludeFromPublicDirectory": False,
                 "diseaseFocusedResearch": True,
                 "diseaseFocusedResearchName": "disease focused research name str 2",
                 "otherPurposeDetails": "other purpose details str 2",
@@ -154,8 +154,93 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.send_post('workbench/directory/workspaces', request_data=request_json)
         # test get research projects directory before review
         result = self.send_get('researchHub/projectDirectory')
-        self.assertEqual(len(result['data']), 0)
-
+        self.assertEqual(len(result['data']), 2)
+        self.assertIn({'workspaceId': 0, 'name': 'workspace name str', 'creationTime': '2019-11-25T17:43:41.085000',
+                       'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'ACTIVE',
+                       'workspaceUsers': [
+                           {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
+                               {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
+                                'nonAcademicAffiliation': 'INDUSTRY'}]},
+                           {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
+                               {'institution': 'institution2', 'role': 'institution role 2', 'isVerified': None,
+                                'nonAcademicAffiliation': 'UNSET'},
+                               {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
+                                'nonAcademicAffiliation': 'INDUSTRY'}]}
+                       ],
+                       'workspaceOwner': [{'userId': 1, 'userName': 'given name 2 family name 2',
+                                           'affiliations': [{'institution': 'institution2',
+                                                             'role': 'institution role 2',
+                                                             'isVerified': None,
+                                                             'nonAcademicAffiliation': 'UNSET'},
+                                                            {'institution': 'institution22',
+                                                             'role': 'institution role 22',
+                                                             'isVerified': None,
+                                                             'nonAcademicAffiliation': 'INDUSTRY'}]}],
+                       'excludeFromPublicDirectory': False, 'reviewRequested': False, 'diseaseFocusedResearch': True,
+                       'diseaseFocusedResearchName': 'disease focused research name str',
+                       'otherPurposeDetails': 'other purpose details str', 'methodsDevelopment': True,
+                       'controlSet': True, 'ancestry': True, 'socialBehavioral': True, 'populationHealth': True,
+                       'drugDevelopment': True, 'commercialPurpose': True, 'educational': True, 'otherPurpose': True,
+                       'scientificApproaches': 'reasonForInvestigation string',
+                       'intendToStudy': 'intendToStudy string',
+                       'findingsFromStudy': 'findingsFromStudy string',
+                       'focusOnUnderrepresentedPopulations': True,
+                       'workspaceDemographic': {
+                           "raceEthnicity": ['AIAN', 'MENA'],
+                           "age": ['AGE_0_11', 'AGE_65_74'],
+                           "sexAtBirth": None,
+                           "genderIdentity": "OTHER_THAN_MAN_WOMAN",
+                           "sexualOrientation": "OTHER_THAN_STRAIGHT",
+                           "geography": "RURAL",
+                           "disabilityStatus": "DISABILITY",
+                           "accessToCare": "NOT_EASILY_ACCESS_CARE",
+                           "educationLevel": "LESS_THAN_HIGH_SCHOOL",
+                           "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
+                           "others": "string"
+                       }
+                       },
+                      result['data'])
+        self.assertIn({'workspaceId': 1, 'name': 'workspace name str 2', 'creationTime': '2019-11-25T17:43:41.085000',
+                       'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'INACTIVE',
+                       'workspaceUsers': [
+                           {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
+                               {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
+                                'nonAcademicAffiliation': 'INDUSTRY'}]},
+                           {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
+                               {'institution': 'institution2', 'role': 'institution role 2', 'isVerified': None,
+                                'nonAcademicAffiliation': 'UNSET'},
+                               {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
+                                'nonAcademicAffiliation': 'INDUSTRY'}]}
+                       ],
+                       'workspaceOwner': [{'userId': 0, 'userName': 'given name 1 family name 1',
+                                           'affiliations': [{'institution': 'institution1',
+                                                             'role': 'institution role 1',
+                                                             'isVerified': None,
+                                                             'nonAcademicAffiliation': 'INDUSTRY'}]}],
+                       'excludeFromPublicDirectory': False, 'reviewRequested': False, 'diseaseFocusedResearch': True,
+                       'diseaseFocusedResearchName': 'disease focused research name str 2',
+                       'otherPurposeDetails': 'other purpose details str 2', 'methodsDevelopment': False,
+                       'controlSet': False, 'ancestry': False, 'socialBehavioral': False, 'populationHealth': False,
+                       'drugDevelopment': False, 'commercialPurpose': False, 'educational': False,
+                       'otherPurpose': False, 'scientificApproaches': 'reasonForInvestigation string2',
+                       'intendToStudy': 'intendToStudy string2',
+                       'findingsFromStudy': 'findingsFromStudy string2',
+                       'focusOnUnderrepresentedPopulations': None,
+                       'workspaceDemographic': {
+                           "raceEthnicity": None,
+                           "age": None,
+                           "sexAtBirth": None,
+                           "genderIdentity": None,
+                           "sexualOrientation": None,
+                           "geography": None,
+                           "disabilityStatus": None,
+                           "accessToCare": None,
+                           "educationLevel": None,
+                           "incomeLevel": None,
+                           "others": None
+                       }
+                       },
+                      result['data'])
         # test audit review
         review_results = [
             {
