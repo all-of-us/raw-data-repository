@@ -102,6 +102,8 @@ def setup_log_line(record: logging.LogRecord, resource=None, method=None):
     event_ts = event_ts.isoformat()
     severity = gcp_logging._helpers._normalize_severity(record.levelno)
     message = record.msg if record.msg else ''
+    if isinstance(message, dict):
+        message = json.dumps(message)
 
     # Look for embedded traceback source location override information
     if '%%' in message:

@@ -312,7 +312,7 @@ class WorkbenchApiTest(BaseTestCase):
                         "status": "ACTIVE"
                     }
                 ],
-                "excludeFromPublicDirectory": True,
+                "excludeFromPublicDirectory": False,
                 "reviewRequested": True,
                 "diseaseFocusedResearch": True,
                 "diseaseFocusedResearchName": "string",
@@ -349,7 +349,13 @@ class WorkbenchApiTest(BaseTestCase):
         self.send_post('workbench/directory/workspaces', request_data=request_json)
 
         workspace_dao = WorkbenchWorkspaceDao()
-        self.assertEqual(workspace_dao.count(), 0)
+        results = workspace_dao.get_all_with_children()
+        self.assertEqual(workspace_dao.count(), 1)
+        self.assertEqual(results[0].workspaceSourceId, 1)
+        self.assertEqual(results[0].name, 'string')
+        self.assertEqual(results[0].scientificApproaches, 'string')
+        self.assertEqual(results[0].intendToStudy, 'string')
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
 
         workspace_history_dao = WorkbenchWorkspaceHistoryDao()
         results = workspace_history_dao.get_all_with_children()
@@ -375,7 +381,7 @@ class WorkbenchApiTest(BaseTestCase):
                         "status": "ACTIVE"
                     }
                 ],
-                "excludeFromPublicDirectory": True,
+                "excludeFromPublicDirectory": False,
                 "diseaseFocusedResearch": True,
                 "diseaseFocusedResearchName": "string",
                 "otherPurposeDetails": "string",
@@ -414,7 +420,7 @@ class WorkbenchApiTest(BaseTestCase):
                         "status": "INACTIVE"
                     }
                 ],
-                "excludeFromPublicDirectory": True,
+                "excludeFromPublicDirectory": False,
                 "diseaseFocusedResearch": True,
                 "diseaseFocusedResearchName": "string",
                 "otherPurposeDetails": "string",
@@ -435,7 +441,15 @@ class WorkbenchApiTest(BaseTestCase):
 
         self.send_post('workbench/directory/workspaces', request_data=update_json)
         workspace_dao = WorkbenchWorkspaceDao()
-        self.assertEqual(workspace_dao.count(), 0)
+        self.assertEqual(workspace_dao.count(), 2)
+        results = workspace_dao.get_all_with_children()
+        self.assertEqual(results[0].workspaceSourceId, 1)
+        self.assertEqual(results[0].name, 'string_modify')
+        self.assertEqual(results[0].scientificApproaches, 'string2')
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
+        self.assertEqual(results[1].workspaceSourceId, 2)
+        self.assertEqual(results[1].name, 'string2')
+        self.assertEqual(results[1].scientificApproaches, 'string2')
 
         workspace_history_dao = WorkbenchWorkspaceHistoryDao()
         results = workspace_history_dao.get_all_with_children()

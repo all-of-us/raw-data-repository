@@ -15,12 +15,10 @@ from rdr_service import clock, config
 from rdr_service.code_constants import (
     CABOR_SIGNATURE_QUESTION_CODE,
     CONSENT_FOR_DVEHR_MODULE,
-    CONSENT_FOR_GENOMICS_ROR,
+    CONSENT_FOR_GENOMICS_ROR_MODULE,
     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
     CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
     CONSENT_PERMISSION_YES_CODE,
-    CONSENT_PERMISSION_NOT_SURE,
-    CONSENT_PERMISSION_NO_CODE,
     DVEHRSHARING_CONSENT_CODE_NOT_SURE,
     DVEHRSHARING_CONSENT_CODE_YES,
     DVEHR_SHARING_QUESTION_CODE,
@@ -30,6 +28,9 @@ from rdr_service.code_constants import (
     PPI_EXTRA_SYSTEM,
     PPI_SYSTEM,
     RACE_QUESTION_CODE,
+    CONSENT_GROR_YES_CODE,
+    CONSENT_GROR_NO_CODE,
+    CONSENT_GROR_NOT_SURE
 )
 from rdr_service.config_api import is_config_admin
 from rdr_service.dao.base_dao import BaseDao
@@ -51,7 +52,7 @@ from rdr_service.participant_enums import (
     TEST_LOGIN_PHONE_NUMBER_PREFIX,
     get_gender_identity,
     get_race,
-)
+    ParticipantCohort)
 
 _QUESTIONNAIRE_PREFIX = "Questionnaire/"
 _QUESTIONNAIRE_HISTORY_SEGMENT = "/_history/"
@@ -344,17 +345,18 @@ class QuestionnaireResponseDao(BaseDao):
                         new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
                     elif code.value == CONSENT_FOR_DVEHR_MODULE:
                         new_status = dvehr_consent
-                    elif code.value == CONSENT_FOR_GENOMICS_ROR:
-                        if code_dao.get(answer.valueCodeId).value == CONSENT_PERMISSION_YES_CODE:
+                    elif code.value == CONSENT_FOR_GENOMICS_ROR_MODULE:
+                        if code_dao.get(answer.valueCodeId).value == CONSENT_GROR_YES_CODE:
                             new_status = QuestionnaireStatus.SUBMITTED
-                        elif code_dao.get(answer.valueCodeId).value == CONSENT_PERMISSION_NO_CODE:
+                        elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NO_CODE:
                             new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
-                        elif code_dao.get(answer.valueCodeId).value == CONSENT_PERMISSION_NOT_SURE:
+                        elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NOT_SURE:
                             new_status = QuestionnaireStatus.SUBMITTED_NOT_SURE
 
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
                         participant_summary.semanticVersionForPrimaryConsent = \
                             questionnaire_response.questionnaireSemanticVersion
+                        participant_summary.consentCohort = ParticipantCohort.COHORT_CURRENT
                         # set language of consent to participant summary
                         for extension in resource_json.get("extension", []):
                             if (

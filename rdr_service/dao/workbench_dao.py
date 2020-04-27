@@ -2,6 +2,7 @@ import json
 
 from werkzeug.exceptions import BadRequest
 from dateutil.parser import parse
+import pytz
 from sqlalchemy import desc
 from sqlalchemy.orm import subqueryload, joinedload
 from rdr_service.dao.base_dao import UpdatableDao
@@ -246,6 +247,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
     def insert_with_session(self, session, workspaces):
         for workspace in workspaces:
             session.add(workspace)
+            self.add_approved_workspace_with_session(session, workspace)
         return workspaces
 
     def to_client_json(self, obj):
@@ -497,6 +499,37 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             last_sync_date = clock.CLOCK.now()
 
         return {"last_sync_date": last_sync_date, "data": results}
+
+    def add_approved_workspace_with_session(self, session, workspace_snapshot):
+        exist = self.get_workspace_by_workspace_id_with_session(session, workspace_snapshot.workspaceSourceId)
+
+        workspace_approved = WorkbenchWorkspaceApproved()
+        for k, v in workspace_snapshot:
+            if k != 'id':
+                setattr(workspace_approved, k, v)
+        workspace_approved.excludeFromPublicDirectory = False
+        users = []
+        researcher_dao = WorkbenchResearcherDao()
+        for user in workspace_snapshot.workbenchWorkspaceUser:
+            researcher = researcher_dao.get_researcher_by_user_id_with_session(session, user.userId)
+            user_obj = WorkbenchWorkspaceUser(
+                created=user.created,
+                modified=user.modified,
+                researcherId=researcher.id,
+                userId=user.userId,
+                role=user.role,
+                status=user.status
+            )
+            users.append(user_obj)
+        workspace_approved.workbenchWorkspaceUser = users
+
+        if exist:
+            if exist.modifiedTime.replace(tzinfo=pytz.utc) <= workspace_snapshot.modifiedTime.replace(tzinfo=pytz.utc):
+                for attr_name in workspace_approved.__dict__.keys():
+                    if not attr_name.startswith('_') and attr_name != 'created':
+                        setattr(exist, attr_name, getattr(workspace_approved, attr_name))
+        else:
+            session.add(workspace_approved)
 
 
 class WorkbenchWorkspaceHistoryDao(UpdatableDao):
@@ -813,7 +846,6 @@ class WorkbenchWorkspaceAuditDao(UpdatableDao):
                 self.add_approved_workspace_with_session(session, record.workspaceSnapshotId)
             else:
                 self.remove_approved_workspace_with_session(session, record.workspaceSnapshotId)
-
         return workbench_audit_records
 
     def _get_audit_record_by_snapshot_id_with_session(self, session, workspace_snapshot_id):
@@ -830,38 +862,11 @@ class WorkbenchWorkspaceAuditDao(UpdatableDao):
 
     def remove_approved_workspace_with_session(self, session, workspace_snapshot_id):
         workspace_snapshot = self.workspace_snapshot_dao.get_snapshot_by_id_with_session(session, workspace_snapshot_id)
+        workspace_snapshot.excludeFromPublicDirectory = True
         self.workspace_dao.remove_workspace_by_workspace_id_with_session(session, workspace_snapshot.workspaceSourceId)
+
 
     def add_approved_workspace_with_session(self, session, workspace_snapshot_id):
         workspace_snapshot = self.workspace_snapshot_dao.get_snapshot_by_id_with_session(session, workspace_snapshot_id)
-        exist = self.workspace_dao.get_workspace_by_workspace_id_with_session(session,
-                                                                              workspace_snapshot.workspaceSourceId)
-
-        workspace_approved = WorkbenchWorkspaceApproved()
-        for k, v in workspace_snapshot:
-            if k != 'id':
-                setattr(workspace_approved, k, v)
-        workspace_approved.excludeFromPublicDirectory = False
-        users = []
-        researcher_dao = WorkbenchResearcherDao()
-        for user in workspace_snapshot.workbenchWorkspaceUser:
-            researcher = researcher_dao.get_researcher_by_user_id_with_session(session, user.userId)
-            user_obj = WorkbenchWorkspaceUser(
-                created=user.created,
-                modified=user.modified,
-                researcherId=researcher.id,
-                userId=user.userId,
-                role=user.role,
-                status=user.status
-            )
-            users.append(user_obj)
-        workspace_approved.workbenchWorkspaceUser = users
-
-        if exist:
-            for attr_name in workspace_approved.__dict__.keys():
-                if not attr_name.startswith('_') and attr_name != 'created':
-                    setattr(exist, attr_name, getattr(workspace_approved, attr_name))
-        else:
-            session.add(workspace_approved)
-
-
+        workspace_snapshot.excludeFromPublicDirectory = False
+        self.workspace_dao.add_approved_workspace_with_session(session, workspace_snapshot)

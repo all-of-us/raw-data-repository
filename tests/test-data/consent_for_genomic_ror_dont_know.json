@@ -10,11 +10,11 @@
 "answer": [
           {
             "valueCoding": {
-"code": "ConsentPermission_NotSure", "display": " I'm not sure right now ",
+"code": "CheckDNA_NotSure", "display": " I'm not sure right now ",
 "system": "http://terminology.pmi-ops.org/CodeSystem/ppi" }
 } ],
         "linkId": "genomic_consent",
-"text": "gRORConsent_ConsentPermission" }
+"text": "GROR" }
 ],
     "title": "Genomics Return of Results Consent"
   },

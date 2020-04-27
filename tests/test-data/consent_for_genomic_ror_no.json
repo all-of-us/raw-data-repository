@@ -9,17 +9,17 @@
         "answer": [
           {
             "valueCoding": {
-              "code": "ConsentPermission_No",
+              "code": "CheckDNA_No",
               "display": " No: I do not want to learn some or all of my DNA results",
               "system": "http://terminology.pmi-ops.org/CodeSystem/ppi" }
           } ],
         "linkId": "genomic_consent",
-        "text": "gRORConsent_ConsentPermission" }
+        "text": "GROR" }
     ],
     "title": "Genomics Return of Results Consent"
   },
   "identifier": {
-    "value": "gRORConsent_ConsentPermission"
+    "value": "GROR"
   },
   "questionnaire": {
     "reference": "Questionnaire/xxx"
