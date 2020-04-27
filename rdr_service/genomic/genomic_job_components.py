@@ -9,6 +9,7 @@ import re
 from collections import deque, namedtuple
 
 from rdr_service import clock
+from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
     open_cloud_file,
     copy_cloud_file,
@@ -1179,3 +1180,24 @@ class ManifestCompiler:
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
+
+
+class GenomicAlert:
+    """
+    Creates a jira ROC ticket using Jira utils
+    """
+    ROC_BOARD_ID = "ROC"
+
+    def __init__(self):
+        self._jira_handler = JiraTicketHandler()
+
+    def make_genomic_alert(self, summary: str, description: str,):
+        """
+        Wraps create_ticket with genomic specifics
+        :param summary: the 'title' of the ticket
+        :param description: the 'body' of the ticket
+        :return: ticket resource ('issue') from Jira api
+        """
+        ticket = self._jira_handler.create_ticket(summary, description,
+                                                  board_id=self.ROC_BOARD_ID)
+        return ticket
