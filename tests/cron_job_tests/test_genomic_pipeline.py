@@ -47,6 +47,7 @@ from rdr_service.participant_enums import (
     GenomicJob,
     Race,
     QuestionnaireStatus)
+from rdr_service.services.jira_utils import JiraTicketHandler
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -1369,4 +1370,9 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_genomic_alerts(self):
-        pass
+        jira_handler = JiraTicketHandler()
+
+        cur_user = jira_handler.current_user()
+
+        if os.getenv('JIRA_API_USER_NAME'):
+            print(os.getenv('JIRA_API_USER_NAME'))
