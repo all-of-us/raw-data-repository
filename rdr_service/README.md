@@ -8,7 +8,7 @@ The App Engine project used for testing is pmi-drc-api-test, billed to Vanderbil
 
 The GCS bucket for biobank manifest testing is pmi-drc-biobank-test.
 
-## Configuring a Ubuntu workstation for API development:
+## Configuring a workstation for API development:
 
 Follow the instructions in the [client directory](../rdr_client) first to set up
 a virtual Python environment, then using the client venv, follow the
@@ -19,19 +19,33 @@ instructions here.
 Make sure that you have google
 [cloud SDK](https://cloud.google.com/sdk/downloads) installed.
 
-From the rest-api directory, run:
+Run:
 #### For Ubuntu
 * `sudo apt-get install mysql-server libmysqlclient-dev` (to install MySQL server and client —
 if you prefer to use docker, see note below)
 #### For Mac OS
 * `brew install mysql@5.7`
 * `brew install mysql-connector-c`
-* If mysql is installed via homebrew you may have to symlink the mysql client:
-    * `ln -s /usr/local/opt/mysql@5.7/lib/libmysqlclient.20.dylib /usr/local/opt/mysql/lib/libmysqlclient.20.dylib`
+* `brew install gettext`
+* If mysql is installed via homebrew you may need to make your mysql binaries available on the system PATH
+    * Run `which mysql`, if it returns a path then you don't need to read the next bullet.
+    * If nothing was returned then you need to add the mysql binaries to your PATH variable. One option is to symlink the mysql client to somewhere already on the PATH by running something like:
+`ln -s /usr/local/opt/mysql@5.7/lib/libmysqlclient.20.dylib /usr/local/opt/mysql/lib/libmysqlclient.20.dylib`
 * `brew install gcc`
+
+#### Set up Python
+* Install python 3 with `brew install python`
+* Navigate to the root directory of the rdr repository.
+* Create and enter a virtual environment to cleanly manage dependencies. One option is the venv module that comes with python3. To use venv run the following:
+    * At the root directory run `python3 -m venv venv37`
+    * Load the environment into terminal. For example on a Mac run `source venv37/bin/activate`.
+* Install required python modules with `pip3 install -r requirements.txt`
+* Navigate to the api service directory with `cd rdr_service`
 
 #### Then run
 * `tools/setup_env.sh` (get libs, set up git hooks)
+* `mkdir data` to initialize the directory for local data
+* `tools/export_organizations` to create CSV files for local data
 * `mysql -V` to ensure that you have mysql = 5.7.X
 * `python main.py` (to run your local server) from the root of the project.
 * `tools/setup_local_database.sh` (to create a database in MySQL, upgrade its schema,
