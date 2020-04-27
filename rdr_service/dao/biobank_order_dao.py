@@ -579,6 +579,14 @@ class BiobankOrderDao(UpdatableDao):
         test_codes = []
         for sample in resource.samples:
             sample_dict = {"test": {"code": sample.test, "name": sample.description, "comments": None}}
+            if sample.test in ('1SS08', '1PS08'):
+                sample_dict['test']['questions'] = {
+                    "question": {
+                        "code": "1PSTP",
+                        "prompt": "PST Centrifuge Type",
+                        "answer": "Swinging Bucket"
+                    }
+                }
             order['order']['tests'].append(sample_dict)
             test_codes.append(sample.test)
         response = mayo.post(order)
