@@ -40,11 +40,8 @@ class JiraTicketHandler:
     def set_jira_credentials_from_config(self):
         """
         Sets the Jira API username and password
-        based on whether set in environment or in config
-        :return:
+        from cloud config
         """
-        # Use credential in config points to config file on sandbox
-        # Like other external API credentials, e.g. Mayolink
         bucket = config.CONFIG_BUCKET
         path = "/" + bucket + "/" + config.getSetting(config.JIRA_CREDS)
         with open_cloud_file(path) as file_path:
@@ -54,7 +51,8 @@ class JiraTicketHandler:
 
     def _connect_to_jira(self):
         """
-        Opens a JIRA API connection based on username/pw from env vars.
+        Opens a JIRA API connection based on username/pw
+        Will use env vars if localhost, or use cloud config file if not
         """
         options = jira.JIRA.DEFAULT_OPTIONS
 
