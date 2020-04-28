@@ -1209,9 +1209,9 @@ class GenomicAlertHandler:
     def make_genomic_alert(self, summary: str, description: str):
         """
         Wraps create_ticket with genomic specifics
+        Get's the board ID and adds ticket to sprint
         :param summary: the 'title' of the ticket
         :param description: the 'body' of the ticket
-        :return: ticket resource ('issue') from Jira api
         """
         ticket = self._jira_handler.create_ticket(summary, description,
                                                   board_id=self.ROC_BOARD_ID)
