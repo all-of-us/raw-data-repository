@@ -625,12 +625,27 @@ class GenomicReconciler:
                           ('idatGreenReceived', ".grn.idat.md5"),
                           ('vcfReceived', ".vcf.gz"),
                           ('tbiReceived', ".vcf.gz.tbi"))
+            missing_data_files = []
             for file_type in file_types:
                 if not getattr(metric, file_type[0]):
                     filename = f"{metric.chipwellbarcode}{file_type[1]}"
-                    setattr(metric, file_type[0],
-                            self._check_genotyping_file_exists(file.bucketName, filename))
+                    file_exists = self._check_genotyping_file_exists(file.bucketName, filename)
+                    setattr(metric, file_type[0], file_exists)
+                    if not file_exists:
+                        missing_data_files.append(filename)
             self.metrics_dao.update(metric)
+
+            # Make a roc ticket for missing data files
+            if len(missing_data_files) > 0:
+                alert = GenomicAlertHandler()
+
+                summary = '[Genomic System Alert] Missing AW2 Manifest Files'
+                description = "The following AW2 manifest file listed missing genotyping data."
+                description += f"\nManifest File: {file.fileName}"
+                description += f"\nGenomic Job Run ID: {self.run_id}"
+                description += f"\nMissing Genotype Data: {missing_data_files}"
+
+                alert.make_genomic_alert(summary, description)
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -664,7 +679,6 @@ class GenomicReconciler:
         files = list_blobs('/' + bucket_name)
         filenames = [f.name for f in files if f.name.endswith(filename)]
         return 1 if len(filenames) > 0 else 0
-
 
     def _get_sequence_files(self, bucket_name):
         """
@@ -1182,7 +1196,7 @@ class ManifestCompiler:
             return GenomicSubProcessResult.ERROR
 
 
-class GenomicAlert:
+class GenomicAlertHandler:
     """
     Creates a jira ROC ticket using Jira utils
     """
@@ -1191,7 +1205,7 @@ class GenomicAlert:
     def __init__(self):
         self._jira_handler = JiraTicketHandler()
 
-    def make_genomic_alert(self, summary: str, description: str,):
+    def make_genomic_alert(self, summary: str, description: str):
         """
         Wraps create_ticket with genomic specifics
         :param summary: the 'title' of the ticket
@@ -1201,3 +1215,6 @@ class GenomicAlert:
         ticket = self._jira_handler.create_ticket(summary, description,
                                                   board_id=self.ROC_BOARD_ID)
         return ticket
+
+    def fake_stuff(self, summary: str, description: str):
+        return {'summary': summary, 'description': description}

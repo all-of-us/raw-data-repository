@@ -1,6 +1,8 @@
 import csv
 import datetime
 import os
+import mock
+
 import pytz
 
 from rdr_service import clock, config
@@ -21,6 +23,7 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, Parti
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.code_dao import CodeDao, CodeType
 from rdr_service.genomic import genomic_set_file_handler
+from rdr_service.genomic.genomic_job_components import GenomicAlertHandler
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.model.biobank_dv_order import BiobankDVOrder
 from rdr_service.model.biobank_order import (
@@ -1369,10 +1372,38 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    def test_genomic_alerts(self):
-        jira_handler = JiraTicketHandler()
+    # @mock.patch('rdr_service.genomic.genomic_job_components.GenomicAlertHandler',
+    #             autospec=True)
+    @mock.patch('rdr_service.genomic.genomic_job_components.GenomicAlertHandler',
+                autospec=True)
+    def test_genomic_alerts_for_genotyping_manifest(self, patched_handler):
+        mock_alert_handler = patched_handler.return_value
+        mock_alert_handler._jira_handler = 'fake_jira_handler'
+        mock_alert_handler.make_genomic_alert.return_value = 1
+        # Create the fake ingested data
+        self._create_fake_datasets_for_gc_tests(2)
+        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
+                                         bucket_name)
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+        manifest_file = self.file_processed_dao.get(1)
+        # Test the reconciliation process
+        sequencing_test_files = (
+            f'test_data_folder/10001_R01C01.vcf.gz',
+            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
+            f'test_data_folder/10001_R01C01.red.idat.gz',
+        )
+        for f in sequencing_test_files:
+            self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
 
-        cur_user = jira_handler.current_user()
+        # Run reconcile workflow
+        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 2
 
-        if os.getenv('JIRA_API_USER_NAME'):
-            print(os.getenv('JIRA_API_USER_NAME'))
+        # Fake alert
+        summary = '[Genomic System Alert] Missing AW2 Manifest Files'
+        description = "The following AW2 manifest file listed missing genotyping data."
+        description += f"\nManifest File: {manifest_file.fileName}"
+        description += "\nGenomic Job Run ID: 2"
+        description += "\nMissing Genotype Data: ['10001_R01C01.grn.idat.md5']"
+
+        mock_alert_handler.make_genomic_alert.assert_called_with(summary, description)
