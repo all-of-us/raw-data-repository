@@ -647,6 +647,7 @@ class GenomicReconciler:
 
                 alert.make_genomic_alert(summary, description)
 
+
         return GenomicSubProcessResult.SUCCESS
 
     def generate_cvl_reconciliation_report(self):
@@ -1214,4 +1215,5 @@ class GenomicAlertHandler:
         """
         ticket = self._jira_handler.create_ticket(summary, description,
                                                   board_id=self.ROC_BOARD_ID)
-        return ticket
+        active_sprint = self._jira_handler.get_active_sprint(self.ROC_BOARD_ID)
+        self._jira_handler.add_ticket_to_sprint(ticket, active_sprint)

@@ -43,7 +43,8 @@ class JiraTicketHandler:
         based on whether set in environment or in config
         :return:
         """
-        # TODO: Use config file in sandbox.
+        # Use credential in config points to config file on sandbox
+        # Like other external API credentials, e.g. Mayolink
         bucket = config.CONFIG_BUCKET
         path = "/" + bucket + "/" + config.getSetting(config.JIRA_CREDS)
         with open_cloud_file(path) as file_path:
