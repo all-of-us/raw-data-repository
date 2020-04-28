@@ -1215,6 +1215,3 @@ class GenomicAlertHandler:
         ticket = self._jira_handler.create_ticket(summary, description,
                                                   board_id=self.ROC_BOARD_ID)
         return ticket
-
-    def fake_stuff(self, summary: str, description: str):
-        return {'summary': summary, 'description': description}

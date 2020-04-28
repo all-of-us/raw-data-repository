@@ -1374,8 +1374,7 @@ class GenomicPipelineTest(BaseTestCase):
 
     # @mock.patch('rdr_service.genomic.genomic_job_components.GenomicAlertHandler',
     #             autospec=True)
-    @mock.patch('rdr_service.genomic.genomic_job_components.GenomicAlertHandler',
-                autospec=True)
+    @mock.patch('rdr_service.genomic.genomic_job_components.GenomicAlertHandler')
     def test_genomic_alerts_for_genotyping_manifest(self, patched_handler):
         mock_alert_handler = patched_handler.return_value
         mock_alert_handler._jira_handler = 'fake_jira_handler'

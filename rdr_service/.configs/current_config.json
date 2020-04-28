@@ -119,6 +119,9 @@
   "mayolink_creds": [
     "rdr-mayolink-creds-test.json"
   ],
+  "jira_creds": [
+    "rdr-jira-creds.json"
+  ],
   "mayolink_endpoint": [
     "https://test.orders.mayocliniclabs.com/orders/create.xml"
   ]

@@ -4,8 +4,11 @@
 import jira
 import os
 import re
+import json
 
+from rdr_service.api_util import open_cloud_file
 from rdr_service.services.system_utils import run_external_program
+from rdr_service import config
 
 _REPO_BASE_URL = "https://github.com/all-of-us/raw-data-repository"
 _JIRA_INSTANCE_URL = "https://precisionmedicineinitiative.atlassian.net/"
@@ -34,6 +37,20 @@ class JiraTicketHandler:
 
         self._connect_to_jira()
 
+    def set_jira_credentials_from_config(self):
+        """
+        Sets the Jira API username and password
+        based on whether set in environment or in config
+        :return:
+        """
+        # TODO: Use config file in sandbox.
+        bucket = config.CONFIG_BUCKET
+        path = "/" + bucket + "/" + config.getSetting(config.JIRA_CREDS)
+        with open_cloud_file(path) as file_path:
+            jira_creds = json.load(file_path)
+        self._jira_user = jira_creds.get("jira_rdr_username", None)
+        self._jira_password = jira_creds.get("jira_rdr_password", None)
+
     def _connect_to_jira(self):
         """
         Opens a JIRA API connection based on username/pw from env vars.
@@ -41,8 +58,13 @@ class JiraTicketHandler:
         options = jira.JIRA.DEFAULT_OPTIONS
 
         if not self._jira_connection:
-            if not self._jira_user or not self._jira_password:
-                raise ValueError('Jira user name or password not set in environment.')
+            if config.GAE_PROJECT == "localhost":
+                if not self._jira_user or not self._jira_password:
+                    raise ValueError('Jira user name or password not set in environment.')
+            else:
+                self.set_jira_credentials_from_config()
+                if not self._jira_user or not self._jira_password:
+                    raise ValueError('Jira user name or password not set in config.')
             self._jira_connection = jira.JIRA(
                 _JIRA_INSTANCE_URL, options=options, basic_auth=(self._jira_user, self._jira_password))
 
