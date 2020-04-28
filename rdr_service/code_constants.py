@@ -32,6 +32,7 @@ INCOME_QUESTION_CODE = "Income_AnnualIncome"
 EHR_CONSENT_QUESTION_CODE = "EHRConsentPII_ConsentPermission"
 DVEHR_SHARING_QUESTION_CODE = "DVEHRSharing_AreYouInterested"
 CABOR_SIGNATURE_QUESTION_CODE = "ExtraConsent_CABoRSignature"
+GROR_CONSENT_QUESTION_CODE = "ResultsConsent_CheckDNA"
 
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 

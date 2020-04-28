@@ -1,28 +1,32 @@
 {
   "resourceType": "Questionnaire",
-  "status":"published",
-  "date":"2015-01-01T00:00:00-00:00",
-  "publisher":"fake",
+  "status": "published",
+  "date": "2015-01-01T00:00:00-00:00",
+  "publisher": "fake",
   "version": "v1",
   "group": {
-    "concept": [{
-      "system": "http://terminology.pmi-ops.org/CodeSystem/consent-form",
-      "code": "enrollment"
-    },
-    {
+    "concept": [
+      {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/consent-form",
+        "code": "enrollment"
+      },
+      {
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
         "code": "GROR"
-    }],
+      }
+    ],
     "question": [
       {
-        "linkId":"genomic_consent",
-        "text":"consent to gror",
-        "type":"choice",
-        "concept": [{
-          "system": "http://loinc.org",
-          "code": "ResultsConsent_CheckDNA",
-          "display": "Would you like us to check your DNA and tell you what we find?"
-        }]
+        "linkId": "genomic_consent",
+        "text": "consent to gror",
+        "type": "choice",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "ResultsConsent_CheckDNA",
+            "display": "Would you like us to check your DNA and tell you what we find?"
+          }
+        ]
       }
     ]
   }
