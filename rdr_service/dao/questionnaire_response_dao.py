@@ -30,8 +30,8 @@ from rdr_service.code_constants import (
     RACE_QUESTION_CODE,
     CONSENT_GROR_YES_CODE,
     CONSENT_GROR_NO_CODE,
-    CONSENT_GROR_NOT_SURE
-)
+    CONSENT_GROR_NOT_SURE,
+    GROR_CONSENT_QUESTION_CODE)
 from rdr_service.config_api import is_config_admin
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -316,6 +316,13 @@ class QuestionnaireResponseDao(BaseDao):
                                 participant_summary.consentForCABoRTime = questionnaire_response.created
                                 participant_summary.consentForCABoRAuthored = authored
                                 something_changed = True
+                    elif code.value == GROR_CONSENT_QUESTION_CODE:
+                        if code_dao.get(answer.valueCodeId).value == CONSENT_GROR_YES_CODE:
+                            gror_consent = QuestionnaireStatus.SUBMITTED
+                        elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NO_CODE:
+                            gror_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+                        elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NOT_SURE:
+                            gror_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
 
         # If race was provided in the response in one or more answers, set the new value.
         if race_code_ids:
@@ -346,13 +353,7 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value == CONSENT_FOR_DVEHR_MODULE:
                         new_status = dvehr_consent
                     elif code.value == CONSENT_FOR_GENOMICS_ROR_MODULE:
-                        if code_dao.get(answer.valueCodeId).value == CONSENT_GROR_YES_CODE:
-                            new_status = QuestionnaireStatus.SUBMITTED
-                        elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NO_CODE:
-                            new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
-                        elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NOT_SURE:
-                            new_status = QuestionnaireStatus.SUBMITTED_NOT_SURE
-
+                        new_status = gror_consent
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
                         participant_summary.semanticVersionForPrimaryConsent = \
                             questionnaire_response.questionnaireSemanticVersion
