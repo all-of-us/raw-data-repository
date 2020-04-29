@@ -40,7 +40,7 @@ class JiraTicketHandler:
         Sets the Jira API username and password
         from app config
         """
-        jira_creds = config.getSetting(config.JIRA_CREDS)
+        jira_creds = config.getSettingJson(config.JIRA_CREDS)
         self._jira_user = jira_creds.get("jira_rdr_username", None)
         self._jira_password = jira_creds.get("jira_rdr_password", None)
 
