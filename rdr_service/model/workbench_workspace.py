@@ -54,6 +54,8 @@ class WorkbenchWorkspaceBase(object):
                          default=WorkbenchWorkspaceIncomeLevel.UNSET)
     others = Column("others", String(500))
 
+    isReviewed = Column("is_reviewed", Boolean, default=False)
+
     resource = Column("resource", BlobUTF8, nullable=False)
 
 
