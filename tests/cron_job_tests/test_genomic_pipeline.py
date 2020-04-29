@@ -1,6 +1,8 @@
 import csv
 import datetime
 import os
+import mock
+
 import pytz
 
 from rdr_service import clock, config
@@ -918,13 +920,19 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    def test_gc_metrics_reconciliation_vs_genotyping_data(self):
+    @mock.patch('rdr_service.genomic.genomic_job_components.GenomicAlertHandler')
+    def test_gc_metrics_reconciliation_vs_genotyping_data(self, patched_handler):
+        mock_alert_handler = patched_handler.return_value
+        mock_alert_handler._jira_handler = 'fake_jira_handler'
+        mock_alert_handler.make_genomic_alert.return_value = 1
+
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(2)
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name)
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+        manifest_file = self.file_processed_dao.get(1)
 
         # Test the reconciliation process
         sequencing_test_files = (
@@ -944,6 +952,15 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(1, gc_record.tbiReceived)
         self.assertEqual(1, gc_record.idatRedReceived)
         self.assertEqual(0, gc_record.idatGreenReceived)
+
+        # Fake alert
+        summary = '[Genomic System Alert] Missing AW2 Manifest Files'
+        description = "The following AW2 manifest file listed missing genotyping data."
+        description += f"\nManifest File: {manifest_file.fileName}"
+        description += "\nGenomic Job Run ID: 2"
+        description += "\nMissing Genotype Data: ['10001_R01C01.grn.idat.md5']"
+
+        mock_alert_handler.make_genomic_alert.assert_called_with(summary, description)
 
         run_obj = self.job_run_dao.get(2)
 
@@ -1368,3 +1385,4 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the job result
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
