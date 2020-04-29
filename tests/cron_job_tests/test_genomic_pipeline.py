@@ -950,6 +950,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_new_participant_workflow(self):
+        # Test for Cohort 3 workflow
         # create test samples
         test_biobank_ids = (100001, 100002, 100003, 100004, 100005, 100006, 100007)
         fake_datetime_old = datetime.datetime(2019, 12, 31, tzinfo=pytz.utc)

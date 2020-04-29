@@ -751,6 +751,10 @@ class GenomicBiobankSamplesCoupler:
                          GenomicValidationFlag.INVALID_AIAN,
                          GenomicValidationFlag.INVALID_SEX_AT_BIRTH)
 
+    COHORT_1_ID = "C1"
+    COHORT_2_ID = "C2"
+    COHORT_3_ID = "C3"
+
     def __init__(self, run_id):
         self.samples_dao = BiobankStoredSampleDao()
         self.set_dao = GenomicSetDao()
@@ -814,7 +818,8 @@ class GenomicBiobankSamplesCoupler:
                 self.member_dao.insert(new_member_obj)
             # Create & transfer the Biobank Manifest based on the new genomic set
             try:
-                create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id)
+                create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id,
+                                                                cohort_id=self.COHORT_3_ID)
                 logging.info(f'{self.__class__.__name__}: Genomic set members created ')
                 return GenomicSubProcessResult.SUCCESS
             except RuntimeError:
