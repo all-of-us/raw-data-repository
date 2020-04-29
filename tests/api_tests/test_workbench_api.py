@@ -372,7 +372,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "workspaceId": 1,
                 "name": "string_modify",
                 "creationTime": "2019-11-25T17:43:41.085Z",
-                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-12-25T17:43:41.085Z",
                 "status": "ACTIVE",
                 "workspaceUsers": [
                     {
@@ -406,7 +406,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "workspaceId": 2,
                 "name": "string2",
                 "creationTime": "2019-11-25T17:43:41.085Z",
-                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-12-25T17:43:41.085Z",
                 "status": "ACTIVE",
                 "workspaceUsers": [
                     {
