@@ -126,8 +126,9 @@ def update_package_id_from_manifest_result_file(genomic_set_id, csv_file):
         raise DataError(e)
 
 
-def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=None, bucket_name=None):
-    result_filename = _get_output_manifest_file_name(genomic_set_id, timestamp)
+def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=None,
+                                                    bucket_name=None, cohort_id=None):
+    result_filename = _get_output_manifest_file_name(genomic_set_id, timestamp, cohort_id)
     if bucket_name is None:
         bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
     exporter = SqlExporter(bucket_name)
@@ -155,10 +156,12 @@ def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=No
     exporter.run_export(result_filename, export_sql, query_params)
 
 
-def _get_output_manifest_file_name(genomic_set_id, timestamp=None):
+def _get_output_manifest_file_name(genomic_set_id, timestamp=None, cohort_id=None):
     file_timestamp = timestamp if timestamp else clock.CLOCK.now()
     now_cdt_str = (
         _UTC.localize(file_timestamp).astimezone(_US_CENTRAL).replace(tzinfo=None).strftime(OUTPUT_CSV_TIME_FORMAT)
     )
+    cohort = f"-{cohort_id}" if cohort_id else ""
     folder_name = config.getSetting(GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME)
-    return folder_name + "/" + _MANIFEST_FILE_NAME_PREFIX + "-" + str(genomic_set_id) + "-v1" + now_cdt_str + ".CSV"
+    full_name = f'{folder_name}/{_MANIFEST_FILE_NAME_PREFIX}{cohort}-{str(genomic_set_id)}-v1{now_cdt_str}.CSV'
+    return full_name
