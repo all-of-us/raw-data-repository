@@ -531,6 +531,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         workspace_approved.workbenchWorkspaceUser = users
 
         if exist:
+            if is_reviewed is True:
+                exist.excludeFromPublicDirectory = False
+                exist.isReviewed = is_reviewed
             if exist.modifiedTime.replace(tzinfo=pytz.utc) < workspace_snapshot.modifiedTime.replace(tzinfo=pytz.utc):
                 for attr_name in workspace_approved.__dict__.keys():
                     if not attr_name.startswith('_') and attr_name != 'created':
