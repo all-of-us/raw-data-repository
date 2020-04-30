@@ -10,7 +10,7 @@ from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummary
 from rdr_service.model.bq_participant_summary import BQParticipantSummarySchema, BQStreetAddressTypeEnum, \
-    BQModuleStatusEnum, BQParticipantSummary
+    BQModuleStatusEnum, BQParticipantSummary, COHORT_BETA_CUTOFF, COHORT_LAUNCH_CUTOFF, BQConsentCohort
 from rdr_service.model.hpo import HPO
 from rdr_service.model.measurements import PhysicalMeasurements, PhysicalMeasurementsStatus
 from rdr_service.model.organization import Organization
@@ -130,6 +130,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         # TODO: We may need to use the first response to set consent dates,
         #  unless the consent value changed across response records.
 
+        consent_dt = parser.parse(qnan.get('authored')).date() if qnan.get('authored') else None
+
         data = {
             'first_name': qnan.get('PIIName_First'),
             'middle_name': qnan.get('PIIName_Middle'),
@@ -155,12 +157,27 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 {
                     'consent': 'ConsentPII',
                     'consent_id': self._lookup_code_id('ConsentPII', ro_session),
-                    'consent_date': parser.parse(qnan.get('authored')).date() if qnan.get('authored') else None,
+                    'consent_date': consent_dt,
                     'consent_value': 'ConsentPermission_Yes',
                     'consent_value_id': self._lookup_code_id('ConsentPermission_Yes', ro_session),
                 },
             ]
         }
+
+        # Calculate consent cohort
+        if consent_dt:
+            if consent_dt < COHORT_BETA_CUTOFF:
+                cohort = BQConsentCohort.COHORT_BETA
+            elif COHORT_BETA_CUTOFF <= consent_dt <= COHORT_LAUNCH_CUTOFF:
+                cohort = BQConsentCohort.COHORT_LAUNCH
+            else:
+                cohort = BQConsentCohort.COHORT_CURRENT
+
+            data['consent_cohort'] = cohort.name
+            data['consent_cohort_id'] = cohort.value
+        else:
+            data['consent_cohort'] = BQConsentCohort.UNSET.name
+            data['consent_cohort_id'] = BQConsentCohort.UNSET.value
 
         return data
 

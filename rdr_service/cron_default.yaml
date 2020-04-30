@@ -34,9 +34,29 @@ cron:
   schedule: every day 00:10
   timezone: America/New_York
   target: offline
-- description: Genomic pipeline
-  url: /offline/GenomicPipeline
+- description: Genomic new participant workflow (Cohort 3) from Biobank Samples
+  url: /offline/GenomicNewParticipantWorkflow
   schedule: every day 00:00
+  timezone: America/New_York
+  target: offline
+- description: Genomic GC Manifest Workflow
+  url: /offline/GenomicGCManifestWorkflow
+  schedule: every day 01:00
+  timezone: America/New_York
+  target: offline
+- description: Genomic Data Manifest Workflow (ingestion and reconciliation of data)
+  url: /offline/GenomicDataManifestWorkflow
+  schedule: every day 01:10
+  timezone: America/New_York
+  target: offline
+- description: Genomic GEM A1 and A2 Workflow
+  url: /offline/GenomicGemA1A2Workflow
+  schedule: every day 01:20
+  timezone: America/New_York
+  target: offline
+- description: Genomic GEM A3 (Delete Report) Manifest Workflow
+  url: /offline/GenomicGemA3Workflow
+  schedule: every monday 07:00
   timezone: America/New_York
   target: offline
 - description: Rebuild BigQuery Data (Manual)

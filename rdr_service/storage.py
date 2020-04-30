@@ -292,7 +292,7 @@ class GoogleCloudStorageProvider(StorageProvider):
         client = storage.Client()
         bucket_name, blob_name = self._parse_path(path)
         bucket = client.get_bucket(bucket_name)
-        blob = bucket.blob(blob_name, bucket)
+        blob = bucket.blob(blob_name)
         blob.upload_from_filename(source_file)
 
     def upload_from_string(self, contents, path):

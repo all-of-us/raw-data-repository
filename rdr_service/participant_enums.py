@@ -40,6 +40,14 @@ TEST_HPO_ID = 19
 TEST_LOGIN_PHONE_NUMBER_PREFIX = "444"
 
 
+class ParticipantCohort(messages.Enum):
+    """ Participant Cohort Group"""
+    UNSET = 0
+    COHORT_BETA = 1  # Beta participants.  Consent before April 24, 2018.
+    COHORT_LAUNCH = 2  # National Launch Participants. Consent between April 24, 2018 and April 16, 2020.
+    COHORT_CURRENT = 3  # New Participants with consent starting from April 17, 2020.
+
+
 class PatientStatusFlag(messages.Enum):
     """Site patient status"""
 
@@ -531,6 +539,7 @@ class GenomicJob(messages.Enum):
     CVL_SEC_VAL_MAN = 9
     GEM_A1_MANIFEST = 10
     GEM_A2_MANIFEST = 11
+    GEM_A3_MANIFEST = 12
 
 
 class GenomicSubProcessStatus(messages.Enum):
@@ -557,6 +566,7 @@ class GenomicManifestTypes(messages.Enum):
     GC_DRC = 3
     DRC_CVL_WGS = 4
     GEM_A1 = 5
+    GEM_A3 = 6
 
 
 class WorkbenchWorkspaceStatus(messages.Enum):
@@ -725,3 +735,23 @@ class WorkbenchResearcherDisability(messages.Enum):
     YES = 1
     NO = 2
     PREFER_NOT_TO_ANSWER = 3
+
+
+class WorkbenchAuditReviewType(messages.Enum):
+    UNSET = 0
+    INITIAL = 1
+    SECOND = 2
+    RAB = 3
+
+
+class WorkbenchAuditWorkspaceDisplayDecision(messages.Enum):
+    UNSET = 0
+    PUBLISH_TO_RESEARCHER_DIRECTORY = 1
+    EXCLUDE_FROM_RESEARCHER_DIRECTORY = 2
+
+
+class WorkbenchAuditWorkspaceAccessDecision(messages.Enum):
+    UNSET = 0
+    DISABLE_WORKSPACE = 1
+    DISABLE_WORKSPACE_AND_REVIEW_RESEARCHERS = 2
+

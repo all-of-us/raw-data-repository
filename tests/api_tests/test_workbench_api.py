@@ -3,10 +3,7 @@ from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchResearcherHistoryDao, \
     WorkbenchWorkspaceDao, WorkbenchWorkspaceHistoryDao
 from rdr_service.participant_enums import WorkbenchWorkspaceUserRole, WorkbenchInstitutionNonAcademic, \
-    WorkbenchResearcherEducation, WorkbenchResearcherDisability, \
-    WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, WorkbenchWorkspaceSexualOrientation, \
-    WorkbenchWorkspaceGeography, WorkbenchWorkspaceDisabilityStatus, WorkbenchWorkspaceAccessToCare, \
-    WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, WorkbenchResearcherEthnicity
+    WorkbenchResearcherEducation, WorkbenchResearcherDisability, WorkbenchResearcherEthnicity
 
 
 class WorkbenchApiTest(BaseTestCase):
@@ -315,7 +312,7 @@ class WorkbenchApiTest(BaseTestCase):
                         "status": "ACTIVE"
                     }
                 ],
-                "excludeFromPublicDirectory": True,
+                "excludeFromPublicDirectory": False,
                 "reviewRequested": True,
                 "diseaseFocusedResearch": True,
                 "diseaseFocusedResearchName": "string",
@@ -352,26 +349,12 @@ class WorkbenchApiTest(BaseTestCase):
         self.send_post('workbench/directory/workspaces', request_data=request_json)
 
         workspace_dao = WorkbenchWorkspaceDao()
-        self.assertEqual(workspace_dao.count(), 1)
         results = workspace_dao.get_all_with_children()
+        self.assertEqual(workspace_dao.count(), 1)
         self.assertEqual(results[0].workspaceSourceId, 1)
         self.assertEqual(results[0].name, 'string')
         self.assertEqual(results[0].scientificApproaches, 'string')
         self.assertEqual(results[0].intendToStudy, 'string')
-        self.assertEqual(results[0].focusOnUnderrepresentedPopulations, True)
-        self.assertEqual(results[0].reviewRequested, True)
-        self.assertEqual(results[0].sexAtBirth, WorkbenchWorkspaceSexAtBirth("INTERSEX"))
-        self.assertEqual(results[0].genderIdentity, WorkbenchWorkspaceGenderIdentity("OTHER_THAN_MAN_WOMAN"))
-        self.assertEqual(results[0].sexualOrientation, WorkbenchWorkspaceSexualOrientation("OTHER_THAN_STRAIGHT"))
-        self.assertEqual(results[0].geography, WorkbenchWorkspaceGeography("RURAL"))
-        self.assertEqual(results[0].disabilityStatus, WorkbenchWorkspaceDisabilityStatus("DISABILITY"))
-        self.assertEqual(results[0].accessToCare, WorkbenchWorkspaceAccessToCare("NOT_EASILY_ACCESS_CARE"))
-        self.assertEqual(results[0].educationLevel, WorkbenchWorkspaceEducationLevel("LESS_THAN_HIGH_SCHOOL"))
-        self.assertEqual(results[0].incomeLevel,
-                         WorkbenchWorkspaceIncomeLevel("BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT"))
-        self.assertEqual(results[0].others, 'string')
-        self.assertEqual(results[0].raceEthnicity, [1, 5])
-        self.assertEqual(results[0].age, [1, 3])
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
 
         workspace_history_dao = WorkbenchWorkspaceHistoryDao()
@@ -389,7 +372,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "workspaceId": 1,
                 "name": "string_modify",
                 "creationTime": "2019-11-25T17:43:41.085Z",
-                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-12-25T17:43:41.085Z",
                 "status": "ACTIVE",
                 "workspaceUsers": [
                     {
@@ -398,7 +381,7 @@ class WorkbenchApiTest(BaseTestCase):
                         "status": "ACTIVE"
                     }
                 ],
-                "excludeFromPublicDirectory": True,
+                "excludeFromPublicDirectory": False,
                 "diseaseFocusedResearch": True,
                 "diseaseFocusedResearchName": "string",
                 "otherPurposeDetails": "string",
@@ -423,7 +406,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "workspaceId": 2,
                 "name": "string2",
                 "creationTime": "2019-11-25T17:43:41.085Z",
-                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-12-25T17:43:41.085Z",
                 "status": "ACTIVE",
                 "workspaceUsers": [
                     {
@@ -437,7 +420,7 @@ class WorkbenchApiTest(BaseTestCase):
                         "status": "INACTIVE"
                     }
                 ],
-                "excludeFromPublicDirectory": True,
+                "excludeFromPublicDirectory": False,
                 "diseaseFocusedResearch": True,
                 "diseaseFocusedResearchName": "string",
                 "otherPurposeDetails": "string",
@@ -464,16 +447,9 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].name, 'string_modify')
         self.assertEqual(results[0].scientificApproaches, 'string2')
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
-        self.assertEqual(results[0].focusOnUnderrepresentedPopulations, True)
-        self.assertEqual(results[0].sexAtBirth, None)
         self.assertEqual(results[1].workspaceSourceId, 2)
         self.assertEqual(results[1].name, 'string2')
-        if results[1].workbenchWorkspaceUser[0].userId == 1:
-            self.assertEqual(results[1].workbenchWorkspaceUser[0].role, WorkbenchWorkspaceUserRole.READER)
-            self.assertEqual(results[1].workbenchWorkspaceUser[1].role, WorkbenchWorkspaceUserRole.WRITER)
-        else:
-            self.assertEqual(results[1].workbenchWorkspaceUser[0].role, WorkbenchWorkspaceUserRole.WRITER)
-            self.assertEqual(results[1].workbenchWorkspaceUser[1].role, WorkbenchWorkspaceUserRole.READER)
+        self.assertEqual(results[1].scientificApproaches, 'string2')
 
         workspace_history_dao = WorkbenchWorkspaceHistoryDao()
         results = workspace_history_dao.get_all_with_children()

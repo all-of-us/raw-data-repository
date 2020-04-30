@@ -8,6 +8,8 @@ import logging
 import re
 from collections import deque, namedtuple
 
+from rdr_service import clock
+from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
     open_cloud_file,
     copy_cloud_file,
@@ -53,6 +55,7 @@ from rdr_service.config import (
     GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
     GENOMIC_CVL_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
+    GENOMIC_GEM_A3_MANIFEST_SUBFOLDER,
 )
 
 
@@ -618,16 +621,32 @@ class GenomicReconciler:
         for metric in metrics:
             file = self.file_dao.get(metric.genomicFileProcessedId)
 
-            file_types = (('idatRedReceived', "_red.idat"),
-                          ('idatGreenReceived', "_green.idat"),
-                          ('vcfReceived', ".vcf"),
+            file_types = (('idatRedReceived', ".red.idat.gz"),
+                          ('idatGreenReceived', ".grn.idat.md5"),
+                          ('vcfReceived', ".vcf.gz"),
                           ('tbiReceived', ".vcf.gz.tbi"))
+            missing_data_files = []
             for file_type in file_types:
                 if not getattr(metric, file_type[0]):
                     filename = f"{metric.chipwellbarcode}{file_type[1]}"
-                    setattr(metric, file_type[0],
-                            self._check_genotyping_file_exists(file.bucketName, filename))
+                    file_exists = self._check_genotyping_file_exists(file.bucketName, filename)
+                    setattr(metric, file_type[0], file_exists)
+                    if not file_exists:
+                        missing_data_files.append(filename)
             self.metrics_dao.update(metric)
+
+            # Make a roc ticket for missing data files
+            if len(missing_data_files) > 0:
+                alert = GenomicAlertHandler()
+
+                summary = '[Genomic System Alert] Missing AW2 Manifest Files'
+                description = "The following AW2 manifest file listed missing genotyping data."
+                description += f"\nManifest File: {file.fileName}"
+                description += f"\nGenomic Job Run ID: {self.run_id}"
+                description += f"\nMissing Genotype Data: {missing_data_files}"
+
+                alert.make_genomic_alert(summary, description)
+
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -659,9 +678,8 @@ class GenomicReconciler:
 
     def _check_genotyping_file_exists(self, bucket_name, filename):
         files = list_blobs('/' + bucket_name)
-        filenames = [f.name for f in files if filename in f.name]
+        filenames = [f.name for f in files if f.name.endswith(filename)]
         return 1 if len(filenames) > 0 else 0
-
 
     def _get_sequence_files(self, bucket_name):
         """
@@ -749,6 +767,10 @@ class GenomicBiobankSamplesCoupler:
                          GenomicValidationFlag.INVALID_AIAN,
                          GenomicValidationFlag.INVALID_SEX_AT_BIRTH)
 
+    COHORT_1_ID = "C1"
+    COHORT_2_ID = "C2"
+    COHORT_3_ID = "C3"
+
     def __init__(self, run_id):
         self.samples_dao = BiobankStoredSampleDao()
         self.set_dao = GenomicSetDao()
@@ -812,7 +834,8 @@ class GenomicBiobankSamplesCoupler:
                 self.member_dao.insert(new_member_obj)
             # Create & transfer the Biobank Manifest based on the new genomic set
             try:
-                create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id)
+                create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id,
+                                                                cohort_id=self.COHORT_3_ID)
                 logging.info(f'{self.__class__.__name__}: Genomic set members created ')
                 return GenomicSubProcessResult.SUCCESS
             except RuntimeError:
@@ -959,6 +982,7 @@ class ManifestDefinitionProvider:
         Creates the manifest definitions to use when generating the manifest
         based on manifest type
         """
+        now_formatted = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
         # Set each Manifest Definition as an instance of ManifestDef()
         # DRC Broad CVL WGS Manifest
         self.MANIFEST_DEFINITIONS[GenomicManifestTypes.DRC_CVL_WGS] = self.ManifestDef(
@@ -969,13 +993,22 @@ class ManifestDefinitionProvider:
             columns=self._get_manifest_columns(GenomicManifestTypes.DRC_CVL_WGS),
         )
 
-        # Color Array CVL Manifest
+        # Color Array A1 Manifest
         self.MANIFEST_DEFINITIONS[GenomicManifestTypes.GEM_A1] = self.ManifestDef(
             job_run_field='gemA1ManifestJobRunId',
             source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A1),
             destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{getSetting(GENOMIC_GEM_A1_MANIFEST_SUBFOLDER)}/AoU_GEM_Manifest_{self.job_run_id}.csv',
+            output_filename=f'{getSetting(GENOMIC_GEM_A1_MANIFEST_SUBFOLDER)}/AoU_GEM_Manifest_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A1),
+        )
+
+        # Color A3 Manifest
+        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.GEM_A3] = self.ManifestDef(
+            job_run_field='gemA3ManifestJobRunId',
+            source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A3),
+            destination_bucket=f'{self.bucket_name}',
+            output_filename=f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_WD_{now_formatted}.csv',
+            columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A3),
         )
 
     def _get_source_data_query(self, manifest_type):
@@ -1019,6 +1052,7 @@ class ManifestDefinitionProvider:
                         ON gcv.genomic_set_member_id = m.id
                     JOIN participant_summary ps
                         ON ps.participant_id = m.participant_id
+                    LEFT JOIN genomic_job_run a3 ON a3.id = m.gem_a3_manifest_job_run_id
                 WHERE gcv.processing_status = "pass"
                     AND m.reconcile_gc_manifest_job_run_id IS NOT NULL
                     AND m.reconcile_metrics_bb_manifest_job_run_id IS NOT NULL
@@ -1029,8 +1063,34 @@ class ManifestDefinitionProvider:
                     AND m.genome_type = "aou_array"
                     AND ps.suspension_status = 1
                     AND ps.withdrawal_status = 1
-                    # TODO: AND ps.consent_for_genomics_ror = 1
+                    AND ps.consent_for_genomics_ror = 1
+                    # For withdrawn consents that have re-consented
+                    AND (m.gem_a1_manifest_job_run_id IS NULL
+                        OR  (  a3.start_time < ps.consent_for_genomics_ror_authored
+                               OR a3.start_time < ps.consent_for_study_enrollment_authored	    		
+                            ))
             """
+
+        # Color GEM A3 Manifest
+        # Those with A1 and not A3 or updated consents since sent A3
+        if manifest_type == GenomicManifestTypes.GEM_A3:
+            query_sql = """
+                    SELECT m.biobank_id
+                        , m.sample_id
+                    FROM genomic_set_member m
+                        JOIN participant_summary ps
+                            ON ps.participant_id = m.participant_id
+                        LEFT JOIN genomic_job_run a3 ON a3.id = m.gem_a3_manifest_job_run_id
+                    WHERE m.gem_a1_manifest_job_run_id IS NOT NULL                        
+                        AND (m.gem_a3_manifest_job_run_id IS NULL
+                            OR (  a3.start_time < ps.consent_for_genomics_ror_authored
+                                  OR a3.start_time < ps.consent_for_study_enrollment_authored	    		
+                            ))
+                        AND (ps.suspension_status <> 1
+                            OR ps.withdrawal_status <> 1
+                            OR ps.consent_for_genomics_ror <> 1)
+            """
+
         return query_sql
 
     def _get_manifest_columns(self, manifest_type):
@@ -1055,6 +1115,11 @@ class ManifestDefinitionProvider:
                 'biobank_id',
                 'sample_id',
                 "sex_at_birth",
+            )
+        elif manifest_type == GenomicManifestTypes.GEM_A3:
+            columns = (
+                'biobank_id',
+                'sample_id',
             )
         return columns
 
@@ -1135,3 +1200,26 @@ class ManifestCompiler:
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
+
+
+class GenomicAlertHandler:
+    """
+    Creates a jira ROC ticket using Jira utils
+    """
+    ROC_BOARD_ID = "ROC"
+
+    def __init__(self):
+        self._jira_handler = JiraTicketHandler()
+
+    def make_genomic_alert(self, summary: str, description: str):
+        """
+        Wraps create_ticket with genomic specifics
+        Get's the board ID and adds ticket to sprint
+        :param summary: the 'title' of the ticket
+        :param description: the 'body' of the ticket
+        """
+        ticket = self._jira_handler.create_ticket(summary, description,
+                                                  board_id=self.ROC_BOARD_ID)
+        active_sprint = self._jira_handler.get_active_sprint(
+            self._jira_handler.get_board_by_id(self.ROC_BOARD_ID))
+        self._jira_handler.add_ticket_to_sprint(ticket, active_sprint)

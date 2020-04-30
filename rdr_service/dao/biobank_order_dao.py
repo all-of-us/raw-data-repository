@@ -172,7 +172,8 @@ class BiobankOrderDao(UpdatableDao):
                 "data": []
             }
             for item in items:
-                response_json = self.to_client_json(item)
+                response_json = self.to_client_json(item[0])
+                response_json['biobankId'] = str(to_client_biobank_id(item[1]))
                 result['data'].append(response_json)
             return result
         else:
@@ -208,8 +209,9 @@ class BiobankOrderDao(UpdatableDao):
                 ).filter(BiobankOrder.orderOrigin == origin).count()
             )
             query = (
-                session.query(BiobankOrder)
+                session.query(BiobankOrder, Participant.biobankId)
                 .options(joinedload(BiobankOrder.identifiers), joinedload(BiobankOrder.samples))
+                .join(Participant, Participant.participantId == BiobankOrder.participantId)
                 .filter(BiobankOrder.orderOrigin == origin)
                 .filter(
                     or_(
@@ -437,10 +439,7 @@ class BiobankOrderDao(UpdatableDao):
         site_id = None
         username = None
         if handling_info.site:
-            if handling_info.site.system == QUEST_SITE_ID_SYSTEM:
-                site_id = None
-                # TODO - check with CE for what site value will they use in the payload
-            elif handling_info.site.system == SITE_ID_SYSTEM:
+            if handling_info.site.system in [SITE_ID_SYSTEM, QUEST_SITE_ID_SYSTEM]:
                 site = SiteDao().get_by_google_group(handling_info.site.value)
                 if not site:
                     raise BadRequest(f"Unrecognized site: {handling_info.site.value}")
@@ -483,7 +482,7 @@ class BiobankOrderDao(UpdatableDao):
             raise BadRequest("Created Info is required, but was missing in request.")
         order.sourceUsername, order.sourceSiteId = self._parse_handling_info(resource.created_info)
         order.collectedUsername, order.collectedSiteId = self._parse_handling_info(resource.collected_info)
-        if order.collectedSiteId is None and order.orderOrigin != QUEST_BIOBANK_ORDER_ORIGIN:
+        if order.collectedSiteId is None:
             raise BadRequest("Collected site is required in request.")
         order.processedUsername, order.processedSiteId = self._parse_handling_info(resource.processed_info)
         order.finalizedUsername, order.finalizedSiteId = self._parse_handling_info(resource.finalized_info)
@@ -498,8 +497,9 @@ class BiobankOrderDao(UpdatableDao):
                 in request do not match, should be {self._participant_id_to_subject(participant_id)}."
             )
 
-        biobank_order_id = None
-        if order.orderOrigin == QUEST_BIOBANK_ORDER_ORIGIN:
+        biobank_order_id = id_
+        # if id_ is not None, that means it's for update, no need to create new mayolink order
+        if order.orderOrigin == QUEST_BIOBANK_ORDER_ORIGIN and id_ is None:
             biobank_order_id = self._make_mayolink_order(participant_id, resource)
 
         self._add_identifiers_and_main_id(order, resource, biobank_order_id)
@@ -574,8 +574,17 @@ class BiobankOrderDao(UpdatableDao):
             }
         }
         test_codes = []
+        centrifuge_codes = {'1SS08': '1SSTP', '1PS08': '1PSTP'}
         for sample in resource.samples:
             sample_dict = {"test": {"code": sample.test, "name": sample.description, "comments": None}}
+            if sample.test in centrifuge_codes:
+                sample_dict['test']['questions'] = {
+                    "question": {
+                        "code": centrifuge_codes[sample.test],
+                        "prompt": f"{centrifuge_codes[sample.test][1:4]} Centrifuge Type",
+                        "answer": "Swinging Bucket"
+                    }
+                }
             order['order']['tests'].append(sample_dict)
             test_codes.append(sample.test)
         response = mayo.post(order)
@@ -692,6 +701,8 @@ class BiobankOrderDao(UpdatableDao):
         return client_json
 
     def _do_update(self, session, order, existing_obj):
+        if order.orderOrigin != existing_obj.orderOrigin:
+            raise BadRequest(f"Can not update biobank order which was created by other origin")
         order.lastModified = clock.CLOCK.now()
         order.biobankOrderId = existing_obj.biobankOrderId
         order.orderStatus = BiobankOrderStatus.AMENDED

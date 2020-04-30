@@ -42,6 +42,7 @@ from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireA
 from rdr_service.api.organization_hierarchy_api import OrganizationHierarchyApi
 from rdr_service.api.workbench_api import WorkbenchWorkspaceApi, WorkbenchResearcherApi
 from rdr_service.api.research_projects_directory_api import ResearchProjectsDirectoryApi
+from rdr_service.api.redcap_workbench_audit_api import RedcapWorkbenchAuditApi
 from rdr_service.config import get_config, get_db_config
 
 from rdr_service.services.flask import app, API_PREFIX, TASK_PREFIX
@@ -270,6 +271,12 @@ api.add_resource(ResearchProjectsDirectoryApi,
                  API_PREFIX + 'researchHub/projectDirectory',
                  endpoint='research.projects.directory',
                  methods=['GET'])
+
+api.add_resource(RedcapWorkbenchAuditApi,
+                 API_PREFIX + 'workbench/audit/workspace/snapshots',
+                 API_PREFIX + 'workbench/audit/workspace/results',
+                 endpoint='workbench.audit',
+                 methods=['GET', 'POST'])
 
 api.add_resource(GenomicGemPiiApi,
                  API_PREFIX + "GemPII/<participant_id:p_id>",

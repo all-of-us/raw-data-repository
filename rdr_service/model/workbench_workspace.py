@@ -6,7 +6,8 @@ from rdr_service.model.utils import Enum, UTCDateTime6
 from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWorkspaceUserRole, \
     WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, WorkbenchWorkspaceSexualOrientation, \
     WorkbenchWorkspaceGeography, WorkbenchWorkspaceDisabilityStatus, WorkbenchWorkspaceAccessToCare, \
-    WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel
+    WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, WorkbenchAuditReviewType, \
+    WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditWorkspaceAccessDecision
 
 
 class WorkbenchWorkspaceBase(object):
@@ -53,11 +54,13 @@ class WorkbenchWorkspaceBase(object):
                          default=WorkbenchWorkspaceIncomeLevel.UNSET)
     others = Column("others", String(500))
 
+    isReviewed = Column("is_reviewed", Boolean, default=False)
+
     resource = Column("resource", BlobUTF8, nullable=False)
 
 
-class WorkbenchWorkspace(WorkbenchWorkspaceBase, Base):
-    __tablename__ = "workbench_workspace"
+class WorkbenchWorkspaceApproved(WorkbenchWorkspaceBase, Base):
+    __tablename__ = "workbench_workspace_approved"
 
     workbenchWorkspaceUser = relationship("WorkbenchWorkspaceUser", cascade="all, delete-orphan")
 
@@ -81,15 +84,15 @@ class WorkbenchWorkspaceUser(Base):
     # have mysql always update the modified data when the record is changed
     modified = Column("modified", UTCDateTime6, nullable=True)
 
-    workspaceId = Column("workspace_id", Integer, ForeignKey("workbench_workspace.id"), nullable=False)
+    workspaceId = Column("workspace_id", Integer, ForeignKey("workbench_workspace_approved.id"), nullable=False)
     researcherId = Column("researcher_Id", Integer, ForeignKey("workbench_researcher.id"), nullable=False)
     userId = Column("user_id", Integer, nullable=False)
     role = Column("role", Enum(WorkbenchWorkspaceUserRole), default=WorkbenchWorkspaceUserRole.UNSET)
     status = Column("status", Enum(WorkbenchWorkspaceStatus), default=WorkbenchWorkspaceStatus.UNSET)
 
 
-class WorkbenchWorkspaceHistory(WorkbenchWorkspaceBase, Base):
-    __tablename__ = "workbench_workspace_history"
+class WorkbenchWorkspaceSnapshot(WorkbenchWorkspaceBase, Base):
+    __tablename__ = "workbench_workspace_snapshot"
 
     workbenchWorkspaceUser = relationship("WorkbenchWorkspaceUserHistory", cascade="all, delete-orphan")
 
@@ -111,18 +114,42 @@ class WorkbenchWorkspaceUserHistory(Base):
     # have mysql always update the modified data when the record is changed
     modified = Column("modified", UTCDateTime6, nullable=True)
 
-    workspaceId = Column("workspace_id", Integer, ForeignKey("workbench_workspace_history.id"), nullable=False)
+    workspaceId = Column("workspace_id", Integer, ForeignKey("workbench_workspace_snapshot.id"), nullable=False)
     researcherId = Column("researcher_Id", Integer, ForeignKey("workbench_researcher_history.id"), nullable=False)
     userId = Column("user_id", Integer, nullable=False)
     role = Column("role", Enum(WorkbenchWorkspaceUserRole), default=WorkbenchWorkspaceUserRole.UNSET)
     status = Column("status", Enum(WorkbenchWorkspaceStatus), default=WorkbenchWorkspaceStatus.UNSET)
 
 
-event.listen(WorkbenchWorkspace, "before_insert", model_insert_listener)
-event.listen(WorkbenchWorkspace, "before_update", model_update_listener)
+class WorkbenchAudit(Base):
+    __tablename__ = "workbench_audit"
+
+    id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column("created", UTCDateTime6, nullable=True)
+    modified = Column("modified", UTCDateTime6, nullable=True)
+    workspaceSnapshotId = Column("workspace_snapshot_id", Integer, ForeignKey("workbench_workspace_snapshot.id"),
+                                 nullable=False)
+    auditorPmiEmail = Column("auditor_pmi_email", String(200))
+    auditReviewType = Column("audit_review_type", Enum(WorkbenchAuditReviewType),
+                             default=WorkbenchAuditReviewType.UNSET)
+    auditWorkspaceDisplayDecision = Column("audit_workspace_display_decision",
+                                           Enum(WorkbenchAuditWorkspaceDisplayDecision),
+                                           default=WorkbenchAuditWorkspaceDisplayDecision.UNSET)
+    auditWorkspaceAccessDecision = Column("audit_workspace_access_decision",
+                                          Enum(WorkbenchAuditWorkspaceAccessDecision),
+                                          default=WorkbenchAuditWorkspaceAccessDecision.UNSET)
+    auditNotes = Column("audit_notes", String(1000))
+
+    resource = Column("resource", BlobUTF8, nullable=False)
+
+
+event.listen(WorkbenchWorkspaceApproved, "before_insert", model_insert_listener)
+event.listen(WorkbenchWorkspaceApproved, "before_update", model_update_listener)
 event.listen(WorkbenchWorkspaceUser, "before_insert", model_insert_listener)
 event.listen(WorkbenchWorkspaceUser, "before_update", model_update_listener)
-event.listen(WorkbenchWorkspaceHistory, "before_insert", model_insert_listener)
-event.listen(WorkbenchWorkspaceHistory, "before_update", model_update_listener)
+event.listen(WorkbenchWorkspaceSnapshot, "before_insert", model_insert_listener)
+event.listen(WorkbenchWorkspaceSnapshot, "before_update", model_update_listener)
 event.listen(WorkbenchWorkspaceUserHistory, "before_insert", model_insert_listener)
 event.listen(WorkbenchWorkspaceUserHistory, "before_update", model_update_listener)
+event.listen(WorkbenchAudit, "before_insert", model_insert_listener)
+event.listen(WorkbenchAudit, "before_update", model_update_listener)

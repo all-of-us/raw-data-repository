@@ -21,7 +21,7 @@ from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus
+from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort
 from tests import test_data
 from tests.test_data import (
     consent_code,
@@ -571,7 +571,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             email=self.email,
             lastModified=TIME_2,
             patientStatus=[],
-            semanticVersionForPrimaryConsent='V1'
+            semanticVersionForPrimaryConsent='V1',
+            consentCohort=ParticipantCohort.COHORT_CURRENT
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -689,7 +690,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             lastName=self.last_name,
             email=self.email,
             patientStatus=[],
-            semanticVersionForPrimaryConsent='V1'
+            semanticVersionForPrimaryConsent='V1',
+            consentCohort=ParticipantCohort.COHORT_CURRENT
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -761,7 +763,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             lastName=self.last_name,
             email=self.email,
             patientStatus=[],
-            semanticVersionForPrimaryConsent='V1'
+            semanticVersionForPrimaryConsent='V1',
+            consentCohort=ParticipantCohort.COHORT_CURRENT
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -838,8 +841,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             lastName=self.last_name,
             email=self.email,
             patientStatus=[],
-            semanticVersionForPrimaryConsent = 'V1'
-
+            semanticVersionForPrimaryConsent = 'V1',
+            consentCohort=ParticipantCohort.COHORT_CURRENT
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.
@@ -907,7 +910,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             lastName=self.last_name,
             email=self.email,
             patientStatus=[],
-            semanticVersionForPrimaryConsent='V1'
+            semanticVersionForPrimaryConsent='V1',
+            consentCohort=ParticipantCohort.COHORT_CURRENT
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.

@@ -3,6 +3,7 @@
 # Tool to deploy app to Google App Engine.
 #
 import argparse
+import datetime
 import json
 import logging
 import os
@@ -165,26 +166,31 @@ class DeployAppClass(object):
             if os.path.exists(c):
                 os.remove(c)
 
-    def create_jira_ticket(self, summary):
+    def create_jira_ticket(self, summary, descr=None, board_id=None):
         """
         Create a Jira ticket.
         """
+
         code, resp = make_api_request(f'{self.gcp_env.project}.appspot.com', api_path='/')
         if code != 200:
             deployed_version = 'unknown'
         else:
             deployed_version = resp.get('version_id', 'unknown').replace('-', '.')
 
-        notes = self._jira_handler.get_release_notes_since_tag(deployed_version)
+        if not descr:
+            notes = self._jira_handler.get_release_notes_since_tag(deployed_version)
 
-        descr = "h1. Release Notes for {0}\nh2.deployed to {1}, listing changes since {2}:\n{3}".format(
-            self.args.git_target,
-            self.gcp_env.project,
-            deployed_version,
-            notes
-        )
+            descr = "h1. Release Notes for {0}\nh2.deployed to {1}, listing changes since {2}:\n{3}".format(
+                self.args.git_target,
+                self.gcp_env.project,
+                deployed_version,
+                notes
+            )
 
-        ticket = self._jira_handler.create_ticket(summary, descr, board_id=self.jira_board)
+        if not board_id:
+            board_id = self.jira_board
+
+        ticket = self._jira_handler.create_ticket(summary, descr, board_id=board_id)
         return ticket
 
     def add_jira_comment(self, comment):
@@ -194,10 +200,12 @@ class DeployAppClass(object):
         """
         if not self.jira_ready:
             return
+
         matches = re.match(r"^(\d-[\d]+-[\d]+)", self.deploy_version)
         if not matches:
             return comment
 
+        # If this description changes, change in 'create_jira_roc_ticket' as well.
         summary = f"Release tracker for {self.args.git_target}"
         tickets = self._jira_handler.find_ticket_from_summary(summary, board_id=self.jira_board)
 
@@ -218,6 +226,42 @@ class DeployAppClass(object):
 
         return comment
 
+    def create_jira_roc_ticket(self):
+        """
+        Create a reminder JIRA ROC ticket
+        """
+        matches = re.match(r"^(\d-[\d]+-[\d]+)", self.deploy_version)
+        if not matches:
+            _logger.warning('Version for deployment is not standard.')
+            return
+
+        # Get version and make sure this is a primary sprint release.
+        version = matches.group().replace('-', '.')
+        if version[-2:] != '-1':
+            _logger.warning(f'Hotfix release {version}, skipping adding ROC ticket.')
+            return
+
+        # Make the release date Thursday of next week.
+        today = datetime.date.today()
+        push_date = (today + datetime.timedelta(((3 - today.weekday()) % 7) + 7)).strftime('%b %d, %Y')
+        summary = f'Deploy RDR v{version} to production on {push_date}.'
+
+        ticket = self.create_jira_ticket(summary, summary, 'ROC')
+
+        # Add ticket to current sprint
+        board = self._jira_handler.get_board_by_id('ROC')
+        sprint = self._jira_handler.get_active_sprint(board)
+        ticket = self._jira_handler.add_ticket_to_sprint(ticket, sprint)
+
+        # Attempt to change state to In Progress.
+        ticket = self._jira_handler.set_ticket_transition(
+            ticket, self._jira_handler.get_ticket_transition_by_name(ticket, 'Open'))
+
+        # Attempt to link the PD release tracker ticket.
+        pd_summary = f"Release tracker for {self.args.git_target}"
+        tickets = self._jira_handler.find_ticket_from_summary(pd_summary, board_id=self.jira_board)
+        if tickets:
+            self._jira_handler.link_tickets(tickets[0], ticket, 'Relates')
 
     def deploy_app(self):
         """
@@ -258,6 +302,7 @@ class DeployAppClass(object):
         _logger.info(self.add_jira_comment(f"App deployed to '{self.gcp_env.project}'."))
         if self.gcp_env.project == 'all-of-us-rdr-stable':
             self.tag_people()
+            self.create_jira_roc_ticket()
 
         _logger.info('Cleaning up...')
         self.clean_up_config_files(config_files)
@@ -268,24 +313,29 @@ class DeployAppClass(object):
 
     def tag_people(self):
 
-        _logger.info('Updating JIRA ticket...')
-        tag_unames = {}
-        for position, names in self._jira_handler.required_tags.items():
-            tmp_list = []
-            for i in names:
-                user = self._jira_handler.search_user(i)
-                if user:
-                    tmp_list.append(f'[~accountid:{user.accountId}]')
+        # Note: Tagging people is broken because the JIRA python library is making an invalid
+        #       API call to Atlassian. See: https://ecosystem.atlassian.net/browse/ACJIRA-1795
+        #       Until this is resolved in a newer JIRA python library (current is: 2.0.0), this code is blocked.
 
-            tag_unames[position] = tmp_list
-
-        comment = "Notification/approval for the following roles: "
-        for k, v in tag_unames.items():  #pylint: disable=invalid-name
-            comment += k + ': \n'
-            for i in v:
-                comment += i + '\n'
-
-        self.add_jira_comment(comment)
+        # _logger.info('Updating JIRA ticket...')
+        # tag_unames = {}
+        # for position, names in self._jira_handler.required_tags.items():
+        #     tmp_list = []
+        #     for i in names:
+        #         user = self._jira_handler.search_user(i)
+        #         if user:
+        #             tmp_list.append(f'[~accountid:{user.accountId}]')
+        #
+        #     tag_unames[position] = tmp_list
+        #
+        # comment = "Notification/approval for the following roles: "
+        # for k, v in tag_unames.items():  #pylint: disable=invalid-name
+        #     comment += k + ': \n'
+        #     for i in v:
+        #         comment += i + '\n'
+        #
+        # self.add_jira_comment(comment)
+        pass
 
     def run(self):
         """
@@ -311,6 +361,8 @@ class DeployAppClass(object):
                                 self.args.git_target.replace('.', '-')
 
         running_services = gcp_get_app_versions(running_only=True)
+        if not running_services:
+            running_services = {}
 
         _logger.info(clr.fmt('Deployment Information:', clr.custom_fg_color(156)))
         _logger.info(clr.fmt(''))

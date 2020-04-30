@@ -12,6 +12,7 @@
 **/bin
 **/venv
 **/venv37
+**/.DS_Store
 
 **/.idea
 **/.project
@@ -47,3 +48,4 @@ htmlcov/
 /doc/_templates
 
 app.yaml
+/rdr_service/.tmp/

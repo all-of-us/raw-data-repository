@@ -34,11 +34,15 @@ from rdr_service.model.genomics import GenomicSet, GenomicSetMember
 from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.requests_log import RequestsLog
-from rdr_service.model.workbench_workspace import WorkbenchWorkspace, WorkbenchWorkspaceHistory, \
+from rdr_service.model.workbench_workspace import WorkbenchWorkspaceApproved, WorkbenchWorkspaceSnapshot, \
     WorkbenchWorkspaceUser, WorkbenchWorkspaceUserHistory
 from rdr_service.model.workbench_researcher import WorkbenchResearcher, WorkbenchResearcherHistory, \
     WorkbenchInstitutionalAffiliations, WorkbenchInstitutionalAffiliationsHistory
 from rdr_service.model.metadata import Metadata
+from rdr_service.model.resource_type import ResourceType
+from rdr_service.model.resource_schema import ResourceSchema
+from rdr_service.model.resource_data import ResourceData
+from rdr_service.model.resource_search_results import ResourceSearchResults
 
 RETRY_CONNECTION_LIMIT = 10
 

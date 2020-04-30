@@ -6,7 +6,7 @@
   ],
   "user_info": {
     "example@example.com": {
-      "roles": ["ptc", "healthpro", "exporter", "storefront", "rdr", "workbench", "gem"],
+      "roles": ["ptc", "healthpro", "exporter", "storefront", "rdr", "workbench", "gem", "redcap"],
       "clientId": "example",
       "whitelisted_ip_ranges": {
         "ip6": ["::1/64"],
@@ -46,6 +46,9 @@
   ],
   "genomic_gem_a1_manifest_subfolder": [
     "gem_a1_manifests"
+  ],
+  "genomic_biobank_manifest_folder_name": [
+    "genomic_samples_manifests"
   ],
   "metrics_shards": [
     "10"
