@@ -574,13 +574,14 @@ class BiobankOrderDao(UpdatableDao):
             }
         }
         test_codes = []
+        centrifuge_codes = {'1SS08': '1SSTP', '1PS08': '1PSTP'}
         for sample in resource.samples:
             sample_dict = {"test": {"code": sample.test, "name": sample.description, "comments": None}}
-            if sample.test in ('1SS08', '1PS08'):
+            if sample.test in centrifuge_codes:
                 sample_dict['test']['questions'] = {
                     "question": {
-                        "code": "1PSTP",
-                        "prompt": "PST Centrifuge Type",
+                        "code": centrifuge_codes[sample.test],
+                        "prompt": f"{centrifuge_codes[sample.test][1:4]} Centrifuge Type",
                         "answer": "Swinging Bucket"
                     }
                 }
