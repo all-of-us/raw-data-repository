@@ -1034,13 +1034,16 @@ class GenomicPipelineTest(BaseTestCase):
         new_genomic_set = self.set_dao.get_all()
         self.assertEqual(1, len(new_genomic_set))
 
+        # Should be a aou_wgs and aou_array for each
         new_genomic_members = self.member_dao.get_all()
-        self.assertEqual(5, len(new_genomic_members))
+        self.assertEqual(10, len(new_genomic_members))
 
         # Test GenomicMember's data
         # 100001 : Excluded, created before last run,
         # 100005 : Excluded, no DNA sample
+        member_genome_types = {_member.biobankId: list() for _member in new_genomic_members}
         for member in new_genomic_members:
+            member_genome_types[member.biobankId].append(member.genomeType)
             if member.biobankId == '100002':
                 # 100002 : Included, Valid
                 self.assertEqual(1, member.nyFlag)
@@ -1076,8 +1079,11 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.INVALID, member.validationStatus)
                 self.assertEqual('Y', member.ai_an)
+        for bbid in member_genome_types.keys():
+            self.assertIn('aou_array', member_genome_types[bbid])
+            self.assertIn('aou_wgs', member_genome_types[bbid])
 
-                # Test manifest file was created correctly
+        # Test manifest file was created correctly
         bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
 
         class ExpectedCsvColumns(object):
@@ -1108,34 +1114,79 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("Y", rows[0][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[0][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[0][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("aou_array", rows[0][ExpectedCsvColumns.GENOME_TYPE])
 
-            self.assertEqual("T100003", rows[1][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100003, int(rows[1][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual("T100002", rows[1][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100002, int(rows[1][ExpectedCsvColumns.SAMPLE_ID]))
             self.assertEqual("F", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
-            self.assertEqual("N", rows[1][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("Y", rows[1][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[1][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[1][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("aou_wgs", rows[1][ExpectedCsvColumns.GENOME_TYPE])
 
-            self.assertEqual("T100004", rows[2][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100004, int(rows[2][ExpectedCsvColumns.SAMPLE_ID]))
-            self.assertEqual("NA", rows[2][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("T100003", rows[2][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100003, int(rows[2][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual("F", rows[2][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[2][ExpectedCsvColumns.NY_FLAG])
-            self.assertEqual("N", rows[2][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("Y", rows[2][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[2][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("aou_array", rows[2][ExpectedCsvColumns.GENOME_TYPE])
 
-            self.assertEqual("T100006", rows[3][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100006, int(rows[3][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual("T100003", rows[3][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100003, int(rows[3][ExpectedCsvColumns.SAMPLE_ID]))
             self.assertEqual("F", rows[3][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[3][ExpectedCsvColumns.NY_FLAG])
-            self.assertEqual("N", rows[3][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("Y", rows[3][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[3][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("aou_wgs", rows[3][ExpectedCsvColumns.GENOME_TYPE])
 
-            self.assertEqual("T100007", rows[4][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100007, int(rows[4][ExpectedCsvColumns.SAMPLE_ID]))
-            self.assertEqual("F", rows[4][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("T100004", rows[4][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100004, int(rows[4][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual("NA", rows[4][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[4][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("N", rows[4][ExpectedCsvColumns.VALIDATION_PASSED])
-            self.assertEqual("Y", rows[4][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("N", rows[4][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("aou_array", rows[4][ExpectedCsvColumns.GENOME_TYPE])
+
+            self.assertEqual("T100004", rows[5][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100004, int(rows[5][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual("NA", rows[5][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("N", rows[5][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("N", rows[5][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("N", rows[5][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("aou_wgs", rows[5][ExpectedCsvColumns.GENOME_TYPE])
+
+            self.assertEqual("T100006", rows[6][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100006, int(rows[6][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual("F", rows[6][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("N", rows[6][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("N", rows[6][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("N", rows[6][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("aou_array", rows[6][ExpectedCsvColumns.GENOME_TYPE])
+
+            self.assertEqual("T100006", rows[7][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100006, int(rows[7][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual("F", rows[7][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("N", rows[7][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("N", rows[7][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("N", rows[7][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("aou_wgs", rows[7][ExpectedCsvColumns.GENOME_TYPE])
+
+            self.assertEqual("T100007", rows[8][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100007, int(rows[8][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual("F", rows[8][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("N", rows[8][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("N", rows[8][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("Y", rows[8][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("aou_array", rows[8][ExpectedCsvColumns.GENOME_TYPE])
+
+            self.assertEqual("T100007", rows[9][ExpectedCsvColumns.BIOBANK_ID])
+            self.assertEqual(100007, int(rows[9][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual("F", rows[9][ExpectedCsvColumns.SEX_AT_BIRTH])
+            self.assertEqual("N", rows[9][ExpectedCsvColumns.NY_FLAG])
+            self.assertEqual("N", rows[9][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("Y", rows[9][ExpectedCsvColumns.AI_AN])
+            self.assertEqual("aou_wgs", rows[9][ExpectedCsvColumns.GENOME_TYPE])
 
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
