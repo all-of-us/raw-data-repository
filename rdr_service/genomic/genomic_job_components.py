@@ -7,6 +7,7 @@ import csv
 import logging
 import re
 from collections import deque, namedtuple
+from copy import deepcopy
 
 from rdr_service import clock
 from rdr_service.services.jira_utils import JiraTicketHandler
@@ -752,9 +753,9 @@ class GenomicReconciler:
 
 
 class GenomicBiobankSamplesCoupler:
-    """This component creates new genomic set
-    and members from the biobank samples pipeline,
-    then calls the manifest handler to create and upload a manifest"""
+    """This component creates the source data for Cohot 3:
+    new genomic set and members from the biobank samples pipeline.
+    Class uses the manifest handler to create and upload a manifest"""
 
     _SEX_AT_BIRTH_CODES = {
         'male': 'M',
@@ -766,6 +767,9 @@ class GenomicBiobankSamplesCoupler:
                          GenomicValidationFlag.INVALID_AGE,
                          GenomicValidationFlag.INVALID_AIAN,
                          GenomicValidationFlag.INVALID_SEX_AT_BIRTH)
+
+    _ARRAY_GENOME_TYPE = "aou_array"
+    _WGS_GENOME_TYPE = "aou_wgs"
 
     def __init__(self, run_id):
         self.samples_dao = BiobankStoredSampleDao()
@@ -812,8 +816,8 @@ class GenomicBiobankSamplesCoupler:
                     samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()
                 )
                 valid_flags = self._calculate_validation_flags(validation_criteria)
-                logging.info(f'Creating genomic set member for PID: {samples_meta.pids[i]}')
-                new_member_obj = GenomicSetMember(
+                logging.info(f'Creating genomic set members for PID: {samples_meta.pids[i]}')
+                new_array_member_obj = GenomicSetMember(
                     biobankId=bid,
                     genomicSetId=new_genomic_set.id,
                     participantId=samples_meta.pids[i],
@@ -825,9 +829,15 @@ class GenomicBiobankSamplesCoupler:
                                       else GenomicSetMemberStatus.VALID),
                     validationFlags=valid_flags,
                     ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
-                    genomeType="aou_array",
+                    genomeType=self._ARRAY_GENOME_TYPE,
                 )
-                self.member_dao.insert(new_member_obj)
+                # Also create a WGS member
+                new_wgs_member_obj = deepcopy(new_array_member_obj)
+                new_wgs_member_obj.genomeType = self._WGS_GENOME_TYPE
+
+                self.member_dao.insert(new_array_member_obj)
+                self.member_dao.insert(new_wgs_member_obj)
+
             # Create & transfer the Biobank Manifest based on the new genomic set
             try:
                 create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id)
