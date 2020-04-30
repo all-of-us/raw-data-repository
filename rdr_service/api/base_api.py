@@ -171,8 +171,6 @@ class BaseApi(Resource):
                 participant_id = getattr(result, 'participantId')
             # Rebuild participant for BigQuery
             if GAE_PROJECT == 'localhost':
-                if type(participant_id) == str:
-                    participant_id = int(participant_id.strip('pP'))
                 bq_participant_summary_update_task(participant_id)
             else:
                 params = {'p_id': participant_id}
@@ -189,7 +187,6 @@ class BaseApi(Resource):
     Subclasses should pull the query parameters from the request with
     request.args.get().
     """
-        # pylint: disable=unused-argument
         raise BadRequest("List not implemented, provide GET with an ID.")
 
     def _query(self, id_field, participant_id=None):
@@ -319,6 +316,8 @@ class UpdatableApi(BaseApi):
     :return: make_response
     """
         if not resource:
+            resource = request.get_json(force=True)
+        if skip_etag:
             expected_version = self.dao.get_etag(id_, participant_id)
         else:
             etag = request.headers.get("If-Match")
