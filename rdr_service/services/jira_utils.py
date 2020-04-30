@@ -4,9 +4,7 @@
 import jira
 import os
 import re
-import json
 
-from rdr_service.api_util import open_cloud_file
 from rdr_service.services.system_utils import run_external_program
 from rdr_service import config
 
@@ -40,12 +38,9 @@ class JiraTicketHandler:
     def set_jira_credentials_from_config(self):
         """
         Sets the Jira API username and password
-        from cloud config
+        from app config
         """
-        bucket = config.CONFIG_BUCKET
-        path = "/" + bucket + "/" + config.getSetting(config.JIRA_CREDS)
-        with open_cloud_file(path) as file_path:
-            jira_creds = json.load(file_path)
+        jira_creds = config.getSettingJson(config.JIRA_CREDS)
         self._jira_user = jira_creds.get("jira_rdr_username", None)
         self._jira_password = jira_creds.get("jira_rdr_password", None)
 

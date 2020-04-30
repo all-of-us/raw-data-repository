@@ -3,10 +3,11 @@ import json
 from werkzeug.exceptions import BadRequest
 from dateutil.parser import parse
 import pytz
-from sqlalchemy import desc
+from sqlalchemy import desc, or_
 from sqlalchemy.orm import subqueryload, joinedload
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
+from datetime import timedelta
 from rdr_service.dao.metadata_dao import MetadataDao, WORKBENCH_LAST_SYNC_KEY
 from rdr_service.model.workbench_workspace import (
     WorkbenchWorkspaceApproved,
@@ -389,8 +390,10 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
         return results
 
-    def get_workspaces_with_user_detail(self, status):
+    def get_workspaces_with_user_detail(self, status, sequest_hour):
         results = []
+        now = clock.CLOCK.now()
+        sequest_hours_ago = now - timedelta(hours=sequest_hour)
         with self.session() as session:
             query = (
                 session.query(WorkbenchWorkspaceApproved, WorkbenchResearcher)
@@ -398,8 +401,11 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                              joinedload(WorkbenchResearcher.workbenchInstitutionalAffiliations))
                     .filter(WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
                             WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId,
-                            WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0)
+                            WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                            or_(WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
+                                WorkbenchWorkspaceApproved.isReviewed == 1))
             )
+
             if status is not None:
                 query = query.filter(WorkbenchWorkspaceApproved.status == status)
 
@@ -500,7 +506,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
         return {"last_sync_date": last_sync_date, "data": results}
 
-    def add_approved_workspace_with_session(self, session, workspace_snapshot):
+    def add_approved_workspace_with_session(self, session, workspace_snapshot, is_reviewed=False):
         exist = self.get_workspace_by_workspace_id_with_session(session, workspace_snapshot.workspaceSourceId)
 
         workspace_approved = WorkbenchWorkspaceApproved()
@@ -508,6 +514,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             if k != 'id':
                 setattr(workspace_approved, k, v)
         workspace_approved.excludeFromPublicDirectory = False
+        workspace_approved.isReviewed = is_reviewed
         users = []
         researcher_dao = WorkbenchResearcherDao()
         for user in workspace_snapshot.workbenchWorkspaceUser:
@@ -524,7 +531,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         workspace_approved.workbenchWorkspaceUser = users
 
         if exist:
-            if exist.modifiedTime.replace(tzinfo=pytz.utc) <= workspace_snapshot.modifiedTime.replace(tzinfo=pytz.utc):
+            if exist.modifiedTime.replace(tzinfo=pytz.utc) < workspace_snapshot.modifiedTime.replace(tzinfo=pytz.utc):
                 for attr_name in workspace_approved.__dict__.keys():
                     if not attr_name.startswith('_') and attr_name != 'created':
                         setattr(exist, attr_name, getattr(workspace_approved, attr_name))
@@ -863,10 +870,12 @@ class WorkbenchWorkspaceAuditDao(UpdatableDao):
     def remove_approved_workspace_with_session(self, session, workspace_snapshot_id):
         workspace_snapshot = self.workspace_snapshot_dao.get_snapshot_by_id_with_session(session, workspace_snapshot_id)
         workspace_snapshot.excludeFromPublicDirectory = True
+        workspace_snapshot.isReviewed = True
         self.workspace_dao.remove_workspace_by_workspace_id_with_session(session, workspace_snapshot.workspaceSourceId)
 
 
     def add_approved_workspace_with_session(self, session, workspace_snapshot_id):
         workspace_snapshot = self.workspace_snapshot_dao.get_snapshot_by_id_with_session(session, workspace_snapshot_id)
         workspace_snapshot.excludeFromPublicDirectory = False
-        self.workspace_dao.add_approved_workspace_with_session(session, workspace_snapshot)
+        workspace_snapshot.isReviewed = True
+        self.workspace_dao.add_approved_workspace_with_session(session, workspace_snapshot, is_reviewed=True)
