@@ -1,6 +1,7 @@
 import datetime
 
 from rdr_service import clock
+from rdr_service.api_util import format_json_date
 from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -22,23 +23,9 @@ class BiobankOrderApiTest(BaseTestCase):
         self.summary_dao = ParticipantSummaryDao()
         self.dao = BiobankSpecimenDao()
         self.bo_dao = BiobankOrderDao()
-        self.specimen = BiobankSpecimen(rlimsId='sabrina', participantId=self.participant.participantId,
-                                        orderId='', testCode='test 1234567', repositoryId='repo id', studyId='study id',
-                                        cohortId='cohort id', collectionDate=TIME_1, confirmedDate=TIME_2,
-                                        sampleType='sample')
-        self.set_status()
-        self.set_aliquot()
-        self.specimen_path = f"Biobank/specimens/{self.specimen.rlimsId}"
 
-    def set_status(self):
-        status = {'status': 'good', 'freezeThawCount': 1,
-                  'location': 'Greendale', 'quantity': '1', 'quantityUnits': 'some unit',
-                  'processingCompleteDate': TIME_2, 'deviations': 'no deviation'}
-        self.specimen.status = status
-
-    def set_aliquot(self):
-        aliquot = {}
-        self.specimen.aliquots = aliquot
+        ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+        self.bio_order = self.bo_dao.insert(self._make_biobank_order(participantId=self.participant.participantId))
 
     def _make_biobank_order(self, **kwargs):
         """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
@@ -75,26 +62,73 @@ class BiobankOrderApiTest(BaseTestCase):
                 kwargs[k] = default_value
         return BiobankOrder(**kwargs)
 
-    def test_put_new_specimen(self):
-        ParticipantSummaryDao().insert(self.participant_summary(self.participant))
-        bio_order = self.bo_dao.insert(self._make_biobank_order(participantId=self.participant.participantId))
-        self.specimen.orderId = bio_order.biobankOrderId
-        payload = self.dao.to_client_json(self.specimen)
-        result = self.send_put(self.specimen_path, request_data=payload, headers={"if-match": 'W/"1"'})
+    def assertSpecimenJsonMatches(self, specimen_json, test_json):
+        for top_level_field in ['rlimsID', 'orderID', 'participantID', 'testcode', 'repositoryID', 'studyID',
+                                'cohortID', 'sampleType', 'collectionDate', 'confirmationDate']:
+            if top_level_field in test_json:
+                self.assertEqual(test_json[top_level_field], specimen_json[top_level_field])
 
-        specimen = self.dao.get((result['id'], result['orderId']))
-        self.assertIsNotNone(specimen)
+        if 'status' in test_json:
+            for status_field in ['status', 'freezeThawCount', 'location', 'quantity', 'quantityUnits',
+                                  'processingCompleteDate', 'deviations']:
+                if status_field in test_json:
+                    self.assertEqual(test_json['status'][status_field], specimen_json['status'][status_field])
 
-    def test_put_specimen_exists(self):
-        ParticipantSummaryDao().insert(self.participant_summary(self.participant))
-        bio_order = self.bo_dao.insert(self._make_biobank_order(participantId=self.participant.participantId))
-        self.specimen.orderId = bio_order.biobankOrderId
-        payload = self.dao.to_client_json(self.specimen)
-        result = self.send_put(self.specimen_path, request_data=payload, headers={"if-match": 'W/"1"'})
-        new_payload = payload
-        new_payload['cohortId'] = 'next cohort'
-        new_payload['rlimsId'] = 'next rlimsId'
-        print(result)
+    def retrieve_specimen_json(self, id, orderId):
+        specimen = self.dao.get((id, orderId))
+        json = self.dao.to_client_json(specimen)
+        return json
 
-        # TODO: Are we handling if-match headers? Not in design.
-        self.send_put(self.specimen_path, request_data=new_payload, headers={"if-match": 'W/"1"'})
+    def test_put_new_specimen_minimal_data(self):
+        payload = {
+            'rlimsID': 'sabrina',
+            'orderID': self.bio_order.biobankOrderId,
+            'participantID': f'P{self.participant.participantId}',
+            'testcode': 'test 1234567'
+        }
+        rlims_id = payload['rlimsID']
+        result = self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
+
+        saved_specimen_client_json = self.retrieve_specimen_json(result['id'], result['orderID'])
+        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+
+    def test_put_new_specimen_all_data(self):
+        payload = {
+            'rlimsID': 'sabrina',
+            'orderID': self.bio_order.biobankOrderId,
+            'participantID': f'P{self.participant.participantId}',
+            'testcode': 'test 1234567',
+            'repositoryID': 'repo id',
+            'studyID': 'study id',
+            'cohortID': 'cohort id',
+            'sampleType': 'sample',
+            'status': {
+                'status': 'good',
+                'freezeThawCount': 1,
+                'location': 'Greendale',
+                'quantity': '1',
+                'quantityUnits': 'some units',
+                'processingCompleteDate': TIME_2.isoformat(),
+                'deviations': 'no deviation'
+            },
+            'collectionDate': TIME_1.isoformat(),
+            'confirmationDate': TIME_2.isoformat()
+        }
+        pass
+
+    def test_optional_args_not_required(self):
+        # make sure not passing things in like sampleType doesn't crash it
+        pass
+
+    # def test_put_specimen_exists(self):
+    #     payload = self.fake_specimen_json()
+    #     rlims_id = payload['rlimsId']
+    #     initial_result = self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
+    #
+    #     new_payload = payload
+    #     new_payload['cohortId'] = 'next cohort'
+    #     new_payload['rlimsId'] = 'next rlimsId'
+    #     self.send_put(self.specimen_path, request_data=new_payload)
+    #
+    #     updated_specimen_json = self.retrieve_specimen_json(initial_result['id'], initial_result['orderId'])
+    #     self.assertJsonResponseMatches(new_payload, updated_specimen_json)

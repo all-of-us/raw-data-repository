@@ -5,6 +5,7 @@ from rdr_service.api_util import HEALTHPRO
 from rdr_service.app_util import auth_required
 from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao
 from rdr_service.model.utils import from_client_participant_id
+from werkzeug.exceptions import BadRequest
 
 
 class BiobankSpecimenApi(UpdatableApi):
@@ -22,10 +23,15 @@ class BiobankSpecimenApi(UpdatableApi):
     @auth_required(HEALTHPRO)
     def put(self, *args, **kwargs):  # pylint: disable=unused-argument
         resource = request.get_json(force=True)
+
+        for required_field in ['rlimsID', 'orderID', 'testcode', 'participantID']:
+            if required_field not in resource:
+                raise BadRequest("Missing field: %s" % required_field)
+
         if self.dao.exists(resource):
             # TODO: rlims_id is unique
             return super().put(kwargs['rlims_id'])
         else:
-            participant_id = from_client_participant_id(resource['participantId'])
+            participant_id = from_client_participant_id(resource['participantID'])
             return super().post(participant_id=participant_id)
 

@@ -13,28 +13,46 @@ class BiobankSpecimenDao(UpdatableDao):
 
     def to_client_json(self, model):
         result = model.asdict()
-        result["participantId"] = to_client_participant_id(model.participantId)
+
+        result['cohortID'] = result.pop('cohortId')
+        result['orderID'] = result.pop('orderId')
+        result['confirmationDate'] = result.pop('confirmedDate')
+        result['studyID'] = result.pop('studyId')
+        result['repositoryID'] = result.pop('repositoryId')
+        result['rlimsID'] = result.pop('rlimsId')
+        result['testcode'] = result.pop('testCode')
+        del result['participantId']
+
+        result["participantID"] = to_client_participant_id(model.participantId)
         format_json_date(result, 'collectionDate')
-        format_json_date(result, 'confirmedDate')
-        format_json_date(result['status'], 'processingCompleteDate')
-        # result = {k: v for k, v in list(result.items()) if v is not None}
+        format_json_date(result, 'confirmationDate')
+        format_json_date(result, 'processingCompleteDate')
+        format_json_date(result, 'created')
+
+        result_status = result['status']
+        result['status'] = {}
+        for status_field in ['deviations', 'freezeThawCount', 'location', 'processingCompleteDate', 'quantity',
+                             'quantityUnits']:
+            if status_field in result:
+                result['status'][status_field] = result.pop(status_field)
+        result['status']['status'] = result_status
+
         return result
 
     #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None):
-        order = BiobankSpecimen(rlimsId=resource['rlimsId'], participantId=participant_id, orderId=resource['orderId'],
-                                testCode=resource['testCode'], repositoryId=resource['repositoryId'],
-                                studyId=resource['studyId'], cohortId=resource['cohortId'],
-                                collectionDate=resource['collectionDate'], confirmedDate=resource['confirmedDate'])
+        order = BiobankSpecimen(rlimsId=resource['rlimsID'], participantId=participant_id, orderId=resource['orderID'],
+                                testCode=resource['testcode'])
+
         if not self.exists(resource):
             order.created = clock.CLOCK.now()
 
-        order.status = resource['status']
-        for key, value in resource['status'].items():
-            setattr(order, key, value)
-        order.collectionDate = parse_date(order.collectionDate)
-        order.confirmedDate = parse_date(order.confirmedDate)
-        order.processingCompleteDate = parse_date(order.processingCompleteDate)
+        # order.status = resource['status']
+        # for key, value in resource['status'].items():
+        #     setattr(order, key, value)
+        # order.collectionDate = parse_date(order.collectionDate)
+        # order.confirmedDate = parse_date(order.confirmedDate)
+        # order.processingCompleteDate = parse_date(order.processingCompleteDate)
         order.version = 1
         return order
 
