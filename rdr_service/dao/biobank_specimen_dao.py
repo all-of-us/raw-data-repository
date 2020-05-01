@@ -1,7 +1,6 @@
 from rdr_service.api_util import format_json_date
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service import clock
-from rdr_service.api_util import parse_date
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.model.biobank_order import BiobankSpecimen
 
