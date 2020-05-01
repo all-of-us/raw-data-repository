@@ -81,7 +81,9 @@ class BiobankOrderApiTest(BaseTestCase):
         self.specimen.orderId = bio_order.biobankOrderId
         payload = self.dao.to_client_json(self.specimen)
         result = self.send_put(self.specimen_path, request_data=payload, headers={"if-match": 'W/"1"'})
-        print(result)
+
+        specimen = self.dao.get((result['id'], result['orderId']))
+        self.assertIsNotNone(specimen)
 
     def test_put_specimen_exists(self):
         ParticipantSummaryDao().insert(self.participant_summary(self.participant))

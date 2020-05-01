@@ -4,6 +4,7 @@ from rdr_service.api.base_api import UpdatableApi
 from rdr_service.api_util import HEALTHPRO
 from rdr_service.app_util import auth_required
 from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao
+from rdr_service.model.utils import from_client_participant_id
 
 
 class BiobankSpecimenApi(UpdatableApi):
@@ -25,5 +26,6 @@ class BiobankSpecimenApi(UpdatableApi):
             # TODO: rlims_id is unique
             return super().put(kwargs['rlims_id'])
         else:
-            return super().post(participant_id=resource['participantId'])
+            participant_id = from_client_participant_id(resource['participantId'])
+            return super().post(participant_id=participant_id)
 

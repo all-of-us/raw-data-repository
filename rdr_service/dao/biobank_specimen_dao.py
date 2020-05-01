@@ -11,7 +11,6 @@ class BiobankSpecimenDao(UpdatableDao):
     def __init__(self):
         super().__init__(BiobankSpecimen)
 
-
     def to_client_json(self, model):
         result = model.asdict()
         result["participantId"] = to_client_participant_id(model.participantId)
@@ -23,8 +22,7 @@ class BiobankSpecimenDao(UpdatableDao):
 
     #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None):
-        pid = from_client_participant_id(participant_id)
-        order = BiobankSpecimen(rlimsId=resource['rlimsId'], participantId=pid, orderId=resource['orderId'],
+        order = BiobankSpecimen(rlimsId=resource['rlimsId'], participantId=participant_id, orderId=resource['orderId'],
                                 testCode=resource['testCode'], repositoryId=resource['repositoryId'],
                                 studyId=resource['studyId'], cohortId=resource['cohortId'],
                                 collectionDate=resource['collectionDate'], confirmedDate=resource['confirmedDate'])
