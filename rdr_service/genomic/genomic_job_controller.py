@@ -9,7 +9,6 @@ from rdr_service import clock
 
 from rdr_service.config import (
     GENOMIC_GC_METRICS_BUCKET_NAME,
-    GENOMIC_GC_PROCESSED_FOLDER_NAME,
     getSetting,
     getSettingList)
 from rdr_service.participant_enums import (
