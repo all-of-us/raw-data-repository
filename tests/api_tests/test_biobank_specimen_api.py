@@ -1,13 +1,12 @@
 import datetime
 
 from rdr_service import clock
-from rdr_service.api_util import format_json_date
 from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant import Participant
-from rdr_service.model.biobank_order import BiobankSpecimen, BiobankOrderIdentifier, BiobankOrderedSample, BiobankOrder
+from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrderedSample, BiobankOrder
 from tests.helpers.unittest_base import BaseTestCase
 
 TIME_1 = datetime.datetime(2020, 4, 1)
@@ -74,8 +73,8 @@ class BiobankOrderApiTest(BaseTestCase):
                 if status_field in test_json:
                     self.assertEqual(test_json['status'][status_field], specimen_json['status'][status_field])
 
-    def retrieve_specimen_json(self, id, orderId):
-        specimen = self.dao.get((id, orderId))
+    def retrieve_specimen_json(self, specimen_id, order_id):
+        specimen = self.dao.get((specimen_id, order_id))
         json = self.dao.to_client_json(specimen)
         return json
 
