@@ -92,27 +92,27 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
     def test_put_new_specimen_all_data(self):
-        payload = {
-            'rlimsID': 'sabrina',
-            'orderID': self.bio_order.biobankOrderId,
-            'participantID': f'P{self.participant.participantId}',
-            'testcode': 'test 1234567',
-            'repositoryID': 'repo id',
-            'studyID': 'study id',
-            'cohortID': 'cohort id',
-            'sampleType': 'sample',
-            'status': {
-                'status': 'good',
-                'freezeThawCount': 1,
-                'location': 'Greendale',
-                'quantity': '1',
-                'quantityUnits': 'some units',
-                'processingCompleteDate': TIME_2.isoformat(),
-                'deviations': 'no deviation'
-            },
-            'collectionDate': TIME_1.isoformat(),
-            'confirmationDate': TIME_2.isoformat()
-        }
+        # payload = {
+        #     'rlimsID': 'sabrina',
+        #     'orderID': self.bio_order.biobankOrderId,
+        #     'participantID': f'P{self.participant.participantId}',
+        #     'testcode': 'test 1234567',
+        #     'repositoryID': 'repo id',
+        #     'studyID': 'study id',
+        #     'cohortID': 'cohort id',
+        #     'sampleType': 'sample',
+        #     'status': {
+        #         'status': 'good',
+        #         'freezeThawCount': 1,
+        #         'location': 'Greendale',
+        #         'quantity': '1',
+        #         'quantityUnits': 'some units',
+        #         'processingCompleteDate': TIME_2.isoformat(),
+        #         'deviations': 'no deviation'
+        #     },
+        #     'collectionDate': TIME_1.isoformat(),
+        #     'confirmationDate': TIME_2.isoformat()
+        # }
         pass
 
     def test_optional_args_not_required(self):
