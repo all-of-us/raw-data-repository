@@ -322,15 +322,19 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember.biobankId == biobank_id).first()
         return member
 
-    def get_member_from_sample_id(self, sample_id):
+    def get_member_from_sample_id(self, sample_id, genome_type):
         """
         Retrieves a genomic set member record matching the sample_id
+        Needs a genome type
+        :param genome_type: aou_wgs, aou_array, aou_cvl
         :param sample_id:
         :return: a GenomicSetMember object
         """
         with self.session() as session:
             member = session.query(GenomicSetMember).filter(
-                GenomicSetMember.sampleId == sample_id).first()
+                GenomicSetMember.sampleId == sample_id,
+                GenomicSetMember.genomeType == genome_type
+            ).first()
         return member
 
     def update_member_job_run_id(self, member, job_run_id, field):
@@ -488,6 +492,21 @@ class GenomicFileProcessedDao(UpdatableDao):
         with self.session() as session:
             file_list = session.query(GenomicFileProcessed).filter(
                 GenomicFileProcessed.runId == run_id).all()
+        return file_list
+
+    def get_files_for_job_id(self, job_id):
+        """
+        Returns the list of GenomicFileProcessed objects for a job ID.
+        :param job_id: from participant_enums.GenomicJob
+        :return: list of GenomicFileProcessed objects
+        """
+        with self.session() as session:
+            file_list = session.query(GenomicFileProcessed).join(
+                GenomicJobRun,
+                GenomicJobRun.id == GenomicFileProcessed.runId
+            ).filter(
+                GenomicJobRun.jobId == job_id
+            ).all()
         return file_list
 
     def insert_file_record(self, run_id,

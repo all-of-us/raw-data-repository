@@ -51,7 +51,8 @@ def new_participant_workflow():
 
 def genomic_centers_manifest_workflow():
     """
-    Entrypoint for Biobank to Genomic Centers Manifest Ingestion
+    Entrypoint for Ingestion:
+        Biobank to Genomic Centers Manifest (AW1)
     """
     with GenomicJobController(GenomicJob.BB_GC_MANIFEST,
                               bucket_name=None,
@@ -59,6 +60,19 @@ def genomic_centers_manifest_workflow():
                               sub_folder_name=config.GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME
                               ) as controller:
         controller.run_genomic_centers_manifest_workflow()
+
+
+def genomic_centers_aw1f_manifest_workflow():
+    """
+        Entrypoint for Ingestion:
+            Failure Manifest (AW1F)
+        """
+    with GenomicJobController(GenomicJob.AW1F_MANIFEST,
+                              bucket_name=None,
+                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
+                              sub_folder_name=config.GENOMIC_AW1F_SUBFOLDER
+                              ) as controller:
+        controller.run_aw1f_manifest_workflow()
 
 
 def ingest_genomic_centers_metrics_files():
@@ -94,7 +108,7 @@ def gem_a1_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.GEM_A1_MANIFEST,
                               bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
-        controller.generate_manifest(GenomicManifestTypes.GEM_A1)
+        controller.generate_manifest(GenomicManifestTypes.GEM_A1, _genome_type=config.GENOME_TYPE_ARRAY)
 
 
 def gem_a2_manifest_workflow():
@@ -112,7 +126,7 @@ def gem_a3_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.GEM_A3_MANIFEST,
                               bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
-        controller.generate_manifest(GenomicManifestTypes.GEM_A3)
+        controller.generate_manifest(GenomicManifestTypes.GEM_A3, _genome_type=config.GENOME_TYPE_ARRAY)
 
 
 def create_cvl_reconciliation_report():
@@ -130,4 +144,4 @@ def create_cvl_manifests():
     Sources from list of biobank_ids from CVL reconciliation report
     """
     with GenomicJobController(GenomicJob.CREATE_CVL_MANIFESTS) as controller:
-        controller.generate_manifest(GenomicManifestTypes.DRC_CVL_WGS)
+        controller.generate_manifest(GenomicManifestTypes.DRC_CVL_WGS, _genome_type=config.GENOME_TYPE_WGS)
