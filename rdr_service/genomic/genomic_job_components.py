@@ -8,6 +8,7 @@ import logging
 import re
 import pytz
 from collections import deque, namedtuple
+from copy import deepcopy
 
 from rdr_service import clock
 from rdr_service.services.jira_utils import JiraTicketHandler
@@ -93,13 +94,6 @@ class GenomicFileIngester:
         self.member_dao = GenomicSetMemberDao()
         self.job_run_dao = GenomicJobRunDao()
 
-        # TODO: Part of downstream tickets to clarify these
-        self.file_name_conventions = {
-            GenomicJob.METRICS_INGESTION: 'datamanifest',
-            GenomicJob.BB_RETURN_MANIFEST: 'manifest-result',
-            GenomicJob.BB_GC_MANIFEST: 'gc-manifest',
-        }
-
     def generate_file_processing_queue(self):
         """
         Creates the list of files to be ingested in this run.
@@ -125,9 +119,8 @@ class GenomicFileIngester:
         :return: list of filenames or NO_FILES result code
         """
         # Setup date
-        last_run_time = self.controller.last_run_time
         timezone = pytz.timezone('Etc/Greenwich')
-        date_limit_obj = timezone.localize(last_run_time)
+        date_limit_obj = timezone.localize(self.controller.last_run_time)
 
         # Look for new files with valid filenames
         bucket = '/' + self.bucket_name
@@ -136,9 +129,6 @@ class GenomicFileIngester:
         files = [s.name for s in files
                  if s.updated > date_limit_obj
                  and self.file_validator.validate_filename(s.name.lower())]
-
-        # TODO: Make sure not ingested
-        # ingested_files_for_job = self.file_processed_dao.get_files_for_job_id(self.job_id)
 
         if not files:
             logging.info('No files in cloud bucket {}'.format(self.bucket_name))
@@ -794,9 +784,9 @@ class GenomicReconciler:
 
 
 class GenomicBiobankSamplesCoupler:
-    """This component creates new genomic set
-    and members from the biobank samples pipeline,
-    then calls the manifest handler to create and upload a manifest"""
+    """This component creates the source data for Cohot 3:
+    new genomic set and members from the biobank samples pipeline.
+    Class uses the manifest handler to create and upload a manifest"""
 
     _SEX_AT_BIRTH_CODES = {
         'male': 'M',
@@ -809,6 +799,8 @@ class GenomicBiobankSamplesCoupler:
                          GenomicValidationFlag.INVALID_AIAN,
                          GenomicValidationFlag.INVALID_SEX_AT_BIRTH)
 
+    _ARRAY_GENOME_TYPE = "aou_array"
+    _WGS_GENOME_TYPE = "aou_wgs"
     COHORT_1_ID = "C1"
     COHORT_2_ID = "C2"
     COHORT_3_ID = "C3"
@@ -858,8 +850,8 @@ class GenomicBiobankSamplesCoupler:
                     samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()
                 )
                 valid_flags = self._calculate_validation_flags(validation_criteria)
-                logging.info(f'Creating genomic set member for PID: {samples_meta.pids[i]}')
-                new_member_obj = GenomicSetMember(
+                logging.info(f'Creating genomic set members for PID: {samples_meta.pids[i]}')
+                new_array_member_obj = GenomicSetMember(
                     biobankId=bid,
                     genomicSetId=new_genomic_set.id,
                     participantId=samples_meta.pids[i],
@@ -871,9 +863,15 @@ class GenomicBiobankSamplesCoupler:
                                       else GenomicSetMemberStatus.VALID),
                     validationFlags=valid_flags,
                     ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
-                    genomeType="aou_array",
+                    genomeType=self._ARRAY_GENOME_TYPE,
                 )
-                self.member_dao.insert(new_member_obj)
+                # Also create a WGS member
+                new_wgs_member_obj = deepcopy(new_array_member_obj)
+                new_wgs_member_obj.genomeType = self._WGS_GENOME_TYPE
+
+                self.member_dao.insert(new_array_member_obj)
+                self.member_dao.insert(new_wgs_member_obj)
+
             # Create & transfer the Biobank Manifest based on the new genomic set
             try:
                 create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id,
