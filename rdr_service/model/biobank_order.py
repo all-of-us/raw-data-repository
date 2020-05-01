@@ -218,7 +218,7 @@ class SpecimenAliquotBase(object):
     quantity = Column("quantity", String(80))
     quantityUnits = Column("quantity_units", String(80))
     processingCompleteDate = Column("processing_complete_date", UTCDateTime)
-    deviations = Column('deviations', JSON, nullable=False)
+    deviations = Column('deviations', JSON)
 
 
 class BiobankSpecimen(Base, BiobankSpecimenBase, SpecimenAliquotBase):
