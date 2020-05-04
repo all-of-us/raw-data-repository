@@ -28,10 +28,9 @@ class BiobankSpecimenApi(UpdatableApi):
             if required_field not in resource:
                 raise BadRequest("Missing field: %s" % required_field)
 
+        participant_id = from_client_participant_id(resource['participantID'])
         if self.dao.exists(resource):
-            # TODO: rlims_id is unique
-            return super().put(kwargs['rlims_id'])
+            return super().put(kwargs['rlims_id'], participant_id=participant_id)
         else:
-            participant_id = from_client_participant_id(resource['participantID'])
             return super().post(participant_id=participant_id)
 

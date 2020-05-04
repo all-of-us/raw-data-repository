@@ -92,42 +92,70 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
     def test_put_new_specimen_all_data(self):
-        # payload = {
-        #     'rlimsID': 'sabrina',
-        #     'orderID': self.bio_order.biobankOrderId,
-        #     'participantID': f'P{self.participant.participantId}',
-        #     'testcode': 'test 1234567',
-        #     'repositoryID': 'repo id',
-        #     'studyID': 'study id',
-        #     'cohortID': 'cohort id',
-        #     'sampleType': 'sample',
-        #     'status': {
-        #         'status': 'good',
-        #         'freezeThawCount': 1,
-        #         'location': 'Greendale',
-        #         'quantity': '1',
-        #         'quantityUnits': 'some units',
-        #         'processingCompleteDate': TIME_2.isoformat(),
-        #         'deviations': 'no deviation'
-        #     },
-        #     'collectionDate': TIME_1.isoformat(),
-        #     'confirmationDate': TIME_2.isoformat()
-        # }
-        pass
+        payload = {
+            'rlimsID': 'sabrina',
+            'orderID': self.bio_order.biobankOrderId,
+            'participantID': f'P{self.participant.participantId}',
+            'testcode': 'test 1234567',
+            'repositoryID': 'repo id',
+            'studyID': 'study id',
+            'cohortID': 'cohort id',
+            'sampleType': 'sample',
+            'status': {
+                'status': 'good',
+                'freezeThawCount': 1,
+                'location': 'Greendale',
+                'quantity': '1',
+                'quantityUnits': 'some units',
+                'processingCompleteDate': TIME_2.isoformat(),
+                'deviations': 'no deviation'
+            },
+            'collectionDate': TIME_1.isoformat(),
+            'confirmationDate': TIME_2.isoformat()
+        }
+        rlims_id = payload['rlimsID']
+        result = self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
 
-    def test_optional_args_not_required(self):
-        # make sure not passing things in like sampleType doesn't crash it
-        pass
+        saved_specimen_client_json = self.retrieve_specimen_json(result['id'], result['orderID'])
+        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
-    # def test_put_specimen_exists(self):
-    #     payload = self.fake_specimen_json()
-    #     rlims_id = payload['rlimsId']
-    #     initial_result = self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
-    #
-    #     new_payload = payload
-    #     new_payload['cohortId'] = 'next cohort'
-    #     new_payload['rlimsId'] = 'next rlimsId'
-    #     self.send_put(self.specimen_path, request_data=new_payload)
-    #
-    #     updated_specimen_json = self.retrieve_specimen_json(initial_result['id'], initial_result['orderId'])
-    #     self.assertJsonResponseMatches(new_payload, updated_specimen_json)
+    def test_put_specimen_exists(self):
+        payload = {
+            'rlimsID': 'sabrina',
+            'orderID': self.bio_order.biobankOrderId,
+            'participantID': f'P{self.participant.participantId}',
+            'testcode': 'test 1234567'
+        }
+        rlims_id = payload['rlimsID']
+        initial_result = self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
+
+        new_payload = payload
+        new_payload['testcode'] = 'updated testcode'
+        self.send_put(f"Biobank/specimens/{rlims_id}", request_data=new_payload, headers={"if-match": 'W/"1"'})
+
+        updated_specimen_json = self.retrieve_specimen_json(initial_result['id'], initial_result['orderID'])
+        self.assertSpecimenJsonMatches(updated_specimen_json, new_payload)
+
+    def test_optional_args_not_cleared(self):
+        initial_payload = {
+            'rlimsID': 'sabrina',
+            'orderID': self.bio_order.biobankOrderId,
+            'participantID': f'P{self.participant.participantId}',
+            'testcode': 'test 1234567',
+            'sampleType': 'test type'
+        }
+        rlims_id = initial_payload['rlimsID']
+        initial_result = self.send_put(f"Biobank/specimens/{rlims_id}", request_data=initial_payload)
+
+        # Make a new request without the optional sampleType field
+        new_payload = payload = {
+            'rlimsID': 'sabrina',
+            'orderID': self.bio_order.biobankOrderId,
+            'participantID': f'P{self.participant.participantId}',
+            'testcode': 'test 1234567'
+        }
+        self.send_put(f"Biobank/specimens/{rlims_id}", request_data=new_payload, headers={"if-match": 'W/"1"'})
+
+        # Make sure sampleType is still set on specimen
+        updated_specimen_json = self.retrieve_specimen_json(initial_result['id'], initial_result['orderID'])
+        self.assertSpecimenJsonMatches(updated_specimen_json, initial_payload)

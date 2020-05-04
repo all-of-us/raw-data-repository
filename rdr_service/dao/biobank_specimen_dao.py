@@ -1,11 +1,15 @@
 from rdr_service.api_util import format_json_date
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service import clock
+from rdr_service.api_util import parse_date
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.model.biobank_order import BiobankSpecimen
 
 
 class BiobankSpecimenDao(UpdatableDao):
+
+    validate_version_match = False
+
     def __init__(self):
         super().__init__(BiobankSpecimen)
 
@@ -45,16 +49,49 @@ class BiobankSpecimenDao(UpdatableDao):
         if not self.exists(resource):
             order.created = clock.CLOCK.now()
 
-        # order.status = resource['status']
-        # for key, value in resource['status'].items():
-        #     setattr(order, key, value)
-        # order.collectionDate = parse_date(order.collectionDate)
-        # order.confirmedDate = parse_date(order.confirmedDate)
-        # order.processingCompleteDate = parse_date(order.processingCompleteDate)
+        for client_field, model_field, parser in [('repositoryID', 'repositoryId', None),
+                                                  ('studyID', 'studyId', None),
+                                                  ('cohortID', 'cohortId', None),
+                                                  ('sampleType', 'sampleType', None),
+                                                  ('collectionDate', 'collectionDate', parse_date),
+                                                  ('confirmationDate', 'confirmedDate', parse_date)]:
+            self.map_optional_json_field_to_object(resource, order, client_field, model_field, parser)
+
+        if 'status' in resource:
+            for status_field_name, parser in [('status', None),
+                                              ('freezeThawCount', None),
+                                              ('location', None),
+                                              ('quantity', None),
+                                              ('quantityUnits', None),
+                                              ('deviations', None),
+                                              ('processingCompleteDate', parse_date)]:
+                self.map_optional_json_field_to_object(resource['status'], order, status_field_name, parser=parser)
+
         order.version = 1
         return order
 
     @staticmethod
-    def exists(resource):
-        return True if resource.get('id') else False
+    def map_optional_json_field_to_object(json, obj, json_field_name, object_field_name=None, parser=None):
+        if object_field_name is None:
+            object_field_name = json_field_name
 
+        if json_field_name in json:
+            value = json[json_field_name]
+            if parser is not None:
+                value = parser(value)
+
+            setattr(obj, object_field_name, value)
+
+    def exists(self, resource):
+        with self.session() as session:
+            return session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == resource['rlimsID']).count() > 0
+
+    def get_id(self, obj):
+        with self.session() as session:
+            order = session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == obj.rlimsId).one()
+            return order.id, order.orderId
+
+    def _do_update(self, session, obj, existing_obj):
+        # Id isn't sent by client request (just rlimsId)
+        obj.id = existing_obj.id
+        super(BiobankSpecimenDao, self)._do_update(session, obj, existing_obj)
