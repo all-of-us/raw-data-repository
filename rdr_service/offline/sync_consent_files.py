@@ -4,7 +4,6 @@ Sync Consent Files
 Organize all consent files from PTSC source bucket into proper awardee buckets.
 """
 import collections
-import json
 import os
 import sqlalchemy
 
