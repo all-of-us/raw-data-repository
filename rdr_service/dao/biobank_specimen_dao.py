@@ -16,20 +16,22 @@ class BiobankSpecimenDao(UpdatableDao):
     def to_client_json(self, model):
         result = model.asdict()
 
-        result['cohortID'] = result.pop('cohortId')
-        result['orderID'] = result.pop('orderId')
-        result['confirmationDate'] = result.pop('confirmedDate')
-        result['studyID'] = result.pop('studyId')
-        result['repositoryID'] = result.pop('repositoryId')
-        result['rlimsID'] = result.pop('rlimsId')
-        result['testcode'] = result.pop('testCode')
-        del result['participantId']
+        for client_field_name, model_field_name in [('cohortID', 'cohortId'),
+                                                    ('orderID', 'orderId'),
+                                                    ('confirmationDate', 'confirmedDate'),
+                                                    ('studyID', 'studyId'),
+                                                    ('repositoryID', 'repositoryId'),
+                                                    ('rlimsID', 'rlimsId'),
+                                                    ('testcode', 'testCode')]:
+            result[client_field_name] = result.pop(model_field_name)
 
+        # Clean up participantId
+        del result['participantId']
         result["participantID"] = to_client_participant_id(model.participantId)
-        format_json_date(result, 'collectionDate')
-        format_json_date(result, 'confirmationDate')
-        format_json_date(result, 'processingCompleteDate')
-        format_json_date(result, 'created')
+
+        # Format dates
+        for date_field in ['collectionDate', 'confirmationDate', 'processingCompleteDate', 'created']:
+            format_json_date(result, date_field)
 
         result_status = result['status']
         result['status'] = {}

@@ -17,11 +17,11 @@ class BiobankSpecimenApi(UpdatableApi):
         return super().post(participant_id=p_id)
 
     @auth_required(HEALTHPRO)
-    def get(self, p_id=None, bo_id=None):  # pylint: disable=unused-argument
-        return super().get(id_=bo_id, participant_id=p_id)
+    def get(self, p_id=None, bo_id=None):
+        return super(BiobankSpecimenApi, self).get(id_=bo_id, participant_id=p_id)
 
     @auth_required(HEALTHPRO)
-    def put(self, *args, **kwargs):  # pylint: disable=unused-argument
+    def put(self, *args, **kwargs):
         resource = request.get_json(force=True)
 
         for required_field in ['rlimsID', 'orderID', 'testcode', 'participantID']:
@@ -30,7 +30,7 @@ class BiobankSpecimenApi(UpdatableApi):
 
         participant_id = from_client_participant_id(resource['participantID'])
         if self.dao.exists(resource):
-            return super().put(kwargs['rlims_id'], participant_id=participant_id)
+            return super(BiobankSpecimenApi, self).put(kwargs['rlims_id'], participant_id=participant_id)
         else:
-            return super().post(participant_id=participant_id)
+            return super(BiobankSpecimenApi, self).post(participant_id=participant_id)
 

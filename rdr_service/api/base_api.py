@@ -304,7 +304,6 @@ class UpdatableApi(BaseApi):
     def _do_update(self, m):
         self.dao.update(m)
 
-    # pylint: disable=unused-argument
     def put(self, id_, participant_id=None, skip_etag=False, resource=None):
         """
     Replace resource with new values. if skip_etag, version is not required in request.
