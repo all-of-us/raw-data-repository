@@ -13,10 +13,6 @@ class BiobankSpecimenApi(UpdatableApi):
         super().__init__(BiobankSpecimenDao(), get_returns_children=True)
 
     @auth_required(HEALTHPRO)
-    def post(self, p_id):
-        return super().post(participant_id=p_id)
-
-    @auth_required(HEALTHPRO)
     def get(self, p_id=None, bo_id=None):
         return super(BiobankSpecimenApi, self).get(id_=bo_id, participant_id=p_id)
 
