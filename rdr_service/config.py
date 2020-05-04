@@ -99,6 +99,8 @@ DAYS_TO_DELETE_KEYS = "days_to_delete_keys"
 # service accounts exception from key deletion
 SERVICE_ACCOUNTS_WITH_LONG_LIVED_KEYS = "service_accounts_with_long_lived_keys"
 
+CONSENT_SYNC_ORGANIZATIONS = "consent_sync_organizations"
+
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}
 

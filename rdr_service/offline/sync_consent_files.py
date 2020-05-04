@@ -8,8 +8,8 @@ import json
 import os
 import sqlalchemy
 
-from rdr_service.config import GAE_PROJECT
-from rdr_service.api_util import open_cloud_file, list_blobs, copy_cloud_file, get_blob
+from rdr_service import config
+from rdr_service.api_util import list_blobs, copy_cloud_file, get_blob
 from rdr_service.cloud_utils.google_sheets import GoogleSheetCSVReader
 from rdr_service.dao import database_factory
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
@@ -37,33 +37,24 @@ def do_sync_consent_files():
     """
   entrypoint
   """
-    sheet_id = _get_sheet_id()
-    org_data_map = _load_org_data_map(sheet_id)
-    for participant_data in _iter_participants_data():
+    org_data_map = config.getSetting(config.CONSENT_SYNC_ORGANIZATIONS)
+    org_ids = [org_id for org_id, org_data in org_data_map.items()]
+    for participant_data in _iter_participants_data(org_ids):
         kwargs = {
             "source_bucket": SOURCE_BUCKET,
-            "destination_bucket": org_data_map[participant_data.org_id].bucket_name,
+            "destination_bucket": org_data_map[participant_data.org_id]['bucket_name'],
             "participant_id": participant_data.participant_id,
             "google_group": participant_data.google_group or DEFAULT_GOOGLE_GROUP,
         }
         source = "/{source_bucket}/Participant/P{participant_id}/".format(**kwargs)
         destination = "/{destination_bucket}/Participant/{google_group}/P{participant_id}/".format(**kwargs)
 
-        if GAE_PROJECT == 'localhost':
+        if config.GAE_PROJECT == 'localhost':
             cloudstorage_copy_objects_task(source, destination)
         else:
             params = {'source': source, 'destination': destination}
             task = GCPCloudTask('copy_cloudstorage_object_task', payload=params)
             task.execute()
-
-
-def _get_sheet_id():
-    with open_cloud_file(HPO_REPORT_CONFIG_GCS_PATH) as handle:
-        hpo_config = json.load(handle)
-        sheet_id = hpo_config.get("hpo_report_google_sheet_id")
-        if sheet_id is None:
-            raise ValueError("Missing config value: hpo_report_google_sheet_id")
-        return sheet_id
 
 
 def _load_org_data_map(sheet_id):
@@ -110,14 +101,16 @@ where participant.is_ghost_id is not true
     summary.email is null
     or summary.email not like '%@example.com'
   )
+  and organization.external_id in :org_ids
 """
 )
 
 
-def _iter_participants_data():
+def _iter_participants_data(org_ids):
     with database_factory.make_server_cursor_database().session() as session:
-        for row in session.execute(PARTICIPANT_DATA_SQL):
+        for row in session.execute(PARTICIPANT_DATA_SQL, {'org_ids': org_ids}):
             yield ParticipantData(*row)
+
 
 def cloudstorage_copy_objects_task(source, destination):
     """

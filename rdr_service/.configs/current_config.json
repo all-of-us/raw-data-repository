@@ -121,5 +121,17 @@
   ],
   "mayolink_endpoint": [
     "https://test.orders.mayocliniclabs.com/orders/create.xml"
+  ],
+  "consent_sync_organizations": [
+    {
+      "CAL_PMC_UCD": {
+        "hpo_id": "cpmc_ucd",
+        "bucket_name": "aou185"
+      },
+      "VA_BOSTON_VAMC": {
+        "hpo_id": "va",
+        "bucket_name": "aou179"
+      }
+    }
   ]
 }
