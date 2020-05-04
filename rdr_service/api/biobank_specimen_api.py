@@ -21,7 +21,7 @@ class BiobankSpecimenApi(UpdatableApi):
         return super(BiobankSpecimenApi, self).get(id_=bo_id, participant_id=p_id)
 
     @auth_required(HEALTHPRO)
-    def put(self, *args, **kwargs):
+    def put(self, *args, **kwargs):  # pylint: disable=unused-argument
         resource = request.get_json(force=True)
 
         for required_field in ['rlimsID', 'orderID', 'testcode', 'participantID']:
