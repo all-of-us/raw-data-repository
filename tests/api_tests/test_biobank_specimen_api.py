@@ -148,7 +148,7 @@ class BiobankOrderApiTest(BaseTestCase):
         initial_result = self.send_put(f"Biobank/specimens/{rlims_id}", request_data=initial_payload)
 
         # Make a new request without the optional sampleType field
-        new_payload = payload = {
+        new_payload = {
             'rlimsID': 'sabrina',
             'orderID': self.bio_order.biobankOrderId,
             'participantID': f'P{self.participant.participantId}',
