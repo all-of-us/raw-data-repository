@@ -33,4 +33,3 @@ class BiobankSpecimenApi(UpdatableApi):
             return super(BiobankSpecimenApi, self).put(kwargs['rlims_id'], participant_id=participant_id)
         else:
             return super(BiobankSpecimenApi, self).post(participant_id=participant_id)
-
