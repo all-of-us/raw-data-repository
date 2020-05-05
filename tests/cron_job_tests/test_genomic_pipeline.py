@@ -708,6 +708,37 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(1)
         self.assertEqual(GenomicSubProcessResult.NO_FILES, run_obj.runResult)
 
+    def test_aw2_wgs_gc_metrics_ingestion(self):
+        # Create the fake ingested data
+        self._create_fake_datasets_for_gc_tests(2)
+        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
+                                         bucket_name)
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+
+        # Test the fields against the DB
+        gc_metrics = self.metrics_dao.get_all()
+
+        self.assertEqual(len(gc_metrics), 1)
+        self.assertEqual(gc_metrics[0].genomicSetMemberId, 2)
+        self.assertEqual(gc_metrics[0].genomicFileProcessedId, 1)
+        self.assertEqual(gc_metrics[0].limsId, '10002')
+        self.assertEqual(gc_metrics[0].meanCoverage, '2')
+        self.assertEqual(gc_metrics[0].genomeCoverage, '2')
+        self.assertEqual(gc_metrics[0].contamination, '3')
+        self.assertEqual(gc_metrics[0].sexConcordance, 'True')
+        # self.assertEqual(gc_metrics[0].sexPloidy, 'XY')
+        self.assertEqual(gc_metrics[0].alignedQ20Bases, 4)
+        self.assertEqual(gc_metrics[0].processingStatus, 'Pass')
+        self.assertEqual(gc_metrics[0].notes, 'This sample passed')
+
+        # Test file processing queue
+        files_processed = self.file_processed_dao.get_all()
+        self.assertEqual(len(files_processed), 1)
+
+        # Test the end-to-end result code
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
+
     def _create_ingestion_test_file(self,
                                     test_data_filename,
                                     bucket_name,

@@ -345,19 +345,17 @@ class GenomicFileValidator:
 
         self.GC_METRICS_SCHEMAS = {
             'seq': (
-                "biobank id",
+                "biobankid",
                 "biobankidsampleid",
-                "lims id",
-                "mean coverage",
-                "genome coverage",
+                "limsid",
+                "meancoverage",
+                "genomecoverage",
                 "contamination",
-                "sex concordance",
-                "aligned q20 bases",
-                "processing status",
+                "sexconcordance",
+                "sexploidy",
+                "alignedq20bases",
+                "processingstatus",
                 "notes",
-                "consent for ror",
-                "withdrawn_status",
-                "site_id"
             ),
             'gen': (
                 "biobankid",
