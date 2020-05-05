@@ -23,3 +23,7 @@ class BiobankSpecimenApi(UpdatableApi):
             return super(BiobankSpecimenApi, self).put(kwargs['rlims_id'], skip_etag=True)
         else:
             return super(BiobankSpecimenApi, self).post()
+
+    def _make_response(self, obj):
+        result = self.dao.to_client_json(obj)
+        return result, 200

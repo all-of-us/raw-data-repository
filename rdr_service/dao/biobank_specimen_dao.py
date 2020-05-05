@@ -67,7 +67,6 @@ class BiobankSpecimenDao(UpdatableDao):
                                               ('processingCompleteDate', parse_date)]:
                 self.map_optional_json_field_to_object(resource['status'], order, status_field_name, parser=parser)
 
-        order.version = 1
         return order
 
     @staticmethod
