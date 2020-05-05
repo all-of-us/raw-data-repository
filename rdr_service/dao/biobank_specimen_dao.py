@@ -89,7 +89,7 @@ class BiobankSpecimenDao(UpdatableDao):
     def get_id(self, obj):
         with self.session() as session:
             order = session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == obj.rlimsId).one()
-            return order.id, order.orderId
+            return order.id
 
     def _do_update(self, session, obj, existing_obj):
         # Id isn't sent by client request (just rlimsId)

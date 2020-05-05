@@ -226,7 +226,7 @@ class BiobankSpecimen(Base, BiobankSpecimenBase, SpecimenAliquotBase):
 
     rlimsId = Column("rlims_id", String(80), unique=True)
     biobankId = Column("biobank_id", Integer, ForeignKey("participant.biobank_id"), nullable=False)
-    orderId = Column("order_id", String(80), ForeignKey("biobank_order.biobank_order_id"), primary_key=True)
+    orderId = Column("order_id", String(80), ForeignKey("biobank_order.biobank_order_id"))
     testCode = Column("test_code", String(80))
     repositoryId = Column("repository_id", String(80))
     studyId = Column("study_id", String(80))

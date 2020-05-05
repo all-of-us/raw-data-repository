@@ -74,8 +74,8 @@ class BiobankOrderApiTest(BaseTestCase):
                 if status_field in test_json:
                     self.assertEqual(test_json['status'][status_field], specimen_json['status'][status_field])
 
-    def retrieve_specimen_json(self, specimen_id, order_id):
-        specimen = self.dao.get((specimen_id, order_id))
+    def retrieve_specimen_json(self, specimen_id):
+        specimen = self.dao.get(specimen_id)
         json = self.dao.to_client_json(specimen)
         return json
 
@@ -89,7 +89,7 @@ class BiobankOrderApiTest(BaseTestCase):
         rlims_id = payload['rlimsID']
         result = self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
 
-        saved_specimen_client_json = self.retrieve_specimen_json(result['id'], result['orderID'])
+        saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
     def test_put_new_specimen_all_data(self):
@@ -117,7 +117,7 @@ class BiobankOrderApiTest(BaseTestCase):
         rlims_id = payload['rlimsID']
         result = self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
 
-        saved_specimen_client_json = self.retrieve_specimen_json(result['id'], result['orderID'])
+        saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
     def test_put_specimen_exists(self):
@@ -134,7 +134,7 @@ class BiobankOrderApiTest(BaseTestCase):
         new_payload['testcode'] = 'updated testcode'
         self.send_put(f"Biobank/specimens/{rlims_id}", request_data=new_payload)
 
-        updated_specimen_json = self.retrieve_specimen_json(initial_result['id'], initial_result['orderID'])
+        updated_specimen_json = self.retrieve_specimen_json(initial_result['id'])
         self.assertSpecimenJsonMatches(updated_specimen_json, new_payload)
 
     def test_optional_args_not_cleared(self):
@@ -158,5 +158,5 @@ class BiobankOrderApiTest(BaseTestCase):
         self.send_put(f"Biobank/specimens/{rlims_id}", request_data=new_payload)
 
         # Make sure sampleType is still set on specimen
-        updated_specimen_json = self.retrieve_specimen_json(initial_result['id'], initial_result['orderID'])
+        updated_specimen_json = self.retrieve_specimen_json(initial_result['id'])
         self.assertSpecimenJsonMatches(updated_specimen_json, initial_payload)
