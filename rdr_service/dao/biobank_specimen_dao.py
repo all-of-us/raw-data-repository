@@ -50,9 +50,6 @@ class BiobankSpecimenDao(UpdatableDao):
         order = BiobankSpecimen(rlimsId=resource['rlimsID'], orderId=resource['orderID'], testCode=resource['testcode'],
                                 biobankId=from_client_biobank_id(resource['participantID']))
 
-        if not self.exists(resource):
-            order.created = clock.CLOCK.now()
-
         for client_field, model_field, parser in [('repositoryID', 'repositoryId', None),
                                                   ('studyID', 'studyId', None),
                                                   ('cohortID', 'cohortId', None),

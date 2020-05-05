@@ -299,3 +299,5 @@ class BiobankAliquotDatasetItem(Base, BiobankSpecimenBase):
 
 event.listen(MayolinkCreateOrderHistory, "before_insert", model_insert_listener)
 event.listen(MayolinkCreateOrderHistory, "before_update", model_update_listener)
+
+event.listen(BiobankSpecimen, "before_insert", model_insert_listener)
