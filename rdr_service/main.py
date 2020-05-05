@@ -246,7 +246,7 @@ api.add_resource(
     API_PREFIX + "Biobank/aliquots/<string:aliquots_rlims_id>/disposalStatus",
     API_PREFIX + "Biobank/aliquots/<string:aliquots_rlims_id>/datasets/<string:dataset_rlims_id>",
     endpoint="biobank",
-    methods=["GET", "PUT"],
+    methods=["PUT"],
     )
 
 api.add_resource(AwardeeApi, API_PREFIX + "Awardee", API_PREFIX + "Awardee/<string:a_id>",
