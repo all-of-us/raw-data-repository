@@ -5,6 +5,7 @@ from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.model import config_utils
 from rdr_service.model.participant import Participant
 from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrderedSample, BiobankOrder
 from tests.helpers.unittest_base import BaseTestCase
@@ -82,7 +83,7 @@ class BiobankOrderApiTest(BaseTestCase):
         payload = {
             'rlimsID': 'sabrina',
             'orderID': self.bio_order.biobankOrderId,
-            'participantID': f'P{self.participant.participantId}',
+            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
             'testcode': 'test 1234567'
         }
         rlims_id = payload['rlimsID']
@@ -95,7 +96,7 @@ class BiobankOrderApiTest(BaseTestCase):
         payload = {
             'rlimsID': 'sabrina',
             'orderID': self.bio_order.biobankOrderId,
-            'participantID': f'P{self.participant.participantId}',
+            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
             'testcode': 'test 1234567',
             'repositoryID': 'repo id',
             'studyID': 'study id',
@@ -123,7 +124,7 @@ class BiobankOrderApiTest(BaseTestCase):
         payload = {
             'rlimsID': 'sabrina',
             'orderID': self.bio_order.biobankOrderId,
-            'participantID': f'P{self.participant.participantId}',
+            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
             'testcode': 'test 1234567'
         }
         rlims_id = payload['rlimsID']
@@ -140,7 +141,7 @@ class BiobankOrderApiTest(BaseTestCase):
         initial_payload = {
             'rlimsID': 'sabrina',
             'orderID': self.bio_order.biobankOrderId,
-            'participantID': f'P{self.participant.participantId}',
+            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
             'testcode': 'test 1234567',
             'sampleType': 'test type'
         }
@@ -151,7 +152,7 @@ class BiobankOrderApiTest(BaseTestCase):
         new_payload = {
             'rlimsID': 'sabrina',
             'orderID': self.bio_order.biobankOrderId,
-            'participantID': f'P{self.participant.participantId}',
+            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
             'testcode': 'test 1234567'
         }
         self.send_put(f"Biobank/specimens/{rlims_id}", request_data=new_payload, headers={"if-match": 'W/"1"'})

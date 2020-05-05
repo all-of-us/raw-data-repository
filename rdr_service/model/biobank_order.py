@@ -225,9 +225,7 @@ class BiobankSpecimen(Base, BiobankSpecimenBase, SpecimenAliquotBase):
     __tablename__ = "biobank_specimen"
 
     rlimsId = Column("rlims_id", String(80), unique=True)
-    @declared_attr
-    def participantId(cls):
-        return Column("participant_id", Integer, ForeignKey("participant.participant_id"), nullable=False)
+    biobankId = Column("biobank_id", Integer, ForeignKey("participant.biobank_id"), nullable=False)
     orderId = Column("order_id", String(80), ForeignKey("biobank_order.biobank_order_id"), primary_key=True)
     testCode = Column("test_code", String(80))
     repositoryId = Column("repository_id", String(80))

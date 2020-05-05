@@ -1,5 +1,5 @@
 from rdr_service.api_util import format_json_date
-from rdr_service.model.utils import to_client_participant_id
+from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service import clock
 from rdr_service.api_util import parse_date
 from rdr_service.dao.base_dao import UpdatableDao
@@ -25,9 +25,8 @@ class BiobankSpecimenDao(UpdatableDao):
                                                     ('testcode', 'testCode')]:
             result[client_field_name] = result.pop(model_field_name)
 
-        # Clean up participantId
-        del result['participantId']
-        result["participantID"] = to_client_participant_id(model.participantId)
+        # Translate biobankId
+        result['participantID'] = to_client_biobank_id(result.pop('biobankId'))
 
         # Format dates
         for date_field in ['collectionDate', 'confirmationDate', 'processingCompleteDate', 'created']:
@@ -45,8 +44,8 @@ class BiobankSpecimenDao(UpdatableDao):
 
     #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None):
-        order = BiobankSpecimen(rlimsId=resource['rlimsID'], participantId=participant_id, orderId=resource['orderID'],
-                                testCode=resource['testcode'])
+        order = BiobankSpecimen(rlimsId=resource['rlimsID'], orderId=resource['orderID'], testCode=resource['testcode'],
+                                biobankId=from_client_biobank_id(resource['participantID']))
 
         if not self.exists(resource):
             order.created = clock.CLOCK.now()
