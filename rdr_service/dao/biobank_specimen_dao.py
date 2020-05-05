@@ -31,7 +31,7 @@ class BiobankSpecimenDao(UpdatableDao):
         result['participantID'] = to_client_biobank_id(result.pop('biobankId'))
 
         # Format dates
-        for date_field in ['collectionDate', 'confirmationDate', 'processingCompleteDate', 'created']:
+        for date_field in ['collectionDate', 'confirmationDate', 'processingCompleteDate', 'created', 'disposalDate']:
             format_json_date(result, date_field)
 
         result_status = result['status']
@@ -41,6 +41,12 @@ class BiobankSpecimenDao(UpdatableDao):
             if status_field in result:
                 result['status'][status_field] = result.pop(status_field)
         result['status']['status'] = result_status
+
+        result['disposalStatus'] = {}
+        for disposal_client_field, disposal_model_field in [('reason', 'disposalReason'),
+                                                            ('disposalDate', 'disposalDate')]:
+            if disposal_model_field in result:
+                result['disposalStatus'][disposal_client_field] = result.pop(disposal_model_field)
 
         return result
 
@@ -66,6 +72,13 @@ class BiobankSpecimenDao(UpdatableDao):
                                               ('deviations', None),
                                               ('processingCompleteDate', parse_date)]:
                 self.map_optional_json_field_to_object(resource['status'], order, status_field_name, parser=parser)
+
+        if 'disposalStatus' in resource:
+            for disposal_client_field_name, disposal_model_field_name, parser in\
+                        [('reason', 'disposalReason', None),
+                         ('disposalDate', 'disposalDate', parse_date)]:
+                self.map_optional_json_field_to_object(resource['disposalStatus'], order, disposal_client_field_name,
+                                                       disposal_model_field_name, parser=parser)
 
         return order
 

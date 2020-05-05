@@ -70,9 +70,15 @@ class BiobankOrderApiTest(BaseTestCase):
 
         if 'status' in test_json:
             for status_field in ['status', 'freezeThawCount', 'location', 'quantity', 'quantityUnits',
-                                  'processingCompleteDate', 'deviations']:
+                                 'processingCompleteDate', 'deviations']:
                 if status_field in test_json:
                     self.assertEqual(test_json['status'][status_field], specimen_json['status'][status_field])
+
+        if 'disposalStatus' in test_json:
+            for disposal_field in ['reason', 'disposalDate']:
+                if disposal_field in test_json['disposalStatus']:
+                    self.assertEqual(test_json['disposalStatus'][disposal_field],
+                                     specimen_json['disposalStatus'][disposal_field])
 
     def retrieve_specimen_json(self, specimen_id):
         specimen = self.dao.get(specimen_id)
@@ -110,6 +116,10 @@ class BiobankOrderApiTest(BaseTestCase):
                 'quantityUnits': 'some units',
                 'processingCompleteDate': TIME_2.isoformat(),
                 'deviations': 'no deviation'
+            },
+            'disposalStatus': {
+                'reason': 'contaminated',
+                'disposalDate': TIME_2.isoformat()
             },
             'collectionDate': TIME_1.isoformat(),
             'confirmationDate': TIME_2.isoformat()
