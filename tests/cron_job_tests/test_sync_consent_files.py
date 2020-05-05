@@ -107,10 +107,11 @@ class SyncConsentFilesTest(BaseTestCase):
         self._create_participant(3, org1.organizationId, None, consents=True, ghost=False)
         self._create_participant(4, org1.organizationId, None, consents=True, ghost=True)
         self._create_participant(5, org1.organizationId, None, consents=True, email="foo@example.com")
+        self._create_participant(6, org2.organizationId, site2.siteId, consents=True)
         participant_data_list = list(sync_consent_files._iter_participants_data(['test_one', 'test_two']))
         participant_ids = [d.participant_id for d in participant_data_list]
-        self.assertEqual(len(participant_ids), 2, "finds correct number of results")
-        self.assertEqual(participant_ids, [1, 3], "finds valid participants")
+        self.assertEqual(len(participant_ids), 3, "finds correct number of results")
+        self.assertEqual(participant_ids, [1, 3, 6], "finds valid participants")
         self.assertEqual(participant_data_list[0].google_group, "group1", "Includes google group")
         self.assertEqual(participant_data_list[1].google_group, None, "allows None for google group")
 
