@@ -76,8 +76,8 @@ class SyncConsentFilesTest(BaseTestCase):
 
         source_consent_bucket = sync_consent_files.SOURCE_BUCKET
         mock_list_blobs.return_value = iter([
-            Blob('/consent.pdf', bucket=source_consent_bucket),
-            Blob('/addendum.pdf', bucket=source_consent_bucket)
+            Blob('Participant/P1/consent.pdf', bucket=source_consent_bucket),
+            Blob('Participant/P1/addendum.pdf', bucket=source_consent_bucket)
         ])
 
         org1 = self._create_org(1, 'test_one')
@@ -89,9 +89,9 @@ class SyncConsentFilesTest(BaseTestCase):
         mock_copy_cloud_file.assert_has_calls(
             [
                 mock.call("/{}/Participant/P1/consent.pdf".format(source_consent_bucket),
-                          "/{}/Participant/{}/P1/".format(org_bucket_name, site1.googleGroup)),
+                          "/{}/Participant/{}/P1/consent.pdf".format(org_bucket_name, site1.googleGroup)),
                 mock.call("/{}/Participant/P1/addendum.pdf".format(source_consent_bucket),
-                          "/{}/Participant/{}/P1/".format(org_bucket_name, site1.googleGroup))
+                          "/{}/Participant/{}/P1/addendum.pdf".format(org_bucket_name, site1.googleGroup))
             ]
         )
 
