@@ -132,7 +132,7 @@ class BiobankOrderApiTest(BaseTestCase):
 
         new_payload = payload
         new_payload['testcode'] = 'updated testcode'
-        self.send_put(f"Biobank/specimens/{rlims_id}", request_data=new_payload, headers={"if-match": 'W/"1"'})
+        self.send_put(f"Biobank/specimens/{rlims_id}", request_data=new_payload)
 
         updated_specimen_json = self.retrieve_specimen_json(initial_result['id'], initial_result['orderID'])
         self.assertSpecimenJsonMatches(updated_specimen_json, new_payload)
@@ -155,7 +155,7 @@ class BiobankOrderApiTest(BaseTestCase):
             'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
             'testcode': 'test 1234567'
         }
-        self.send_put(f"Biobank/specimens/{rlims_id}", request_data=new_payload, headers={"if-match": 'W/"1"'})
+        self.send_put(f"Biobank/specimens/{rlims_id}", request_data=new_payload)
 
         # Make sure sampleType is still set on specimen
         updated_specimen_json = self.retrieve_specimen_json(initial_result['id'], initial_result['orderID'])

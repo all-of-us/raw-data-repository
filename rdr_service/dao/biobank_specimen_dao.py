@@ -13,6 +13,9 @@ class BiobankSpecimenDao(UpdatableDao):
     def __init__(self):
         super().__init__(BiobankSpecimen)
 
+    def get_etag(self, id_, pid):  # pylint: disable=unused-argument
+        return None
+
     def to_client_json(self, model):
         result = model.asdict()
 

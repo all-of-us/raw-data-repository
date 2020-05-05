@@ -20,6 +20,6 @@ class BiobankSpecimenApi(UpdatableApi):
                 raise BadRequest("Missing field: %s" % required_field)
 
         if self.dao.exists(resource):
-            return super(BiobankSpecimenApi, self).put(kwargs['rlims_id'])
+            return super(BiobankSpecimenApi, self).put(kwargs['rlims_id'], skip_etag=True)
         else:
             return super(BiobankSpecimenApi, self).post()
