@@ -7,17 +7,6 @@ Create Date: 2020-05-05 10:54:18.411657
 """
 from alembic import op
 import sqlalchemy as sa
-import model.utils
-from sqlalchemy.dialects import mysql
-
-from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
-from rdr_service.participant_enums import WithdrawalStatus, WithdrawalReason, SuspensionStatus, QuestionnaireDefinitionStatus
-from rdr_service.participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType, BiobankOrderStatus
-from rdr_service.participant_enums import OrderShipmentTrackingStatus, OrderShipmentStatus
-from rdr_service.participant_enums import MetricSetType, MetricsKey, GenderIdentity
-from rdr_service.model.base import add_table_history_table, drop_table_history_table
-from rdr_service.model.code import CodeType
-from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 
 # revision identifiers, used by Alembic.
 revision = '9a0873b51fe0'
@@ -32,7 +21,6 @@ def upgrade(engine_name):
 
 def downgrade(engine_name):
     globals()["downgrade_%s" % engine_name]()
-
 
 
 def upgrade_rdr():
