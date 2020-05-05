@@ -89,10 +89,10 @@ class SyncConsentFilesTest(BaseTestCase):
         mock_copy_cloud_file.assert_has_calls(
             [
                 mock.call("/{}/Participant/P1/consent.pdf".format(source_consent_bucket),
-                          "/{}/Participant/{}/P1/consent.pdf".format(org_bucket_name, site1.googleGroup))
+                          "/{}/Participant/{}/P1/".format(org_bucket_name, site1.googleGroup)),
+                mock.call("/{}/Participant/P1/addendum.pdf".format(source_consent_bucket),
+                          "/{}/Participant/{}/P1/".format(org_bucket_name, site1.googleGroup))
             ]
-
-            # todo: make sure file upload paths should look like that and then get test to pass
         )
 
     def test_iter_participants_data(self):

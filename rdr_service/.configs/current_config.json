@@ -125,11 +125,15 @@
   "consent_sync_organizations": [
     {
       "CAL_PMC_UCD": {
-        "hpo_id": "cpmc_ucd",
         "bucket_name": "aou185"
       },
+      "CAL_PMC_USC": {
+        "bucket_name": "aou298"
+      },
       "VA_BOSTON_VAMC": {
-        "hpo_id": "va",
+        "bucket_name": "aou179"
+      },
+      "VA_PALO_ALTO_VAMC": {
         "bucket_name": "aou179"
       }
     }
