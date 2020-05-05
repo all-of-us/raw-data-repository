@@ -117,7 +117,7 @@
             "code": {
               "coding": [
                 {
-                  "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+                  "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
                   "code": "arm-circumference",
                   "display": "Arm circumference"
                 }
@@ -152,7 +152,7 @@
         "code": {
             "coding": [
               {
-                "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+                "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
                 "code": "protocol-modifications-height",
                 "display": "Protocol modifications: Height"
               }
@@ -210,7 +210,7 @@
         "code": {
           "coding": [
             {
-              "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
               "code": "pre-pregnancy-weight",
               "display": "Approximate pre-pregnancy weight"
             }
@@ -275,7 +275,7 @@
         "code": {
             "coding": [
               {
-                "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+                "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
                 "code": "protocol-modifications-weight",
                 "display": "Protocol modifications: Weight"
               }
@@ -351,7 +351,7 @@
             "code": {
               "coding": [
                 {
-                  "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+                  "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
                   "code": "heart-rhythm-status",
                   "display": "Heart rhythm status"
                 }
@@ -454,7 +454,7 @@
         "code": {
             "coding": [
               {
-                "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+                "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
                 "code": "protocol-modifications-waist-circumference",
                 "display": "Protocol modifications: Waist circumference"
               }
@@ -519,7 +519,7 @@
             {
               "code": "wheelchair-bound-status",
               "display": "Are you wheelchair-bound?",
-              "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation"
+              "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements"
             }
           ],
           "text": "Are you wheelchair-bound?"
