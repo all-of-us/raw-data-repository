@@ -1,7 +1,7 @@
 """add columns to gc metrics for wgs
 
 Revision ID: 9a0873b51fe0
-Revises: a6333953cc2b
+Revises: 235693878327
 Create Date: 2020-05-05 10:54:18.411657
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '9a0873b51fe0'
-down_revision = 'a6333953cc2b'
+down_revision = '235693878327'
 branch_labels = None
 depends_on = None
 
