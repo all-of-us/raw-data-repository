@@ -153,7 +153,7 @@ class BQRWBWorkspaceUsersSchema(BQSchema):
     role_id = BQField('role_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     status = BQField('status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     status_id = BQField('status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-    researcher_id = BQField('researcher_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    researcher_id = BQField('researcher_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQRWBWorkspaceUsers(BQTable):
