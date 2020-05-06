@@ -126,6 +126,7 @@ class BiobankSpecimenDao(UpdatableDao):
 
 
 class BiobankSpecimenAttributeDao(UpdatableDao):
+    #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
                          specimen_rlims_id=None):
         attribute = BiobankSpecimenAttribute(name=resource['name'], specimen_rlims_id=specimen_rlims_id)
