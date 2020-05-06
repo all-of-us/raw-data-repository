@@ -37,6 +37,10 @@ def rebuild_bigquery_handler():
     Cron job handler, setup queued tasks to rebuild bigquery data.
     Tasks call the default API service, so we want to use small batch sizes.
     """
+    if config.GAE_PROJECT not in ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']:
+        logging.warning(f'BigQuery operations not supported in {config.GAE_PROJECT}, skipping.')
+        return
+
     batch_size = 250
 
     ro_dao = BigQuerySyncDao(backup=True)
@@ -103,6 +107,10 @@ def daily_rebuild_bigquery_handler():
     Cron job handler, setup queued tasks to with participants that need to be rebuilt.
     Tasks call the default API service, so we want to use small batch sizes.
     """
+    if config.GAE_PROJECT not in ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']:
+        logging.warning(f'BigQuery operations not supported in {config.GAE_PROJECT}, skipping.')
+        return
+
     batch_size = 250
 
     ro_dao = BigQuerySyncDao(backup=True)
@@ -251,6 +259,9 @@ def sync_bigquery_handler(dryrun=False):
     # https://cloud.google.com/bigquery/docs/reference/rest/v2/tabledata/insertAll
     # https://cloud.google.com/bigquery/troubleshooting-errors#streaming
     """
+    if config.GAE_PROJECT not in ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']:
+        return
+
     ro_dao = BigQuerySyncDao(backup=True)
     # https://github.com/googleapis/google-api-python-client/issues/299
     # https://github.com/pior/appsecrets/issues/7
