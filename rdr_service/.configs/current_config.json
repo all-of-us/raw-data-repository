@@ -121,5 +121,48 @@
   ],
   "mayolink_endpoint": [
     "https://test.orders.mayocliniclabs.com/orders/create.xml"
+  ],
+  "consent_sync_organizations": [
+    {
+      "CAL_PMC_UCD": {
+        "bucket_name": "aou185"
+      },
+      "CAL_PMC_USC": {
+        "bucket_name": "aou298"
+      },
+      "VA_BOSTON_VAMC": {
+        "bucket_name": "aou179"
+      },
+      "VA_PALO_ALTO_VAMC": {
+        "bucket_name": "aou179"
+      },
+      "VA_ATLANTA_VAMC": {
+        "bucket_name": "aou179"
+      },
+      "VA_MINNEAPOLIS_VAMC": {
+        "bucket_name": "aou179"
+      },
+      "VA_PHOENIX_VAMC":  {
+        "bucket_name": "aou179"
+      },
+      "VA_SAN_DIEGO_VAMC": {
+        "bucket_name": "aou179"
+      },
+      "VA_HOUSTON_VAMC":  {
+        "bucket_name": "aou179"
+      },
+      "VA_LEAVENWORTH_VAMC": {
+        "bucket_name": "aou179"
+      },
+      "VA_MANHATTAN_VAMC":  {
+        "bucket_name": "aou179"
+      },
+      "VA_MILWAUKEE_VAMC": {
+        "bucket_name": "aou179"
+      },
+      "VA_EVENT":  {
+        "bucket_name": "aou179"
+      }
+    }
   ]
 }

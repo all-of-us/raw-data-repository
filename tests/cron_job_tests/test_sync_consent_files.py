@@ -1,6 +1,7 @@
 import mock
 
 from google.cloud.storage import Blob
+from rdr_service import config
 from rdr_service.api_util import upload_from_string, open_cloud_file, list_blobs
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -12,40 +13,6 @@ from rdr_service.model.site import Site
 from rdr_service.offline import sync_consent_files
 from rdr_service.participant_enums import UNSET_HPO_ID
 from tests.helpers.unittest_base import BaseTestCase
-
-
-class TransformationTests(BaseTestCase):
-    @staticmethod
-    @mock.patch("rdr_service.offline.sync_consent_files.GoogleSheetCSVReader")
-    def _create_fake_org_map(reader):
-        reader.return_value = [
-            {  # active, parent
-                sync_consent_files.COLUMN_ORG_ID: "org1",
-                sync_consent_files.COLUMN_AGGREGATING_ORG_ID: "org1",
-                sync_consent_files.COLUMN_BUCKET_NAME: "bucket1",
-                sync_consent_files.COLUMN_ORG_STATUS: sync_consent_files.ORG_STATUS_ACTIVE,
-            },
-            {  # active, child
-                sync_consent_files.COLUMN_ORG_ID: "org2",
-                sync_consent_files.COLUMN_AGGREGATING_ORG_ID: "org1",
-                sync_consent_files.COLUMN_BUCKET_NAME: "",
-                sync_consent_files.COLUMN_ORG_STATUS: sync_consent_files.ORG_STATUS_ACTIVE,
-            },
-            {  # inactive
-                sync_consent_files.COLUMN_ORG_ID: "org3",
-                sync_consent_files.COLUMN_AGGREGATING_ORG_ID: "org3",
-                sync_consent_files.COLUMN_BUCKET_NAME: "bucket2",
-                sync_consent_files.COLUMN_ORG_STATUS: "foo",
-            },
-        ]
-        return sync_consent_files._load_org_data_map(None)
-
-    def test_load_org_map_processing(self):
-        org_data_map = self._create_fake_org_map()
-        self.assertEqual(len(org_data_map), 2)
-        self.assertEqual(
-            org_data_map["org2"].bucket_name, org_data_map["org1"].bucket_name, "bucket name gets inherited"
-        )
 
 
 class SyncConsentFilesTest(BaseTestCase):
@@ -61,11 +28,23 @@ class SyncConsentFilesTest(BaseTestCase):
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
 
+        self.org_map_data = {
+            "test_one": {
+                "hpo_id": "t_1",
+                "bucket_name": "testbucket123"
+            },
+            "test_two": {
+                "hpo_id": "t_2",
+                "bucket_name": "testbucket456"
+            }
+        }
+        config.override_setting(config.CONSENT_SYNC_ORGANIZATIONS, [self.org_map_data])
+
     def tearDown(self):
         super(SyncConsentFilesTest, self).tearDown()
 
-    def _create_org(self, id_):
-        org = Organization(organizationId=id_, externalId=id_, displayName=id_, hpoId=UNSET_HPO_ID)
+    def _create_org(self, id_, external_id):
+        org = Organization(organizationId=id_, externalId=external_id, displayName=id_, hpoId=UNSET_HPO_ID)
         self.org_dao.insert(org)
         return org
 
@@ -90,11 +69,37 @@ class SyncConsentFilesTest(BaseTestCase):
         self.summary_dao.insert(summary)
         return participant
 
+    @mock.patch("rdr_service.offline.sync_consent_files.list_blobs")
+    @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
+    def test_basic_consent_file_copy(self, mock_copy_cloud_file, mock_list_blobs):
+        mock_copy_cloud_file.return_value = True
+
+        source_consent_bucket = sync_consent_files.SOURCE_BUCKET
+        mock_list_blobs.return_value = iter([
+            Blob('Participant/P1/consent.pdf', bucket=source_consent_bucket),
+            Blob('Participant/P1/addendum.pdf', bucket=source_consent_bucket)
+        ])
+
+        org1 = self._create_org(1, 'test_one')
+        site1 = self._create_site(1001, "group1")
+        self._create_participant(1, org1.organizationId, site1.siteId, consents=True)
+        sync_consent_files.do_sync_consent_files()
+
+        org_bucket_name = self.org_map_data[org1.externalId]['bucket_name']
+        mock_copy_cloud_file.assert_has_calls(
+            [
+                mock.call("/{}/Participant/P1/consent.pdf".format(source_consent_bucket),
+                          "/{}/Participant/{}/P1/consent.pdf".format(org_bucket_name, site1.googleGroup)),
+                mock.call("/{}/Participant/P1/addendum.pdf".format(source_consent_bucket),
+                          "/{}/Participant/{}/P1/addendum.pdf".format(org_bucket_name, site1.googleGroup))
+            ]
+        )
+
     def test_iter_participants_data(self):
         """should list consenting participants
     """
-        org1 = self._create_org(1)
-        org2 = self._create_org(2)
+        org1 = self._create_org(1, 'test_one')
+        org2 = self._create_org(2, 'test_two')
         site1 = self._create_site(1001, "group1")
         site2 = self._create_site(1002, "group2")
         self._create_participant(1, org1.organizationId, site1.siteId, consents=True, null_email=True)
@@ -102,10 +107,11 @@ class SyncConsentFilesTest(BaseTestCase):
         self._create_participant(3, org1.organizationId, None, consents=True, ghost=False)
         self._create_participant(4, org1.organizationId, None, consents=True, ghost=True)
         self._create_participant(5, org1.organizationId, None, consents=True, email="foo@example.com")
-        participant_data_list = list(sync_consent_files._iter_participants_data())
+        self._create_participant(6, org2.organizationId, site2.siteId, consents=True)
+        participant_data_list = list(sync_consent_files._iter_participants_data(['test_one', 'test_two']))
         participant_ids = [d.participant_id for d in participant_data_list]
-        self.assertEqual(len(participant_ids), 2, "finds correct number of results")
-        self.assertEqual(participant_ids, [1, 3], "finds valid participants")
+        self.assertEqual(len(participant_ids), 3, "finds correct number of results")
+        self.assertEqual(participant_ids, [1, 3, 6], "finds valid participants")
         self.assertEqual(participant_data_list[0].google_group, "group1", "Includes google group")
         self.assertEqual(participant_data_list[1].google_group, None, "allows None for google group")
 
