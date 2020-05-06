@@ -15,6 +15,28 @@ class BiobankSpecimenDao(UpdatableDao):
     def get_etag(self, id_, pid):  # pylint: disable=unused-argument
         return None
 
+    @staticmethod
+    def to_client_status(source_dict):
+        status_json = {}
+        for status_field in ['deviations', 'freezeThawCount', 'location', 'processingCompleteDate', 'quantity',
+                             'quantityUnits', 'status']:
+            if status_field in source_dict:
+                status_json[status_field] = source_dict.pop(status_field)
+
+        format_json_date(status_json, 'processingCompleteDate')
+        return status_json
+
+    @staticmethod
+    def to_client_disposal(source_dict):
+        disposal_status = {}
+        for disposal_client_field, disposal_model_field in [('reason', 'disposalReason'),
+                                                            ('disposalDate', 'disposalDate')]:
+            if disposal_model_field in source_dict:
+                disposal_status[disposal_client_field] = source_dict.pop(disposal_model_field)
+
+        format_json_date(disposal_status, 'disposalDate')
+        return disposal_status
+
     def to_client_json(self, model):
         result = model.asdict()
 
@@ -31,22 +53,11 @@ class BiobankSpecimenDao(UpdatableDao):
         result['participantID'] = to_client_biobank_id(result.pop('biobankId'))
 
         # Format dates
-        for date_field in ['collectionDate', 'confirmationDate', 'processingCompleteDate', 'created', 'disposalDate']:
+        for date_field in ['collectionDate', 'confirmationDate']:
             format_json_date(result, date_field)
 
-        result_status = result['status']
-        result['status'] = {}
-        for status_field in ['deviations', 'freezeThawCount', 'location', 'processingCompleteDate', 'quantity',
-                             'quantityUnits']:
-            if status_field in result:
-                result['status'][status_field] = result.pop(status_field)
-        result['status']['status'] = result_status
-
-        result['disposalStatus'] = {}
-        for disposal_client_field, disposal_model_field in [('reason', 'disposalReason'),
-                                                            ('disposalDate', 'disposalDate')]:
-            if disposal_model_field in result:
-                result['disposalStatus'][disposal_client_field] = result.pop(disposal_model_field)
+        result['status'] = self.to_client_status(result)
+        result['disposalStatus'] = self.to_client_disposal(result)
 
         with self.session() as session:
             attributes = session.query(BiobankSpecimenAttribute).filter(
@@ -64,7 +75,29 @@ class BiobankSpecimenDao(UpdatableDao):
                 for aliquot in aliquots:
                     result['aliquots'].append(aliquot_dao.to_client_json(aliquot))
 
+        # Remove fields internal fields from output
+        for field_name in ['created', 'modified']:
+            del result[field_name]
+
         return result
+
+    @staticmethod
+    def read_client_status(status_source, model):
+        for status_field_name, parser in [('status', None),
+                                          ('freezeThawCount', None),
+                                          ('location', None),
+                                          ('quantity', None),
+                                          ('quantityUnits', None),
+                                          ('deviations', None),
+                                          ('processingCompleteDate', parse_date)]:
+            BiobankSpecimenDao.map_optional_json_field_to_object(status_source, model, status_field_name, parser=parser)
+
+    @staticmethod
+    def read_client_disposal(status_source, model):
+        for disposal_client_field_name, disposal_model_field_name, parser in [('reason', 'disposalReason', None),
+                                                                              ('disposalDate', None, parse_date)]:
+            BiobankSpecimenDao.map_optional_json_field_to_object(status_source, model, disposal_client_field_name,
+                                                                 disposal_model_field_name, parser=parser)
 
     #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None):
@@ -74,27 +107,16 @@ class BiobankSpecimenDao(UpdatableDao):
         for client_field, model_field, parser in [('repositoryID', 'repositoryId', None),
                                                   ('studyID', 'studyId', None),
                                                   ('cohortID', 'cohortId', None),
-                                                  ('sampleType', 'sampleType', None),
-                                                  ('collectionDate', 'collectionDate', parse_date),
+                                                  ('sampleType', None, None),
+                                                  ('collectionDate', None, parse_date),
                                                   ('confirmationDate', 'confirmedDate', parse_date)]:
             self.map_optional_json_field_to_object(resource, order, client_field, model_field, parser)
 
         if 'status' in resource:
-            for status_field_name, parser in [('status', None),
-                                              ('freezeThawCount', None),
-                                              ('location', None),
-                                              ('quantity', None),
-                                              ('quantityUnits', None),
-                                              ('deviations', None),
-                                              ('processingCompleteDate', parse_date)]:
-                self.map_optional_json_field_to_object(resource['status'], order, status_field_name, parser=parser)
+            self.read_client_status(resource['status'], order)
 
         if 'disposalStatus' in resource:
-            for disposal_client_field_name, disposal_model_field_name, parser in\
-                        [('reason', 'disposalReason', None),
-                         ('disposalDate', 'disposalDate', parse_date)]:
-                self.map_optional_json_field_to_object(resource['disposalStatus'], order, disposal_client_field_name,
-                                                       disposal_model_field_name, parser=parser)
+            self.read_client_disposal(resource['disposalStatus'], order)
 
         if 'attributes' in resource:
             attribute_dao = BiobankSpecimenAttributeDao(BiobankSpecimenAttribute)
@@ -153,9 +175,10 @@ class BiobankSpecimenAttributeDao(UpdatableDao):
 
         # Remove fields internal fields from output
         for field_name in ['id', 'created', 'modified', 'specimen_id', 'specimen_rlims_id']:
-            result.pop(field_name)
+            del result[field_name]
 
         return result
+
 
 class BiobankAliquotDao(UpdatableDao):
     #pylint: disable=unused-argument
@@ -163,10 +186,36 @@ class BiobankAliquotDao(UpdatableDao):
                          specimen_rlims_id=None):
         aliquot = BiobankAliquot(rlimsId=resource['rlimsID'], specimen_rlims_id=specimen_rlims_id)
 
+        for client_field, model_field in [('sampleType', None),
+                                          ('childPlanService', None),
+                                          ('initialTreatment', None),
+                                          ('containerTypeID', 'containerTypeId')]:
+            BiobankSpecimenDao.map_optional_json_field_to_object(resource, aliquot, client_field, model_field)
+
+        if 'status' in resource:
+            BiobankSpecimenDao.read_client_status(resource['status'], aliquot)
+
+        if 'disposalStatus' in resource:
+            BiobankSpecimenDao.read_client_disposal(resource['disposalStatus'], aliquot)
+
         return aliquot
 
     def to_client_json(self, model):
         result = model.asdict()
+
+        for client_field_name, model_field_name in [('rlimsID', 'rlimsId'),
+                                                    ('containerTypeID', 'containerTypeId')]:
+            result[client_field_name] = result.pop(model_field_name)
+
+        result['status'] = BiobankSpecimenDao.to_client_status(result)
+        result['disposalStatus'] = BiobankSpecimenDao.to_client_disposal(result)
+
+        #todo: add created and modified listeners for everything
+
+        # Remove fields internal fields from output
+        for field_name in ['id', 'created', 'modified', 'specimen_id', 'specimen_rlims_id', 'parent_aliquot_id',
+                           'parent_aliquot_rlims_id']:
+            del result[field_name]
 
         return result
 

@@ -67,15 +67,31 @@ class BiobankOrderApiTest(BaseTestCase):
         return self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
 
     @staticmethod
-    def isMatchingAttribute(specimen_attribute, test_attribute):
-        return specimen_attribute['name'] == test_attribute['name'] and\
-               specimen_attribute['value'] == test_attribute['value']
+    def isMatchingJson(actual_json, expected_json):
+        for key in expected_json:
+            if expected_json[key] != actual_json[key]:
+                return False
 
-    def assertAttributesMatch(self, specimen_attributes, test_attributes):
-        for test_attribute in test_attributes:
-            if not any(self.isMatchingAttribute(specimen_attribute, test_attribute) for
-                       specimen_attribute in specimen_attributes):
-                self.fail("Attribute not found on specimen")
+        return True
+
+    def isMatchingAliquot(self, actual_aliquot, expected_aliquot):
+        if 'status' in expected_aliquot:
+            if not self.isMatchingJson(actual_aliquot['status'], expected_aliquot['status']):
+                return False
+            del expected_aliquot['status']
+
+        if 'disposalStatus' in expected_aliquot:
+            if not self.isMatchingJson(actual_aliquot['disposalStatus'], expected_aliquot['disposalStatus']):
+                return False
+            del expected_aliquot['disposalStatus']
+
+        return self.isMatchingJson(actual_aliquot, expected_aliquot)
+
+    def assertCollectionsMatch(self, actual_list, expected_list, comparator, message):
+        for expected_item in expected_list:
+            if not any(comparator(actual_item, expected_item) for
+                       actual_item in actual_list):
+                self.fail(message)
 
     def assertSpecimenJsonMatches(self, specimen_json, test_json):
         for top_level_field in ['rlimsID', 'orderID', 'participantID', 'testcode', 'repositoryID', 'studyID',
@@ -96,10 +112,12 @@ class BiobankOrderApiTest(BaseTestCase):
                                      specimen_json['disposalStatus'][disposal_field])
 
         if 'attributes' in test_json:
-            self.assertAttributesMatch(specimen_json['attributes'], test_json['attributes'])
+            self.assertCollectionsMatch(specimen_json['attributes'], test_json['attributes'], self.isMatchingJson,
+                                        "Expected attributes to match")
 
         if 'aliquots' in test_json:
-            self.assertJsonResponseMatches(test_json['aliquots'], specimen_json['aliquots'])
+            self.assertCollectionsMatch(specimen_json['aliquots'], test_json['aliquots'], self.isMatchingAliquot,
+                                        "Expected aliquots to match")
 
     def retrieve_specimen_json(self, specimen_id):
         specimen = self.dao.get(specimen_id)
@@ -260,9 +278,6 @@ class BiobankOrderApiTest(BaseTestCase):
                 },
                 {
                     "rlimsID": "second"
-                },
-                {
-                    "rlimsID": "another"
                 }
             ]
         }
@@ -273,27 +288,34 @@ class BiobankOrderApiTest(BaseTestCase):
 
     def test_simple_aliquot_data(self):
         payload = {
+            'rlimsID': 'sabrina',
+            'orderID': self.bio_order.biobankOrderId,
+            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
+            'testcode': 'test 1234567',
             "aliquots": [
                 {
-                    "rlimsID": "string",
-                    "sampleType": "string",
+                    "rlimsID": "other",
+                    "sampleType": "test",
                     "status": {
-                        "status": "string",
-                        "freezeThawCount": 0,
-                        "location": "string",
-                        "quantity": "string",
-                        "quantityUnits": "string",
-                        "processingCompleteDate": "2020-04-30T20:39:53.301Z",
-                        "deviations": "string"
+                        "status": "frozen",
+                        "freezeThawCount": 3,
+                        "location": "biobank",
+                        "quantity": "5",
+                        "quantityUnits": "tube",
+                        "processingCompleteDate": TIME_1.isoformat(),
+                        "deviations": "no deviations"
                     },
                     "disposalStatus": {
-                        "reason": "string",
-                        "disposalDate": "2020-04-30T20:39:53.301Z"
+                        "reason": "garbage",
+                        "disposalDate": TIME_2.isoformat()
                     },
-                    "childPlanService": "string",
-                    "initialTreatment": "string",
-                    "containerTypeID": "string",
+                    "childPlanService": "feed",
+                    "initialTreatment": "pill",
+                    "containerTypeID": "tubular",
                 }
             ]
         }
-        pass
+        result = self.putSpecimen(payload)
+
+        saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
+        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
