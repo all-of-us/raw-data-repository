@@ -218,17 +218,15 @@ class SpecimenAliquotBase(object):
     quantity = Column("quantity", String(80))
     quantityUnits = Column("quantity_units", String(80))
     processingCompleteDate = Column("processing_complete_date", UTCDateTime)
-    deviations = Column('deviations', JSON, nullable=False)
+    deviations = Column('deviations', JSON)
 
 
 class BiobankSpecimen(Base, BiobankSpecimenBase, SpecimenAliquotBase):
     __tablename__ = "biobank_specimen"
 
     rlimsId = Column("rlims_id", String(80), unique=True)
-    @declared_attr
-    def participantId(cls):
-        return Column("participant_id", Integer, ForeignKey("participant.participant_id"), nullable=False)
-    orderId = Column("order_id", String(80), ForeignKey("biobank_order.biobank_order_id"), primary_key=True)
+    biobankId = Column("biobank_id", Integer, ForeignKey("participant.biobank_id"), nullable=False)
+    orderId = Column("order_id", String(80), ForeignKey("biobank_order.biobank_order_id"))
     testCode = Column("test_code", String(80))
     repositoryId = Column("repository_id", String(80))
     studyId = Column("study_id", String(80))
@@ -301,3 +299,5 @@ class BiobankAliquotDatasetItem(Base, BiobankSpecimenBase):
 
 event.listen(MayolinkCreateOrderHistory, "before_insert", model_insert_listener)
 event.listen(MayolinkCreateOrderHistory, "before_update", model_update_listener)
+
+event.listen(BiobankSpecimen, "before_insert", model_insert_listener)
