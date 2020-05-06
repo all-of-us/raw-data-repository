@@ -41,6 +41,8 @@ class BQRWBResearcherSchema(BQSchema):
     disability = BQField('disability', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     disability_id = BQField('disability_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
+    creation_time = BQField('creation_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+
 
 class BQRWBResearcher(BQTable):
     """ Code BigQuery Table """
