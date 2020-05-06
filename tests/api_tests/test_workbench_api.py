@@ -313,6 +313,7 @@ class WorkbenchApiTest(BaseTestCase):
                     }
                 ],
                 "excludeFromPublicDirectory": False,
+                "ethicalLegalSocialImplications": True,
                 "reviewRequested": True,
                 "diseaseFocusedResearch": True,
                 "diseaseFocusedResearchName": "string",
@@ -353,6 +354,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(workspace_dao.count(), 1)
         self.assertEqual(results[0].workspaceSourceId, 1)
         self.assertEqual(results[0].name, 'string')
+        self.assertEqual(results[0].ethicalLegalSocialImplications, True)
         self.assertEqual(results[0].scientificApproaches, 'string')
         self.assertEqual(results[0].intendToStudy, 'string')
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
