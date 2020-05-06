@@ -2,7 +2,7 @@ from rdr_service.api_util import format_json_date
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.api_util import parse_date
 from rdr_service.dao.base_dao import UpdatableDao
-from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute
+from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankAliquot
 
 
 class BiobankSpecimenDao(UpdatableDao):
@@ -57,6 +57,13 @@ class BiobankSpecimenDao(UpdatableDao):
                 for attribute in attributes:
                     result['attributes'].append(attribute_dao.to_client_json(attribute))
 
+            aliquots = session.query(BiobankAliquot).filter(BiobankAliquot.specimen_id == model.id)
+            if aliquots.count() > 0:
+                result['aliquots'] = []
+                aliquot_dao = BiobankAliquotDao(BiobankAliquot)
+                for aliquot in aliquots:
+                    result['aliquots'].append(aliquot_dao.to_client_json(aliquot))
+
         return result
 
     #pylint: disable=unused-argument
@@ -94,6 +101,11 @@ class BiobankSpecimenDao(UpdatableDao):
             order.attributes = [attribute_dao.from_client_json(attr_json, specimen_rlims_id=order.rlimsId)
                                 for attr_json in resource['attributes']]
 
+        if 'aliquots' in resource:
+            aliquot_dao = BiobankAliquotDao(BiobankAliquot)
+            order.aliquots = [aliquot_dao.from_client_json(attr_json, specimen_rlims_id=order.rlimsId)
+                              for attr_json in resource['aliquots']]
+
         return order
 
     @staticmethod
@@ -127,6 +139,8 @@ class BiobankSpecimenAttributeDao(UpdatableDao):
     #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
                          specimen_rlims_id=None):
+        #todo: make sure things like specimen_rlims_id, specimen_id,
+        # and other keys that don't get returned to client are stored
         attribute = BiobankSpecimenAttribute(name=resource['name'], specimen_rlims_id=specimen_rlims_id)
 
         if 'value' in resource:
@@ -142,3 +156,17 @@ class BiobankSpecimenAttributeDao(UpdatableDao):
             result.pop(field_name)
 
         return result
+
+class BiobankAliquotDao(UpdatableDao):
+    #pylint: disable=unused-argument
+    def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
+                         specimen_rlims_id=None):
+        aliquot = BiobankAliquot(rlimsId=resource['rlimsID'], specimen_rlims_id=specimen_rlims_id)
+
+        return aliquot
+
+    def to_client_json(self, model):
+        result = model.asdict()
+
+        return result
+

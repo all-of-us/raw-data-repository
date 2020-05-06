@@ -224,6 +224,9 @@ class SpecimenAliquotBase(object):
 class BiobankSpecimen(Base, BiobankSpecimenBase, SpecimenAliquotBase):
     __tablename__ = "biobank_specimen"
 
+    aliquots = relationship("BiobankAliquot", cascade="all, delete-orphan",
+                              foreign_keys="BiobankAliquot.specimen_id", lazy="joined",
+                              order_by="BiobankAliquot.rlimsId")
     attributes = relationship("BiobankSpecimenAttribute", cascade="all, delete-orphan",
                               foreign_keys="BiobankSpecimenAttribute.specimen_id", lazy="joined",
                               order_by="BiobankSpecimenAttribute.name")

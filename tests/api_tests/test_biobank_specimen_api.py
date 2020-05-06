@@ -98,6 +98,9 @@ class BiobankOrderApiTest(BaseTestCase):
         if 'attributes' in test_json:
             self.assertAttributesMatch(specimen_json['attributes'], test_json['attributes'])
 
+        if 'aliquots' in test_json:
+            self.assertJsonResponseMatches(test_json['aliquots'], specimen_json['aliquots'])
+
     def retrieve_specimen_json(self, specimen_id):
         specimen = self.dao.get(specimen_id)
         json = self.dao.to_client_json(specimen)
@@ -244,3 +247,53 @@ class BiobankOrderApiTest(BaseTestCase):
 
         saved_specimen_client_json = self.retrieve_specimen_json(initial_result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+
+    def test_minimal_aliquot_data(self):
+        payload = {
+            'rlimsID': 'sabrina',
+            'orderID': self.bio_order.biobankOrderId,
+            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
+            'testcode': 'test 1234567',
+            "aliquots": [
+                {
+                    "rlimsID": "aliquot_one"
+                },
+                {
+                    "rlimsID": "second"
+                },
+                {
+                    "rlimsID": "another"
+                }
+            ]
+        }
+        result = self.putSpecimen(payload)
+
+        saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
+        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+
+    def test_simple_aliquot_data(self):
+        payload = {
+            "aliquots": [
+                {
+                    "rlimsID": "string",
+                    "sampleType": "string",
+                    "status": {
+                        "status": "string",
+                        "freezeThawCount": 0,
+                        "location": "string",
+                        "quantity": "string",
+                        "quantityUnits": "string",
+                        "processingCompleteDate": "2020-04-30T20:39:53.301Z",
+                        "deviations": "string"
+                    },
+                    "disposalStatus": {
+                        "reason": "string",
+                        "disposalDate": "2020-04-30T20:39:53.301Z"
+                    },
+                    "childPlanService": "string",
+                    "initialTreatment": "string",
+                    "containerTypeID": "string",
+                }
+            ]
+        }
+        pass
