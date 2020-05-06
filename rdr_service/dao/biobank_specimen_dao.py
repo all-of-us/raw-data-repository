@@ -235,6 +235,7 @@ class BiobankAliquotDao(UpdatableDao):
 
 
 class BiobankAliquotDatasetDao(UpdatableDao):
+    #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
                          aliquot_rlims_id=None):
         dataset = BiobankAliquotDataset(rlimsId=resource['rlimsID'], aliquot_rlims_id=aliquot_rlims_id)
@@ -270,6 +271,7 @@ class BiobankAliquotDatasetDao(UpdatableDao):
 
 
 class BiobankAliquotDatasetItemDao(UpdatableDao):
+    #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
                          dataset_rlims_id=None):
         item = BiobankAliquotDatasetItem(paramId=resource['paramID'], dataset_rlims_id=dataset_rlims_id)
