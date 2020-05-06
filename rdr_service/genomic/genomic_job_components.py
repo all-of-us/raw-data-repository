@@ -578,10 +578,10 @@ class GenomicFileMover:
 
 class GenomicReconciler:
     """ This component handles reconciliation between genomic datasets """
-    def __init__(self, run_id, archive_folder=None, file_mover=None, bucket_name=None):
+    def __init__(self, run_id, job_id, archive_folder=None, file_mover=None, bucket_name=None):
 
         self.run_id = run_id
-
+        self.job_id = job_id
         self.bucket_name = bucket_name
         self.archive_folder = archive_folder
         self.cvl_file_name = None
@@ -593,6 +593,23 @@ class GenomicReconciler:
 
         # Other components
         self.file_mover = file_mover
+
+        # Data files and names will be different
+        self.genotyping_file_types = (('idatRedReceived', ".red.idat.gz"),
+                                      ('idatGreenReceived', ".grn.idat.md5"),
+                                      ('vcfReceived', ".vcf.gz"),
+                                      ('tbiReceived', ".vcf.gz.tbi"))
+
+        self.sequencing_file_types = (("hfVcfReceived", "hard-filtered.vcf.gz"),
+                                      ("hfVcfTbiReceived", "hard-filtered.vcf.gz.tbi"),
+                                      ("hfVcfMd5Received", "hard-filtered.vcf.md5sum"),
+                                      ("rawVcfReceived", ".vcf.gz"),
+                                      ("rawVcfTbiReceived", ".vcf.gz.tbi"),
+                                      ("rawVcfMd5Received", ".vcf.md5sum"),
+                                      ("cramReceived", ".cram"),
+                                      ("cramMd5Received", ".cram.md5sum"),
+                                      ("craiReceived", ".crai"),
+                                      ("craiMd5Received", ".crai.md5sum"))
 
     def reconcile_metrics_to_manifest(self):
         """ The main method for the metrics vs. manifest reconciliation """
@@ -612,20 +629,15 @@ class GenomicReconciler:
             return GenomicSubProcessResult.ERROR
 
     def reconcile_metrics_to_genotyping_data(self):
-        """ The main method for the metrics vs. sequencing reconciliation
+        """ The main method for the AW2 manifest vs. array data reconciliation
         :return: result code
         """
         metrics = self.metrics_dao.get_with_missing_gen_files()
         # Iterate over metrics, searching the bucket for filenames
         for metric in metrics:
             file = self.file_dao.get(metric.genomicFileProcessedId)
-
-            file_types = (('idatRedReceived', ".red.idat.gz"),
-                          ('idatGreenReceived', ".grn.idat.md5"),
-                          ('vcfReceived', ".vcf.gz"),
-                          ('tbiReceived', ".vcf.gz.tbi"))
             missing_data_files = []
-            for file_type in file_types:
+            for file_type in self.genotyping_file_types:
                 if not getattr(metric, file_type[0]):
                     filename = f"{metric.chipwellbarcode}{file_type[1]}"
                     file_exists = self._check_genotyping_file_exists(file.bucketName, filename)
@@ -638,16 +650,54 @@ class GenomicReconciler:
             if len(missing_data_files) > 0:
                 alert = GenomicAlertHandler()
 
-                summary = '[Genomic System Alert] Missing AW2 Manifest Files'
-                description = "The following AW2 manifest file listed missing genotyping data."
-                description += f"\nManifest File: {file.fileName}"
-                description += f"\nGenomic Job Run ID: {self.run_id}"
-                description += f"\nMissing Genotype Data: {missing_data_files}"
-
+                summary = '[Genomic System Alert] Missing AW2 Array Manifest Files'
+                description = self._compile_missing_data_alert(file.fileName, missing_data_files)
                 alert.make_genomic_alert(summary, description)
 
+        return GenomicSubProcessResult.SUCCESS
+
+    def reconcile_metrics_to_sequencing_data(self):
+        """ The main method for the AW2 manifest vs. sequencing data reconciliation
+        :return: result code
+        """
+        metrics = self.metrics_dao.get_with_missing_seq_files()
+        # TODO: Update filnames
+        # Iterate over metrics, searching the bucket for filenames
+        for metric in metrics:
+            file = self.file_dao.get(metric.genomicFileProcessedId)
+            missing_data_files = []
+            for file_type in self.sequencing_file_types:
+                if not getattr(metric, file_type[0]):
+                    filename = f"{metric.biobankId}{file_type[1]}"
+                    file_exists = self._check_genotyping_file_exists(file.bucketName, filename)
+                    setattr(metric, file_type[0], file_exists)
+                    if not file_exists:
+                        missing_data_files.append(filename)
+            self.metrics_dao.update(metric)
+
+            # Make a roc ticket for missing data files
+            if len(missing_data_files) > 0:
+                alert = GenomicAlertHandler()
+
+                summary = '[Genomic System Alert] Missing AW2 WGS Manifest Files'
+                description = self._compile_missing_data_alert(file.fileName, missing_data_files)
+                alert.make_genomic_alert(summary, description)
 
         return GenomicSubProcessResult.SUCCESS
+
+    def _compile_missing_data_alert(self, _filename, _missing_data):
+        """
+        Compiles the description to include in a GenomicAlert
+        :param _filename:
+        :param _missing_data: list of files
+        :return: summary, description
+        """
+        description = "The following AW2 manifest file listed missing genotyping data."
+        description += f"\nManifest File: {_filename}"
+        description += f"\nGenomic Job Run ID: {self.run_id}"
+        description += f"\nMissing Genotype Data: {_missing_data}"
+
+        return description
 
     def generate_cvl_reconciliation_report(self):
         """

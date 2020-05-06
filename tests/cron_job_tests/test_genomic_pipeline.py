@@ -985,6 +985,59 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(0, gc_record.idatGreenReceived)
 
         # Fake alert
+        summary = '[Genomic System Alert] Missing AW2 Array Manifest Files'
+        description = "The following AW2 manifest file listed missing genotyping data."
+        description += f"\nManifest File: {manifest_file.fileName}"
+        description += "\nGenomic Job Run ID: 2"
+        description += "\nMissing Genotype Data: ['10001_R01C01.grn.idat.md5']"
+
+        mock_alert_handler.make_genomic_alert.assert_called_with(summary, description)
+
+        run_obj = self.job_run_dao.get(2)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    @mock.patch('rdr_service.genomic.genomic_job_components.GenomicAlertHandler')
+    def test_aw2_wgs_reconciliation_vs_sequencing_data(self, patched_handler):
+        mock_alert_handler = patched_handler.return_value
+        mock_alert_handler._jira_handler = 'fake_jira_handler'
+        mock_alert_handler.make_genomic_alert.return_value = 1
+
+        # Create the fake ingested data
+        self._create_fake_datasets_for_gc_tests(2)
+        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
+                                         bucket_name)
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+        manifest_file = self.file_processed_dao.get(1)
+
+        # TODO: Test the reconciliation process
+        genotyping_test_files = (
+            f'test_data_folder/RDR_1_1_2001_3001.hard-filtered.vcf.gz',
+            f'test_data_folder/RDR_1_1_2001_3001.hard-filtered.vcf.gz.tbi',
+            f'test_data_folder/RDR_1_1_2001_3001.hard-filtered.vcf.md5sum',
+            f'test_data_folder/RDR_1_1_2001_3001.vcf.gz',
+            f'test_data_folder/RDR_1_1_2001_3001.vcf.gz.tbi',
+            f'test_data_folder/RDR_1_1_2001_3001.vcf.md5sum',
+            f'test_data_folder/RDR_1_1_2001_3001.cram',
+            f'test_data_folder/RDR_1_1_2001_3001.crai',
+            f'test_data_folder/RDR_1_1_2001_3001.cram.md5sum',
+            f'test_data_folder/RDR_1_1_2001_3001.crai.md5sum',
+        )
+        for f in genotyping_test_files:
+            self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
+
+        genomic_pipeline.reconcile_metrics_vs_sequencing_data()  # run_id = 2
+
+        gc_record = self.metrics_dao.get(1)
+
+        # TODO: Test the gc_metrics were updated with reconciliation data
+        # self.assertEqual(1, gc_record.vcfReceived)
+        # self.assertEqual(1, gc_record.tbiReceived)
+        # self.assertEqual(1, gc_record.idatRedReceived)
+        # self.assertEqual(0, gc_record.idatGreenReceived)
+
+        # Fake alert
         summary = '[Genomic System Alert] Missing AW2 Manifest Files'
         description = "The following AW2 manifest file listed missing genotyping data."
         description += f"\nManifest File: {manifest_file.fileName}"
