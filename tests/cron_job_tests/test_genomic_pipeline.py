@@ -63,6 +63,7 @@ _FAKE_GENOTYPING_FOLDER = 'rdr_fake_genotyping_folder'
 _FAKE_CVL_REPORT_FOLDER = 'fake_cvl_reconciliation_reports'
 _FAKE_CVL_MANIFEST_FOLDER = 'fake_cvl_manifest_folder'
 _FAKE_GEM_BUCKET = 'fake_gem_bucket'
+_FAKE_FAILURE_FOLDER = 'post_accessioning_results'
 _OUTPUT_CSV_TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
 _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
@@ -86,6 +87,7 @@ class GenomicPipelineTest(BaseTestCase):
         config.override_setting(config.GENOMIC_CVL_MANIFEST_SUBFOLDER,
                                 [_FAKE_CVL_MANIFEST_FOLDER])
         config.override_setting(config.GENOMIC_GEM_BUCKET_NAME, [_FAKE_GEM_BUCKET])
+        config.override_setting(config.GENOMIC_AW1F_SUBFOLDER, [_FAKE_FAILURE_FOLDER])
 
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
@@ -605,7 +607,7 @@ class GenomicPipelineTest(BaseTestCase):
         # test file processing queue
         files_processed = self.file_processed_dao.get_all()
         self.assertEqual(len(files_processed), 1)
-        self._gc_files_processed_test_cases(files_processed, bucket_name)
+        self._gc_files_processed_test_cases(files_processed)
 
         # Test the fields against the DB
         gc_metrics = self.metrics_dao.get_all()
@@ -617,15 +619,8 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(1)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    def _gc_files_processed_test_cases(self, files_processed, bucket_name):
+    def _gc_files_processed_test_cases(self, files_processed):
         """ sub tests for the GC Metrics end to end test """
-
-        # Test files were moved to archive OK
-        bucket_list = list_blobs('/' + bucket_name)
-        archive_files = [s.name.split('/')[1] for s in bucket_list
-                         if s.name.lower().startswith('processed_by_rdr')]
-        bucket_files = [s.name for s in bucket_list
-                        if s.name.lower().endswith('.csv')]
 
         for f in files_processed:
             if "SEQ" in f.fileName:
@@ -653,9 +648,6 @@ class GenomicPipelineTest(BaseTestCase):
                              GenomicSubProcessStatus.COMPLETED)
             self.assertEqual(f.fileResult,
                              GenomicSubProcessResult.SUCCESS)
-
-            self.assertNotIn(f.fileName, bucket_files)
-            self.assertIn(f.fileName, archive_files)
 
     def _gc_metrics_ingested_data_test_cases(self, gc_metrics):
         """Sub tests for the end-to-end metrics test"""
@@ -899,7 +891,7 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_gc_metrics_reconciliation_vs_manifest(self):
         # Create the fake Google Cloud CSV files to ingest
-        self._create_fake_datasets_for_gc_tests(1)
+        self._create_fake_datasets_for_gc_tests(1, arr_override=True, array_participants=[1])
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name)
@@ -927,7 +919,7 @@ class GenomicPipelineTest(BaseTestCase):
         mock_alert_handler.make_genomic_alert.return_value = 1
 
         # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(2)
+        self._create_fake_datasets_for_gc_tests(2, arr_override=True, array_participants=[1,2])
         bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name)
@@ -1244,6 +1236,49 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
+
+    def test_aw1f_ingestion_workflow(self):
+        # Setup test data: 1 aou_array, 1 aou_wgs
+        self._create_fake_datasets_for_gc_tests(2, arr_override=True,
+                                                array_participants=[1])
+
+        # Setup Test AW1 file
+        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-2.csv")
+        gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+        self._write_cloud_csv(
+            gc_manifest_filename,
+            gc_manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=_FAKE_GENOTYPING_FOLDER,
+        )
+
+        # Setup Test AW1F file
+        gc_manifest_file = test_data.open_genomic_set_file("Genomic-AW1F-Workflow-Test-1.csv")
+        gc_manifest_filename = "RDR_AoU_SEQ_PKG-1908-218051_FAILURE.csv"
+        self._write_cloud_csv(
+            gc_manifest_filename,
+            gc_manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=_FAKE_FAILURE_FOLDER,
+        )
+
+        # Ingest AW1
+        genomic_pipeline.genomic_centers_manifest_workflow()
+
+        # Ingest AW1F
+        genomic_pipeline.genomic_centers_aw1f_manifest_workflow()
+
+        # Test db updated
+        members = sorted(self.member_dao.get_all(), key=lambda x: x.id)
+        self.assertEqual(members[1].gcManifestFailureMode, 'damaged')
+        self.assertEqual(members[1].gcManifestFailureDescription, 'Arrived and damaged')
+
+        # Test file processing queue
+        files_processed = self.file_processed_dao.get_all()
+        self.assertEqual(len(files_processed), 2)
+
+        # Test the end-to-end result code
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
     def test_gem_a1_manifest_end_to_end(self):
         # Need GC Manifest for source query : run_id = 1
