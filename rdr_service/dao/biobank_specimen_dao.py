@@ -1,8 +1,10 @@
+from sqlalchemy.orm import subqueryload
+
 from rdr_service.api_util import format_json_date
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.api_util import parse_date
 from rdr_service.dao.base_dao import UpdatableDao
-from rdr_service.model.biobank_order import BiobankSpecimen
+from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute
 
 
 class BiobankSpecimenDao(UpdatableDao):
@@ -48,6 +50,15 @@ class BiobankSpecimenDao(UpdatableDao):
             if disposal_model_field in result:
                 result['disposalStatus'][disposal_client_field] = result.pop(disposal_model_field)
 
+        with self.session() as session:
+            attributes = session.query(BiobankSpecimenAttribute).filter(
+                BiobankSpecimenAttribute.specimen_id == model.id)
+            if attributes.count() > 0:
+                result['attributes'] = []
+                attribute_dao = BiobankSpecimenAttributeDao(BiobankSpecimenAttribute)
+                for attribute in attributes:
+                    result['attributes'].append(attribute_dao.to_client_json(attribute))
+
         return result
 
     #pylint: disable=unused-argument
@@ -80,6 +91,11 @@ class BiobankSpecimenDao(UpdatableDao):
                 self.map_optional_json_field_to_object(resource['disposalStatus'], order, disposal_client_field_name,
                                                        disposal_model_field_name, parser=parser)
 
+        if 'attributes' in resource:
+            attribute_dao = BiobankSpecimenAttributeDao(BiobankSpecimenAttribute)
+            order.attributes = [attribute_dao.from_client_json(attr_json, specimen_rlims_id=order.rlimsId)
+                                for attr_json in resource['attributes']]
+
         return order
 
     @staticmethod
@@ -107,3 +123,23 @@ class BiobankSpecimenDao(UpdatableDao):
         # Id isn't sent by client request (just rlimsId)
         obj.id = existing_obj.id
         super(BiobankSpecimenDao, self)._do_update(session, obj, existing_obj)
+
+
+class BiobankSpecimenAttributeDao(UpdatableDao):
+    def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
+                         specimen_rlims_id=None):
+        attribute = BiobankSpecimenAttribute(name=resource['name'], specimen_rlims_id=specimen_rlims_id)
+
+        if 'value' in resource:
+            attribute.value = resource['value']
+
+        return attribute
+
+    def to_client_json(self, model):
+        result = model.asdict()
+
+        # Remove fields internal fields from output
+        for field_name in ['id', 'created', 'modified', 'specimen_id', 'specimen_rlims_id']:
+            result.pop(field_name)
+
+        return result

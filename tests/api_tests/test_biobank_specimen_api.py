@@ -62,6 +62,21 @@ class BiobankOrderApiTest(BaseTestCase):
                 kwargs[k] = default_value
         return BiobankOrder(**kwargs)
 
+    def putSpecimen(self, payload):
+        rlims_id = payload['rlimsID']
+        return self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
+
+    @staticmethod
+    def isMatchingAttribute(specimen_attribute, test_attribute):
+        return specimen_attribute['name'] == test_attribute['name'] and\
+               specimen_attribute['value'] == test_attribute['value']
+
+    def assertAttributesMatch(self, specimen_attributes, test_attributes):
+        for test_attribute in test_attributes:
+            if not any(self.isMatchingAttribute(specimen_attribute, test_attribute) for
+                       specimen_attribute in specimen_attributes):
+                self.fail("Attribute not found on specimen")
+
     def assertSpecimenJsonMatches(self, specimen_json, test_json):
         for top_level_field in ['rlimsID', 'orderID', 'participantID', 'testcode', 'repositoryID', 'studyID',
                                 'cohortID', 'sampleType', 'collectionDate', 'confirmationDate']:
@@ -79,6 +94,9 @@ class BiobankOrderApiTest(BaseTestCase):
                 if disposal_field in test_json['disposalStatus']:
                     self.assertEqual(test_json['disposalStatus'][disposal_field],
                                      specimen_json['disposalStatus'][disposal_field])
+
+        if 'attributes' in test_json:
+            self.assertAttributesMatch(specimen_json['attributes'], test_json['attributes'])
 
     def retrieve_specimen_json(self, specimen_id):
         specimen = self.dao.get(specimen_id)
@@ -121,6 +139,16 @@ class BiobankOrderApiTest(BaseTestCase):
                 'reason': 'contaminated',
                 'disposalDate': TIME_2.isoformat()
             },
+            'attributes': [
+                {
+                    'name': 'attr_one',
+                    'value': '1'
+                },
+                {
+                    'name': 'attr_two',
+                    'value': 'two'
+                }
+            ],
             'collectionDate': TIME_1.isoformat(),
             'confirmationDate': TIME_2.isoformat()
         }
@@ -170,3 +198,49 @@ class BiobankOrderApiTest(BaseTestCase):
         # Make sure sampleType is still set on specimen
         updated_specimen_json = self.retrieve_specimen_json(initial_result['id'])
         self.assertSpecimenJsonMatches(updated_specimen_json, initial_payload)
+
+    def test_add_attribute_to_existing_specimen(self):
+        payload = {
+            'rlimsID': 'sabrina',
+            'orderID': self.bio_order.biobankOrderId,
+            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
+            'testcode': 'test 1234567'
+        }
+        initial_result = self.putSpecimen(payload)
+
+        payload['attributes'] = [{
+            "name": "test",
+            "value": "123"
+        }]
+        self.putSpecimen(payload)
+
+        saved_specimen_client_json = self.retrieve_specimen_json(initial_result['id'])
+        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+
+    def test_replacing_attributes_on_existing_specimen(self):
+        payload = {
+            'rlimsID': 'sabrina',
+            'orderID': self.bio_order.biobankOrderId,
+            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
+            'testcode': 'test 1234567',
+            'attributes': [
+                {
+                    'name': 'attr_one',
+                    'value': '1'
+                },
+                {
+                    'name': 'attr_two',
+                    'value': 'two'
+                }
+            ]
+        }
+        initial_result = self.putSpecimen(payload)
+
+        payload['attributes'] = [{
+            'name': 'test',
+            'value': '123'
+        }]
+        self.putSpecimen(payload)
+
+        saved_specimen_client_json = self.retrieve_specimen_json(initial_result['id'])
+        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
