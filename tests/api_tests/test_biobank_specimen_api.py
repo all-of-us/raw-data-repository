@@ -74,6 +74,16 @@ class BiobankOrderApiTest(BaseTestCase):
 
         return True
 
+    def isMatchingDataset(self, actual_dataset, expected_dataset):
+        if 'datasetItems' in expected_dataset:
+            for expected_item in expected_dataset['datasetItems']:
+                if not any(self.isMatchingJson(actual_item, expected_item)
+                           for actual_item in actual_dataset['datasetItems']):
+                    return False
+            del expected_dataset['datasetItems']
+
+        return BiobankOrderApiTest.isMatchingJson(actual_dataset, expected_dataset)
+
     def isMatchingAliquot(self, actual_aliquot, expected_aliquot):
         if 'status' in expected_aliquot:
             if not self.isMatchingJson(actual_aliquot['status'], expected_aliquot['status']):
@@ -85,12 +95,18 @@ class BiobankOrderApiTest(BaseTestCase):
                 return False
             del expected_aliquot['disposalStatus']
 
+        if 'datasets' in expected_aliquot:
+            for expected_dataset in expected_aliquot['datasets']:
+                if not any(self.isMatchingDataset(actual_dataset, expected_dataset)
+                           for actual_dataset in actual_aliquot['datasets']):
+                    return False
+            del expected_aliquot['datasets']
+
         return self.isMatchingJson(actual_aliquot, expected_aliquot)
 
     def assertCollectionsMatch(self, actual_list, expected_list, comparator, message):
         for expected_item in expected_list:
-            if not any(comparator(actual_item, expected_item) for
-                       actual_item in actual_list):
+            if not any(comparator(actual_item, expected_item) for actual_item in actual_list):
                 self.fail(message)
 
     def assertSpecimenJsonMatches(self, specimen_json, test_json):
@@ -312,6 +328,61 @@ class BiobankOrderApiTest(BaseTestCase):
                     "childPlanService": "feed",
                     "initialTreatment": "pill",
                     "containerTypeID": "tubular",
+                }
+            ]
+        }
+        result = self.putSpecimen(payload)
+
+        saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
+        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+
+    def test_simple_aliquot_dataset(self):
+        payload = {
+            'rlimsID': 'sabrina',
+            'orderID': self.bio_order.biobankOrderId,
+            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
+            'testcode': 'test 1234567',
+            'aliquots': [
+                {
+                    'rlimsID': 'other',
+                    'datasets': [
+                        {
+                            'rlimsID': 'data_id',
+                            'name': 'test set',
+                            'status': 'nested'
+                        }
+                    ]
+                }
+            ]
+        }
+        result = self.putSpecimen(payload)
+
+        saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
+        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+
+        #todo: am I modifying these things or replacing them?
+
+    def test_simple_aliquot_dataset_items(self):
+        payload = {
+            'rlimsID': 'sabrina',
+            'orderID': self.bio_order.biobankOrderId,
+            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
+            'testcode': 'test 1234567',
+            'aliquots': [
+                {
+                    'rlimsID': 'other',
+                    'datasets': [
+                        {
+                            'rlimsID': 'data_id',
+                            'datasetItems': [
+                                {
+                                    'paramID': 'param1',
+                                    'displayValue': 'One',
+                                    'displayUnits': 'param'
+                                }
+                            ]
+                        }
+                    ]
                 }
             ]
         }

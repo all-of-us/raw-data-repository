@@ -2,7 +2,8 @@ from rdr_service.api_util import format_json_date
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.api_util import parse_date
 from rdr_service.dao.base_dao import UpdatableDao
-from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankAliquot
+from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankAliquot,\
+    BiobankAliquotDataset, BiobankAliquotDatasetItem
 
 
 class BiobankSpecimenDao(UpdatableDao):
@@ -198,6 +199,11 @@ class BiobankAliquotDao(UpdatableDao):
         if 'disposalStatus' in resource:
             BiobankSpecimenDao.read_client_disposal(resource['disposalStatus'], aliquot)
 
+        if 'datasets' in resource:
+            dataset_dao = BiobankAliquotDatasetDao(BiobankAliquotDataset)
+            aliquot.datasets = [dataset_dao.from_client_json(dataset_json, aliquot_rlims_id=aliquot.rlimsId)
+                                for dataset_json in resource['datasets']]
+
         return aliquot
 
     def to_client_json(self, model):
@@ -210,6 +216,14 @@ class BiobankAliquotDao(UpdatableDao):
         result['status'] = BiobankSpecimenDao.to_client_status(result)
         result['disposalStatus'] = BiobankSpecimenDao.to_client_disposal(result)
 
+        with self.session() as session:
+            datasets = session.query(BiobankAliquotDataset).filter(BiobankAliquotDataset.aliquot_id == model.id)
+            if datasets.count() > 0:
+                result['datasets'] = []
+                dataset_dao = BiobankAliquotDatasetDao(BiobankAliquotDataset)
+                for dataset in datasets:
+                    result['datasets'].append(dataset_dao.to_client_json(dataset))
+
         #todo: add created and modified listeners for everything
 
         # Remove fields internal fields from output
@@ -219,3 +233,58 @@ class BiobankAliquotDao(UpdatableDao):
 
         return result
 
+
+class BiobankAliquotDatasetDao(UpdatableDao):
+    def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
+                         aliquot_rlims_id=None):
+        dataset = BiobankAliquotDataset(rlimsId=resource['rlimsID'], aliquot_rlims_id=aliquot_rlims_id)
+
+        for field_name in ['name', 'status']:
+            BiobankSpecimenDao.map_optional_json_field_to_object(resource, dataset, field_name)
+
+        if 'datasetItems' in resource:
+            item_dao = BiobankAliquotDatasetItemDao(BiobankAliquotDatasetItem)
+            dataset.datasetItems = [item_dao.from_client_json(item_json, dataset_rlims_id=dataset.rlimsId)
+                                    for item_json in resource['datasetItems']]
+
+        return dataset
+
+    def to_client_json(self, model):
+        result = model.asdict()
+
+        result['rlimsID'] = result.pop('rlimsId')
+
+        with self.session() as session:
+            items = session.query(BiobankAliquotDatasetItem).filter(
+                BiobankAliquotDatasetItem.dataset_id == model.id)
+            if items.count() > 0:
+                result['datasetItems'] = []
+                item_dao = BiobankAliquotDatasetItemDao(BiobankAliquotDatasetItem)
+                for item in items:
+                    result['datasetItems'].append(item_dao.to_client_json(item))
+
+        for field_name in ['id', 'created', 'modified', 'aliquot_id', 'aliquot_rlims_id']:
+            del result[field_name]
+
+        return result
+
+
+class BiobankAliquotDatasetItemDao(UpdatableDao):
+    def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
+                         dataset_rlims_id=None):
+        item = BiobankAliquotDatasetItem(paramId=resource['paramID'], dataset_rlims_id=dataset_rlims_id)
+
+        for field_name in ['displayValue', 'displayUnits']:
+            BiobankSpecimenDao.map_optional_json_field_to_object(resource, item, field_name)
+
+        return item
+
+    def to_client_json(self, model):
+        result = model.asdict()
+
+        result['paramID'] = result.pop('paramId')
+
+        for field_name in ['id', 'created', 'modified', 'dataset_id', 'dataset_rlims_id']:
+            del result[field_name]
+
+        return result

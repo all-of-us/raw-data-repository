@@ -273,6 +273,10 @@ class BiobankAliquot(Base, BiobankSpecimenBase, BiobbankSpecimenAliquotBase, Spe
     initialTreatment = Column("initial_treatment", String(100))
     containerTypeId = Column("container_type_id", String(100))
 
+    datasets = relationship("BiobankAliquotDataset", cascade="all, delete-orphan",
+                            foreign_keys="BiobankAliquotDataset.aliquot_id", lazy="joined",
+                            order_by="BiobankAliquotDataset.rlimsId")
+
 
 class BiobankAliquotDataset(Base, BiobankSpecimenBase):
     __tablename__ = "biobank_aliquot_dataset"
@@ -285,6 +289,10 @@ class BiobankAliquotDataset(Base, BiobankSpecimenBase):
     rlimsId = Column("rlims_id", String(80), unique=True)
     name = Column("name", String(80))
     status = Column("status", String(80))
+
+    datasetItems = relationship("BiobankAliquotDatasetItem", cascade="all, delete-orphan",
+                                foreign_keys="BiobankAliquotDatasetItem.dataset_id", lazy="joined",
+                                order_by="BiobankAliquotDatasetItem.paramId")
 
 
 class BiobankAliquotDatasetItem(Base, BiobankSpecimenBase):
