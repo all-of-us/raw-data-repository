@@ -631,9 +631,9 @@ class GenomicReconciler:
                                       ('vcfReceived', ".vcf.gz"),
                                       ('tbiReceived', ".vcf.gz.tbi"))
 
-        self.sequencing_file_types = (("hfVcfReceived", "hard-filtered.vcf.gz"),
-                                      ("hfVcfTbiReceived", "hard-filtered.vcf.gz.tbi"),
-                                      ("hfVcfMd5Received", "hard-filtered.vcf.md5sum"),
+        self.sequencing_file_types = (("hfVcfReceived", ".hard-filtered.vcf.gz"),
+                                      ("hfVcfTbiReceived", ".hard-filtered.vcf.gz.tbi"),
+                                      ("hfVcfMd5Received", ".hard-filtered.vcf.md5sum"),
                                       ("rawVcfReceived", ".vcf.gz"),
                                       ("rawVcfTbiReceived", ".vcf.gz.tbi"),
                                       ("rawVcfMd5Received", ".vcf.md5sum"),
@@ -692,19 +692,21 @@ class GenomicReconciler:
         :return: result code
         """
         metrics = self.metrics_dao.get_with_missing_seq_files()
-        # TODO: Update filnames
+        # TODO: Update filnames when clarified
+        external_ids = "LocalID_InternalRevisionNumber"
         # Iterate over metrics, searching the bucket for filenames
         for metric in metrics:
-            file = self.file_dao.get(metric.genomicFileProcessedId)
+            file = self.file_dao.get(metric.GenomicGCValidationMetrics.genomicFileProcessedId)
+            gc_prefix = file.fileName.split('_')[0]
             missing_data_files = []
             for file_type in self.sequencing_file_types:
-                if not getattr(metric, file_type[0]):
-                    filename = f"{metric.biobankId}{file_type[1]}"
+                if not getattr(metric.GenomicGCValidationMetrics, file_type[0]):
+                    filename = f"{gc_prefix}_{metric.biobankId}_{metric.sampleId}_{external_ids}{file_type[1]}"
                     file_exists = self._check_genotyping_file_exists(file.bucketName, filename)
-                    setattr(metric, file_type[0], file_exists)
+                    setattr(metric.GenomicGCValidationMetrics, file_type[0], file_exists)
                     if not file_exists:
                         missing_data_files.append(filename)
-            self.metrics_dao.update(metric)
+            self.metrics_dao.update(metric.GenomicGCValidationMetrics)
 
             # Make a roc ticket for missing data files
             if len(missing_data_files) > 0:
@@ -723,7 +725,7 @@ class GenomicReconciler:
         :param _missing_data: list of files
         :return: summary, description
         """
-        description = "The following AW2 manifest file listed missing genotyping data."
+        description = "The following AW2 manifest file listed missing data."
         description += f"\nManifest File: {_filename}"
         description += f"\nGenomic Job Run ID: {self.run_id}"
         description += f"\nMissing Genotype Data: {_missing_data}"

@@ -719,7 +719,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(gc_metrics[0].genomeCoverage, '2')
         self.assertEqual(gc_metrics[0].contamination, '3')
         self.assertEqual(gc_metrics[0].sexConcordance, 'True')
-        # self.assertEqual(gc_metrics[0].sexPloidy, 'XY')
+        self.assertEqual(gc_metrics[0].sexPloidy, 'XY')
         self.assertEqual(gc_metrics[0].alignedQ20Bases, 4)
         self.assertEqual(gc_metrics[0].processingStatus, 'Pass')
         self.assertEqual(gc_metrics[0].notes, 'This sample passed')
@@ -978,7 +978,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Fake alert
         summary = '[Genomic System Alert] Missing AW2 Array Manifest Files'
-        description = "The following AW2 manifest file listed missing genotyping data."
+        description = "The following AW2 manifest file listed missing data."
         description += f"\nManifest File: {manifest_file.fileName}"
         description += "\nGenomic Job Run ID: 2"
         description += "\nMissing Genotype Data: ['10001_R01C01.grn.idat.md5']"
@@ -1005,16 +1005,16 @@ class GenomicPipelineTest(BaseTestCase):
 
         # TODO: Test the reconciliation process
         genotyping_test_files = (
-            f'test_data_folder/RDR_1_1_2001_3001.hard-filtered.vcf.gz',
-            f'test_data_folder/RDR_1_1_2001_3001.hard-filtered.vcf.gz.tbi',
-            f'test_data_folder/RDR_1_1_2001_3001.hard-filtered.vcf.md5sum',
-            f'test_data_folder/RDR_1_1_2001_3001.vcf.gz',
-            f'test_data_folder/RDR_1_1_2001_3001.vcf.gz.tbi',
-            f'test_data_folder/RDR_1_1_2001_3001.vcf.md5sum',
-            f'test_data_folder/RDR_1_1_2001_3001.cram',
-            f'test_data_folder/RDR_1_1_2001_3001.crai',
-            f'test_data_folder/RDR_1_1_2001_3001.cram.md5sum',
-            f'test_data_folder/RDR_1_1_2001_3001.crai.md5sum',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz.tbi',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.hard-filtered.vcf.md5sum',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.vcf.gz',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.vcf.gz.tbi',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.vcf.md5sum',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.cram',
+            # f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.crai',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.cram.md5sum',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.crai.md5sum',
         )
         for f in genotyping_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
@@ -1023,18 +1023,24 @@ class GenomicPipelineTest(BaseTestCase):
 
         gc_record = self.metrics_dao.get(1)
 
-        # TODO: Test the gc_metrics were updated with reconciliation data
-        # self.assertEqual(1, gc_record.vcfReceived)
-        # self.assertEqual(1, gc_record.tbiReceived)
-        # self.assertEqual(1, gc_record.idatRedReceived)
-        # self.assertEqual(0, gc_record.idatGreenReceived)
+        # Test the gc_metrics were updated with reconciliation data
+        self.assertEqual(1, gc_record.hfVcfReceived)
+        self.assertEqual(1, gc_record.hfVcfTbiReceived)
+        self.assertEqual(1, gc_record.hfVcfMd5Received)
+        self.assertEqual(1, gc_record.rawVcfReceived)
+        self.assertEqual(1, gc_record.rawVcfTbiReceived)
+        self.assertEqual(1, gc_record.rawVcfMd5Received)
+        self.assertEqual(1, gc_record.cramReceived)
+        self.assertEqual(1, gc_record.cramMd5Received)
+        self.assertEqual(0, gc_record.craiReceived)
+        self.assertEqual(1, gc_record.craiMd5Received)
 
         # Fake alert
-        summary = '[Genomic System Alert] Missing AW2 Manifest Files'
-        description = "The following AW2 manifest file listed missing genotyping data."
+        summary = '[Genomic System Alert] Missing AW2 WGS Manifest Files'
+        description = "The following AW2 manifest file listed missing data."
         description += f"\nManifest File: {manifest_file.fileName}"
         description += "\nGenomic Job Run ID: 2"
-        description += "\nMissing Genotype Data: ['10001_R01C01.grn.idat.md5']"
+        description += "\nMissing Genotype Data: ['RDR_2_2_LocalID_InternalRevisionNumber.crai']"
 
         mock_alert_handler.make_genomic_alert.assert_called_with(summary, description)
 
