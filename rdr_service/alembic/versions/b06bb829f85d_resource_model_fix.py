@@ -1,7 +1,7 @@
 """resource model fix
 
 Revision ID: b06bb829f85d
-Revises: 1edcfe7d61ec
+Revises: 9a0873b51fe0
 Create Date: 2020-05-04 12:44:36.518504
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = 'b06bb829f85d'
-down_revision = '1edcfe7d61ec'
+down_revision = '9a0873b51fe0'
 branch_labels = None
 depends_on = None
 
