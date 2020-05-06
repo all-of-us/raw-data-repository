@@ -540,7 +540,8 @@ class GenomicJob(messages.Enum):
     GEM_A1_MANIFEST = 10
     GEM_A2_MANIFEST = 11
     GEM_A3_MANIFEST = 12
-    RECONCILE_SEQUENCING_DATA = 13
+    AW1F_MANIFEST = 13
+    RECONCILE_SEQUENCING_DATA = 14
 
 
 class GenomicSubProcessStatus(messages.Enum):

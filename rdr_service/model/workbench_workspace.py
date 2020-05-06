@@ -12,15 +12,15 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
 
 class WorkbenchWorkspaceBase(object):
     workspaceSourceId = Column("workspace_source_id", Integer, nullable=False)
-    name = Column("name", String(250), nullable=False)
+    name = Column("name", String(1000), nullable=False)
     creationTime = Column("creation_time", UTCDateTime6, nullable=True)
     modifiedTime = Column("modified_time", UTCDateTime6, nullable=True)
     status = Column("status", Enum(WorkbenchWorkspaceStatus), default=WorkbenchWorkspaceStatus.UNSET)
     excludeFromPublicDirectory = Column("exclude_from_public_directory", Boolean)
     reviewRequested = Column("review_requested", Boolean)
     diseaseFocusedResearch = Column("disease_focused_research", Boolean)
-    diseaseFocusedResearchName = Column("disease_focused_research_name", String(250))
-    otherPurposeDetails = Column("other_purpose_details", String(250))
+    diseaseFocusedResearchName = Column("disease_focused_research_name", String(1000))
+    otherPurposeDetails = Column("other_purpose_details", String(2000))
     methodsDevelopment = Column("methods_development", Boolean)
     controlSet = Column("control_set", Boolean)
     ancestry = Column("ancestry", Boolean)
@@ -30,9 +30,9 @@ class WorkbenchWorkspaceBase(object):
     commercialPurpose = Column("commercial_purpose", Boolean)
     educational = Column("educational", Boolean)
     otherPurpose = Column("other_purpose", Boolean)
-    scientificApproaches = Column("scientific_approaches", String(1000))
-    intendToStudy = Column("intend_to_study", String(1000))
-    findingsFromStudy = Column("findings_from_study", String(1000))
+    scientificApproaches = Column("scientific_approaches", String(2000))
+    intendToStudy = Column("intend_to_study", String(2000))
+    findingsFromStudy = Column("findings_from_study", String(2000))
     ethicalLegalSocialImplications = Column("ethical_legal_social_implications", Boolean)
     focusOnUnderrepresentedPopulations = Column("focus_on_underrepresented_populations", Boolean)
     raceEthnicity = Column("race_ethnicity", JSON)
@@ -52,7 +52,7 @@ class WorkbenchWorkspaceBase(object):
                             default=WorkbenchWorkspaceEducationLevel.UNSET)
     incomeLevel = Column("income_level", Enum(WorkbenchWorkspaceIncomeLevel),
                          default=WorkbenchWorkspaceIncomeLevel.UNSET)
-    others = Column("others", String(500))
+    others = Column("others", String(2000))
 
     isReviewed = Column("is_reviewed", Boolean, default=False)
 

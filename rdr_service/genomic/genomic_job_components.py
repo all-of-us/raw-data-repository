@@ -6,6 +6,7 @@ Components are assembled by the JobController for a particular Genomic Job
 import csv
 import logging
 import re
+import pytz
 from collections import deque, namedtuple
 from copy import deepcopy
 
@@ -37,6 +38,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicSetMemberDao,
     GenomicFileProcessedDao,
     GenomicSetDao,
+    GenomicJobRunDao
 )
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
@@ -57,6 +59,8 @@ from rdr_service.config import (
     GENOMIC_CVL_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A3_MANIFEST_SUBFOLDER,
+    GENOME_TYPE_ARRAY,
+    GENOME_TYPE_WGS
 )
 
 
@@ -69,8 +73,10 @@ class GenomicFileIngester:
                  job_run_id=None,
                  bucket=None,
                  archive_folder=None,
-                 sub_folder=None):
+                 sub_folder=None,
+                 _controller=None):
 
+        self.controller = _controller
         self.job_id = job_id
         self.job_run_id = job_run_id
         self.file_obj = None
@@ -86,13 +92,7 @@ class GenomicFileIngester:
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.file_processed_dao = GenomicFileProcessedDao()
         self.member_dao = GenomicSetMemberDao()
-
-        # TODO: Part of downstream tickets to clarify these
-        self.file_name_conventions = {
-            GenomicJob.METRICS_INGESTION: 'datamanifest',
-            GenomicJob.BB_RETURN_MANIFEST: 'manifest-result',
-            GenomicJob.BB_GC_MANIFEST: 'gc-manifest',
-        }
+        self.job_run_dao = GenomicJobRunDao()
 
     def generate_file_processing_queue(self):
         """
@@ -118,11 +118,18 @@ class GenomicFileIngester:
         Searches the bucket for un-processed files.
         :return: list of filenames or NO_FILES result code
         """
+        # Setup date
+        timezone = pytz.timezone('Etc/Greenwich')
+        date_limit_obj = timezone.localize(self.controller.last_run_time)
+
+        # Look for new files with valid filenames
         bucket = '/' + self.bucket_name
         files = list_blobs(bucket, prefix=self.sub_folder_name)
+
         files = [s.name for s in files
-                 if self.archive_folder_name not in s.name.lower()
-                 if self.file_validator.validate_filename(s.name.lower())]
+                 if s.updated > date_limit_obj
+                 and self.file_validator.validate_filename(s.name.lower())]
+
         if not files:
             logging.info('No files in cloud bucket {}'.format(self.bucket_name))
             return GenomicSubProcessResult.NO_FILES
@@ -156,8 +163,6 @@ class GenomicFileIngester:
                         ingestion_result
                     )
 
-                    self.file_mover.archive_file(file_ingested)
-
                 except IndexError:
                     logging.info('No files left in file queue.')
             return GenomicSubProcessResult.SUCCESS if all(results) \
@@ -184,7 +189,7 @@ class GenomicFileIngester:
             if validation_result != GenomicSubProcessResult.SUCCESS:
                 return validation_result
 
-            if self.job_id == GenomicJob.BB_GC_MANIFEST:
+            if self.job_id in [GenomicJob.BB_GC_MANIFEST, GenomicJob.AW1F_MANIFEST]:
                 return self._ingest_gc_manifest(data_to_ingest)
 
             if self.job_id == GenomicJob.METRICS_INGESTION:
@@ -244,9 +249,11 @@ class GenomicFileIngester:
                 row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                      for key in row], row.values()))
                 sample_id = row_copy['biobankidsampleid'].split('_')[-1]
-                member = self.member_dao.get_member_from_sample_id(sample_id)
+                genome_type = row_copy['testname']
+                member = self.member_dao.get_member_from_sample_id(sample_id, genome_type)
                 if member is None:
-                    logging.warning(f'Invalid sample ID: {sample_id}')
+                    logging.warning(f'Invalid sample ID: {sample_id}'
+                                    f' or genome_type: {genome_type}')
                     continue
                 if member.validationStatus != GenomicSetMemberStatus.VALID:
                     logging.warning(f'Invalidated member found BID: {member.biobankId}')
@@ -272,7 +279,7 @@ class GenomicFileIngester:
         try:
             for row in file_data['rows']:
                 sample_id = row['sample_id']
-                member = self.member_dao.get_member_from_sample_id(sample_id)
+                member = self.member_dao.get_member_from_sample_id(sample_id, GENOME_TYPE_ARRAY)
                 if member is None:
                     logging.warning(f'Invalid sample ID: {sample_id}')
                     continue
@@ -323,8 +330,10 @@ class GenomicFileIngester:
                                 row.values()))
             row_copy['file_id'] = self.file_obj.id
             sample_id = row_copy['biobankidsampleid'].split('_')[-1]
-            row_copy['member_id'] = self.member_dao.get_member_from_sample_id(int(sample_id)).id
-            if row_copy['member_id'] is not None:
+            genome_type = self.file_validator.genome_type
+            member = self.member_dao.get_member_from_sample_id(int(sample_id), genome_type)
+            if member is not None:
+                row_copy['member_id'] = member.id
                 gc_metrics_batch.append(row_copy)
             else:
                 logging.warning(f'Sample ID {sample_id} has no corresponding Genomic Set Member.')
@@ -336,12 +345,17 @@ class GenomicFileValidator:
     """
     This class validates the Genomic Centers files
     """
+    GENOME_TYPE_MAPPINGS = {
+        'gen': GENOME_TYPE_ARRAY,
+        'seq': GENOME_TYPE_WGS,
+    }
 
     def __init__(self, filename=None, data=None, schema=None, job_id=None):
         self.filename = filename
         self.data_to_validate = data
         self.valid_schema = schema
         self.job_id = job_id
+        self.genome_type = None
 
         self.GC_METRICS_SCHEMAS = {
             'seq': (
@@ -479,6 +493,19 @@ class GenomicFileValidator:
                           filename_components[3]) is not None
             )
 
+        def aw1f_manifest_name_rule(fn):
+            """Biobank to GCs Failure (AW1F) manifest name rule"""
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
+            return (
+                len(filename_components) == 5 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] in ('seq', 'gen') and
+                re.search(r"pkg-[0-9]{4}-[0-9]{5,}$",
+                          filename_components[3]) is not None and
+                filename_components[4] == 'failure.csv'
+            )
+
         def cvl_sec_val_manifest_name_rule(fn):
             """CVL secondary validation manifest name rule"""
             filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
@@ -506,6 +533,7 @@ class GenomicFileValidator:
             GenomicJob.BB_RETURN_MANIFEST: bb_result_name_rule,
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
             GenomicJob.BB_GC_MANIFEST: bb_to_gc_manifest_name_rule,
+            GenomicJob.AW1F_MANIFEST: aw1f_manifest_name_rule,
             GenomicJob.CVL_SEC_VAL_MAN: cvl_sec_val_manifest_name_rule,
             GenomicJob.GEM_A2_MANIFEST: gem_a2_manifest_name_rule,
         }
@@ -539,11 +567,14 @@ class GenomicFileValidator:
         try:
             if self.job_id == GenomicJob.METRICS_INGESTION:
                 file_type = filename.lower().split("_")[2]
+                self.genome_type = self.GENOME_TYPE_MAPPINGS[file_type]
                 return self.GC_METRICS_SCHEMAS[file_type]
             if self.job_id == GenomicJob.BB_GC_MANIFEST:
                 return self.GC_MANIFEST_SCHEMA
             if self.job_id == GenomicJob.GEM_A2_MANIFEST:
                 return self.GEM_A2_SCHEMA
+            if self.job_id == GenomicJob.AW1F_MANIFEST:
+                return self.GC_MANIFEST_SCHEMA  # AW1F and AW1 use same schema
         except (IndexError, KeyError):
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
@@ -1205,7 +1236,7 @@ class ManifestCompiler:
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
 
-    def generate_and_transfer_manifest(self, manifest_type):
+    def generate_and_transfer_manifest(self, manifest_type, genome_type):
         """
         Main execution method for ManifestCompiler
         :return: result code
@@ -1221,7 +1252,7 @@ class ManifestCompiler:
             self._write_and_upload_manifest(source_data)
             results = []
             for row in source_data:
-                member = self.member_dao.get_member_from_sample_id(row.sample_id)
+                member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
                 results.append(
                     self.member_dao.update_member_job_run_id(
                         member,

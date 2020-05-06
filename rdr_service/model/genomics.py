@@ -233,6 +233,7 @@ class GenomicGCValidationMetrics(Base):
     genomeCoverage = Column('genome_coverage', String(10), nullable=True)
     contamination = Column('contamination', String(10), nullable=True)
     sexConcordance = Column('sex_concordance', String(10), nullable=True)
+    sexPloidy = Column('sex_ploidy', String(10), nullable=True)
     alignedQ20Bases = Column('aligned_q20_bases', Integer, nullable=True)
     processingStatus = Column('processing_status', String(15), nullable=True)
     notes = Column('notes', String(128), nullable=True)
@@ -243,6 +244,18 @@ class GenomicGCValidationMetrics(Base):
     idatGreenReceived = Column('idat_green_received', SmallInteger, nullable=False, default=0)
     vcfReceived = Column('vcf_received', SmallInteger, nullable=False, default=0)
     tbiReceived = Column('tbi_received', SmallInteger, nullable=False, default=0)
+
+    # Sequencing Data (WGS) reconciliation
+    hfVcfReceived = Column('hf_vcf_received', SmallInteger, nullable=False, default=0)
+    hfVcfTbiReceived = Column('hf_vcf_tbi_received', SmallInteger, nullable=False, default=0)
+    hfVcfMd5Received = Column('hf_vcf_md5_received', SmallInteger, nullable=False, default=0)
+    rawVcfReceived = Column('raw_vcf_received', SmallInteger, nullable=False, default=0)
+    rawVcfTbiReceived = Column('raw_vcf_tbi_received', SmallInteger, nullable=False, default=0)
+    rawVcfMd5Received = Column('raw_vcf_md5_received', SmallInteger, nullable=False, default=0)
+    cramReceived = Column('cram_received', SmallInteger, nullable=False, default=0)
+    cramMd5Received = Column('cram_md5_received', SmallInteger, nullable=False, default=0)
+    craiReceived = Column('crai_received', SmallInteger, nullable=False, default=0)
+    craiMd5Received = Column('crai_md5_received', SmallInteger, nullable=False, default=0)
 
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)

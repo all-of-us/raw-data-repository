@@ -163,7 +163,7 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         bp3 = Measurement(
             measurementId=pm_id * 1000 + 3,
             physicalMeasurementsId=pm_id,
-            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
             codeValue="arm-circumference",
             measurementTime=now,
             valueDecimal=32.0,
@@ -185,7 +185,7 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         q1 = Measurement(
             measurementId=pm_id * 1000 + 4,
             physicalMeasurementsId=pm_id,
-            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
             codeValue="protocol-modifications-height",
             measurementTime=now,
             valueCodeSystem=pm_height_system,
@@ -195,7 +195,7 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         em2 = Measurement(
             measurementId=pm_id * 1000 + 5,
             physicalMeasurementsId=pm_id,
-            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
             codeValue="pre-pregnancy-weight",
             measurementTime=now,
             valueDecimal=28.0,
@@ -205,7 +205,7 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
         q2 = Measurement(
             measurementId=pm_id * 1000 + 6,
             physicalMeasurementsId=pm_id,
-            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+            codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
             codeValue="protocol-modifications-weight",
             measurementTime=now,
             valueCodeSystem=pm_weight_system,
