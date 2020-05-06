@@ -257,9 +257,6 @@ class BiobankAliquot(Base, BiobankSpecimenBase, BiobbankSpecimenAliquotBase, Spe
         return Column("specimen_id", Integer, ForeignKey("biobank_specimen.id"))
 
     @declared_attr
-    def specimen_rlims_id(cls):
-        return Column("specimen_rlims_id", String(80), ForeignKey("biobank_specimen.order_id"))
-    @declared_attr
     def parent_aliquot_id(cls):
         return Column("parent_aliquot_id", String(80))
     @declared_attr
