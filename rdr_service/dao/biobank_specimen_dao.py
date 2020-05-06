@@ -1,5 +1,3 @@
-from sqlalchemy.orm import subqueryload
-
 from rdr_service.api_util import format_json_date
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.api_util import parse_date
