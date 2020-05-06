@@ -442,7 +442,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         elif 'EHRConsent' in consents:
             if consents['EHRConsent'][0] == 'ConsentPermission_Yes':
                 ehr_consent = True
-        elif 'DVEHRConnset' in consents:
+        elif 'DVEHRConsent' in consents:
             if consents['DVEHRConsent'][0] == 'DVEHRSharing_Yes':
                 ehr_consent = True
 
