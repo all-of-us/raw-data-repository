@@ -519,6 +519,26 @@ class BaseDao(object):
     """
         raise NotImplementedError()
 
+    def collection_to_json(self, filter_expr=None):
+        """
+        Iterate any existing children of a relationship and create json output for them
+        :param filter_expr: SQLAlchemy expression for determining the instances to add to the collection.
+            Defaults to None.
+        :return:
+        """
+        result = None
+        with self.session() as session:
+            objects_found = session.query(self.model_type).filter(filter_expr)
+            if objects_found.count() > 0:
+                result = []
+                for model in objects_found:
+                    result.append(self.to_client_json(model))
+        return result
+
+    def collection_from_json(self, json_array, **constructor_kwargs):
+        return [self.from_client_json(item_json, **constructor_kwargs)
+                for item_json in json_array]
+
     def query_to_text(self, query, reindent=True):
         """
     Return the SQL statement text from a sqlalchemy query object.

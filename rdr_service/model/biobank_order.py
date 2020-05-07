@@ -308,7 +308,7 @@ class BiobankAliquotDatasetItem(Base, BiobankSpecimenBase):
     displayUnits = Column("display_units", String(80))
 
 
-event.listen(MayolinkCreateOrderHistory, "before_insert", model_insert_listener)
-event.listen(MayolinkCreateOrderHistory, "before_update", model_update_listener)
-
-event.listen(BiobankSpecimen, "before_insert", model_insert_listener)
+for cls in [MayolinkCreateOrderHistory, BiobankSpecimen, BiobankSpecimenAttribute,
+            BiobankAliquot, BiobankAliquotDataset, BiobankAliquotDatasetItem]:
+    event.listen(cls, "before_insert", model_insert_listener)
+    event.listen(cls, "before_update", model_update_listener)

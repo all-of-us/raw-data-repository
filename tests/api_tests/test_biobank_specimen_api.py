@@ -1,7 +1,8 @@
 import datetime
 
 from rdr_service import clock
-from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao
+from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao, BiobankSpecimenAttributeDao,\
+    BiobankAliquotDatasetItemDao, BiobankAliquotDao, BiobankAliquotDatasetDao
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -62,47 +63,55 @@ class BiobankOrderApiTest(BaseTestCase):
                 kwargs[k] = default_value
         return BiobankOrder(**kwargs)
 
-    def putSpecimen(self, payload):
+    def put_specimen(self, payload):
         rlims_id = payload['rlimsID']
         return self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
 
+    def get_minimal_specimen_json(self):
+        return {
+            'rlimsID': 'sabrina',
+            'orderID': self.bio_order.biobankOrderId,
+            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
+            'testcode': 'test 1234567'
+        }
+
     @staticmethod
-    def isMatchingJson(actual_json, expected_json):
+    def is_matching_json(actual_json, expected_json):
         for key in expected_json:
             if expected_json[key] != actual_json[key]:
                 return False
 
         return True
 
-    def isMatchingDataset(self, actual_dataset, expected_dataset):
+    def is_matching_dataset(self, actual_dataset, expected_dataset):
         if 'datasetItems' in expected_dataset:
             for expected_item in expected_dataset['datasetItems']:
-                if not any(self.isMatchingJson(actual_item, expected_item)
+                if not any(self.is_matching_json(actual_item, expected_item)
                            for actual_item in actual_dataset['datasetItems']):
                     return False
             del expected_dataset['datasetItems']
 
-        return BiobankOrderApiTest.isMatchingJson(actual_dataset, expected_dataset)
+        return BiobankOrderApiTest.is_matching_json(actual_dataset, expected_dataset)
 
-    def isMatchingAliquot(self, actual_aliquot, expected_aliquot):
+    def is_matching_aliquot(self, actual_aliquot, expected_aliquot):
         if 'status' in expected_aliquot:
-            if not self.isMatchingJson(actual_aliquot['status'], expected_aliquot['status']):
+            if not self.is_matching_json(actual_aliquot['status'], expected_aliquot['status']):
                 return False
             del expected_aliquot['status']
 
         if 'disposalStatus' in expected_aliquot:
-            if not self.isMatchingJson(actual_aliquot['disposalStatus'], expected_aliquot['disposalStatus']):
+            if not self.is_matching_json(actual_aliquot['disposalStatus'], expected_aliquot['disposalStatus']):
                 return False
             del expected_aliquot['disposalStatus']
 
         if 'datasets' in expected_aliquot:
             for expected_dataset in expected_aliquot['datasets']:
-                if not any(self.isMatchingDataset(actual_dataset, expected_dataset)
+                if not any(self.is_matching_dataset(actual_dataset, expected_dataset)
                            for actual_dataset in actual_aliquot['datasets']):
                     return False
             del expected_aliquot['datasets']
 
-        return self.isMatchingJson(actual_aliquot, expected_aliquot)
+        return self.is_matching_json(actual_aliquot, expected_aliquot)
 
     def assertCollectionsMatch(self, actual_list, expected_list, comparator, message):
         for expected_item in expected_list:
@@ -128,11 +137,11 @@ class BiobankOrderApiTest(BaseTestCase):
                                      specimen_json['disposalStatus'][disposal_field])
 
         if 'attributes' in test_json:
-            self.assertCollectionsMatch(specimen_json['attributes'], test_json['attributes'], self.isMatchingJson,
+            self.assertCollectionsMatch(specimen_json['attributes'], test_json['attributes'], self.is_matching_json,
                                         "Expected attributes to match")
 
         if 'aliquots' in test_json:
-            self.assertCollectionsMatch(specimen_json['aliquots'], test_json['aliquots'], self.isMatchingAliquot,
+            self.assertCollectionsMatch(specimen_json['aliquots'], test_json['aliquots'], self.is_matching_aliquot,
                                         "Expected aliquots to match")
 
     def retrieve_specimen_json(self, specimen_id):
@@ -140,13 +149,12 @@ class BiobankOrderApiTest(BaseTestCase):
         json = self.dao.to_client_json(specimen)
         return json
 
+    @staticmethod
+    def get_only_item_from_dao(dao):
+        return dao.get_all()[0]
+
     def test_put_new_specimen_minimal_data(self):
-        payload = {
-            'rlimsID': 'sabrina',
-            'orderID': self.bio_order.biobankOrderId,
-            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
-            'testcode': 'test 1234567'
-        }
+        payload = self.get_minimal_specimen_json()
         rlims_id = payload['rlimsID']
         result = self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
 
@@ -154,11 +162,8 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
     def test_put_new_specimen_all_data(self):
-        payload = {
-            'rlimsID': 'sabrina',
-            'orderID': self.bio_order.biobankOrderId,
-            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
-            'testcode': 'test 1234567',
+        payload = self.get_minimal_specimen_json()
+        payload.update({
             'repositoryID': 'repo id',
             'studyID': 'study id',
             'cohortID': 'cohort id',
@@ -188,205 +193,268 @@ class BiobankOrderApiTest(BaseTestCase):
             ],
             'collectionDate': TIME_1.isoformat(),
             'confirmationDate': TIME_2.isoformat()
-        }
-        rlims_id = payload['rlimsID']
-        result = self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
+        })
+        result = self.put_specimen(payload)
 
         saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
     def test_put_specimen_exists(self):
-        payload = {
-            'rlimsID': 'sabrina',
-            'orderID': self.bio_order.biobankOrderId,
-            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
-            'testcode': 'test 1234567'
-        }
-        rlims_id = payload['rlimsID']
-        initial_result = self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
+        payload = self.get_minimal_specimen_json()
+        initial_result = self.put_specimen(payload)
 
-        new_payload = payload
-        new_payload['testcode'] = 'updated testcode'
-        self.send_put(f"Biobank/specimens/{rlims_id}", request_data=new_payload)
+        payload['testcode'] = 'updated testcode'
+        self.put_specimen(payload)
 
         updated_specimen_json = self.retrieve_specimen_json(initial_result['id'])
-        self.assertSpecimenJsonMatches(updated_specimen_json, new_payload)
+        self.assertSpecimenJsonMatches(updated_specimen_json, payload)
 
     def test_optional_args_not_cleared(self):
-        initial_payload = {
-            'rlimsID': 'sabrina',
-            'orderID': self.bio_order.biobankOrderId,
-            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
-            'testcode': 'test 1234567',
-            'sampleType': 'test type'
-        }
-        rlims_id = initial_payload['rlimsID']
-        initial_result = self.send_put(f"Biobank/specimens/{rlims_id}", request_data=initial_payload)
+        initial_payload = self.get_minimal_specimen_json()
+        initial_payload['sampleType'] = 'test type'
+        initial_result = self.put_specimen(initial_payload)
 
         # Make a new request without the optional sampleType field
-        new_payload = {
-            'rlimsID': 'sabrina',
-            'orderID': self.bio_order.biobankOrderId,
-            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
-            'testcode': 'test 1234567'
-        }
-        self.send_put(f"Biobank/specimens/{rlims_id}", request_data=new_payload)
+        new_payload = self.get_minimal_specimen_json()
+        self.put_specimen(new_payload)
 
         # Make sure sampleType is still set on specimen
         updated_specimen_json = self.retrieve_specimen_json(initial_result['id'])
         self.assertSpecimenJsonMatches(updated_specimen_json, initial_payload)
+        self.assertEqual(updated_specimen_json['sampleType'], 'test type')
 
     def test_add_attribute_to_existing_specimen(self):
-        payload = {
-            'rlimsID': 'sabrina',
-            'orderID': self.bio_order.biobankOrderId,
-            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
-            'testcode': 'test 1234567'
-        }
-        initial_result = self.putSpecimen(payload)
+        payload = self.get_minimal_specimen_json()
+        initial_result = self.put_specimen(payload)
 
         payload['attributes'] = [{
             "name": "test",
             "value": "123"
         }]
-        self.putSpecimen(payload)
+        self.put_specimen(payload)
 
         saved_specimen_client_json = self.retrieve_specimen_json(initial_result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
-    def test_replacing_attributes_on_existing_specimen(self):
-        payload = {
-            'rlimsID': 'sabrina',
-            'orderID': self.bio_order.biobankOrderId,
-            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
-            'testcode': 'test 1234567',
-            'attributes': [
-                {
-                    'name': 'attr_one',
-                    'value': '1'
-                },
-                {
-                    'name': 'attr_two',
-                    'value': 'two'
-                }
-            ]
-        }
-        initial_result = self.putSpecimen(payload)
+        attribute = self.get_only_item_from_dao(BiobankSpecimenAttributeDao())
+        self.assertEqual(attribute.specimen_rlims_id, 'sabrina')
+
+    def test_replacing_attributes(self):
+        payload = self.get_minimal_specimen_json()
+        payload['attributes'] = [
+            {
+                'name': 'attr_one',
+                'value': '1'
+            },
+            {
+                'name': 'attr_two',
+                'value': 'two'
+            }
+        ]
+        initial_result = self.put_specimen(payload)
 
         payload['attributes'] = [{
             'name': 'test',
             'value': '123'
         }]
-        self.putSpecimen(payload)
+        self.put_specimen(payload)
 
         saved_specimen_client_json = self.retrieve_specimen_json(initial_result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
-    def test_minimal_aliquot_data(self):
-        payload = {
-            'rlimsID': 'sabrina',
-            'orderID': self.bio_order.biobankOrderId,
-            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
-            'testcode': 'test 1234567',
-            "aliquots": [
-                {
-                    "rlimsID": "aliquot_one"
+    def test_update_attribute(self):
+        payload = self.get_minimal_specimen_json()
+        payload['attributes'] = [
+            {
+                'name': 'attr_one',
+                'value': '1'
+            }
+        ]
+        self.put_specimen(payload)
+
+        attribute_dao = BiobankSpecimenAttributeDao()
+        initial_attribute = self.get_only_item_from_dao(attribute_dao)
+
+        payload['attributes'] = [{
+            'name': 'attr_one',
+            'value': '123'
+        }]
+        self.put_specimen(payload)
+
+        final_attribute = self.get_only_item_from_dao(attribute_dao)
+        self.assertEqual(initial_attribute.id, final_attribute.id)
+        self.assertEqual(final_attribute.value, '123')
+
+    def test_put_minimal_aliquot_data(self):
+        payload = self.get_minimal_specimen_json()
+        payload['aliquots'] = [
+            {
+                "rlimsID": "aliquot_one"
+            },
+            {
+                "rlimsID": "second"
+            }
+        ]
+        result = self.put_specimen(payload)
+
+        saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
+        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+
+    def test_put_simple_aliquot(self):
+        payload = self.get_minimal_specimen_json()
+        payload['aliquots'] = [
+            {
+                "rlimsID": "other",
+                "sampleType": "test",
+                "status": {
+                    "status": "frozen",
+                    "freezeThawCount": 3,
+                    "location": "biobank",
+                    "quantity": "5",
+                    "quantityUnits": "tube",
+                    "processingCompleteDate": TIME_1.isoformat(),
+                    "deviations": "no deviations"
                 },
-                {
-                    "rlimsID": "second"
-                }
-            ]
-        }
-        result = self.putSpecimen(payload)
+                "disposalStatus": {
+                    "reason": "garbage",
+                    "disposalDate": TIME_2.isoformat()
+                },
+                "childPlanService": "feed",
+                "initialTreatment": "pill",
+                "containerTypeID": "tubular",
+            }
+        ]
+        result = self.put_specimen(payload)
 
         saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
-    def test_simple_aliquot_data(self):
-        payload = {
-            'rlimsID': 'sabrina',
-            'orderID': self.bio_order.biobankOrderId,
-            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
-            'testcode': 'test 1234567',
-            "aliquots": [
-                {
-                    "rlimsID": "other",
-                    "sampleType": "test",
-                    "status": {
-                        "status": "frozen",
-                        "freezeThawCount": 3,
-                        "location": "biobank",
-                        "quantity": "5",
-                        "quantityUnits": "tube",
-                        "processingCompleteDate": TIME_1.isoformat(),
-                        "deviations": "no deviations"
-                    },
-                    "disposalStatus": {
-                        "reason": "garbage",
-                        "disposalDate": TIME_2.isoformat()
-                    },
-                    "childPlanService": "feed",
-                    "initialTreatment": "pill",
-                    "containerTypeID": "tubular",
-                }
-            ]
-        }
-        result = self.putSpecimen(payload)
+        aliquot = self.get_only_item_from_dao(BiobankAliquotDao())
+        self.assertEqual(aliquot.specimen_rlims_id, 'sabrina')
+
+    def test_update_aliquot(self):
+        payload = self.get_minimal_specimen_json()
+        payload['aliquots'] = [
+            {
+                "rlimsID": "other",
+                "sampleType": "test",
+                "childPlanService": "feed"
+            }
+        ]
+        self.put_specimen(payload)
+
+        aliquot_dao = BiobankAliquotDao()
+        initial_aliquot = self.get_only_item_from_dao(aliquot_dao)
+
+        payload['aliquots'][0]['sampleType'] = 'check'
+        self.put_specimen(payload)
+
+        final_aliquot = self.get_only_item_from_dao(aliquot_dao)
+        self.assertEqual(initial_aliquot.id, final_aliquot.id)
+        self.assertEqual(final_aliquot.sampleType, 'check')
+
+    def test_put_simple_aliquot_dataset(self):
+        payload = self.get_minimal_specimen_json()
+        payload['aliquots'] = [
+            {
+                'rlimsID': 'other',
+                'datasets': [
+                    {
+                        'rlimsID': 'data_id',
+                        'name': 'test set',
+                        'status': 'nested'
+                    }
+                ]
+            }
+        ]
+        result = self.put_specimen(payload)
 
         saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
-    def test_simple_aliquot_dataset(self):
-        payload = {
-            'rlimsID': 'sabrina',
-            'orderID': self.bio_order.biobankOrderId,
-            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
-            'testcode': 'test 1234567',
-            'aliquots': [
-                {
-                    'rlimsID': 'other',
-                    'datasets': [
-                        {
-                            'rlimsID': 'data_id',
-                            'name': 'test set',
-                            'status': 'nested'
-                        }
-                    ]
-                }
-            ]
-        }
-        result = self.putSpecimen(payload)
+        dataset = self.get_only_item_from_dao(BiobankAliquotDatasetDao())
+        self.assertEqual(dataset.aliquot_rlims_id, 'other')
+
+    def test_update_aliquot_dataset(self):
+        payload = self.get_minimal_specimen_json()
+        payload['aliquots'] = [
+            {
+                'rlimsID': 'other',
+                'datasets': [
+                    {
+                        'rlimsID': 'data_id',
+                        'name': 'test set',
+                        'status': 'nested'
+                    }
+                ]
+            }
+        ]
+        self.put_specimen(payload)
+
+        dataset_dao = BiobankAliquotDatasetDao()
+        initial_dataset = self.get_only_item_from_dao(dataset_dao)
+
+        payload['aliquots'][0]['datasets'][0]['status'] = 'updated'
+        self.put_specimen(payload)
+
+        final_dataset = self.get_only_item_from_dao(dataset_dao)
+        self.assertEqual(initial_dataset.id, final_dataset.id)
+        self.assertEqual(final_dataset.status, 'updated')
+
+    def test_put_simple_aliquot_dataset_items(self):
+        payload = self.get_minimal_specimen_json()
+        payload['aliquots'] = [
+            {
+                'rlimsID': 'other',
+                'datasets': [
+                    {
+                        'rlimsID': 'data_id',
+                        'datasetItems': [
+                            {
+                                'paramID': 'param1',
+                                'displayValue': 'One',
+                                'displayUnits': 'param'
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+        result = self.put_specimen(payload)
 
         saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
-        #todo: am I modifying these things or replacing them?
+        dataset_item = self.get_only_item_from_dao(BiobankAliquotDatasetItemDao())
+        self.assertEqual(dataset_item.dataset_rlims_id, 'data_id')
 
-    def test_simple_aliquot_dataset_items(self):
-        payload = {
-            'rlimsID': 'sabrina',
-            'orderID': self.bio_order.biobankOrderId,
-            'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
-            'testcode': 'test 1234567',
-            'aliquots': [
-                {
-                    'rlimsID': 'other',
-                    'datasets': [
-                        {
-                            'rlimsID': 'data_id',
-                            'datasetItems': [
-                                {
-                                    'paramID': 'param1',
-                                    'displayValue': 'One',
-                                    'displayUnits': 'param'
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        }
-        result = self.putSpecimen(payload)
+    def test_update_aliquot_dataset_item(self):
+        payload = self.get_minimal_specimen_json()
+        payload['aliquots'] = [
+            {
+                'rlimsID': 'other',
+                'datasets': [
+                    {
+                        'rlimsID': 'data_id',
+                        'datasetItems': [
+                            {
+                                'paramID': 'param1',
+                                'displayValue': 'One',
+                                'displayUnits': 'param'
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+        self.put_specimen(payload)
 
-        saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
-        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+        dataset_item_dao = BiobankAliquotDatasetItemDao()
+        initial_dataset_item = self.get_only_item_from_dao(dataset_item_dao)
+
+        payload['aliquots'][0]['datasets'][0]['datasetItems'][0]['displayUnits'] = 'params'
+        self.put_specimen(payload)
+
+        final_dataset_item = self.get_only_item_from_dao(dataset_item_dao)
+        self.assertEqual(initial_dataset_item.id, final_dataset_item.id)
+        self.assertEqual(final_dataset_item.displayUnits, 'params')
