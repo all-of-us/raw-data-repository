@@ -519,21 +519,22 @@ class BaseDao(object):
     """
         raise NotImplementedError()
 
-    def collection_to_json(self, filter_expr=None):
+    def collection_to_json(self, session, filter_expr=None):
         """
         Iterate any existing children of a relationship and create json output for them
+        :param session: SQLAlchemy session for loading objects
         :param filter_expr: SQLAlchemy expression for determining the instances to add to the collection.
             Defaults to None.
         :return:
         """
-        result = None
-        with self.session() as session:
-            objects_found = session.query(self.model_type).filter(filter_expr)
-            if objects_found.count() > 0:
-                result = []
-                for model in objects_found:
-                    result.append(self.to_client_json(model))
-        return result
+        objects_found = session.query(self.model_type).filter(filter_expr)
+        if objects_found.count() > 0:
+            result = []
+            for model in objects_found:
+                result.append(self.to_client_json(model, session))
+            return result
+        else:
+            return None
 
     def collection_from_json(self, json_array, **constructor_kwargs):
         return [self.from_client_json(item_json, **constructor_kwargs)

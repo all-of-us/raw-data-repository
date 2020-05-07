@@ -7,7 +7,7 @@ from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttr
 from werkzeug.exceptions import BadRequest
 
 
-class BiobankJsonParser:
+class BiobankDaoBase(UpdatableDao):
     @staticmethod
     def to_client_status(source_dict):
         status_json = {}
@@ -39,13 +39,13 @@ class BiobankJsonParser:
                                           ('quantityUnits', None),
                                           ('deviations', None),
                                           ('processingCompleteDate', parse_date)]:
-            BiobankJsonParser.map_optional_json_field_to_object(status_source, model, status_field_name, parser=parser)
+            BiobankDaoBase.map_optional_json_field_to_object(status_source, model, status_field_name, parser=parser)
 
     @staticmethod
     def read_client_disposal(status_source, model):
         for disposal_client_field_name, disposal_model_field_name, parser in [('reason', 'disposalReason', None),
                                                                               ('disposalDate', None, parse_date)]:
-            BiobankJsonParser.map_optional_json_field_to_object(status_source, model, disposal_client_field_name,
+            BiobankDaoBase.map_optional_json_field_to_object(status_source, model, disposal_client_field_name,
                                                                  disposal_model_field_name, parser=parser)
 
     @staticmethod
@@ -60,8 +60,17 @@ class BiobankJsonParser:
 
             setattr(obj, object_field_name, value)
 
+    @staticmethod
+    def get_id_with_session(obj, session):
+        raise NotImplementedError
 
-class BiobankSpecimenDao(UpdatableDao, BiobankJsonParser):
+    def get_id(self, obj):
+        with self.session() as session:
+            obj_id = self.get_id_with_session(obj, session)
+        return obj_id
+
+
+class BiobankSpecimenDao(BiobankDaoBase):
 
     validate_version_match = False
 
@@ -93,11 +102,13 @@ class BiobankSpecimenDao(UpdatableDao, BiobankJsonParser):
         result['status'] = self.to_client_status(result)
         result['disposalStatus'] = self.to_client_disposal(result)
 
-        attribute_dao = BiobankSpecimenAttributeDao()
-        result['attributes'] = attribute_dao.collection_to_json(BiobankSpecimenAttribute.specimen_id == model.id)
+        with self.session() as session:
+            attribute_dao = BiobankSpecimenAttributeDao()
+            result['attributes'] = attribute_dao.collection_to_json(session,
+                                                                    BiobankSpecimenAttribute.specimen_id == model.id)
 
-        aliquot_dao = BiobankAliquotDao()
-        result['aliquots'] = aliquot_dao.collection_to_json(BiobankAliquot.specimen_id == model.id)
+            aliquot_dao = BiobankAliquotDao()
+            result['aliquots'] = aliquot_dao.collection_to_json(session, BiobankAliquot.specimen_id == model.id)
 
         # Remove fields internal fields from output
         for field_name in ['created', 'modified']:
@@ -124,39 +135,42 @@ class BiobankSpecimenDao(UpdatableDao, BiobankJsonParser):
         if 'disposalStatus' in resource:
             self.read_client_disposal(resource['disposalStatus'], order)
 
-        if 'attributes' in resource:
-            attribute_dao = BiobankSpecimenAttributeDao()
-            order.attributes = attribute_dao.collection_from_json(resource['attributes'],
-                                                                  specimen_rlims_id=order.rlimsId)
+        with self.session() as session:
+            if 'attributes' in resource:
+                attribute_dao = BiobankSpecimenAttributeDao()
+                order.attributes = attribute_dao.collection_from_json(resource['attributes'],
+                                                                      specimen_rlims_id=order.rlimsId, session=session)
 
-        if 'aliquots' in resource:
-            aliquot_dao = BiobankAliquotDao()
-            order.aliquots = aliquot_dao.collection_from_json(resource['aliquots'], specimen_rlims_id=order.rlimsId)
+            if 'aliquots' in resource:
+                aliquot_dao = BiobankAliquotDao()
+                order.aliquots = aliquot_dao.collection_from_json(resource['aliquots'],
+                                                                  specimen_rlims_id=order.rlimsId, session=session)
 
-        order.id = self.get_id(order)
+            order.id = self.get_id_with_session(order, session)
         return order
 
     def exists(self, resource):
         with self.session() as session:
-            return session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == resource['rlimsID']).count() > 0
+            found = session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == resource['rlimsID']).count() > 0
+        return found
 
-    def get_id(self, obj):
-        with self.session() as session:
-            order = session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == obj.rlimsId).one_or_none()
-            if order is not None:
-                return order.id
-            else:
-                return None
+    @staticmethod
+    def get_id_with_session(obj, session):
+        order = session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == obj.rlimsId).one_or_none()
+        if order is not None:
+            return order.id
+        else:
+            return None
 
 
-class BiobankSpecimenAttributeDao(UpdatableDao, BiobankJsonParser):
+class BiobankSpecimenAttributeDao(BiobankDaoBase):
 
     def __init__(self):
         super().__init__(BiobankSpecimenAttribute)
 
     #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
-                         specimen_rlims_id=None):
+                         specimen_rlims_id=None, session=None):
 
         if specimen_rlims_id is None:
             raise BadRequest("Specimen rlims id required for specimen attributes")
@@ -166,10 +180,10 @@ class BiobankSpecimenAttributeDao(UpdatableDao, BiobankJsonParser):
         if 'value' in resource:
             attribute.value = resource['value']
 
-        attribute.id = self.get_id(attribute)
+        attribute.id = self.get_id_with_session(attribute, session)
         return attribute
 
-    def to_client_json(self, model):
+    def to_client_json(self, model, session):
         result = model.asdict()
 
         # Remove fields internal fields from output
@@ -178,26 +192,26 @@ class BiobankSpecimenAttributeDao(UpdatableDao, BiobankJsonParser):
 
         return result
 
-    def get_id(self, obj):
-        with self.session() as session:
-            attribute = session.query(BiobankSpecimenAttribute).filter(
-                BiobankSpecimenAttribute.specimen_rlims_id == obj.specimen_rlims_id,
-                BiobankSpecimenAttribute.name == obj.name
-            ).one_or_none()
-            if attribute is not None:
-                return attribute.id
-            else:
-                return None
+    @staticmethod
+    def get_id_with_session(obj, session):
+        attribute = session.query(BiobankSpecimenAttribute).filter(
+            BiobankSpecimenAttribute.specimen_rlims_id == obj.specimen_rlims_id,
+            BiobankSpecimenAttribute.name == obj.name
+        ).one_or_none()
+        if attribute is not None:
+            return attribute.id
+        else:
+            return None
 
 
-class BiobankAliquotDao(UpdatableDao, BiobankJsonParser):
+class BiobankAliquotDao(BiobankDaoBase):
 
     def __init__(self):
         super().__init__(BiobankAliquot)
 
     #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
-                         specimen_rlims_id=None):
+                         specimen_rlims_id=None, session=None):
 
         if specimen_rlims_id is None:
             raise BadRequest("Specimen rlims id required for aliquots")
@@ -218,15 +232,17 @@ class BiobankAliquotDao(UpdatableDao, BiobankJsonParser):
 
         if 'datasets' in resource:
             dataset_dao = BiobankAliquotDatasetDao()
-            aliquot.datasets = dataset_dao.collection_from_json(resource['datasets'], aliquot_rlims_id=aliquot.rlimsId)
+            aliquot.datasets = dataset_dao.collection_from_json(resource['datasets'], aliquot_rlims_id=aliquot.rlimsId,
+                                                                session=session)
 
         if 'aliquots' in resource:
-            aliquot.aliquots = self.collection_from_json(resource['aliquots'], specimen_rlims_id=specimen_rlims_id)
+            aliquot.aliquots = self.collection_from_json(resource['aliquots'], specimen_rlims_id=specimen_rlims_id,
+                                                         session=session)
 
-        aliquot.id = self.get_id(aliquot)
+        aliquot.id = self.get_id_with_session(aliquot, session)
         return aliquot
 
-    def to_client_json(self, model):
+    def to_client_json(self, model, session):
         result = model.asdict()
 
         for client_field_name, model_field_name in [('rlimsID', 'rlimsId'),
@@ -237,9 +253,9 @@ class BiobankAliquotDao(UpdatableDao, BiobankJsonParser):
         result['disposalStatus'] = self.to_client_disposal(result)
 
         dataset_dao = BiobankAliquotDatasetDao()
-        result['datasets'] = dataset_dao.collection_to_json(BiobankAliquotDataset.aliquot_id == model.id)
+        result['datasets'] = dataset_dao.collection_to_json(session, BiobankAliquotDataset.aliquot_id == model.id)
 
-        result['aliquots'] = self.collection_to_json(BiobankAliquot.parent_aliquot_id == model.id)
+        result['aliquots'] = self.collection_to_json(session, BiobankAliquot.parent_aliquot_id == model.id)
 
         # Remove fields internal fields from output
         for field_name in ['id', 'created', 'modified', 'specimen_id', 'specimen_rlims_id', 'parent_aliquot_id',
@@ -248,25 +264,25 @@ class BiobankAliquotDao(UpdatableDao, BiobankJsonParser):
 
         return result
 
-    def get_id(self, obj):
-        with self.session() as session:
-            aliquot = session.query(BiobankAliquot).filter(
-                BiobankAliquot.rlimsId == obj.rlimsId,
-            ).one_or_none()
-            if aliquot is not None:
-                return aliquot.id
-            else:
-                return None
+    @staticmethod
+    def get_id_with_session(obj, session):
+        aliquot = session.query(BiobankAliquot).filter(
+            BiobankAliquot.rlimsId == obj.rlimsId,
+        ).one_or_none()
+        if aliquot is not None:
+            return aliquot.id
+        else:
+            return None
 
 
-class BiobankAliquotDatasetDao(UpdatableDao, BiobankJsonParser):
+class BiobankAliquotDatasetDao(BiobankDaoBase):
 
     def __init__(self):
         super().__init__(BiobankAliquotDataset)
 
     #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
-                         aliquot_rlims_id=None):
+                         aliquot_rlims_id=None, session=None):
 
         if aliquot_rlims_id is None:
             raise BadRequest("Aliquot rlims id required for dataset")
@@ -279,43 +295,43 @@ class BiobankAliquotDatasetDao(UpdatableDao, BiobankJsonParser):
         if 'datasetItems' in resource:
             item_dao = BiobankAliquotDatasetItemDao()
             dataset.datasetItems = item_dao.collection_from_json(resource['datasetItems'],
-                                                                 dataset_rlims_id=dataset.rlimsId)
+                                                                 dataset_rlims_id=dataset.rlimsId, session=session)
 
-        dataset.id = self.get_id(dataset)
+        dataset.id = self.get_id_with_session(dataset, session)
         return dataset
 
-    def to_client_json(self, model):
+    def to_client_json(self, model, session):
         result = model.asdict()
 
         result['rlimsID'] = result.pop('rlimsId')
 
         item_dao = BiobankAliquotDatasetItemDao()
-        result['datasetItems'] = item_dao.collection_to_json(BiobankAliquotDatasetItem.dataset_id == model.id)
+        result['datasetItems'] = item_dao.collection_to_json(session, BiobankAliquotDatasetItem.dataset_id == model.id)
 
         for field_name in ['id', 'created', 'modified', 'aliquot_id', 'aliquot_rlims_id']:
             del result[field_name]
 
         return result
 
-    def get_id(self, obj):
-        with self.session() as session:
-            dataset = session.query(BiobankAliquot).filter(
-                BiobankAliquotDataset.rlimsId == obj.rlimsId,
-            ).one_or_none()
-            if dataset is not None:
-                return dataset.id
-            else:
-                return None
+    @staticmethod
+    def get_id_with_session(obj, session):
+        dataset = session.query(BiobankAliquot).filter(
+            BiobankAliquotDataset.rlimsId == obj.rlimsId,
+        ).one_or_none()
+        if dataset is not None:
+            return dataset.id
+        else:
+            return None
 
 
-class BiobankAliquotDatasetItemDao(UpdatableDao, BiobankJsonParser):
+class BiobankAliquotDatasetItemDao(BiobankDaoBase):
 
     def __init__(self):
         super().__init__(BiobankAliquotDatasetItem)
 
     #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
-                         dataset_rlims_id=None):
+                         dataset_rlims_id=None, session=None):
 
         if dataset_rlims_id is None:
             raise BadRequest("Dataset rlims id required for dataset item")
@@ -325,10 +341,10 @@ class BiobankAliquotDatasetItemDao(UpdatableDao, BiobankJsonParser):
         for field_name in ['displayValue', 'displayUnits']:
             self.map_optional_json_field_to_object(resource, item, field_name)
 
-        item.id = self.get_id(item)
+        item.id = self.get_id_with_session(item, session)
         return item
 
-    def to_client_json(self, model):
+    def to_client_json(self, model, session):
         result = model.asdict()
 
         result['paramID'] = result.pop('paramId')
@@ -338,13 +354,13 @@ class BiobankAliquotDatasetItemDao(UpdatableDao, BiobankJsonParser):
 
         return result
 
-    def get_id(self, obj):
-        with self.session() as session:
-            dataset_item = session.query(BiobankAliquotDatasetItem).filter(
-                BiobankAliquotDatasetItem.dataset_rlims_id == obj.dataset_rlims_id,
-                BiobankAliquotDatasetItem.paramId == obj.paramId
-            ).one_or_none()
-            if dataset_item is not None:
-                return dataset_item.id
-            else:
-                return None
+    @staticmethod
+    def get_id_with_session(obj, session):
+        dataset_item = session.query(BiobankAliquotDatasetItem).filter(
+            BiobankAliquotDatasetItem.dataset_rlims_id == obj.dataset_rlims_id,
+            BiobankAliquotDatasetItem.paramId == obj.paramId
+        ).one_or_none()
+        if dataset_item is not None:
+            return dataset_item.id
+        else:
+            return None
