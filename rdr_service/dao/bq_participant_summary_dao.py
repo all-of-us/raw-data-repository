@@ -442,7 +442,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         elif 'EHRConsent' in consents:
             if consents['EHRConsent'][0] == 'ConsentPermission_Yes':
                 ehr_consent = True
-        elif 'DVEHRConnset' in consents:
+        elif 'DVEHRConsent' in consents:
             if consents['DVEHRConsent'][0] == 'DVEHRSharing_Yes':
                 ehr_consent = True
 
@@ -608,7 +608,7 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None)
 
     # filter test or ghost participants if production
     if app_id == 'all-of-us-rdr-prod':  # or app_id == 'localhost':
-        if ps_bqr.is_ghost_id == 1 or ps_bqr.hpo == 'TEST':
+        if ps_bqr.is_ghost_id == 1 or ps_bqr.hpo == 'TEST' or (ps_bqr.email and '@example.com' in ps_bqr.email):
             return None
 
     # Since the PDR participant summary is primarily a subset of the Participant Summary, call the full

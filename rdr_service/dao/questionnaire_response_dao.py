@@ -277,6 +277,7 @@ class QuestionnaireResponseDao(BaseDao):
         race_code_ids = []
         gender_code_ids = []
         ehr_consent = False
+        gror_consent = None
         dvehr_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
         # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
         for answer in questionnaire_response.answers:
@@ -353,6 +354,11 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value == CONSENT_FOR_DVEHR_MODULE:
                         new_status = dvehr_consent
                     elif code.value == CONSENT_FOR_GENOMICS_ROR_MODULE:
+                        if gror_consent is None:
+                            raise BadRequest(
+                                "GROR Consent answer is required to match code {}."
+                                    .format([CONSENT_GROR_YES_CODE, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE])
+                            )
                         new_status = gror_consent
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
                         participant_summary.semanticVersionForPrimaryConsent = \

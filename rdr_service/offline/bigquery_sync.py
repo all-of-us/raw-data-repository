@@ -37,6 +37,10 @@ def rebuild_bigquery_handler():
     Cron job handler, setup queued tasks to rebuild bigquery data.
     Tasks call the default API service, so we want to use small batch sizes.
     """
+    if config.GAE_PROJECT not in ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']:
+        logging.warning(f'BigQuery operations not supported in {config.GAE_PROJECT}, skipping.')
+        return
+
     batch_size = 250
 
     ro_dao = BigQuerySyncDao(backup=True)
@@ -103,17 +107,21 @@ def daily_rebuild_bigquery_handler():
     Cron job handler, setup queued tasks to with participants that need to be rebuilt.
     Tasks call the default API service, so we want to use small batch sizes.
     """
+    if config.GAE_PROJECT not in ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']:
+        logging.warning(f'BigQuery operations not supported in {config.GAE_PROJECT}, skipping.')
+        return
+
     batch_size = 250
 
     ro_dao = BigQuerySyncDao(backup=True)
     with ro_dao.session() as ro_session:
-
+        # Find all BQ records where enrollment status or withdrawn statuses are different.
         sql = """
-            select bqs.pk_id as participantId
+        select bqs.pk_id as participantId
         from participant_summary ps
              JOIN bigquery_sync bqs ON bqs.pk_id = ps.participant_id
-        where ps.enrollment_status = 3
-            and JSON_EXTRACT(resource, "$.enrollment_status_id") <> 3;
+        where (ps.enrollment_status = 3 and JSON_EXTRACT(resource, "$.enrollment_status_id") <> 3) or
+              (ps.withdrawal_status = 2 and JSON_EXTRACT(resource, "$.withdrawal_status_id") <> 2);
         """
 
         participants = ro_session.execute(sql)
@@ -251,6 +259,9 @@ def sync_bigquery_handler(dryrun=False):
     # https://cloud.google.com/bigquery/docs/reference/rest/v2/tabledata/insertAll
     # https://cloud.google.com/bigquery/troubleshooting-errors#streaming
     """
+    if config.GAE_PROJECT not in ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']:
+        return
+
     ro_dao = BigQuerySyncDao(backup=True)
     # https://github.com/googleapis/google-api-python-client/issues/299
     # https://github.com/pior/appsecrets/issues/7

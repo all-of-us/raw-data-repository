@@ -114,6 +114,9 @@ class BQPDRParticipantSummarySchema(BQSchema):
     consent_cohort = BQField('consent_cohort', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     consent_cohort_id = BQField('consent_cohort_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
+    email_available = BQField('email_available', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    phone_number_available = BQField('phone_number_available', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
 
 class BQPDRParticipantSummary(BQTable):
     """ PDR Participant Summary BigQuery Table """

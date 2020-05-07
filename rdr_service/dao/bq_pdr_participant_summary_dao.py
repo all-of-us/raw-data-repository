@@ -53,6 +53,8 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
 
             summary = self._merge_schema_dicts(summary, data)
 
+        # Calculate contact information
+        summary = self._merge_schema_dicts(summary, self._set_contact_flags(ps_bqr))
         # Calculate UBR
         summary = self._merge_schema_dicts(summary, self._calculate_ubr(ps_bqr))
 
@@ -74,9 +76,22 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                         self.rural_zipcodes.append(line.split(',')[1].strip())
                 break
 
+    def _set_contact_flags(self, ps_bqr):
+        """
+        Determine if an email or phone number is available.
+        :param ps_bqr: A BQParticipantSummary BQRecord object
+        :return: dict
+        """
+        data = {
+            'email_available': 1 if ps_bqr.email else 0,
+            'phone_number_available': 1 if (getattr(ps_bqr, 'login_phone_number', None) or
+                                            getattr(ps_bqr, 'phone_number', None)) else 0
+        }
+        return data
+
     def _calculate_ubr(self, ps_bqr):
         """
-        Calulate the UBR values for this participant
+        Calculate the UBR values for this participant
         :param bqr: A BQParticipantSummary BQRecord object.
         :return: dict
         """
