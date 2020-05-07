@@ -14,6 +14,9 @@ class BQWorkspaceAgeSchema(BQSchema):
 
 
 class BQRWBWorkspaceSchema(BQSchema):
+    """
+    Represents the workbench_workspace_snapshot table.
+    """
     id = BQField('id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
@@ -72,6 +75,9 @@ class BQRWBWorkspaceSchema(BQSchema):
     income_level_id = BQField('income_level_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
     others = BQField('others', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+
+    review_requested = BQField('review_requested', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    is_reviewed = BQField('is_reviewed', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQRWBWorkspace(BQTable):
@@ -147,6 +153,7 @@ class BQRWBWorkspaceUsersSchema(BQSchema):
     role_id = BQField('role_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     status = BQField('status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     status_id = BQField('status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    researcher_id = BQField('researcher_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQRWBWorkspaceUsers(BQTable):
