@@ -220,6 +220,9 @@ class BiobankAliquotDao(UpdatableDao, BiobankJsonParser):
             dataset_dao = BiobankAliquotDatasetDao()
             aliquot.datasets = dataset_dao.collection_from_json(resource['datasets'], aliquot_rlims_id=aliquot.rlimsId)
 
+        if 'aliquots' in resource:
+            aliquot.aliquots = self.collection_from_json(resource['aliquots'], specimen_rlims_id=specimen_rlims_id)
+
         aliquot.id = self.get_id(aliquot)
         return aliquot
 
@@ -236,7 +239,7 @@ class BiobankAliquotDao(UpdatableDao, BiobankJsonParser):
         dataset_dao = BiobankAliquotDatasetDao()
         result['datasets'] = dataset_dao.collection_to_json(BiobankAliquotDataset.aliquot_id == model.id)
 
-        #todo: add created and modified listeners for everything
+        result['aliquots'] = self.collection_to_json(BiobankAliquot.parent_aliquot_id == model.id)
 
         # Remove fields internal fields from output
         for field_name in ['id', 'created', 'modified', 'specimen_id', 'specimen_rlims_id', 'parent_aliquot_id',

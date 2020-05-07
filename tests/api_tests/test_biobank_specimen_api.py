@@ -8,7 +8,7 @@ from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model import config_utils
 from rdr_service.model.participant import Participant
-from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrderedSample, BiobankOrder
+from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrderedSample, BiobankOrder, BiobankAliquot
 from tests.helpers.unittest_base import BaseTestCase
 
 TIME_1 = datetime.datetime(2020, 4, 1)
@@ -458,3 +458,31 @@ class BiobankOrderApiTest(BaseTestCase):
         final_dataset_item = self.get_only_item_from_dao(dataset_item_dao)
         self.assertEqual(initial_dataset_item.id, final_dataset_item.id)
         self.assertEqual(final_dataset_item.displayUnits, 'params')
+
+    def test_put_nested_aliquots(self):
+        payload = self.get_minimal_specimen_json()
+        payload['aliquots'] = [
+            {
+                'rlimsID': 'grandparent',
+                'aliquots': [
+                    {
+                        'rlimsID': 'parent',
+                        'aliquots': [
+                            {
+                                'rlimsID': 'child'
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+        result = self.put_specimen(payload)
+
+        saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
+        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+
+        aliquot_dao = BiobankAliquotDao()
+        with aliquot_dao.session() as session:
+            grand_child_aliquot = session.query(BiobankAliquot).filter(BiobankAliquot.rlimsId == 'child').one()
+            self.assertEqual(grand_child_aliquot.specimen_rlims_id, 'sabrina')
+            self.assertEqual(grand_child_aliquot.parent_aliquot_rlims_id, 'parent')

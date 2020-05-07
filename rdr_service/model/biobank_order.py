@@ -276,6 +276,9 @@ class BiobankAliquot(Base, BiobankSpecimenBase, BiobbankSpecimenAliquotBase, Spe
     datasets = relationship("BiobankAliquotDataset", cascade="all, delete-orphan",
                             foreign_keys="BiobankAliquotDataset.aliquot_id", lazy="joined",
                             order_by="BiobankAliquotDataset.rlimsId")
+    aliquots = relationship("BiobankAliquot", cascade="all, delete-orphan",
+                            foreign_keys="BiobankAliquot.parent_aliquot_id", lazy="joined",
+                            order_by="BiobankAliquot.rlimsId")
 
 
 class BiobankAliquotDataset(Base, BiobankSpecimenBase):
