@@ -117,6 +117,8 @@ class BQPDRParticipantSummarySchema(BQSchema):
     email_available = BQField('email_available', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     phone_number_available = BQField('phone_number_available', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
+    ubr_disability = BQField('ubr_disability', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
 
 class BQPDRParticipantSummary(BQTable):
     """ PDR Participant Summary BigQuery Table """
