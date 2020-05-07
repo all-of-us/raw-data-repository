@@ -117,7 +117,7 @@ def daily_rebuild_bigquery_handler():
     with ro_dao.session() as ro_session:
         # Find all BQ records where enrollment status or withdrawn statuses are different.
         sql = """
-        select bqs.pk_id
+        select bqs.pk_id as participantId
         from participant_summary ps
              JOIN bigquery_sync bqs ON bqs.pk_id = ps.participant_id
         where (ps.enrollment_status = 3 and JSON_EXTRACT(resource, "$.enrollment_status_id") <> 3) or
