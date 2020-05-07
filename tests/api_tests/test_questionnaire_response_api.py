@@ -446,6 +446,18 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         self.assertEqual(summary['consentForGenomicsRORTime'], TIME_2.isoformat())
         self.assertEqual(summary['consentForGenomicsRORAuthored'], '2019-12-12T09:30:44')
 
+        # Test Bad Code Value Sent returns 400
+        with open(data_path("consent_for_genomic_ror_bad_request.json")) as f:
+            resource = json.load(f)
+
+        resource["subject"]["reference"] = f'Patient/{participant_id}'
+        resource["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
+
+        with FakeClock(TIME_2):
+            self.send_post(_questionnaire_response_url(participant_id),
+                           resource,
+                           expected_status=http.client.BAD_REQUEST)
+
     def test_consent_with_extension_language(self):
         with FakeClock(TIME_1):
             participant_id = self.create_participant()
