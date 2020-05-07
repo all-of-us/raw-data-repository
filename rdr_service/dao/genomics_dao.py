@@ -582,7 +582,6 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
             GenomicGCValidationMetrics, order_by_ending=['id'])
         self.member_dao = GenomicSetMemberDao()
 
-        # The mapping between the columns in the DB and the data to ingest
         self.data_mappings = {
             'genomicSetMemberId': 'member_id',
             'genomicFileProcessedId': 'file_id',
@@ -593,11 +592,13 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
             'genomeCoverage': 'genomecoverage',
             'contamination': 'contamination',
             'sexConcordance': 'sexconcordance',
+            'sexPloidy': 'sexploidy',
             'alignedQ20Bases': 'alignedq20bases',
             'processingStatus': 'processingstatus',
             'notes': 'notes',
             'siteId': 'siteid',
         }
+        # The mapping between the columns in the DB and the data to ingest
 
     def get_id(self, obj):
         return obj.id
@@ -646,6 +647,35 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                     (GenomicGCValidationMetrics.idatGreenReceived == 0) |
                     (GenomicGCValidationMetrics.vcfReceived == 0) |
                     (GenomicGCValidationMetrics.tbiReceived == 0)
+                )
+                .all()
+            )
+
+    def get_with_missing_seq_files(self):
+        """
+        Retrieves all gc metrics with missing sequencing files
+        :return: list of returned GenomicGCValidationMetrics objects
+        """
+        with self.session() as session:
+            return (
+                session.query(GenomicGCValidationMetrics,
+                              GenomicSetMember.biobankId,
+                              GenomicSetMember.sampleId,)
+                .join(
+                    (GenomicSetMember,
+                     GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId)
+                )
+                .filter(
+                    (GenomicGCValidationMetrics.hfVcfReceived == 0) |
+                    (GenomicGCValidationMetrics.hfVcfTbiReceived == 0) |
+                    (GenomicGCValidationMetrics.hfVcfMd5Received == 0) |
+                    (GenomicGCValidationMetrics.rawVcfReceived == 0) |
+                    (GenomicGCValidationMetrics.rawVcfTbiReceived == 0) |
+                    (GenomicGCValidationMetrics.rawVcfMd5Received == 0) |
+                    (GenomicGCValidationMetrics.cramReceived == 0) |
+                    (GenomicGCValidationMetrics.cramMd5Received == 0) |
+                    (GenomicGCValidationMetrics.craiReceived == 0) |
+                    (GenomicGCValidationMetrics.craiMd5Received == 0)
                 )
                 .all()
             )

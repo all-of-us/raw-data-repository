@@ -95,10 +95,19 @@ def reconcile_metrics_vs_manifest():
 def reconcile_metrics_vs_genotyping_data():
     """
     Entrypoint for GC Metrics File reconciliation
-    against Sequencing Files subprocess of genomic_pipeline.
+    Genotyping Files (Array) vs Listed in Manifest.
     """
     with GenomicJobController(GenomicJob.RECONCILE_GENOTYPING_DATA) as controller:
         controller.run_reconciliation_to_genotyping_data()
+
+
+def reconcile_metrics_vs_sequencing_data():
+    """
+    Entrypoint for GC Metrics File reconciliation
+    Sequencing Files (Array) vs Listed in Manifest.
+    """
+    with GenomicJobController(GenomicJob.RECONCILE_SEQUENCING_DATA) as controller:
+        controller.run_reconciliation_to_sequencing_data()
 
 
 def gem_a1_manifest_workflow():

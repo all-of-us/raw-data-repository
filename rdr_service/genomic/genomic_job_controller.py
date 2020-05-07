@@ -86,7 +86,7 @@ class GenomicJobController:
         Reconciles the metrics to manifest using reconciler component
         :return: result code for job run
         """
-        self.reconciler = GenomicReconciler(self.job_run.id)
+        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id)
         try:
             self.job_result = self.reconciler.reconcile_metrics_to_manifest()
         except RuntimeError:
@@ -96,9 +96,19 @@ class GenomicJobController:
         """
         Reconciles the metrics to genotyping files using reconciler component
         """
-        self.reconciler = GenomicReconciler(self.job_run.id)
+        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id)
         try:
             self.job_result = self.reconciler.reconcile_metrics_to_genotyping_data()
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
+    def run_reconciliation_to_sequencing_data(self):
+        """
+        Reconciles the metrics to sequencing files using reconciler component
+        """
+        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id)
+        try:
+            self.job_result = self.reconciler.reconcile_metrics_to_sequencing_data()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
@@ -176,7 +186,7 @@ class GenomicJobController:
         Creates the CVL reconciliation report using the reconciler object
         """
         self.reconciler = GenomicReconciler(
-            self.job_run.id, bucket_name=self.bucket_name
+            self.job_run.id, self.job_id, bucket_name=self.bucket_name
         )
         try:
             cvl_result = self.reconciler.generate_cvl_reconciliation_report()
