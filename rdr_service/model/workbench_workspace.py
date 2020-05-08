@@ -89,6 +89,7 @@ class WorkbenchWorkspaceUser(Base):
     userId = Column("user_id", Integer, nullable=False)
     role = Column("role", Enum(WorkbenchWorkspaceUserRole), default=WorkbenchWorkspaceUserRole.UNSET)
     status = Column("status", Enum(WorkbenchWorkspaceStatus), default=WorkbenchWorkspaceStatus.UNSET)
+    isCreator = Column("is_creator", Boolean)
 
 
 class WorkbenchWorkspaceSnapshot(WorkbenchWorkspaceBase, Base):
@@ -119,6 +120,7 @@ class WorkbenchWorkspaceUserHistory(Base):
     userId = Column("user_id", Integer, nullable=False)
     role = Column("role", Enum(WorkbenchWorkspaceUserRole), default=WorkbenchWorkspaceUserRole.UNSET)
     status = Column("status", Enum(WorkbenchWorkspaceStatus), default=WorkbenchWorkspaceStatus.UNSET)
+    isCreator = Column("is_creator", Boolean)
 
 
 class WorkbenchAudit(Base):
