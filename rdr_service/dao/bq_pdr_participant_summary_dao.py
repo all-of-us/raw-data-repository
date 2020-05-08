@@ -118,7 +118,7 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
 
         # ubr_sexual_orientation
         if hasattr(ps_bqr, 'sexual_orientation') and ps_bqr.sexual_orientation:
-            if ps_bqr.sexual_orientation != 'SexualOrientation_Straight':
+            if ps_bqr.sexual_orientation not in ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer']:
                 data['ubr_sexual_orientation'] = 1
 
         # ubr_gender_identity
