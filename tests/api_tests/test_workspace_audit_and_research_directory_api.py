@@ -78,7 +78,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "workspaceUsers": [
                     {
                         "userId": 0,
-                        "role": "READER",
+                        "role": "OWNER",
                         "status": "ACTIVE"
                     },
                     {
@@ -87,6 +87,11 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                         "status": "ACTIVE"
                     }
                 ],
+                "creator": {
+                    "userId": 1,
+                    "givenName": "aaa",
+                    "familyName": "bbb"
+                },
                 "excludeFromPublicDirectory": False,
                 "ethicalLegalSocialImplications": True,
                 "diseaseFocusedResearch": True,
@@ -137,6 +142,11 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                         "status": "ACTIVE"
                     }
                 ],
+                "creator": {
+                    "userId": 0,
+                    "givenName": "aaa",
+                    "familyName": "bbb"
+                },
                 "excludeFromPublicDirectory": False,
                 "ethicalLegalSocialImplications": False,
                 "diseaseFocusedResearch": True,

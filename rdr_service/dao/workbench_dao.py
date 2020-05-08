@@ -51,28 +51,31 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             if item.get('workspaceId') is None:
                 raise BadRequest('Workspace ID can not be NULL')
             if item.get('name') is None:
-                raise BadRequest('Workspace name can not be NULL')
+                raise BadRequest('WorkspaceID:{} name can not be NULL'.format(item.get('workspaceId')))
             if item.get('creationTime') is None:
-                raise BadRequest('Workspace creationTime can not be NULL')
+                raise BadRequest('WorkspaceID:{} creationTime can not be NULL'.format(item.get('workspaceId')))
             if item.get('modifiedTime') is None:
-                raise BadRequest('Workspace modifiedTime can not be NULL')
+                raise BadRequest('WorkspaceID:{} modifiedTime can not be NULL'.format(item.get('workspaceId')))
             try:
                 WorkbenchWorkspaceStatus(item.get('status'))
             except TypeError:
-                raise BadRequest(f"Invalid workspace status: {item.get('status')}")
+                raise BadRequest("WorkspaceID:{} Invalid workspace status: {}".format(item.get('workspaceId'),
+                                                                                      item.get('status')))
 
             if item.get('workspaceUsers'):
                 for user in item.get('workspaceUsers'):
                     if user.get('userId') is None:
-                        raise BadRequest('Workspace user ID can not be NULL')
+                        raise BadRequest('WorkspaceID:{} user ID can not be NULL'.format(item.get('workspaceId')))
                     try:
                         WorkbenchWorkspaceUserRole(user.get('role'))
                     except TypeError:
-                        raise BadRequest(f"Invalid user role: {user.get('role')}")
+                        raise BadRequest("WorkspaceID:{} Invalid user role: {}".format(item.get('workspaceId'),
+                                                                                       user.get('role')))
                     try:
                         WorkbenchWorkspaceStatus(user.get('status'))
                     except TypeError:
-                        raise BadRequest(f"Invalid user status: {user.get('status')}")
+                        raise BadRequest("WorkspaceID:{} Invalid user status: {}".format(item.get('workspaceId'),
+                                                                                         user.get('status')))
 
             if item.get("focusOnUnderrepresentedPopulations") and item.get("workspaceDemographic"):
                 race_ethnicity_array = []
@@ -81,7 +84,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         try:
                             race_ethnicity_array.append(int(WorkbenchWorkspaceRaceEthnicity(race_ethnicity)))
                         except TypeError:
-                            raise BadRequest(f"Invalid raceEthnicity for workspaceDemographic: {race_ethnicity}")
+                            raise BadRequest("WorkspaceID:{} Invalid raceEthnicity for workspaceDemographic: {}"
+                                             .format(item.get('workspaceId'), race_ethnicity))
                 item['raceEthnicity'] = race_ethnicity_array
 
                 age_array = []
@@ -90,7 +94,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         try:
                             age_array.append(int(WorkbenchWorkspaceAge(age)))
                         except TypeError:
-                            raise BadRequest(f"Invalid age for workspaceDemographic: {age}")
+                            raise BadRequest("WorkspaceID:{} Invalid age for workspaceDemographic: {}"
+                                             .format(item.get('workspaceId'), age))
                 item['age'] = age_array
 
                 try:
@@ -100,7 +105,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         item["sexAtBirth"] = item.get("workspaceDemographic").get("sexAtBirth")
                     WorkbenchWorkspaceSexAtBirth(item['sexAtBirth'])
                 except TypeError:
-                    raise BadRequest(f"Invalid sexAtBirth for workspaceDemographic: {item.get('sexAtBirth')}")
+                    raise BadRequest("WorkspaceID:{} Invalid sexAtBirth for workspaceDemographic: {}"
+                                     .format(item.get('workspaceId'), item.get('sexAtBirth')))
 
                 try:
                     if item.get("workspaceDemographic").get('genderIdentity') is None:
@@ -109,7 +115,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         item["genderIdentity"] = item.get("workspaceDemographic").get("genderIdentity")
                     WorkbenchWorkspaceGenderIdentity(item['genderIdentity'])
                 except TypeError:
-                    raise BadRequest(f"Invalid genderIdentity for workspaceDemographic: {item.get('genderIdentity')}")
+                    raise BadRequest("WorkspaceID:{} Invalid genderIdentity for workspaceDemographic: {}"
+                                     .format(item.get('workspaceId'), item.get('genderIdentity')))
 
                 try:
                     if item.get("workspaceDemographic").get('sexualOrientation') is None:
@@ -118,8 +125,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         item["sexualOrientation"] = item.get("workspaceDemographic").get("sexualOrientation")
                     WorkbenchWorkspaceSexualOrientation(item['sexualOrientation'])
                 except TypeError:
-                    raise BadRequest(f"Invalid sexualOrientation for workspaceDemographic: "
-                                     f"{item.get('sexualOrientation')}")
+                    raise BadRequest("WorkspaceID:{} Invalid sexualOrientation for workspaceDemographic: {}"
+                                     .format(item.get('workspaceId'), item.get('sexualOrientation')))
 
                 try:
                     if item.get("workspaceDemographic").get('geography') is None:
@@ -128,8 +135,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         item["geography"] = item.get("workspaceDemographic").get("geography")
                     WorkbenchWorkspaceGeography(item['geography'])
                 except TypeError:
-                    raise BadRequest(f"Invalid geography for workspaceDemographic: "
-                                     f"{item.get('geography')}")
+                    raise BadRequest("WorkspaceID:{} Invalid geography for workspaceDemographic: {}"
+                                     .format(item.get('workspaceId'), item.get('geography')))
 
                 try:
                     if item.get("workspaceDemographic").get('disabilityStatus') is None:
@@ -138,8 +145,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         item["disabilityStatus"] = item.get("workspaceDemographic").get("disabilityStatus")
                     WorkbenchWorkspaceDisabilityStatus(item['disabilityStatus'])
                 except TypeError:
-                    raise BadRequest(f"Invalid disabilityStatus for workspaceDemographic: "
-                                     f"{item.get('disabilityStatus')}")
+                    raise BadRequest("WorkspaceID:{} Invalid disabilityStatus for workspaceDemographic: {}"
+                                     .format(item.get('workspaceId'), item.get('disabilityStatus')))
 
                 try:
                     if item.get("workspaceDemographic").get('accessToCare') is None:
@@ -148,8 +155,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         item["accessToCare"] = item.get("workspaceDemographic").get("accessToCare")
                     WorkbenchWorkspaceAccessToCare(item['accessToCare'])
                 except TypeError:
-                    raise BadRequest(f"Invalid accessToCare for workspaceDemographic: "
-                                     f"{item.get('accessToCare')}")
+                    raise BadRequest("WorkspaceID:{} Invalid accessToCare for workspaceDemographic: {}"
+                                     .format(item.get('workspaceId'), item.get('accessToCare')))
 
                 try:
                     if item.get("workspaceDemographic").get('educationLevel') is None:
@@ -158,8 +165,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         item["educationLevel"] = item.get("workspaceDemographic").get("educationLevel")
                     WorkbenchWorkspaceEducationLevel(item['educationLevel'])
                 except TypeError:
-                    raise BadRequest(f"Invalid educationLevel for workspaceDemographic: "
-                                     f"{item.get('educationLevel')}")
+                    raise BadRequest("WorkspaceID:{} Invalid educationLevel for workspaceDemographic: {}"
+                                     .format(item.get('workspaceId'), item.get('educationLevel')))
 
                 try:
                     if item.get("workspaceDemographic").get('incomeLevel') is None:
@@ -168,8 +175,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         item["incomeLevel"] = item.get("workspaceDemographic").get("incomeLevel")
                     WorkbenchWorkspaceIncomeLevel(item['incomeLevel'])
                 except TypeError:
-                    raise BadRequest(f"Invalid incomeLevel for workspaceDemographic: "
-                                     f"{item.get('incomeLevel')}")
+                    raise BadRequest("WorkspaceID:{} Invalid incomeLevel for workspaceDemographic: {}"
+                                     .format(item.get('workspaceId'), item.get('incomeLevel')))
 
                 if item.get("workspaceDemographic").get('others') is not None:
                     item["others"] = item.get("workspaceDemographic").get("others")
@@ -217,7 +224,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 raceEthnicity=item.get("raceEthnicity", []),
                 age=item.get("age", []),
                 others=item.get('others'),
-                workbenchWorkspaceUser=self._get_users(item.get('workspaceUsers')),
+                workbenchWorkspaceUser=self._get_users(item.get('workspaceUsers'), item.get('creator')),
                 resource=json.dumps(item)
             )
 
@@ -225,7 +232,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
         return workspaces
 
-    def _get_users(self, workspace_users_json):
+    def _get_users(self, workspace_users_json, creator_json):
+        creator_user_id = creator_json.get('userId') if creator_json else None
         if workspace_users_json is None:
             return []
         researcher_history_dao = WorkbenchResearcherHistoryDao()
@@ -241,7 +249,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 researcherId=researcher.id,
                 userId=user.get('userId'),
                 role=WorkbenchWorkspaceUserRole(user.get('role', 'UNSET')),
-                status=WorkbenchWorkspaceStatus(user.get('status', 'UNSET'))
+                status=WorkbenchWorkspaceStatus(user.get('status', 'UNSET')),
+                isCreator=(user.get('userId') == creator_user_id)
             )
             workspace_users.append(user_obj)
         return workspace_users
@@ -430,6 +439,9 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 for workspace_user in workspace.workbenchWorkspaceUser:
                     if workspace_user.role == WorkbenchWorkspaceUserRole.OWNER:
                         owner_user_id = workspace_user.userId
+                    if workspace_user.isCreator is True:
+                        owner_user_id = workspace_user.userId
+                        break
                 user = {
                     'userId': researcher.userSourceId,
                     'userName': researcher.givenName + ' ' + researcher.familyName,
@@ -528,7 +540,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 researcherId=researcher.id,
                 userId=user.userId,
                 role=user.role,
-                status=user.status
+                status=user.status,
+                isCreator=user.isCreator
             )
             users.append(user_obj)
         workspace_approved.workbenchWorkspaceUser = users
