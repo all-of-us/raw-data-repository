@@ -60,6 +60,23 @@ class BiobankDaoBase(UpdatableDao):
 
             setattr(obj, object_field_name, value)
 
+    def collection_to_json(self, session, filter_expr=None):
+        """
+        Iterate any existing instances of a collection and create json output for them
+        :param session: SQLAlchemy session for loading objects
+        :param filter_expr: SQLAlchemy expression for determining the instances to add to the collection.
+            Defaults to None.
+        :return:
+        """
+        objects_found = session.query(self.model_type).filter(filter_expr)
+        if objects_found.count() > 0:
+            return [self.to_client_json_with_session(model, session) for model in objects_found]
+        else:
+            return None
+
+    def collection_from_json(self, json_array, **constructor_kwargs):
+        return [self.from_client_json(item_json, **constructor_kwargs) for item_json in json_array]
+
     def to_client_json_with_session(self, model, session):
         raise NotImplementedError
 
@@ -117,7 +134,7 @@ class BiobankSpecimenDao(BiobankDaoBase):
         aliquot_dao = BiobankAliquotDao()
         result['aliquots'] = aliquot_dao.collection_to_json(session, BiobankAliquot.specimen_id == model.id)
 
-        # Remove fields internal fields from output
+        # Remove internal fields from output
         for field_name in ['created', 'modified']:
             del result[field_name]
 
@@ -193,7 +210,7 @@ class BiobankSpecimenAttributeDao(BiobankDaoBase):
     def to_client_json_with_session(self, model, session):
         result = model.asdict()
 
-        # Remove fields internal fields from output
+        # Remove internal fields from output
         for field_name in ['id', 'created', 'modified', 'specimen_id', 'specimen_rlims_id']:
             del result[field_name]
 
@@ -265,7 +282,7 @@ class BiobankAliquotDao(BiobankDaoBase):
 
         result['aliquots'] = self.collection_to_json(session, BiobankAliquot.parent_aliquot_id == model.id)
 
-        # Remove fields internal fields from output
+        # Remove internal fields from output
         for field_name in ['id', 'created', 'modified', 'specimen_id', 'specimen_rlims_id', 'parent_aliquot_id',
                            'parent_aliquot_rlims_id']:
             del result[field_name]
