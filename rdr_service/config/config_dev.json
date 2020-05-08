@@ -6,7 +6,7 @@
   ],
   "user_info": {
     "example@example.com": {
-      "roles": ["ptc", "healthpro", "exporter", "storefront", "rdr", "workbench", "gem", "redcap"],
+      "roles": ["ptc", "healthpro", "exporter", "storefront", "rdr", "workbench", "gem", "redcap", "biobank"],
       "clientId": "example",
       "whitelisted_ip_ranges": {
         "ip6": ["::1/64"],

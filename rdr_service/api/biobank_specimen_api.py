@@ -1,7 +1,7 @@
 from flask import request
 
 from rdr_service.api.base_api import UpdatableApi
-from rdr_service.api_util import HEALTHPRO
+from rdr_service.api_util import BIOBANK
 from rdr_service.app_util import auth_required
 from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao
 from werkzeug.exceptions import BadRequest
@@ -11,7 +11,7 @@ class BiobankSpecimenApi(UpdatableApi):
     def __init__(self):
         super().__init__(BiobankSpecimenDao(), get_returns_children=True)
 
-    @auth_required(HEALTHPRO)
+    @auth_required(BIOBANK)
     def put(self, *args, **kwargs):  # pylint: disable=unused-argument
         resource = request.get_json(force=True)
 
@@ -23,3 +23,7 @@ class BiobankSpecimenApi(UpdatableApi):
             return super(BiobankSpecimenApi, self).put(kwargs['rlims_id'], skip_etag=True)
         else:
             return super(BiobankSpecimenApi, self).post()
+
+    def _make_response(self, obj):
+        result = self.dao.to_client_json(obj)
+        return result, 200

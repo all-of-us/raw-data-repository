@@ -224,6 +224,12 @@ class SpecimenAliquotBase(object):
 class BiobankSpecimen(Base, BiobankSpecimenBase, SpecimenAliquotBase):
     __tablename__ = "biobank_specimen"
 
+    aliquots = relationship("BiobankAliquot", cascade="all, delete-orphan",
+                              foreign_keys="BiobankAliquot.specimen_id",
+                              order_by="BiobankAliquot.rlimsId")
+    attributes = relationship("BiobankSpecimenAttribute", cascade="all, delete-orphan",
+                              foreign_keys="BiobankSpecimenAttribute.specimen_id",
+                              order_by="BiobankSpecimenAttribute.name")
     rlimsId = Column("rlims_id", String(80), unique=True)
     biobankId = Column("biobank_id", Integer, ForeignKey("participant.biobank_id"), nullable=False)
     orderId = Column("order_id", String(80), ForeignKey("biobank_order.biobank_order_id"))
@@ -267,6 +273,13 @@ class BiobankAliquot(Base, BiobankSpecimenBase, BiobbankSpecimenAliquotBase, Spe
     initialTreatment = Column("initial_treatment", String(100))
     containerTypeId = Column("container_type_id", String(100))
 
+    datasets = relationship("BiobankAliquotDataset", cascade="all, delete-orphan",
+                            foreign_keys="BiobankAliquotDataset.aliquot_id",
+                            order_by="BiobankAliquotDataset.rlimsId")
+    aliquots = relationship("BiobankAliquot", cascade="all, delete-orphan",
+                            foreign_keys="BiobankAliquot.parent_aliquot_id",
+                            order_by="BiobankAliquot.rlimsId")
+
 
 class BiobankAliquotDataset(Base, BiobankSpecimenBase):
     __tablename__ = "biobank_aliquot_dataset"
@@ -279,6 +292,10 @@ class BiobankAliquotDataset(Base, BiobankSpecimenBase):
     rlimsId = Column("rlims_id", String(80), unique=True)
     name = Column("name", String(80))
     status = Column("status", String(80))
+
+    datasetItems = relationship("BiobankAliquotDatasetItem", cascade="all, delete-orphan",
+                                foreign_keys="BiobankAliquotDatasetItem.dataset_id",
+                                order_by="BiobankAliquotDatasetItem.paramId")
 
 
 class BiobankAliquotDatasetItem(Base, BiobankSpecimenBase):
@@ -294,7 +311,7 @@ class BiobankAliquotDatasetItem(Base, BiobankSpecimenBase):
     displayUnits = Column("display_units", String(80))
 
 
-event.listen(MayolinkCreateOrderHistory, "before_insert", model_insert_listener)
-event.listen(MayolinkCreateOrderHistory, "before_update", model_update_listener)
-
-event.listen(BiobankSpecimen, "before_insert", model_insert_listener)
+for model_class in [MayolinkCreateOrderHistory, BiobankSpecimen, BiobankSpecimenAttribute,
+                    BiobankAliquot, BiobankAliquotDataset, BiobankAliquotDatasetItem]:
+    event.listen(model_class, "before_insert", model_insert_listener)
+    event.listen(model_class, "before_update", model_update_listener)
