@@ -26,10 +26,11 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
     Generate a Participant Summary BQRecord object
     """
     ro_dao = None
-    _baseline_modules = ['TheBasics', 'OverallHealth', 'Lifestyle']
-    _baseline_sample_test_codes = ["1ED04", "1ED10", "1HEP4", "1PST8", "2PST8", "1SST8", "2SST8",
-                                    "1PS08", "1SS08", "1UR10", "1CFD9", "1PXR2", "1UR90", "2ED10"]
-    _dna_sample_test_codes = ["1ED10", "2ED10", "1ED04", "1SAL", "1SAL2"]
+    # Retrieve module and sample test lists from config.
+    _baseline_modules = [mod.replace('questionnaireOn', '')
+                         for mod in config.getSettingList('baseline_ppi_questionnaire_fields')]
+    _baseline_sample_test_codes = config.getSettingList('baseline_sample_test_codes')
+    _dna_sample_test_codes = config.getSettingList('dna_sample_test_codes')
 
     def make_bqrecord(self, p_id, convert_to_enum=False):
         """
