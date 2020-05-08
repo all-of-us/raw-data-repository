@@ -66,8 +66,7 @@
         "storefront",
         "rdr",
         "workbench",
-        "gem",
-        "biobank"
+        "gem"
       ],
       "whitelisted_ip_ranges": {
         "ip6": [
