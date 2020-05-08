@@ -122,7 +122,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :return: dict
         """
         # qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=['ConsentPII', p_id])
-        qnans = self._get_module_answers('ConsentPII', p_id)
+        qnans = self.get_module_answers(self.ro_dao, 'ConsentPII', p_id)
         if not qnans:
             # return the minimum data required when we don't have the questionnaire data.
             return {'email': None, 'is_ghost_id': 0}
@@ -226,7 +226,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 if module_name not in consent_modules:
                     continue
 
-                qnans = self._get_module_answers(module_name, p_id)
+                qnans = self.get_module_answers(self.ro_dao, module_name, p_id)
                 if qnans:
                     qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
                     consents.append({
@@ -525,11 +525,13 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         data['distinct_visits'] = len(dates)
         return data
 
-    def _get_module_answers(self, module, p_id):
+    @staticmethod
+    def get_module_answers(ro_dao, module, p_id):
         """
-
-        :param module:
-        :param p_id:
+        Retrieve the questionnaire module answers for the given participant id.
+        :param ro_dao: Readonly ro_dao object
+        :param module: Module name
+        :param p_id: participant id.
         :return:
         """
         _module_info_sql = """
@@ -565,14 +567,16 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             WHERE qr.questionnaire_response_id = :qr_id;
         """
 
-        self.ro_dao = BigQuerySyncDao(backup=True)
-        with self.ro_dao.session() as session:
+        if not ro_dao:
+            ro_dao = BigQuerySyncDao(backup=True)
+
+        with ro_dao.session() as session:
             results = session.execute(_module_info_sql, {"p_id": p_id, "mod": module})
             if not results:
                 return None
 
             for row in results:
-                data = self.ro_dao.to_dict(row, result_proxy=results)
+                data = ro_dao.to_dict(row, result_proxy=results)
 
                 answers = session.execute(_answers_sql, {'qr_id': row.questionnaire_response_id})
 

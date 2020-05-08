@@ -187,7 +187,10 @@ def rebuild_bq_participant_task(payload):
         p_id = item['pid']
         count += 1
 
-        rebuild_bq_participant(p_id, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen)
+        ps_bqr = rebuild_bq_participant(p_id, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen)
+        # Test to see if participant record has been filtered.
+        if not ps_bqr:
+            continue
 
         # Generate participant questionnaire module response data
         modules = (
