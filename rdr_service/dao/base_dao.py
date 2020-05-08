@@ -507,6 +507,13 @@ class BaseDao(object):
         except AttributeError:
             raise NotImplementedError()
 
+    def to_client_json_with_session(self, model, session):
+        # pylint: disable=unused-argument
+        """Converts the given model to a JSON object to be returned to API clients. Uses a session object to load
+            children as needed.
+        """
+        raise NotImplementedError()
+
     def from_client_json(self):
         """Subclasses must implement this to parse API request bodies into model objects.
 
@@ -531,7 +538,7 @@ class BaseDao(object):
         if objects_found.count() > 0:
             result = []
             for model in objects_found:
-                result.append(self.to_client_json(model, session))
+                result.append(self.to_client_json_with_session(model, session))
             return result
         else:
             return None

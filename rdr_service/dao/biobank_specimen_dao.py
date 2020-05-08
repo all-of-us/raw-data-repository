@@ -60,6 +60,14 @@ class BiobankDaoBase(UpdatableDao):
 
             setattr(obj, object_field_name, value)
 
+    def to_client_json_with_session(self, model, session):
+        raise NotImplementedError
+
+    def to_client_json(self, model):
+        with self.session() as session:
+            json = self.to_client_json_with_session(model, session)
+        return json
+
     @staticmethod
     def get_id_with_session(obj, session):
         raise NotImplementedError
@@ -80,7 +88,7 @@ class BiobankSpecimenDao(BiobankDaoBase):
     def get_etag(self, id_, pid):  # pylint: disable=unused-argument
         return None
 
-    def to_client_json(self, model):
+    def to_client_json_with_session(self, model, session):
         result = model.asdict()
 
         for client_field_name, model_field_name in [('cohortID', 'cohortId'),
@@ -102,13 +110,12 @@ class BiobankSpecimenDao(BiobankDaoBase):
         result['status'] = self.to_client_status(result)
         result['disposalStatus'] = self.to_client_disposal(result)
 
-        with self.session() as session:
-            attribute_dao = BiobankSpecimenAttributeDao()
-            result['attributes'] = attribute_dao.collection_to_json(session,
-                                                                    BiobankSpecimenAttribute.specimen_id == model.id)
+        attribute_dao = BiobankSpecimenAttributeDao()
+        result['attributes'] = attribute_dao.collection_to_json(session,
+                                                                BiobankSpecimenAttribute.specimen_id == model.id)
 
-            aliquot_dao = BiobankAliquotDao()
-            result['aliquots'] = aliquot_dao.collection_to_json(session, BiobankAliquot.specimen_id == model.id)
+        aliquot_dao = BiobankAliquotDao()
+        result['aliquots'] = aliquot_dao.collection_to_json(session, BiobankAliquot.specimen_id == model.id)
 
         # Remove fields internal fields from output
         for field_name in ['created', 'modified']:
@@ -183,7 +190,7 @@ class BiobankSpecimenAttributeDao(BiobankDaoBase):
         attribute.id = self.get_id_with_session(attribute, session)
         return attribute
 
-    def to_client_json(self, model, session):
+    def to_client_json_with_session(self, model, session):
         result = model.asdict()
 
         # Remove fields internal fields from output
@@ -211,12 +218,13 @@ class BiobankAliquotDao(BiobankDaoBase):
 
     #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
-                         specimen_rlims_id=None, session=None):
+                         specimen_rlims_id=None, parent_aliquot_rlims_id=None, session=None):
 
         if specimen_rlims_id is None:
             raise BadRequest("Specimen rlims id required for aliquots")
 
-        aliquot = BiobankAliquot(rlimsId=resource['rlimsID'], specimen_rlims_id=specimen_rlims_id)
+        aliquot = BiobankAliquot(rlimsId=resource['rlimsID'], specimen_rlims_id=specimen_rlims_id,
+                                 parent_aliquot_rlims_id=parent_aliquot_rlims_id)
 
         for client_field, model_field in [('sampleType', None),
                                           ('childPlanService', None),
@@ -237,12 +245,12 @@ class BiobankAliquotDao(BiobankDaoBase):
 
         if 'aliquots' in resource:
             aliquot.aliquots = self.collection_from_json(resource['aliquots'], specimen_rlims_id=specimen_rlims_id,
-                                                         session=session)
+                                                         parent_aliquot_rlims_id=aliquot.rlimsId, session=session)
 
         aliquot.id = self.get_id_with_session(aliquot, session)
         return aliquot
 
-    def to_client_json(self, model, session):
+    def to_client_json_with_session(self, model, session):
         result = model.asdict()
 
         for client_field_name, model_field_name in [('rlimsID', 'rlimsId'),
@@ -300,7 +308,7 @@ class BiobankAliquotDatasetDao(BiobankDaoBase):
         dataset.id = self.get_id_with_session(dataset, session)
         return dataset
 
-    def to_client_json(self, model, session):
+    def to_client_json_with_session(self, model, session):
         result = model.asdict()
 
         result['rlimsID'] = result.pop('rlimsId')
@@ -344,7 +352,7 @@ class BiobankAliquotDatasetItemDao(BiobankDaoBase):
         item.id = self.get_id_with_session(item, session)
         return item
 
-    def to_client_json(self, model, session):
+    def to_client_json_with_session(self, model, session):
         result = model.asdict()
 
         result['paramID'] = result.pop('paramId')

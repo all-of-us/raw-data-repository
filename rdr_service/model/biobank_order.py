@@ -225,10 +225,10 @@ class BiobankSpecimen(Base, BiobankSpecimenBase, SpecimenAliquotBase):
     __tablename__ = "biobank_specimen"
 
     aliquots = relationship("BiobankAliquot", cascade="all, delete-orphan",
-                              foreign_keys="BiobankAliquot.specimen_id", lazy="joined",
+                              foreign_keys="BiobankAliquot.specimen_id",
                               order_by="BiobankAliquot.rlimsId")
     attributes = relationship("BiobankSpecimenAttribute", cascade="all, delete-orphan",
-                              foreign_keys="BiobankSpecimenAttribute.specimen_id", lazy="joined",
+                              foreign_keys="BiobankSpecimenAttribute.specimen_id",
                               order_by="BiobankSpecimenAttribute.name")
     rlimsId = Column("rlims_id", String(80), unique=True)
     biobankId = Column("biobank_id", Integer, ForeignKey("participant.biobank_id"), nullable=False)
@@ -274,10 +274,10 @@ class BiobankAliquot(Base, BiobankSpecimenBase, BiobbankSpecimenAliquotBase, Spe
     containerTypeId = Column("container_type_id", String(100))
 
     datasets = relationship("BiobankAliquotDataset", cascade="all, delete-orphan",
-                            foreign_keys="BiobankAliquotDataset.aliquot_id", lazy="joined",
+                            foreign_keys="BiobankAliquotDataset.aliquot_id",
                             order_by="BiobankAliquotDataset.rlimsId")
     aliquots = relationship("BiobankAliquot", cascade="all, delete-orphan",
-                            foreign_keys="BiobankAliquot.parent_aliquot_id", lazy="joined",
+                            foreign_keys="BiobankAliquot.parent_aliquot_id",
                             order_by="BiobankAliquot.rlimsId")
 
 
@@ -294,7 +294,7 @@ class BiobankAliquotDataset(Base, BiobankSpecimenBase):
     status = Column("status", String(80))
 
     datasetItems = relationship("BiobankAliquotDatasetItem", cascade="all, delete-orphan",
-                                foreign_keys="BiobankAliquotDatasetItem.dataset_id", lazy="joined",
+                                foreign_keys="BiobankAliquotDatasetItem.dataset_id",
                                 order_by="BiobankAliquotDatasetItem.paramId")
 
 

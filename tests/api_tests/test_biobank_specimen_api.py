@@ -111,6 +111,11 @@ class BiobankOrderApiTest(BaseTestCase):
                     return False
             del expected_aliquot['datasets']
 
+        if 'aliquots' in expected_aliquot:
+            self.assertCollectionsMatch(actual_aliquot['aliquots'], expected_aliquot['aliquots'],
+                                        self.is_matching_aliquot, "Expected nested aliquots to match")
+            del expected_aliquot['aliquots']
+
         return self.is_matching_json(actual_aliquot, expected_aliquot)
 
     def assertCollectionsMatch(self, actual_list, expected_list, comparator, message):
@@ -486,3 +491,24 @@ class BiobankOrderApiTest(BaseTestCase):
             grand_child_aliquot = session.query(BiobankAliquot).filter(BiobankAliquot.rlimsId == 'child').one()
             self.assertEqual(grand_child_aliquot.specimen_rlims_id, 'sabrina')
             self.assertEqual(grand_child_aliquot.parent_aliquot_rlims_id, 'parent')
+
+    def test_deeply_nested_aliquots(self):
+        payload = self.get_minimal_specimen_json()
+        aliquot = {
+            'rlimsID': 'root'
+        }
+        payload['aliquots'] = [aliquot]
+        for level in range(20):
+            new_aliquot = {
+                'rlimsID': f'aliquot_descendant_{level}'
+            }
+            aliquot['aliquots'] = [new_aliquot]
+            aliquot = new_aliquot
+
+        self.put_specimen(payload)
+
+        aliquot_dao = BiobankAliquotDao()
+        with aliquot_dao.session() as session:
+            descendant_aliquot = session.query(BiobankAliquot).filter(
+                BiobankAliquot.rlimsId == 'aliquot_descendant_19').one()
+            self.assertEqual(descendant_aliquot.parent_aliquot_rlims_id, 'aliquot_descendant_18')
