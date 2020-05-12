@@ -7,7 +7,7 @@ from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_questionnaires import BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle, \
     BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory, \
-    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory
+    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay
 
 
 class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
@@ -46,6 +46,8 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             table = BQPDRHealthcareAccess
         elif module_id == 'PersonalMedicalHistory':
             table = BQPDRPersonalMedicalHistory
+        elif module_id == 'COPE':
+            table = BQPDRCOPEMay
         else:
             logging.info('Generator: ignoring questionnaire module id [{0}].'.format(module_id))
             return None, list()

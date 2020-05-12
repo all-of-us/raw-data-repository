@@ -341,7 +341,8 @@ def run():
                         default='all', metavar='[TABLE|VIEW]')  # noqa
     args = parser.parse_args()
 
-    if args.project not in ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']:
+    envs = ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-sandbox', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']
+    if args.project not in envs:
         _logger.warning(f'BigQuery migration not supported for {args.project}, aborting.')
         return 0
 
