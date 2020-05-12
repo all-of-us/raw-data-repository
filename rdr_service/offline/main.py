@@ -186,6 +186,7 @@ def exclude_ghosts():
 @_alert_on_exceptions
 def sync_consent_files():
     sync_consent_files.do_sync_consent_files()
+    sync_consent_files.do_sync_recent_consent_files()
     return '{"success": "true"}'
 
 
