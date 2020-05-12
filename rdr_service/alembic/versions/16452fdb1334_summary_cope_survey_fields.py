@@ -7,7 +7,7 @@ Create Date: 2020-05-12 14:02:39.592019
 """
 from alembic import op
 import sqlalchemy as sa
-import model.utils
+import rdr_service.model.utils
 from sqlalchemy.dialects import mysql
 
 from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus

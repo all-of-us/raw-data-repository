@@ -10,7 +10,7 @@ Create Date: ${create_date}
 """
 from alembic import op
 import sqlalchemy as sa
-import model.utils
+import rdr_service.model.utils
 ${imports if imports else ""}
 
 from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
