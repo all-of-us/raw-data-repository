@@ -510,9 +510,7 @@ class BQPDRPersonalMedicalHistoryView(BQView):
 class BQPDRCOPEMaySchema(_BQModuleSchema):
     """ COPE Module """
     _module = 'COPE'
-    _excluded_fields = (
-        'OtherSpecify_OtherDrugsTextBox'
-    )
+    _excluded_fields = ()
 
 
 class BQPDRCOPEMay(BQTable):
