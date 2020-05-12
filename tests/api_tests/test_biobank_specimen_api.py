@@ -1,7 +1,7 @@
 import datetime
 
 from rdr_service import clock
-from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao, BiobankSpecimenAttributeDao,\
+from rdr_service.dao.biobank_specimen_dao import BiobankSpecimen, BiobankSpecimenDao, BiobankSpecimenAttributeDao,\
     BiobankAliquotDatasetItemDao, BiobankAliquotDao, BiobankAliquotDatasetDao
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -67,9 +67,12 @@ class BiobankOrderApiTest(BaseTestCase):
         rlims_id = payload['rlimsID']
         return self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
 
-    def get_minimal_specimen_json(self):
+    def get_minimal_specimen_json(self, rlims_id=None):
+        if rlims_id is None:
+            rlims_id = 'sabrina'
+
         return {
-            'rlimsID': 'sabrina',
+            'rlimsID': rlims_id,
             'orderID': self.bio_order.biobankOrderId,
             'participantID': config_utils.to_client_biobank_id(self.participant.biobankId),
             'testcode': 'test 1234567'
@@ -149,8 +152,17 @@ class BiobankOrderApiTest(BaseTestCase):
             self.assertCollectionsMatch(specimen_json['aliquots'], test_json['aliquots'], self.is_matching_aliquot,
                                         "Expected aliquots to match")
 
+    def get_specimen_from_dao(self, _id=None, rlims_id=None):
+        with self.dao.session() as session:
+            if rlims_id is not None:
+                filter_expr = BiobankSpecimen.rlimsId == rlims_id
+            else:
+                filter_expr = BiobankSpecimen.id == _id
+            specimen = session.query(BiobankSpecimen).filter(filter_expr).one()
+        return specimen
+
     def retrieve_specimen_json(self, specimen_id):
-        specimen = self.dao.get(specimen_id)
+        specimen = self.get_specimen_from_dao(_id=specimen_id)
         json = self.dao.to_client_json(specimen)
         return json
 
@@ -512,3 +524,53 @@ class BiobankOrderApiTest(BaseTestCase):
             descendant_aliquot = session.query(BiobankAliquot).filter(
                 BiobankAliquot.rlimsId == 'aliquot_descendant_19').one()
             self.assertEqual(descendant_aliquot.parent_aliquot_rlims_id, 'aliquot_descendant_18')
+
+    def test_put_multiple_specimen(self):
+        specimens = [self.get_minimal_specimen_json(rlims_id) for rlims_id in ['sabrina', 'salem']]
+        specimens[0]['testcode'] = 'migration'
+        specimens[1]['testcode'] = 'checking'
+
+        result = self.send_put(f"Biobank/specimens", request_data=specimens)
+        self.assertJsonResponseMatches(result, {
+            'summary': 'Added 2 of 2 specimen'
+        })
+
+    def test_update_multiple_specimen(self):
+        specimens = [self.get_minimal_specimen_json(rlims_id) for rlims_id in ['one', 'two', 'three', 'four', 'five']]
+        inital_test_code = specimens[0]['testcode']
+        result = self.send_put(f"Biobank/specimens", request_data=specimens)
+        self.assertJsonResponseMatches(result, {
+            'summary': 'Added 5 of 5 specimen'
+        })
+
+        third = self.get_specimen_from_dao(rlims_id='three')
+        self.assertEqual(third.testCode, inital_test_code)
+        fifth = self.get_specimen_from_dao(rlims_id='five')
+        self.assertEqual(fifth.testCode, inital_test_code)
+
+        specimens[2]['testcode'] = 'third test code'
+        specimens[4]['testcode'] = 'checking last too'
+        self.send_put(f"Biobank/specimens", request_data=specimens)
+
+        third = self.get_specimen_from_dao(_id=third.id)
+        self.assertEqual(third.testCode, 'third test code')
+        fifth = self.get_specimen_from_dao(_id=fifth.id)
+        self.assertEqual(fifth.testCode, 'checking last too')
+
+    def test_error_missing_fields_specimen_migration(self):
+        specimens = [self.get_minimal_specimen_json(rlims_id) for rlims_id in ['sabrina', 'two', 'salem', 'bob']]
+        del specimens[0]['testcode']
+        del specimens[0]['orderID']
+        del specimens[1]['rlimsID']
+        del specimens[1]['orderID']
+        del specimens[2]['testcode']
+
+        result = self.send_put(f"Biobank/specimens", request_data=specimens)
+        self.assertJsonResponseMatches(result, {
+            'summary': 'Added 1 of 4 specimen',
+            'errors': [
+                '[sabrina] Missing fields: orderID, testcode',
+                '[specimen #2] Missing fields: rlimsID, orderID',
+                '[salem] Missing fields: testcode'
+            ]
+        })
