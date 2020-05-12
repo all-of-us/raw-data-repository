@@ -161,6 +161,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                     'consent_date': consent_dt,
                     'consent_value': 'ConsentPermission_Yes',
                     'consent_value_id': self._lookup_code_id('ConsentPermission_Yes', ro_session),
+                    'consent_module': 'ConsentPII',
+                    'consent_module_authored': qnan.get('authored') if qnan.get('authored') else None
                 },
             ]
         }
@@ -208,6 +210,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             # module: question code string
             'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
             'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
+            'GROR': 'ResultsConsent_CheckDNA'
         }
 
         if results:
@@ -237,12 +240,15 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                         'consent_value': qnan.get(consent_modules[module_name], None),
                         'consent_value_id':
                             self._lookup_code_id(qnan.get(consent_modules[module_name], None), ro_session),
+                        'consent_module': module_name,
+                        'consent_module_authored': row.authored
                     })
 
         if len(modules) > 0:
-            data['modules'] = modules
+            # remove any duplicate modules and consents because of replayed responses.
+            data['modules'] = [dict(t) for t in {tuple(d.items()) for d in modules}]
             if len(consents) > 0:
-                data['consents'] = consents
+                data['consents'] = [dict(t) for t in {tuple(d.items()) for d in consents}]
 
         return data
 
