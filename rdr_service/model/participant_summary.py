@@ -178,6 +178,21 @@ class ParticipantSummary(Base):
     )
     questionnaireOnFamilyHealthTime = Column("questionnaire_on_family_health_time", UTCDateTime)
     questionnaireOnFamilyHealthAuthored = Column("questionnaire_on_family_health_authored", UTCDateTime)
+    questionnaireOnCopeMay = Column(
+        "questionnaire_on_cope_may", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
+    )
+    questionnaireOnCopeMayTime = Column("questionnaire_on_cope_may_time", UTCDateTime)
+    questionnaireOnCopeMayAuthored = Column("questionnaire_on_cope_may_authored", UTCDateTime)
+    questionnaireOnCopeJune = Column(
+        "questionnaire_on_cope_june", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
+    )
+    questionnaireOnCopeJuneTime = Column("questionnaire_on_cope_june_time", UTCDateTime)
+    questionnaireOnCopeJuneAuthored = Column("questionnaire_on_cope_june_authored", UTCDateTime)
+    questionnaireOnCopeJuly = Column(
+        "questionnaire_on_cope_july", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
+    )
+    questionnaireOnCopeJulyTime = Column("questionnaire_on_cope_july_time", UTCDateTime)
+    questionnaireOnCopeJulyAuthored = Column("questionnaire_on_cope_july_authored", UTCDateTime)
 
     # Fields for which samples have been received, and at what times.
     sampleStatus1SST8 = Column("sample_status_1sst8", Enum(SampleStatus), default=SampleStatus.UNSET)
