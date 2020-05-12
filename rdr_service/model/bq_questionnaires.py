@@ -502,3 +502,30 @@ class BQPDRPersonalMedicalHistoryView(BQView):
     __table__ = BQPDRPersonalMedicalHistory
     __pk_id__ = 'participant_id'
     _show_created = True
+
+
+#
+# COPE May Survey
+#
+class BQPDRCOPEMaySchema(_BQModuleSchema):
+    """ COPE Module """
+    _module = 'COPE'
+    _excluded_fields = ()
+
+
+class BQPDRCOPEMay(BQTable):
+    """ COPE BigQuery Table """
+    __tablename__ = 'pdr_mod_cope_may'
+    __schema__ = BQPDRCOPEMaySchema
+    __project_map__ = [
+        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
+    ]
+
+
+class BQPDRCOPEMayView(BQView):
+    """ PDR TheBasics BiqQuery View """
+    __viewname__ = 'v_pdr_mod_cope_may'
+    __viewdescr__ = 'PDR COPE May Module View'
+    __table__ = BQPDRCOPEMay
+    __pk_id__ = 'participant_id'
+    _show_created = True

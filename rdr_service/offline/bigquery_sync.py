@@ -20,7 +20,7 @@ from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGener
 from rdr_service.dao.bq_site_dao import bq_site_update
 from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
-    BQPDREHRConsentPII, BQPDRDVEHRSharing
+    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay
 from rdr_service.model.participant import Participant
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 
@@ -31,13 +31,15 @@ from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 class BigQueryJobError(BaseException):
     """ BigQuery Job Exception """
 
+# Only perform BQ operations in these environments.
+_bq_env = ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-sandbox', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']
 
 def rebuild_bigquery_handler():
     """
     Cron job handler, setup queued tasks to rebuild bigquery data.
     Tasks call the default API service, so we want to use small batch sizes.
     """
-    if config.GAE_PROJECT not in ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']:
+    if config.GAE_PROJECT not in _bq_env:
         logging.warning(f'BigQuery operations not supported in {config.GAE_PROJECT}, skipping.')
         return
 
@@ -107,7 +109,7 @@ def daily_rebuild_bigquery_handler():
     Cron job handler, setup queued tasks to with participants that need to be rebuilt.
     Tasks call the default API service, so we want to use small batch sizes.
     """
-    if config.GAE_PROJECT not in ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']:
+    if config.GAE_PROJECT not in _bq_env:
         logging.warning(f'BigQuery operations not supported in {config.GAE_PROJECT}, skipping.')
         return
 
@@ -199,7 +201,8 @@ def rebuild_bq_participant_task(payload):
             BQPDRLifestyle,
             BQPDROverallHealth,
             BQPDREHRConsentPII,
-            BQPDRDVEHRSharing
+            BQPDRDVEHRSharing,
+            BQPDRCOPEMay,
         )
         for module in modules:
             mod = module()
@@ -262,7 +265,7 @@ def sync_bigquery_handler(dryrun=False):
     # https://cloud.google.com/bigquery/docs/reference/rest/v2/tabledata/insertAll
     # https://cloud.google.com/bigquery/troubleshooting-errors#streaming
     """
-    if config.GAE_PROJECT not in ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']:
+    if config.GAE_PROJECT not in _bq_env:
         return
 
     ro_dao = BigQuerySyncDao(backup=True)
