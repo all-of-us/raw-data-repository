@@ -138,10 +138,10 @@ def create_cvl_reconciliation_report():
         controller.run_cvl_reconciliation_report()
 
 
-def create_cvl_manifests():
+def create_cvl_w1_manifest():
     """
     Entrypoint for CVL Manifest workflow
     Sources from list of biobank_ids from CVL reconciliation report
     """
-    with GenomicJobController(GenomicJob.CREATE_CVL_MANIFESTS) as controller:
-        controller.generate_manifest(GenomicManifestTypes.DRC_CVL_WGS, _genome_type=config.GENOME_TYPE_WGS)
+    with GenomicJobController(GenomicJob.CREATE_CVL_W1_MANIFESTS) as controller:
+        controller.generate_manifest(GenomicManifestTypes.CVL_W1, _genome_type=config.GENOME_TYPE_WGS)

@@ -1025,12 +1025,12 @@ class ManifestDefinitionProvider:
         now_formatted = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
         # Set each Manifest Definition as an instance of ManifestDef()
         # DRC Broad CVL WGS Manifest
-        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.DRC_CVL_WGS] = self.ManifestDef(
+        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.CVL_W1] = self.ManifestDef(
             job_run_field='cvlManifestWgsJobRunId',
-            source_data=self._get_source_data_query(GenomicManifestTypes.DRC_CVL_WGS),
+            source_data=self._get_source_data_query(GenomicManifestTypes.CVL_W1),
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{getSetting(GENOMIC_CVL_MANIFEST_SUBFOLDER)}/cvl_wgs_manifest_{self.job_run_id}.csv',
-            columns=self._get_manifest_columns(GenomicManifestTypes.DRC_CVL_WGS),
+            columns=self._get_manifest_columns(GenomicManifestTypes.CVL_W1),
         )
 
         # Color Array A1 Manifest
@@ -1060,7 +1060,7 @@ class ManifestDefinitionProvider:
         query_sql = ""
 
         # DRC Broad CVL WGS Manifest
-        if manifest_type == GenomicManifestTypes.DRC_CVL_WGS:
+        if manifest_type == GenomicManifestTypes.CVL_W1:
             query_sql = """
                 SELECT s.genomic_set_name
                     , m.biobank_id
@@ -1140,7 +1140,7 @@ class ManifestDefinitionProvider:
         :return: column tuple
         """
         columns = tuple()
-        if manifest_type == GenomicManifestTypes.DRC_CVL_WGS:
+        if manifest_type == GenomicManifestTypes.CVL_W1:
             columns = (
                 "genomic_set_name",
                 "biobank_id",

@@ -1294,7 +1294,7 @@ class GenomicPipelineTest(BaseTestCase):
                                          bucket_name)
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
-        # Test sequencing file (required for CVL)
+        # Test sequencing file (required for GEM)
         sequencing_test_files = (
             f'test_data_folder/10001_R01C01.vcf.gz',
             f'test_data_folder/10001_R01C01.vcf.gz.tbi',
@@ -1331,7 +1331,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(5, test_member_1.gemA1ManifestJobRunId)
 
         # Test the manifest file contents
-        expected_cvl_columns = (
+        expected_gem_columns = (
             "biobank_id",
             "sample_id",
             "sex_at_birth",
@@ -1339,7 +1339,7 @@ class GenomicPipelineTest(BaseTestCase):
         sub_folder = config.getSetting(config.GENOMIC_GEM_A1_MANIFEST_SUBFOLDER)
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_Manifest_{a1f}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
-            missing_cols = set(expected_cvl_columns) - set(csv_reader.fieldnames)
+            missing_cols = set(expected_gem_columns) - set(csv_reader.fieldnames)
             self.assertEqual(0, len(missing_cols))
             rows = list(csv_reader)
             self.assertEqual(1, len(rows))
@@ -1450,13 +1450,13 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
         sub_folder = GENOMIC_GEM_A3_MANIFEST_SUBFOLDER
 
-        expected_cvl_columns = (
+        expected_gem_columns = (
             "biobank_id",
             "sample_id",
         )
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_WD_{out_time}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
-            missing_cols = set(expected_cvl_columns) - set(csv_reader.fieldnames)
+            missing_cols = set(expected_gem_columns) - set(csv_reader.fieldnames)
             self.assertEqual(0, len(missing_cols))
             rows = list(csv_reader)
             self.assertEqual(1, len(rows))
