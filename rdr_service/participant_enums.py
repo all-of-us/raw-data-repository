@@ -548,28 +548,28 @@ class GenomicWorkflowState(messages.Enum):
     """Genomic State Definitions"""
     UNSET = 0
     WITHDRAWN = 1
-    AW0 = 1
-    AW1 = 1
-    AW1F_PRE = 1
-    AW1F_POST = 1
-    AW2 = 1
-    AW2_MISSING = 1
-    AW2_FAIL = 1
+    AW0 = 2
+    AW1 = 3
+    AW1F_PRE = 4
+    AW1F_POST = 5
+    AW2 = 6
+    AW2_MISSING = 7
+    AW2_FAIL = 8
 
     # CVL Workflow only
-    W1 = 1
-    W2 = 1
-    W3 = 1
-    AW1C = 1
-    AW1CF_PRE = 1
-    AW1CF_POST = 1
-    RHP_START = 1
-    W4 = 1
-    W4F = 1
-    RHP_RPT_READY = 1
-    RHP_RPT_PENDING_DELETE = 1
-    RHP_RPT_DELETED = 1
-    RHP_RPT_ACCESSED = 1
+    W1 = 9
+    W2 = 10
+    W3 = 11
+    AW1C = 12
+    AW1CF_PRE = 13
+    AW1CF_POST = 14
+    RHP_START = 15
+    W4 = 16
+    W4F = 17
+    RHP_RPT_READY = 18
+    RHP_RPT_PENDING_DELETE = 19
+    RHP_RPT_DELETED = 20
+    RHP_RPT_ACCESSED = 21
 
 
 class GenomicSubProcessStatus(messages.Enum):
