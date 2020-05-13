@@ -3,6 +3,7 @@ from sqlalchemy import (
     String, SmallInteger, UniqueConstraint, event
 )
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, MultiEnum
@@ -12,7 +13,8 @@ from rdr_service.participant_enums import (
     GenomicValidationFlag,
     GenomicSubProcessStatus,
     GenomicSubProcessResult,
-    GenomicJob
+    GenomicJob,
+    GenomicWorkflowState
 )
 
 
@@ -135,9 +137,7 @@ class GenomicSetMember(Base):
     reconcileCvlJobRunId = Column('reconcile_cvl_job_run_id',
                                   Integer, ForeignKey("genomic_job_run.id"),
                                   nullable=True)
-    cvlManifestWgsJobRunId = Column('cvl_manifest_wgs_job_run_id',
-                                    Integer, ForeignKey("genomic_job_run.id"),
-                                    nullable=True)
+
     gemA1ManifestJobRunId = Column('gem_a1_manifest_job_run_id',
                                     Integer, ForeignKey("genomic_job_run.id"),
                                     nullable=True)
@@ -152,6 +152,42 @@ class GenomicSetMember(Base):
     gemPtscSentJobRunId = Column('gem_ptsc_sent_job_run_id',
                                  Integer, ForeignKey("genomic_job_run.id"),
                                  nullable=True)
+
+    # CVL WGS Fields
+    cvlManifestWgsJobRunId = Column('cvl_w1_manifest_job_run_id',
+                                    Integer, ForeignKey("genomic_job_run.id"),
+                                    nullable=True)
+
+    cvlW2ManifestJobRunID = Column('cvl_w2_manifest_job_run_id',
+                                   Integer, ForeignKey("genomic_job_run.id"),
+                                   nullable=True)
+
+    cvlW3ManifestJobRunID = Column('cvl_w3_manifest_job_run_id',
+                                   Integer, ForeignKey("genomic_job_run.id"),
+                                   nullable=True)
+
+    cvlW4ManifestJobRunID = Column('cvl_w4_manifest_job_run_id',
+                                   Integer, ForeignKey("genomic_job_run.id"),
+                                   nullable=True)
+
+    cvlW4FManifestJobRunID = Column('cvl_w4f_manifest_job_run_id',
+                                    Integer, ForeignKey("genomic_job_run.id"),
+                                    nullable=True)
+
+    cvlAW1CManifestJobRunID = Column('cvl_aw1c_manifest_job_run_id',
+                                    Integer, ForeignKey("genomic_job_run.id"),
+                                    nullable=True)
+
+    cvlAW1CFManifestJobRunID = Column('cvl_aw1cf_manifest_job_run_id',
+                                      Integer, ForeignKey("genomic_job_run.id"),
+                                      nullable=True)
+
+    # Genomic State Fields
+    genomicWorkflowState = Column('genomic_workflow_state',
+                                  Enum(GenomicWorkflowState),
+                                  default=GenomicWorkflowState.UNSET)
+
+    genomicWorkflowStateHistory = Column("genomic_workflow_state_history", JSON, nullable=True)
 
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)

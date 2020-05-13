@@ -544,6 +544,34 @@ class GenomicJob(messages.Enum):
     RECONCILE_SEQUENCING_DATA = 14
 
 
+class GenomicWorkflowState(messages.Enum):
+    """Genomic State Definitions"""
+    UNSET = 0
+    WITHDRAWN = 1
+    AW0 = 1
+    AW1 = 1
+    AW1F_PRE = 1
+    AW1F_POST = 1
+    AW2 = 1
+    AW2_MISSING = 1
+    AW2_FAIL = 1
+
+    # CVL Workflow only
+    W1 = 1
+    W2 = 1
+    W3 = 1
+    AW1C = 1
+    AW1CF_PRE = 1
+    AW1CF_POST = 1
+    RHP_START = 1
+    W4 = 1
+    W4F = 1
+    RHP_RPT_READY = 1
+    RHP_RPT_PENDING_DELETE = 1
+    RHP_RPT_DELETED = 1
+    RHP_RPT_ACCESSED = 1
+
+
 class GenomicSubProcessStatus(messages.Enum):
     """The status of a Genomics Sub-Process"""
     QUEUED = 0
