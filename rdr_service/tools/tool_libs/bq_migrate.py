@@ -341,6 +341,11 @@ def run():
                         default='all', metavar='[TABLE|VIEW]')  # noqa
     args = parser.parse_args()
 
+    envs = ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-sandbox', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']
+    if args.project not in envs:
+        _logger.warning(f'BigQuery migration not supported for {args.project}, aborting.')
+        return 0
+
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
         process = BQMigration(args, gcp_env)
         exit_code = process.run()

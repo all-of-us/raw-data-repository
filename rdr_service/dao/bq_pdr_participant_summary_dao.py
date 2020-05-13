@@ -2,7 +2,7 @@ import os
 import dateutil
 
 from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum
-from rdr_service.dao.bigquery_sync_dao import BigQueryGenerator
+from rdr_service.dao.bigquery_sync_dao import BigQueryGenerator, BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummarySchema
@@ -14,6 +14,7 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
     This is a Participant Summary record without PII.
     Note: Logic to create a PDR Participant Summary is in bq_participant_summary_dao:rebuild_bq_participant.
     """
+    ro_dao = None
     rural_zipcodes = None
 
     def make_bqrecord(self, p_id, convert_to_enum=False, ps_bqr=None):
@@ -24,6 +25,9 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
         :param ps_bqr: A BQParticipantSummary BQRecord object.
         :return: BQRecord object
         """
+        if not self.ro_dao:
+            self.ro_dao = BigQuerySyncDao(backup=True)
+
         # Since we are primarily a subset of the Participant Summary, call the full Participant Summary generator
         # and take what we need from it.
         if not ps_bqr:
@@ -56,7 +60,7 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
         # Calculate contact information
         summary = self._merge_schema_dicts(summary, self._set_contact_flags(ps_bqr))
         # Calculate UBR
-        summary = self._merge_schema_dicts(summary, self._calculate_ubr(ps_bqr))
+        summary = self._merge_schema_dicts(summary, self._calculate_ubr(ps_bqr, p_id))
 
         bqr = BQRecord(schema=BQPDRParticipantSummarySchema, data=summary, convert_to_enum=convert_to_enum)
         return bqr
@@ -89,10 +93,11 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
         }
         return data
 
-    def _calculate_ubr(self, ps_bqr):
+    def _calculate_ubr(self, ps_bqr, p_id):
         """
         Calculate the UBR values for this participant
-        :param bqr: A BQParticipantSummary BQRecord object.
+        :param ps_bqr: A BQParticipantSummary BQRecord object.
+        :param p_id: Participant ID
         :return: dict
         """
         # setup default values, all UBR values must be 0 or 1.
@@ -118,7 +123,7 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
 
         # ubr_sexual_orientation
         if hasattr(ps_bqr, 'sexual_orientation') and ps_bqr.sexual_orientation:
-            if ps_bqr.sexual_orientation != 'SexualOrientation_Straight':
+            if ps_bqr.sexual_orientation not in ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer']:
                 data['ubr_sexual_orientation'] = 1
 
         # ubr_gender_identity
@@ -167,6 +172,19 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
         # ubr_sexual_gender_minority
         if data['ubr_sex'] == 1 or data['ubr_gender_identity'] == 1:
             data['ubr_sexual_gender_minority'] = 1
+
+        # ubr_disability
+        qnans = BQParticipantSummaryGenerator.get_module_answers(self.ro_dao, 'TheBasics', p_id)
+        data['ubr_disability'] = 0
+        if qnans:
+            if qnans.get('Employment_EmploymentStatus') == 'EmploymentStatus_UnableToWork' or \
+                    qnans.get('Disability_Blind') == 'Blind_Yes' or \
+                    qnans.get('Disability_WalkingClimbing') == 'WalkingClimbing_Yes' or \
+                    qnans.get('Disability_DressingBathing') == 'DressingBathing_Yes' or \
+                    qnans.get('Disability_ErrandsAlone') == 'ErrandsAlone_Yes' or \
+                    qnans.get('Disability_Deaf') == 'Deaf_Yes' or \
+                    qnans.get('Disability_DifficultyConcentrating') == 'DifficultyConcentrating_Yes':
+                data['ubr_disability'] = 1
 
         # ubr_age_at_consent
         if hasattr(ps_bqr, 'date_of_birth') and ps_bqr.date_of_birth and \

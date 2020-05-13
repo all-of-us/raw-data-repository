@@ -11,7 +11,10 @@
     "questionnaireOnFamilyHealth",
     "questionnaireOnHealthcareAccess",
     "questionnaireOnMedicalHistory",
-    "questionnaireOnMedications"
+    "questionnaireOnMedications",
+    "questionnaireOnCopeMay",
+    "questionnaireOnCopeJune",
+    "questionnaireOnCopeJuly"
   ],
   "baseline_sample_test_codes": [
   	"1ED04",

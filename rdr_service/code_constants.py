@@ -33,6 +33,7 @@ EHR_CONSENT_QUESTION_CODE = "EHRConsentPII_ConsentPermission"
 DVEHR_SHARING_QUESTION_CODE = "DVEHRSharing_AreYouInterested"
 CABOR_SIGNATURE_QUESTION_CODE = "ExtraConsent_CABoRSignature"
 GROR_CONSENT_QUESTION_CODE = "ResultsConsent_CheckDNA"
+COPE_CONSENT_QUESTION_CODE = "section_participation"
 
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 
@@ -75,6 +76,10 @@ CONSENT_PERMISSION_NOT_SURE = "ConsentPermission_NotSure"
 CONSENT_GROR_YES_CODE = "CheckDNA_Yes"
 CONSENT_GROR_NO_CODE = "CheckDNA_No"
 CONSENT_GROR_NOT_SURE = "CheckDNA_NotSure"
+
+# Consent COPE Answer Codes
+CONSENT_COPE_YES_CODE = "COPE_A_44"
+CONSENT_COPE_NO_CODE = "COPE_A_13"
 
 # Module names for questionnaires / consent forms
 CONSENT_FOR_GENOMICS_ROR_MODULE = "GROR"

@@ -26,10 +26,11 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
     Generate a Participant Summary BQRecord object
     """
     ro_dao = None
-    _baseline_modules = ['TheBasics', 'OverallHealth', 'Lifestyle']
-    _baseline_sample_test_codes = ["1ED04", "1ED10", "1HEP4", "1PST8", "2PST8", "1SST8", "2SST8",
-                                    "1PS08", "1SS08", "1UR10", "1CFD9", "1PXR2", "1UR90", "2ED10"]
-    _dna_sample_test_codes = ["1ED10", "2ED10", "1ED04", "1SAL", "1SAL2"]
+    # Retrieve module and sample test lists from config.
+    _baseline_modules = [mod.replace('questionnaireOn', '')
+                         for mod in config.getSettingList('baseline_ppi_questionnaire_fields')]
+    _baseline_sample_test_codes = config.getSettingList('baseline_sample_test_codes')
+    _dna_sample_test_codes = config.getSettingList('dna_sample_test_codes')
 
     def make_bqrecord(self, p_id, convert_to_enum=False):
         """
@@ -122,7 +123,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :return: dict
         """
         # qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=['ConsentPII', p_id])
-        qnans = self._get_module_answers('ConsentPII', p_id)
+        qnans = self.get_module_answers(self.ro_dao, 'ConsentPII', p_id)
         if not qnans:
             # return the minimum data required when we don't have the questionnaire data.
             return {'email': None, 'is_ghost_id': 0}
@@ -160,6 +161,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                     'consent_date': consent_dt,
                     'consent_value': 'ConsentPermission_Yes',
                     'consent_value_id': self._lookup_code_id('ConsentPermission_Yes', ro_session),
+                    'consent_module': 'ConsentPII',
+                    'consent_module_authored': qnan.get('authored') if qnan.get('authored') else None
                 },
             ]
         }
@@ -207,6 +210,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             # module: question code string
             'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
             'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
+            'GROR': 'ResultsConsent_CheckDNA'
         }
 
         if results:
@@ -226,7 +230,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 if module_name not in consent_modules:
                     continue
 
-                qnans = self._get_module_answers(module_name, p_id)
+                qnans = self.get_module_answers(self.ro_dao, module_name, p_id)
                 if qnans:
                     qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
                     consents.append({
@@ -236,12 +240,15 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                         'consent_value': qnan.get(consent_modules[module_name], None),
                         'consent_value_id':
                             self._lookup_code_id(qnan.get(consent_modules[module_name], None), ro_session),
+                        'consent_module': module_name,
+                        'consent_module_authored': row.authored
                     })
 
         if len(modules) > 0:
-            data['modules'] = modules
+            # remove any duplicate modules and consents because of replayed responses.
+            data['modules'] = [dict(t) for t in {tuple(d.items()) for d in modules}]
             if len(consents) > 0:
-                data['consents'] = consents
+                data['consents'] = [dict(t) for t in {tuple(d.items()) for d in consents}]
 
         return data
 
@@ -525,11 +532,13 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         data['distinct_visits'] = len(dates)
         return data
 
-    def _get_module_answers(self, module, p_id):
+    @staticmethod
+    def get_module_answers(ro_dao, module, p_id):
         """
-
-        :param module:
-        :param p_id:
+        Retrieve the questionnaire module answers for the given participant id.
+        :param ro_dao: Readonly ro_dao object
+        :param module: Module name
+        :param p_id: participant id.
         :return:
         """
         _module_info_sql = """
@@ -565,14 +574,16 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             WHERE qr.questionnaire_response_id = :qr_id;
         """
 
-        self.ro_dao = BigQuerySyncDao(backup=True)
-        with self.ro_dao.session() as session:
+        if not ro_dao:
+            ro_dao = BigQuerySyncDao(backup=True)
+
+        with ro_dao.session() as session:
             results = session.execute(_module_info_sql, {"p_id": p_id, "mod": module})
             if not results:
                 return None
 
             for row in results:
-                data = self.ro_dao.to_dict(row, result_proxy=results)
+                data = ro_dao.to_dict(row, result_proxy=results)
 
                 answers = session.execute(_answers_sql, {'qr_id': row.questionnaire_response_id})
 
@@ -608,7 +619,7 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None)
 
     # filter test or ghost participants if production
     if app_id == 'all-of-us-rdr-prod':  # or app_id == 'localhost':
-        if ps_bqr.is_ghost_id == 1 or ps_bqr.hpo == 'TEST':
+        if ps_bqr.is_ghost_id == 1 or ps_bqr.hpo == 'TEST' or (ps_bqr.email and '@example.com' in ps_bqr.email):
             return None
 
     # Since the PDR participant summary is primarily a subset of the Participant Summary, call the full

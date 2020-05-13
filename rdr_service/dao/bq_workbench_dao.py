@@ -91,7 +91,8 @@ class BQRWBWorkspaceUsersGenerator(BigQueryGenerator):
         ro_dao = BigQuerySyncDao(backup=True)
         with ro_dao.session() as ro_session:
             row = ro_session.execute(
-                text('select * from rdr.workbench_workspace_user_history where id = :id'), {'id': pk_id}).first()
+                text('select * from rdr.workbench_workspace_user_history where id = :id order by modified desc'),
+                        {'id': pk_id}).first()
             data = ro_dao.to_dict(row)
 
             data['role'] = str(WorkbenchWorkspaceUserRole(row.role))

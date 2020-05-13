@@ -31,7 +31,10 @@ from rdr_service.code_constants import (
     CONSENT_GROR_YES_CODE,
     CONSENT_GROR_NO_CODE,
     CONSENT_GROR_NOT_SURE,
-    GROR_CONSENT_QUESTION_CODE)
+    GROR_CONSENT_QUESTION_CODE,
+    CONSENT_COPE_YES_CODE,
+    CONSENT_COPE_NO_CODE,
+    COPE_CONSENT_QUESTION_CODE)
 from rdr_service.config_api import is_config_admin
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -277,6 +280,7 @@ class QuestionnaireResponseDao(BaseDao):
         race_code_ids = []
         gender_code_ids = []
         ehr_consent = False
+        gror_consent = None
         dvehr_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
         # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
         for answer in questionnaire_response.answers:
@@ -323,6 +327,18 @@ class QuestionnaireResponseDao(BaseDao):
                             gror_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
                         elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NOT_SURE:
                             gror_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
+                    elif code.value == COPE_CONSENT_QUESTION_CODE:
+                        if not participant_summary.questionnaireOnCopeMay:
+                            answer_value = code_dao.get(answer.valueCodeId).value
+                            if answer_value == CONSENT_COPE_YES_CODE:
+                                participant_summary.questionnaireOnCopeMay = QuestionnaireStatus.SUBMITTED
+                            elif answer_value == CONSENT_COPE_NO_CODE:
+                                participant_summary.questionnaireOnCopeMay = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+                            else:
+                                participant_summary.questionnaireOnCopeMay = QuestionnaireStatus.SUBMITTED_INVALID
+
+                            participant_summary.questionnaireOnCopeMayTime = questionnaire_response.created
+                            participant_summary.questionnaireOnCopeMayAuthored = authored
 
         # If race was provided in the response in one or more answers, set the new value.
         if race_code_ids:
@@ -353,6 +369,11 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value == CONSENT_FOR_DVEHR_MODULE:
                         new_status = dvehr_consent
                     elif code.value == CONSENT_FOR_GENOMICS_ROR_MODULE:
+                        if gror_consent is None:
+                            raise BadRequest(
+                                "GROR Consent answer is required to match code {}."
+                                    .format([CONSENT_GROR_YES_CODE, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE])
+                            )
                         new_status = gror_consent
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
                         participant_summary.semanticVersionForPrimaryConsent = \

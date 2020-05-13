@@ -45,6 +45,10 @@ protorpc
 dictalchemy
 sqlparse
 
+# JSON schema management
+marshmallow
+marshmallow-jsonschema
+
 ## misc
 dnspython
 xmltodict

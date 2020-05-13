@@ -124,6 +124,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         expected.update(
             {
+                "questionnaireOnCopeMay": "UNSET",
+                "questionnaireOnCopeJune": "UNSET",
+                "questionnaireOnCopeJuly": "UNSET",
                 "questionnaireOnHealthcareAccess": "UNSET",
                 "enrollmentStatus": "INTERESTED",
                 "consentForGenomicsROR": "UNSET",

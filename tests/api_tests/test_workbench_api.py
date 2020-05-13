@@ -312,6 +312,11 @@ class WorkbenchApiTest(BaseTestCase):
                         "status": "ACTIVE"
                     }
                 ],
+                "creator": {
+                    "userId": 1,
+                    "givenName": "aaa",
+                    "familyName": "bbb"
+                },
                 "excludeFromPublicDirectory": False,
                 "ethicalLegalSocialImplications": True,
                 "reviewRequested": True,
@@ -358,6 +363,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].scientificApproaches, 'string')
         self.assertEqual(results[0].intendToStudy, 'string')
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
 
         workspace_history_dao = WorkbenchWorkspaceHistoryDao()
         results = workspace_history_dao.get_all_with_children()
@@ -367,6 +373,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].scientificApproaches, 'string')
         self.assertEqual(results[0].intendToStudy, 'string')
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
 
         # test update workspace
         update_json = [
@@ -381,8 +388,18 @@ class WorkbenchApiTest(BaseTestCase):
                         "userId": 1,
                         "role": "READER",
                         "status": "ACTIVE"
+                    },
+                    {
+                        "userId": 2,
+                        "role": "OWNER",
+                        "status": "ACTIVE"
                     }
                 ],
+                "creator": {
+                    "userId": 2,
+                    "givenName": "aaa",
+                    "familyName": "bbb"
+                },
                 "excludeFromPublicDirectory": False,
                 "diseaseFocusedResearch": True,
                 "diseaseFocusedResearchName": "string",
@@ -448,7 +465,16 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].workspaceSourceId, 1)
         self.assertEqual(results[0].name, 'string_modify')
         self.assertEqual(results[0].scientificApproaches, 'string2')
-        self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
+        self.assertEqual(len(results[0].workbenchWorkspaceUser), 2)
+        if results[0].workbenchWorkspaceUser[0].userId == 1:
+            self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
+            self.assertEqual(results[0].workbenchWorkspaceUser[1].userId, 2)
+            self.assertEqual(results[0].workbenchWorkspaceUser[1].isCreator, True)
+        else:
+            self.assertEqual(results[0].workbenchWorkspaceUser[1].userId, 1)
+            self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 2)
+            self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
+
         self.assertEqual(results[1].workspaceSourceId, 2)
         self.assertEqual(results[1].name, 'string2')
         self.assertEqual(results[1].scientificApproaches, 'string2')
@@ -463,7 +489,14 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[1].workspaceSourceId, 1)
         self.assertEqual(results[1].name, 'string_modify')
         self.assertEqual(results[1].scientificApproaches, 'string2')
-        self.assertEqual(results[1].workbenchWorkspaceUser[0].userId, 1)
+        if results[1].workbenchWorkspaceUser[0].userId == 1:
+            self.assertEqual(results[1].workbenchWorkspaceUser[0].userId, 1)
+            self.assertEqual(results[1].workbenchWorkspaceUser[1].userId, 2)
+            self.assertEqual(results[1].workbenchWorkspaceUser[1].isCreator, True)
+        else:
+            self.assertEqual(results[1].workbenchWorkspaceUser[1].userId, 1)
+            self.assertEqual(results[1].workbenchWorkspaceUser[0].userId, 2)
+            self.assertEqual(results[1].workbenchWorkspaceUser[0].isCreator, True)
         self.assertEqual(results[2].workspaceSourceId, 2)
         self.assertEqual(results[2].name, 'string2')
         self.assertEqual(results[2].scientificApproaches, 'string2')
