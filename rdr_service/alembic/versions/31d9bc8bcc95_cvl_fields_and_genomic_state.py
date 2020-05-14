@@ -1,7 +1,7 @@
 """CVL Fields and genomic state.
 
 Revision ID: 31d9bc8bcc95
-Revises: c0394a487b8b
+Revises: 16452fdb1334
 Create Date: 2020-05-13 11:05:56.537388
 
 """
@@ -15,7 +15,7 @@ from rdr_service.participant_enums import GenomicWorkflowState
 
 # revision identifiers, used by Alembic.
 revision = '31d9bc8bcc95'
-down_revision = 'c0394a487b8b'
+down_revision = '16452fdb1334'
 branch_labels = None
 depends_on = None
 
