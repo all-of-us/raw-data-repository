@@ -4,8 +4,9 @@ Sync Consent Files
 Organize all consent files from PTSC source bucket into proper awardee buckets.
 """
 import collections
+from datetime import datetime, timedelta
+import pytz
 import os
-import sqlalchemy
 
 from rdr_service import config
 from rdr_service.api_util import list_blobs, copy_cloud_file, get_blob
@@ -32,13 +33,20 @@ OrgData = collections.namedtuple("OrgData", ("org_id", "aggregate_id", "bucket_n
 ParticipantData = collections.namedtuple("ParticipantData", ("participant_id", "google_group", "org_id"))
 
 
-def do_sync_consent_files():
+def do_sync_recent_consent_files():
+    # Sync everything from the start of the previous month
+    start_date = datetime.now().replace(day=1) - timedelta(days=10)
+    do_sync_consent_files(start_date=start_date.strftime('%Y-%m-01'))
+
+
+def do_sync_consent_files(**kwargs):
     """
   entrypoint
   """
     org_data_map = config.getSetting(config.CONSENT_SYNC_ORGANIZATIONS)
     org_ids = [org_id for org_id, org_data in org_data_map.items()]
-    for participant_data in _iter_participants_data(org_ids):
+    start_date = kwargs.get('start_date')
+    for participant_data in _iter_participants_data(org_ids, **kwargs):
         kwargs = {
             "source_bucket": SOURCE_BUCKET,
             "destination_bucket": org_data_map[participant_data.org_id]['bucket_name'],
@@ -49,9 +57,9 @@ def do_sync_consent_files():
         destination = "/{destination_bucket}/Participant/{google_group}/P{participant_id}/".format(**kwargs)
 
         if config.GAE_PROJECT == 'localhost':
-            cloudstorage_copy_objects_task(source, destination)
+            cloudstorage_copy_objects_task(source, destination, date_limit=start_date)
         else:
-            params = {'source': source, 'destination': destination}
+            params = {'source': source, 'destination': destination, 'date_limit': start_date}
             task = GCPCloudTask('copy_cloudstorage_object_task', payload=params)
             task.execute()
 
@@ -80,8 +88,7 @@ def _org_data_with_bucket_inheritance_from_org_data(org_data_map, org_data):
     )
 
 
-PARTICIPANT_DATA_SQL = sqlalchemy.text(
-    """
+PARTICIPANT_DATA_SQL = """
 select
   participant.participant_id,
   site.google_group,
@@ -102,27 +109,55 @@ where participant.is_ghost_id is not true
   )
   and organization.external_id in :org_ids
 """
-)
+
+participant_filters_sql = {
+    'start_date': """
+        and (
+            summary.consent_for_study_enrollment_time > :start_date
+            or
+            summary.consent_for_electronic_health_records_time > :start_date
+            )
+        """,
+    'end_date': """
+        and (
+            summary.consent_for_study_enrollment_time < :end_date
+            or
+            summary.consent_for_electronic_health_records_time < :end_date
+            )
+        """
+}
 
 
-def _iter_participants_data(org_ids):
+def _iter_participants_data(org_ids, **kwargs):
+    participant_sql = PARTICIPANT_DATA_SQL
+    parameters = {'org_ids': org_ids}
+
+    for filter_field in ['start_date', 'end_date']:
+        if filter_field in kwargs:
+            participant_sql += participant_filters_sql[filter_field]
+            parameters[filter_field] = kwargs[filter_field]
+
     with database_factory.make_server_cursor_database().session() as session:
-        for row in session.execute(PARTICIPANT_DATA_SQL, {'org_ids': org_ids}):
+        for row in session.execute(participant_sql, parameters):
             yield ParticipantData(*row)
 
 
-def cloudstorage_copy_objects_task(source, destination):
+def cloudstorage_copy_objects_task(source, destination, date_limit=None):
     """
     Cloud Task: Copies all objects matching the source to the destination.
     Both source and destination use the following format: /bucket/prefix/
     """
+    if date_limit:
+        timezone = pytz.timezone('Etc/Greenwich')
+        date_limit = timezone.localize(datetime.strptime(date_limit, '%Y-%m-%d'))
     path = source if source[0:1] != '/' else source[1:]
     bucket_name, _, prefix = path.partition('/')
     prefix = None if prefix == '' else '/' + prefix
     for source_blob in list_blobs(bucket_name, prefix):
         source_file_path = os.path.normpath('/' + bucket_name + '/' + source_blob.name)
         destination_file_path = destination + source_file_path[len(source):]
-        if _should_copy_object(source_file_path, destination_file_path):
+        if _should_copy_object(source_file_path, destination_file_path) and \
+                (date_limit is None or source_blob.updated > date_limit):
             copy_cloud_file(source_file_path, destination_file_path)
 
 
