@@ -629,6 +629,23 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual('contaminated', specimen.disposalReason)
         self.assertEqual(TIME_2, specimen.disposalDate)
 
+    def test_parent_disposed_optional_fields_not_cleared(self):
+        payload = self.get_minimal_specimen_json()
+        payload['disposalStatus'] = {
+            'reason': 'contaminated',
+            'disposalDate': TIME_2.isoformat()
+        }
+        self.put_specimen(payload)
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+
+        self.send_put(f"Biobank/specimens/sabrina/disposalStatus", {
+            'disposalDate': TIME_1.isoformat()
+        })
+
+        specimen = self.get_specimen_from_dao(_id=specimen.id)
+        self.assertEqual('contaminated', specimen.disposalReason)
+        self.assertEqual(TIME_1, specimen.disposalDate)
+
     def test_parent_disposed_required_fields(self):
         self._create_minimal_specimen()
         specimen = self.get_specimen_from_dao(rlims_id='sabrina')
@@ -704,22 +721,20 @@ class BiobankOrderApiTest(BaseTestCase):
 
     def test_parent_aliquot_update(self):
         payload = self.get_minimal_specimen_json()
-        payload['attributes'] = [
+        payload['aliquots'] = [
             {
-                'name': 'attr_one',
-                'value': '1'
-            },
-            {
-                'name': 'attr_two',
-                'value': 'two'
+                'rlimsID': 'salem',
+                'sampleType': 'first sample',
+                'containerTypeID': 'tube'
             }
         ]
         initial_result = self.put_specimen(payload)
 
-        self.send_put(f"Biobank/specimens/sabrina/attributes/attr_one", {
-            'value': 'updated'
+        self.send_put(f"Biobank/specimens/sabrina/aliquots/salem", {
+            'sampleType': 'updated'
         })
 
         specimen = self.retrieve_specimen_json(initial_result['id'])
-        attribute = specimen['attributes'][0]
-        self.assertEqual('updated', attribute['value'])
+        aliquot = specimen['aliquots'][0]
+        self.assertEqual('updated', aliquot['sampleType'])
+        self.assertEqual('tube', aliquot['containerTypeID'])
