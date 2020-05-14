@@ -22,7 +22,8 @@ from rdr_service.api.cloud_tasks_api import RebuildParticipantsBQTaskApi, Rebuil
     CopyCloudStorageObjectTaskApi, BQRebuildQuestionnaireTaskApi, GenerateBiobankSamplesTaskApi, \
     BQRebuildOneParticipantTaskApi
 from rdr_service.api.biobank_order_api import BiobankOrderApi
-from rdr_service.api.biobank_specimen_api import BiobankSpecimenApi
+from rdr_service.api.biobank_specimen_api import BiobankSpecimenApi, BiobankSpecimenStatusApi,\
+    BiobankSpecimenDisposalApi, BiobankSpecimenAttributeApi, BiobankSpecimenAliquotApi
 from rdr_service.api.check_ppi_data_api import check_ppi_data
 from rdr_service.api.data_gen_api import DataGenApi, SpecDataGenApi
 from rdr_service.api.dv_order_api import DvOrderApi
@@ -235,17 +236,41 @@ api.add_resource(
     methods=["POST", "GET", "PUT"],
 )
 
-# biobank sample aliquot api
 api.add_resource(
     BiobankSpecimenApi,
     API_PREFIX + "Biobank/specimens/<string:rlims_id>",
     API_PREFIX + "Biobank/specimens",
-    API_PREFIX + "Biobank/specimens/<string:rlims_id>/status",
-    API_PREFIX + "Biobank/specimens/<string:rlims_id>/disposalStatus",
-    API_PREFIX + "Biobank/specimens/<string:rlims_id>/aliquots/<string:aliquot_rlims_id>",
     API_PREFIX + "Biobank/aliquots/<string:aliquots_rlims_id>/disposalStatus",
     API_PREFIX + "Biobank/aliquots/<string:aliquots_rlims_id>/datasets/<string:dataset_rlims_id>",
-    endpoint="biobank",
+    endpoint="biobank.parent",
+    methods=["PUT"],
+    )
+
+api.add_resource(
+    BiobankSpecimenStatusApi,
+    API_PREFIX + "Biobank/specimens/<string:rlims_id>/status",
+    endpoint="biobank.parent_status",
+    methods=["PUT"],
+    )
+
+api.add_resource(
+    BiobankSpecimenDisposalApi,
+    API_PREFIX + "Biobank/specimens/<string:rlims_id>/disposalStatus",
+    endpoint="biobank.parent_disposal",
+    methods=["PUT"],
+    )
+
+api.add_resource(
+    BiobankSpecimenAttributeApi,
+    API_PREFIX + "Biobank/specimens/<string:rlims_id>/attributes/<string:attribute_name>",
+    endpoint="biobank.parent_attribute",
+    methods=["PUT"],
+    )
+
+api.add_resource(
+    BiobankSpecimenAliquotApi,
+    API_PREFIX + "Biobank/specimens/<string:rlims_id>/aliquots/<string:aliquot_rlims_id>",
+    endpoint="biobank.parent_aliquot",
     methods=["PUT"],
     )
 

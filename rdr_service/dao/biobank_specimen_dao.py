@@ -32,6 +32,9 @@ class BiobankDaoBase(UpdatableDao):
 
     @staticmethod
     def read_client_status(status_source, model):
+        if 'status' not in status_source:
+            raise BadRequest("Status field required for status data")
+
         for status_field_name, parser in [('status', None),
                                           ('freezeThawCount', None),
                                           ('location', None),
@@ -91,8 +94,7 @@ class BiobankDaoBase(UpdatableDao):
 
     def get_id(self, obj):
         with self.session() as session:
-            obj_id = self.get_id_with_session(obj, session)
-        return obj_id
+            return self.get_id_with_session(obj, session)
 
 
 class BiobankSpecimenDao(BiobankDaoBase):
@@ -175,8 +177,11 @@ class BiobankSpecimenDao(BiobankDaoBase):
 
     def exists(self, resource):
         with self.session() as session:
-            found = session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == resource['rlimsID']).count() > 0
-        return found
+            return session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == resource['rlimsID']).count() > 0
+
+    def get_with_rlims_id(self, rlims_id):
+        with self.session() as session:
+            return session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == rlims_id).one()
 
     @staticmethod
     def get_id_with_session(obj, session):
@@ -188,6 +193,8 @@ class BiobankSpecimenDao(BiobankDaoBase):
 
 
 class BiobankSpecimenAttributeDao(BiobankDaoBase):
+
+    validate_version_match = False
 
     def __init__(self):
         super().__init__(BiobankSpecimenAttribute)
@@ -204,7 +211,11 @@ class BiobankSpecimenAttributeDao(BiobankDaoBase):
         if 'value' in resource:
             attribute.value = resource['value']
 
-        attribute.id = self.get_id_with_session(attribute, session)
+        if session is None:
+            with self.session() as session:
+                attribute.id = self.get_id_with_session(attribute, session)
+        else:
+            attribute.id = self.get_id_with_session(attribute, session)
         return attribute
 
     def to_client_json_with_session(self, model, session):
@@ -243,6 +254,15 @@ class BiobankAliquotDao(BiobankDaoBase):
         aliquot = BiobankAliquot(rlimsId=resource['rlimsID'], specimen_rlims_id=specimen_rlims_id,
                                  parent_aliquot_rlims_id=parent_aliquot_rlims_id)
 
+        if session is None:
+            with self.session() as session:
+                self.read_aliquot_data(aliquot, resource, specimen_rlims_id, session)
+        else:
+            self.read_aliquot_data(aliquot, resource, specimen_rlims_id, session)
+
+        return aliquot
+
+    def read_aliquot_data(self, aliquot, resource, specimen_rlims_id, session):
         for client_field, model_field in [('sampleType', None),
                                           ('childPlanService', None),
                                           ('initialTreatment', None),
@@ -265,7 +285,6 @@ class BiobankAliquotDao(BiobankDaoBase):
                                                          parent_aliquot_rlims_id=aliquot.rlimsId, session=session)
 
         aliquot.id = self.get_id_with_session(aliquot, session)
-        return aliquot
 
     def to_client_json_with_session(self, model, session):
         result = model.asdict()
