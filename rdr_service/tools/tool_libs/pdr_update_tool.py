@@ -55,7 +55,7 @@ class PDRParticipantRebuildClass(object):
         """
         Submit batches of pids to Cloud Tasks for rebuild.
         """
-        batch_size = 250
+        batch_size = 100
         total_rows = len(pids)
         count = int(math.ceil(float(total_rows) / float(batch_size)))
         _logger.info('Calculated {0} tasks from {1} pids with a batch size of {2}.'.
