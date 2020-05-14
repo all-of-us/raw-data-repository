@@ -144,7 +144,7 @@ class GenomicSetMemberDao(UpdatableDao):
         self.valid_job_id_fields = ('reconcileMetricsBBManifestJobRunId',
                                     'reconcileMetricsSequencingJobRunId',
                                     'reconcileCvlJobRunId',
-                                    'cvlManifestWgsJobRunId',
+                                    'cvlW1ManifestJobRunId',
                                     'gemA1ManifestJobRunId',
                                     'reconcileGCManifestJobRunId',
                                     'gemA3ManifestJobRunId')

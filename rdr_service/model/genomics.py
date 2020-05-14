@@ -154,9 +154,9 @@ class GenomicSetMember(Base):
                                  nullable=True)
 
     # CVL WGS Fields
-    cvlManifestWgsJobRunId = Column('cvl_w1_manifest_job_run_id',
-                                    Integer, ForeignKey("genomic_job_run.id"),
-                                    nullable=True)
+    cvlW1ManifestJobRunId = Column('cvl_w1_manifest_job_run_id',
+                                   Integer, ForeignKey("genomic_job_run.id"),
+                                   nullable=True)
 
     cvlW2ManifestJobRunID = Column('cvl_w2_manifest_job_run_id',
                                    Integer, ForeignKey("genomic_job_run.id"),

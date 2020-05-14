@@ -9,6 +9,7 @@ import re
 import pytz
 from collections import deque, namedtuple
 from copy import deepcopy
+import sqlalchemy
 
 from rdr_service import clock
 from rdr_service.services.jira_utils import JiraTicketHandler
@@ -18,7 +19,11 @@ from rdr_service.api_util import (
     delete_cloud_file,
     list_blobs
 )
-from rdr_service.model.genomics import GenomicSet, GenomicSetMember
+from rdr_service.model.genomics import (
+    GenomicSet,
+    GenomicSetMember,
+    GenomicGCValidationMetrics,
+)
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     WithdrawalStatus,
@@ -32,6 +37,7 @@ from rdr_service.participant_enums import (
     GenomicValidationFlag,
     GenomicSetMemberStatus,
     SuspensionStatus,
+    GenomicWorkflowState,
 )
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
@@ -56,7 +62,7 @@ from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.config import (
     getSetting,
     GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
-    GENOMIC_CVL_MANIFEST_SUBFOLDER,
+    CVL_W1_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A3_MANIFEST_SUBFOLDER,
     GENOME_TYPE_ARRAY,
@@ -664,18 +670,28 @@ class GenomicReconciler:
         :return: result code
         """
         metrics = self.metrics_dao.get_with_missing_gen_files()
+
         # Iterate over metrics, searching the bucket for filenames
         for metric in metrics:
+
             file = self.file_dao.get(metric.genomicFileProcessedId)
             missing_data_files = []
+
             for file_type in self.genotyping_file_types:
                 if not getattr(metric, file_type[0]):
                     filename = f"{metric.chipwellbarcode}{file_type[1]}"
                     file_exists = self._check_genotyping_file_exists(file.bucketName, filename)
                     setattr(metric, file_type[0], file_exists)
+
                     if not file_exists:
                         missing_data_files.append(filename)
+
             self.metrics_dao.update(metric)
+
+            # Update Job Run ID on member
+            self.member_dao.update_member_job_run_id(
+              self.member_dao.get(metric.genomicSetMemberId),
+               self.run_id, 'reconcileMetricsSequencingJobRunId')
 
             # Make a roc ticket for missing data files
             if len(missing_data_files) > 0:
@@ -692,21 +708,34 @@ class GenomicReconciler:
         :return: result code
         """
         metrics = self.metrics_dao.get_with_missing_seq_files()
+
         # TODO: Update filnames when clarified
         external_ids = "LocalID_InternalRevisionNumber"
+
         # Iterate over metrics, searching the bucket for filenames
         for metric in metrics:
             file = self.file_dao.get(metric.GenomicGCValidationMetrics.genomicFileProcessedId)
             gc_prefix = file.fileName.split('_')[0]
+
             missing_data_files = []
             for file_type in self.sequencing_file_types:
+
                 if not getattr(metric.GenomicGCValidationMetrics, file_type[0]):
                     filename = f"{gc_prefix}_{metric.biobankId}_{metric.sampleId}_{external_ids}{file_type[1]}"
                     file_exists = self._check_genotyping_file_exists(file.bucketName, filename)
+
                     setattr(metric.GenomicGCValidationMetrics, file_type[0], file_exists)
+
                     if not file_exists:
                         missing_data_files.append(filename)
+
             self.metrics_dao.update(metric.GenomicGCValidationMetrics)
+
+            # Update Member
+            member = self.member_dao.get(metric.GenomicGCValidationMetrics.genomicSetMemberId)
+            self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId')
+
+
 
             # Make a roc ticket for missing data files
             if len(missing_data_files) > 0:
@@ -1076,10 +1105,10 @@ class ManifestDefinitionProvider:
         # Set each Manifest Definition as an instance of ManifestDef()
         # DRC Broad CVL WGS Manifest
         self.MANIFEST_DEFINITIONS[GenomicManifestTypes.CVL_W1] = self.ManifestDef(
-            job_run_field='cvlManifestWgsJobRunId',
+            job_run_field='cvlW1ManifestJobRunId',
             source_data=self._get_source_data_query(GenomicManifestTypes.CVL_W1),
             destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{getSetting(GENOMIC_CVL_MANIFEST_SUBFOLDER)}/cvl_wgs_manifest_{self.job_run_id}.csv',
+            output_filename=f'{getSetting(CVL_W1_MANIFEST_SUBFOLDER)}/AoU_CVL_Manifest_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.CVL_W1),
         )
 
@@ -1109,26 +1138,33 @@ class ManifestDefinitionProvider:
         """
         query_sql = ""
 
-        # DRC Broad CVL WGS Manifest
+        # CVL W1 Manifest
         if manifest_type == GenomicManifestTypes.CVL_W1:
-            query_sql = """
-                SELECT s.genomic_set_name
-                    , m.biobank_id
-                    , m.sample_id
-                    , m.sex_at_birth
-                    , m.ny_flag
-                    , gcv.site_id
-                    , NULL as secondary_validation
-                FROM genomic_set_member m
-                    JOIN genomic_set s
-                        ON s.id = m.genomic_set_id
-                    JOIN genomic_gc_validation_metrics gcv
-                        ON gcv.genomic_set_member_id = m.id
-                WHERE gcv.processing_status = "pass"
-                    AND m.reconcile_cvl_job_run_id IS NOT NULL
-                    AND m.cvl_manifest_wgs_job_run_id IS NULL
-                    AND m.genome_type = "aou_wgs"
-            """
+            query_sql = (
+                sqlalchemy.select(
+                    [
+                        GenomicSet.genomicSetName,
+                        GenomicSetMember.biobankId,
+                        GenomicSetMember.sampleId,
+                        GenomicSetMember.sexAtBirth,
+                        GenomicSetMember.nyFlag,
+                        GenomicGCValidationMetrics.siteId,
+                        sqlalchemy.bindparam('secondary_validation', None),
+                        sqlalchemy.bindparam('date_submitted', None),
+                        sqlalchemy.bindparam('test_name', 'aou_wgs'),
+                    ]
+                ).select_from(
+                    sqlalchemy.join(
+                        sqlalchemy.join(GenomicSet, GenomicSetMember, GenomicSetMember.genomicSetId == GenomicSet.id),
+                        GenomicGCValidationMetrics,
+                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                    )
+                ).where(
+                    (GenomicGCValidationMetrics.processingStatus == 'pass') &
+                    (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.AW2) &
+                    (GenomicSetMember.genomeType == "aou_wgs")
+                )
+            )
 
         # Color GEM A1 Manifest
         if manifest_type == GenomicManifestTypes.GEM_A1:
@@ -1199,6 +1235,8 @@ class ManifestDefinitionProvider:
                 "ny_flag",
                 "site_id",
                 "secondary_validation",
+                "date_submitted",
+                "test_name",
             )
         elif manifest_type == GenomicManifestTypes.GEM_A1:
             columns = (
@@ -1221,7 +1259,6 @@ class ManifestCompiler:
     """
     This component compiles Genomic manifests
     based on definitions provided by ManifestDefinitionProvider
-    TODO: All manifests should be updated to using this pattern, currently only CVL
     """
     def __init__(self, run_id, bucket_name=None):
         self.run_id = run_id
@@ -1244,14 +1281,18 @@ class ManifestCompiler:
         :return: result code
         """
         self.manifest_def = self.def_provider.get_def(manifest_type)
+
         source_data = self._pull_source_data()
         if source_data:
             self.output_file_name = self.manifest_def.output_filename
+
             logging.info(
                 f'Preparing manifest of type {manifest_type}...'
                 f'{self.manifest_def.destination_bucket}/{self.manifest_def.output_filename}'
             )
+
             self._write_and_upload_manifest(source_data)
+
             results = []
             for row in source_data:
                 member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
