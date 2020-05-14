@@ -258,7 +258,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
     def insert_with_session(self, session, workspaces):
         for workspace in workspaces:
             session.add(workspace)
-            self.add_approved_workspace_with_session(session, workspace)
+            if workspace.excludeFromPublicDirectory is not True:
+                self.add_approved_workspace_with_session(session, workspace)
         return workspaces
 
     def to_client_json(self, obj):
@@ -351,6 +352,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                             "userId": user.userId,
                             "role": str(WorkbenchWorkspaceUserRole(user.role)) if user.role else 'UNSET',
                             "status": str(WorkbenchWorkspaceStatus(user.status)) if user.status else 'UNSET',
+                            "isCreator": user.isCreator
                         } for user in workspace.workbenchWorkspaceUser
                     ] if workspace.workbenchWorkspaceUser else [],
                     'workspaceResearchers': [workspace_researcher],
@@ -423,6 +425,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             items = query.all()
             for workspace, researcher in items:
                 affiliations = []
+                researcher_has_verified_institution = False
+                workspace_has_verified_institution = False
                 if researcher.workbenchInstitutionalAffiliations:
                     for affiliation in researcher.workbenchInstitutionalAffiliations:
                         affiliations.append(
@@ -435,6 +439,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                                     if affiliation.nonAcademicAffiliation else 'UNSET'
                             }
                         )
+                        if affiliation.isVerified is True:
+                            researcher_has_verified_institution = True
                 owner_user_id = None
                 for workspace_user in workspace.workbenchWorkspaceUser:
                     if workspace_user.role == WorkbenchWorkspaceUserRole.OWNER:
@@ -442,6 +448,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     if workspace_user.isCreator is True:
                         owner_user_id = workspace_user.userId
                         break
+                if owner_user_id == researcher.userSourceId and researcher_has_verified_institution:
+                    workspace_has_verified_institution = True
                 user = {
                     'userId': researcher.userSourceId,
                     'userName': researcher.givenName + ' ' + researcher.familyName,
@@ -454,6 +462,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         result['workspaceUsers'].append(user)
                         if user.get('userId') == owner_user_id:
                             result['workspaceOwner'].append(user)
+                        if workspace_has_verified_institution:
+                            result['hasVerifiedInstitution'] = True
                         exist = True
                         break
                 if exist:
@@ -467,6 +477,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     'status': str(WorkbenchWorkspaceStatus(workspace.status)),
                     'workspaceUsers': [user] if user else [],
                     'workspaceOwner': [user] if user.get('userId') == owner_user_id else [],
+                    'hasVerifiedInstitution': workspace_has_verified_institution,
                     "excludeFromPublicDirectory": workspace.excludeFromPublicDirectory,
                     "ethicalLegalSocialImplications": workspace.ethicalLegalSocialImplications,
                     "reviewRequested": workspace.reviewRequested if workspace.reviewRequested else False,
@@ -511,7 +522,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     }
                 }
                 results.append(record)
-
+        expected_result = [ws for ws in results if ws.get('hasVerifiedInstitution') is True]
         metadata_dao = MetadataDao()
         metadata = metadata_dao.get_by_key(WORKBENCH_LAST_SYNC_KEY)
         if metadata:
@@ -519,7 +530,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         else:
             last_sync_date = clock.CLOCK.now()
 
-        return {"last_sync_date": last_sync_date, "data": results}
+        return {"last_sync_date": last_sync_date, "data": expected_result}
 
     def add_approved_workspace_with_session(self, session, workspace_snapshot, is_reviewed=False):
         exist = self.get_workspace_by_workspace_id_with_session(session, workspace_snapshot.workspaceSourceId)
