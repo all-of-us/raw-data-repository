@@ -122,6 +122,7 @@ class BiobankSpecimenAttributeApi(BiobankSpecimenTargetedUpdateBase):
         super(BiobankSpecimenAttributeApi, self).__init__()
         self.attribute_name = None
 
+    @auth_required(BIOBANK)
     def put(self, *args, **kwargs):
         self.attribute_name = kwargs['attribute_name']
         super(BiobankSpecimenAttributeApi, self).put(*args, **kwargs)
@@ -144,6 +145,7 @@ class BiobankSpecimenAliquotApi(BiobankSpecimenTargetedUpdateBase):
         super(BiobankSpecimenAliquotApi, self).__init__()
         self.aliquot_rlims_id = None
 
+    @auth_required(BIOBANK)
     def put(self, *args, **kwargs):
         self.aliquot_rlims_id = kwargs['aliquot_rlims_id']
         super(BiobankSpecimenAliquotApi, self).put(*args, **kwargs)
