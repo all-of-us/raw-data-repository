@@ -1003,8 +1003,8 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
         manifest_file = self.file_processed_dao.get(1)
 
-        # TODO: Test the reconciliation process
-        genotyping_test_files = (
+        # Test the reconciliation process
+        sequencing_test_files = (
             f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz',
             f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz.tbi',
             f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.hard-filtered.vcf.md5sum',
@@ -1016,7 +1016,7 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.cram.md5sum',
             f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.crai.md5sum',
         )
-        for f in genotyping_test_files:
+        for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
 
         genomic_pipeline.reconcile_metrics_vs_sequencing_data()  # run_id = 2
@@ -1576,18 +1576,28 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
-        # Test sequencing files required for CVL workflow
+        # Create the Sequencing test files
         sequencing_test_files = (
-            f'test_data_folder/10001_R01C01.vcf.gz',
-            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
-            f'test_data_folder/10001_R01C01.red.idat.gz',
-            f'test_data_folder/10001_R01C01.grn.idat.md5',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz.tbi',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.hard-filtered.vcf.md5sum',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.vcf.gz',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.vcf.gz.tbi',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.vcf.md5sum',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.cram',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.crai',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.cram.md5sum',
+            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.crai.md5sum',
         )
 
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
 
         genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 3
-        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 4
+        genomic_pipeline.reconcile_metrics_vs_sequencing_data()  # run_id = 4
 
         # finally run the W1 manifest workflow
+
+        run_obj = self.job_run_dao.get(4)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
