@@ -4,6 +4,7 @@
 #
 
 import argparse
+import math
 import os
 
 # pylint: disable=superfluous-parens
@@ -13,6 +14,8 @@ import sys
 
 from werkzeug.exceptions import NotFound
 
+from rdr_service.offline.bigquery_sync import rebuild_bq_participant_task
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator, rebuild_bq_participant
@@ -48,6 +51,55 @@ class PDRParticipantRebuildClass(object):
             return 1
         return 0
 
+    def update_batch(self, pids):
+        """
+        Submit batches of pids to Cloud Tasks for rebuild.
+        """
+        batch_size = 100
+        total_rows = len(pids)
+        count = int(math.ceil(float(total_rows) / float(batch_size)))
+        _logger.info('Calculated {0} tasks from {1} pids with a batch size of {2}.'.
+                     format(count, total_rows, batch_size))
+
+        count = 0
+        batch_count = 0
+        batch = list()
+
+        # queue up a batch of participant ids and send them to be rebuilt.
+        for pid in pids:
+
+            batch.append({'pid': pid})
+            count += 1
+
+            if count == batch_size:
+                payload = {'batch': batch}
+
+                if self.gcp_env.project == 'localhost':
+                    rebuild_bq_participant_task(payload)
+                else:
+                    task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
+                                        queue='bigquery-rebuild', project_id=self.gcp_env.project)
+                    task.execute(quiet=True)
+                batch_count += 1
+                # reset for next batch
+                batch = list()
+                count = 0
+
+        # send last batch if needed.
+        if count:
+            payload = {'batch': batch}
+            batch_count += 1
+            if self.gcp_env.project == 'localhost':
+                rebuild_bq_participant_task(payload)
+            else:
+                task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
+                                    queue='bigquery-rebuild', project_id=self.gcp_env.project)
+                task.execute(quiet=True)
+
+        logging.info(f'Submitted {batch_count} tasks.')
+
+        return 0
+
     def update_many_pids(self, pids):
         """
         Update many pids from a file.
@@ -55,6 +107,9 @@ class PDRParticipantRebuildClass(object):
         """
         if not pids:
             return 1
+
+        if self.args.batch:
+            return self.update_batch(pids)
 
         ps_bqgen = BQParticipantSummaryGenerator()
         pdr_bqgen = BQPDRParticipantSummaryGenerator()
@@ -154,6 +209,8 @@ def run():
     rebuild_parser.add_argument("--pid", help="rebuild single participant id", type=int, default=None)  # noqa
     rebuild_parser.add_argument("--from-file", help="rebuild participant ids from a file with a list of pids",
                                 default=None)  # noqa
+    rebuild_parser.add_argument("--batch", help="Submit pids in batch to Cloud Tasks", default=False,
+                                action="store_true")  # noqa
 
     args = parser.parse_args()
 

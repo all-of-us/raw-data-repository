@@ -43,7 +43,7 @@ def rebuild_bigquery_handler():
         logging.warning(f'BigQuery operations not supported in {config.GAE_PROJECT}, skipping.')
         return
 
-    batch_size = 250
+    batch_size = 100
 
     ro_dao = BigQuerySyncDao(backup=True)
     with ro_dao.session() as ro_session:
@@ -113,7 +113,7 @@ def daily_rebuild_bigquery_handler():
         logging.warning(f'BigQuery operations not supported in {config.GAE_PROJECT}, skipping.')
         return
 
-    batch_size = 250
+    batch_size = 100
 
     ro_dao = BigQuerySyncDao(backup=True)
     with ro_dao.session() as ro_session:
@@ -275,7 +275,7 @@ def sync_bigquery_handler(dryrun=False):
     total_inserts = 0
     # Google says maximum of 500 in a batch. Pretty sure they are talking about log shipping, I believe
     # that one participant summary record is larger than their expected average log record size.
-    batch_size = 250
+    batch_size = 100
     run_limit = (2 * 60) - 10  # Run for 110 seconds before exiting, so we don't have overlapping cron jobs.
     limit_reached = False
     start_ts = datetime.now()
