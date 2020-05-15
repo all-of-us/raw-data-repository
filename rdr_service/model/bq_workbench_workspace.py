@@ -154,6 +154,7 @@ class BQRWBWorkspaceUsersSchema(BQSchema):
     status = BQField('status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     status_id = BQField('status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     researcher_id = BQField('researcher_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    is_creator = BQField('is_creator', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQRWBWorkspaceUsers(BQTable):
