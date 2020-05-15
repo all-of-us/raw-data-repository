@@ -74,8 +74,8 @@ class BiobankDaoBase(UpdatableDao):
             Defaults to None.
         :return:
         """
-        objects_found = session.query(self.model_type).filter(filter_expr)
-        if objects_found.count() > 0:
+        objects_found = session.query(self.model_type).filter(filter_expr).all()
+        if len(objects_found) > 0:
             return [self.to_client_json_with_session(model, session) for model in objects_found]
         else:
             return None
