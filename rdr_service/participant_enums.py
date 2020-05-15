@@ -533,7 +533,7 @@ class GenomicJob(messages.Enum):
     RECONCILE_GENOTYPING_DATA = 3
     NEW_PARTICIPANT_WORKFLOW = 4
     CVL_RECONCILIATION_REPORT = 5
-    CREATE_CVL_MANIFESTS = 6
+    CREATE_CVL_W1_MANIFESTS = 6
     BB_RETURN_MANIFEST = 7
     BB_GC_MANIFEST = 8
     CVL_SEC_VAL_MAN = 9
@@ -570,6 +570,7 @@ class GenomicWorkflowState(messages.Enum):
     RHP_RPT_PENDING_DELETE = 19
     RHP_RPT_DELETED = 20
     RHP_RPT_ACCESSED = 21
+    CVL_READY = 22
 
 
 class GenomicSubProcessStatus(messages.Enum):
@@ -594,7 +595,7 @@ class GenomicManifestTypes(messages.Enum):
     DRC_BIOBANK = 1
     BIOBANK_GC = 2
     GC_DRC = 3
-    DRC_CVL_WGS = 4
+    CVL_W1 = 4
     GEM_A1 = 5
     GEM_A3 = 6
 

@@ -144,7 +144,7 @@ class GenomicSetMemberDao(UpdatableDao):
         self.valid_job_id_fields = ('reconcileMetricsBBManifestJobRunId',
                                     'reconcileMetricsSequencingJobRunId',
                                     'reconcileCvlJobRunId',
-                                    'cvlManifestWgsJobRunId',
+                                    'cvlW1ManifestJobRunId',
                                     'gemA1ManifestJobRunId',
                                     'reconcileGCManifestJobRunId',
                                     'gemA3ManifestJobRunId')
@@ -355,6 +355,16 @@ class GenomicSetMemberDao(UpdatableDao):
         except OperationalError:
             logging.error(f'Error updating member id: {member.id}.')
             return GenomicSubProcessResult.ERROR
+
+    def update_member_state(self, member, new_state):
+        """
+        Sets the member's state to a new state
+        :param member: GenomicWorkflowState
+        :param new_state:
+        """
+
+        member.genomicWorkflowState = new_state
+        return self.update(member)
 
     def update_member_sequencing_file(self, member, job_run_id, filename):
         """
