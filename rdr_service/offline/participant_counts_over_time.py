@@ -6,3 +6,4 @@ def calculate_participant_metrics():
     service = ParticipantCountsOverTimeService()
     service.init_tmp_table()
     service.refresh_metrics_cache_data()
+    service.clean_tmp_tables()
