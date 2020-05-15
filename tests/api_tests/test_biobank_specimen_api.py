@@ -1,4 +1,5 @@
 import datetime
+import http.client
 
 from rdr_service import clock
 from rdr_service.dao.biobank_specimen_dao import BiobankSpecimen, BiobankSpecimenDao, BiobankSpecimenAttributeDao,\
@@ -67,10 +68,7 @@ class BiobankOrderApiTest(BaseTestCase):
         rlims_id = payload['rlimsID']
         return self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
 
-    def get_minimal_specimen_json(self, rlims_id=None):
-        if rlims_id is None:
-            rlims_id = 'sabrina'
-
+    def get_minimal_specimen_json(self, rlims_id='sabrina'):
         return {
             'rlimsID': rlims_id,
             'orderID': self.bio_order.biobankOrderId,
@@ -574,3 +572,169 @@ class BiobankOrderApiTest(BaseTestCase):
                 '[salem] Missing fields: testcode'
             ]
         })
+
+    def _create_minimal_specimen(self, rlims_id='sabrina'):
+        return self.put_specimen(self.get_minimal_specimen_json(rlims_id))
+
+    def test_parent_status_updated_all_fields(self):
+        self._create_minimal_specimen()
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+
+        self.send_put(f"Biobank/specimens/sabrina/status", {
+            'status': 'new',
+            'freezeThawCount': 8,
+            'location': 'Washington',
+            'quantity': '3',
+            'quantityUnits': 'some units',
+            'processingCompleteDate': TIME_2.isoformat(),
+            'deviations': 'no deviation'
+        })
+
+        specimen = self.get_specimen_from_dao(_id=specimen.id)
+        self.assertEqual('new', specimen.status)
+        self.assertEqual(8, specimen.freezeThawCount)
+        self.assertEqual('Washington', specimen.location)
+        self.assertEqual('3', specimen.quantity)
+        self.assertEqual('some units', specimen.quantityUnits)
+        self.assertEqual(TIME_2, specimen.processingCompleteDate)
+        self.assertEqual('no deviation', specimen.deviations)
+
+    def test_parent_status_updated_required_fields(self):
+        self._create_minimal_specimen()
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+        self.assertIsNone(specimen.status)
+
+        self.send_put(f"Biobank/specimens/sabrina/status", {
+            'status': 'updated'
+        })
+
+        specimen = self.get_specimen_from_dao(_id=specimen.id)
+        self.assertEqual('updated', specimen.status)
+
+    def test_parent_status_update_not_found(self):
+        self.send_put(f"Biobank/specimens/sabrina/status", {
+            'status': 'updated'
+        }, expected_status=http.client.NOT_FOUND)
+
+    def test_parent_disposed_all_fields(self):
+        self._create_minimal_specimen()
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+
+        self.send_put(f"Biobank/specimens/sabrina/disposalStatus", {
+            'reason': 'contaminated',
+            'disposalDate': TIME_2.isoformat()
+        })
+
+        specimen = self.get_specimen_from_dao(_id=specimen.id)
+        self.assertEqual('contaminated', specimen.disposalReason)
+        self.assertEqual(TIME_2, specimen.disposalDate)
+
+    def test_parent_disposed_optional_fields_not_cleared(self):
+        payload = self.get_minimal_specimen_json()
+        payload['disposalStatus'] = {
+            'reason': 'contaminated',
+            'disposalDate': TIME_2.isoformat()
+        }
+        self.put_specimen(payload)
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+
+        self.send_put(f"Biobank/specimens/sabrina/disposalStatus", {
+            'disposalDate': TIME_1.isoformat()
+        })
+
+        specimen = self.get_specimen_from_dao(_id=specimen.id)
+        self.assertEqual('contaminated', specimen.disposalReason)
+        self.assertEqual(TIME_1, specimen.disposalDate)
+
+    def test_parent_disposed_required_fields(self):
+        self._create_minimal_specimen()
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+        self.assertIsNone(specimen.disposalDate)
+
+        self.send_put(f"Biobank/specimens/sabrina/disposalStatus", {
+            'disposalDate': TIME_1.isoformat()
+        })
+
+        specimen = self.get_specimen_from_dao(_id=specimen.id)
+        self.assertEqual(TIME_1, specimen.disposalDate)
+
+    def test_parent_disposed_not_found(self):
+        self.send_put(f"Biobank/specimens/sabrina/status", {
+            'disposalDate': TIME_1.isoformat()
+        }, expected_status=http.client.NOT_FOUND)
+
+    def test_parent_attribute_created(self):
+        result = self._create_minimal_specimen()
+        specimen = self.retrieve_specimen_json(result['id'])
+        self.assertIsNone(specimen['attributes'])
+
+        self.send_put(f"Biobank/specimens/sabrina/attributes/attr1", {
+            'value': 'test attribute'
+        })
+
+        specimen = self.retrieve_specimen_json(specimen['id'])
+        attribute = specimen['attributes'][0]
+        self.assertEqual('attr1', attribute['name'])
+        self.assertEqual('test attribute', attribute['value'])
+
+    def test_parent_attribute_update(self):
+        payload = self.get_minimal_specimen_json()
+        payload['attributes'] = [
+            {
+                'name': 'attr_one',
+                'value': '1'
+            },
+            {
+                'name': 'attr_two',
+                'value': 'two'
+            }
+        ]
+        initial_result = self.put_specimen(payload)
+
+        self.send_put(f"Biobank/specimens/sabrina/attributes/attr_one", {
+            'value': 'updated'
+        })
+
+        specimen = self.retrieve_specimen_json(initial_result['id'])
+        attribute = specimen['attributes'][0]
+        self.assertEqual('updated', attribute['value'])
+
+    def test_parent_attribute_not_found(self):
+        self.send_put(f"Biobank/specimens/sabrina/attributes/attr1", {
+            'disposalDate': TIME_1.isoformat()
+        }, expected_status=http.client.NOT_FOUND)
+
+    def test_parent_aliquot_created(self):
+        result = self._create_minimal_specimen()
+        specimen = self.retrieve_specimen_json(result['id'])
+        self.assertIsNone(specimen['aliquots'])
+
+        self.send_put(f"Biobank/specimens/sabrina/aliquots/first", {
+            'sampleType': 'first sample',
+            'containerTypeID': 'tube'
+        })
+
+        specimen = self.retrieve_specimen_json(specimen['id'])
+        aliquot = specimen['aliquots'][0]
+        self.assertEqual('first sample', aliquot['sampleType'])
+        self.assertEqual('tube', aliquot['containerTypeID'])
+
+    def test_parent_aliquot_update(self):
+        payload = self.get_minimal_specimen_json()
+        payload['aliquots'] = [
+            {
+                'rlimsID': 'salem',
+                'sampleType': 'first sample',
+                'containerTypeID': 'tube'
+            }
+        ]
+        initial_result = self.put_specimen(payload)
+
+        self.send_put(f"Biobank/specimens/sabrina/aliquots/salem", {
+            'sampleType': 'updated'
+        })
+
+        specimen = self.retrieve_specimen_json(initial_result['id'])
+        aliquot = specimen['aliquots'][0]
+        self.assertEqual('updated', aliquot['sampleType'])
+        self.assertEqual('tube', aliquot['containerTypeID'])
