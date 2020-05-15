@@ -66,7 +66,7 @@ class BiobankOrderApiTest(BaseTestCase):
 
     def put_specimen(self, payload):
         rlims_id = payload['rlimsID']
-        return self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
+        return self.send_put(f'Biobank/specimens/{rlims_id}', request_data=payload)
 
     def get_minimal_specimen_json(self, rlims_id='sabrina'):
         return {
@@ -114,7 +114,7 @@ class BiobankOrderApiTest(BaseTestCase):
 
         if 'aliquots' in expected_aliquot:
             self.assertCollectionsMatch(actual_aliquot['aliquots'], expected_aliquot['aliquots'],
-                                        self.is_matching_aliquot, "Expected nested aliquots to match")
+                                        self.is_matching_aliquot, 'Expected nested aliquots to match')
             del expected_aliquot['aliquots']
 
         return self.is_matching_json(actual_aliquot, expected_aliquot)
@@ -144,11 +144,11 @@ class BiobankOrderApiTest(BaseTestCase):
 
         if 'attributes' in test_json:
             self.assertCollectionsMatch(specimen_json['attributes'], test_json['attributes'], self.is_matching_json,
-                                        "Expected attributes to match")
+                                        'Expected attributes to match')
 
         if 'aliquots' in test_json:
             self.assertCollectionsMatch(specimen_json['aliquots'], test_json['aliquots'], self.is_matching_aliquot,
-                                        "Expected aliquots to match")
+                                        'Expected aliquots to match')
 
     def get_specimen_from_dao(self, _id=None, rlims_id=None):
         with self.dao.session() as session:
@@ -171,7 +171,7 @@ class BiobankOrderApiTest(BaseTestCase):
     def test_put_new_specimen_minimal_data(self):
         payload = self.get_minimal_specimen_json()
         rlims_id = payload['rlimsID']
-        result = self.send_put(f"Biobank/specimens/{rlims_id}", request_data=payload)
+        result = self.send_put(f'Biobank/specimens/{rlims_id}', request_data=payload)
 
         saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
@@ -243,8 +243,8 @@ class BiobankOrderApiTest(BaseTestCase):
         initial_result = self.put_specimen(payload)
 
         payload['attributes'] = [{
-            "name": "test",
-            "value": "123"
+            'name': 'test',
+            'value': '123'
         }]
         self.put_specimen(payload)
 
@@ -396,6 +396,11 @@ class BiobankOrderApiTest(BaseTestCase):
             {
                 'rlimsID': 'other',
                 'datasets': [
+                    {
+                        'rlimsID': 'first_data_set',
+                        'name': 'placeholder',
+                        'status': 'nested'
+                    },
                     {
                         'rlimsID': 'data_id',
                         'name': 'test set',
@@ -738,3 +743,122 @@ class BiobankOrderApiTest(BaseTestCase):
         aliquot = specimen['aliquots'][0]
         self.assertEqual('updated', aliquot['sampleType'])
         self.assertEqual('tube', aliquot['containerTypeID'])
+
+    def _create_minimal_specimen_with_aliquot(self, rlims_id='sabrina', aliquot_rlims_id='salem'):
+        payload = self.get_minimal_specimen_json(rlims_id)
+        payload['aliquots'] = [{
+            'rlimsID': aliquot_rlims_id
+        }]
+        return self.put_specimen(payload)
+
+    def test_aliquot_status_updated_all_fields(self):
+        result = self._create_minimal_specimen_with_aliquot()
+
+        self.send_put(f"Biobank/aliquots/salem/status", {
+            'status': 'new',
+            'freezeThawCount': 8,
+            'location': 'Washington',
+            'quantity': '3',
+            'quantityUnits': 'some units',
+            'processingCompleteDate': TIME_2.isoformat(),
+            'deviations': 'no deviation'
+        })
+
+        specimen = self.retrieve_specimen_json(result['id'])
+        aliquot_status = specimen['aliquots'][0]['status']
+        self.assertEqual('new', aliquot_status['status'])
+        self.assertEqual(8, aliquot_status['freezeThawCount'])
+        self.assertEqual('Washington', aliquot_status['location'])
+        self.assertEqual('3', aliquot_status['quantity'])
+        self.assertEqual('some units', aliquot_status['quantityUnits'])
+        self.assertEqual(TIME_2.isoformat(), aliquot_status['processingCompleteDate'])
+        self.assertEqual('no deviation', aliquot_status['deviations'])
+
+    def test_aliquot_status_updated_required_fields(self):
+        result = self._create_minimal_specimen_with_aliquot()
+        specimen = self.retrieve_specimen_json(result['id'])
+        self.assertIsNone(specimen['aliquots'][0]['status']['status'])
+
+        self.send_put(f'Biobank/aliquots/salem/status', {
+            'status': 'updated'
+        })
+
+        specimen = self.retrieve_specimen_json(specimen['id'])
+        self.assertEqual('updated', specimen['aliquots'][0]['status']['status'])
+
+    def test_aliquot_disposed_all_fields(self):
+        result = self._create_minimal_specimen_with_aliquot()
+
+        self.send_put(f'Biobank/aliquots/salem/disposalStatus', {
+            'reason': 'contaminated',
+            'disposalDate': TIME_2.isoformat()
+        })
+
+        specimen = self.retrieve_specimen_json(result['id'])
+        aliquot_disposal_status = specimen['aliquots'][0]['disposalStatus']
+        self.assertEqual('contaminated', aliquot_disposal_status['reason'])
+        self.assertEqual(TIME_2.isoformat(), aliquot_disposal_status['disposalDate'])
+
+    def test_aliquot_dataset_created(self):
+        result = self._create_minimal_specimen_with_aliquot()
+        specimen = self.retrieve_specimen_json(result['id'])
+        self.assertIsNone(specimen['aliquots'][0]['datasets'])
+
+        self.send_put(f'Biobank/aliquots/salem/datasets/data1', {
+            'status': 'created',
+            'datasetItems': [
+                {
+                    'paramID': 'param1',
+                    'displayValue': 'One',
+                    'displayUnits': 'param'
+                }
+            ]
+        })
+
+        specimen = self.retrieve_specimen_json(specimen['id'])
+        dataset = specimen['aliquots'][0]['datasets'][0]
+        self.assertEqual('created', dataset['status'])
+        self.assertEqual('One', dataset['datasetItems'][0]['displayValue'])
+
+    def test_aliquot_dataset_update(self):
+        payload = self.get_minimal_specimen_json()
+        payload['aliquots'] = [
+            {
+                'rlimsID': 'salem',
+                'datasets': [
+                    {
+                        'rlimsID': 'data_one',
+                        'datasetItems': [
+                            {
+                                'paramID': 'param_one'
+                            }
+                        ]
+                    },
+                    {
+                        'rlimsID': 'data_two',
+                        'datasetItems': [
+                            {
+                                'paramID': 'param_one'
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+        result = self.put_specimen(payload)
+
+        self.send_put(f'Biobank/aliquots/salem/datasets/data_two', {
+            'rlimsID': 'data_two',
+            'status': 'updated',
+            'datasetItems': [
+                {
+                    'paramID': 'param_one',
+                    'displayValue': 'foobar'
+                }
+            ]
+        })
+
+        specimen = self.retrieve_specimen_json(result['id'])
+        dataset = specimen['aliquots'][0]['datasets'][1]
+        self.assertEqual('updated', dataset['status'])
+        self.assertEqual('foobar', dataset['datasetItems'][0]['displayValue'])

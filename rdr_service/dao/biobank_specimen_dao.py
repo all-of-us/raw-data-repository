@@ -313,6 +313,10 @@ class BiobankAliquotDao(BiobankDaoBase):
 
         return result
 
+    def get_with_rlims_id(self, rlims_id):
+        with self.session() as session:
+            return session.query(BiobankAliquot).filter(BiobankAliquot.rlimsId == rlims_id).one()
+
     @staticmethod
     def get_id_with_session(obj, session):
         aliquot = session.query(BiobankAliquot).filter(
@@ -325,6 +329,8 @@ class BiobankAliquotDao(BiobankDaoBase):
 
 
 class BiobankAliquotDatasetDao(BiobankDaoBase):
+
+    validate_version_match = False
 
     def __init__(self):
         super().__init__(BiobankAliquotDataset)
@@ -343,8 +349,15 @@ class BiobankAliquotDatasetDao(BiobankDaoBase):
 
         if 'datasetItems' in resource:
             item_dao = BiobankAliquotDatasetItemDao()
-            dataset.datasetItems = item_dao.collection_from_json(resource['datasetItems'],
-                                                                 dataset_rlims_id=dataset.rlimsId, session=session)
+
+            if session is None:
+                with self.session() as session:
+                    dataset.datasetItems = item_dao.collection_from_json(resource['datasetItems'],
+                                                                         dataset_rlims_id=dataset.rlimsId,
+                                                                         session=session)
+            else:
+                dataset.datasetItems = item_dao.collection_from_json(resource['datasetItems'],
+                                                                     dataset_rlims_id=dataset.rlimsId, session=session)
 
         dataset.id = self.get_id_with_session(dataset, session)
         return dataset
@@ -364,7 +377,7 @@ class BiobankAliquotDatasetDao(BiobankDaoBase):
 
     @staticmethod
     def get_id_with_session(obj, session):
-        dataset = session.query(BiobankAliquot).filter(
+        dataset = session.query(BiobankAliquotDataset).filter(
             BiobankAliquotDataset.rlimsId == obj.rlimsId,
         ).one_or_none()
         if dataset is not None:
