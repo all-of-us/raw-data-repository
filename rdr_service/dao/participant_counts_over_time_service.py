@@ -84,7 +84,7 @@ class ParticipantCountsOverTimeService(BaseDao):
                 columns_str = ','.join(columns)
 
                 participant_sql = """
-                  INSERT INTO 
+                  INSERT INTO
                   """ + temp_table_name + """
                   SELECT
                   """ + columns_str + """
@@ -121,6 +121,18 @@ class ParticipantCountsOverTimeService(BaseDao):
             session.execute(participant_origin_sql)
 
             logging.info('Init temp table for metrics cron job.')
+
+    def clean_tmp_tables(self):
+        with self.session() as session:
+            hpo_dao = HPODao()
+            hpo_list = hpo_dao.get_all()
+            for hpo in hpo_list:
+                if hpo.hpoId == self.test_hpo_id:
+                    continue
+                temp_table_name = TEMP_TABLE_PREFIX + str(hpo.hpoId)
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore')
+                    session.execute('DROP TABLE IF EXISTS {};'.format(temp_table_name))
 
     def refresh_metrics_cache_data(self):
 
