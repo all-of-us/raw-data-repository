@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Boolean, UniqueConstraint, event, JSON
+from sqlalchemy import Column, ForeignKey, Integer, String, Boolean, UniqueConstraint, event, JSON, TEXT
 from sqlalchemy.orm import relationship
 from rdr_service.model.field_types import BlobUTF8
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
@@ -30,9 +30,9 @@ class WorkbenchWorkspaceBase(object):
     commercialPurpose = Column("commercial_purpose", Boolean)
     educational = Column("educational", Boolean)
     otherPurpose = Column("other_purpose", Boolean)
-    scientificApproaches = Column("scientific_approaches", String(2000))
-    intendToStudy = Column("intend_to_study", String(2000))
-    findingsFromStudy = Column("findings_from_study", String(2000))
+    scientificApproaches = Column("scientific_approaches", TEXT)
+    intendToStudy = Column("intend_to_study", TEXT)
+    findingsFromStudy = Column("findings_from_study", TEXT)
     ethicalLegalSocialImplications = Column("ethical_legal_social_implications", Boolean)
     focusOnUnderrepresentedPopulations = Column("focus_on_underrepresented_populations", Boolean)
     raceEthnicity = Column("race_ethnicity", JSON)
@@ -53,7 +53,6 @@ class WorkbenchWorkspaceBase(object):
     incomeLevel = Column("income_level", Enum(WorkbenchWorkspaceIncomeLevel),
                          default=WorkbenchWorkspaceIncomeLevel.UNSET)
     others = Column("others", String(2000))
-
     isReviewed = Column("is_reviewed", Boolean, default=False)
 
     resource = Column("resource", BlobUTF8, nullable=False)
