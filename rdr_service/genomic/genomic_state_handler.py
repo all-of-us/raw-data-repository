@@ -1,8 +1,6 @@
 import abc
 
-from rdr_service.participant_enums import (
-    GenomicWorkflowState,
-)
+from rdr_service.participant_enums import GenomicWorkflowState
 
 
 class GenomicStateBase:
@@ -15,7 +13,7 @@ class GenomicStateBase:
 
 
 class AW2State(GenomicStateBase):
-    """State representing the AW2 manifest"""
+    """State representing the AW2 manifest state"""
     def transition_function(self, signal):
         if signal == 'missing':
             return GenomicWorkflowState.AW2_MISSING
@@ -28,14 +26,14 @@ class AW2State(GenomicStateBase):
 
 
 class CVLReadyState(GenomicStateBase):
-    """State representing the AW2 manifest"""
+    """State representing the CVL_READY state"""
     def transition_function(self, signal):
         if signal == 'manifest-generated':
             return GenomicWorkflowState.W1
 
 
 class W1State(GenomicStateBase):
-    """State representing the AW2 manifest"""
+    """State representing the W1 manifest state"""
     def transition_function(self, signal):
         if signal == 'w2-ingestion-success':
             return GenomicWorkflowState.W2
@@ -43,7 +41,7 @@ class W1State(GenomicStateBase):
 
 class GenomicStateHandler:
     """
-    Basic FSM for Genomic States. Currently only implemented on CVL W1 and AW2
+    Basic FSM for Genomic States. Returns call to state's transision_function()
     """
     states = {
         GenomicWorkflowState.AW2: AW2State(),
