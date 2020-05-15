@@ -48,7 +48,8 @@ class Questionnaire(QuestionnaireBase, Base):
         "QuestionnaireQuestion",
         cascade="expunge",
         cascade_backrefs=False,
-        primaryjoin="Questionnaire.questionnaireId==" + "foreign(QuestionnaireQuestion.questionnaireId)",
+        primaryjoin="and_(Questionnaire.questionnaireId==" + "foreign(QuestionnaireQuestion.questionnaireId)," + \
+        "Questionnaire.version==" + "foreign(QuestionnaireQuestion.questionnaireVersion))",
     )
 
 
