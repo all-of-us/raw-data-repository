@@ -27,6 +27,13 @@ class AW2State(GenomicStateBase):
             return GenomicWorkflowState.CVL_READY
 
 
+class CVLReadyState(GenomicStateBase):
+    """State representing the AW2 manifest"""
+    def transition_function(self, signal):
+        if signal == 'manifest-generated':
+            return GenomicWorkflowState.W1
+
+
 class W1State(GenomicStateBase):
     """State representing the AW2 manifest"""
     def transition_function(self, signal):
@@ -40,6 +47,7 @@ class GenomicStateHandler:
     """
     states = {
         GenomicWorkflowState.AW2: AW2State(),
+        GenomicWorkflowState.CVL_READY: CVLReadyState(),
         GenomicWorkflowState.W1: W1State(),
     }
 

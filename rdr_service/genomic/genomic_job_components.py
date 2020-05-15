@@ -1315,7 +1315,9 @@ class ManifestCompiler:
                 )
 
                 # Handle Genomic States for manifests
-                new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal=manifest_type)
+                new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
+                                                              signal='manifest-generated')
+
                 if new_state is not None or new_state != member.genomicWorkflowState:
                     self.member_dao.update_member_state(member, new_state)
 

@@ -1621,6 +1621,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test member was updated
         member = self.member_dao.get(2)
         self.assertEqual(5, member.cvlW1ManifestJobRunId)
+        self.assertEqual(GenomicWorkflowState.W1, member.genomicWorkflowState)
 
         # Test the manifest file contents
         expected_w1_columns = (
