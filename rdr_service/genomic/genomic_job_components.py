@@ -11,6 +11,8 @@ from collections import deque, namedtuple
 from copy import deepcopy
 import sqlalchemy
 
+from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
+
 from rdr_service import clock
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
@@ -66,8 +68,10 @@ from rdr_service.config import (
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A3_MANIFEST_SUBFOLDER,
     GENOME_TYPE_ARRAY,
-    GENOME_TYPE_WGS
+    GENOME_TYPE_WGS,
+    GAE_PROJECT,
 )
+
 
 
 class GenomicFileIngester:
@@ -339,6 +343,7 @@ class GenomicFileIngester:
             genome_type = self.file_validator.genome_type
             member = self.member_dao.get_member_from_sample_id(int(sample_id), genome_type)
             if member is not None:
+                self.member_dao.update_member_state(member, GenomicWorkflowState.AW2)
                 row_copy['member_id'] = member.id
                 gc_metrics_batch.append(row_copy)
             else:
@@ -691,7 +696,7 @@ class GenomicReconciler:
             # Update Job Run ID on member
             self.member_dao.update_member_job_run_id(
               self.member_dao.get(metric.genomicSetMemberId),
-               self.run_id, 'reconcileMetricsSequencingJobRunId')
+              self.run_id, 'reconcileMetricsSequencingJobRunId')
 
             # Make a roc ticket for missing data files
             if len(missing_data_files) > 0:
@@ -714,6 +719,8 @@ class GenomicReconciler:
 
         # Iterate over metrics, searching the bucket for filenames
         for metric in metrics:
+            member = self.member_dao.get(metric.GenomicGCValidationMetrics.genomicSetMemberId)
+
             file = self.file_dao.get(metric.GenomicGCValidationMetrics.genomicFileProcessedId)
             gc_prefix = file.fileName.split('_')[0]
 
@@ -731,19 +738,22 @@ class GenomicReconciler:
 
             self.metrics_dao.update(metric.GenomicGCValidationMetrics)
 
-            # Update Member
-            member = self.member_dao.get(metric.GenomicGCValidationMetrics.genomicSetMemberId)
-            self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId')
+            next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='cvl-ready')
 
-
-
-            # Make a roc ticket for missing data files
+            # Handle for missing data files
             if len(missing_data_files) > 0:
+                next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
+
+                # Make a roc ticket
                 alert = GenomicAlertHandler()
 
                 summary = '[Genomic System Alert] Missing AW2 WGS Manifest Files'
                 description = self._compile_missing_data_alert(file.fileName, missing_data_files)
                 alert.make_genomic_alert(summary, description)
+
+            # Update Member
+            self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId')
+            self.member_dao.update_member_state(member, next_state)
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -1161,7 +1171,7 @@ class ManifestDefinitionProvider:
                     )
                 ).where(
                     (GenomicGCValidationMetrics.processingStatus == 'pass') &
-                    (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.AW2) &
+                    (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY) &
                     (GenomicSetMember.genomeType == "aou_wgs")
                 )
             )
@@ -1303,6 +1313,12 @@ class ManifestCompiler:
                         field=self.manifest_def.job_run_field
                     )
                 )
+
+                # Handle Genomic States for manifests
+                new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal=manifest_type)
+                if new_state is not None or new_state != member.genomicWorkflowState:
+                    self.member_dao.update_member_state(member, new_state)
+
             return GenomicSubProcessResult.SUCCESS \
                 if GenomicSubProcessResult.ERROR not in results \
                 else GenomicSubProcessResult.ERROR
@@ -1349,8 +1365,15 @@ class GenomicAlertHandler:
         :param summary: the 'title' of the ticket
         :param description: the 'body' of the ticket
         """
-        ticket = self._jira_handler.create_ticket(summary, description,
-                                                  board_id=self.ROC_BOARD_ID)
-        active_sprint = self._jira_handler.get_active_sprint(
-            self._jira_handler.get_board_by_id(self.ROC_BOARD_ID))
-        self._jira_handler.add_ticket_to_sprint(ticket, active_sprint)
+        if GAE_PROJECT in ["all-of-us-rdr-prod", "all-of-us-rdr-stable"]:
+            ticket = self._jira_handler.create_ticket(summary, description,
+                                                      board_id=self.ROC_BOARD_ID)
+
+            active_sprint = self._jira_handler.get_active_sprint(
+                self._jira_handler.get_board_by_id(self.ROC_BOARD_ID))
+
+            self._jira_handler.add_ticket_to_sprint(ticket, active_sprint)
+
+        else:
+            logging.info('Suppressing alert for missing files')
+            return

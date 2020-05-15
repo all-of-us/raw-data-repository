@@ -570,6 +570,7 @@ class GenomicWorkflowState(messages.Enum):
     RHP_RPT_PENDING_DELETE = 19
     RHP_RPT_DELETED = 20
     RHP_RPT_ACCESSED = 21
+    CVL_READY = 22
 
 
 class GenomicSubProcessStatus(messages.Enum):

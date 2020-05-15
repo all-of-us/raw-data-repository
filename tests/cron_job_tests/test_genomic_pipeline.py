@@ -615,6 +615,11 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(len(gc_metrics), 1)
         self._gc_metrics_ingested_data_test_cases(gc_metrics)
 
+        # Test Genomic State updated
+        member = self.member_dao.get(1)
+        self.assertEqual(GenomicWorkflowState.AW2, member.genomicWorkflowState)
+
+
         # Test successful run result
         run_obj = self.job_run_dao.get(1)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
@@ -1039,9 +1044,10 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(0, gc_record.craiReceived)
         self.assertEqual(1, gc_record.craiMd5Received)
 
-        # Test member updated with job ID
+        # Test member updated with job ID and state
         member = self.member_dao.get(2)
         self.assertEqual(2, member.reconcileMetricsSequencingJobRunId)
+        self.assertEqual(GenomicWorkflowState.AW2_MISSING, member.genomicWorkflowState)
 
         # Fake alert
         summary = '[Genomic System Alert] Missing AW2 WGS Manifest Files'
@@ -1603,11 +1609,6 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 3
         genomic_pipeline.reconcile_metrics_vs_sequencing_data()  # run_id = 4
-
-        # TODO: Remove whence state is implemented
-        member = self.member_dao.get(2)
-        member.genomicWorkflowState = GenomicWorkflowState.AW2
-        self.member_dao.update(member)
 
         # Run the W1 manifest workflow
         fake_dt = datetime.datetime(2020, 4, 3, 0, 0, 0, 0)

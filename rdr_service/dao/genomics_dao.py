@@ -356,6 +356,16 @@ class GenomicSetMemberDao(UpdatableDao):
             logging.error(f'Error updating member id: {member.id}.')
             return GenomicSubProcessResult.ERROR
 
+    def update_member_state(self, member, new_state):
+        """
+        Sets the member's state to a new state
+        :param member: GenomicWorkflowState
+        :param new_state:
+        """
+
+        member.genomicWorkflowState = new_state
+        return self.update(member)
+
     def update_member_sequencing_file(self, member, job_run_id, filename):
         """
         Updates the sequencing filename of the GenomicSetMember
