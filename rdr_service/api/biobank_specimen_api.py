@@ -3,7 +3,8 @@ from flask import request
 from rdr_service.api.base_api import UpdatableApi, log_api_request
 from rdr_service.api_util import BIOBANK
 from rdr_service.app_util import auth_required
-from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao, BiobankSpecimenAttributeDao, BiobankAliquotDao
+from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao, BiobankSpecimenAttributeDao, BiobankAliquotDao,\
+    BiobankAliquotDatasetDao
 from werkzeug.exceptions import BadRequest, NotFound
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -94,6 +95,18 @@ class BiobankTargetedUpdateBase(BiobankApiBase):
         raise NotImplementedError(f"update_model not implemented in {self.__class__}")
 
 
+class BiobankStatusApiMixin():
+    def update_model(self, model, resource):
+        self.dao.read_client_status(resource, model)
+        self.dao.update(model)
+
+
+class BiobankDisposalApiMixin():
+    def update_model(self, model, resource):
+        self.dao.read_client_disposal(resource, model)
+        self.dao.update(model)
+
+
 class BiobankSpecimenTargetedUpdateBase(BiobankTargetedUpdateBase):
     def __init__(self):
         super(BiobankSpecimenTargetedUpdateBase, self).__init__(BiobankSpecimenDao())
@@ -105,16 +118,12 @@ class BiobankSpecimenTargetedUpdateBase(BiobankTargetedUpdateBase):
             raise NotFound(f'No specimen found for the given rlims_id: {rlims_id}')
 
 
-class BiobankSpecimenStatusApi(BiobankSpecimenTargetedUpdateBase):
-    def update_model(self, model, resource):
-        self.dao.read_client_status(resource, model)
-        self.dao.update(model)
+class BiobankSpecimenStatusApi(BiobankStatusApiMixin, BiobankSpecimenTargetedUpdateBase):
+    pass
 
 
-class BiobankSpecimenDisposalApi(BiobankSpecimenTargetedUpdateBase):
-    def update_model(self, model, resource):
-        self.dao.read_client_disposal(resource, model)
-        self.dao.update(model)
+class BiobankSpecimenDisposalApi(BiobankDisposalApiMixin, BiobankSpecimenTargetedUpdateBase):
+    pass
 
 
 class BiobankSpecimenAttributeApi(BiobankSpecimenTargetedUpdateBase):
@@ -161,3 +170,45 @@ class BiobankSpecimenAliquotApi(BiobankSpecimenTargetedUpdateBase):
             aliquot_dao.insert(aliquot)
         else:
             aliquot_dao.update(aliquot)
+
+
+class BiobankAliquotTargetedUpdateBase(BiobankTargetedUpdateBase):
+    def __init__(self):
+        super(BiobankAliquotTargetedUpdateBase, self).__init__(BiobankAliquotDao())
+
+    def get_model_with_rlims_id(self, rlims_id):
+        try:
+            return self.dao.get_with_rlims_id(rlims_id)
+        except NoResultFound:
+            raise NotFound(f'No aliquot found for the given rlims_id: {rlims_id}')
+
+
+class BiobankAliquotStatusApi(BiobankStatusApiMixin, BiobankAliquotTargetedUpdateBase):
+    pass
+
+
+class BiobankAliquotDisposalApi(BiobankDisposalApiMixin, BiobankAliquotTargetedUpdateBase):
+    pass
+
+
+class BiobankAliquotDatasetApi(BiobankAliquotTargetedUpdateBase):
+    def __init__(self):
+        super(BiobankAliquotDatasetApi, self).__init__()
+        self.dataset_rlims_id = None
+
+    @auth_required(BIOBANK)
+    def put(self, *args, **kwargs):
+        self.dataset_rlims_id = kwargs['dataset_rlims_id']
+        super(BiobankAliquotDatasetApi, self).put(*args, **kwargs)
+
+    def update_model(self, model, resource):
+        resource['rlimsID'] = self.dataset_rlims_id
+
+        dataset_dao = BiobankAliquotDatasetDao()
+        dataset = dataset_dao.from_client_json(resource, aliquot_rlims_id=model.rlimsId)
+
+        dataset.aliquot_id = model.id
+        if dataset.id is None:
+            dataset_dao.insert(dataset)
+        else:
+            dataset_dao.update(dataset)
