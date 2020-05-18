@@ -182,9 +182,9 @@ class BiobankSpecimenDao(BiobankDaoBase):
         with self.session() as session:
             return session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == resource['rlimsID']).count() > 0
 
-    def get_with_rlims_id(self, rlims_id):
-        with self.session() as session:
-            return session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == rlims_id).one()
+    @staticmethod
+    def get_with_rlims_id(rlims_id, session):
+        return session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == rlims_id).one()
 
     @staticmethod
     def get_id_with_session(obj, session):
@@ -313,9 +313,9 @@ class BiobankAliquotDao(BiobankDaoBase):
 
         return result
 
-    def get_with_rlims_id(self, rlims_id):
-        with self.session() as session:
-            return session.query(BiobankAliquot).filter(BiobankAliquot.rlimsId == rlims_id).one()
+    @staticmethod
+    def get_with_rlims_id(rlims_id, session):
+        return session.query(BiobankAliquot).filter(BiobankAliquot.rlimsId == rlims_id).one()
 
     @staticmethod
     def get_id_with_session(obj, session):
