@@ -18,9 +18,7 @@ TIME_2 = datetime.datetime(2020, 4, 2)
 
 class BiobankOrderApiTest(BaseTestCase):
     def setUp(self):
-        print('setting up test')
         super().setUp()
-        print('finished parent setup')
         self.participant = Participant(participantId=123, biobankId=555)
         self.participant_dao = ParticipantDao()
         self.participant_dao.insert(self.participant)
