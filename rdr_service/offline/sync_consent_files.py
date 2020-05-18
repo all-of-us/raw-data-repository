@@ -46,6 +46,7 @@ def do_sync_consent_files(**kwargs):
     org_data_map = config.getSetting(config.CONSENT_SYNC_ORGANIZATIONS)
     org_ids = [org_id for org_id, org_data in org_data_map.items()]
     start_date = kwargs.get('start_date')
+    file_filter = kwargs.get('file_filter', 'pdf')
     for participant_data in _iter_participants_data(org_ids, **kwargs):
         kwargs = {
             "source_bucket": SOURCE_BUCKET,
@@ -57,9 +58,10 @@ def do_sync_consent_files(**kwargs):
         destination = "/{destination_bucket}/Participant/{google_group}/P{participant_id}/".format(**kwargs)
 
         if config.GAE_PROJECT == 'localhost':
-            cloudstorage_copy_objects_task(source, destination, date_limit=start_date)
+            cloudstorage_copy_objects_task(source, destination, date_limit=start_date, file_filter=file_filter)
         else:
-            params = {'source': source, 'destination': destination, 'date_limit': start_date}
+            params = {'source': source, 'destination': destination, 'date_limit': start_date,
+                      'file_filter': file_filter}
             task = GCPCloudTask('copy_cloudstorage_object_task', payload=params)
             task.execute()
 
@@ -142,7 +144,7 @@ def _iter_participants_data(org_ids, **kwargs):
             yield ParticipantData(*row)
 
 
-def cloudstorage_copy_objects_task(source, destination, date_limit=None):
+def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_filter=None):
     """
     Cloud Task: Copies all objects matching the source to the destination.
     Both source and destination use the following format: /bucket/prefix/
@@ -156,12 +158,13 @@ def cloudstorage_copy_objects_task(source, destination, date_limit=None):
     for source_blob in list_blobs(bucket_name, prefix):
         source_file_path = os.path.normpath('/' + bucket_name + '/' + source_blob.name)
         destination_file_path = destination + source_file_path[len(source):]
-        if _should_copy_object(source_file_path, destination_file_path) and \
-                (date_limit is None or source_blob.updated > date_limit):
+        if _not_previously_copied(source_file_path, destination_file_path) and \
+                _after_date_limit(source_blob, date_limit) and \
+                _matches_file_filter(source_blob.name, file_filter):
             copy_cloud_file(source_file_path, destination_file_path)
 
 
-def _should_copy_object(source_file_path, destination_file_path):
+def _not_previously_copied(source_file_path, destination_file_path):
     destination_file_path = destination_file_path if destination_file_path[0:1] != '/' else destination_file_path[1:]
     destination_bucket_name, _, destination_blob_name = destination_file_path.partition('/')
     destination_blob = get_blob(destination_bucket_name, destination_blob_name)
@@ -172,3 +175,11 @@ def _should_copy_object(source_file_path, destination_file_path):
     source_bucket_name, _, source_blob_name = source_file_path.partition('/')
     source_blob = get_blob(source_bucket_name, source_blob_name)
     return source_blob.etag != destination_blob.etag
+
+
+def _after_date_limit(source_blob, date_limit):
+    return date_limit is None or source_blob.updated > date_limit
+
+
+def _matches_file_filter(source_blob_name, file_filter):
+    return file_filter is None or source_blob_name.endswith(file_filter)
