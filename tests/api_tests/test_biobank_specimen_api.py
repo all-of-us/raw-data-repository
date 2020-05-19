@@ -19,15 +19,19 @@ TIME_2 = datetime.datetime(2020, 4, 2)
 class BiobankOrderApiTest(BaseTestCase):
     def setUp(self):
         super().setUp()
-        self.participant = Participant(participantId=123, biobankId=555)
-        self.participant_dao = ParticipantDao()
-        self.participant_dao.insert(self.participant)
-        self.summary_dao = ParticipantSummaryDao()
         self.dao = BiobankSpecimenDao()
-        self.bo_dao = BiobankOrderDao()
+        with self.dao.session() as session:
+            self.participant = Participant(participantId=123, biobankId=555)
+            self.participant_dao = ParticipantDao()
+            self.participant_dao.insert_with_session(session, self.participant)
+            self.summary_dao = ParticipantSummaryDao()
+            self.bo_dao = BiobankOrderDao()
 
-        ParticipantSummaryDao().insert(self.participant_summary(self.participant))
-        self.bio_order = self.bo_dao.insert(self._make_biobank_order(participantId=self.participant.participantId))
+            ParticipantSummaryDao().insert_with_session(session, self.participant_summary(self.participant))
+            self.bio_order = self.bo_dao.insert_with_session(session,
+                                                             self._make_biobank_order(
+                                                                 participantId=self.participant.participantId
+                                                             ))
 
     def _make_biobank_order(self, **kwargs):
         """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
