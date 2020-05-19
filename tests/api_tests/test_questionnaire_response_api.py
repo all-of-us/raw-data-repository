@@ -598,8 +598,9 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         quesstionnaire = q.get(questionnaire_id)
         make_transient(quesstionnaire)
         quesstionnaire.status = QuestionnaireDefinitionStatus.INVALID
-        q.update(quesstionnaire)
-
+        with q.session() as session:
+            existing_obj = q.get_for_update(session, q.get_id(quesstionnaire))
+            q._do_update(session, quesstionnaire, existing_obj)
         q.get(questionnaire_id)
 
         with open(data_path("questionnaire_response3.json")) as fd:

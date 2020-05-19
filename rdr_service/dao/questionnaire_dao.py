@@ -23,12 +23,19 @@ class QuestionnaireDao(UpdatableDao):
     def get_id(self, obj):
         return obj.questionnaireId
 
-    def get_with_children(self, questionnaireId):
+    def get_with_children(self, questionnaire_id):
         with self.session() as session:
             query = session.query(Questionnaire).options(
                 subqueryload(Questionnaire.concepts), subqueryload(Questionnaire.questions)
             )
-            return query.get(questionnaireId)
+            return query.get(questionnaire_id)
+
+    def has_dup_semantic_version(self, session, questionnaire_id, semantic_version):
+        record = session.query(QuestionnaireHistory)\
+            .filter(QuestionnaireHistory.questionnaireId == questionnaire_id,
+                    QuestionnaireHistory.semanticVersion == semantic_version)\
+            .first()
+        return True if record else False
 
     def get_latest_questionnaire_with_concept(self, codeId):
         """Find the questionnaire most recently modified that has the specified concept code."""
@@ -148,6 +155,11 @@ class QuestionnaireDao(UpdatableDao):
         if self.validate_version_match and existing_obj.semanticVersion != obj.semanticVersion:
             raise PreconditionFailed('Expected semanticVersion was %s; stored semanticVersion was %s' %
                                      (obj.semanticVersion, existing_obj.semanticVersion))
+        resource_json = json.loads(obj.resource)
+        exist_id = str(obj.questionnaireId)
+        new_semantic_version = resource_json['version']
+        if self.has_dup_semantic_version(session, exist_id, new_semantic_version):
+            raise BadRequest('This semantic version already exist for this questionnaire id.')
         self._validate_model(session, obj)
 
     @classmethod
