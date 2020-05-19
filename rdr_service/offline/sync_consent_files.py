@@ -26,7 +26,7 @@ COLUMN_ORG_ID = "Org ID"
 COLUMN_ORG_STATUS = "Org Status"
 
 ORG_STATUS_ACTIVE = "Active"
-DEFAULT_GOOGLE_GROUP = "no_site_pairing"
+DEFAULT_GOOGLE_GROUP = "no-site-assigned"
 
 
 OrgData = collections.namedtuple("OrgData", ("org_id", "aggregate_id", "bucket_name"))
