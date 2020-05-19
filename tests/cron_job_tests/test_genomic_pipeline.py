@@ -80,6 +80,8 @@ class GenomicPipelineTest(BaseTestCase):
         config.override_setting(config.GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME, [_FAKE_BUCKET_RESULT_FOLDER])
         config.override_setting(config.GENOMIC_CENTER_BUCKET_NAME, [_FAKE_GENOMIC_CENTER_BUCKET_A,
                                                                     _FAKE_GENOMIC_CENTER_BUCKET_B])
+        config.override_setting(config.GENOMIC_CVL_BUCKET_NAME, [_FAKE_BUCKET])
+
         config.override_setting(config.GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME,
                                 [_FAKE_GENOTYPING_FOLDER])
         config.override_setting(config.GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
@@ -1657,4 +1659,32 @@ class GenomicPipelineTest(BaseTestCase):
 
         run_obj = self.job_run_dao.get(5)
 
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_cvl_w2_manifest_ingestion(self):
+        # Create W1 Manifest Job: run_id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.CREATE_CVL_W1_MANIFESTS,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(3, recon_gc_man_id=1)
+
+        # Set up test W2 manifest
+        bucket_name = config.getSetting(config.GENOMIC_CVL_BUCKET_NAME)
+        sub_folder = config.CVL_W2_MANIFEST_SUBFOLDER
+
+        self._create_ingestion_test_file('RDR_AoU_CVL_RequestValidation_20200519.csv',
+                                         bucket_name, folder=sub_folder,
+                                         include_timestamp=False)
+
+        # Run Workflow
+        genomic_pipeline.ingest_cvl_w2_manifest()  # run_id 2
+
+        # Test Member
+
+        # Test File Processed
+
+        # Test the job result
+        run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)

@@ -207,6 +207,10 @@ class GenomicFileIngester:
 
             if self.job_id == GenomicJob.GEM_A2_MANIFEST:
                 return self._ingest_gem_a2_manifest(data_to_ingest)
+
+            if self.job_id == GenomicJob.W2_INGEST:
+                return self._ingest_cvl_w2_manifest(data_to_ingest)
+
         else:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
@@ -351,6 +355,28 @@ class GenomicFileIngester:
 
         return self.metrics_dao.insert_gc_validation_metrics_batch(gc_metrics_batch)
 
+    def _ingest_cvl_w2_manifest(self, file_data):
+        """
+        Processes the CVL W2 manifest file data
+        :return: Result Code
+        """
+        try:
+            for row in file_data['rows']:
+                # change all key names to lower
+                row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                                     for key in row],
+                                    row.values()))
+                biobank_id = row_copy['biobank_id']
+                member = self.member_dao.get_member_from_biobank_id(biobank_id, GENOME_TYPE_WGS)
+                if member is None:
+                    logging.warning(f'Invalid Biobank ID: {biobank_id}')
+                    continue
+                member.genomeType = row_copy['test name']
+                member.genomicWorkflowState = 1
+                self.member_dao.update(member)
+            return GenomicSubProcessResult.SUCCESS
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
 
 class GenomicFileValidator:
     """
@@ -517,16 +543,18 @@ class GenomicFileValidator:
                 filename_components[4] == 'failure.csv'
             )
 
-        def cvl_sec_val_manifest_name_rule(fn):
-            """CVL secondary validation manifest name rule"""
+        def cvl_w2_manifest_name_rule(fn):
+            """
+            CVL W2 (secondary validation) manifest name rule
+            UW_AoU_CVL_RequestValidation_Date.csv
+            """
             filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
-                len(filename_components) == 4 and
+                len(filename_components) == 5 and
                 filename_components[0] in self.VALID_CVL_FACILITIES and
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'cvl' and
-                re.search(r"pkg-[0-9]{4}-[0-9]{5,}\.csv$",
-                          filename_components[3]) is not None
+                filename_components[3] == 'requestvalidation'
             )
 
         def gem_a2_manifest_name_rule(fn):
@@ -545,8 +573,8 @@ class GenomicFileValidator:
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
             GenomicJob.BB_GC_MANIFEST: bb_to_gc_manifest_name_rule,
             GenomicJob.AW1F_MANIFEST: aw1f_manifest_name_rule,
-            GenomicJob.CVL_SEC_VAL_MAN: cvl_sec_val_manifest_name_rule,
             GenomicJob.GEM_A2_MANIFEST: gem_a2_manifest_name_rule,
+            GenomicJob.W2_INGEST: cvl_w2_manifest_name_rule,
         }
 
         return name_rules[self.job_id](filename)

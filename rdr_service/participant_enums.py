@@ -542,10 +542,12 @@ class GenomicJob(messages.Enum):
     GEM_A3_MANIFEST = 12
     AW1F_MANIFEST = 13
     RECONCILE_SEQUENCING_DATA = 14
+    W2_INGEST = 15
+    W3_MANIFEST = 16
 
 
 class GenomicWorkflowState(messages.Enum):
-    """Genomic State Definitions"""
+    """Genomic State Definitions. States are not in any order. """
     UNSET = 0
     WITHDRAWN = 1
     AW0 = 2
