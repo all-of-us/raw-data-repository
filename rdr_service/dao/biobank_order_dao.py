@@ -1,6 +1,7 @@
 import logging
 import json
 import datetime
+import pytz
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import fhirdate
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.backboneelement import BackboneElement
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainResource
@@ -35,6 +36,10 @@ from rdr_service.model.utils import to_client_participant_id
 from rdr_service.participant_enums import BiobankOrderStatus, OrderStatus
 from rdr_service.model.config_utils import to_client_biobank_id
 
+
+# Timezones for MayoLINK
+_UTC = pytz.utc
+_US_CENTRAL = pytz.timezone("US/Central")
 
 def _ToFhirDate(dt):
     if not dt:
@@ -538,7 +543,10 @@ class BiobankOrderDao(UpdatableDao):
             gender_val = "U"
         if not resource.samples:
             raise BadRequest("No sample found in the payload")
-        collected_time = resource.samples[0].collected.date.replace(tzinfo=None)
+
+        # Convert to Central Timezone for Mayo
+        collected_time_utc = resource.samples[0].collected.date.replace(tzinfo=_UTC)
+        collected_time = collected_time_utc.astimezone(_US_CENTRAL)
 
         kit_id = None
         for item in resource.identifier:

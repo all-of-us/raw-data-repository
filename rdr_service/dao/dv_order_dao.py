@@ -1,6 +1,8 @@
 import datetime
 import json
 import logging
+import pytz
+from dateutil import parser
 
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import BadRequest, Conflict, NotFound
@@ -28,6 +30,12 @@ from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
 from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.participant_enums import BiobankOrderStatus, OrderShipmentStatus, OrderShipmentTrackingStatus
+
+
+# Timezones for MayoLINK
+_UTC = pytz.utc
+_US_CENTRAL = pytz.timezone("US/Central")
+
 
 class DvOrderDao(UpdatableDao):
     def __init__(self):
@@ -72,10 +80,14 @@ class DvOrderDao(UpdatableDao):
             result = session.query(BiobankDVOrder.barcode).filter(BiobankDVOrder.order_id == order_id).first()
             barcode = None if not result else result if isinstance(result, str) else result.barcode
 
+        # Convert to Central Timezone for Mayo
+        collected_time_utc = parser.parse(fhir_resource.occurrenceDateTime).replace(tzinfo=_UTC)
+        collected_time_central = collected_time_utc.astimezone(_US_CENTRAL)
+
         # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
         order = {
             "order": {
-                "collected": fhir_resource.occurrenceDateTime,
+                "collected": str(collected_time_central),
                 "account": "",
                 "number": barcode,
                 "patient": {
