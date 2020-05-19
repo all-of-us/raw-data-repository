@@ -14,12 +14,13 @@ from datetime import datetime
 import MySQLdb
 import pytz
 
+from rdr_service.dao import database_factory
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.services.gcp_utils import gcp_cp, gcp_format_sql_instance, gcp_make_auth_header
 from rdr_service.services.system_utils import make_api_request, print_progress_bar, setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
 
-from rdr_service.offline.sync_consent_files import get_org_data_map, SOURCE_BUCKET, build_participant_query
+from rdr_service.offline.sync_consent_files import get_org_data_map, build_participant_query
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -27,6 +28,11 @@ _logger = logging.getLogger("rdr_logger")
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
 tool_cmd = "sync-consents"
 tool_desc = "manually sync consent files to sites"
+
+SOURCE_BUCKET = {
+    "vibrent": "gs://ptc-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*{file_ext}",
+    "careevolution": "gs://ce-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*{file_ext}"
+}
 
 HPO_REPORT_CONFIG_GCS_PATH = "gs://all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
 DEST_BUCKET = "gs://{bucket_name}/Participant/{org_external_id}/{site_name}/P{p_id}/"
@@ -123,86 +129,79 @@ class SyncConsentClass(object):
 
             participant_sql, params = build_participant_query(org_ids, **query_args)
             count_sql = self._get_count_sql(participant_sql)
-            cursor.execute(count_sql, params)
-            rec = cursor.fetchone()
-            total_recs = rec[0]
+            with database_factory.make_server_cursor_database().session() as session:
+                count_result = session.execute(count_sql, params).scalar()
+                total_recs = count_result
 
-            cursor.execute(participant_sql, params)
+                _logger.info("transferring files to destinations...")
+                count = 0
+                for rec in session.execute(participant_sql, params):
+                    if not self.args.debug:
+                        print_progress_bar(
+                            count, total_recs, prefix="{0}/{1}:".format(count, total_recs), suffix="complete"
+                        )
 
-            _logger.info("transferring files to destinations...")
-            count = 0
-            rec = cursor.fetchone()
-            while rec:
-                if not self.args.debug:
-                    print_progress_bar(
-                        count, total_recs, prefix="{0}/{1}:".format(count, total_recs), suffix="complete"
-                    )
-
-                p_id = rec[0]
-                origin_id = rec[1]
-                site = rec[2]
-                if self.args.destination_bucket is not None:
-                    # override destination bucket lookup (the lookup table is incomplete)
-                    bucket = self.args.destination_bucket
-                else:
-                    site_info = sites.get(rec[3])
-                    if not site_info:
-                        _logger.warning("\nsite info not found for [{0}].".format(rec[2]))
+                    p_id = rec[0]
+                    origin_id = rec[1]
+                    site = rec[2]
+                    if self.args.destination_bucket is not None:
+                        # override destination bucket lookup (the lookup table is incomplete)
+                        bucket = self.args.destination_bucket
+                    else:
+                        site_info = sites.get(rec[3])
+                        if not site_info:
+                            _logger.warning("\nsite info not found for [{0}].".format(rec[2]))
+                            count += 1
+                            rec = cursor.fetchone()
+                            continue
+                        bucket = site_info.get("bucket_name")
+                    if not bucket:
+                        _logger.warning("\nno bucket name found for [{0}].".format(rec[2]))
                         count += 1
                         rec = cursor.fetchone()
                         continue
-                    bucket = site_info.get("bucket_name")
-                if not bucket:
-                    _logger.warning("\nno bucket name found for [{0}].".format(rec[2]))
-                    count += 1
-                    rec = cursor.fetchone()
-                    continue
 
-                # Copy all files, not just PDFs
-                if self.args.all_files:
-                    self.file_filter = ""
+                    # Copy all files, not just PDFs
+                    if self.args.all_files:
+                        self.file_filter = ""
 
-                src_bucket = SOURCE_BUCKET.get(origin_id, SOURCE_BUCKET[
-                    next(iter(SOURCE_BUCKET))
-                ]).format(p_id=p_id, file_ext=self.file_filter)
+                    src_bucket = SOURCE_BUCKET.get(origin_id, SOURCE_BUCKET[
+                        next(iter(SOURCE_BUCKET))
+                    ]).format(p_id=p_id, file_ext=self.file_filter)
 
-                dest_bucket = DEST_BUCKET.format(
-                    bucket_name=bucket,
-                    org_external_id=self.args.org_id,
-                    site_name=site if site else "no-site-assigned",
-                    p_id=p_id,
-                )
-                if self.args.date_limit:
-                    # only copy files newer than date limit
-                    files_in_range = self._get_files_updated_in_range(
-                        date_limit=self.args.date_limit,
-                        source_bucket=src_bucket, p_id=p_id)
-                    if not files_in_range or len(files_in_range) == 0:
-                        _logger.info(f'No files in bucket updated after {self.args.date_limit}')
-                    for f in files_in_range:
+                    dest_bucket = DEST_BUCKET.format(
+                        bucket_name=bucket,
+                        org_external_id=self.args.org_id,
+                        site_name=site if site else "no-site-assigned",
+                        p_id=p_id,
+                    )
+                    if self.args.date_limit:
+                        # only copy files newer than date limit
+                        files_in_range = self._get_files_updated_in_range(
+                            date_limit=self.args.date_limit,
+                            source_bucket=src_bucket, p_id=p_id)
+                        if not files_in_range or len(files_in_range) == 0:
+                            _logger.info(f'No files in bucket updated after {self.args.date_limit}')
+                        for f in files_in_range:
+                            if not self.args.dry_run:
+                                # actually copy the fles
+                                gcp_cp(f, dest_bucket, args="-r", flags="-m")
+
+                            self._format_debug_out(p_id, f, dest_bucket)
+
+                    else:
                         if not self.args.dry_run:
-                            # actually copy the fles
-                            gcp_cp(f, dest_bucket, args="-r", flags="-m")
+                            gcp_cp(src_bucket, dest_bucket, args="-r", flags="-m")
 
-                        self._format_debug_out(p_id, f, dest_bucket)
+                        self._format_debug_out(p_id, src_bucket, dest_bucket)
 
-                else:
-                    if not self.args.dry_run:
-                        gcp_cp(src_bucket, dest_bucket, args="-r", flags="-m")
-
-                    self._format_debug_out(p_id, src_bucket, dest_bucket)
-
-                count += 1
-                rec = cursor.fetchone()
+                    count += 1
 
             # print progressbar one more time to show completed.
             if not rec and not self.args.debug:
                 print_progress_bar(
                     count, total_recs, prefix="{0}/{1}:".format(count, total_recs), suffix="complete"
                 )
-
-            cursor.close()
-            sql_conn.close()
 
         except MySQLdb.OperationalError as e:
             _logger.error("failed to connect to {0} mysql instance. [{1}]".format(self.gcp_env.project, e))
