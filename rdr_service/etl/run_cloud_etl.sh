@@ -61,15 +61,16 @@ echo "Running ETL..."
 
 mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/etl.sql
 
-echo "Done with ETL. Exporting ETL results..."
+echo "Done with ETL. Please manually run export."
 
-etl/export_etl_results.sh --project ${PROJECT} --account ${ACCOUNT} --directory ${INSTANCE_NAME} ${INSTANCE_ARGS}
+# echo "Done with ETL. Exporting ETL results..."
+# etl/export_etl_results.sh --project ${PROJECT} --account ${ACCOUNT} --directory ${INSTANCE_NAME} ${INSTANCE_ARGS}
 
-if [ -z "${NOCLONE}" ]
-then
-  SLEEP_TIME=600
-  # TODO: do some kind of polling of task queue to determine when table export has completed.
-  echo "Waiting ${SLEEP_TIME} seconds for export to complete."
-  sleep ${SLEEP_TIME}
-  echo "Sleep done. Instance ${INSTANCE_NAME} will now be deleted."
-fi
+#if [ -z "${NOCLONE}" ]
+#then
+#  SLEEP_TIME=600
+#  # TODO: do some kind of polling of task queue to determine when table export has completed.
+#  echo "Waiting ${SLEEP_TIME} seconds for export to complete."
+#  sleep ${SLEEP_TIME}
+#  echo "Sleep done. Instance ${INSTANCE_NAME} will now be deleted."
+#fi
