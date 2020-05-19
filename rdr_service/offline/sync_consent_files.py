@@ -16,7 +16,7 @@ from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 HPO_REPORT_CONFIG_GCS_PATH = "/all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
 
 SOURCE_BUCKET = {
-    "vibrent": "ptc-uploads-all-of-us-rdr-prod",
+    "vibrent": "ptc-uploads-pmi-drc-api-sandbox",
     "careevolution": "ce-uploads-all-of-us-rdr-prod"
 }
 
@@ -38,7 +38,7 @@ ParticipantData = collections.namedtuple("ParticipantData", ("participant_id", "
 def do_sync_recent_consent_files():
     # Sync everything from the start of the previous month
     start_date = datetime.now().replace(day=1) - timedelta(days=10)
-    do_sync_consent_files(start_date=start_date.strftime('%Y-%m-01'))
+    do_sync_consent_files(start_date='2019-05-01')
 
 
 def do_sync_consent_files(**kwargs):

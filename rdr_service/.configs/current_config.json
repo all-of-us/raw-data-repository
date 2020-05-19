@@ -125,7 +125,7 @@
   "consent_sync_organizations": [
     {
       "CAL_PMC_UCD": {
-        "bucket_name": "aou185"
+        "bucket_name": "ptc-uploads-pmi-drc-api-sandbox"
       },
       "CAL_PMC_USC": {
         "bucket_name": "aou298"
