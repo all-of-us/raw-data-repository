@@ -245,7 +245,7 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def ingest_cvl_w2_manifest(self):
+    def run_cvl_w2_workflow(self):
         """
         Ingests CVL W2 Manifest
         """

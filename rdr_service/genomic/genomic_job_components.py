@@ -366,12 +366,12 @@ class GenomicFileIngester:
                 row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                      for key in row],
                                     row.values()))
-                biobank_id = row_copy['biobank_id']
+                biobank_id = row_copy['biobankid']
                 member = self.member_dao.get_member_from_biobank_id(biobank_id, GENOME_TYPE_WGS)
                 if member is None:
                     logging.warning(f'Invalid Biobank ID: {biobank_id}')
                     continue
-                member.genomeType = row_copy['test name']
+                member.genomeType = row_copy['testname']
                 member.genomicWorkflowState = 1
                 self.member_dao.update(member)
             return GenomicSubProcessResult.SUCCESS
@@ -424,7 +424,7 @@ class GenomicFileValidator:
             ),
         }
         self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bi', 'jh', 'rdr')
-        self.VALID_CVL_FACILITIES = ('color', 'uw', 'baylor')
+        self.VALID_CVL_FACILITIES = ('rdr', 'color', 'uw', 'baylor')
 
         self.GC_MANIFEST_SCHEMA = (
             "packageid",
@@ -462,6 +462,17 @@ class GenomicFileValidator:
             "sampleid",
             "sexatbirth",
             "success/fail",
+        )
+
+        self.CVL_W2_SCHEMA = (
+            "genomicsetname",
+            "biobankid",
+            "sexatbirth",
+            "nyflag",
+            "siteid",
+            "secondaryvalidation",
+            "datesubmitted",
+            "testname",
         )
 
     def validate_ingestion_file(self, filename, data_to_validate):
@@ -614,6 +625,10 @@ class GenomicFileValidator:
                 return self.GEM_A2_SCHEMA
             if self.job_id == GenomicJob.AW1F_MANIFEST:
                 return self.GC_MANIFEST_SCHEMA  # AW1F and AW1 use same schema
+
+            if self.job_id == GenomicJob.W2_INGEST:
+                return self.CVL_W2_SCHEMA
+
         except (IndexError, KeyError):
             return GenomicSubProcessResult.INVALID_FILE_NAME
 

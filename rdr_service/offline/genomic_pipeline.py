@@ -162,5 +162,6 @@ def ingest_cvl_w2_manifest():
     Sources from list of biobank_ids from CVL reconciliation report
     """
     with GenomicJobController(GenomicJob.W2_INGEST,
-                              bucket_name=config.GENOMIC_CVL_BUCKET_NAME) as controller:
+                              bucket_name=config.GENOMIC_CVL_BUCKET_NAME,
+                              sub_folder_name=config.CVL_W2_MANIFEST_SUBFOLDER) as controller:
         controller.run_cvl_w2_workflow()
