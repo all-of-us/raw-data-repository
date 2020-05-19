@@ -16,6 +16,7 @@ from rdr_service.participant_enums import UNSET_HPO_ID
 from tests.helpers.unittest_base import BaseTestCase
 
 
+@mock.patch('rdr_service.dao.participant_dao.get_account_origin_id', lambda: 'vibrent')
 class SyncConsentFilesTest(BaseTestCase):
     """Tests behavior of sync_consent_files
   """
@@ -44,7 +45,7 @@ class SyncConsentFilesTest(BaseTestCase):
         self.org1 = self._create_org(1, 'test_one')
         self.site1 = self._create_site(1001, "group1")
 
-        self.source_consent_bucket = sync_consent_files.SOURCE_BUCKET
+        self.source_consent_bucket = sync_consent_files.SOURCE_BUCKET['vibrent']
 
     def tearDown(self):
         super(SyncConsentFilesTest, self).tearDown()

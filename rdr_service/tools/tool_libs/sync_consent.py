@@ -5,18 +5,10 @@
 # Replaces older ehr_upload_for_organization.sh script.
 #
 
-import io
 import argparse
-
-# pylint: disable=superfluous-parens
-# pylint: disable=broad-except
-import csv
-import json
 import logging
-import os
 import random
 import sys
-import tempfile
 from datetime import datetime
 
 import MySQLdb
@@ -27,6 +19,8 @@ from rdr_service.services.gcp_utils import gcp_cp, gcp_format_sql_instance, gcp_
 from rdr_service.services.system_utils import make_api_request, print_progress_bar, setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
 
+from rdr_service.offline.sync_consent_files import get_org_data_map, SOURCE_BUCKET, build_participant_query
+
 _logger = logging.getLogger("rdr_logger")
 
 # Tool_cmd and tool_desc name are required.
@@ -35,68 +29,18 @@ tool_cmd = "sync-consents"
 tool_desc = "manually sync consent files to sites"
 
 HPO_REPORT_CONFIG_GCS_PATH = "gs://all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
-SOURCE_BUCKET = {
-    "vibrent": "gs://ptc-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*{file_ext}",
-    "careevolution": "gs://ce-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*{file_ext}"
-}
 DEST_BUCKET = "gs://{bucket_name}/Participant/{org_external_id}/{site_name}/P{p_id}/"
-
-PARTICIPANT_SQL = """
-select participant.participant_id,
-       participant.participant_origin,
-       site.google_group,
-       organization.external_id
-from participant
-         left join organization
-                   on participant.organization_id = organization.organization_id
-         left join site
-                   on participant.site_id = site.site_id
-         left join participant_summary summary
-                   on participant.participant_id = summary.participant_id
-where TRUE
-  and summary.consent_for_study_enrollment = 1
-  and participant.is_ghost_id is not true
-  and (
-        summary.email is null
-        or summary.email not like '@example.com'
-    )
-"""
-
-participant_filters_sql = {
-    'org_id_sql': 'and organization.external_id = "{org_id}" ',
-    'date_limit_sql': """
-        and ( 
-            summary.consent_for_study_enrollment_time > "{date_limit}"
-            or
-            summary.consent_for_electronic_health_records_time > "{date_limit}"
-            )            
-        """,
-    'end_date_sql': """
-        and ( 
-            summary.consent_for_study_enrollment_time < "{end_date}"
-            or
-            summary.consent_for_electronic_health_records_time < "{end_date}"
-            ) 
-        """,
-}
-
-COUNT_SQL = "select count(1) {0}".format(PARTICIPANT_SQL[PARTICIPANT_SQL.find("from") :])
 
 class SyncConsentClass(object):
     def __init__(self, args, gcp_env):
         self.args = args
         self.gcp_env = gcp_env
 
-        self.sql = PARTICIPANT_SQL
-        self.count_sql = str()
+        self.file_filter = "pdf"
 
-        self.file_filter = ".pdf"
-
-    def _format_count_sql(self):
-        self.count_sql = "select count(1) {0}".format(self.sql[self.sql.find("from") :])
-
-    def _add_participant_filter(self, filter_key, **kwargs):
-        self.sql += participant_filters_sql[filter_key].format(**kwargs)
+    @staticmethod
+    def _get_count_sql(participant_sql):
+        return "select count(1) {0}".format(participant_sql[participant_sql.find("from"):])
 
     def _get_files_updated_in_range(self, source_bucket, date_limit, p_id):
         """
@@ -132,37 +76,7 @@ class SyncConsentClass(object):
     Main program process
     :return: Exit code value
     """
-        # TODO: Future: these two blocks of code should be replaced by Tanner's new config bucket for sites csv files.
-        # Copy the bucket config file to a temp file
-        _logger.info("retrieving configuration...")
-        tmpfile = os.path.join(tempfile.gettempdir(), next(tempfile._get_candidate_names()))
-        gcp_cp(HPO_REPORT_CONFIG_GCS_PATH, tmpfile)
-        # Read the tempfile and get the sheet_id from it.
-        config = json.loads(open(tmpfile).read())
-        sheet_id = config.get("hpo_report_google_sheet_id")
-        # delete tempfile
-        os.remove(tmpfile)
-
-        # download the sheet in csv format
-        _logger.info("retrieving sites config...")
-        sheet_url = "spreadsheets/d/{0}/export?format=csv".format(sheet_id)
-        resp_code, resp_data = make_api_request("docs.google.com", sheet_url, ret_type="text")
-        if resp_code != 200:
-            _logger.error(resp_data)
-            _logger.error("failed to retrieve site information, aborting.")
-            return 1
-        # TODO end
-
-        # Load the site info we need into a dict.
-        sites = dict()
-        handle = io.StringIO(resp_data)
-        sites_reader = csv.DictReader(handle)
-        for row in sites_reader:
-            if row["Org ID"]:
-                sites[row["Org ID"]] = {
-                    "aggregating_org_id": row["Aggregating Org ID"],
-                    "bucket_name": row["Bucket Name"],
-                }
+        sites = get_org_data_map()
 
         _logger.info("retrieving db configuration...")
         headers = gcp_make_auth_header()
@@ -195,24 +109,25 @@ class SyncConsentClass(object):
 
             _logger.info("retrieving participant information...")
             # get record count
+            query_args = {}
             if self.args.date_limit:
                 # TODO: Add execption handling for incorrect date format
-                self._add_participant_filter('date_limit_sql',
-                                             date_limit=self.args.date_limit)
+                query_args['start_date'] = self.args.date_limit
             if self.args.end_date:
                 # TODO: Add execption handling for incorrect date format
-                self._add_participant_filter('end_date_sql',
-                                             end_date=self.args.end_date)
-
+                query_args['end_date'] = self.args.end_date
             if self.args.org_id:
-                self._add_participant_filter('org_id_sql',
-                                             org_id=self.args.org_id)
-            self._format_count_sql()
-            cursor.execute(self.count_sql)
+                org_ids = [self.args.org_id]
+            else:
+                raise Exception("Org id required for consent sync")
+
+            participant_sql, params = build_participant_query(org_ids, **query_args)
+            count_sql = self._get_count_sql(participant_sql)
+            cursor.execute(count_sql, params)
             rec = cursor.fetchone()
             total_recs = rec[0]
 
-            cursor.execute(self.sql)
+            cursor.execute(participant_sql, params)
 
             _logger.info("transferring files to destinations...")
             count = 0
