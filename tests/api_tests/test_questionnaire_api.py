@@ -82,6 +82,19 @@ class QuestionnaireApiTest(BaseTestCase):
         self.assertJsonResponseMatches(questionnaire2, update_response)
         self.assertEqual('W/"bbb"', update_response['meta']['versionId'])
 
+    def test_update_with_duplicate_semantic_version(self):
+        response = self.insert_questionnaire()
+        self.assertEqual('W/"aaa"', response['meta']['versionId'])
+        with open(data_path("questionnaire2.json")) as f2:
+            questionnaire2 = json.load(f2)
+            questionnaire2['version'] = 'aaa'
+            self.send_put(
+                "Questionnaire/%s" % response["id"],
+                questionnaire2,
+                headers={'If-Match': response['meta']['versionId']},
+                expected_status=http.client.BAD_REQUEST
+            )
+
     def test_insert_with_version(self):
         with open(data_path('questionnaire5_with_version.json')) as f:
             questionnaire = json.load(f)
