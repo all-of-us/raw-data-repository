@@ -51,7 +51,7 @@ def do_sync_consent_files(**kwargs):
     file_filter = kwargs.get('file_filter', 'pdf')
     for participant_data in _iter_participants_data(org_ids, **kwargs):
         kwargs = {
-            "source_bucket": SOURCE_BUCKET[participant_data.origin_id],
+            "source_bucket": SOURCE_BUCKET.get(participant_data.origin_id, SOURCE_BUCKET[next(iter(SOURCE_BUCKET))]),
             "destination_bucket": org_data_map[participant_data.org_id]['bucket_name'],
             "participant_id": participant_data.participant_id,
             "google_group": participant_data.google_group or DEFAULT_GOOGLE_GROUP,
@@ -142,14 +142,15 @@ def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_fi
         date_limit = timezone.localize(datetime.strptime(date_limit, '%Y-%m-%d'))
     path = source if source[0:1] != '/' else source[1:]
     bucket_name, _, prefix = path.partition('/')
-    prefix = None if prefix == '' else '/' + prefix
+    prefix = None if prefix == '' else prefix
     for source_blob in list_blobs(bucket_name, prefix):
-        source_file_path = os.path.normpath('/' + bucket_name + '/' + source_blob.name)
-        destination_file_path = destination + source_file_path[len(source):]
-        if _not_previously_copied(source_file_path, destination_file_path) and \
-                _after_date_limit(source_blob, date_limit) and \
-                _matches_file_filter(source_blob.name, file_filter):
-            copy_cloud_file(source_file_path, destination_file_path)
+        if not source_blob.name.endswith('/'):  # Exclude folders
+            source_file_path = os.path.normpath('/' + bucket_name + '/' + source_blob.name)
+            destination_file_path = destination + source_file_path[len(source):]
+            if _not_previously_copied(source_file_path, destination_file_path) and \
+                    _after_date_limit(source_blob, date_limit) and \
+                    _matches_file_filter(source_blob.name, file_filter):
+                copy_cloud_file(source_file_path, destination_file_path)
 
 
 def _not_previously_copied(source_file_path, destination_file_path):
