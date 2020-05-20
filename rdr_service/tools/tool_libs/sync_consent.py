@@ -30,7 +30,7 @@ tool_cmd = "sync-consents"
 tool_desc = "manually sync consent files to sites"
 
 SOURCE_BUCKET = {
-    "vibrent": "gs://ptc-uploads-pmi-drc-api-sandbox/Participant/P{p_id}/*{file_ext}",
+    "vibrent": "gs://ptc-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*{file_ext}",
     "careevolution": "gs://ce-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*{file_ext}"
 }
 
