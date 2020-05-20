@@ -1511,11 +1511,11 @@ class GenomicPipelineTest(BaseTestCase):
         # Test gem_pass field
         members = self.member_dao.get_all()
         for member in members:
-            if member.biobankId in (1, 2):
+            if member.id in (1, 2):
                 self.assertEqual("Y", member.gemPass)
                 self.assertEqual(2, member.gemA2ManifestJobRunId)
-            if member.biobankId == 3:
-                self.assertEqual("Y", member.gemPass)
+            if member.id == 3:
+                self.assertEqual("N", member.gemPass)
 
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
@@ -1678,12 +1678,35 @@ class GenomicPipelineTest(BaseTestCase):
                                          bucket_name, folder=sub_folder,
                                          include_timestamp=False)
 
+        members = self.member_dao.get_all()
+        for m in members:
+            self.member_dao.update_member_state(m, GenomicWorkflowState.W1)
+
         # Run Workflow
         genomic_pipeline.ingest_cvl_w2_manifest()  # run_id 2
 
         # Test Member
+        # Test gem_pass field
+        members = self.member_dao.get_all()
+
+        for member in members:
+            self.assertEqual(2, member.cvlW2ManifestJobRunID)
+            self.assertEqual(GenomicWorkflowState.W2, member.genomicWorkflowState)
+
+            if member.id in (1, 2):
+                self.assertEqual("aou_cvl", member.genomeType)
+
+            if member.id == 3:
+                self.assertEqual("aou_wgs", member.genomeType)
 
         # Test File Processed
+        file_record = self.file_processed_dao.get(1)
+        self.assertEqual(2, file_record.runId)
+
+        self.assertEqual(f'/{bucket_name}/{sub_folder}/RDR_AoU_CVL_RequestValidation_20200519.csv',
+                         file_record.filePath)
+
+        self.assertEqual('RDR_AoU_CVL_RequestValidation_20200519.csv', file_record.fileName)
 
         # Test the job result
         run_obj = self.job_run_dao.get(2)

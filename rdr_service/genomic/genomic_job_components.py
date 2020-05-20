@@ -175,6 +175,7 @@ class GenomicFileIngester:
 
                 except IndexError:
                     logging.info('No files left in file queue.')
+
             return GenomicSubProcessResult.SUCCESS if all(results) \
                 else GenomicSubProcessResult.ERROR
 
@@ -298,7 +299,11 @@ class GenomicFileIngester:
                     logging.warning(f'Invalid sample ID: {sample_id}')
                     continue
                 member.gemPass = row['Success / Fail']
+
+                member.gemA2ManifestJobRunId = self.job_run_id
+
                 self.member_dao.update(member)
+
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
@@ -366,15 +371,25 @@ class GenomicFileIngester:
                 row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                      for key in row],
                                     row.values()))
+
                 biobank_id = row_copy['biobankid']
                 member = self.member_dao.get_member_from_biobank_id(biobank_id, GENOME_TYPE_WGS)
+
                 if member is None:
                     logging.warning(f'Invalid Biobank ID: {biobank_id}')
                     continue
+
                 member.genomeType = row_copy['testname']
-                member.genomicWorkflowState = 1
+                member.cvlW2ManifestJobRunID = self.job_run_id
+
+                member.genomicWorkflowState = GenomicStateHandler.get_new_state(
+                    member.genomicWorkflowState,
+                    signal='w2-ingestion-success')
+
                 self.member_dao.update(member)
+
             return GenomicSubProcessResult.SUCCESS
+
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
