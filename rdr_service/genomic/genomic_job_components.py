@@ -14,6 +14,7 @@ import sqlalchemy
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 
 from rdr_service import clock
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
     open_cloud_file,
@@ -65,6 +66,7 @@ from rdr_service.config import (
     getSetting,
     GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
     CVL_W1_MANIFEST_SUBFOLDER,
+    CVL_W3_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A3_MANIFEST_SUBFOLDER,
     GENOME_TYPE_ARRAY,
@@ -1199,6 +1201,15 @@ class ManifestDefinitionProvider:
             columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A3),
         )
 
+        # DRC to CVL W3 Manifest
+        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.CVL_W3] = self.ManifestDef(
+            job_run_field='cvlW3ManifestJobRunID',
+            source_data=self._get_source_data_query(GenomicManifestTypes.CVL_W3),
+            destination_bucket=f'{self.bucket_name}',
+            output_filename=f'{CVL_W3_MANIFEST_SUBFOLDER}/AoU_CVL_W1_{now_formatted}.csv',
+            columns=self._get_manifest_columns(GenomicManifestTypes.CVL_W3),
+        )
+
     def _get_source_data_query(self, manifest_type):
         """
         Returns the query to use for manifest's source data
@@ -1232,6 +1243,36 @@ class ManifestDefinitionProvider:
                     (GenomicGCValidationMetrics.processingStatus == 'pass') &
                     (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY) &
                     (GenomicSetMember.genomeType == "aou_wgs")
+                )
+            )
+
+        # CVL W1 Manifest
+        if manifest_type == GenomicManifestTypes.CVL_W3:
+            query_sql = (
+                sqlalchemy.select(
+                    [
+                        sqlalchemy.bindparam('value', ''),
+                        GenomicSetMember.sampleId,
+                        GenomicSetMember.biobankId,
+                        GenomicSetMember.sexAtBirth,
+                        sqlalchemy.bindparam('genome_type', 'aou_wgs'),
+                        GenomicSetMember.nyFlag,
+                        sqlalchemy.bindparam('request_id', ''),
+                        sqlalchemy.bindparam('package_id', ''),
+                        GenomicSetMember.ai_an,
+                        sqlalchemy.bindparam('site_id', ''),
+                        sqlalchemy.bindparam('secondary_validation', "Y"),
+                    ]
+                ).select_from(
+                    sqlalchemy.join(
+                        GenomicSetMember,
+                        ParticipantSummary,
+                        GenomicSetMember.participantId == ParticipantSummary.participantId
+                    )
+                ).where(
+                    (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.W2) &
+                    (GenomicSetMember.genomeType == "aou_cvl") &
+                    (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
                 )
             )
 
@@ -1331,7 +1372,7 @@ class ManifestDefinitionProvider:
                 "package_id",
                 "ai_an",
                 "site_ID",
-                "Secondary_validation",
+                "secondary_validation",
             )
 
         return columns

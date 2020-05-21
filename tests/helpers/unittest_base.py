@@ -136,7 +136,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         logger.addHandler(stream_handler)
 
         # Change this to logging.ERROR when you want to see API server errors.
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(logging.INFO)
 
         self.setup_config()
         self.setup_storage()

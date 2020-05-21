@@ -39,6 +39,13 @@ class W1State(GenomicStateBase):
             return GenomicWorkflowState.W2
 
 
+class W2State(GenomicStateBase):
+    """State representing the W1 manifest state"""
+    def transition_function(self, signal):
+        if signal == 'manifest-generated':
+            return GenomicWorkflowState.W3
+
+
 class GenomicStateHandler:
     """
     Basic FSM for Genomic States. Returns call to state's transision_function()
@@ -47,6 +54,7 @@ class GenomicStateHandler:
         GenomicWorkflowState.AW2: AW2State(),
         GenomicWorkflowState.CVL_READY: CVLReadyState(),
         GenomicWorkflowState.W1: W1State(),
+        GenomicWorkflowState.W2: W2State(),
     }
 
     @classmethod

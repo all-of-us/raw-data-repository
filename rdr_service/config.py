@@ -55,6 +55,7 @@ GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER = "genomic_cvl_reconciliation_report
 GENOMIC_GC_PROCESSED_FOLDER_NAME = "processed_by_rdr"
 CVL_W1_MANIFEST_SUBFOLDER = "w1_wgs_cvl_manifests"
 CVL_W2_MANIFEST_SUBFOLDER = "w2_wgs_cvl_manifests"
+CVL_W3_MANIFEST_SUBFOLDER = "w3_wgs_cvl_manifests"
 GENOMIC_GEM_BUCKET_NAME = "genomic_gem_bucket_name"
 GENOMIC_CVL_BUCKET_NAME = "genomic_cvl_bucket_name"
 GENOMIC_GEM_A1_MANIFEST_SUBFOLDER = "genomic_gem_a1_manifest_subfolder"

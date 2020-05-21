@@ -171,5 +171,6 @@ def create_cvl_w3_manifest():
     """
     Entrypoint for CVL W3 Manifest workflow
     """
-    with GenomicJobController(GenomicJob.W3_MANIFEST) as controller:
-        controller.generate_manifest(GenomicManifestTypes.CVL_W3, _genome_type=config.GENOME_TYPE_WGS)
+    with GenomicJobController(GenomicJob.W3_MANIFEST,
+                              bucket_name=config.GENOMIC_CVL_BUCKET_NAME,) as controller:
+        controller.generate_manifest(GenomicManifestTypes.CVL_W3, _genome_type=config.GENOME_TYPE_CVL)
