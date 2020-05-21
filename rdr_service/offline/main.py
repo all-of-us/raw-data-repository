@@ -184,8 +184,7 @@ def exclude_ghosts():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
-def sync_consent_files():
-    sync_consent_files.do_sync_consent_files()
+def run_sync_consent_files():
     sync_consent_files.do_sync_recent_consent_files()
     return '{"success": "true"}'
 
@@ -365,7 +364,7 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        PREFIX + "SyncConsentFiles", endpoint="sync_consent_files", view_func=sync_consent_files, methods=["GET"]
+        PREFIX + "SyncConsentFiles", endpoint="sync_consent_files", view_func=run_sync_consent_files, methods=["GET"]
     )
 
     offline_app.add_url_rule(

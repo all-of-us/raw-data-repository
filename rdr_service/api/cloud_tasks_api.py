@@ -77,12 +77,13 @@ class CopyCloudStorageObjectTaskApi(Resource):
         source = data.get('source', None)
         destination = data.get('destination', None)
         date_limit = data.get('date_limit', None)
+        file_filter = data.get('file_filter', 'pdf')
 
         if not source or not destination:
             raise NotFound('Invalid cloud storage path: Copy {0} to {1}.'.format(source, destination))
 
         logging.info('Copying cloud object.')
-        cloudstorage_copy_objects_task(source, destination, date_limit=date_limit)
+        cloudstorage_copy_objects_task(source, destination, date_limit=date_limit, file_filter=file_filter)
         logging.info('Complete.')
         return '{"success": "true"}'
 

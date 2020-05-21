@@ -13,42 +13,6 @@ from rdr_service.participant_enums import UNSET_HPO_ID
 from rdr_service.test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
 
 
-# TODO: represent in new test suite
-class TransformationTests(TestBase):
-    @staticmethod
-    @mock.patch("sync_consent_files.GoogleSheetCSVReader")
-    def _create_fake_org_map(reader):
-        reader.return_value = [
-            {  # active, parent
-                sync_consent_files.COLUMN_ORG_ID: "org1",
-                sync_consent_files.COLUMN_AGGREGATING_ORG_ID: "org1",
-                sync_consent_files.COLUMN_BUCKET_NAME: "bucket1",
-                sync_consent_files.COLUMN_ORG_STATUS: sync_consent_files.ORG_STATUS_ACTIVE,
-            },
-            {  # active, child
-                sync_consent_files.COLUMN_ORG_ID: "org2",
-                sync_consent_files.COLUMN_AGGREGATING_ORG_ID: "org1",
-                sync_consent_files.COLUMN_BUCKET_NAME: "",
-                sync_consent_files.COLUMN_ORG_STATUS: sync_consent_files.ORG_STATUS_ACTIVE,
-            },
-            {  # inactive
-                sync_consent_files.COLUMN_ORG_ID: "org3",
-                sync_consent_files.COLUMN_AGGREGATING_ORG_ID: "org3",
-                sync_consent_files.COLUMN_BUCKET_NAME: "bucket2",
-                sync_consent_files.COLUMN_ORG_STATUS: "foo",
-            },
-        ]
-        return sync_consent_files._load_org_data_map(None)
-
-    def test_load_org_map_processing(self):
-        org_data_map = self._create_fake_org_map()
-        self.assertEqual(len(org_data_map), 2)
-        self.assertEqual(
-            org_data_map["org2"].bucket_name, org_data_map["org1"].bucket_name, "bucket name gets inherited"
-        )
-
-
-# TODO: represent in new test suite
 class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
     """Tests behavior of sync_consent_files
   """

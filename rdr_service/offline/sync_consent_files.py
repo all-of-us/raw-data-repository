@@ -10,13 +10,15 @@ import os
 
 from rdr_service import config
 from rdr_service.api_util import list_blobs, copy_cloud_file, get_blob
-from rdr_service.cloud_utils.google_sheets import GoogleSheetCSVReader
 from rdr_service.dao import database_factory
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 
 HPO_REPORT_CONFIG_GCS_PATH = "/all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
 
-SOURCE_BUCKET = "ptc-uploads-all-of-us-rdr-prod"
+SOURCE_BUCKET = {
+    "vibrent": "ptc-uploads-all-of-us-rdr-prod",
+    "careevolution": "ce-uploads-all-of-us-rdr-prod"
+}
 
 COLUMN_BUCKET_NAME = "Bucket Name"
 COLUMN_AGGREGATING_ORG_ID = "Aggregating Org ID"
@@ -24,13 +26,13 @@ COLUMN_ORG_ID = "Org ID"
 COLUMN_ORG_STATUS = "Org Status"
 
 ORG_STATUS_ACTIVE = "Active"
-DEFAULT_GOOGLE_GROUP = "no_site_pairing"
+DEFAULT_GOOGLE_GROUP = "no-site-assigned"
 
 
 OrgData = collections.namedtuple("OrgData", ("org_id", "aggregate_id", "bucket_name"))
 
 
-ParticipantData = collections.namedtuple("ParticipantData", ("participant_id", "google_group", "org_id"))
+ParticipantData = collections.namedtuple("ParticipantData", ("participant_id", "origin_id", "google_group", "org_id"))
 
 
 def do_sync_recent_consent_files():
@@ -43,12 +45,13 @@ def do_sync_consent_files(**kwargs):
     """
   entrypoint
   """
-    org_data_map = config.getSetting(config.CONSENT_SYNC_ORGANIZATIONS)
+    org_data_map = get_org_data_map()
     org_ids = [org_id for org_id, org_data in org_data_map.items()]
     start_date = kwargs.get('start_date')
+    file_filter = kwargs.get('file_filter', 'pdf')
     for participant_data in _iter_participants_data(org_ids, **kwargs):
         kwargs = {
-            "source_bucket": SOURCE_BUCKET,
+            "source_bucket": SOURCE_BUCKET.get(participant_data.origin_id, SOURCE_BUCKET[next(iter(SOURCE_BUCKET))]),
             "destination_bucket": org_data_map[participant_data.org_id]['bucket_name'],
             "participant_id": participant_data.participant_id,
             "google_group": participant_data.google_group or DEFAULT_GOOGLE_GROUP,
@@ -57,40 +60,22 @@ def do_sync_consent_files(**kwargs):
         destination = "/{destination_bucket}/Participant/{google_group}/P{participant_id}/".format(**kwargs)
 
         if config.GAE_PROJECT == 'localhost':
-            cloudstorage_copy_objects_task(source, destination, date_limit=start_date)
+            cloudstorage_copy_objects_task(source, destination, date_limit=start_date, file_filter=file_filter)
         else:
-            params = {'source': source, 'destination': destination, 'date_limit': start_date}
+            params = {'source': source, 'destination': destination, 'date_limit': start_date,
+                      'file_filter': file_filter}
             task = GCPCloudTask('copy_cloudstorage_object_task', payload=params)
             task.execute()
 
 
-def _load_org_data_map(sheet_id):
-    # parse initial mapping
-    org_data_map = {
-        row.get(COLUMN_ORG_ID): OrgData(
-            row.get(COLUMN_ORG_ID), row.get(COLUMN_AGGREGATING_ORG_ID), row.get(COLUMN_BUCKET_NAME)
-        )
-        for row in GoogleSheetCSVReader(sheet_id)
-        if row.get(COLUMN_ORG_STATUS) == ORG_STATUS_ACTIVE
-    }
-    # apply transformations that require full map
-    return {
-        org_data.org_id: _org_data_with_bucket_inheritance_from_org_data(org_data_map, org_data)
-        for org_data in list(org_data_map.values())
-    }
-
-
-def _org_data_with_bucket_inheritance_from_org_data(org_data_map, org_data):
-    return OrgData(
-        org_data.org_id,
-        org_data.aggregate_id,
-        (org_data.bucket_name if org_data.bucket_name else org_data_map[org_data.aggregate_id].bucket_name),
-    )
+def get_org_data_map():
+    return config.getSetting(config.CONSENT_SYNC_ORGANIZATIONS)
 
 
 PARTICIPANT_DATA_SQL = """
 select
   participant.participant_id,
+  participant.participant_origin,
   site.google_group,
   organization.external_id
 from participant
@@ -101,7 +86,6 @@ left join site
 left join participant_summary summary
   on participant.participant_id = summary.participant_id
 where participant.is_ghost_id is not true
-  and summary.consent_for_electronic_health_records = 1
   and summary.consent_for_study_enrollment = 1
   and (
     summary.email is null
@@ -128,7 +112,7 @@ participant_filters_sql = {
 }
 
 
-def _iter_participants_data(org_ids, **kwargs):
+def build_participant_query(org_ids, **kwargs):
     participant_sql = PARTICIPANT_DATA_SQL
     parameters = {'org_ids': org_ids}
 
@@ -137,12 +121,18 @@ def _iter_participants_data(org_ids, **kwargs):
             participant_sql += participant_filters_sql[filter_field]
             parameters[filter_field] = kwargs[filter_field]
 
+    return participant_sql, parameters
+
+
+def _iter_participants_data(org_ids, **kwargs):
+    participant_sql, parameters = build_participant_query(org_ids, **kwargs)
+
     with database_factory.make_server_cursor_database().session() as session:
         for row in session.execute(participant_sql, parameters):
             yield ParticipantData(*row)
 
 
-def cloudstorage_copy_objects_task(source, destination, date_limit=None):
+def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_filter=None):
     """
     Cloud Task: Copies all objects matching the source to the destination.
     Both source and destination use the following format: /bucket/prefix/
@@ -152,16 +142,18 @@ def cloudstorage_copy_objects_task(source, destination, date_limit=None):
         date_limit = timezone.localize(datetime.strptime(date_limit, '%Y-%m-%d'))
     path = source if source[0:1] != '/' else source[1:]
     bucket_name, _, prefix = path.partition('/')
-    prefix = None if prefix == '' else '/' + prefix
+    prefix = None if prefix == '' else prefix
     for source_blob in list_blobs(bucket_name, prefix):
-        source_file_path = os.path.normpath('/' + bucket_name + '/' + source_blob.name)
-        destination_file_path = destination + source_file_path[len(source):]
-        if _should_copy_object(source_file_path, destination_file_path) and \
-                (date_limit is None or source_blob.updated > date_limit):
-            copy_cloud_file(source_file_path, destination_file_path)
+        if not source_blob.name.endswith('/'):  # Exclude folders
+            source_file_path = os.path.normpath('/' + bucket_name + '/' + source_blob.name)
+            destination_file_path = destination + source_file_path[len(source):]
+            if _not_previously_copied(source_file_path, destination_file_path) and \
+                    _after_date_limit(source_blob, date_limit) and \
+                    _matches_file_filter(source_blob.name, file_filter):
+                copy_cloud_file(source_file_path, destination_file_path)
 
 
-def _should_copy_object(source_file_path, destination_file_path):
+def _not_previously_copied(source_file_path, destination_file_path):
     destination_file_path = destination_file_path if destination_file_path[0:1] != '/' else destination_file_path[1:]
     destination_bucket_name, _, destination_blob_name = destination_file_path.partition('/')
     destination_blob = get_blob(destination_bucket_name, destination_blob_name)
@@ -172,3 +164,11 @@ def _should_copy_object(source_file_path, destination_file_path):
     source_bucket_name, _, source_blob_name = source_file_path.partition('/')
     source_blob = get_blob(source_bucket_name, source_blob_name)
     return source_blob.etag != destination_blob.etag
+
+
+def _after_date_limit(source_blob, date_limit):
+    return date_limit is None or source_blob.updated > date_limit
+
+
+def _matches_file_filter(source_blob_name, file_filter):
+    return file_filter is None or source_blob_name.endswith(file_filter)

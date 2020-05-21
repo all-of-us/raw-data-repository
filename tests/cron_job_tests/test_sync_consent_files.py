@@ -16,6 +16,7 @@ from rdr_service.participant_enums import UNSET_HPO_ID
 from tests.helpers.unittest_base import BaseTestCase
 
 
+@mock.patch('rdr_service.dao.participant_dao.get_account_origin_id', lambda: 'vibrent')
 class SyncConsentFilesTest(BaseTestCase):
     """Tests behavior of sync_consent_files
   """
@@ -44,7 +45,7 @@ class SyncConsentFilesTest(BaseTestCase):
         self.org1 = self._create_org(1, 'test_one')
         self.site1 = self._create_site(1001, "group1")
 
-        self.source_consent_bucket = sync_consent_files.SOURCE_BUCKET
+        self.source_consent_bucket = sync_consent_files.SOURCE_BUCKET['vibrent']
 
     def tearDown(self):
         super(SyncConsentFilesTest, self).tearDown()
@@ -169,7 +170,48 @@ class SyncConsentFilesTest(BaseTestCase):
                                               f'/{org_bucket_name}/Participant/{self.site1.googleGroup}/P2/consent.pdf')
         self.assertEqual(1, mock_copy_cloud_file.call_count, 'Files should be copied for one participant')
 
-        # run script locally
+    @mock.patch("rdr_service.offline.sync_consent_files.list_blobs")
+    @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
+    def test_default_file_filter(self, mock_copy_cloud_file, mock_list_blobs):
+        mock_list_blobs.return_value = iter([
+            self._make_blob('Participant/P1/consent.pdf', bucket=self.source_consent_bucket),
+            self._make_blob('Participant/P1/extra.doc', bucket=self.source_consent_bucket),
+            self._make_blob('Participant/P1/another.bin', bucket=self.source_consent_bucket)
+        ])
+
+        self._create_participant(1, self.org1.organizationId, self.site1.siteId, consents=True,
+                                 consent_time=datetime.datetime(2020, 2, 3))
+        sync_consent_files.do_sync_consent_files()
+
+        org_bucket_name = self.org_map_data[self.org1.externalId]['bucket_name']
+        mock_copy_cloud_file.called_once_with(f'/{self.source_consent_bucket}/Participant/P1/consent.pdf',
+                                              f'/{org_bucket_name}/Participant/{self.site1.googleGroup}/P1/consent.pdf')
+        self.assertEqual(1, mock_copy_cloud_file.call_count, 'Only PDF files should be copied')
+
+    @mock.patch("rdr_service.offline.sync_consent_files.list_blobs")
+    @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
+    def test_all_file_filter(self, mock_copy_cloud_file, mock_list_blobs):
+        mock_list_blobs.return_value = iter([
+            self._make_blob('Participant/P1/consent.pdf', bucket=self.source_consent_bucket),
+            self._make_blob('Participant/P1/extra.doc', bucket=self.source_consent_bucket),
+            self._make_blob('Participant/P1/another.bin', bucket=self.source_consent_bucket)
+        ])
+
+        self._create_participant(1, self.org1.organizationId, self.site1.siteId, consents=True,
+                                 consent_time=datetime.datetime(2020, 2, 3))
+        sync_consent_files.do_sync_consent_files(file_filter=None)
+
+        org_bucket_name = self.org_map_data[self.org1.externalId]['bucket_name']
+        mock_copy_cloud_file.assert_has_calls(
+            [
+                mock.call(f'/{self.source_consent_bucket}/Participant/P1/consent.pdf',
+                          f'/{org_bucket_name}/Participant/{self.site1.googleGroup}/P1/consent.pdf'),
+                mock.call(f'/{self.source_consent_bucket}/Participant/P1/extra.doc',
+                          f'/{org_bucket_name}/Participant/{self.site1.googleGroup}/P1/extra.doc'),
+                mock.call(f'/{self.source_consent_bucket}/Participant/P1/another.bin',
+                          f'/{org_bucket_name}/Participant/{self.site1.googleGroup}/P1/another.bin')
+            ]
+        )
 
     def test_iter_participants_data(self):
         """should list consenting participants
@@ -200,7 +242,8 @@ class SyncConsentFilesTest(BaseTestCase):
         ])
 
         # with trailing slashes
-        sync_consent_files.cloudstorage_copy_objects_task("/fake_bucket1/prefix1/", "/fake_bucket2/prefix2/")
+        sync_consent_files.cloudstorage_copy_objects_task("/fake_bucket1/prefix1/", "/fake_bucket2/prefix2/",
+                                                          file_filter=None)
         mock_copy_cloud_file.assert_has_calls(
             [
                 mock.call("/fake_bucket1/prefix1/foo", "/fake_bucket2/prefix2/foo"),
@@ -239,7 +282,8 @@ class SyncConsentFilesTest(BaseTestCase):
         self._write_cloud_object("/fake_bucket1/prefix/x1/y1/foo.txt", "foo")
         with open_cloud_file("/fake_bucket1/prefix/x1/y1/foo.txt") as f:
             self.assertEqual(f.read(), "foo", "Wrote to cloud storage")
-        sync_consent_files.cloudstorage_copy_objects_task("/fake_bucket1/prefix/x1/", "/fake_bucket2/prefix/z/x1/")
+        sync_consent_files.cloudstorage_copy_objects_task("/fake_bucket1/prefix/x1/", "/fake_bucket2/prefix/z/x1/",
+                                                          file_filter='txt')
         self.assertEqual(
             sorted([
                 file_stat.name
@@ -272,7 +316,8 @@ class SyncConsentFilesTest(BaseTestCase):
         self._write_cloud_object("/fake_bucket1/prefix/x1/bar.txt", "bar")
         self._write_cloud_object("/fake_bucket2/prefix/z/x1/foo.txt", "foo")
         self._write_cloud_object("/fake_bucket2/prefix/z/x1/bar.txt", "baz")
-        sync_consent_files.cloudstorage_copy_objects_task("/fake_bucket1/prefix/x1/", "/fake_bucket2/prefix/z/x1/")
+        sync_consent_files.cloudstorage_copy_objects_task("/fake_bucket1/prefix/x1/", "/fake_bucket2/prefix/z/x1/",
+                                                          file_filter='txt')
 
         mock_copy_cloud_file.assert_called_once_with("/fake_bucket1/prefix/x1/bar.txt",
                                                      "/fake_bucket2/prefix/z/x1/bar.txt")
