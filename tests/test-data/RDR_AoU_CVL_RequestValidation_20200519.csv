@@ -1,0 +1,4 @@
+﻿genomic_set_name,biobank_id,sex_at_birth,ny_flag,Site_ID,Secondary_validation,Date_submitted,Test_Name
+.,1,F,Y,RDR,Y,2020-05-19 01:00:00,aou_cvl
+.,2,M,Y,RDR,Y,2020-05-19 01:00:00,aou_cvl
+.,3,M,N,RDR,N,2020-05-19 01:00:00,aou_wgs

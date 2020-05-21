@@ -80,6 +80,8 @@ class GenomicPipelineTest(BaseTestCase):
         config.override_setting(config.GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME, [_FAKE_BUCKET_RESULT_FOLDER])
         config.override_setting(config.GENOMIC_CENTER_BUCKET_NAME, [_FAKE_GENOMIC_CENTER_BUCKET_A,
                                                                     _FAKE_GENOMIC_CENTER_BUCKET_B])
+        config.override_setting(config.GENOMIC_CVL_BUCKET_NAME, [_FAKE_BUCKET])
+
         config.override_setting(config.GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME,
                                 [_FAKE_GENOTYPING_FOLDER])
         config.override_setting(config.GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
@@ -792,6 +794,8 @@ class GenomicPipelineTest(BaseTestCase):
         recon_cvl_job_id=None,
         cvl_manifest_wgs_job_id=None,
         gem_a1_manifest_job_id=None,
+        cvl_w1_manifest_job_id=None,
+        genomic_workflow_state=None,
     ):
         genomic_set_member = GenomicSetMember()
         genomic_set_member.genomicSetId = genomic_set_id
@@ -812,6 +816,8 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.reconcileCvlJobRunId = recon_cvl_job_id
         genomic_set_member.cvlW1ManifestJobRunId = cvl_manifest_wgs_job_id
         genomic_set_member.gemA1ManifestJobRunId = gem_a1_manifest_job_id
+        genomic_set_member.cvlW1ManifestJobRunId = cvl_w1_manifest_job_id
+        genomic_set_member.genomicWorkflowState = genomic_workflow_state
 
         member_dao = GenomicSetMemberDao()
         member_dao.insert(genomic_set_member)
@@ -844,7 +850,9 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_stat_list.sort(key=lambda s: s.updated)
         return bucket_stat_list[-1].name
 
-    def _create_fake_datasets_for_gc_tests(self, count, arr_override=False, **kwargs):
+    def _create_fake_datasets_for_gc_tests(self, count,
+                                           arr_override=False,
+                                           **kwargs):
         # fake genomic_set
         genomic_test_set = self._create_fake_genomic_set(
             genomic_set_name="genomic-test-set-cell-line",
@@ -876,6 +884,8 @@ class GenomicPipelineTest(BaseTestCase):
             gt = 'aou_wgs'
             if arr_override and p in kwargs.get('array_participants'):
                 gt = 'aou_array'
+            if kwargs.get('cvl'):
+                gt = 'aou_cvl'
             self._create_fake_genomic_member(
                 genomic_set_id=genomic_test_set.id,
                 participant_id=participant.participantId,
@@ -889,6 +899,8 @@ class GenomicPipelineTest(BaseTestCase):
                 recon_sequencing_job_id=kwargs.get('recon_seq_id'),
                 recon_gc_manifest_job_id=kwargs.get('recon_gc_man_id'),
                 gem_a1_manifest_job_id=kwargs.get('gem_a1_run_id'),
+                cvl_w1_manifest_job_id=kwargs.get('cvl_w1_run_id'),
+                genomic_workflow_state = kwargs.get('genomic_workflow_state')
             )
 
     def _update_site_states(self):
@@ -1509,11 +1521,11 @@ class GenomicPipelineTest(BaseTestCase):
         # Test gem_pass field
         members = self.member_dao.get_all()
         for member in members:
-            if member.biobankId in (1, 2):
+            if member.id in (1, 2):
                 self.assertEqual("Y", member.gemPass)
                 self.assertEqual(2, member.gemA2ManifestJobRunId)
-            if member.biobankId == 3:
-                self.assertEqual("Y", member.gemPass)
+            if member.id == 3:
+                self.assertEqual("N", member.gemPass)
 
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
@@ -1657,4 +1669,119 @@ class GenomicPipelineTest(BaseTestCase):
 
         run_obj = self.job_run_dao.get(5)
 
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_cvl_w2_manifest_ingestion(self):
+        # Create W1 Manifest Job: run_id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.CREATE_CVL_W1_MANIFESTS,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(3, recon_gc_man_id=1)
+
+        # Set up test W2 manifest
+        bucket_name = config.getSetting(config.GENOMIC_CVL_BUCKET_NAME)
+        sub_folder = config.CVL_W2_MANIFEST_SUBFOLDER
+
+        self._create_ingestion_test_file('RDR_AoU_CVL_RequestValidation_20200519.csv',
+                                         bucket_name, folder=sub_folder,
+                                         include_timestamp=False)
+
+        members = self.member_dao.get_all()
+        for m in members:
+            self.member_dao.update_member_state(m, GenomicWorkflowState.W1)
+
+        # Run Workflow
+        genomic_pipeline.ingest_cvl_w2_manifest()  # run_id 2
+
+        # Test Member
+        # Test gem_pass field
+        members = self.member_dao.get_all()
+
+        for member in members:
+            self.assertEqual(2, member.cvlW2ManifestJobRunID)
+            self.assertEqual(GenomicWorkflowState.W2, member.genomicWorkflowState)
+
+            if member.id in (1, 2):
+                self.assertEqual("aou_cvl", member.genomeType)
+
+            if member.id == 3:
+                self.assertEqual("aou_wgs", member.genomeType)
+
+        # Test File Processed
+        file_record = self.file_processed_dao.get(1)
+        self.assertEqual(2, file_record.runId)
+
+        self.assertEqual(f'/{bucket_name}/{sub_folder}/RDR_AoU_CVL_RequestValidation_20200519.csv',
+                         file_record.filePath)
+
+        self.assertEqual('RDR_AoU_CVL_RequestValidation_20200519.csv', file_record.fileName)
+
+        # Test the job result
+        run_obj = self.job_run_dao.get(2)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_cvl_w3_manifest_generation(self):
+        # Create W1 manifest job run: id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.CREATE_CVL_W1_MANIFESTS,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        # Create genomic set members
+        self._create_fake_datasets_for_gc_tests(3, arr_override=False,
+                                                cvl_w1_run_id=1,
+                                                cvl=True,
+                                                genomic_workflow_state=GenomicWorkflowState.W2)
+
+        # Run Workflow with specific time
+        fake_now = datetime.datetime.utcnow()
+        out_time = fake_now.strftime("%Y-%m-%d-%H-%M-%S")
+        with clock.FakeClock(fake_now):
+            genomic_pipeline.create_cvl_w3_manifest()  # run_id 2
+
+        # Test member was updated
+        member = self.member_dao.get(1)
+        self.assertEqual(2, member.cvlW3ManifestJobRunID)
+        self.assertEqual(GenomicWorkflowState.W3, member.genomicWorkflowState)
+
+        # Test the manifest file contents
+        bucket_name = config.getSetting(config.GENOMIC_CVL_BUCKET_NAME)
+        sub_folder = config.CVL_W3_MANIFEST_SUBFOLDER
+
+        # Test the manifest file contents
+        expected_w3_columns = (
+            "value",
+            "sample_id",
+            "biobank_id",
+            "sex_at_birth",
+            "genome_type",
+            "ny_flag",
+            "request_id",
+            "package_id",
+            "ai_an",
+            "site_ID",
+            "secondary_validation",
+        )
+
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_CVL_W1_{out_time}.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            missing_cols = set(expected_w3_columns) - set(csv_reader.fieldnames)
+            self.assertEqual(0, len(missing_cols))
+
+            rows = list(csv_reader)
+
+            self.assertEqual(3, len(rows))
+            self.assertEqual(member.biobankId, rows[0]['biobank_id'])
+            self.assertEqual(member.sampleId, rows[0]['sample_id'])
+            self.assertEqual("Y", rows[0]['secondary_validation'])
+
+        # Test Manifest File Record Created
+        file_record = self.file_processed_dao.get(1)  # remember, GC Metrics is #1
+        self.assertEqual(2, file_record.runId)
+        self.assertEqual(f'{sub_folder}/AoU_CVL_W1_{out_time}.csv', file_record.fileName)
+
+        # Test the job result
+        run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)

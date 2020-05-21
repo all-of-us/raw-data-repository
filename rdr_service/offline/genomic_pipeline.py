@@ -154,3 +154,23 @@ def create_cvl_w1_manifest():
     """
     with GenomicJobController(GenomicJob.CREATE_CVL_W1_MANIFESTS) as controller:
         controller.generate_manifest(GenomicManifestTypes.CVL_W1, _genome_type=config.GENOME_TYPE_WGS)
+
+
+def ingest_cvl_w2_manifest():
+    """
+    Entrypoint for CVL W2 Manifest Ingestion workflow
+    Sources from list of biobank_ids from CVL reconciliation report
+    """
+    with GenomicJobController(GenomicJob.W2_INGEST,
+                              bucket_name=config.GENOMIC_CVL_BUCKET_NAME,
+                              sub_folder_name=config.CVL_W2_MANIFEST_SUBFOLDER) as controller:
+        controller.run_cvl_w2_workflow()
+
+
+def create_cvl_w3_manifest():
+    """
+    Entrypoint for CVL W3 Manifest workflow
+    """
+    with GenomicJobController(GenomicJob.W3_MANIFEST,
+                              bucket_name=config.GENOMIC_CVL_BUCKET_NAME,) as controller:
+        controller.generate_manifest(GenomicManifestTypes.CVL_W3, _genome_type=config.GENOME_TYPE_CVL)
