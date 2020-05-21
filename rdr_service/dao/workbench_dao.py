@@ -742,7 +742,9 @@ class WorkbenchResearcherDao(UpdatableDao):
             verified_affiliation_obj = WorkbenchInstitutionalAffiliations(
                 created=now,
                 modified=now,
-                institution=verified_affiliation_json.get('institutionShortName'),
+                institution=verified_affiliation_json.get('institutionDisplayName')
+                if verified_affiliation_json.get('institutionDisplayName')
+                else verified_affiliation_json.get('institutionShortName'),
                 role=verified_affiliation_json.get('institutionalRole'),
                 isVerified=True
             )

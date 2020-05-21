@@ -36,6 +36,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                     }
                 ],
                 "verifiedInstitutionalAffiliation": {
+                    "institutionDisplayName": "display name",
                     "institutionShortName": "verified institution",
                     "institutionalRole": "verified institution role 1",
                     "nonAcademicAffiliation": "INDUSTRY"
@@ -189,7 +190,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
                                 'nonAcademicAffiliation': 'INDUSTRY'},
-                               {'institution': 'verified institution', 'role': 'verified institution role 1',
+                               {'institution': 'display name', 'role': 'verified institution role 1',
                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}]},
                            {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
                                {'institution': 'institution2', 'role': 'institution role 2', 'isVerified': None,
@@ -244,7 +245,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
                                 'nonAcademicAffiliation': 'INDUSTRY'},
-                               {'institution': 'verified institution', 'role': 'verified institution role 1',
+                               {'institution': 'display name', 'role': 'verified institution role 1',
                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}
                            ]},
                            {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
@@ -261,7 +262,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                                                              'role': 'institution role 1',
                                                              'isVerified': None,
                                                              'nonAcademicAffiliation': 'INDUSTRY'},
-                                                            {'institution': 'verified institution',
+                                                            {'institution': 'display name',
                                                              'role': 'verified institution role 1',
                                                              'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}]}],
                        'hasVerifiedInstitution': True,
@@ -326,7 +327,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
                                 'nonAcademicAffiliation': 'INDUSTRY'},
-                               {'institution': 'verified institution', 'role': 'verified institution role 1',
+                               {'institution': 'display name', 'role': 'verified institution role 1',
                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}
                            ]},
                            {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
@@ -386,7 +387,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
                                 'nonAcademicAffiliation': 'INDUSTRY'},
-                               {'institution': 'verified institution', 'role': 'verified institution role 1',
+                               {'institution': 'display name', 'role': 'verified institution role 1',
                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}
                            ]},
                            {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
@@ -465,7 +466,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
                                 'nonAcademicAffiliation': 'INDUSTRY'},
-                               {'institution': 'verified institution', 'role': 'verified institution role 1',
+                               {'institution': 'display name', 'role': 'verified institution role 1',
                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}
                            ]},
                            {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
@@ -482,7 +483,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                                                              'role': 'institution role 1',
                                                              'isVerified': None,
                                                              'nonAcademicAffiliation': 'INDUSTRY'},
-                                                            {'institution': 'verified institution',
+                                                            {'institution': 'display name',
                                                              'role': 'verified institution role 1',
                                                              'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}]}],
                        'hasVerifiedInstitution': True,
@@ -1100,3 +1101,44 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        }
                        },
                       result['data'])
+        # update researcher to add verified institution
+        researchers_json = [
+            {
+                "userId": 1,
+                "creationTime": "2019-11-27T21:21:13.056Z",
+                "modifiedTime": "2019-11-27T21:21:13.056Z",
+                "givenName": "given name 2",
+                "familyName": "family name 2",
+                "streetAddress1": "string2",
+                "streetAddress2": "string2",
+                "city": "string2",
+                "state": "string2",
+                "zipCode": "string2",
+                "country": "string2",
+                "ethnicity": "HISPANIC",
+                "sexualOrientation": "BISEXUAL",
+                "gender": ["MAN", "WOMAN"],
+                "race": ["AIAN", "WHITE"],
+                "affiliations": [
+                    {
+                        "institution": "institution2",
+                        "role": "institution role 2"
+                    },
+                    {
+                        "institution": "institution22",
+                        "role": "institution role 22",
+                        "nonAcademicAffiliation": "INDUSTRY"
+                    }
+                ],
+                "verifiedInstitutionalAffiliation": {
+                    "institutionShortName": "verified institution",
+                    "institutionalRole": "verified institution role 1",
+                    "nonAcademicAffiliation": "INDUSTRY"
+                }
+            }
+        ]
+        self.send_post('workbench/directory/researchers', request_data=researchers_json)
+
+        result = self.send_get('researchHub/projectDirectory')
+        self.assertEqual(len(result['data']), 2)
+

@@ -43,6 +43,7 @@ class WorkbenchApiTest(BaseTestCase):
                     }
                 ],
                 "verifiedInstitutionalAffiliation": {
+                    "institutionDisplayName": "display name",
                     "institutionShortName": "string name",
                     "institutionalRole": "string role"
                 }
@@ -69,7 +70,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string')
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].nonAcademicAffiliation,
                          WorkbenchInstitutionNonAcademic('INDUSTRY'))
-        self.assertEqual(results[0].workbenchInstitutionalAffiliations[1].institution, 'string name')
+        self.assertEqual(results[0].workbenchInstitutionalAffiliations[1].institution, 'display name')
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[1].isVerified, True)
 
         researcher_history_dao = WorkbenchResearcherHistoryDao()
@@ -87,7 +88,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string')
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].nonAcademicAffiliation,
                          WorkbenchInstitutionNonAcademic('INDUSTRY'))
-        self.assertEqual(results[0].workbenchInstitutionalAffiliations[1].institution, 'string name')
+        self.assertEqual(results[0].workbenchInstitutionalAffiliations[1].institution, 'display name')
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[1].isVerified, True)
 
         # test update existing
@@ -119,6 +120,7 @@ class WorkbenchApiTest(BaseTestCase):
                     }
                 ],
                 "verifiedInstitutionalAffiliation": {
+                    "institutionDisplayName": "modified display name",
                     "institutionShortName": "modified string name",
                     "institutionalRole": "modified string role"
                 }
@@ -171,7 +173,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].institution, 'string_modify')
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[0].nonAcademicAffiliation,
                          WorkbenchInstitutionNonAcademic('EDUCATIONAL_INSTITUTION'))
-        self.assertEqual(results[0].workbenchInstitutionalAffiliations[1].institution, 'modified string name')
+        self.assertEqual(results[0].workbenchInstitutionalAffiliations[1].institution, 'modified display name')
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[1].role, 'modified string role')
         self.assertEqual(results[0].workbenchInstitutionalAffiliations[1].isVerified, True)
 
