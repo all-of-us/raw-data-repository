@@ -622,7 +622,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         q.questions.append(cope_consent_question)
         self.questionnaire_dao.insert(q)
 
-    def _submit_cope_consent(self, cope_consent_code):
+    def _submit_cope_consent(self, response_cope_consent_code):
         qr = QuestionnaireResponse(
             questionnaireId=2,
             questionnaireVersion=1,
@@ -635,7 +635,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseId=2,
             questionId=7,  # COPE consent question
             valueSystem="a",
-            valueCodeId=cope_consent_code.codeId,
+            valueCodeId=response_cope_consent_code.codeId,
         )
 
         qr.answers.extend([answer])
@@ -719,7 +719,34 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         p = Participant(participantId=1, biobankId=2)
         with FakeClock(TIME):
             self.participant_dao.insert(p)
-        self._setup_participant()
+        self._setup_questionnaire()
+        qr = QuestionnaireResponse(
+            questionnaireResponseId=1,
+            questionnaireId=1,
+            questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
+            participantId=1,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
+        )
+        answer_1 = QuestionnaireResponseAnswer(
+            questionnaireResponseAnswerId=1,
+            questionnaireResponseId=1,
+            questionId=1,
+            valueSystem="a",
+            valueCodeId=3,
+            valueDecimal=123,
+            valueString=self.fake.first_name(),
+            valueDate=datetime.date.today(),
+        )
+        answer_2 = QuestionnaireResponseAnswer(
+            questionnaireResponseAnswerId=2, questionnaireResponseId=1, questionId=2, valueSystem="c", valueCodeId=4
+        )
+        qr.answers.append(answer_1)
+        qr.answers.append(answer_2)
+        names_and_email_answers = self._names_and_email_answers()
+        qr.answers.extend(names_and_email_answers)
+        with FakeClock(TIME_2):
+            self.questionnaire_response_dao.insert(qr)
 
         expected_qr = QuestionnaireResponse(
             questionnaireResponseId=1,

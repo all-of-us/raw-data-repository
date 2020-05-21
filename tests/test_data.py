@@ -36,7 +36,7 @@ def email_code():
     return Code(system=PPI_SYSTEM, value=EMAIL_QUESTION_CODE, mapped=True, codeType=CodeType.QUESTION)
 
 
-def cope_consent():
+def cope_consent_code():
     return Code(system=PPI_SYSTEM, value=COPE_CONSENT_QUESTION_CODE, mapped=True, codeType=CodeType.QUESTION)
 
 
