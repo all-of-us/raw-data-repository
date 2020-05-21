@@ -40,7 +40,7 @@ class W1State(GenomicStateBase):
 
 
 class W2State(GenomicStateBase):
-    """State representing the W1 manifest state"""
+    """State representing the W2 manifest state"""
     def transition_function(self, signal):
         if signal == 'manifest-generated':
             return GenomicWorkflowState.W3

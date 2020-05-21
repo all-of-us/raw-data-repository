@@ -1246,7 +1246,7 @@ class ManifestDefinitionProvider:
                 )
             )
 
-        # CVL W1 Manifest
+        # CVL W3 Manifest
         if manifest_type == GenomicManifestTypes.CVL_W3:
             query_sql = (
                 sqlalchemy.select(
