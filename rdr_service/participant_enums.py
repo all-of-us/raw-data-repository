@@ -600,6 +600,7 @@ class GenomicManifestTypes(messages.Enum):
     CVL_W1 = 4
     GEM_A1 = 5
     GEM_A3 = 6
+    CVL_W3 = 7
 
 
 class WorkbenchWorkspaceStatus(messages.Enum):

@@ -1711,3 +1711,6 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the job result
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_cvl_w3_manifest_generation(self):
+        pass

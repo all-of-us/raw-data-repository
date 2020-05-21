@@ -393,6 +393,7 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
+
 class GenomicFileValidator:
     """
     This class validates the Genomic Centers files
@@ -1317,6 +1318,22 @@ class ManifestDefinitionProvider:
                 'biobank_id',
                 'sample_id',
             )
+
+        elif manifest_type == GenomicManifestTypes.CVL_W3:
+            columns = (
+                "value",
+                "sample_id",
+                "biobank_id",
+                "sex_at_birth",
+                "genome_type",
+                "ny_flag",
+                "request_id",
+                "package_id",
+                "ai_an",
+                "site_ID",
+                "Secondary_validation",
+            )
+
         return columns
 
     def get_def(self, manifest_type):
