@@ -53,12 +53,12 @@ class SqlExporter(object):
         with open(tmp_file_name) as tmp_file:
             csv_reader = csv.reader(tmp_file)
 
-            logging.info(f"Exporting temp file with cloud writer...")
+            logging.info("Exporting temp file with cloud writer...")
             with self.open_cloud_writer(file_name, predicate) as cloud_writer:
                 headers = next(csv_reader)
                 cloud_writer.write_header(headers)
 
-                logging.info(f"Writing rows to cloud file.")
+                logging.info("Writing rows to cloud file.")
                 for row in csv_reader:
                     cloud_writer.write_rows([row])
 
