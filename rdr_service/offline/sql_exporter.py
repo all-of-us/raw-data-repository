@@ -40,16 +40,25 @@ class SqlExporter(object):
                    predicate=None):
         with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
             tmp_file_name = tmp_file.name
+
+            logging.info(f"Exporting to temporary file: {tmp_file_name}")
+
             sql_writer = SqlExportFileWriter(tmp_file, predicate=predicate)
             # write data to temp file
             self.run_export_with_writer(
                 sql_writer, sql, query_params, backup=backup, transformf=transformf, instance_name=instance_name
             )
+
+        logging.info(f"Opening {tmp_file_name} for export.")
         with open(tmp_file_name) as tmp_file:
             csv_reader = csv.reader(tmp_file)
+
+            logging.info("Exporting temp file with cloud writer...")
             with self.open_cloud_writer(file_name, predicate) as cloud_writer:
                 headers = next(csv_reader)
                 cloud_writer.write_header(headers)
+
+                logging.info("Writing rows to cloud file.")
                 for row in csv_reader:
                     cloud_writer.write_rows([row])
 
