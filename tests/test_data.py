@@ -13,6 +13,7 @@ from rdr_service.code_constants import (
     LAST_NAME_QUESTION_CODE,
     LOGIN_PHONE_NUMBER_QUESTION_CODE,
     PPI_SYSTEM,
+    COPE_CONSENT_QUESTION_CODE
 )
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.config_utils import to_client_biobank_id
@@ -33,6 +34,10 @@ def last_name_code():
 
 def email_code():
     return Code(system=PPI_SYSTEM, value=EMAIL_QUESTION_CODE, mapped=True, codeType=CodeType.QUESTION)
+
+
+def cope_consent_code():
+    return Code(system=PPI_SYSTEM, value=COPE_CONSENT_QUESTION_CODE, mapped=True, codeType=CodeType.QUESTION)
 
 
 def login_phone_number_code():

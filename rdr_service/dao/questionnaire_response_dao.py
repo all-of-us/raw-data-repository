@@ -257,6 +257,7 @@ class QuestionnaireResponseDao(BaseDao):
         code_dao = CodeDao()
 
         something_changed = False
+        module_changed = False
         # If no participant summary exists, make sure this is the study enrollment consent.
         if not participant_summary:
             consent_code = code_dao.get_code(PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE)
@@ -328,17 +329,18 @@ class QuestionnaireResponseDao(BaseDao):
                         elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NOT_SURE:
                             gror_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
                     elif code.value == COPE_CONSENT_QUESTION_CODE:
-                        if not participant_summary.questionnaireOnCopeMay:
-                            answer_value = code_dao.get(answer.valueCodeId).value
-                            if answer_value == CONSENT_COPE_YES_CODE:
-                                participant_summary.questionnaireOnCopeMay = QuestionnaireStatus.SUBMITTED
-                            elif answer_value == CONSENT_COPE_NO_CODE:
-                                participant_summary.questionnaireOnCopeMay = QuestionnaireStatus.SUBMITTED_NO_CONSENT
-                            else:
-                                participant_summary.questionnaireOnCopeMay = QuestionnaireStatus.SUBMITTED_INVALID
+                        answer_value = code_dao.get(answer.valueCodeId).value
+                        if answer_value == CONSENT_COPE_YES_CODE:
+                            participant_summary.questionnaireOnCopeMay = QuestionnaireStatus.SUBMITTED
+                        elif answer_value == CONSENT_COPE_NO_CODE:
+                            participant_summary.questionnaireOnCopeMay = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+                        else:
+                            participant_summary.questionnaireOnCopeMay = QuestionnaireStatus.SUBMITTED_INVALID
 
-                            participant_summary.questionnaireOnCopeMayTime = questionnaire_response.created
-                            participant_summary.questionnaireOnCopeMayAuthored = authored
+                        participant_summary.questionnaireOnCopeMayTime = questionnaire_response.created
+                        participant_summary.questionnaireOnCopeMayAuthored = authored
+                        # COPE Survey changes need to update number of modules complete in summary
+                        module_changed = True
 
         # If race was provided in the response in one or more answers, set the new value.
         if race_code_ids:
@@ -357,7 +359,6 @@ class QuestionnaireResponseDao(BaseDao):
 
         # Set summary fields to SUBMITTED for questionnaire concepts that are found in
         # QUESTIONNAIRE_MODULE_CODE_TO_FIELD
-        module_changed = False
         for concept in questionnaire_history.concepts:
             code = code_map.get(concept.codeId)
             if code:

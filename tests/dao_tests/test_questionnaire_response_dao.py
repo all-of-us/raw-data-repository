@@ -7,7 +7,8 @@ from werkzeug.exceptions import BadRequest, Forbidden
 from rdr_service import config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
-from rdr_service.code_constants import GENDER_IDENTITY_QUESTION_CODE, PMI_SKIP_CODE, PPI_SYSTEM, THE_BASICS_PPI_MODULE
+from rdr_service.code_constants import GENDER_IDENTITY_QUESTION_CODE, PMI_SKIP_CODE, PPI_SYSTEM, THE_BASICS_PPI_MODULE,\
+    CONSENT_COPE_YES_CODE, CONSENT_COPE_NO_CODE
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -21,7 +22,8 @@ from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort
+from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort,\
+    QuestionnaireStatus
 from tests import test_data
 from tests.test_data import (
     consent_code,
@@ -29,6 +31,7 @@ from tests.test_data import (
     first_name_code,
     last_name_code,
     login_phone_number_code,
+    cope_consent_code
 )
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -86,6 +89,10 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self.CODE_1_QUESTION_2 = QuestionnaireQuestion(linkId="x", codeId=1, repeats=False)
 
         self.skip_code = Code(codeId=8, system=PPI_SYSTEM, value=PMI_SKIP_CODE, mapped=True, codeType=CodeType.ANSWER)
+        self.cope_consent_yes = Code(codeId=9, system=PPI_SYSTEM, value=CONSENT_COPE_YES_CODE, mapped=True,
+                                     codeType=CodeType.ANSWER)
+        self.cope_consent_no = Code(codeId=10, system=PPI_SYSTEM, value=CONSENT_COPE_NO_CODE, mapped=True,
+                                     codeType=CodeType.ANSWER)
 
         config.override_setting(config.CONSENT_PDF_BUCKET, _FAKE_BUCKET)
 
@@ -110,10 +117,13 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self.code_dao.insert(self.CODE_6)
         self.code_dao.insert(self.MODULE_CODE_7)
         self.code_dao.insert(self.skip_code)
+        self.code_dao.insert(self.cope_consent_yes)
+        self.code_dao.insert(self.cope_consent_no)
         self.consent_code_id = self.code_dao.insert(consent_code()).codeId
         self.first_name_code_id = self.code_dao.insert(first_name_code()).codeId
         self.last_name_code_id = self.code_dao.insert(last_name_code()).codeId
         self.email_code_id = self.code_dao.insert(email_code()).codeId
+        self.cope_consent_id = self.code_dao.insert(cope_consent_code()).codeId
         self.login_phone_number_code_id = self.code_dao.insert(login_phone_number_code()).codeId
         self.FN_QUESTION = QuestionnaireQuestion(linkId="fn", codeId=self.first_name_code_id, repeats=False)
         self.LN_QUESTION = QuestionnaireQuestion(linkId="ln", codeId=self.last_name_code_id, repeats=False)
@@ -575,6 +585,90 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             consentCohort=ParticipantCohort.COHORT_CURRENT
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
+
+    def _setup_participant(self):
+        self._setup_questionnaire()
+        qr = QuestionnaireResponse(
+            questionnaireResponseId=1,
+            questionnaireId=1,
+            questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
+            participantId=1,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
+        )
+        answer_1 = QuestionnaireResponseAnswer(
+            questionnaireResponseAnswerId=1,
+            questionnaireResponseId=1,
+            questionId=1,
+            valueSystem="a",
+            valueCodeId=3,
+            valueDecimal=123,
+            valueString=self.fake.first_name(),
+            valueDate=datetime.date.today(),
+        )
+        answer_2 = QuestionnaireResponseAnswer(
+            questionnaireResponseAnswerId=2, questionnaireResponseId=1, questionId=2, valueSystem="c", valueCodeId=4
+        )
+        qr.answers.append(answer_1)
+        qr.answers.append(answer_2)
+        names_and_email_answers = self._names_and_email_answers()
+        qr.answers.extend(names_and_email_answers)
+        with FakeClock(TIME_2):
+            self.questionnaire_response_dao.insert(qr)
+
+    def _create_cope_questionnaire(self):
+        q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
+        cope_consent_question = QuestionnaireQuestion(codeId=self.cope_consent_id, repeats=False)
+        q.questions.append(cope_consent_question)
+        self.questionnaire_dao.insert(q)
+
+    def _submit_cope_consent(self, response_cope_consent_code):
+        qr = QuestionnaireResponse(
+            questionnaireId=2,
+            questionnaireVersion=1,
+            questionnaireSemanticVersion='V1',
+            participantId=1,
+            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
+        )
+
+        answer = QuestionnaireResponseAnswer(
+            questionnaireResponseId=2,
+            questionId=7,  # COPE consent question
+            valueSystem="a",
+            valueCodeId=response_cope_consent_code.codeId,
+        )
+
+        qr.answers.extend([answer])
+
+        with FakeClock(TIME_2):
+            self.questionnaire_response_dao.insert(qr)
+
+    def test_cope_updates_num_completed(self):
+        self.insert_codes()
+        p = Participant(participantId=1, biobankId=2)
+        with FakeClock(TIME):
+            self.participant_dao.insert(p)
+
+        self._setup_participant()
+        self._create_cope_questionnaire()
+
+        self._submit_cope_consent(self.cope_consent_yes)
+
+        self.assertEqual(2, self.participant_summary_dao.get(1).numCompletedPPIModules)
+
+    def test_cope_resubmit(self):
+        self.insert_codes()
+        p = Participant(participantId=1, biobankId=2)
+        with FakeClock(TIME):
+            self.participant_dao.insert(p)
+
+        self._setup_participant()
+        self._create_cope_questionnaire()
+
+        self._submit_cope_consent(self.cope_consent_yes)
+        self._submit_cope_consent(self.cope_consent_no)
+
+        self.assertEqual(QuestionnaireStatus.SUBMITTED_NO_CONSENT, self.participant_summary_dao.get(1).questionnaireOnCopeMay)
 
     def test_from_client_json_raises_BadRequest_for_excessively_long_value_string(self):
         self.insert_codes()
