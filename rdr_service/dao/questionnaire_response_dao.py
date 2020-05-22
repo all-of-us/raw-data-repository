@@ -329,18 +329,24 @@ class QuestionnaireResponseDao(BaseDao):
                         elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NOT_SURE:
                             gror_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
                     elif code.value == COPE_CONSENT_QUESTION_CODE:
-                        answer_value = code_dao.get(answer.valueCodeId).value
-                        if answer_value == CONSENT_COPE_YES_CODE:
-                            participant_summary.questionnaireOnCopeMay = QuestionnaireStatus.SUBMITTED
-                        elif answer_value == CONSENT_COPE_NO_CODE:
-                            participant_summary.questionnaireOnCopeMay = QuestionnaireStatus.SUBMITTED_NO_CONSENT
-                        else:
-                            participant_summary.questionnaireOnCopeMay = QuestionnaireStatus.SUBMITTED_INVALID
+                        month_name = questionnaire_history.lastModified.strftime('%B')
+                        # Currently only have fields in participant summary for May, Jun and July
+                        if month_name in ['May', 'June', 'July']:
+                            answer_value = code_dao.get(answer.valueCodeId).value
+                            if answer_value == CONSENT_COPE_YES_CODE:
+                                submission_status = QuestionnaireStatus.SUBMITTED
+                            elif answer_value == CONSENT_COPE_NO_CODE:
+                                submission_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+                            else:
+                                submission_status = QuestionnaireStatus.SUBMITTED_INVALID
+                            setattr(participant_summary, f'questionnaireOnCope{month_name}', submission_status)
 
-                        participant_summary.questionnaireOnCopeMayTime = questionnaire_response.created
-                        participant_summary.questionnaireOnCopeMayAuthored = authored
-                        # COPE Survey changes need to update number of modules complete in summary
-                        module_changed = True
+                            setattr(participant_summary, f'questionnaireOnCope{month_name}Time',
+                                    questionnaire_response.created)
+                            setattr(participant_summary, f'questionnaireOnCope{month_name}Authored', authored)
+
+                            # COPE Survey changes need to update number of modules complete in summary
+                            module_changed = True
 
         # If race was provided in the response in one or more answers, set the new value.
         if race_code_ids:
