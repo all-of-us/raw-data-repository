@@ -616,32 +616,43 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         with FakeClock(TIME_2):
             self.questionnaire_response_dao.insert(qr)
 
-    def _create_cope_questionnaire(self):
+    def _create_cope_questionnaire(self, created_date=datetime.datetime(2020, 5, 5)):
         q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
         cope_consent_question = QuestionnaireQuestion(codeId=self.cope_consent_id, repeats=False)
         q.questions.append(cope_consent_question)
-        self.questionnaire_dao.insert(q)
+        with FakeClock(created_date):
+            self.questionnaire_dao.insert(q)
 
-    def _submit_cope_consent(self, response_cope_consent_code):
+    def _bump_questionnaire_version(self, questionnaire_id, updated_time):
+        resource = json.loads(QUESTIONNAIRE_RESOURCE)
+        resource['version'] = 'V2'
+        q = Questionnaire(questionnaireId=questionnaire_id, resource=json.dumps(resource), semanticVersion='V1')
+
+        cope_consent_question = QuestionnaireQuestion(codeId=self.cope_consent_id, repeats=False)
+        q.questions.append(cope_consent_question)
+
+        with FakeClock(updated_time):
+            self.questionnaire_dao.update(q)
+
+    def _submit_cope_consent(self, response_cope_consent_code, questionnaire_version=1, cope_consent_question_id=7):
         qr = QuestionnaireResponse(
             questionnaireId=2,
-            questionnaireVersion=1,
-            questionnaireSemanticVersion='V1',
+            questionnaireVersion=questionnaire_version,
+            questionnaireSemanticVersion=f'V{questionnaire_version}',
             participantId=1,
             resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
 
         answer = QuestionnaireResponseAnswer(
             questionnaireResponseId=2,
-            questionId=7,  # COPE consent question
+            questionId=cope_consent_question_id,
             valueSystem="a",
             valueCodeId=response_cope_consent_code.codeId,
         )
 
         qr.answers.extend([answer])
 
-        with FakeClock(TIME_2):
-            self.questionnaire_response_dao.insert(qr)
+        self.questionnaire_response_dao.insert(qr)
 
     def test_cope_updates_num_completed(self):
         self.insert_codes()
@@ -659,8 +670,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
     def test_cope_resubmit(self):
         self.insert_codes()
         p = Participant(participantId=1, biobankId=2)
-        with FakeClock(TIME):
-            self.participant_dao.insert(p)
+        self.participant_dao.insert(p)
 
         self._setup_participant()
         self._create_cope_questionnaire()
@@ -668,7 +678,22 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self._submit_cope_consent(self.cope_consent_yes)
         self._submit_cope_consent(self.cope_consent_no)
 
-        self.assertEqual(QuestionnaireStatus.SUBMITTED_NO_CONSENT, self.participant_summary_dao.get(1).questionnaireOnCopeMay)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED_NO_CONSENT,
+                         self.participant_summary_dao.get(1).questionnaireOnCopeMay)
+
+    def test_cope_june_survey_status(self):
+        self.insert_codes()
+        p = Participant(participantId=1, biobankId=2)
+        self.participant_dao.insert(p)
+
+        self._setup_participant()
+        self._create_cope_questionnaire()  # May survey
+        self._bump_questionnaire_version(2, updated_time=datetime.datetime(2020, 6, 7))  # June survey
+
+        self._submit_cope_consent(self.cope_consent_yes, questionnaire_version=2, cope_consent_question_id=8)
+
+        participant_summary = self.participant_summary_dao.get(1)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeJune)
 
     def test_from_client_json_raises_BadRequest_for_excessively_long_value_string(self):
         self.insert_codes()
