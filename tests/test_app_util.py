@@ -255,17 +255,18 @@ class AppUtilTest(BaseTestCase):
             def _():
                 pass
 
-    # @patch("rdr_service.app_util.request", spec=app_util.request)
-    # @patch("rdr_service.app_util.get_oauth_id")
-    # def test_check_auth_required_cron(self, mock_get_oauth_id, mock_request):
-    #     mock_get_oauth_id.return_value = "bob@example.com"
-    #
-    #     mock_request.headers = {"X-Appengine-Cron": "true"}
-    #     self.assertEqual(2, cron_required(1))
-    #
-    #     mock_request.headers = {}
-    #     with self.assertRaises(Forbidden):
-    #         cron_required(1)
+    # @mock.patch("rdr_service.app_util.request", spec=app_util.request)
+    @mock.patch("rdr_service.app_util.get_oauth_id")
+    def test_check_auth_required_cron(self, mock_get_oauth_id):
+        mock_request = mock.MagicMock()
+        mock_request.headers = {"X-Appengine-Cron": "true"}
+        with mock.patch("rdr_service.app_util.request", mock_request):
+            mock_get_oauth_id.return_value = "bob@example.com"
+            self.assertEqual(2, cron_required(1))
+
+            mock_request.headers = {}
+            with self.assertRaises(Forbidden):
+                cron_required(1)
 
     def test_nonprod(self):
         # The dev config is isntalled by default for tests, reset.
