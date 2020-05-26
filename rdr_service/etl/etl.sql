@@ -31,6 +31,7 @@ DROP TABLE IF EXISTS cdm.location;
 
 CREATE TABLE cdm.location
 (
+    id bigint NOT NULL,
     location_id bigint AUTO_INCREMENT NOT NULL,
     address_1 varchar(255),
     address_2 varchar(255),
@@ -40,7 +41,8 @@ CREATE TABLE cdm.location
     county varchar(255),
     location_source_value varchar(255),
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (location_id)
+    PRIMARY KEY (location_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -50,6 +52,7 @@ DROP TABLE IF EXISTS cdm.care_site;
 
 CREATE TABLE cdm.care_site
 (
+    id bigint NOT NULL,
     care_site_id bigint NOT NULL,
     care_site_name varchar(255),
     place_of_service_concept_id bigint NOT NULL,
@@ -57,7 +60,8 @@ CREATE TABLE cdm.care_site
     care_site_source_value varchar(50) NOT NULL,
     place_of_service_source_value varchar(50),
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (care_site_id)
+    PRIMARY KEY (care_site_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -67,6 +71,7 @@ DROP TABLE IF EXISTS cdm.provider;
 
 CREATE TABLE cdm.provider
 (
+    id bigint NOT NULL,
     provider_id bigint AUTO_INCREMENT NOT NULL,
     provider_name varchar(50),
     npi varchar(20),
@@ -81,7 +86,8 @@ CREATE TABLE cdm.provider
     gender_source_value varchar(50),
     gender_source_concept_id bigint NOT NULL,
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (provider_id)
+    PRIMARY KEY (provider_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -91,6 +97,7 @@ DROP TABLE IF EXISTS cdm.person;
 
 CREATE TABLE cdm.person
 (
+    id bigint NOT NULL,
     person_id bigint NOT NULL,
     gender_concept_id bigint NOT NULL,
     year_of_birth int NOT NULL,
@@ -110,7 +117,8 @@ CREATE TABLE cdm.person
     ethnicity_source_value varchar(50),
     ethnicity_source_concept_id bigint NOT NULL,
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (person_id)
+    PRIMARY KEY (person_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -120,6 +128,7 @@ DROP TABLE IF EXISTS cdm.death;
 
 CREATE TABLE cdm.death
 (
+    id bigint NOT NULL,
     person_id bigint NOT NULL,
     death_date date NOT NULL,
     death_datetime datetime,
@@ -127,7 +136,8 @@ CREATE TABLE cdm.death
     cause_concept_id bigint NOT NULL,
     cause_source_value varchar(50),
     cause_source_concept_id bigint NOT NULL,
-    unit_id varchar(50) NOT NULL
+    unit_id varchar(50) NOT NULL,
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -137,13 +147,15 @@ DROP TABLE IF EXISTS cdm.observation_period;
 
 CREATE TABLE cdm.observation_period
 (
+    id bigint NOT NULL,
     observation_period_id bigint AUTO_INCREMENT NOT NULL,
     person_id bigint NOT NULL,
     observation_period_start_date date NOT NULL,
     observation_period_end_date date NOT NULL,
     period_type_concept_id bigint NOT NULL,
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (observation_period_id)
+    PRIMARY KEY (observation_period_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -153,6 +165,7 @@ DROP TABLE IF EXISTS cdm.payer_plan_period;
 
 CREATE TABLE cdm.payer_plan_period
 (
+    id bigint NOT NULL,
     payer_plan_period_id bigint AUTO_INCREMENT NOT NULL,
     person_id bigint NOT NULL,
     payer_plan_period_start_date date NOT NULL,
@@ -161,7 +174,8 @@ CREATE TABLE cdm.payer_plan_period
     plan_source_value varchar(50),
     family_source_value varchar(50),
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (payer_plan_period_id)
+    PRIMARY KEY (payer_plan_period_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -171,6 +185,7 @@ DROP TABLE IF EXISTS cdm.visit_occurrence;
 
 CREATE TABLE cdm.visit_occurrence
 (
+    id bigint NOT NULL,
     visit_occurrence_id bigint NOT NULL,
     person_id bigint NOT NULL,
     visit_concept_id bigint NOT NULL,
@@ -189,7 +204,8 @@ CREATE TABLE cdm.visit_occurrence
     discharge_to_source_value varchar(50),
     preceding_visit_occurrence_id bigint,
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (visit_occurrence_id)
+    PRIMARY KEY (visit_occurrence_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -199,6 +215,7 @@ DROP TABLE IF EXISTS cdm.condition_occurrence;
 
 CREATE TABLE cdm.condition_occurrence
 (
+    id bigint NOT NULL,
     condition_occurrence_id bigint AUTO_INCREMENT NOT NULL,
     person_id bigint NOT NULL,
     condition_concept_id bigint NOT NULL,
@@ -213,7 +230,8 @@ CREATE TABLE cdm.condition_occurrence
     condition_source_value varchar(50) NOT NULL,
     condition_source_concept_id bigint NOT NULL,
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (condition_occurrence_id)
+    PRIMARY KEY (condition_occurrence_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -223,6 +241,7 @@ DROP TABLE IF EXISTS cdm.procedure_occurrence;
 
 CREATE TABLE cdm.procedure_occurrence
 (
+    id bigint NOT NULL,
     procedure_occurrence_id bigint AUTO_INCREMENT NOT NULL,
     person_id bigint NOT NULL,
     procedure_concept_id bigint NOT NULL,
@@ -237,7 +256,8 @@ CREATE TABLE cdm.procedure_occurrence
     procedure_source_concept_id bigint NOT NULL,
     qualifier_source_value varchar(50),
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (procedure_occurrence_id)
+    PRIMARY KEY (procedure_occurrence_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -247,6 +267,7 @@ DROP TABLE IF EXISTS cdm.observation;
 
 CREATE TABLE cdm.observation
 (
+    id bigint NOT NULL,
     observation_id bigint AUTO_INCREMENT NOT NULL,
     person_id bigint NOT NULL,
     observation_concept_id bigint NOT NULL,
@@ -271,7 +292,8 @@ CREATE TABLE cdm.observation
     meas_id bigint,
     --
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (observation_id)
+    PRIMARY KEY (observation_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -281,6 +303,7 @@ DROP TABLE IF EXISTS cdm.measurement;
 
 CREATE TABLE cdm.measurement
 (
+    id bigint NOT NULL,
     measurement_id bigint NOT NULL,
     person_id bigint NOT NULL,
     measurement_concept_id bigint NOT NULL,
@@ -303,7 +326,8 @@ CREATE TABLE cdm.measurement
     parent_id bigint,
     --
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (measurement_id)
+    PRIMARY KEY (measurement_id),
+    UNIQUE KEY (id)
 );
 
 
@@ -314,6 +338,7 @@ DROP TABLE IF EXISTS cdm.note;
 
 CREATE TABLE cdm.note
 (
+    id bigint NOT NULL,
     note_id bigint AUTO_INCREMENT NOT NULL,
     person_id bigint NOT NULL,
     note_date date NOT NULL,
@@ -328,7 +353,8 @@ CREATE TABLE cdm.note
     note_source_value varchar(50),
     visit_occurrence_id bigint,
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (note_id)
+    PRIMARY KEY (note_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -338,6 +364,7 @@ DROP TABLE IF EXISTS cdm.drug_exposure;
 
 CREATE TABLE cdm.drug_exposure
 (
+    id bigint NOT NULL,
     drug_exposure_id bigint AUTO_INCREMENT NOT NULL,
     person_id bigint NOT NULL,
     drug_concept_id bigint NOT NULL,
@@ -360,7 +387,8 @@ CREATE TABLE cdm.drug_exposure
     route_source_value varchar(50),
     dose_unit_source_value varchar(50),
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (drug_exposure_id)
+    PRIMARY KEY (drug_exposure_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -370,6 +398,7 @@ DROP TABLE IF EXISTS cdm.device_exposure;
 
 CREATE TABLE cdm.device_exposure
 (
+    id bigint NOT NULL,
     device_exposure_id bigint AUTO_INCREMENT NOT NULL,
     person_id bigint NOT NULL,
     device_concept_id bigint NOT NULL,
@@ -385,7 +414,8 @@ CREATE TABLE cdm.device_exposure
     device_source_value varchar(50) NOT NULL,
     device_source_concept_id bigint,
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (device_exposure_id)
+    PRIMARY KEY (device_exposure_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -395,6 +425,7 @@ DROP TABLE IF EXISTS cdm.cost;
 
 CREATE TABLE cdm.cost
 (
+    id bigint NOT NULL,
     cost_id bigint AUTO_INCREMENT NOT NULL,
     cost_event_id bigint NOT NULL,
     cost_domain_id varchar(20) NOT NULL,
@@ -418,7 +449,8 @@ CREATE TABLE cdm.cost
     drg_concept_id bigint NOT NULL,
     drg_source_value varchar(50),
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (cost_id)
+    PRIMARY KEY (cost_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -428,12 +460,14 @@ DROP TABLE IF EXISTS cdm.fact_relationship;
 
 CREATE TABLE cdm.fact_relationship
 (
+    id bigint NOT NULL,
     domain_concept_id_1 int NOT NULL,
     fact_id_1 bigint NOT NULL,
     domain_concept_id_2 int NOT NULL,
     fact_id_2 bigint NOT NULL,
     relationship_concept_id bigint NOT NULL,
-    unit_id varchar(50) NOT NULL
+    unit_id varchar(50) NOT NULL,
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -443,6 +477,7 @@ DROP TABLE IF EXISTS cdm.condition_era;
 
 CREATE TABLE cdm.condition_era
 (
+    id bigint NOT NULL,
     condition_era_id bigint AUTO_INCREMENT NOT NULL,
     person_id bigint NOT NULL,
     condition_concept_id bigint NOT NULL,
@@ -450,7 +485,8 @@ CREATE TABLE cdm.condition_era
     condition_era_end_date date NOT NULL,
     condition_occurrence_count int,
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (condition_era_id)
+    PRIMARY KEY (condition_era_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -460,6 +496,7 @@ DROP TABLE IF EXISTS cdm.drug_era;
 
 CREATE TABLE cdm.drug_era
 (
+    id bigint NOT NULL,
     drug_era_id bigint AUTO_INCREMENT NOT NULL,
     person_id bigint NOT NULL,
     drug_concept_id bigint NOT NULL,
@@ -468,7 +505,8 @@ CREATE TABLE cdm.drug_era
     drug_exposure_count int,
     gap_days int,
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (drug_era_id)
+    PRIMARY KEY (drug_era_id),
+    UNIQUE KEY (id)
 );
 
 -- -----------------------------------------------
@@ -478,6 +516,7 @@ DROP TABLE IF EXISTS cdm.dose_era;
 
 CREATE TABLE cdm.dose_era
 (
+    id bigint NOT NULL,
     dose_era_id bigint AUTO_INCREMENT NOT NULL,
     person_id bigint NOT NULL,
     drug_concept_id bigint NOT NULL,
@@ -486,7 +525,8 @@ CREATE TABLE cdm.dose_era
     dose_era_start_date date NOT NULL,
     dose_era_end_date date NOT NULL,
     unit_id varchar(50) NOT NULL,
-    PRIMARY KEY (dose_era_id)
+    PRIMARY KEY (dose_era_id),
+    UNIQUE KEY (id)
 );
 
 -- -------------------------------------------------------------------
@@ -497,7 +537,7 @@ CREATE TABLE cdm.dose_era
 -- table: src_clean
 -- Contains persons observations
 -- -------------------------------------------------------------------
-
+/*
 DROP TABLE IF EXISTS cdm.src_clean;
 
 CREATE TABLE cdm.src_clean (
@@ -517,7 +557,7 @@ CREATE TABLE cdm.src_clean (
     unit_id                     varchar(50),
     filter                      smallint
 );
-
+*/
 -- -------------------------------------------------------------------
 -- Rules all together
 -- Takes data from source tables and puts together participant_id
@@ -525,6 +565,7 @@ CREATE TABLE cdm.src_clean (
 -- -------------------------------------------------------------------
 
 -- Do not set locks, allow dirty reads.
+/*
 SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 
 INSERT INTO cdm.src_clean
@@ -616,7 +657,6 @@ WHERE TRUE;
 -- -------------------------------------------------------------------
 -- Update cdm.src_clean to filter specific survey questions.
 -- -------------------------------------------------------------------
-
 UPDATE combined_question_filter SET question_ppi_code = REPLACE(question_ppi_code, '\r', '');
 
 UPDATE cdm.src_clean
@@ -624,7 +664,7 @@ UPDATE cdm.src_clean
         cdm.src_clean.question_ppi_code = cdm.combined_question_filter.question_ppi_code
 SET cdm.src_clean.filter = 1
 WHERE TRUE;
-
+*/
 -- -------------------------------------------------------------------
 -- source_file: src/src_mapped.sql
 -- -------------------------------------------------------------------
@@ -633,7 +673,6 @@ WHERE TRUE;
 -- table: src_participant
 -- Provides participant with birthday date and last observation date.
 -- -------------------------------------------------------------------
-
 DROP TABLE IF EXISTS cdm.src_participant;
 CREATE TABLE cdm.src_participant
 (
@@ -689,7 +728,7 @@ ALTER TABLE cdm.src_participant ADD KEY (participant_id);
 -- 'value_source_concept_id' and 'value_concept_id' - the same
 -- relation.
 -- -------------------------------------------------------------------
-
+/*
 DROP TABLE IF EXISTS cdm.src_mapped;
 CREATE TABLE cdm.src_mapped
 (
@@ -768,7 +807,7 @@ WHERE src_c.filter = 0
 ALTER TABLE cdm.src_mapped ADD KEY (question_ppi_code);
 CREATE INDEX mapped_p_id_and_ppi ON cdm.src_mapped (participant_id, question_ppi_code);
 CREATE INDEX mapped_qr_id_and_ppi ON cdm.src_mapped (questionnaire_response_id, question_ppi_code);
-
+*/
 -- -------------------------------------------------------------------
 -- source_file: src/location.sql
 -- -------------------------------------------------------------------
@@ -778,7 +817,6 @@ CREATE INDEX mapped_qr_id_and_ppi ON cdm.src_mapped (questionnaire_response_id, 
 -- Address is taken as answer to address-related questions during
 -- last survey.
 -- -------------------------------------------------------------------
-
 DROP TABLE IF EXISTS cdm.src_person_location;
 CREATE TABLE cdm.src_person_location
 (
@@ -837,8 +875,10 @@ GROUP BY src_participant.participant_id;
 
 TRUNCATE TABLE cdm.location;
 
+SET @row_number = 0;
 INSERT cdm.location
 SELECT DISTINCT
+    (@row_number:=@row_number + 1)  AS id,
     NULL                            AS location_id,
     src.address_1                   AS address_1,
     src.address_2                   AS address_2,
@@ -1046,7 +1086,6 @@ HAVING
     COUNT(distinct src_m.value_ppi_code) = 1
 ;
 
-
 -- -------------------------------------------------------------------
 -- table: cdm_person
 -- Assembles person's birthday, gender, racial, ethnicity and
@@ -1055,7 +1094,11 @@ HAVING
 -- -------------------------------------------------------------------
 TRUNCATE TABLE cdm.person;
 
-INSERT INTO cdm.person
+DROP TABLE IF EXISTS cdm.tmp_person;
+CREATE TABLE cdm.tmp_person LIKE cdm.person;
+ALTER TABLE cdm.tmp_person DROP COLUMN id;
+
+INSERT INTO cdm.tmp_person
 SELECT DISTINCT
     src_m.participant_id                        AS person_id,
     COALESCE(g.gender_target_concept_id, 0)     AS gender_concept_id,
@@ -1089,6 +1132,15 @@ LEFT JOIN cdm.src_person_location person_loc
     ON src_m.participant_id = person_loc.participant_id;
 ;
 
+SET @row_number = 0;
+INSERT INTO cdm.person
+SELECT
+  (@row_number:=@row_number + 1)              AS id,
+  cdm.tmp_person.*
+FROM cdm.tmp_person;
+
+DROP TABLE cdm.tmp_person;
+
 -- -------------------------------------------------------------------
 -- Drop Temporary Tables
 -- -------------------------------------------------------------------
@@ -1107,8 +1159,10 @@ LEFT JOIN cdm.src_person_location person_loc
 -- -------------------------------------------------------------------
 TRUNCATE TABLE cdm.procedure_occurrence;
 
+SET @row_number = 0;
 INSERT INTO cdm.procedure_occurrence
 SELECT
+    (@row_number:=@row_number + 1)              AS id,
     NULL                                        AS procedure_occurrence_id,
     src_m1.participant_id                       AS person_id,
     COALESCE(vc.concept_id, 0)                  AS procedure_concept_id,
@@ -1341,7 +1395,11 @@ CREATE INDEX src_meas_pm_ids ON cdm.src_meas_mapped (physical_measurements_id, m
 -- -------------------------------------------------------------------
 TRUNCATE TABLE cdm.care_site;
 
-INSERT INTO cdm.care_site
+DROP TABLE IF EXISTS cdm.tmp_care_site;
+CREATE TABLE cdm.tmp_care_site LIKE cdm.care_site;
+ALTER TABLE cdm.tmp_care_site DROP COLUMN id;
+
+INSERT INTO cdm.tmp_care_site
 SELECT DISTINCT
     site.site_id                            AS care_site_id,
     site.site_name                          AS care_site_name,
@@ -1352,6 +1410,15 @@ SELECT DISTINCT
     'care_site'                             AS unit_id
 FROM rdr.site site
 ;
+
+SET @row_number = 0;
+INSERT INTO cdm.care_site
+SELECT
+  (@row_number:=@row_number + 1)              AS id,
+  cdm.tmp_care_site.*
+FROM cdm.tmp_care_site;
+
+DROP TABLE IF EXISTS cdm.tmp_care_site;
 
 -- -------------------------------------------------------------------
 -- source_file: src/visit_occurrence.sql
@@ -1398,8 +1465,10 @@ TRUNCATE TABLE cdm.visit_occurrence;
 -- -------------------------------------------------------------------
 -- Here we form visit_occurence table from 'tmp_visits_src'
 -- -------------------------------------------------------------------
+SET @row_number = 0;
 INSERT INTO cdm.visit_occurrence
 SELECT
+    (@row_number:=@row_number + 1)          AS id,
     src.visit_occurrence_id                 AS visit_occurrence_id,
     src.person_id                           AS person_id,
     9202                                    AS visit_concept_id, -- 9202 - 'Outpatient Visit'
@@ -1444,8 +1513,10 @@ FROM cdm.tmp_visits_src src
 -- -------------------------------------------------------------------
 TRUNCATE TABLE cdm.observation;
 
+SET @row_number = 0;
 INSERT INTO cdm.observation
 SELECT
+    (@row_number:=@row_number + 1)              AS id,
     NULL                                        AS observation_id,
     src_m.participant_id                        AS person_id,
     src_m.question_concept_id                   AS observation_concept_id,
@@ -1491,9 +1562,9 @@ WHERE src_m.question_ppi_code is not null
 -- -------------------------------------------------------------------
 -- unit: observ.meas - observations from measurement table
 -- -------------------------------------------------------------------
-
 INSERT INTO cdm.observation
 SELECT
+    (@row_number:=@row_number + 1)          AS id,
     NULL                                    AS observation_id,
     meas.participant_id                     AS person_id,
     meas.cv_concept_id                      AS observation_concept_id,
@@ -1538,8 +1609,10 @@ TRUNCATE TABLE cdm.measurement;
 -- unit: meas.empty - measurements with empty value_decimal and value_code_value fields
 -- 'measurement' table is filled ftom src_meas_mapped table only.
 -- -------------------------------------------------------------------
+SET @row_number = 0;
 INSERT INTO cdm.measurement
 SELECT
+    (@row_number:=@row_number + 1)          AS id,
     meas.measurement_id                     AS measurement_id,
     meas.participant_id                     AS person_id,
     meas.cv_concept_id                      AS measurement_concept_id,
@@ -1589,8 +1662,10 @@ CREATE INDEX measurement_idx ON cdm.measurement (person_id, measurement_date, me
 -- -------------------------------------------------------------------
 TRUNCATE TABLE cdm.note;
 
+SET @row_number = 0;
 INSERT INTO cdm.note
 SELECT
+    (@row_number:=@row_number + 1)          AS id,
     NULL                                    AS note_id,
     meas.participant_id                     AS person_id,
     DATE(meas.measurement_time)             AS note_date,
@@ -1867,8 +1942,10 @@ TRUNCATE TABLE cdm.observation_period;
 -- observation_period is formed as merged possibly intersecting
 -- tmp_obs intervals
 -- -------------------------------------------------------------------
+SET @row_number = 0;
 INSERT INTO cdm.observation_period
 SELECT
+    (@row_number:=@row_number + 1)          AS id,
     NULL                                    AS observation_period_id,
     person_id                               AS person_id,
     MIN(observation_start_date)             AS observation_period_start_date,
@@ -1903,8 +1980,10 @@ TRUNCATE TABLE cdm.fact_relationship;
 -- -------------------------------------------------------------------
 -- Insert to fact_relationships measurement-to-observation relations
 -- -------------------------------------------------------------------
+SET @row_number = 0;
 INSERT INTO cdm.fact_relationship
 SELECT
+    (@row_number:=@row_number + 1)  AS id,
     21                              AS domain_concept_id_1,     -- Measurement
     mtq.measurement_id              AS fact_id_1,
     27                              AS domain_concept_id_2,     -- Observation
@@ -1918,6 +1997,7 @@ INNER JOIN rdr.measurement_to_qualifier mtq
 
 INSERT INTO cdm.fact_relationship
 SELECT
+    (@row_number:=@row_number + 1)  AS id,
     27                              AS domain_concept_id_1,     -- Observation
     cdm_obs.observation_id          AS fact_id_1,
     21                              AS domain_concept_id_2,     -- Measurement
@@ -1990,6 +2070,7 @@ ALTER TABLE cdm.tmp_fact_rel_sd ADD KEY (person_id, parent_id);
 -- ---------------------------------------------------------------------------
 INSERT INTO cdm.fact_relationship
 SELECT
+    (@row_number:=@row_number + 1)  AS id,
     21                          AS domain_concept_id_1,     -- Measurement
     tmp1.measurement_id         AS fact_id_1,               -- measurement_id of the first/second/third/mean systolic blood pressure
     21                          AS domain_concept_id_2,     -- Measurement
@@ -2017,6 +2098,7 @@ WHERE tmp1.systolic_blood_pressure_ind != 0              -- take only systolic b
 -- ----------------------------------------------------------------------------
 INSERT INTO cdm.fact_relationship
 SELECT
+    (@row_number:=@row_number + 1)  AS id,
     21                          AS domain_concept_id_1,     -- Measurement
     tmp2.measurement_id         AS fact_id_1,               -- measurement_id of the first/second/third/mean diastolic blood pressure
     21                          AS domain_concept_id_2,     -- Measurement
@@ -2043,6 +2125,7 @@ WHERE tmp1.systolic_blood_pressure_ind != 0              -- take only systolic b
 -- ---------------------------------------------------------------------
 INSERT INTO cdm.fact_relationship
 SELECT
+    (@row_number:=@row_number + 1)  AS id,
     21                              AS domain_concept_id_1,     -- Measurement
     cdm_meas.measurement_id         AS fact_id_1,
     21                              AS domain_concept_id_2,     -- Measurement
@@ -2054,6 +2137,7 @@ WHERE cdm_meas.parent_id IS NOT NULL;
 
 INSERT INTO cdm.fact_relationship
 SELECT
+    (@row_number:=@row_number + 1)  AS id,
     21                              AS domain_concept_id_1,     -- Measurement
     cdm_meas.parent_id              AS fact_id_1,
     21                              AS domain_concept_id_2,     -- Measurement

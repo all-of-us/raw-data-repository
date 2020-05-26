@@ -22,6 +22,8 @@ class GCPEnvConfigObject(object):
     """ GCP environment configuration object """
 
     _sql_proxy_process = None
+    _sql_proxy_port = None
+    _mysql_connection = None
 
     project = None
     git_project = None
@@ -61,6 +63,10 @@ class GCPEnvConfigObject(object):
             self._sql_proxy_process.terminate()
         # Turn off terminal colors.
         _logger.info(self.terminal_colors.reset)
+
+        # If mysql connection, close it.
+        if self._mysql_connection:
+            self._mysql_connection.close()
 
     def get_app_config(self, config_key='current_config', project=None):
         """
@@ -176,7 +182,7 @@ class GCPEnvConfigObject(object):
             return 1
 
         _logger.debug("Starting google sql proxy...")
-        port = port if port else random.randint(10000, 65535)
+        self._sql_proxy_port = port = port if port else random.randint(10000, 65535)
         instance = instance if instance else gcp_format_sql_instance(
             project if project else self.project, port=port, replica=replica)
 
@@ -192,6 +198,25 @@ class GCPEnvConfigObject(object):
         _logger.error('Failed to activate sql proxy.')
 
         return 0
+
+    def make_mysqldb_connection(self, user: str = 'rdr', database: str = 'rdr'):
+        """
+        Make a standard mysql db connection to the database.
+        :return: MySQLDB object.
+        """
+        if self.project != 'localhost' and not self._sql_proxy_process:
+            raise EnvironmentError("'activate_sql_proxy' method must be called first.")
+
+        db_config = self.get_app_db_config(project=self.project)
+        cfg_user = 'root' if user == 'root' else 'rdr'
+        passwd = db_config[f'{cfg_user}_db_password']
+
+        import MySQLdb
+
+        self._mysql_connection = MySQLdb.connect(user=user, passwd=passwd, database=database,
+                                  host='127.0.0.1', port=self._sql_proxy_port, connect_timeout=30,
+                                  charset='utf8')
+        return self._mysql_connection
 
 
 class GCPProcessContext(object):

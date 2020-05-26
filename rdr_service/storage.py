@@ -196,6 +196,9 @@ class GoogleCloudStorageFile(ContextDecorator):
         self._w_temp_file.write(content)
         self._w_temp_file.flush()
 
+    def flush(self):
+        self._w_temp_file.flush()
+
     def seek(self, offset=0, whence=0):
         if whence == 0:
             self.position = offset
