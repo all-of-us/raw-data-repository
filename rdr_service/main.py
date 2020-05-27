@@ -325,7 +325,7 @@ api.add_resource(RedcapWorkbenchAuditApi,
 
 api.add_resource(GenomicPiiApi,
                  API_PREFIX + "GenomicPII/<string:mode>/<participant_id:p_id>",
-                 endpoint='genomic.pii.gem',
+                 endpoint='genomic.pii',
                  methods=['GET'])
 
 # Configuration API for admin use.  # note: temporarily disabled until decided
