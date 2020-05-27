@@ -7,9 +7,12 @@
 
 import argparse
 import logging
+import os
 import random
+import shutil
 import sys
 from datetime import datetime
+from zipfile import ZipFile
 
 import MySQLdb
 import pytz
@@ -30,12 +33,14 @@ tool_cmd = "sync-consents"
 tool_desc = "manually sync consent files to sites"
 
 SOURCE_BUCKET = {
-    "vibrent": "gs://ptc-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*{file_ext}",
-    "careevolution": "gs://ce-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*{file_ext}"
+    "vibrent": "gs://ptc-uploads-pmi-drc-api-sandbox/Participant/P{p_id}/*{file_ext}",
+    "careevolution": "gs://ce-uploads-all-of-us-rdr-sandbox/Participant/P{p_id}/*{file_ext}"
 }
 
 HPO_REPORT_CONFIG_GCS_PATH = "gs://all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
 DEST_BUCKET = "gs://{bucket_name}/Participant/{org_external_id}/{site_name}/P{p_id}/"
+
+TEMP_CONSENTS_PATH = "./temp_consents"
 
 class SyncConsentClass(object):
     def __init__(self, args, gcp_env):
@@ -76,6 +81,29 @@ class SyncConsentClass(object):
         _logger.debug(" Participant: {0}".format(p_id))
         _logger.debug("    src: {0}".format(src))
         _logger.debug("   dest: {0}".format(dest))
+
+    @staticmethod
+    def _add_path_to_zip(zip_file, directory_path):
+        for current_path, _, files in os.walk(directory_path):
+            # os.walk will recurse into sub_directories, so we only need to handle the files in the current directory
+            for file in files:
+                file_path = os.path.join(current_path, file)
+                archive_name = file_path[len(directory_path):]
+                zip_file.write(file_path, arcname=archive_name)
+
+    @staticmethod
+    def _directories_in(directory_path):
+        with os.scandir(directory_path) as objects:
+            return [directory_object for directory_object in objects if directory_object.is_dir()]
+
+    def _copy(self, source, destination, participant_id):
+        if not self.args.dry_run:
+            if self.args.zip_files:
+                # gcp_cp doesn't create local directories when they don't exist
+                os.makedirs(destination, exist_ok=True)
+            gcp_cp(source, destination, args="-r", flags="-m")
+
+        self._format_debug_out(participant_id, source, destination)
 
     def run(self):
         """
@@ -169,7 +197,12 @@ class SyncConsentClass(object):
                         next(iter(SOURCE_BUCKET))
                     ]).format(p_id=p_id, file_ext=self.file_filter)
 
-                    dest_bucket = DEST_BUCKET.format(
+                    if self.args.zip_files:
+                        destination_pattern =\
+                            TEMP_CONSENTS_PATH + '/{bucket_name}/{org_external_id}/{site_name}/P{p_id}/'
+                    else:
+                        destination_pattern = DEST_BUCKET
+                    destination = destination_pattern.format(
                         bucket_name=bucket,
                         org_external_id=self.args.org_id,
                         site_name=site if site else "no-site-assigned",
@@ -183,17 +216,9 @@ class SyncConsentClass(object):
                         if not files_in_range or len(files_in_range) == 0:
                             _logger.info(f'No files in bucket updated after {self.args.date_limit}')
                         for f in files_in_range:
-                            if not self.args.dry_run:
-                                # actually copy the fles
-                                gcp_cp(f, dest_bucket, args="-r", flags="-m")
-
-                            self._format_debug_out(p_id, f, dest_bucket)
-
+                            self._copy(f, destination, p_id)
                     else:
-                        if not self.args.dry_run:
-                            gcp_cp(src_bucket, dest_bucket, args="-r", flags="-m")
-
-                        self._format_debug_out(p_id, src_bucket, dest_bucket)
+                        self._copy(src_bucket, destination, p_id)
 
                     count += 1
 
@@ -202,6 +227,27 @@ class SyncConsentClass(object):
                 print_progress_bar(
                     count, total_recs, prefix="{0}/{1}:".format(count, total_recs), suffix="complete"
                 )
+
+            if self.args.zip_files and count > 1:
+                _logger.info("zipping and uploading consent files...")
+                for bucket_dir in self._directories_in(TEMP_CONSENTS_PATH):
+                    for org_dir in self._directories_in(bucket_dir):
+                        for site_dir in self._directories_in(org_dir):
+                            zip_file_name = os.path.join(org_dir.path, site_dir.name + '.zip')
+                            with ZipFile(zip_file_name, 'w') as zip_file:
+                                self._add_path_to_zip(zip_file, site_dir.path)
+
+                            destination = "gs://{bucket_name}/Participant/{org_external_id}/".format(
+                                bucket_name='ptc-uploads-pmi-drc-api-sandbox',  # todo: should be orgs bucket name
+                                org_external_id=org_dir.name
+                            )
+                            if not self.args.dry_run:
+                                _logger.debug("Uploading file '{zip_file}' to '{destination}'".format(
+                                    zip_file=zip_file_name,
+                                    destination=destination
+                                ))
+                                gcp_cp(zip_file_name, destination, flags="-m")
+                shutil.rmtree(TEMP_CONSENTS_PATH)
 
         except MySQLdb.OperationalError as e:
             _logger.error("failed to connect to {0} mysql instance. [{1}]".format(self.gcp_env.project, e))
@@ -229,6 +275,9 @@ def run():
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="Do not copy files, only print the list of files that would be copied"
+    )
+    parser.add_argument(
+        "--zip-files", action="store_true", help="Zip the consent files by site rather than uploading them individually"
     )
 
     parser.add_argument(
