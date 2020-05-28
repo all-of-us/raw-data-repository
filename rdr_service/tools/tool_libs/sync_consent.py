@@ -137,10 +137,6 @@ class SyncConsentClass(object):
             return 1
 
         try:
-            _logger.info("connecting to mysql instance...")
-            sql_conn = MySQLdb.connect(host="127.0.0.1", user="rdr", passwd=str(passwd), db="rdr", port=port)
-            cursor = sql_conn.cursor()
-
             _logger.info("retrieving participant information...")
             # get record count
             query_args = {}
@@ -158,15 +154,15 @@ class SyncConsentClass(object):
             participant_sql, params = build_participant_query(org_ids, **query_args)
             count_sql = self._get_count_sql(participant_sql)
             with database_factory.make_server_cursor_database().session() as session:
-                count_result = session.execute(count_sql, params).scalar()
-                total_recs = count_result
+                total_participants = session.execute(count_sql, params).scalar()
 
                 _logger.info("transferring files to destinations...")
                 count = 0
                 for rec in session.execute(participant_sql, params):
                     if not self.args.debug:
                         print_progress_bar(
-                            count, total_recs, prefix="{0}/{1}:".format(count, total_recs), suffix="complete"
+                            count, total_participants, prefix="{0}/{1}:".format(count, total_participants),
+                            suffix="complete"
                         )
 
                     p_id = rec[0]
@@ -180,13 +176,11 @@ class SyncConsentClass(object):
                         if not site_info:
                             _logger.warning("\nsite info not found for [{0}].".format(rec[2]))
                             count += 1
-                            rec = cursor.fetchone()
                             continue
                         bucket = site_info.get("bucket_name")
                     if not bucket:
                         _logger.warning("\nno bucket name found for [{0}].".format(rec[2]))
                         count += 1
-                        rec = cursor.fetchone()
                         continue
 
                     # Copy all files, not just PDFs
@@ -223,9 +217,9 @@ class SyncConsentClass(object):
                     count += 1
 
             # print progressbar one more time to show completed.
-            if total_recs > 0 and not self.args.debug:
+            if total_participants > 0 and not self.args.debug:
                 print_progress_bar(
-                    count, total_recs, prefix="{0}/{1}:".format(count, total_recs), suffix="complete"
+                    count, total_participants, prefix="{0}/{1}:".format(count, total_participants), suffix="complete"
                 )
 
             if self.args.zip_files and count > 1:

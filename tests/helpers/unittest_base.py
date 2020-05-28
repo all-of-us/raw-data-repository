@@ -21,12 +21,14 @@ from rdr_service import config
 from rdr_service import main
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
-from rdr_service.dao import questionnaire_dao, questionnaire_response_dao
+from rdr_service.dao import database_factory, questionnaire_dao, questionnaire_response_dao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.code import Code
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.organization import Organization
+from rdr_service.model.site import Site
 from rdr_service.offline import sql_exporter
 from rdr_service.participant_enums import (
     EnrollmentStatus,
@@ -131,6 +133,9 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
     def setUp(self, with_data=True, with_consent_codes=False) -> None:
         super(BaseTestCase, self).setUp()
+
+        self.session = database_factory.get_database().make_session()
+
         logger = logging.getLogger()
         stream_handler = logging.StreamHandler(sys.stdout)
         logger.addHandler(stream_handler)
@@ -150,6 +155,10 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         questionnaire_dao._add_codes_if_missing = lambda: True
         questionnaire_response_dao._add_codes_if_missing = lambda email: True
         self._consent_questionnaire_id = None
+
+    def tearDown(self):
+        super(BaseTestCase, self).setUp()
+        self.session.close()
 
     def setup_storage(self):
         temp_folder_path = mkdtemp()
@@ -182,6 +191,33 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             os.mkdir(bucket_dir)
         shutil.copy(os.path.join(os.path.dirname(__file__), "..", "test-data", test_file_name), bucket_dir)
 
+    def _commit_to_database(self, model):
+        self.session.add(model)
+        self.session.commit()
+
+    def create_database_site(self, **kwargs):
+        site = self._site_with_defaults(**kwargs)
+        self._commit_to_database(site)
+        return site
+
+    @staticmethod
+    def _site_with_defaults(**kwargs):
+        return Site(**kwargs)
+
+    def create_database_organization(self, **kwargs):
+        organization = self._organization_with_defaults(**kwargs)
+        self._commit_to_database(organization)
+        return organization
+
+    @staticmethod
+    def _organization_with_defaults(**kwargs):
+        return Organization(**kwargs)
+
+    def create_database_participant(self, **kwargs):
+        participant = self._participant_with_defaults(**kwargs)
+        self._commit_to_database(participant)
+        return participant
+
     @staticmethod
     def _participant_with_defaults(**kwargs):
         """Creates a new Participant model, filling in some default constructor args.
@@ -196,6 +232,11 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         }
         common_args.update(kwargs)
         return Participant(**common_args)
+
+    def create_database_participant_summary(self, **kwargs):
+        participant_summary = self._participant_summary_with_defaults(**kwargs)
+        self._commit_to_database(participant_summary)
+        return participant_summary
 
     @staticmethod
     def _participant_summary_with_defaults(**kwargs):
