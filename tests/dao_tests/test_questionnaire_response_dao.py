@@ -688,7 +688,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
         self._setup_participant()
         self._create_cope_questionnaire()  # May survey
-        self._bump_questionnaire_version(2, updated_time=datetime.datetime(2020, 6, 7))  # June survey
+        self._bump_questionnaire_version(2, updated_time=datetime.datetime(2020, 5, 23))  # update for June survey
 
         self._submit_cope_consent(self.cope_consent_yes, questionnaire_version=2, cope_consent_question_id=8)
 
