@@ -308,7 +308,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             if questionnaire_field in defaults:
                 if f'{questionnaire_field}Time' not in defaults:
                     defaults[f'{questionnaire_field}Time'] = datetime.now()
-                if f'{questionnaire_field}_authored' not in defaults:
+                if f'{questionnaire_field}Authored' not in defaults:
                     defaults[f'{questionnaire_field}Authored'] = datetime.now()
 
         return ParticipantSummary(**defaults)
