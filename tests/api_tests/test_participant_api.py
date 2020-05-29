@@ -348,21 +348,24 @@ class ParticipantApiTest(BaseTestCase):
         _add_code_answer(code_answers, "education", education_code)
         _add_code_answer(code_answers, "income", income_code)
 
+        string_answers = [
+            ("firstName", first_name),
+            ("middleName", middle_name),
+            ("lastName", last_name),
+            ("city", city),
+            ("phoneNumber", phone_number),
+            ("loginPhoneNumber", login_phone_number),
+            ("zipCode", zip_code),
+        ]
+        if street_address is not None:
+            string_answers.append(("streetAddress", street_address))
+        if street_address2 is not None:
+            string_answers.append(("streetAddress2", street_address2))
         qr = self.make_questionnaire_response_json(
             participant_id,
             questionnaire_id,
             code_answers=code_answers,
-            string_answers=[
-                ("firstName", first_name),
-                ("middleName", middle_name),
-                ("lastName", last_name),
-                ("streetAddress", street_address),
-                ("streetAddress2", street_address2),
-                ("city", city),
-                ("phoneNumber", phone_number),
-                ("loginPhoneNumber", login_phone_number),
-                ("zipCode", zip_code),
-            ],
+            string_answers=string_answers,
             date_answers=[("dateOfBirth", date_of_birth)],
             uri_answers=[("CABoRSignature", cabor_signature_uri)],
         )
@@ -447,6 +450,130 @@ class ParticipantApiTest(BaseTestCase):
         self.assertEqual("TEST", p_1["hpoId"])
         self.assertEqual(TIME_2.strftime("%Y" "-" "%m" "-" "%d" "T" "%X"), p_1["lastModified"])
         self.assertEqual('W/"2"', p_1["meta"]["versionId"])
+
+    def test_street_address_two_clears_on_address_update(self):
+        with FakeClock(TIME_1):
+            participant_1 = self.send_post("Participant", {"providerLink": [self.provider_link_2]})
+        questionnaire_id = self.create_questionnaire("questionnaire3.json")
+        participant_id_1 = participant_1["participantId"]
+        self.send_consent(participant_id_1)
+        self.submit_questionnaire_response(
+            participant_id_1,
+            questionnaire_id,
+            RACE_WHITE_CODE,
+            "male",
+            "Bob",
+            "Q",
+            "Jones",
+            "78751",
+            "PIIState_VA",
+            "1234 Main Street",
+            "APT C",
+            "Austin",
+            "male_sex",
+            "215-222-2222",
+            "straight",
+            "512-555-5555",
+            "email_code",
+            "en",
+            "highschool",
+            "lotsofmoney",
+            datetime.date(1978, 10, 9),
+            "signature.pdf",
+        )
+
+        # Change street address to only have one line
+        self.submit_questionnaire_response(
+            participant_id_1,
+            questionnaire_id,
+            RACE_WHITE_CODE,
+            "male",
+            "Bob",
+            "Q",
+            "Jones",
+            "78751",
+            "PIIState_VA",
+            "44 Hickory Lane",
+            "",
+            "Austin",
+            "male_sex",
+            "444-222-2222",
+            "straight",
+            "512-555-5555",
+            "email_code",
+            "en",
+            "highschool",
+            "lotsofmoney",
+            datetime.date(1978, 10, 9),
+            "signature.pdf",
+            TIME_2,
+        )
+
+        participant_summary = self.send_get("Participant/%s/Summary" % participant_id_1)
+        self.assertEqual("", participant_summary["streetAddress2"])
+
+    def test_address_string_persists_through_update(self):
+        # Make sure strings aren't cleared when an update leaves them out
+        with FakeClock(TIME_1):
+            participant_1 = self.send_post("Participant", {"providerLink": [self.provider_link_2]})
+        questionnaire_id = self.create_questionnaire("questionnaire3.json")
+        participant_id_1 = participant_1["participantId"]
+        self.send_consent(participant_id_1)
+        self.submit_questionnaire_response(
+            participant_id_1,
+            questionnaire_id,
+            RACE_WHITE_CODE,
+            "male",
+            "Bob",
+            "Q",
+            "Jones",
+            "78751",
+            "PIIState_VA",
+            "1234 Main Street",
+            "APT C",
+            "Austin",
+            "male_sex",
+            "215-222-2222",
+            "straight",
+            "512-555-5555",
+            "email_code",
+            "en",
+            "highschool",
+            "lotsofmoney",
+            datetime.date(1978, 10, 9),
+            "signature.pdf",
+        )
+
+        # Change street address to only have one line
+        self.submit_questionnaire_response(
+            participant_id_1,
+            questionnaire_id,
+            RACE_WHITE_CODE,
+            "male",
+            "Bob",
+            "Q",
+            "Jones",
+            "78751",
+            "PIIState_VA",
+            None,
+            None,
+            "Austin",
+            "male_sex",
+            "444-222-2222",
+            "straight",
+            "512-555-5555",
+            "email_code",
+            "en",
+            "highschool",
+            "lotsofmoney",
+            datetime.date(1978, 10, 9),
+            "signature.pdf",
+            TIME_2,
+        )
+
+        participant_summary = self.send_get("Participant/%s/Summary" % participant_id_1)
+        self.assertEqual("1234 Main Street", participant_summary["streetAddress"])
+        self.assertEqual("APT C", participant_summary["streetAddress2"])
 
 
 def _add_code_answer(code_answers, link_id, code):

@@ -590,7 +590,7 @@ class QuestionnaireResponseDao(BaseDao):
                                     qr_answer.valueDecimal = answer.valueDecimal
                                 if answer.valueInteger is not None:
                                     qr_answer.valueInteger = answer.valueInteger
-                                if answer.valueString:
+                                if answer.valueString is not None:
                                     answer_length = len(answer.valueString)
                                     max_length = QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN
                                     if answer_length > max_length:
