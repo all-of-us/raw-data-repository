@@ -3,6 +3,7 @@ import collections
 import contextlib
 import copy
 import csv
+from datetime import datetime
 import http.client
 import io
 import json
@@ -28,6 +29,7 @@ from rdr_service.model.code import Code
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.organization import Organization
+from rdr_service.model.hpo import HPO
 from rdr_service.model.site import Site
 from rdr_service.offline import sql_exporter
 from rdr_service.participant_enums import (
@@ -130,11 +132,11 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
     def __init__(self, *args, **kwargs):
         super(BaseTestCase, self).__init__(*args, **kwargs)
         self.fake = faker.Faker()
+        self._next_unique_participant_id = 900000000
+        self._next_unique_participant_biobank_id = 500000000
 
     def setUp(self, with_data=True, with_consent_codes=False) -> None:
         super(BaseTestCase, self).setUp()
-
-        self.session = database_factory.get_database().make_session()
 
         logger = logging.getLogger()
         stream_handler = logging.StreamHandler(sys.stdout)
@@ -155,6 +157,8 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         questionnaire_dao._add_codes_if_missing = lambda: True
         questionnaire_response_dao._add_codes_if_missing = lambda email: True
         self._consent_questionnaire_id = None
+
+        self.session = database_factory.get_database().make_session()
 
     def tearDown(self):
         super(BaseTestCase, self).setUp()
@@ -195,53 +199,100 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         self.session.add(model)
         self.session.commit()
 
+    def unique_participant_id(self):
+        next_participant_id = self._next_unique_participant_id
+        self._next_unique_participant_id += 1
+        return next_participant_id
+
+    def unique_participant_biobank_id(self):
+        next_biobank_id = self._next_unique_participant_biobank_id
+        self._next_unique_participant_biobank_id += 1
+        return next_biobank_id
+
     def create_database_site(self, **kwargs):
         site = self._site_with_defaults(**kwargs)
         self._commit_to_database(site)
         return site
 
-    @staticmethod
-    def _site_with_defaults(**kwargs):
-        return Site(**kwargs)
+    def _site_with_defaults(self, **kwargs):
+        defaults = {
+            'siteName': 'example_site'
+        }
+        defaults.update(kwargs)
+        return Site(**defaults)
 
     def create_database_organization(self, **kwargs):
         organization = self._organization_with_defaults(**kwargs)
         self._commit_to_database(organization)
         return organization
 
-    @staticmethod
-    def _organization_with_defaults(**kwargs):
-        return Organization(**kwargs)
+    def _organization_with_defaults(self, **kwargs):
+        defaults = {
+            'displayName': 'example_org_display'
+        }
+        defaults.update(kwargs)
+
+        if 'hpoId' not in defaults:
+            hpo = self.create_database_hpo()
+            defaults['hpoId'] = hpo.hpoId
+
+        return Organization(**defaults)
+
+    def create_database_hpo(self, **kwargs):
+        hpo = self._hpo_with_defaults(**kwargs)
+
+        # hpoId is the primary key but is not automatically set when inserting
+        if hpo.hpoId is None:
+            hpo.hpoId = self.session.query(HPO).count()
+        self._commit_to_database(hpo)
+
+        return hpo
+
+    def _hpo_with_defaults(self, **kwargs):
+        return HPO(**kwargs)
 
     def create_database_participant(self, **kwargs):
         participant = self._participant_with_defaults(**kwargs)
         self._commit_to_database(participant)
         return participant
 
-    @staticmethod
-    def _participant_with_defaults(**kwargs):
+    def _participant_with_defaults(self, **kwargs):
         """Creates a new Participant model, filling in some default constructor args.
 
         This is intended especially for updates, where more fields are required than for inserts.
         """
-        common_args = {
-            "hpoId": UNSET_HPO_ID,
-            "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
-            "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
-            "participantOrigin": "example"
+        defaults = {
+            'hpoId': UNSET_HPO_ID,
+            'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
+            'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
+            'participantOrigin': 'example',
+            'version': 1,
+            'lastModified': datetime.now(),
+            'signUpTime': datetime.now()
         }
-        common_args.update(kwargs)
-        return Participant(**common_args)
+        defaults.update(kwargs)
+
+        if 'biobankId' not in defaults:
+            defaults['biobankId'] = self.unique_participant_biobank_id()
+        if 'participantId' not in defaults:
+            defaults['participantId'] = self.unique_participant_id()
+
+        return Participant(**defaults)
 
     def create_database_participant_summary(self, **kwargs):
         participant_summary = self._participant_summary_with_defaults(**kwargs)
         self._commit_to_database(participant_summary)
         return participant_summary
 
-    @staticmethod
-    def _participant_summary_with_defaults(**kwargs):
-        common_args = {
-            "hpoId": UNSET_HPO_ID,
+    def _participant_summary_with_defaults(self, **kwargs):
+        participant = kwargs.get('participant', self.create_database_participant())
+
+        defaults = {
+            "participantId": participant.participantId,
+            "biobankId": participant.biobankId,
+            "hpoId": participant.hpoId,
+            "firstName": self.fake.first_name(),
+            "lastName": self.fake.last_name(),
             "numCompletedPPIModules": 0,
             "numCompletedBaselinePPIModules": 0,
             "numBaselineSamplesArrived": 0,
@@ -249,10 +300,18 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
             "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
             "enrollmentStatus": EnrollmentStatus.INTERESTED,
-            "participantOrigin": "example"
+            "participantOrigin": participant.participantOrigin
         }
-        common_args.update(kwargs)
-        return ParticipantSummary(**common_args)
+
+        defaults.update(kwargs)
+        for questionnaire_field in ['consentForStudyEnrollment']:
+            if questionnaire_field in defaults:
+                if f'{questionnaire_field}Time' not in defaults:
+                    defaults[f'{questionnaire_field}Time'] = datetime.now()
+                if f'{questionnaire_field}_authored' not in defaults:
+                    defaults[f'{questionnaire_field}Authored'] = datetime.now()
+
+        return ParticipantSummary(**defaults)
 
     @staticmethod
     def _participant_history_with_defaults(**kwargs):
