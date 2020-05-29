@@ -330,7 +330,7 @@ class QuestionnaireResponseDao(BaseDao):
                             gror_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
                     elif code.value == COPE_CONSENT_QUESTION_CODE:
                         # COPE survey updates can occur at the end of the previous month
-                        adjusted_last_modified = questionnaire_history.lastModified + timedelta(days=10)
+                        adjusted_last_modified = questionnaire_history.lastModified + timedelta(days=5)
                         month_name = adjusted_last_modified.strftime('%B')
                         # Currently only have fields in participant summary for May, Jun and July
                         if month_name in ['May', 'June', 'July']:
