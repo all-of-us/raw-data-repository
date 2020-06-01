@@ -77,9 +77,10 @@ CONSENT_GROR_YES_CODE = "CheckDNA_Yes"
 CONSENT_GROR_NO_CODE = "CheckDNA_No"
 CONSENT_GROR_NOT_SURE = "CheckDNA_NotSure"
 
-# Consent COPE Answer Codes
+# Consent COPE Answer Codes.  (Deferred = expressed interest in taking the survey later)
 CONSENT_COPE_YES_CODE = "COPE_A_44"
 CONSENT_COPE_NO_CODE = "COPE_A_13"
+CONSENT_COPE_DEFERRED_CODE = "COPE_A_231"
 
 # Module names for questionnaires / consent forms
 CONSENT_FOR_GENOMICS_ROR_MODULE = "GROR"
