@@ -285,7 +285,9 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         return participant_summary
 
     def _participant_summary_with_defaults(self, **kwargs):
-        participant = kwargs.get('participant', self.create_database_participant())
+        participant = kwargs.get('participant')
+        if participant is None:
+            participant = self.create_database_participant()
 
         defaults = {
             "participantId": participant.participantId,
