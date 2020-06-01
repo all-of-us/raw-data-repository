@@ -34,6 +34,7 @@ from rdr_service.code_constants import (
     GROR_CONSENT_QUESTION_CODE,
     CONSENT_COPE_YES_CODE,
     CONSENT_COPE_NO_CODE,
+    CONSENT_COPE_DEFERRED_CODE,
     COPE_CONSENT_QUESTION_CODE)
 from rdr_service.config_api import is_config_admin
 from rdr_service.dao.base_dao import BaseDao
@@ -337,7 +338,7 @@ class QuestionnaireResponseDao(BaseDao):
                             answer_value = code_dao.get(answer.valueCodeId).value
                             if answer_value == CONSENT_COPE_YES_CODE:
                                 submission_status = QuestionnaireStatus.SUBMITTED
-                            elif answer_value == CONSENT_COPE_NO_CODE:
+                            elif answer_value in [CONSENT_COPE_NO_CODE, CONSENT_COPE_DEFERRED_CODE]:
                                 submission_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
                             else:
                                 submission_status = QuestionnaireStatus.SUBMITTED_INVALID
