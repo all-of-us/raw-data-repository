@@ -10,7 +10,11 @@ from rdr_service import clock
 from rdr_service.config import (
     GENOMIC_GC_METRICS_BUCKET_NAME,
     getSetting,
-    getSettingList)
+    getSettingList,
+    GENOME_TYPE_ARRAY,
+    GENOME_TYPE_WGS,
+    GENOME_TYPE_CVL,
+)
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     GenomicSubProcessStatus)
@@ -230,6 +234,18 @@ class GenomicJobController:
             self.job_result = self._aggregate_run_results()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
+
+    def reconcile_report_states(self, _genome_type):
+        """
+        Wrapper for the Reconciler reconcile_gem_report_states
+        and reconcile_rhp_report_states
+        :param _genome_type: array or wgs
+        """
+
+        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id)
+
+        if _genome_type == GENOME_TYPE_ARRAY:
+            self.reconciler.reconcile_gem_report_states(_last_run_time=self.last_run_time)
 
     def run_gem_a2_workflow(self):
         """

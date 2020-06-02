@@ -161,3 +161,12 @@ class RhpApiTest(GenomicApiTestBase):
         self.send_get("GenomicPII/RHP/", expected_status=404)
         self.send_get("GenomicPII/RHP/P8", expected_status=404)
         self.send_get("GenomicPII/CVL/P2", expected_status=400)
+
+
+class GenomicOutreachApiTest(GenomicApiTestBase):
+    def setUp(self):
+        super(GenomicOutreachApiTest, self).setUp()
+
+    def test_get_date_lookup(self):
+        resp = self.send_get("GenomicOutreach/GEM?start_date=2020-05-28T08:00:01-05:00")
+        print(resp)

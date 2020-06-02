@@ -21,6 +21,7 @@ from rdr_service.participant_enums import (
     QuestionnaireStatus,
     WithdrawalStatus,
     SuspensionStatus,
+    GenomicWorkflowState,
 )
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -411,6 +412,60 @@ class GenomicSetMemberDao(UpdatableDao):
             ).all()
         return members
 
+    def get_unconsented_gror_since_date(self, _date):
+        """
+        Get the genomic set members with GROR updated to No Consent since date
+        :param _date:
+        :return: GenomicSetMember list
+        """
+        with self.session() as session:
+            members = session.query(GenomicSetMember).join(
+                (ParticipantSummary,
+                 GenomicSetMember.participantId == ParticipantSummary.participantId)
+            ).filter(
+                GenomicSetMember.genomicWorkflowState.in_((
+                    GenomicWorkflowState.GEM_RPT_READY,
+                    GenomicWorkflowState.A1,
+                    GenomicWorkflowState.A2
+                )) &
+                (
+                    (ParticipantSummary.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED) |
+                    (ParticipantSummary.consentForStudyEnrollment != QuestionnaireStatus.SUBMITTED)
+                ) &
+                (
+                    (ParticipantSummary.consentForGenomicsRORAuthored > _date) |
+                    (ParticipantSummary.consentForGenomicsRORAuthored > _date)
+                )
+            ).all()
+        return members
+
+    def get_reconsented_gror_since_date(self, _date):
+        """
+        Get the genomic set members with GROR updated to Yes Consent since date
+        after having report marked for deletion
+        :param _date:
+        :return: GenomicSetMember list
+        """
+        with self.session() as session:
+            members = session.query(GenomicSetMember).join(
+                (ParticipantSummary,
+                 GenomicSetMember.participantId == ParticipantSummary.participantId)
+            ).filter(
+                GenomicSetMember.genomicWorkflowState.in_((
+                    GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
+                    GenomicWorkflowState.GEM_RPT_DELETED,
+                )) &
+                (
+                    (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED) |
+                    (ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED)
+                ) &
+                (
+                    (ParticipantSummary.consentForGenomicsRORAuthored > _date) |
+                    (ParticipantSummary.consentForGenomicsRORAuthored > _date)
+                )
+            ).all()
+        return members
+
 
 class GenomicJobRunDao(UpdatableDao):
     """ Stub for GenomicJobRun model """
@@ -776,4 +831,53 @@ class GenomicPiiDao(BaseDao):
                     ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                     ParticipantSummary.withdrawalStatus == SuspensionStatus.NOT_SUSPENDED,
                 ).first()
+            )
+
+
+class GenomicOutreachDao(BaseDao):
+    def __init__(self):
+        super(GenomicOutreachDao, self).__init__(
+            GenomicSetMember, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+    def to_client_json(self, result):
+        return {"message": "pass"}
+
+    def participant_lookup(self, pid):
+        pass
+
+    def date_lookup(self, start_date, end_date=None):
+        """
+        Returns lists of PIDs aggregated by the
+        :param start_date:
+        :param end_date:
+        :return: lists of PIDs and report states
+        """
+        as_of_ts = clock.CLOCK.now()
+
+        if end_date is None:
+            end_date = as_of_ts
+
+        with self.session() as session:
+            return (
+                session.query(GenomicSetMember.participantId,
+                              GenomicSetMember.genomicWorkflowState)
+                .join(
+                    ParticipantSummary,
+                    GenomicSetMember.participantId == ParticipantSummary.participantId,
+                ).filter(
+                    ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
+                    ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                    ParticipantSummary.withdrawalStatus == SuspensionStatus.NOT_SUSPENDED,
+                    GenomicSetMember.genomicWorkflowState.in_((GenomicWorkflowState.GEM_RPT_READY,
+                                                               GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
+                                                               GenomicWorkflowState.GEM_RPT_DELETED)),
+                    ParticipantSummary.consentForGenomicsRORAuthored > start_date,
+                    ParticipantSummary.consentForGenomicsRORAuthored > end_date,
+                ).all()
             )

@@ -614,8 +614,8 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the fields against the DB
         gc_metrics = self.metrics_dao.get_all()
 
-        self.assertEqual(len(gc_metrics), 1)
-        self._gc_metrics_ingested_data_test_cases(gc_metrics)
+        self.assertEqual(len(gc_metrics), 2)
+        self._gc_metrics_ingested_data_test_cases([gc_metrics[0]])
 
         # Test Genomic State updated
         member = self.member_dao.get(1)
@@ -900,7 +900,7 @@ class GenomicPipelineTest(BaseTestCase):
                 recon_gc_manifest_job_id=kwargs.get('recon_gc_man_id'),
                 gem_a1_manifest_job_id=kwargs.get('gem_a1_run_id'),
                 cvl_w1_manifest_job_id=kwargs.get('cvl_w1_run_id'),
-                genomic_workflow_state = kwargs.get('genomic_workflow_state')
+                genomic_workflow_state=kwargs.get('genomic_workflow_state')
             )
 
     def _update_site_states(self):
@@ -979,6 +979,10 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/10001_R01C01.vcf.gz',
             f'test_data_folder/10001_R01C01.vcf.gz.tbi',
             f'test_data_folder/10001_R01C01.red.idat.gz',
+            f'test_data_folder/10002_R01C02.vcf.gz',
+            f'test_data_folder/10002_R01C02.vcf.gz.tbi',
+            f'test_data_folder/10002_R01C02.red.idat.gz',
+            f'test_data_folder/10002_R01C02.grn.idat.md5',
         )
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
@@ -993,9 +997,23 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(1, gc_record.idatRedReceived)
         self.assertEqual(0, gc_record.idatGreenReceived)
 
+        gc_record = self.metrics_dao.get(2)
+
+        # Test the gc_metrics were updated with reconciliation data
+        self.assertEqual(1, gc_record.vcfReceived)
+        self.assertEqual(1, gc_record.tbiReceived)
+        self.assertEqual(1, gc_record.idatRedReceived)
+        self.assertEqual(1, gc_record.idatGreenReceived)
+
         # Test member updated with job ID
         member = self.member_dao.get(1)
         self.assertEqual(2, member.reconcileMetricsSequencingJobRunId)
+        self.assertEqual(GenomicWorkflowState.AW2_MISSING, member.genomicWorkflowState)
+
+        # Test member updated with job ID
+        member = self.member_dao.get(2)
+        self.assertEqual(2, member.reconcileMetricsSequencingJobRunId)
+        self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
 
         # Fake alert
         summary = '[Genomic System Alert] Missing AW2 Array Manifest Files'
@@ -1416,6 +1434,10 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/10001_R01C01.vcf.gz.tbi',
             f'test_data_folder/10001_R01C01.red.idat.gz',
             f'test_data_folder/10001_R01C01.grn.idat.md5',
+            f'test_data_folder/10002_R01C02.vcf.gz',
+            f'test_data_folder/10002_R01C02.vcf.gz.tbi',
+            f'test_data_folder/10002_R01C02.red.idat.gz',
+            f'test_data_folder/10002_R01C02.grn.idat.md5',
         )
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
@@ -1423,6 +1445,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 3
         genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 4
 
+        members = self.member_dao.get_all()
         # finally run the manifest workflow
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
         a1_time = datetime.datetime(2020, 4, 1, 0, 0, 0, 0)
@@ -1438,13 +1461,15 @@ class GenomicPipelineTest(BaseTestCase):
                 GenomicSetMember.sexAtBirth,
                 GenomicSetMember.nyFlag,
                 GenomicSetMember.gemA1ManifestJobRunId,
-                GenomicGCValidationMetrics.siteId).filter(
+                GenomicGCValidationMetrics.siteId,
+                GenomicSetMember.genomicWorkflowState).filter(
                 GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
                 GenomicSet.id == GenomicSetMember.genomicSetId,
                 GenomicSetMember.id == 1
             ).one()
 
         self.assertEqual(5, test_member_1.gemA1ManifestJobRunId)
+        self.assertEqual(GenomicWorkflowState.A1, test_member_1.genomicWorkflowState)
 
         # Test the manifest file contents
         expected_gem_columns = (
@@ -1458,7 +1483,7 @@ class GenomicPipelineTest(BaseTestCase):
             missing_cols = set(expected_gem_columns) - set(csv_reader.fieldnames)
             self.assertEqual(0, len(missing_cols))
             rows = list(csv_reader)
-            self.assertEqual(1, len(rows))
+            self.assertEqual(2, len(rows))
             self.assertEqual(test_member_1.biobankId, rows[0]['biobank_id'])
             self.assertEqual(test_member_1.sampleId, rows[0]['sample_id'])
             self.assertEqual(test_member_1.sexAtBirth, rows[0]['sex_at_birth'])
@@ -1547,9 +1572,11 @@ class GenomicPipelineTest(BaseTestCase):
         # Create genomic set members
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
                                                 array_participants=range(1, 4),
-                                                gem_a1_run_id=1)
+                                                gem_a1_run_id=1,
+                                                genomic_workflow_state=GenomicWorkflowState.GEM_RPT_READY)
         p3 = self.summary_dao.get(3)
         p3.consentForGenomicsROR = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+        p3.consentForGenomicsRORAuthored = datetime.datetime(2020, 5, 25, 0, 0, 0)
         self.summary_dao.update(p3)
 
         # Run Workflow
@@ -1561,6 +1588,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the member job run ID
         test_member = self.member_dao.get(3)
         self.assertEqual(2, test_member.gemA3ManifestJobRunId)
+        self.assertEqual(GenomicWorkflowState.GEM_RPT_DELETED, test_member.genomicWorkflowState)
 
         # Test the manifest file contents
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
