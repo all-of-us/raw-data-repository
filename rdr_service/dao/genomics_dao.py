@@ -846,6 +846,8 @@ class GenomicOutreachDao(BaseDao):
         pass
 
     def to_client_json(self, result):
+        if result:
+            pass
         return {"message": "pass"}
 
     def participant_lookup(self, pid):

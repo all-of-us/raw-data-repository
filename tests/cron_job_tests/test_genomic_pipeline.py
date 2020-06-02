@@ -1445,7 +1445,6 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 3
         genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 4
 
-        members = self.member_dao.get_all()
         # finally run the manifest workflow
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
         a1_time = datetime.datetime(2020, 4, 1, 0, 0, 0, 0)

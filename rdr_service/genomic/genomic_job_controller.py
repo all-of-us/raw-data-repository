@@ -12,8 +12,6 @@ from rdr_service.config import (
     getSetting,
     getSettingList,
     GENOME_TYPE_ARRAY,
-    GENOME_TYPE_WGS,
-    GENOME_TYPE_CVL,
 )
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
