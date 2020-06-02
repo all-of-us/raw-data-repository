@@ -36,6 +36,7 @@ from rdr_service.code_constants import (
     CONSENT_COPE_NO_CODE,
     CONSENT_COPE_DEFERRED_CODE,
     COPE_CONSENT_QUESTION_CODE,
+    STREET_ADDRESS_QUESTION_CODE,
     STREET_ADDRESS2_QUESTION_CODE)
 from rdr_service.config_api import is_config_admin
 from rdr_service.dao.base_dao import BaseDao
@@ -285,6 +286,7 @@ class QuestionnaireResponseDao(BaseDao):
         ehr_consent = False
         gror_consent = None
         dvehr_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+        street_address_submitted = False
         street_address2_submitted = False
         # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
         for answer in questionnaire_response.answers:
@@ -294,6 +296,8 @@ class QuestionnaireResponseDao(BaseDao):
                 if code:
                     if code.value == GENDER_IDENTITY_QUESTION_CODE:
                         gender_code_ids.append(answer.valueCodeId)
+                    elif code.value == STREET_ADDRESS_QUESTION_CODE:
+                        street_address_submitted = answer.valueString is not None
                     elif code.value == STREET_ADDRESS2_QUESTION_CODE:
                         street_address2_submitted = answer.valueString is not None
 
@@ -359,7 +363,7 @@ class QuestionnaireResponseDao(BaseDao):
         # So when it hasn't been submitted and there is something set for streetAddress2 we want to clear it out.
         summary_has_street_line_two = participant_summary.streetAddress2 is not None\
             and participant_summary.streetAddress2 != ""
-        if not street_address2_submitted and summary_has_street_line_two:
+        if street_address_submitted and not street_address2_submitted and summary_has_street_line_two:
             something_changed = True
             participant_summary.streetAddress2 = None
 
