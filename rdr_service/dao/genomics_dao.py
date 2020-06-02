@@ -721,9 +721,9 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
             return GenomicSubProcessResult.ERROR
 
 
-class GemPiiDao(BaseDao):
+class GenomicPiiDao(BaseDao):
     def __init__(self):
-        super(GemPiiDao, self).__init__(
+        super(GenomicPiiDao, self).__init__(
             GenomicSetMember, order_by_ending=['id'])
 
     def get_id(self, obj):
@@ -733,12 +733,24 @@ class GemPiiDao(BaseDao):
         pass
 
     def to_client_json(self, result):
-        if result.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED:
-            return {
-                "biobank_id": result.biobankId,
-                "first_name": result.firstName,
-                "last_name": result.lastName,
-            }
+        if result['data'].consentForGenomicsROR == QuestionnaireStatus.SUBMITTED:
+            if result['mode'] == 'GEM':
+                return {
+                    "biobank_id": result['data'].biobankId,
+                    "first_name": result['data'].firstName,
+                    "last_name": result['data'].lastName,
+                }
+
+            elif result['mode'] == 'RHP':
+                return {
+                    "biobank_id": result['data'].biobankId,
+                    "first_name": result['data'].firstName,
+                    "last_name": result['data'].lastName,
+                    "date_of_birth": result['data'].dateOfBirth,
+                }
+            else:
+                return {"message": "Only GEM and RHP modes supported."}
+
         else:
             return {"message": "No RoR consent."}
 
@@ -753,7 +765,8 @@ class GemPiiDao(BaseDao):
                 session.query(GenomicSetMember.biobankId,
                               ParticipantSummary.firstName,
                               ParticipantSummary.lastName,
-                              ParticipantSummary.consentForGenomicsROR)
+                              ParticipantSummary.consentForGenomicsROR,
+                              ParticipantSummary.dateOfBirth,)
                 .join(
                     ParticipantSummary,
                     GenomicSetMember.participantId == ParticipantSummary.participantId,

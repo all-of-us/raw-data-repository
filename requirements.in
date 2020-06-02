@@ -61,9 +61,7 @@ pylint
 mock
 faker
 parameterized
-safety
 locust   # Used in tools/load_test_locustfile.py
-
 
 # Documentation
 sphinx

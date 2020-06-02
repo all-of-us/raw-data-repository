@@ -1,7 +1,7 @@
 import datetime
 import unittest
 
-from mock import patch
+import mock
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from rdr_service import app_util, clock, config
@@ -96,146 +96,151 @@ class AppUtilTest(BaseTestCase):
         with self.assertRaises(Forbidden):
             app_util.enforce_ip_whitelisted("5555::", allowed_ips)
 
-    @patch("rdr_service.app_util.request")
-    def test_auth_required_http_identity_set(self, mock_request):
+    # @patch("rdr_service.app_util.request")
+    # def test_auth_required_http_identity_set(self, mock_request):
+    def test_auth_required_http_identity_set(self):
+        mock_request = mock.MagicMock()
         mock_request.return_value.scheme = "http"
-        with self.assertRaises(Unauthorized):
-            foo_role(1)
+        with mock.patch("rdr_service.app_util.request", mock_request):
+            with self.assertRaises(Unauthorized):
+                foo_role(1)
 
-    @patch("rdr_service.app_util.request", spec=app_util.request)
-    @patch("rdr_service.app_util.get_oauth_id")
-    @patch("rdr_service.app_util.lookup_user_info")
-    def test_auth_required_https_identity_set_role_not_matched(
-        self, mock_lookup_user_info, mock_get_oauth_id, mock_request
-    ):
+    # @mock.patch("rdr_service.app_util.request", spec=app_util.request)
+    @mock.patch("rdr_service.app_util.get_oauth_id")
+    @mock.patch("rdr_service.app_util.lookup_user_info")
+    def test_auth_required_https_identity_set_role_not_matched(self, mock_lookup_user_info, mock_get_oauth_id):
+        mock_request = mock.MagicMock()
         mock_request.scheme = "http"
         mock_request.remote_addr = "ip"
         mock_request.headers = {}
-        mock_get_oauth_id.return_value = "bob@example.com"
-        mock_lookup_user_info.return_value = {"place": "holder"}
-        with self.assertRaises(Forbidden):
-            foo_role(1)
-        mock_get_oauth_id.assert_called_with()
-        mock_lookup_user_info.assert_called_with(mock_get_oauth_id())
+        with mock.patch("rdr_service.app_util.request", mock_request):
+            mock_get_oauth_id.return_value = "bob@example.com"
+            mock_lookup_user_info.return_value = {"place": "holder"}
+            with self.assertRaises(Forbidden):
+                foo_role(1)
+            mock_get_oauth_id.assert_called_with()
+            mock_lookup_user_info.assert_called_with(mock_get_oauth_id())
 
-    @patch("rdr_service.app_util.request")
-    @patch("rdr_service.app_util.get_oauth_id")
-    @patch("rdr_service.app_util.lookup_user_info")
-    def test_auth_required_https_identity_set_role_wrong_match(
-        self, mock_lookup_user_info, mock_get_oauth_id, mock_request
-    ):
+    # @mock.patch("rdr_service.app_util.request")
+    @mock.patch("rdr_service.app_util.get_oauth_id")
+    @mock.patch("rdr_service.app_util.lookup_user_info")
+    def test_auth_required_https_identity_set_role_wrong_match(self, mock_lookup_user_info, mock_get_oauth_id):
+        mock_request = mock.MagicMock()
         mock_request.scheme = "https"
         mock_request.remote_addr = "ip"
         mock_request.headers = {}
-        mock_get_oauth_id.return_value = "bob@example.com"
-        mock_lookup_user_info.return_value = {"roles": ["bar"]}
-        with self.assertRaises(Forbidden):
-            foo_role(1)
-        mock_get_oauth_id.assert_called_with()
+        with mock.patch("rdr_service.app_util.request", mock_request):
+            mock_get_oauth_id.return_value = "bob@example.com"
+            mock_lookup_user_info.return_value = {"roles": ["bar"]}
+            with self.assertRaises(Forbidden):
+                foo_role(1)
+            mock_get_oauth_id.assert_called_with()
 
-    @patch("rdr_service.app_util.request")
-    @patch("rdr_service.app_util.get_oauth_id")
-    @patch("rdr_service.app_util.lookup_user_info")
-    def test_auth_required_https_identity_set_multi_role_not_matched(
-        self, mock_lookup_user_info, mock_get_oauth_id, mock_request
-    ):
+    # @mock.patch("rdr_service.app_util.request")
+    @mock.patch("rdr_service.app_util.get_oauth_id")
+    @mock.patch("rdr_service.app_util.lookup_user_info")
+    def test_auth_required_https_identity_set_multi_role_not_matched(self, mock_lookup_user_info, mock_get_oauth_id):
+        mock_request = mock.MagicMock()
         mock_request.scheme = "https"
         mock_request.remote_addr = "ip"
         mock_request.headers = {}
-        mock_get_oauth_id.return_value = "bob@example.com"
-        mock_lookup_user_info.return_value = {"place": "holder"}
+        with mock.patch("rdr_service.app_util.request", mock_request):
+            mock_get_oauth_id.return_value = "bob@example.com"
+            mock_lookup_user_info.return_value = {"place": "holder"}
 
-        with self.assertRaises(Forbidden):
-            foo_bar_role(1)
+            with self.assertRaises(Forbidden):
+                foo_bar_role(1)
 
-        mock_lookup_user_info.return_value = {"roles": ["foo"]}
-        self.assertEqual(2, foo_bar_role(1))
+            mock_lookup_user_info.return_value = {"roles": ["foo"]}
+            self.assertEqual(2, foo_bar_role(1))
 
-    @patch("rdr_service.app_util.request")
-    @patch("rdr_service.app_util.get_oauth_id")
-    @patch("rdr_service.app_util.lookup_user_info")
-    def test_auth_required_https_identity_set_role_wrong_match(
-        self, mock_lookup_user_info, mock_get_oauth_id, mock_request
-    ):
+    # @mock.patch("rdr_service.app_util.request")
+    @mock.patch("rdr_service.app_util.get_oauth_id")
+    @mock.patch("rdr_service.app_util.lookup_user_info")
+    def test_auth_required_https_identity_set_role_wrong_match(self, mock_lookup_user_info, mock_get_oauth_id):
+        mock_request = mock.MagicMock()
         mock_request.scheme = "https"
         mock_request.remote_addr = "ip"
         mock_request.headers = {}
-        mock_get_oauth_id.return_value = "bob@example.com"
-        mock_lookup_user_info.return_value = {"roles": ["baz"]}
+        with mock.patch("rdr_service.app_util.request", mock_request):
+            mock_get_oauth_id.return_value = "bob@example.com"
+            mock_lookup_user_info.return_value = {"roles": ["baz"]}
 
-        mock_request.headers = {}
-        with self.assertRaises(Forbidden):
-            foo_bar_role(1)
-        mock_get_oauth_id.assert_called_with()
-        mock_lookup_user_info.assert_called_with(mock_get_oauth_id())
+            mock_request.headers = {}
+            with self.assertRaises(Forbidden):
+                foo_bar_role(1)
+            mock_get_oauth_id.assert_called_with()
+            mock_lookup_user_info.assert_called_with(mock_get_oauth_id())
 
-    @patch("rdr_service.app_util.request")
-    @patch("rdr_service.app_util.get_oauth_id")
-    @patch("rdr_service.app_util.lookup_user_info")
-    def test_auth_required_https_identity_set_role_match(
-        self, mock_lookup_user_info, mock_get_oauth_id, mock_request
-    ):
+    # @mock.patch("rdr_service.app_util.request")
+    @mock.patch("rdr_service.app_util.get_oauth_id")
+    @mock.patch("rdr_service.app_util.lookup_user_info")
+    def test_auth_required_https_identity_set_role_match(self, mock_lookup_user_info, mock_get_oauth_id):
+        mock_request = mock.MagicMock()
         mock_request.scheme = "http"
         mock_request.remote_addr = "ip"
         mock_request.headers = {}
-        mock_get_oauth_id.return_value = "bob@example.com"
-        mock_lookup_user_info.return_value = {"roles": ["bar"]}
-        self.assertEqual(2, foo_bar_role(1))
-        mock_get_oauth_id.assert_called_with()
-        mock_lookup_user_info.assert_called_with(mock_get_oauth_id())
+        with mock.patch("rdr_service.app_util.request", mock_request):
+            mock_get_oauth_id.return_value = "bob@example.com"
+            mock_lookup_user_info.return_value = {"roles": ["bar"]}
+            self.assertEqual(2, foo_bar_role(1))
+            mock_get_oauth_id.assert_called_with()
+            mock_lookup_user_info.assert_called_with(mock_get_oauth_id())
 
-    @patch("rdr_service.app_util.request")
-    @patch("rdr_service.app_util.get_oauth_id")
-    @patch("rdr_service.app_util.lookup_user_info")
-    def test_auth_required_ip_ranges(
-        self, mock_lookup_user_info, mock_get_oauth_id, mock_request
-    ):
+    # @mock.patch("rdr_service.app_util.request")
+    @mock.patch("rdr_service.app_util.get_oauth_id")
+    @mock.patch("rdr_service.app_util.lookup_user_info")
+    def test_auth_required_ip_ranges(self, mock_lookup_user_info, mock_get_oauth_id):
+        mock_request = mock.MagicMock()
         mock_request.scheme = "https"
         mock_request.remote_addr = "10.0.0.1"
         mock_request.headers = {}
-        mock_get_oauth_id.return_value = "bob@example.com"
-        mock_lookup_user_info.return_value = {
-            "roles": ["bar"],
-            "whitelisted_ip_ranges": {"ip4": ["10.0.0.2/32"], "ip6": []},
-        }
+        with mock.patch("rdr_service.app_util.request", mock_request):
+            mock_get_oauth_id.return_value = "bob@example.com"
+            mock_lookup_user_info.return_value = {
+                "roles": ["bar"],
+                "whitelisted_ip_ranges": {"ip4": ["10.0.0.2/32"], "ip6": []},
+            }
 
-        with self.assertRaises(Forbidden):
-            foo_bar_role(1)
+            with self.assertRaises(Forbidden):
+                foo_bar_role(1)
 
-        mock_request.remote_addr = "10.0.0.2"
-        self.assertEqual(2, foo_bar_role(1))
+            mock_request.remote_addr = "10.0.0.2"
+            self.assertEqual(2, foo_bar_role(1))
 
-    @patch("rdr_service.app_util.request")
-    @patch("rdr_service.app_util.get_oauth_id")
-    @patch("rdr_service.app_util.lookup_user_info")
-    def test_no_ip6_required(self, mock_lookup_user_info, mock_get_oauth_id, mock_request):
+    # @mock.patch("rdr_service.app_util.request")
+    @mock.patch("rdr_service.app_util.get_oauth_id")
+    @mock.patch("rdr_service.app_util.lookup_user_info")
+    def test_no_ip6_required(self, mock_lookup_user_info, mock_get_oauth_id):
+        mock_request = mock.MagicMock()
         mock_request.scheme = "https"
         mock_request.remote_addr = "10.0.0.1"
         mock_request.headers = {}
-        mock_get_oauth_id.return_value = "bob@example.com"
-        mock_lookup_user_info.return_value = {"roles": ["foo"], "whitelisted_ip_ranges": {"ip4": ["10.0.0.2/32"]}}
+        with mock.patch("rdr_service.app_util.request", mock_request):
+            mock_get_oauth_id.return_value = "bob@example.com"
+            mock_lookup_user_info.return_value = {"roles": ["foo"], "whitelisted_ip_ranges": {"ip4": ["10.0.0.2/32"]}}
 
-        mock_request.remote_addr = "10.0.0.2"
-        self.assertEqual(2, foo_bar_role(1))
+            mock_request.remote_addr = "10.0.0.2"
+            self.assertEqual(2, foo_bar_role(1))
 
-    @patch("rdr_service.app_util.request")
-    @patch("rdr_service.app_util.get_oauth_id")
-    @patch("rdr_service.app_util.lookup_user_info")
-    def test_auth_required_appid(
-        self, mock_lookup_user_info, mock_get_oauth_id, mock_request
-    ):
+    # @mock.patch("rdr_service.app_util.request")
+    @mock.patch("rdr_service.app_util.get_oauth_id")
+    @mock.patch("rdr_service.app_util.lookup_user_info")
+    def test_auth_required_appid(self, mock_lookup_user_info, mock_get_oauth_id):
+        mock_request = mock.MagicMock()
         mock_request.scheme = "https"
         mock_request.remote_addr = "10.0.0.1"
         mock_request.headers = {}
-        mock_get_oauth_id.return_value = "bob@example.com"
+        with mock.patch("rdr_service.app_util.request", mock_request):
+            mock_get_oauth_id.return_value = "bob@example.com"
 
-        mock_lookup_user_info.return_value = {"roles": ["bar"], "whitelisted_appids": ["must-be-this-id"]}
+            mock_lookup_user_info.return_value = {"roles": ["bar"], "whitelisted_appids": ["must-be-this-id"]}
 
-        with self.assertRaises(Forbidden):
-            foo_bar_role(1)
+            with self.assertRaises(Forbidden):
+                foo_bar_role(1)
 
-        mock_request.headers = {"X-Appengine-Inbound-Appid": "must-be-this-id"}
-        self.assertEqual(2, foo_bar_role(1))
+            mock_request.headers = {"X-Appengine-Inbound-Appid": "must-be-this-id"}
+            self.assertEqual(2, foo_bar_role(1))
 
     def test_no_roles_supplied_to_decorator(self):
         with self.assertRaises(TypeError):
@@ -250,17 +255,18 @@ class AppUtilTest(BaseTestCase):
             def _():
                 pass
 
-    @patch("rdr_service.app_util.request", spec=app_util.request)
-    @patch("rdr_service.app_util.get_oauth_id")
-    def test_check_auth_required_cron(self, mock_get_oauth_id, mock_request):
-        mock_get_oauth_id.return_value = "bob@example.com"
-
+    # @mock.patch("rdr_service.app_util.request", spec=app_util.request)
+    @mock.patch("rdr_service.app_util.get_oauth_id")
+    def test_check_auth_required_cron(self, mock_get_oauth_id):
+        mock_request = mock.MagicMock()
         mock_request.headers = {"X-Appengine-Cron": "true"}
-        self.assertEqual(2, cron_required(1))
+        with mock.patch("rdr_service.app_util.request", mock_request):
+            mock_get_oauth_id.return_value = "bob@example.com"
+            self.assertEqual(2, cron_required(1))
 
-        mock_request.headers = {}
-        with self.assertRaises(Forbidden):
-            cron_required(1)
+            mock_request.headers = {}
+            with self.assertRaises(Forbidden):
+                cron_required(1)
 
     def test_nonprod(self):
         # The dev config is isntalled by default for tests, reset.

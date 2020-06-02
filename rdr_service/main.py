@@ -28,7 +28,7 @@ from rdr_service.api.biobank_specimen_api import BiobankSpecimenApi, BiobankSpec
 from rdr_service.api.check_ppi_data_api import check_ppi_data
 from rdr_service.api.data_gen_api import DataGenApi, SpecDataGenApi
 from rdr_service.api.dv_order_api import DvOrderApi
-from rdr_service.api.genomic_api import GenomicGemPiiApi
+from rdr_service.api.genomic_api import GenomicPiiApi
 from rdr_service.api.import_codebook_api import import_codebook
 from rdr_service.api.metric_sets_api import MetricSetsApi
 from rdr_service.api.metrics_api import MetricsApi
@@ -323,9 +323,9 @@ api.add_resource(RedcapWorkbenchAuditApi,
                  endpoint='workbench.audit',
                  methods=['GET', 'POST'])
 
-api.add_resource(GenomicGemPiiApi,
-                 API_PREFIX + "GemPII/<participant_id:p_id>",
-                 endpoint='genomic.gem.pii',
+api.add_resource(GenomicPiiApi,
+                 API_PREFIX + "GenomicPII/<string:mode>/<participant_id:p_id>",
+                 endpoint='genomic.pii',
                  methods=['GET'])
 
 # Configuration API for admin use.  # note: temporarily disabled until decided

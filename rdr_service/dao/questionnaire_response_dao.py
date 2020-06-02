@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytz
 from sqlalchemy.orm import subqueryload
@@ -34,6 +34,7 @@ from rdr_service.code_constants import (
     GROR_CONSENT_QUESTION_CODE,
     CONSENT_COPE_YES_CODE,
     CONSENT_COPE_NO_CODE,
+    CONSENT_COPE_DEFERRED_CODE,
     COPE_CONSENT_QUESTION_CODE)
 from rdr_service.config_api import is_config_admin
 from rdr_service.dao.base_dao import BaseDao
@@ -329,13 +330,15 @@ class QuestionnaireResponseDao(BaseDao):
                         elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NOT_SURE:
                             gror_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
                     elif code.value == COPE_CONSENT_QUESTION_CODE:
-                        month_name = questionnaire_history.lastModified.strftime('%B')
+                        # COPE survey updates can occur at the end of the previous month
+                        adjusted_last_modified = questionnaire_history.lastModified + timedelta(days=5)
+                        month_name = adjusted_last_modified.strftime('%B')
                         # Currently only have fields in participant summary for May, Jun and July
                         if month_name in ['May', 'June', 'July']:
                             answer_value = code_dao.get(answer.valueCodeId).value
                             if answer_value == CONSENT_COPE_YES_CODE:
                                 submission_status = QuestionnaireStatus.SUBMITTED
-                            elif answer_value == CONSENT_COPE_NO_CODE:
+                            elif answer_value in [CONSENT_COPE_NO_CODE, CONSENT_COPE_DEFERRED_CODE]:
                                 submission_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
                             else:
                                 submission_status = QuestionnaireStatus.SUBMITTED_INVALID
@@ -588,7 +591,7 @@ class QuestionnaireResponseDao(BaseDao):
                                     qr_answer.valueDecimal = answer.valueDecimal
                                 if answer.valueInteger is not None:
                                     qr_answer.valueInteger = answer.valueInteger
-                                if answer.valueString:
+                                if answer.valueString is not None:
                                     answer_length = len(answer.valueString)
                                     max_length = QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN
                                     if answer_length > max_length:

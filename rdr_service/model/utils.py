@@ -101,6 +101,7 @@ def from_client_participant_id(participant_id):
 
 
 class ParticipantIdConverter(BaseConverter):
+    """ https://werkzeug.palletsprojects.com/en/1.0.x/routing/#custom-converters """
     def to_python(self, value):
         try:
             return from_client_participant_id(value)
@@ -108,8 +109,9 @@ class ParticipantIdConverter(BaseConverter):
             raise ValidationError(ex.description)
 
     def to_url(self, value):
+        """ this function should return a string type """
         # Assume the client has already converted this.
-        return value
+        return str(value)
 
 
 def get_property_type(prop):

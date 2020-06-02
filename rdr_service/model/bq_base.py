@@ -543,7 +543,7 @@ class BQRecord(object):
                         dest[key] = val
                     except ValueError:
                         dest[key] = val
-                elif isinstance(val, collections.Mapping):
+                elif isinstance(val, collections.abc.Mapping):
                     dest[key] = update(dest.get(key, {}), val, schema.__dict__[key] if schema else None)
                 elif isinstance(val, list):
                     # TODO: Future: Do we want to instantiate a new BQRecord for nested data here, instead of
