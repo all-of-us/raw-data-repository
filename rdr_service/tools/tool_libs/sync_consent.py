@@ -33,14 +33,15 @@ tool_cmd = "sync-consents"
 tool_desc = "manually sync consent files to sites"
 
 SOURCE_BUCKET = {
-    "vibrent": "gs://ptc-uploads-pmi-drc-api-sandbox/Participant/P{p_id}/*{file_ext}",
-    "careevolution": "gs://ce-uploads-all-of-us-rdr-sandbox/Participant/P{p_id}/*{file_ext}"
+    "vibrent": "gs://ptc-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*{file_ext}",
+    "careevolution": "gs://ce-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*{file_ext}"
 }
 
 HPO_REPORT_CONFIG_GCS_PATH = "gs://all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
 DEST_BUCKET = "gs://{bucket_name}/Participant/{org_external_id}/{site_name}/P{p_id}/"
 
 TEMP_CONSENTS_PATH = "./temp_consents"
+
 
 class SyncConsentClass(object):
     def __init__(self, args, gcp_env):
@@ -97,11 +98,12 @@ class SyncConsentClass(object):
             return [directory_object for directory_object in objects if directory_object.is_dir()]
 
     def _copy(self, source, destination, participant_id):
+        print('\ncoping from', source, 'to', destination)
         if not self.args.dry_run:
             if self.args.zip_files:
                 # gcp_cp doesn't create local directories when they don't exist
                 os.makedirs(destination, exist_ok=True)
-            gcp_cp(source, destination, args="-r", flags="-m")
+            gcp_cp(source, destination, flags="-m")
 
         self._format_debug_out(participant_id, source, destination)
 
@@ -137,92 +139,98 @@ class SyncConsentClass(object):
             return 1
 
         try:
-            _logger.info("retrieving participant information...")
-            # get record count
-            query_args = {}
-            if self.args.date_limit:
-                # TODO: Add execption handling for incorrect date format
-                query_args['start_date'] = self.args.date_limit
-            if self.args.end_date:
-                # TODO: Add execption handling for incorrect date format
-                query_args['end_date'] = self.args.end_date
-            if self.args.org_id:
-                org_ids = [self.args.org_id]
-            else:
-                raise Exception("Org id required for consent sync")
+            # _logger.info("retrieving participant information...")
+            # # get record count
+            # query_args = {}
+            # if self.args.date_limit:
+            #     # TODO: Add execption handling for incorrect date format
+            #     query_args['start_date'] = self.args.date_limit
+            # if self.args.end_date:
+            #     # TODO: Add execption handling for incorrect date format
+            #     query_args['end_date'] = self.args.end_date
+            # org_ids = None
+            # if not self.args.all_va:
+            #     if self.args.org_id:
+            #         org_ids = [self.args.org_id]
+            #     else:
+            #         raise Exception("Org id required for consent sync")
+            # else:
+            #     query_args['all_va'] = True
+            #
+            # participant_sql, params = build_participant_query(org_ids, **query_args)
+            # count_sql = self._get_count_sql(participant_sql)
+            # with database_factory.make_server_cursor_database().session() as session:
+            #     total_participants = session.execute(count_sql, params).scalar()
+            #
+            #     _logger.info("transferring files to destinations...")
+            #     count = 0
+            #     for rec in session.execute(participant_sql, params):
+            #         if not self.args.debug:
+            #             print_progress_bar(
+            #                 count, total_participants, prefix="{0}/{1}:".format(count, total_participants),
+            #                 suffix="complete"
+            #             )
+            #
+            #         p_id = rec[0]
+            #         origin_id = rec[1]
+            #         site = rec[2]
+            #         org_id = rec[3]
+            #         if self.args.destination_bucket is not None:
+            #             # override destination bucket lookup (the lookup table is incomplete)
+            #             bucket = self.args.destination_bucket
+            #         else:
+            #             site_info = sites.get(rec[3])
+            #             if not site_info:
+            #                 _logger.warning("\nsite info not found for [{0}].".format(rec[2]))
+            #                 count += 1
+            #                 continue
+            #             bucket = site_info.get("bucket_name")
+            #         if not bucket:
+            #             _logger.warning("\nno bucket name found for [{0}].".format(rec[2]))
+            #             count += 1
+            #             continue
+            #
+            #         # Copy all files, not just PDFs
+            #         if self.args.all_files:
+            #             self.file_filter = ""
+            #
+            #         src_bucket = SOURCE_BUCKET.get(origin_id, SOURCE_BUCKET[
+            #             next(iter(SOURCE_BUCKET))
+            #         ]).format(p_id=p_id, file_ext=self.file_filter)
+            #
+            #         if self.args.zip_files:
+            #             destination_pattern =\
+            #                 TEMP_CONSENTS_PATH + '/{bucket_name}/{org_external_id}/{site_name}/P{p_id}/'
+            #         else:
+            #             destination_pattern = DEST_BUCKET
+            #         destination = destination_pattern.format(
+            #             bucket_name=bucket,
+            #             org_external_id=org_id,
+            #             site_name=site if site else "no-site-assigned",
+            #             p_id=p_id,
+            #         )
+            #         if self.args.date_limit:
+            #             # only copy files newer than date limit
+            #             files_in_range = self._get_files_updated_in_range(
+            #                 date_limit=self.args.date_limit,
+            #                 source_bucket=src_bucket, p_id=p_id)
+            #             if not files_in_range or len(files_in_range) == 0:
+            #                 _logger.info(f'No files in bucket updated after {self.args.date_limit}')
+            #             for f in files_in_range:
+            #                 self._copy(f, destination, p_id)
+            #         else:
+            #             self._copy(src_bucket, destination, p_id)
+            #
+            #         count += 1
+            #
+            # # print progressbar one more time to show completed.
+            # if total_participants > 0 and not self.args.debug:
+            #     print_progress_bar(
+            #         count, total_participants, prefix="{0}/{1}:".format(count, total_participants), suffix="complete"
+            #     )
 
-            participant_sql, params = build_participant_query(org_ids, **query_args)
-            count_sql = self._get_count_sql(participant_sql)
-            with database_factory.make_server_cursor_database().session() as session:
-                total_participants = session.execute(count_sql, params).scalar()
-
-                _logger.info("transferring files to destinations...")
-                count = 0
-                for rec in session.execute(participant_sql, params):
-                    if not self.args.debug:
-                        print_progress_bar(
-                            count, total_participants, prefix="{0}/{1}:".format(count, total_participants),
-                            suffix="complete"
-                        )
-
-                    p_id = rec[0]
-                    origin_id = rec[1]
-                    site = rec[2]
-                    if self.args.destination_bucket is not None:
-                        # override destination bucket lookup (the lookup table is incomplete)
-                        bucket = self.args.destination_bucket
-                    else:
-                        site_info = sites.get(rec[3])
-                        if not site_info:
-                            _logger.warning("\nsite info not found for [{0}].".format(rec[2]))
-                            count += 1
-                            continue
-                        bucket = site_info.get("bucket_name")
-                    if not bucket:
-                        _logger.warning("\nno bucket name found for [{0}].".format(rec[2]))
-                        count += 1
-                        continue
-
-                    # Copy all files, not just PDFs
-                    if self.args.all_files:
-                        self.file_filter = ""
-
-                    src_bucket = SOURCE_BUCKET.get(origin_id, SOURCE_BUCKET[
-                        next(iter(SOURCE_BUCKET))
-                    ]).format(p_id=p_id, file_ext=self.file_filter)
-
-                    if self.args.zip_files:
-                        destination_pattern =\
-                            TEMP_CONSENTS_PATH + '/{bucket_name}/{org_external_id}/{site_name}/P{p_id}/'
-                    else:
-                        destination_pattern = DEST_BUCKET
-                    destination = destination_pattern.format(
-                        bucket_name=bucket,
-                        org_external_id=self.args.org_id,
-                        site_name=site if site else "no-site-assigned",
-                        p_id=p_id,
-                    )
-                    if self.args.date_limit:
-                        # only copy files newer than date limit
-                        files_in_range = self._get_files_updated_in_range(
-                            date_limit=self.args.date_limit,
-                            source_bucket=src_bucket, p_id=p_id)
-                        if not files_in_range or len(files_in_range) == 0:
-                            _logger.info(f'No files in bucket updated after {self.args.date_limit}')
-                        for f in files_in_range:
-                            self._copy(f, destination, p_id)
-                    else:
-                        self._copy(src_bucket, destination, p_id)
-
-                    count += 1
-
-            # print progressbar one more time to show completed.
-            if total_participants > 0 and not self.args.debug:
-                print_progress_bar(
-                    count, total_participants, prefix="{0}/{1}:".format(count, total_participants), suffix="complete"
-                )
-
-            if self.args.zip_files and count > 1:
+            count = 1
+            if self.args.zip_files and count > 0:
                 _logger.info("zipping and uploading consent files...")
                 for bucket_dir in self._directories_in(TEMP_CONSENTS_PATH):
                     for org_dir in self._directories_in(bucket_dir):
@@ -232,7 +240,7 @@ class SyncConsentClass(object):
                                 self._add_path_to_zip(zip_file, site_dir.path)
 
                             destination = "gs://{bucket_name}/Participant/{org_external_id}/".format(
-                                bucket_name='ptc-uploads-pmi-drc-api-sandbox',  # todo: should be orgs bucket name
+                                bucket_name='aou179',  # todo: should be orgs bucket name
                                 org_external_id=org_dir.name
                             )
                             if not self.args.dry_run:
@@ -272,6 +280,9 @@ def run():
     )
     parser.add_argument(
         "--zip-files", action="store_true", help="Zip the consent files by site rather than uploading them individually"
+    )
+    parser.add_argument(
+        "--all-va", action="store_true", help="Zip consents for all VA organizations"
     )
 
     parser.add_argument(
