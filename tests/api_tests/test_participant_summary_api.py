@@ -82,7 +82,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         "education",
         "income",
     )
-    string_link_ids = ("firstName", "middleName", "lastName", "streetAddress", "city", "phoneNumber", "zipCode")
+    string_link_ids = ("firstName", "middleName", "lastName", "streetAddress",
+                       "streetAddress2", "city", "phoneNumber", "zipCode")
 
     def setUp(self):
         super().setUp()
