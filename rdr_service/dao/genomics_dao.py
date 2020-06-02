@@ -434,7 +434,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 ) &
                 (
                     (ParticipantSummary.consentForGenomicsRORAuthored > _date) |
-                    (ParticipantSummary.consentForGenomicsRORAuthored > _date)
+                    (ParticipantSummary.consentForStudyEnrollmentAuthored > _date)
                 )
             ).all()
         return members
@@ -461,7 +461,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 ) &
                 (
                     (ParticipantSummary.consentForGenomicsRORAuthored > _date) |
-                    (ParticipantSummary.consentForGenomicsRORAuthored > _date)
+                    (ParticipantSummary.consentForStudyEnrollmentAuthored > _date)
                 )
             ).all()
         return members
@@ -846,22 +846,65 @@ class GenomicOutreachDao(BaseDao):
         pass
 
     def to_client_json(self, result):
-        if result:
-            pass
-        return {"message": "pass"}
+        report_statuses = list()
+
+        for participant in result['data']:
+            if participant[1] == GenomicWorkflowState.GEM_RPT_READY:
+                status = "ready"
+
+            elif participant[1] == GenomicWorkflowState.GEM_RPT_PENDING_DELETE:
+                status = "pending_delete"
+
+            elif participant[1] == GenomicWorkflowState.GEM_RPT_DELETED:
+                status = "deleted"
+
+            else:
+                status = "unset"
+
+            report_statuses.append(
+                {
+                    "participant_id": f'P{participant[0]}',
+                    "report_status": status
+                 }
+            )
+
+        client_json = {
+            "participant_report_statuses": report_statuses,
+            "timestamp": result['date']
+        }
+        return client_json
 
     def participant_lookup(self, pid):
-        pass
+        """
+        Returns GEM report status for pid
+        :param pid:
+        :return:
+        """
+        with self.session() as session:
+            return (
+                session.query(GenomicSetMember.participantId,
+                              GenomicSetMember.genomicWorkflowState)
+                .join(
+                    ParticipantSummary,
+                    GenomicSetMember.participantId == ParticipantSummary.participantId,
+                ).filter(
+                    ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                    ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                    GenomicSetMember.genomicWorkflowState.in_((GenomicWorkflowState.GEM_RPT_READY,
+                                                               GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
+                                                               GenomicWorkflowState.GEM_RPT_DELETED)),
+                    ParticipantSummary.participantId == pid
+                ).all()
+            )
 
     def date_lookup(self, start_date, end_date=None):
         """
-        Returns lists of PIDs aggregated by the
+        Returns list of PIDs and GEM report status
         :param start_date:
         :param end_date:
         :return: lists of PIDs and report states
         """
         as_of_ts = clock.CLOCK.now()
-
         if end_date is None:
             end_date = as_of_ts
 
@@ -873,13 +916,12 @@ class GenomicOutreachDao(BaseDao):
                     ParticipantSummary,
                     GenomicSetMember.participantId == ParticipantSummary.participantId,
                 ).filter(
-                    ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
                     ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                    ParticipantSummary.withdrawalStatus == SuspensionStatus.NOT_SUSPENDED,
+                    ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                     GenomicSetMember.genomicWorkflowState.in_((GenomicWorkflowState.GEM_RPT_READY,
                                                                GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
                                                                GenomicWorkflowState.GEM_RPT_DELETED)),
                     ParticipantSummary.consentForGenomicsRORAuthored > start_date,
-                    ParticipantSummary.consentForGenomicsRORAuthored > end_date,
+                    ParticipantSummary.consentForGenomicsRORAuthored < end_date,
                 ).all()
             )

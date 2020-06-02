@@ -1,4 +1,5 @@
 import datetime
+from dateutil import parser
 
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service import clock
@@ -21,7 +22,8 @@ from rdr_service.model.genomics import (
 from rdr_service.participant_enums import (
     GenomicJob,
     SampleStatus,
-    WithdrawalStatus
+    WithdrawalStatus,
+    GenomicWorkflowState
 )
 
 
@@ -96,11 +98,17 @@ class GenomicApiTestBase(BaseTestCase):
         self.ps_dao.insert(summary)
         return summary
 
-    def _make_set_member(self, participant):
-        new_member = GenomicSetMember(genomicSetId=1,
-                                      participantId=participant.participantId,
-                                      gemPass='Y',
-                                      biobankId=participant.biobankId)
+    def _make_set_member(self, participant, **override_kwargs):
+        valid_kwargs = dict(
+            genomicSetId=1,
+            participantId=participant.participantId,
+            gemPass='Y',
+            biobankId=participant.biobankId,
+            genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY)
+
+        kwargs = dict(valid_kwargs, **override_kwargs)
+        new_member = GenomicSetMember(**kwargs)
+
         return self.member_dao.insert(new_member)
 
 
@@ -168,5 +176,100 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
         super(GenomicOutreachApiTest, self).setUp()
 
     def test_get_date_lookup(self):
-        resp = self.send_get("GenomicOutreach/GEM?start_date=2020-05-28T08:00:01-05:00")
-        print(resp)
+        p2 = self._make_participant()
+        p3 = self._make_participant()
+
+        fake_date = parser.parse('2020-05-29T08:00:01-05:00')
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+
+        self._make_summary(p2, consentForGenomicsRORAuthored=fake_date,
+                           consentForStudyEnrollmentAuthored=fake_date)
+
+        self._make_summary(p3, consentForGenomicsRORAuthored=fake_date,
+                           consentForStudyEnrollmentAuthored=fake_date)
+
+        self._make_set_member(p2, genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY)
+        self._make_set_member(p3, genomicWorkflowState=GenomicWorkflowState.GEM_RPT_PENDING_DELETE)
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get("GenomicOutreach/GEM?start_date=2020-05-28T08:00:01-05:00")
+
+        expected_response = {
+            "participant_report_statuses": [
+                {
+                    "participant_id": "P2",
+                    "report_status": "ready"
+                },
+                {
+                    "participant_id": "P3",
+                    "report_status": "pending_delete"
+                }
+            ],
+            "timestamp": fake_now.replace(microsecond=0).isoformat()
+        }
+
+        self.assertEqual(expected_response, resp)
+
+    def test_get_date_range(self):
+        p2 = self._make_participant()
+        p3 = self._make_participant()
+
+        fake_date_1 = parser.parse('2020-05-29T08:00:01-05:00')
+        fake_date_2 = parser.parse('2020-06-01T08:00:01-05:00')
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+
+        self._make_summary(p2, consentForGenomicsRORAuthored=fake_date_1,
+                           consentForStudyEnrollmentAuthored=fake_date_1)
+
+        self._make_summary(p3, consentForGenomicsRORAuthored=fake_date_2,
+                           consentForStudyEnrollmentAuthored=fake_date_2)
+
+        self._make_set_member(p2, genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY)
+        self._make_set_member(p3, genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY)
+
+        with clock.FakeClock(fake_now):
+            uri = "GenomicOutreach/GEM?start_date=2020-05-27T08:00:01-05:00&end_date=2020-05-30T08:00:01-05:00"
+            resp = self.send_get(uri)
+
+        expected_response = {
+            "participant_report_statuses": [
+                {
+                    "participant_id": "P2",
+                    "report_status": "ready"
+                }
+            ],
+            "timestamp": fake_now.replace(microsecond=0).isoformat()
+        }
+
+        self.assertEqual(expected_response, resp)
+
+    def test_get_participant_lookup(self):
+        p2 = self._make_participant()
+
+        fake_date = parser.parse('2020-05-29T08:00:01-05:00')
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+
+        self._make_summary(p2, consentForGenomicsRORAuthored=fake_date,
+                           consentForStudyEnrollmentAuthored=fake_date)
+
+        self._make_set_member(p2, genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY)
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get("GenomicOutreach/GEM?participant_id=P2")
+
+        expected_response = {
+            "participant_report_statuses": [
+                {
+                    "participant_id": "P2",
+                    "report_status": "ready"
+                }
+            ],
+            "timestamp": fake_now.replace(microsecond=0).isoformat()
+        }
+
+        self.assertEqual(expected_response, resp)
+
+    def test_get_no_participant(self):
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+        with clock.FakeClock(fake_now):
+            self.send_get("GenomicOutreach/GEM?participant_id=P13", expected_status=404)
