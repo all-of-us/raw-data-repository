@@ -33,7 +33,7 @@ class SyncConsentTest(BaseTestCase):
         )
 
     @staticmethod
-    def config_copy_mock(mock_gcp_cp):
+    def setup_local_file_creation(mock_gcp_cp):
         # Actually create the files locally so the zipping code will have something to work with
         def create_local_file(source, destination, **_):
             if destination.startswith('./'):
@@ -49,7 +49,7 @@ class SyncConsentTest(BaseTestCase):
         args = mock.MagicMock()
         args.date_limit = date_limit
         args.end_date = end_date
-        args.org_id = org_id
+        args.org_id = None if all_va else org_id
         args.destination_bucket = destination_bucket
         args.all_files = all_files
         args.zip_files = zip_files
@@ -70,7 +70,7 @@ class SyncConsentTest(BaseTestCase):
 
     @staticmethod
     def _fake_file(participant, file_name):
-        return FakeFile(name=f'Participant/P{participant.participantId}/one.pdf',
+        return FakeFile(name=f'Participant/P{participant.participantId}/{file_name}',
                         updated=datetime.now(pytz.timezone('Etc/Greenwich')))
 
     @staticmethod
@@ -80,10 +80,7 @@ class SyncConsentTest(BaseTestCase):
         mock_zip_write = zip_instance_context.write
         mock_zip_write.assert_any_call(os.path.join(directory, relative_path), arcname=f'/{relative_path}')
 
-    @mock.patch('rdr_service.tools.tool_libs.sync_consent.ZipFile')
-    def test_zip_file_download(self, mock_zip_file, mock_gcp_cp):
-        self.config_copy_mock(mock_gcp_cp)
-
+    def test_zip_file_download(self, mock_gcp_cp):
         self.run_sync(zip_files=True, consent_files=[self._fake_file(self.participant, 'one.pdf')])
 
         # Assert that the files were copied locally for zipping
@@ -94,7 +91,7 @@ class SyncConsentTest(BaseTestCase):
 
     @mock.patch('rdr_service.tools.tool_libs.sync_consent.ZipFile')
     def test_zip_file_write(self, mock_zip_file, mock_gcp_cp):
-        self.config_copy_mock(mock_gcp_cp)
+        self.setup_local_file_creation(mock_gcp_cp)
 
         self.run_sync(zip_files=True, consent_files=[self._fake_file(self.participant, 'one.pdf')])
 
@@ -103,9 +100,8 @@ class SyncConsentTest(BaseTestCase):
                                    './temp_consents/test_dest_bucket/test_org/test_site_google_group/',
                                    f'P{self.participant.participantId}/one.pdf')
 
-    @mock.patch('rdr_service.tools.tool_libs.sync_consent.ZipFile')
-    def test_zip_file_upload(self, mock_zip_file, mock_gcp_cp):
-        self.config_copy_mock(mock_gcp_cp)
+    def test_zip_file_upload(self, mock_gcp_cp):
+        self.setup_local_file_creation(mock_gcp_cp)
 
         self.run_sync(zip_files=True, consent_files=[self._fake_file(self.participant, 'one.pdf')])
 
@@ -116,10 +112,7 @@ class SyncConsentTest(BaseTestCase):
             flags='-m'
         )
 
-    @mock.patch('rdr_service.tools.tool_libs.sync_consent.ZipFile')
-    def test_moving_cloud_file(self, mock_zip_file, mock_gcp_cp):
-        self.config_copy_mock(mock_gcp_cp)
-
+    def test_moving_cloud_file(self, mock_gcp_cp):
         self.run_sync(consent_files=[self._fake_file(self.participant, 'one.pdf')])
 
         # Make sure the file was moved on the cloud if we aren't zipping
@@ -127,3 +120,32 @@ class SyncConsentTest(BaseTestCase):
             f'gs://uploads_bucket/Participant/P{self.participant.participantId}/one.pdf',
             f'gs://test_dest_bucket/Participant/test_org/test_site_google_group/P{self.participant.participantId}/',
             flags='-m', args='-r')
+
+    # There's a switch that targets the VA upload bucket for all organizations that belong under the VA hpo
+    def test_va_zip_upload(self, mock_gcp_cp):
+        self.setup_local_file_creation(mock_gcp_cp)
+        site = self.create_database_site(googleGroup='boston_site')
+        org = self.create_database_organization(externalId='VA_BOSTON')
+        va_participant = self.create_database_participant(organizationId=org.organizationId, siteId=site.siteId)
+        self.create_database_participant_summary(
+            participant=va_participant,
+            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED
+        )
+
+        self.run_sync(zip_files=True, all_va=True, consent_files=[self._fake_file(va_participant, 'consent.pdf')])
+
+        # Assert that the zip was uploaded to the VA bucket
+        mock_gcp_cp.assert_any_call(
+            f'./temp_consents/aou179/VA_BOSTON/boston_site.zip',
+            'gs://aou179/Participant/VA_BOSTON/',
+            flags='-m'
+        )
+
+    def test_loading_only_va_participants(self, mock_gcp_cp):
+        # The test setup creates a participant that should have a file downloaded if they were loaded from the database.
+        # But they're not in a VA organization, so we shouldn't see a call for them.
+
+        self.run_sync(zip_files=True, all_va=True, consent_files=[self._fake_file(self.participant, 'consent.pdf')])
+
+        # Assert that the zip was uploaded to the correct location
+        mock_gcp_cp.assert_not_called()

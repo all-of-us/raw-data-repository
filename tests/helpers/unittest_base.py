@@ -243,7 +243,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
         # hpoId is the primary key but is not automatically set when inserting
         if hpo.hpoId is None:
-            hpo.hpoId = self.session.query(HPO).count()
+            hpo.hpoId = self.session.query(HPO).count() + 50  # There was code somewhere using lower numbers
         self._commit_to_database(hpo)
 
         return hpo

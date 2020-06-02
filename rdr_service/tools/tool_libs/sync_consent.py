@@ -181,6 +181,8 @@ class SyncConsentClass(object):
                     if self.args.destination_bucket is not None:
                         # override destination bucket lookup (the lookup table is incomplete)
                         bucket = self.args.destination_bucket
+                    elif self.args.all_va:
+                        bucket = 'aou179'
                     else:
                         site_info = sites.get(rec[3])
                         if not site_info:
@@ -232,7 +234,6 @@ class SyncConsentClass(object):
                     count, total_participants, prefix="{0}/{1}:".format(count, total_participants), suffix="complete"
                 )
 
-            count = 1
             if self.args.zip_files and count > 0:
                 _logger.info("zipping and uploading consent files...")
                 for bucket_dir in self._directories_in(TEMP_CONSENTS_PATH):
