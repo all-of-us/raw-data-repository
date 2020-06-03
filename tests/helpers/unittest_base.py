@@ -38,6 +38,9 @@ from rdr_service.storage import LocalFilesystemStorageProvider
 from tests.helpers.mysql_helper import reset_mysql_instance
 from tests.test_data import data_path
 
+QUESTIONNAIRE_NONE_ANSWER = 'no_answer_given'
+
+
 
 class CodebookTestMixin:
 
@@ -87,15 +90,23 @@ class QuestionnaireTestMixin:
                         "answer": [{"valueCoding": {"code": answer[1].code, "system": answer[1].system}}],
                     }
                 )
+
+        def add_question_result(question_data, answer_value, answer_structure):
+            result = {"linkId": question_data}
+            if answer_value != QUESTIONNAIRE_NONE_ANSWER:
+                result["answer"] = [answer_structure]
+            results.append(result)
+
         if string_answers:
             for answer in string_answers:
-                results.append({"linkId": answer[0], "answer": [{"valueString": answer[1]}]})
+                add_question_result(answer[0], answer[1], {"valueString": answer[1]})
         if date_answers:
             for answer in date_answers:
-                results.append({"linkId": answer[0], "answer": [{"valueDate": "%s" % answer[1].isoformat()}]})
+                add_question_result(answer[0], answer[1], {"valueDate": "%s" % answer[1].isoformat()})
         if uri_answers:
             for answer in uri_answers:
-                results.append({"linkId": answer[0], "answer": [{"valueUri": answer[1]}]})
+                results.append({"linkId": answer[0], "answer": []})
+                add_question_result(answer[0], answer[1], {"valueUri": answer[1]})
 
         response_json = {
             "resourceType": "QuestionnaireResponse",
