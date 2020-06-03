@@ -35,7 +35,9 @@ from rdr_service.code_constants import (
     CONSENT_COPE_YES_CODE,
     CONSENT_COPE_NO_CODE,
     CONSENT_COPE_DEFERRED_CODE,
-    COPE_CONSENT_QUESTION_CODE)
+    COPE_CONSENT_QUESTION_CODE,
+    STREET_ADDRESS_QUESTION_CODE,
+    STREET_ADDRESS2_QUESTION_CODE)
 from rdr_service.config_api import is_config_admin
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -284,6 +286,8 @@ class QuestionnaireResponseDao(BaseDao):
         ehr_consent = False
         gror_consent = None
         dvehr_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+        street_address_submitted = False
+        street_address2_submitted = False
         # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
         for answer in questionnaire_response.answers:
             question = question_map.get(answer.questionId)
@@ -292,6 +296,10 @@ class QuestionnaireResponseDao(BaseDao):
                 if code:
                     if code.value == GENDER_IDENTITY_QUESTION_CODE:
                         gender_code_ids.append(answer.valueCodeId)
+                    elif code.value == STREET_ADDRESS_QUESTION_CODE:
+                        street_address_submitted = answer.valueString is not None
+                    elif code.value == STREET_ADDRESS2_QUESTION_CODE:
+                        street_address2_submitted = answer.valueString is not None
 
                     summary_field = QUESTION_CODE_TO_FIELD.get(code.value)
                     if summary_field:
@@ -350,6 +358,14 @@ class QuestionnaireResponseDao(BaseDao):
 
                             # COPE Survey changes need to update number of modules complete in summary
                             module_changed = True
+
+        # If the answer for line 2 of the street address was left out then it needs to be clear on summary.
+        # So when it hasn't been submitted and there is something set for streetAddress2 we want to clear it out.
+        summary_has_street_line_two = participant_summary.streetAddress2 is not None\
+            and participant_summary.streetAddress2 != ""
+        if street_address_submitted and not street_address2_submitted and summary_has_street_line_two:
+            something_changed = True
+            participant_summary.streetAddress2 = None
 
         # If race was provided in the response in one or more answers, set the new value.
         if race_code_ids:
