@@ -56,7 +56,7 @@ class SyncConsentTest(BaseTestCase):
         args.dry_run = dry_run
         args.all_va = all_va
 
-        # Patching things to keep tool from trying to call GAE, to provide test data
+        # Patching things to keep tool from trying to call GAE and to provide test data
         with mock.patch('rdr_service.tools.tool_libs.sync_consent.make_api_request',
                         return_value=(200, {'rdr_db_password': 'test'})),\
                 mock.patch.dict('rdr_service.tools.tool_libs.sync_consent.SOURCE_BUCKET', {

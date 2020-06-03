@@ -244,7 +244,7 @@ class SyncConsentClass(object):
                                 self._add_path_to_zip(zip_file, site_dir.path)
 
                             destination = "gs://{bucket_name}/Participant/{org_external_id}/".format(
-                                bucket_name=bucket,  # todo: should be orgs bucket name
+                                bucket_name=bucket,
                                 org_external_id=org_dir.name
                             )
                             if not self.args.dry_run:

@@ -161,7 +161,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         self.session = database_factory.get_database().make_session()
 
     def tearDown(self):
-        super(BaseTestCase, self).setUp()
+        super(BaseTestCase, self).tearDown()
         self.session.close()
 
     def setup_storage(self):
