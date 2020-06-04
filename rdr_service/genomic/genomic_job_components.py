@@ -41,7 +41,7 @@ from rdr_service.participant_enums import (
     GenomicSetMemberStatus,
     SuspensionStatus,
     GenomicWorkflowState,
-)
+    ParticipantCohort)
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,
@@ -964,7 +964,7 @@ class GenomicBiobankSamplesCoupler:
         self.run_id = run_id
 
     def create_new_genomic_participants(self, from_date):
-        """This method is the main execution method for this class
+        """This method is the main execution method for the new participant workflow.
         It determines which biobankIDs to process and then executes subprocesses
         Validation is handled in the query that retrieves the new Biobank IDs to process.
         :param: from_date : the date from which to lookup new biobank_ids
@@ -1034,6 +1034,18 @@ class GenomicBiobankSamplesCoupler:
             logging.info(f'New Participant Workflow: No new biobank_ids to process.')
             return GenomicSubProcessResult.NO_FILES
 
+    def create_c2_genomic_participants(self, from_date):
+        """
+        This method determines which samples to enter into the genomic system
+        from Cohort 2.
+        Validation is handled in the query that retrieves the newly consented
+        participants' samples to process.
+        :param: from_date : the date from which to lookup new biobank_ids
+        :return: result
+        """
+        samples = self._get_new_c2_consent_samples(from_date)
+
+
     def _get_new_biobank_samples(self, from_date):
         """
         Retrieves BiobankStoredSample objects with `rdr_created`
@@ -1069,7 +1081,7 @@ class GenomicBiobankSamplesCoupler:
             ELSE "NA"
           END as sab,
           CASE
-            WHEN TRUE THEN 0 ELSE 0
+            WHEN ps.consent_for_genomics_ror = 1 THEN 1 ELSE 0
           END AS gror_consent,
           CASE
               WHEN native.participant_id IS NULL THEN 1 ELSE 0
@@ -1095,20 +1107,97 @@ class GenomicBiobankSamplesCoupler:
                 )
             AND ss.test IN ("1ED04", "1SAL2")
             AND ss.rdr_created > :from_date_param
-            AND ps.consent_for_study_enrollment_time > :consent_cutoff_param
+            AND ps.consent_cohort = :cohort_3_param
         """
         params = {
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
             "dob_param": GENOMIC_VALID_AGE,
             "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
-            "consent_cutoff_param": GENOMIC_VALID_CONSENT_CUTOFF.strftime("%Y-%m-%d"),
             "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
             "from_date_param": from_date.strftime("%Y-%m-%d"),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
+            "cohort_3_param": ParticipantCohort.COHORT_CURRENT.__int__(),
         }
         with self.samples_dao.session() as session:
             result = session.execute(_new_samples_sql, params).fetchall()
+        return list(zip(*result))
+
+    def _get_new_c2_consent_samples(self, from_date):
+        """
+        Returns cohort 2 samples th
+        :param from_date:
+        :return:
+        """
+
+        _c2_samples_sql = """
+                SELECT DISTINCT
+                  ss.biobank_id,
+                  p.participant_id,
+                  o.biobank_order_id,
+                  o.collected_site_id,
+                  ss.biobank_stored_sample_id,
+                  CASE
+                    WHEN p.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
+                  END as valid_withdrawal_status,
+                  CASE
+                    WHEN p.suspension_status = :suspension_param THEN 1 ELSE 0
+                  END as valid_suspension_status,
+                  CASE
+                    WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
+                  END as general_consent_given,
+                  CASE
+                    WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param*365 DAY) THEN 1 ELSE 0
+                  END AS valid_age,
+                  CASE
+                    WHEN c.value = "SexAtBirth_Male" THEN "M"
+                    WHEN c.value = "SexAtBirth_Female" THEN "F"
+                    ELSE "NA"
+                  END as sab,
+                  CASE
+                    WHEN ps.consent_for_genomics_ror = 1 THEN 1 ELSE 0
+                  END AS gror_consent,
+                  CASE
+                      WHEN native.participant_id IS NULL THEN 1 ELSE 0
+                  END AS valid_ai_an
+                FROM
+                    biobank_stored_sample ss
+                    JOIN participant p ON ss.biobank_id = p.biobank_id
+                    JOIN biobank_order_identifier oi ON ss.biobank_order_identifier = oi.value
+                    JOIN biobank_order o ON oi.biobank_order_id = o.biobank_order_id
+                    JOIN participant_summary ps ON ps.participant_id = p.participant_id
+                    JOIN code c ON c.code_id = ps.sex_id
+                    LEFT JOIN (
+                      SELECT ra.participant_id
+                      FROM participant_race_answers ra
+                          JOIN code cr ON cr.code_id = ra.code_id
+                              AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
+                    ) native ON native.participant_id = p.participant_id
+                WHERE TRUE
+                    AND (
+                            ps.sample_status_1ed04 = :sample_status_param
+                            OR
+                            ps.sample_status_1sal2 = :sample_status_param
+                        )
+                    AND ss.test IN ("1ED04", "1SAL2")
+                    # TODO: reconsent date > :from_date_param
+                    AND ps.consent_cohort = :cohort_2_param
+                """
+
+        params = {
+            "sample_status_param": SampleStatus.RECEIVED.__int__(),
+            "dob_param": GENOMIC_VALID_AGE,
+            "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
+            "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
+            #"from_date_param": from_date.strftime("%Y-%m-%d"),
+            "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
+            "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
+            "cohort_2_param": ParticipantCohort.COHORT_LAUNCH.__int__(),
+        }
+
+        with self.samples_dao.session() as session:
+            result = session.execute(_c2_samples_sql, params).fetchall()
+
         return list(zip(*result))
 
     def _create_new_genomic_set(self):

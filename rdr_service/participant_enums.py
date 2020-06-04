@@ -544,6 +544,7 @@ class GenomicJob(messages.Enum):
     RECONCILE_SEQUENCING_DATA = 14
     W2_INGEST = 15
     W3_MANIFEST = 16
+    C2_PARTICIPANT_WORKFLOW = 17
 
 
 class GenomicWorkflowState(messages.Enum):

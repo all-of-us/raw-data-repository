@@ -1300,6 +1300,62 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
+    def test_c2_participant_workflow(self):
+        # Test for Cohort 2 workflow
+        # create test samples
+        test_biobank_ids = (100001, 100002, 100003)
+        fake_datetime_old = datetime.datetime(2019, 12, 31, tzinfo=pytz.utc)
+        fake_datetime_new = datetime.datetime(2020, 1, 5, tzinfo=pytz.utc)
+
+        # update the sites' States for the state test (NY or AZ)
+        self._update_site_states()
+
+        # setup sex_at_birth code for unittests
+        female_code = self._setup_fake_sex_at_birth_codes('f')
+
+        # Setup race codes for unittests
+        non_native_code = self._setup_fake_race_codes(native=False)
+
+        # Setup the biobank order backend
+        for bid in test_biobank_ids:
+            p = self._make_participant(biobankId=bid)
+            self._make_summary(p, sexId=female_code,
+                               consentForStudyEnrollment=1,
+                               sampleStatus1ED04=0,
+                               sampleStatus1SAL2=1,
+                               consentCohort=3 if bid == 100003 else 2,
+                               race=Race.HISPANIC_LATINO_OR_SPANISH)
+            # Insert participant races
+            race_answer = ParticipantRaceAnswers(
+                participantId=p.participantId,
+                codeId=non_native_code
+            )
+
+            self.race_dao.insert(race_answer)
+            test_identifier = BiobankOrderIdentifier(
+                system=u'c',
+                value=u'e{}'.format(bid))
+            self._make_biobank_order(biobankOrderId=f'W{bid}',
+                                     participantId=p.participantId,
+                                     collectedSiteId=1 if bid == 100002 else 2,
+                                     identifiers=[test_identifier])
+            sample_args = {
+                'test': '1UR10' if bid == 100005 else '1SAL2',
+                'confirmed': fake_datetime_new,
+                'created': fake_datetime_old,
+                'biobankId': bid,
+                'biobankOrderIdentifier': test_identifier.value,
+                'biobankStoredSampleId': bid,
+            }
+            insert_dtm = fake_datetime_new
+            if bid == 100001:
+                insert_dtm = fake_datetime_old
+            with clock.FakeClock(insert_dtm):
+                self._make_stored_sample(**sample_args)
+
+        # TODO: Run Pipeline
+        pass
+
     def test_gc_manifest_ingestion_workflow(self):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
                                                 array_participants=range(1, 4))
