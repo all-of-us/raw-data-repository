@@ -46,9 +46,6 @@ class BiobankDaoBase(UpdatableDao):
 
     @staticmethod
     def read_client_disposal(status_source, model):
-        if 'disposalDate' not in status_source:
-            raise BadRequest("Disposal date field required for disposal status")
-
         for disposal_client_field_name, disposal_model_field_name, parser in [('reason', 'disposalReason', None),
                                                                               ('disposalDate', None, parse_date)]:
             BiobankDaoBase.map_optional_json_field_to_object(status_source, model, disposal_client_field_name,
