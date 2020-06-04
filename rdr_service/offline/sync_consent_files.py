@@ -45,14 +45,14 @@ def do_sync_consent_files(**kwargs):
     """
   entrypoint
   """
-    org_data_map = get_org_data_map()
-    org_ids = [org_id for org_id, org_data in org_data_map.items()]
+    org_buckets = get_org_data_map()
+    org_ids = [org_id for org_id, org_data in org_buckets.items()]
     start_date = kwargs.get('start_date')
     file_filter = kwargs.get('file_filter', 'pdf')
     for participant_data in _iter_participants_data(org_ids, **kwargs):
         kwargs = {
             "source_bucket": SOURCE_BUCKET.get(participant_data.origin_id, SOURCE_BUCKET[next(iter(SOURCE_BUCKET))]),
-            "destination_bucket": org_data_map[participant_data.org_id]['bucket_name'],
+            "destination_bucket": org_buckets[participant_data.org_id],
             "participant_id": participant_data.participant_id,
             "google_group": participant_data.google_group or DEFAULT_GOOGLE_GROUP,
         }
@@ -69,7 +69,7 @@ def do_sync_consent_files(**kwargs):
 
 
 def get_org_data_map():
-    return config.getSetting(config.CONSENT_SYNC_ORGANIZATIONS)
+    return config.getSettingJson(config.CONSENT_SYNC_ORGANIZATIONS)
 
 
 PARTICIPANT_DATA_SQL = """

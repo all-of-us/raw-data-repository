@@ -115,7 +115,7 @@ class SyncConsentClass(object):
     Main program process
     :return: Exit code value
     """
-        sites = get_org_data_map()
+        site_buckets = get_org_data_map()
 
         _logger.info("retrieving db configuration...")
         headers = gcp_make_auth_header()
@@ -184,12 +184,7 @@ class SyncConsentClass(object):
                     elif self.args.all_va:
                         bucket = 'aou179'
                     else:
-                        site_info = sites.get(rec[3])
-                        if not site_info:
-                            _logger.warning("\nsite info not found for [{0}].".format(rec[2]))
-                            count += 1
-                            continue
-                        bucket = site_info.get("bucket_name")
+                        bucket = site_buckets.get(rec[3], None)
                     if not bucket:
                         _logger.warning("\nno bucket name found for [{0}].".format(rec[2]))
                         count += 1

@@ -30,17 +30,11 @@ class SyncConsentFilesTest(BaseTestCase):
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
 
-        self.org_map_data = {
-            "test_one": {
-                "hpo_id": "t_1",
-                "bucket_name": "testbucket123"
-            },
-            "test_two": {
-                "hpo_id": "t_2",
-                "bucket_name": "testbucket456"
-            }
+        self.org_buckets = {
+            "test_one": "testbucket123",
+            "test_two": "testbucket456"
         }
-        config.override_setting(config.CONSENT_SYNC_ORGANIZATIONS, [self.org_map_data])
+        config.override_setting(config.CONSENT_SYNC_ORGANIZATIONS, self.org_buckets)
 
         self.org1 = self._create_org(1, 'test_one')
         self.site1 = self._create_site(1001, "group1")
@@ -98,7 +92,7 @@ class SyncConsentFilesTest(BaseTestCase):
         self._create_participant(1, self.org1.organizationId, self.site1.siteId, consents=True)
         sync_consent_files.do_sync_consent_files()
 
-        org_bucket_name = self.org_map_data[self.org1.externalId]['bucket_name']
+        org_bucket_name = self.org_buckets[self.org1.externalId]
         mock_copy_cloud_file.assert_has_calls(
             [
                 mock.call("/{}/Participant/P1/consent.pdf".format(self.source_consent_bucket),
@@ -122,7 +116,7 @@ class SyncConsentFilesTest(BaseTestCase):
 
         sync_consent_files.do_sync_consent_files(start_date='2020-02-01', end_date='2020-03-01')
 
-        org_bucket_name = self.org_map_data[self.org1.externalId]['bucket_name']
+        org_bucket_name = self.org_buckets[self.org1.externalId]
         mock_copy_cloud_file.called_once_with(f'/{self.source_consent_bucket}/Participant/P2/consent.pdf',
                                               f'/{org_bucket_name}/Participant/{self.site1.googleGroup}/P2/consent.pdf')
         self.assertEqual(1, mock_copy_cloud_file.call_count, 'Files should be copied for one participant')
@@ -141,7 +135,7 @@ class SyncConsentFilesTest(BaseTestCase):
                                  consent_time=datetime.datetime(2020, 2, 3))
         sync_consent_files.do_sync_consent_files(start_date='2020-02-01')
 
-        org_bucket_name = self.org_map_data[self.org1.externalId]['bucket_name']
+        org_bucket_name = self.org_buckets[self.org1.externalId]
         mock_copy_cloud_file.called_once_with(f'/{self.source_consent_bucket}/Participant/P1/consent.pdf',
                                               f'/{org_bucket_name}/Participant/{self.site1.googleGroup}/P1/consent.pdf')
         self.assertEqual(1, mock_copy_cloud_file.call_count, 'One file should be copied')
@@ -165,7 +159,7 @@ class SyncConsentFilesTest(BaseTestCase):
 
         sync_consent_files.do_sync_recent_consent_files()
 
-        org_bucket_name = self.org_map_data[self.org1.externalId]['bucket_name']
+        org_bucket_name = self.org_buckets[self.org1.externalId]
         mock_copy_cloud_file.called_once_with(f'/{self.source_consent_bucket}/Participant/P2/consent.pdf',
                                               f'/{org_bucket_name}/Participant/{self.site1.googleGroup}/P2/consent.pdf')
         self.assertEqual(1, mock_copy_cloud_file.call_count, 'Files should be copied for one participant')
@@ -183,7 +177,7 @@ class SyncConsentFilesTest(BaseTestCase):
                                  consent_time=datetime.datetime(2020, 2, 3))
         sync_consent_files.do_sync_consent_files()
 
-        org_bucket_name = self.org_map_data[self.org1.externalId]['bucket_name']
+        org_bucket_name = self.org_buckets[self.org1.externalId]
         mock_copy_cloud_file.called_once_with(f'/{self.source_consent_bucket}/Participant/P1/consent.pdf',
                                               f'/{org_bucket_name}/Participant/{self.site1.googleGroup}/P1/consent.pdf')
         self.assertEqual(1, mock_copy_cloud_file.call_count, 'Only PDF files should be copied')
@@ -201,7 +195,7 @@ class SyncConsentFilesTest(BaseTestCase):
                                  consent_time=datetime.datetime(2020, 2, 3))
         sync_consent_files.do_sync_consent_files(file_filter=None)
 
-        org_bucket_name = self.org_map_data[self.org1.externalId]['bucket_name']
+        org_bucket_name = self.org_buckets[self.org1.externalId]
         mock_copy_cloud_file.assert_has_calls(
             [
                 mock.call(f'/{self.source_consent_bucket}/Participant/P1/consent.pdf',
