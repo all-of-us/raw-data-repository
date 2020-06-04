@@ -429,12 +429,14 @@ class GenomicSetMemberDao(UpdatableDao):
                     GenomicWorkflowState.A2
                 )) &
                 (
-                    (ParticipantSummary.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED) |
-                    (ParticipantSummary.consentForStudyEnrollment != QuestionnaireStatus.SUBMITTED)
-                ) &
-                (
-                    (ParticipantSummary.consentForGenomicsRORAuthored > _date) |
-                    (ParticipantSummary.consentForStudyEnrollmentAuthored > _date)
+                    (
+                        (ParticipantSummary.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED) &
+                        (ParticipantSummary.consentForGenomicsRORAuthored > _date)
+                    ) |
+                    (
+                        (ParticipantSummary.consentForStudyEnrollment != QuestionnaireStatus.SUBMITTED) &
+                        (ParticipantSummary.consentForStudyEnrollmentAuthored > _date)
+                    )
                 )
             ).all()
         return members
@@ -456,12 +458,14 @@ class GenomicSetMemberDao(UpdatableDao):
                     GenomicWorkflowState.GEM_RPT_DELETED,
                 )) &
                 (
-                    (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED) |
-                    (ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED)
-                ) &
-                (
-                    (ParticipantSummary.consentForGenomicsRORAuthored > _date) |
-                    (ParticipantSummary.consentForStudyEnrollmentAuthored > _date)
+                    (
+                        (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED) &
+                        (ParticipantSummary.consentForGenomicsRORAuthored > _date)
+                    ) |
+                    (
+                        (ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED) &
+                        (ParticipantSummary.consentForStudyEnrollmentAuthored > _date)
+                    )
                 )
             ).all()
         return members
