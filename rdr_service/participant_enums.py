@@ -574,6 +574,17 @@ class GenomicWorkflowState(messages.Enum):
     RHP_RPT_ACCESSED = 21
     CVL_READY = 22
 
+    # GEM Reporting States
+    GEM_RPT_READY = 23
+    GEM_RPT_PENDING_DELETE = 24
+    GEM_RPT_DELETED = 25
+    GEM_RPT_ACCESSED = 26
+    GEM_READY = 27
+    A1 = 28
+    A2 = 29
+    A2F = 30
+    A3 = 31
+
 
 class GenomicSubProcessStatus(messages.Enum):
     """The status of a Genomics Sub-Process"""

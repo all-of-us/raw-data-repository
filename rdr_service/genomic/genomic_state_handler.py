@@ -24,6 +24,89 @@ class AW2State(GenomicStateBase):
         elif signal == 'cvl-ready':
             return GenomicWorkflowState.CVL_READY
 
+        elif signal == 'gem-ready':
+            return GenomicWorkflowState.GEM_READY
+
+
+class GEMReadyState(GenomicStateBase):
+    """State representing the GEM_READY state"""
+    def transition_function(self, signal):
+        if signal == 'manifest-generated':
+            return GenomicWorkflowState.A1
+
+
+class A1State(GenomicStateBase):
+    """State representing the A1 manifest state"""
+    def transition_function(self, signal):
+        if signal == 'a2-gem-pass':
+            return GenomicWorkflowState.A2
+
+        if signal == 'a2-gem-fail':
+            return GenomicWorkflowState.A2F
+
+        if signal == 'unconsented':
+            return GenomicWorkflowState.GEM_RPT_PENDING_DELETE
+
+
+class A2PassState(GenomicStateBase):
+    """State representing the A2 manifest state"""
+
+    def transition_function(self, signal):
+        if signal == 'report-ready':
+            return GenomicWorkflowState.GEM_RPT_READY
+
+        if signal == 'unconsented':
+            return GenomicWorkflowState.GEM_RPT_PENDING_DELETE
+
+
+class A2FailState(GenomicStateBase):
+    """State representing the A2 manifest GEM failure state"""
+
+    def transition_function(self, signal):
+        if signal == 'report-ready':
+            return GenomicWorkflowState.GEM_RPT_READY
+
+        if signal == 'unconsented':
+            return GenomicWorkflowState.GEM_RPT_PENDING_DELETE
+
+
+class A3State(GenomicStateBase):
+    """State representing the A3 manifest; GEM Delete states"""
+
+    def transition_function(self, signal):
+        if signal == 'manifest-generated':
+            return GenomicWorkflowState.GEM_RPT_DELETED
+
+
+class GEMReportReady(GenomicStateBase):
+    """State representing the GEM Report"""
+
+    def transition_function(self, signal):
+        if signal == 'unconsented':
+            return GenomicWorkflowState.GEM_RPT_PENDING_DELETE
+
+
+class GEMReportPendingDelete(GenomicStateBase):
+    """State representing when Consent revoked, input to A3 Manifest"""
+
+    def transition_function(self, signal):
+        if signal == 'manifest-generated':
+            return GenomicWorkflowState.GEM_RPT_DELETED
+
+        if signal == 'reconsented':
+            return GenomicWorkflowState.GEM_READY
+
+
+class GEMReportDeleted(GenomicStateBase):
+    """State representing when Consent revoked, input to A3 Manifest"""
+
+    def transition_function(self, signal):
+        if signal == 'manifest-generated':
+            return GenomicWorkflowState.GEM_RPT_DELETED
+
+        if signal == 'reconsented':
+            return GenomicWorkflowState.GEM_READY
+
 
 class CVLReadyState(GenomicStateBase):
     """State representing the CVL_READY state"""
@@ -55,6 +138,14 @@ class GenomicStateHandler:
         GenomicWorkflowState.CVL_READY: CVLReadyState(),
         GenomicWorkflowState.W1: W1State(),
         GenomicWorkflowState.W2: W2State(),
+        GenomicWorkflowState.GEM_READY: GEMReadyState(),
+        GenomicWorkflowState.A1: A1State(),
+        GenomicWorkflowState.A2: A2PassState(),
+        GenomicWorkflowState.A2F: A2FailState(),
+        GenomicWorkflowState.A3: A3State(),
+        GenomicWorkflowState.GEM_RPT_READY: GEMReportReady(),
+        GenomicWorkflowState.GEM_RPT_PENDING_DELETE: GEMReportPendingDelete(),
+        GenomicWorkflowState.GEM_RPT_DELETED: GEMReportDeleted(),
     }
 
     @classmethod
