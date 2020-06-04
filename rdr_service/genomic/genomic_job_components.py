@@ -739,6 +739,7 @@ class GenomicReconciler:
 
         # Iterate over metrics, searching the bucket for filenames
         for metric in metrics:
+            member = self.member_dao.get(metric.genomicSetMemberId)
 
             file = self.file_dao.get(metric.genomicFileProcessedId)
             missing_data_files = []
@@ -754,18 +755,21 @@ class GenomicReconciler:
 
             self.metrics_dao.update(metric)
 
-            # Update Job Run ID on member
-            self.member_dao.update_member_job_run_id(
-              self.member_dao.get(metric.genomicSetMemberId),
-              self.run_id, 'reconcileMetricsSequencingJobRunId')
+            next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='gem-ready')
 
             # Make a roc ticket for missing data files
             if len(missing_data_files) > 0:
+                next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
+
                 alert = GenomicAlertHandler()
 
                 summary = '[Genomic System Alert] Missing AW2 Array Manifest Files'
                 description = self._compile_missing_data_alert(file.fileName, missing_data_files)
                 alert.make_genomic_alert(summary, description)
+
+            # Update Job Run ID on member
+            self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId')
+            self.member_dao.update_member_state(member, next_state)
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -857,6 +861,34 @@ class GenomicReconciler:
                 else GenomicSubProcessResult.ERROR
 
         return GenomicSubProcessResult.NO_FILES
+
+    def reconcile_gem_report_states(self, _last_run_time=None):
+        """
+        Scans GEM report states for changes
+        :param _last_run_time: the time when the current job last ran
+        """
+
+        # Get unconsented members to update (consent > last run time of job_id)
+        unconsented_gror_members = self.member_dao.get_unconsented_gror_since_date(_last_run_time)
+
+        # update each member with the new state
+        for member in unconsented_gror_members:
+            new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
+                                                          signal='unconsented')
+
+            if new_state is not None or new_state != member.genomicWorkflowState:
+                self.member_dao.update_member_state(member, new_state)
+
+        # Get reconsented members to update (consent > last run time of job_id)
+        reconsented_gror_members = self.member_dao.get_reconsented_gror_since_date(_last_run_time)
+
+        # update each member with the new state
+        for member in reconsented_gror_members:
+            new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
+                                                          signal='reconsented')
+
+            if new_state is not None or new_state != member.genomicWorkflowState:
+                self.member_dao.update_member_state(member, new_state)
 
     def _check_genotyping_file_exists(self, bucket_name, filename):
         files = list_blobs('/' + bucket_name)
@@ -1278,54 +1310,50 @@ class ManifestDefinitionProvider:
 
         # Color GEM A1 Manifest
         if manifest_type == GenomicManifestTypes.GEM_A1:
-            query_sql = """
-                SELECT m.biobank_id
-                    , m.sample_id
-                    , m.sex_at_birth
-                    , m.consent_for_ror
-                FROM genomic_set_member m
-                    JOIN genomic_gc_validation_metrics gcv
-                        ON gcv.genomic_set_member_id = m.id
-                    JOIN participant_summary ps
-                        ON ps.participant_id = m.participant_id
-                    LEFT JOIN genomic_job_run a3 ON a3.id = m.gem_a3_manifest_job_run_id
-                WHERE gcv.processing_status = "pass"
-                    AND m.reconcile_gc_manifest_job_run_id IS NOT NULL
-                    AND m.reconcile_metrics_bb_manifest_job_run_id IS NOT NULL
-                    AND gcv.idat_green_received = 1
-                    AND gcv.idat_red_received = 1
-                    AND gcv.tbi_received = 1
-                    AND gcv.vcf_received = 1
-                    AND m.genome_type = "aou_array"
-                    AND ps.suspension_status = 1
-                    AND ps.withdrawal_status = 1
-                    AND ps.consent_for_genomics_ror = 1
-                    # For withdrawn consents that have re-consented
-                    AND (m.gem_a1_manifest_job_run_id IS NULL
-                        OR  (  a3.start_time < ps.consent_for_genomics_ror_authored
-                               OR a3.start_time < ps.consent_for_study_enrollment_authored	    		
-                            ))
-            """
+            query_sql = (
+                sqlalchemy.select(
+                    [
+                        GenomicSetMember.biobankId,
+                        GenomicSetMember.sampleId,
+                        GenomicSetMember.sexAtBirth,
+                        ParticipantSummary.consentForGenomicsROR,
+                    ]
+                ).select_from(
+                    sqlalchemy.join(
+                        sqlalchemy.join(ParticipantSummary,
+                                        GenomicSetMember,
+                                        GenomicSetMember.participantId == ParticipantSummary.participantId),
+                        GenomicGCValidationMetrics,
+                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                    )
+                ).where(
+                    (GenomicGCValidationMetrics.processingStatus == 'pass') &
+                    (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_READY) &
+                    (GenomicSetMember.genomeType == "aou_array") &
+                    (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
+                    (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
+                    (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
+                )
+            )
 
         # Color GEM A3 Manifest
         # Those with A1 and not A3 or updated consents since sent A3
         if manifest_type == GenomicManifestTypes.GEM_A3:
-            query_sql = """
-                    SELECT m.biobank_id
-                        , m.sample_id
-                    FROM genomic_set_member m
-                        JOIN participant_summary ps
-                            ON ps.participant_id = m.participant_id
-                        LEFT JOIN genomic_job_run a3 ON a3.id = m.gem_a3_manifest_job_run_id
-                    WHERE m.gem_a1_manifest_job_run_id IS NOT NULL                        
-                        AND (m.gem_a3_manifest_job_run_id IS NULL
-                            OR (  a3.start_time < ps.consent_for_genomics_ror_authored
-                                  OR a3.start_time < ps.consent_for_study_enrollment_authored	    		
-                            ))
-                        AND (ps.suspension_status <> 1
-                            OR ps.withdrawal_status <> 1
-                            OR ps.consent_for_genomics_ror <> 1)
-            """
+            query_sql = (
+                sqlalchemy.select(
+                    [
+                        GenomicSetMember.biobankId,
+                        GenomicSetMember.sampleId,
+                    ]
+                ).select_from(
+                    sqlalchemy.join(ParticipantSummary,
+                                    GenomicSetMember,
+                                    GenomicSetMember.participantId == ParticipantSummary.participantId)
+                ).where(
+                    (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_RPT_PENDING_DELETE) &
+                    (GenomicSetMember.genomeType == "aou_array")
+                )
+            )
 
         return query_sql
 
