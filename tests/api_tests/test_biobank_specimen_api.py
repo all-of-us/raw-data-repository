@@ -180,6 +180,14 @@ class BiobankOrderApiTest(BaseTestCase):
         saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
+    def test_nonexistent_order_id(self):
+        payload = self.get_minimal_specimen_json()
+        payload['orderID'] = 'SOMETHING_MISSING_IN_DATABASE'
+        result = self.put_specimen(payload)
+
+        saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
+        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+
     def test_put_new_specimen_all_data(self):
         payload = self.get_minimal_specimen_json()
         payload.update({
@@ -227,6 +235,31 @@ class BiobankOrderApiTest(BaseTestCase):
 
         updated_specimen_json = self.retrieve_specimen_json(initial_result['id'])
         self.assertSpecimenJsonMatches(updated_specimen_json, payload)
+
+    def test_empty_disposal_status_given(self):
+        payload = self.get_minimal_specimen_json()
+        payload['testcode'] = 'disposal test'
+        payload['disposalStatus'] = {}
+        result = self.put_specimen(payload)
+
+        specimen = self.get_specimen_from_dao(_id=result['id'])
+        self.assertEqual('disposal test', specimen.testCode)
+
+    # Make sure an empty disposal status doesn't modify disposal fields
+    def test_empty_disposal_status_leaves_fields(self):
+        payload = self.get_minimal_specimen_json()
+        payload['disposalStatus'] = {
+            'reason': 'yolo',
+            'disposalDate': TIME_2.isoformat()
+        }
+        initial_result = self.put_specimen(payload)
+
+        payload['disposalStatus'] = {}
+        self.put_specimen(payload)
+
+        updated_specimen = self.get_specimen_from_dao(_id=initial_result['id'])
+        self.assertEqual('yolo', updated_specimen.disposalReason)
+        self.assertEqual(TIME_2, updated_specimen.disposalDate)
 
     def test_optional_args_not_cleared(self):
         initial_payload = self.get_minimal_specimen_json()
@@ -655,17 +688,17 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual('contaminated', specimen.disposalReason)
         self.assertEqual(TIME_1, specimen.disposalDate)
 
-    def test_parent_disposed_required_fields(self):
+    def test_parent_disposal_date_not_required(self):
         self._create_minimal_specimen()
         specimen = self.get_specimen_from_dao(rlims_id='sabrina')
         self.assertIsNone(specimen.disposalDate)
 
         self.send_put(f"Biobank/specimens/sabrina/disposalStatus", {
-            'disposalDate': TIME_1.isoformat()
+            'reason': 'test'
         })
 
         specimen = self.get_specimen_from_dao(_id=specimen.id)
-        self.assertEqual(TIME_1, specimen.disposalDate)
+        self.assertEqual('test', specimen.disposalReason)
 
     def test_parent_disposed_not_found(self):
         self.send_put(f"Biobank/specimens/sabrina/status", {
