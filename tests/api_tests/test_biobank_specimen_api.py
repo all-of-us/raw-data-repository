@@ -180,6 +180,14 @@ class BiobankOrderApiTest(BaseTestCase):
         saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
+    def test_nonexistent_order_id(self):
+        payload = self.get_minimal_specimen_json()
+        payload['orderID'] = 'SOMETHING_MISSING_IN_DATABASE'
+        result = self.put_specimen(payload)
+
+        saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
+        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+
     def test_put_new_specimen_all_data(self):
         payload = self.get_minimal_specimen_json()
         payload.update({
