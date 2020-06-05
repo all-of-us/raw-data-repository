@@ -1117,7 +1117,8 @@ class GenomicPipelineTest(BaseTestCase):
                                sampleStatus1ED04=0,
                                sampleStatus1SAL2=0 if bid == 100005 else 1,
                                samplesToIsolateDNA=0,
-                               race=Race.HISPANIC_LATINO_OR_SPANISH)
+                               race=Race.HISPANIC_LATINO_OR_SPANISH,
+                               consentCohort=3)
             # Insert participant races
             race_answer = ParticipantRaceAnswers(
                 participantId=p.participantId,
@@ -1317,6 +1318,151 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
+
+    def test_c2_participant_workflow(self):
+        # Test for Cohort 2 workflow
+        # create test samples
+        test_biobank_ids = (100001, 100002, 100003)
+        fake_datetime_old = datetime.datetime(2019, 12, 31, tzinfo=pytz.utc)
+        fake_datetime_new = datetime.datetime(2020, 1, 5, tzinfo=pytz.utc)
+
+        # update the sites' States for the state test (NY or AZ)
+        self._update_site_states()
+
+        # setup sex_at_birth code for unittests
+        female_code = self._setup_fake_sex_at_birth_codes('f')
+
+        # Setup race codes for unittests
+        non_native_code = self._setup_fake_race_codes(native=False)
+
+        # Setup the biobank order backend
+        for bid in test_biobank_ids:
+            p = self._make_participant(biobankId=bid)
+            self._make_summary(p, sexId=female_code,
+                               consentForStudyEnrollment=1,
+                               sampleStatus1ED04=0,
+                               sampleStatus1SAL2=1,
+                               consentCohort=3 if bid == 100003 else 2,
+                               race=Race.HISPANIC_LATINO_OR_SPANISH)
+            # Insert participant races
+            race_answer = ParticipantRaceAnswers(
+                participantId=p.participantId,
+                codeId=non_native_code
+            )
+
+            self.race_dao.insert(race_answer)
+            test_identifier = BiobankOrderIdentifier(
+                system=u'c',
+                value=u'e{}'.format(bid))
+            self._make_biobank_order(biobankOrderId=f'W{bid}',
+                                     participantId=p.participantId,
+                                     collectedSiteId=1 if bid == 100002 else 2,
+                                     identifiers=[test_identifier])
+            sample_args = {
+                'test': '1SAL2',
+                'confirmed': fake_datetime_new,
+                'created': fake_datetime_old,
+                'biobankId': bid,
+                'biobankOrderIdentifier': test_identifier.value,
+                'biobankStoredSampleId': bid,
+            }
+            insert_dtm = fake_datetime_new
+            if bid == 100001:
+                insert_dtm = fake_datetime_old
+            with clock.FakeClock(insert_dtm):
+                self._make_stored_sample(**sample_args)
+
+        # run C2 participant workflow and test results
+        genomic_pipeline.c2_participant_workflow()
+
+        new_genomic_set = self.set_dao.get_all()
+        self.assertEqual(1, len(new_genomic_set))
+
+        # Should be a aou_wgs and aou_array for each pid
+        new_genomic_members = self.member_dao.get_all()
+        self.assertEqual(4, len(new_genomic_members))
+
+        # Test member data
+        member_genome_types = {_member.biobankId: list() for _member in new_genomic_members}
+        for member in new_genomic_members:
+            member_genome_types[member.biobankId].append(member.genomeType)
+
+            if member.biobankId == '100001':
+                # 100002 : Included, Valid
+                self.assertEqual(0, member.nyFlag)
+                self.assertEqual('100001', member.sampleId)
+                self.assertEqual('F', member.sexAtBirth)
+                self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
+                self.assertEqual('N', member.ai_an)
+
+            if member.biobankId == '100002':
+                # 100003 : Included, Valid
+                self.assertEqual(1, member.nyFlag)
+                self.assertEqual('100002', member.sampleId)
+                self.assertEqual('F', member.sexAtBirth)
+                self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
+                self.assertEqual('N', member.ai_an)
+
+        for bbid in member_genome_types.keys():
+            self.assertIn('aou_array', member_genome_types[bbid])
+            self.assertIn('aou_wgs', member_genome_types[bbid])
+
+            # Test manifest file was created correctly
+            bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
+
+            class ExpectedCsvColumns(object):
+                VALUE = "value"
+                BIOBANK_ID = "biobank_id"
+                SAMPLE_ID = "sample_id"
+                SEX_AT_BIRTH = "sex_at_birth"
+                GENOME_TYPE = "genome_type"
+                NY_FLAG = "ny_flag"
+                REQUEST_ID = "request_id"
+                PACKAGE_ID = "package_id"
+                VALIDATION_PASSED = 'validation_passed'
+                AI_AN = 'ai_an'
+
+                ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG,
+                       REQUEST_ID, PACKAGE_ID, VALIDATION_PASSED, AI_AN)
+
+            blob_name = self._find_latest_genomic_set_csv(bucket_name, _FAKE_BUCKET_FOLDER)
+            with open_cloud_file(os.path.normpath(bucket_name + '/' + blob_name)) as csv_file:
+                csv_reader = csv.DictReader(csv_file, delimiter=",")
+                missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
+                self.assertEqual(0, len(missing_cols))
+                rows = list(csv_reader)
+
+                self.assertEqual("T100001", rows[0][ExpectedCsvColumns.BIOBANK_ID])
+                self.assertEqual(100001, int(rows[0][ExpectedCsvColumns.SAMPLE_ID]))
+                self.assertEqual("F", rows[0][ExpectedCsvColumns.SEX_AT_BIRTH])
+                self.assertEqual("N", rows[0][ExpectedCsvColumns.NY_FLAG])
+                self.assertEqual("Y", rows[0][ExpectedCsvColumns.VALIDATION_PASSED])
+                self.assertEqual("N", rows[0][ExpectedCsvColumns.AI_AN])
+                self.assertEqual("aou_array", rows[0][ExpectedCsvColumns.GENOME_TYPE])
+
+                self.assertEqual("T100001", rows[1][ExpectedCsvColumns.BIOBANK_ID])
+                self.assertEqual(100001, int(rows[1][ExpectedCsvColumns.SAMPLE_ID]))
+                self.assertEqual("F", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
+                self.assertEqual("N", rows[1][ExpectedCsvColumns.NY_FLAG])
+                self.assertEqual("Y", rows[1][ExpectedCsvColumns.VALIDATION_PASSED])
+                self.assertEqual("N", rows[1][ExpectedCsvColumns.AI_AN])
+                self.assertEqual("aou_wgs", rows[1][ExpectedCsvColumns.GENOME_TYPE])
+
+                self.assertEqual("T100002", rows[2][ExpectedCsvColumns.BIOBANK_ID])
+                self.assertEqual(100002, int(rows[2][ExpectedCsvColumns.SAMPLE_ID]))
+                self.assertEqual("F", rows[2][ExpectedCsvColumns.SEX_AT_BIRTH])
+                self.assertEqual("Y", rows[2][ExpectedCsvColumns.NY_FLAG])
+                self.assertEqual("Y", rows[2][ExpectedCsvColumns.VALIDATION_PASSED])
+                self.assertEqual("N", rows[2][ExpectedCsvColumns.AI_AN])
+                self.assertEqual("aou_array", rows[2][ExpectedCsvColumns.GENOME_TYPE])
+
+                self.assertEqual("T100002", rows[3][ExpectedCsvColumns.BIOBANK_ID])
+                self.assertEqual(100002, int(rows[3][ExpectedCsvColumns.SAMPLE_ID]))
+                self.assertEqual("F", rows[3][ExpectedCsvColumns.SEX_AT_BIRTH])
+                self.assertEqual("Y", rows[3][ExpectedCsvColumns.NY_FLAG])
+                self.assertEqual("Y", rows[3][ExpectedCsvColumns.VALIDATION_PASSED])
+                self.assertEqual("N", rows[3][ExpectedCsvColumns.AI_AN])
+                self.assertEqual("aou_wgs", rows[3][ExpectedCsvColumns.GENOME_TYPE])
 
     def test_gc_manifest_ingestion_workflow(self):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
