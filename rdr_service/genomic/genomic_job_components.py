@@ -1072,7 +1072,7 @@ class GenomicBiobankSamplesCoupler:
         :param: from_date
         :return: list of tuples (bid, pid, biobank_identifier.value, collected_site_id)
         """
-        # TODO: add Genomic RoR Consent when that Code is added
+
         _new_samples_sql = """
         SELECT DISTINCT
           ss.biobank_id,
