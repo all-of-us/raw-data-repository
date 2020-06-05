@@ -59,7 +59,6 @@ from rdr_service.genomic.genomic_biobank_manifest_handler import (
 )
 from rdr_service.genomic.validation import (
     GENOMIC_VALID_AGE,
-    GENOMIC_VALID_CONSENT_CUTOFF,
 )
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.config import (
@@ -964,74 +963,20 @@ class GenomicBiobankSamplesCoupler:
         self.run_id = run_id
 
     def create_new_genomic_participants(self, from_date):
-        """This method is the main execution method for the new participant workflow.
-        It determines which biobankIDs to process and then executes subprocesses
-        Validation is handled in the query that retrieves the new Biobank IDs to process.
+        """
+        This method determines which samples to enter into the genomic system
+        from Cohort 3 (New Participants).
+        Validation is handled in the query that retrieves the newly consented
+        participants' samples to process.
         :param: from_date : the date from which to lookup new biobank_ids
         :return: result
         """
         samples = self._get_new_biobank_samples(from_date)
         if len(samples) > 0:
-            # Get the genomic data to insert into GenomicSetMember as multi-dim tuple
-            GenomicSampleMeta = namedtuple("GenomicSampleMeta", ["bids",
-                                                                 "pids",
-                                                                 "order_ids",
-                                                                 "site_ids",
-                                                                 "sample_ids",
-                                                                 "valid_withdrawal_status",
-                                                                 "valid_suspension_status",
-                                                                 "gen_consents",
-                                                                 "valid_ages",
-                                                                 "sabs",
-                                                                 "gror",
-                                                                 "valid_ai_ans"])
-            samples_meta = GenomicSampleMeta(*samples)
-            logging.info(f'{self.__class__.__name__}: Processing new biobank_ids {samples_meta.bids}')
-            new_genomic_set = self._create_new_genomic_set()
-            # Create genomic set members
-            for i, bid in enumerate(samples_meta.bids):
-                logging.info(f'Validating sample: {samples_meta.sample_ids[i]}')
-                validation_criteria = (
-                    samples_meta.valid_withdrawal_status[i],
-                    samples_meta.valid_suspension_status[i],
-                    samples_meta.gen_consents[i],
-                    samples_meta.valid_ages[i],
-                    samples_meta.valid_ai_ans[i],
-                    samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()
-                )
-                valid_flags = self._calculate_validation_flags(validation_criteria)
-                logging.info(f'Creating genomic set members for PID: {samples_meta.pids[i]}')
-                new_array_member_obj = GenomicSetMember(
-                    biobankId=bid,
-                    genomicSetId=new_genomic_set.id,
-                    participantId=samples_meta.pids[i],
-                    nyFlag=self._get_new_york_flag(samples_meta.site_ids[i]),
-                    sexAtBirth=samples_meta.sabs[i],
-                    biobankOrderId=samples_meta.order_ids[i],
-                    sampleId=samples_meta.sample_ids[i],
-                    validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
-                                      else GenomicSetMemberStatus.VALID),
-                    validationFlags=valid_flags,
-                    ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
-                    genomeType=self._ARRAY_GENOME_TYPE,
-                )
-                # Also create a WGS member
-                new_wgs_member_obj = deepcopy(new_array_member_obj)
-                new_wgs_member_obj.genomeType = self._WGS_GENOME_TYPE
+            return self.process_samples_into_manifest(samples)
 
-                self.member_dao.insert(new_array_member_obj)
-                self.member_dao.insert(new_wgs_member_obj)
-
-            # Create & transfer the Biobank Manifest based on the new genomic set
-            try:
-                create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id,
-                                                                cohort_id=self.COHORT_3_ID)
-                logging.info(f'{self.__class__.__name__}: Genomic set members created ')
-                return GenomicSubProcessResult.SUCCESS
-            except RuntimeError:
-                return GenomicSubProcessResult.ERROR
         else:
-            logging.info(f'New Participant Workflow: No new biobank_ids to process.')
+            logging.info(f'New Participant Workflow: No new samples to process.')
             return GenomicSubProcessResult.NO_FILES
 
     def create_c2_genomic_participants(self, from_date):
@@ -1045,6 +990,78 @@ class GenomicBiobankSamplesCoupler:
         """
         samples = self._get_new_c2_consent_samples(from_date)
 
+        if len(samples) > 0:
+            return self.process_samples_into_manifest(samples)
+
+        else:
+            logging.info(f'Cohort 2 Participant Workflow: No samples to process.')
+            return GenomicSubProcessResult.NO_FILES
+
+    def process_samples_into_manifest(self, samples):
+        """
+        Compiles AW0 Manifest from samples list.
+        :param samples:
+        :return: job result code
+        """
+        # Get the genomic data to insert into GenomicSetMember as multi-dim tuple
+        GenomicSampleMeta = namedtuple("GenomicSampleMeta", ["bids",
+                                                             "pids",
+                                                             "order_ids",
+                                                             "site_ids",
+                                                             "sample_ids",
+                                                             "valid_withdrawal_status",
+                                                             "valid_suspension_status",
+                                                             "gen_consents",
+                                                             "valid_ages",
+                                                             "sabs",
+                                                             "gror",
+                                                             "valid_ai_ans"])
+        samples_meta = GenomicSampleMeta(*samples)
+        logging.info(f'{self.__class__.__name__}: Processing new biobank_ids {samples_meta.bids}')
+        new_genomic_set = self._create_new_genomic_set()
+
+        # Create genomic set members
+        for i, bid in enumerate(samples_meta.bids):
+            logging.info(f'Validating sample: {samples_meta.sample_ids[i]}')
+            validation_criteria = (
+                samples_meta.valid_withdrawal_status[i],
+                samples_meta.valid_suspension_status[i],
+                samples_meta.gen_consents[i],
+                samples_meta.valid_ages[i],
+                samples_meta.valid_ai_ans[i],
+                samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()
+            )
+            valid_flags = self._calculate_validation_flags(validation_criteria)
+            logging.info(f'Creating genomic set members for PID: {samples_meta.pids[i]}')
+            new_array_member_obj = GenomicSetMember(
+                biobankId=bid,
+                genomicSetId=new_genomic_set.id,
+                participantId=samples_meta.pids[i],
+                nyFlag=self._get_new_york_flag(samples_meta.site_ids[i]),
+                sexAtBirth=samples_meta.sabs[i],
+                biobankOrderId=samples_meta.order_ids[i],
+                sampleId=samples_meta.sample_ids[i],
+                validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
+                                  else GenomicSetMemberStatus.VALID),
+                validationFlags=valid_flags,
+                ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
+                genomeType=self._ARRAY_GENOME_TYPE,
+            )
+            # Also create a WGS member
+            new_wgs_member_obj = deepcopy(new_array_member_obj)
+            new_wgs_member_obj.genomeType = self._WGS_GENOME_TYPE
+
+            self.member_dao.insert(new_array_member_obj)
+            self.member_dao.insert(new_wgs_member_obj)
+
+        # Create & transfer the Biobank Manifest based on the new genomic set
+        try:
+            create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id,
+                                                            cohort_id=self.COHORT_3_ID)
+            logging.info(f'{self.__class__.__name__}: Genomic set members created ')
+            return GenomicSubProcessResult.SUCCESS
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR
 
     def _get_new_biobank_samples(self, from_date):
         """
@@ -1123,12 +1140,14 @@ class GenomicBiobankSamplesCoupler:
             result = session.execute(_new_samples_sql, params).fetchall()
         return list(zip(*result))
 
+    # pylint: disable=unused-argument
     def _get_new_c2_consent_samples(self, from_date):
         """
         Returns cohort 2 samples th
         :param from_date:
         :return:
         """
+        # TODO: Change consent date param to be for C2 reconsent response
 
         _c2_samples_sql = """
                 SELECT DISTINCT
@@ -1180,8 +1199,7 @@ class GenomicBiobankSamplesCoupler:
                             ps.sample_status_1sal2 = :sample_status_param
                         )
                     AND ss.test IN ("1ED04", "1SAL2")
-                    # TODO: reconsent date > :from_date_param
-                    AND ps.consent_cohort = :cohort_2_param
+                    AND ps.consent_cohort = :cohort_2_param                    
                 """
 
         params = {
