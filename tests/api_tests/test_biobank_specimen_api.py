@@ -124,9 +124,10 @@ class BiobankOrderApiTest(BaseTestCase):
         return self.is_matching_json(actual_aliquot, expected_aliquot)
 
     def assertCollectionsMatch(self, actual_list, expected_list, comparator, message):
-        for expected_item in expected_list:
-            if not any(comparator(actual_item, expected_item) for actual_item in actual_list):
-                self.fail(message)
+        if expected_list:
+            for expected_item in expected_list:
+                if not any(comparator(actual_item, expected_item) for actual_item in actual_list):
+                    self.fail(message)
 
     def assertSpecimenJsonMatches(self, specimen_json, test_json):
         for top_level_field in ['rlimsID', 'orderID', 'participantID', 'testcode', 'repositoryID', 'studyID',
@@ -225,6 +226,14 @@ class BiobankOrderApiTest(BaseTestCase):
     def test_put_new_specimen_all_data(self):
         payload = self.get_minimal_specimen_json()
         self._add_specimen_data_to_payload(payload)
+        result = self.put_specimen(payload)
+
+        saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
+        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+
+    def test_allow_for_null_collections(self):
+        payload = self.get_minimal_specimen_json()
+        payload['attributes'] = None
         result = self.put_specimen(payload)
 
         saved_specimen_client_json = self.retrieve_specimen_json(result['id'])

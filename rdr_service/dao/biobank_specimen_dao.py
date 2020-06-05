@@ -83,7 +83,10 @@ class BiobankDaoBase(UpdatableDao):
             return None
 
     def collection_from_json(self, json_array, **constructor_kwargs):
-        return [self.from_client_json(item_json, **constructor_kwargs) for item_json in json_array]
+        if json_array:
+            return [self.from_client_json(item_json, **constructor_kwargs) for item_json in json_array]
+
+        return []
 
     def to_client_json_with_session(self, model, session):
         raise NotImplementedError
