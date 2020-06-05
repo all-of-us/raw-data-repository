@@ -9,6 +9,13 @@ from werkzeug.exceptions import BadRequest
 
 class BiobankDaoBase(UpdatableDao):
     @staticmethod
+    def parse_nullable_date(date_str):
+        if date_str:  # Empty strings are falsy
+            return parse_date(date_str)
+        else:
+            return None
+
+    @staticmethod
     def to_client_status(source_dict):
         status_json = {}
         for status_field in ['deviations', 'freezeThawCount', 'location', 'processingCompleteDate', 'quantity',
@@ -32,24 +39,22 @@ class BiobankDaoBase(UpdatableDao):
 
     @staticmethod
     def read_client_status(status_source, model):
-        if 'status' not in status_source:
-            raise BadRequest("Status field required for status data")
-
         for status_field_name, parser in [('status', None),
                                           ('freezeThawCount', None),
                                           ('location', None),
                                           ('quantity', None),
                                           ('quantityUnits', None),
                                           ('deviations', None),
-                                          ('processingCompleteDate', parse_date)]:
+                                          ('processingCompleteDate', BiobankDaoBase.parse_nullable_date)]:
             BiobankDaoBase.map_optional_json_field_to_object(status_source, model, status_field_name, parser=parser)
 
     @staticmethod
     def read_client_disposal(status_source, model):
-        for disposal_client_field_name, disposal_model_field_name, parser in [('reason', 'disposalReason', None),
-                                                                              ('disposalDate', None, parse_date)]:
+        for disposal_client_field_name, disposal_model_field_name, parser in\
+                [('reason', 'disposalReason', None),
+                 ('disposalDate', None, BiobankSpecimenDao.parse_nullable_date)]:
             BiobankDaoBase.map_optional_json_field_to_object(status_source, model, disposal_client_field_name,
-                                                                 disposal_model_field_name, parser=parser)
+                                                             disposal_model_field_name, parser=parser)
 
     @staticmethod
     def map_optional_json_field_to_object(json, obj, json_field_name, object_field_name=None, parser=None):
@@ -151,8 +156,8 @@ class BiobankSpecimenDao(BiobankDaoBase):
                                                   ('studyID', 'studyId', None),
                                                   ('cohortID', 'cohortId', None),
                                                   ('sampleType', None, None),
-                                                  ('collectionDate', None, parse_date),
-                                                  ('confirmationDate', 'confirmedDate', parse_date)]:
+                                                  ('collectionDate', None, self.parse_nullable_date),
+                                                  ('confirmationDate', 'confirmedDate', self.parse_nullable_date)]:
             self.map_optional_json_field_to_object(resource, order, client_field, model_field, parser)
 
         if 'status' in resource:

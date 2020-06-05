@@ -188,8 +188,8 @@ class BiobankOrderApiTest(BaseTestCase):
         saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
-    def test_put_new_specimen_all_data(self):
-        payload = self.get_minimal_specimen_json()
+    @staticmethod
+    def _add_specimen_data_to_payload(payload):
         payload.update({
             'repositoryID': 'repo id',
             'studyID': 'study id',
@@ -221,9 +221,49 @@ class BiobankOrderApiTest(BaseTestCase):
             'collectionDate': TIME_1.isoformat(),
             'confirmationDate': TIME_2.isoformat()
         })
+
+    def test_put_new_specimen_all_data(self):
+        payload = self.get_minimal_specimen_json()
+        self._add_specimen_data_to_payload(payload)
         result = self.put_specimen(payload)
 
         saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
+        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+
+    def test_clear_specimen_data(self):
+        payload = self.get_minimal_specimen_json()
+        self._add_specimen_data_to_payload(payload)
+        initial_result = self.put_specimen(payload)
+
+        payload.update({
+            'repositoryID': '',
+            'studyID': '',
+            'cohortID': '',
+            'sampleType': '',
+            'status': {
+                'status': '',
+                'freezeThawCount': 1,
+                'location': '',
+                'quantity': '',
+                'quantityUnits': '',
+                'processingCompleteDate': '',
+                'deviations': ''
+            },
+            'disposalStatus': {
+                'reason': '',
+                'disposalDate': ''
+            },
+            'collectionDate': '',
+            'confirmationDate': ''
+        })
+        self.put_specimen(payload)
+
+        saved_specimen_client_json = self.retrieve_specimen_json(initial_result['id'])
+        # Dates are set to set to None when cleared, so those fields are missing when converting specimen to json
+        del payload['confirmationDate']
+        del payload['collectionDate']
+        del payload['disposalStatus']['disposalDate']
+        del payload['status']['processingCompleteDate']
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
     def test_put_specimen_exists(self):
