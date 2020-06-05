@@ -46,7 +46,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             # prep participant info from Participant record
             summary = self._prep_participant(p_id, ro_session)
             # prep ConsentPII questionnaire information
-            summary = self._merge_schema_dicts(summary, self._prep_consentpii_answers(p_id, ro_session))
+            summary = self._merge_schema_dicts(summary, self._prep_consentpii_answers(p_id))
             # prep questionnaire modules information, includes gathering extra consents.
             summary = self._merge_schema_dicts(summary, self._prep_modules(p_id, ro_session))
             # prep physical measurements
@@ -115,21 +115,17 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         return data
 
-    def _prep_consentpii_answers(self, p_id, ro_session):
+    def _prep_consentpii_answers(self, p_id):
         """
         Get participant information from the ConsentPII questionnaire
         :param p_id: participant id
-        :param ro_session: Readonly DAO session object
         :return: dict
         """
-        # qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=['ConsentPII', p_id])
         qnans = self.get_module_answers(self.ro_dao, 'ConsentPII', p_id)
         if not qnans:
             # return the minimum data required when we don't have the questionnaire data.
             return {'email': None, 'is_ghost_id': 0}
         qnan = BQRecord(schema=None, data=qnans)  # use only most recent response.
-        # TODO: We may need to use the first response to set consent dates,
-        #  unless the consent value changed across response records.
 
         consent_dt = parser.parse(qnan.get('authored')).date() if qnan.get('authored') else None
 
@@ -153,17 +149,6 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                     'addr_zip': qnan.get('StreetAddress_PIIZIP'),
                     'addr_country': 'US'
                 }
-            ],
-            'consents': [
-                {
-                    'consent': 'ConsentPII',
-                    'consent_id': self._lookup_code_id('ConsentPII', ro_session),
-                    'consent_date': consent_dt,
-                    'consent_value': 'ConsentPermission_Yes',
-                    'consent_value_id': self._lookup_code_id('ConsentPermission_Yes', ro_session),
-                    'consent_module': 'ConsentPII',
-                    'consent_module_authored': qnan.get('authored') if qnan.get('authored') else None
-                },
             ]
         }
 
@@ -208,6 +193,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         consent_modules = {
             # module: question code string
+            'ConsentPII': None,
             'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
             'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
             'GROR': 'ResultsConsent_CheckDNA'
@@ -230,19 +216,27 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 if module_name not in consent_modules:
                     continue
 
-                qnans = self.get_module_answers(self.ro_dao, module_name, p_id)
+                qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
                 if qnans:
                     qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
-                    consents.append({
+                    consent = {
                         'consent': consent_modules[module_name],
                         'consent_id': self._lookup_code_id(consent_modules[module_name], ro_session),
                         'consent_date': parser.parse(qnan['authored']).date() if qnan['authored'] else None,
-                        'consent_value': qnan.get(consent_modules[module_name], None),
-                        'consent_value_id':
-                            self._lookup_code_id(qnan.get(consent_modules[module_name], None), ro_session),
                         'consent_module': module_name,
                         'consent_module_authored': row.authored
-                    })
+                    }
+                    if module_name == 'ConsentPII':
+                        consent['consent'] = 'ConsentPII'
+                        consent['consent_id'] = self._lookup_code_id('ConsentPII', ro_session)
+                        consent['consent_value'] = 'ConsentPermission_Yes'
+                        consent['consent_value_id'] = self._lookup_code_id('ConsentPermission_Yes', ro_session)
+                    else:
+                        consent['consent_value'] = qnan.get(consent_modules[module_name], None)
+                        consent['consent_value_id'] = self._lookup_code_id(
+                            qnan.get(consent_modules[module_name], None), ro_session)
+
+                    consents.append(consent)
 
         if len(modules) > 0:
             # remove any duplicate modules and consents because of replayed responses.
@@ -533,46 +527,47 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         return data
 
     @staticmethod
-    def get_module_answers(ro_dao, module, p_id):
+    def get_module_answers(ro_dao, module, p_id, qr_id=None):
         """
-        Retrieve the questionnaire module answers for the given participant id.
+        Retrieve the most recent questionnaire module answers for the given participant id.
         :param ro_dao: Readonly ro_dao object
         :param module: Module name
         :param p_id: participant id.
-        :return:
+        :param qr_id: questionnaire response id
+        :return: dict
         """
         _module_info_sql = """
-                    SELECT qr.questionnaire_id,
-                           qr.questionnaire_response_id,
-                           qr.created,
-                           q.version,
-                           qr.authored,
-                           qr.language,
-                           qr.participant_id
-                    FROM questionnaire_response qr
-                            INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
-                            INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
-                    WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
-                    ORDER BY qr.created DESC;
-                """
+                        SELECT qr.questionnaire_id,
+                               qr.questionnaire_response_id,
+                               qr.created,
+                               q.version,
+                               qr.authored,
+                               qr.language,
+                               qr.participant_id
+                        FROM questionnaire_response qr
+                                INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
+                                INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
+                        WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
+                        ORDER BY qr.created DESC;
+                    """
 
         _answers_sql = """
-            SELECT qr.questionnaire_id,
-                   qq.code_id,
-                   (select c.value from code c where c.code_id = qq.code_id) as code_name,
-                   COALESCE((SELECT c.value from code c where c.code_id = qra.value_code_id),
-                            qra.value_integer, qra.value_decimal,
-                            qra.value_boolean, qra.value_string, qra.value_system,
-                            qra.value_uri, qra.value_date, qra.value_datetime) as answer
-            FROM questionnaire_response qr
-                     INNER JOIN questionnaire_response_answer qra
-                                ON qra.questionnaire_response_id = qr.questionnaire_response_id
-                     INNER JOIN questionnaire_question qq
-                                ON qra.question_id = qq.questionnaire_question_id
-                     INNER JOIN questionnaire q
-                                ON qq.questionnaire_id = q.questionnaire_id
-            WHERE qr.questionnaire_response_id = :qr_id;
-        """
+                SELECT qr.questionnaire_id,
+                       qq.code_id,
+                       (select c.value from code c where c.code_id = qq.code_id) as code_name,
+                       COALESCE((SELECT c.value from code c where c.code_id = qra.value_code_id),
+                                qra.value_integer, qra.value_decimal,
+                                qra.value_boolean, qra.value_string, qra.value_system,
+                                qra.value_uri, qra.value_date, qra.value_datetime) as answer
+                FROM questionnaire_response qr
+                         INNER JOIN questionnaire_response_answer qra
+                                    ON qra.questionnaire_response_id = qr.questionnaire_response_id
+                         INNER JOIN questionnaire_question qq
+                                    ON qra.question_id = qq.questionnaire_question_id
+                         INNER JOIN questionnaire q
+                                    ON qq.questionnaire_id = q.questionnaire_id
+                WHERE qr.questionnaire_response_id = :qr_id;
+            """
 
         if not ro_dao:
             ro_dao = BigQuerySyncDao(backup=True)
@@ -582,9 +577,12 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             if not results:
                 return None
 
+            # Match the specific questionnaire response id otherwise return answers for the most recent response.
             for row in results:
-                data = ro_dao.to_dict(row, result_proxy=results)
+                if qr_id and row.questionnaire_response_id != qr_id:
+                    continue
 
+                data = ro_dao.to_dict(row, result_proxy=results)
                 answers = session.execute(_answers_sql, {'qr_id': row.questionnaire_response_id})
 
                 for answer in answers:
