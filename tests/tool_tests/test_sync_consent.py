@@ -18,11 +18,9 @@ class SyncConsentTest(BaseTestCase):
     def setUp(self):
         super().setUp()
 
-        config.override_setting(config.CONSENT_SYNC_ORGANIZATIONS, [{
-            'test_org': {
-                'bucket_name': 'test_dest_bucket'
-            }
-        }])
+        config.override_setting(config.CONSENT_SYNC_ORGANIZATIONS, {
+            'test_org': 'test_dest_bucket'
+        })
 
         site = self.create_database_site(googleGroup='test_site_google_group')
         org = self.create_database_organization(externalId='test_org')
