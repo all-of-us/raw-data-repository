@@ -36,40 +36,30 @@ class SyncConsentFilesTest(BaseTestCase):
         }
         config.override_setting(config.CONSENT_SYNC_ORGANIZATIONS, self.org_buckets)
 
-        self.org1 = self._create_org(1, 'test_one')
-        self.site1 = self._create_site(1001, "group1")
+        self.org1 = self.create_database_organization(externalId='test_one')
+        self.site1 = self.create_database_site(googleGroup="group1")
 
         self.source_consent_bucket = sync_consent_files.SOURCE_BUCKET['vibrent']
 
     def tearDown(self):
         super(SyncConsentFilesTest, self).tearDown()
 
-    def _create_org(self, id_, external_id):
-        org = Organization(organizationId=id_, externalId=external_id, displayName=id_, hpoId=UNSET_HPO_ID)
-        self.org_dao.insert(org)
-        return org
-
-    def _create_site(self, id_, google_group):
-        site = Site(siteId=id_, siteName=id_, googleGroup=google_group)
-        self.site_dao.insert(site)
-        return site
-
     def _create_participant(self, id_, org_id, site_id, consents=False, ghost=None, email=None, null_email=False,
                             consent_time=None):
-        participant = Participant(
-            participantId=id_, biobankId=id_, organizationId=org_id, siteId=site_id, isGhostId=ghost
-        )
-        self.participant_dao.insert(participant)
-        summary = self.participant_summary(participant)
+        participant = self.create_database_participant(participantId=id_, organizationId=org_id, siteId=site_id,
+                                                       isGhostId=ghost)
+        summary_data = {'participant': participant}
+        summary = self.create_database_participant_summary(participant=participant)
         if consents:
-            summary.consentForElectronicHealthRecords = 1
-            summary.consentForStudyEnrollment = 1
-            summary.consentForStudyEnrollmentTime = consent_time
+            summary_data.update(consentForElectronicHealthRecords=1,
+                                consentForStudyEnrollment=1,
+                                consentForStudyEnrollmentTime=consent_time)
         if email:
             summary.email = email
+            summary_data['email'] = email
         if null_email:
-            summary.email = None
-        self.summary_dao.insert(summary)
+            summary_data['email'] = None
+        self.create_database_participant_summary(**summary_data)
         return participant
 
     @staticmethod
@@ -110,9 +100,12 @@ class SyncConsentFilesTest(BaseTestCase):
                             updated=datetime.datetime(2020, 2, 20))
         ])
 
-        self._create_participant(1, 1, None, consent_time=datetime.datetime(2020, 1, 12), consents=True)
-        self._create_participant(2, 1, 1, consent_time=datetime.datetime(2020, 2, 3), consents=True)
-        self._create_participant(3, 1, None, consent_time=datetime.datetime(2020, 3, 10), consents=True)
+        self._create_participant(1, self.org1.organizationId, None, consent_time=datetime.datetime(2020, 1, 12),
+                                 consents=True)
+        self._create_participant(2, self.org1.organizationId, self.site1.siteId,
+                                 consent_time=datetime.datetime(2020, 2, 3), consents=True)
+        self._create_participant(3, self.org1.organizationId, None, consent_time=datetime.datetime(2020, 3, 10),
+                                 consents=True)
 
         sync_consent_files.do_sync_consent_files(start_date='2020-02-01', end_date='2020-03-01')
 
@@ -207,11 +200,23 @@ class SyncConsentFilesTest(BaseTestCase):
             ]
         )
 
+    @mock.patch("rdr_service.offline.sync_consent_files.list_blobs")
+    @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
+    def test_zip_file_write(self, mock_copy_cloud_file, mock_list_blobs):
+
+        self.org2 = self.create_database_organization(externalId='test_two')
+        self.site2 = self.create_database_site(googleGroup="group2")
+        pass
+
+    def test_zip_upload_destinations(self):
+        # Test that the zip files are uploaded to the correct buckets
+        pass
+
     def test_iter_participants_data(self):
         """should list consenting participants
     """
-        org2 = self._create_org(2, 'test_two')
-        site2 = self._create_site(1002, "group2")
+        org2 = self.create_database_organization(externalId='test_two')
+        site2 = self.create_database_site(googleGroup="group2")
         self._create_participant(1, self.org1.organizationId, self.site1.siteId, consents=True, null_email=True)
         self._create_participant(2, org2.organizationId, site2.siteId)
         self._create_participant(3, self.org1.organizationId, None, consents=True, ghost=False)

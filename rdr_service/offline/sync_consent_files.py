@@ -5,34 +5,92 @@ Organize all consent files from PTSC source bucket into proper awardee buckets.
 """
 import collections
 from datetime import datetime, timedelta
+import logging
 import pytz
 import os
+import shutil
+from zipfile import ZipFile
 
 from rdr_service import config
-from rdr_service.api_util import list_blobs, copy_cloud_file, get_blob
+from rdr_service.api_util import copy_cloud_file, download_cloud_file, get_blob, list_blobs
 from rdr_service.dao import database_factory
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
-
-HPO_REPORT_CONFIG_GCS_PATH = "/all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
+from rdr_service.services.gcp_utils import gcp_cp
 
 SOURCE_BUCKET = {
     "vibrent": "ptc-uploads-all-of-us-rdr-prod",
     "careevolution": "ce-uploads-all-of-us-rdr-prod"
 }
-
-COLUMN_BUCKET_NAME = "Bucket Name"
-COLUMN_AGGREGATING_ORG_ID = "Aggregating Org ID"
-COLUMN_ORG_ID = "Org ID"
-COLUMN_ORG_STATUS = "Org Status"
-
-ORG_STATUS_ACTIVE = "Active"
 DEFAULT_GOOGLE_GROUP = "no-site-assigned"
-
-
-OrgData = collections.namedtuple("OrgData", ("org_id", "aggregate_id", "bucket_name"))
-
+TEMP_CONSENTS_PATH = "./temp_consents"
 
 ParticipantData = collections.namedtuple("ParticipantData", ("participant_id", "origin_id", "google_group", "org_id"))
+
+
+def get_consent_destination(zipping=False, **kwargs):
+    destination_pattern = \
+        TEMP_CONSENTS_PATH + '/{bucket_name}/{org_external_id}/{site_name}/P{p_id}/' \
+        if zipping else \
+        "gs://{bucket_name}/Participant/{org_external_id}/{site_name}/P{p_id}/"
+
+    return destination_pattern.format(**kwargs)
+
+
+def _directories_in(directory_path):
+    with os.scandir(directory_path) as objects:
+        return [directory_object for directory_object in objects if directory_object.is_dir()]
+
+
+def _add_path_to_zip(zip_file, directory_path):
+    for current_path, _, files in os.walk(directory_path):
+        # os.walk will recurse into sub_directories, so we only need to handle the files in the current directory
+        for file in files:
+            file_path = os.path.join(current_path, file)
+            archive_name = file_path[len(directory_path):]
+            zip_file.write(file_path, arcname=archive_name)
+
+
+def _format_debug_out(p_id, src, dest):
+    logging.debug(" Participant: {0}".format(p_id))
+    logging.debug("    src: {0}".format(src))
+    logging.debug("   dest: {0}".format(dest))
+
+
+def copy_file(source, destination, participant_id, dry_run=True, zip_files=False):
+    if not dry_run:
+        if zip_files:
+            # gcp_cp doesn't create local directories when they don't exist
+            os.makedirs(destination, exist_ok=True)
+
+        copy_args = {'flags': '-m'}
+        if not zip_files:
+            copy_args['args'] = '-r'
+        gcp_cp(source, destination, **copy_args)
+
+    _format_debug_out(participant_id, source, destination)
+
+
+def archive_and_upload_consents(dry_run=True):
+    logging.info("zipping and uploading consent files...")
+    for bucket_dir in _directories_in(TEMP_CONSENTS_PATH):
+        for org_dir in _directories_in(bucket_dir):
+            bucket = bucket_dir.name
+            for site_dir in _directories_in(org_dir):
+                zip_file_name = os.path.join(org_dir.path, site_dir.name + '.zip')
+                with ZipFile(zip_file_name, 'w') as zip_file:
+                    _add_path_to_zip(zip_file, site_dir.path)
+
+                destination = "gs://{bucket_name}/Participant/{org_external_id}/".format(
+                    bucket_name=bucket,
+                    org_external_id=org_dir.name
+                )
+                if not dry_run:
+                    logging.debug("Uploading file '{zip_file}' to '{destination}'".format(
+                        zip_file=zip_file_name,
+                        destination=destination
+                    ))
+                    gcp_cp(zip_file_name, destination, flags="-m")
+    shutil.rmtree(TEMP_CONSENTS_PATH)
 
 
 def do_sync_recent_consent_files():
@@ -161,7 +219,8 @@ def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_fi
             if _not_previously_copied(source_file_path, destination_file_path) and \
                     _after_date_limit(source_blob, date_limit) and \
                     _matches_file_filter(source_blob.name, file_filter):
-                copy_cloud_file(source_file_path, destination_file_path)
+                move_file_function = download_cloud_file if destination.startswith('.') else copy_cloud_file
+                move_file_function(source_file_path, destination_file_path)
 
 
 def _not_previously_copied(source_file_path, destination_file_path):

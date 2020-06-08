@@ -13,7 +13,7 @@ from tests.helpers.unittest_base import BaseTestCase
 FakeFile = namedtuple('FakeFile', ['name', 'updated'])
 
 
-@mock.patch("rdr_service.tools.tool_libs.sync_consent.gcp_cp")
+@mock.patch("rdr_service.offline.sync_consent_files.gcp_cp")
 class SyncConsentTest(BaseTestCase):
     def setUp(self):
         super().setUp()
@@ -87,7 +87,7 @@ class SyncConsentTest(BaseTestCase):
             f'./temp_consents/test_dest_bucket/test_org/test_site_google_group/P{self.participant.participantId}/',
             flags='-m')
 
-    @mock.patch('rdr_service.tools.tool_libs.sync_consent.ZipFile')
+    @mock.patch('rdr_service.offline.sync_consent_files.ZipFile')
     def test_zip_file_write(self, mock_zip_file, mock_gcp_cp):
         self.setup_local_file_creation(mock_gcp_cp)
 
