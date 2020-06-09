@@ -147,6 +147,29 @@ class QuestionnaireResponseDao(BaseDao):
                 ):
                     logging.error(f"Questionnaire response contains invalid link ID {section['linkId']}.")
 
+    @staticmethod
+    def _question_ids_from_response(session, questionnaire_response):
+        question_ids = [answer.questionId for answer in questionnaire_response.answers]
+
+        # An answer to Street Address 1 implies that previous Street Address 2 answers should be processed as well
+        questionnaire_question_dao = QuestionnaireQuestionDao()
+        street_address_1_question = questionnaire_question_dao.get_for_questionnaire_and_code(
+            session,
+            questionnaire_response.questionnaireId,
+            questionnaire_response.questionnaireSemanticVersion,
+            STREET_ADDRESS_QUESTION_CODE
+        )
+        if street_address_1_question and street_address_1_question.questionnaireQuestionId in question_ids:
+            street_address_2_question = questionnaire_question_dao.get_for_questionnaire_and_code(
+                session,
+                questionnaire_response.questionnaireId,
+                questionnaire_response.questionnaireSemanticVersion,
+                STREET_ADDRESS2_QUESTION_CODE
+            )
+            if street_address_2_question and street_address_2_question.questionnaireQuestionId not in question_ids:
+                question_ids.append(street_address_2_question.questionnaireQuestionId)
+        return question_ids
+
     def insert_with_session(self, session, questionnaire_response):
 
         # Look for a questionnaire that matches any of the questionnaire history records.
@@ -179,7 +202,7 @@ class QuestionnaireResponseDao(BaseDao):
         super().validate_origin(questionnaire_response)
 
         # Gather the question ids and records that match the questions in the response
-        question_ids = [answer.questionId for answer in questionnaire_response.answers]
+        question_ids = self._question_ids_from_response(session, questionnaire_response)
         questions = QuestionnaireQuestionDao().get_all_with_session(session, question_ids)
 
         # DA-623: raise error when response link ids do not match our question link ids.
@@ -194,7 +217,7 @@ class QuestionnaireResponseDao(BaseDao):
         )
 
         # IMPORTANT: update the participant summary first to grab an exclusive lock on the participant
-        # row. If you insetad do this after the insert of the questionnaire response, MySQL will get a
+        # row. If you instead do this after the insert of the questionnaire response, MySQL will get a
         # shared lock on the participant row due the foreign key, and potentially deadlock later trying
         # to get the exclusive lock if another thread is updating the participant. See DA-269.
         # (We need to lock both participant and participant summary because the summary row may not
