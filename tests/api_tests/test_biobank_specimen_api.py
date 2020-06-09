@@ -749,6 +749,36 @@ class BiobankOrderApiTest(BaseTestCase):
         specimen = self.get_specimen_from_dao(_id=specimen.id)
         self.assertEqual('test', specimen.disposalReason)
 
+    def test_disposal_sets_status(self):
+        # /disposalStatus with any information should set status to "Disposed"
+        payload = self.get_minimal_specimen_json()
+        payload['status'] = {'status': 'In Circulation'}
+        self.put_specimen(payload)
+
+        self.send_put(f"Biobank/specimens/sabrina/disposalStatus", {
+            'reason': 'test'
+        })
+
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+        self.assertEqual('Disposed', specimen.status)
+
+    def test_status_update_clears_disposal(self):
+        # /status with any information should clear the disposal fields
+        payload = self.get_minimal_specimen_json()
+        payload['disposalStatus'] = {
+            'reason': 'mistake',
+            'disposalDate': TIME_2.isoformat()
+        }
+        self.put_specimen(payload)
+
+        self.send_put(f"Biobank/specimens/sabrina/status", {
+            'status': 'updated'
+        })
+
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+        self.assertEqual('', specimen.disposalReason)
+        self.assertEqual(None, specimen.disposalDate)
+
     def test_parent_disposed_not_found(self):
         self.send_put(f"Biobank/specimens/sabrina/status", {
             'disposalDate': TIME_1.isoformat()
