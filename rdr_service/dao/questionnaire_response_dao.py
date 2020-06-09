@@ -148,27 +148,13 @@ class QuestionnaireResponseDao(BaseDao):
                     logging.error(f"Questionnaire response contains invalid link ID {section['linkId']}.")
 
     @staticmethod
-    def _question_ids_from_response(session, questionnaire_response):
-        question_ids = [answer.questionId for answer in questionnaire_response.answers]
-
-        # An answer to Street Address 1 implies that previous Street Address 2 answers should be processed as well
-        questionnaire_question_dao = QuestionnaireQuestionDao()
-        street_address_1_question = questionnaire_question_dao.get_for_questionnaire_and_code(
-            session,
-            questionnaire_response.questionnaireId,
-            questionnaire_response.questionnaireSemanticVersion,
-            STREET_ADDRESS_QUESTION_CODE
-        )
-        if street_address_1_question and street_address_1_question.questionnaireQuestionId in question_ids:
-            street_address_2_question = questionnaire_question_dao.get_for_questionnaire_and_code(
-                session,
-                questionnaire_response.questionnaireId,
-                questionnaire_response.questionnaireSemanticVersion,
-                STREET_ADDRESS2_QUESTION_CODE
-            )
-            if street_address_2_question and street_address_2_question.questionnaireQuestionId not in question_ids:
-                question_ids.append(street_address_2_question.questionnaireQuestionId)
-        return question_ids
+    def _imply_street_address_2_from_street_address_1(code_ids):
+        code_dao = CodeDao()
+        street_address_1_code = code_dao.get_code(PPI_SYSTEM, STREET_ADDRESS_QUESTION_CODE)
+        if street_address_1_code.codeId in code_ids:
+            street_address_2_code = code_dao.get_code(PPI_SYSTEM, STREET_ADDRESS2_QUESTION_CODE)
+            if street_address_2_code.codeId not in code_ids:
+                code_ids.append(street_address_2_code.codeId)
 
     def insert_with_session(self, session, questionnaire_response):
 
@@ -202,7 +188,7 @@ class QuestionnaireResponseDao(BaseDao):
         super().validate_origin(questionnaire_response)
 
         # Gather the question ids and records that match the questions in the response
-        question_ids = self._question_ids_from_response(session, questionnaire_response)
+        question_ids = [answer.questionId for answer in questionnaire_response.answers]
         questions = QuestionnaireQuestionDao().get_all_with_session(session, question_ids)
 
         # DA-623: raise error when response link ids do not match our question link ids.
@@ -212,6 +198,7 @@ class QuestionnaireResponseDao(BaseDao):
         self._validate_link_ids_from_resource_json_group(resource_json, link_ids)
 
         code_ids = [question.codeId for question in questions]
+        self._imply_street_address_2_from_street_address_1(code_ids)
         current_answers = QuestionnaireResponseAnswerDao().get_current_answers_for_concepts(
             session, questionnaire_response.participantId, code_ids
         )
