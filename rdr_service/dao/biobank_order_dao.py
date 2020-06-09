@@ -568,7 +568,7 @@ class BiobankOrderDao(UpdatableDao):
                     "address1": summary.streetAddress,
                     "address2": summary.streetAddress2,
                     "city": summary.city,
-                    "state": code_dict["state"],
+                    "state": code_dict["state"][-2:] if code_dict["state"] else code_dict["state"],
                     "postal_code": str(summary.zipCode),
                     "phone": str(summary.phoneNumber),
                     "account_number": None,
