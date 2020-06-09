@@ -151,9 +151,9 @@ class QuestionnaireResponseDao(BaseDao):
     def _imply_street_address_2_from_street_address_1(code_ids):
         code_dao = CodeDao()
         street_address_1_code = code_dao.get_code(PPI_SYSTEM, STREET_ADDRESS_QUESTION_CODE)
-        if street_address_1_code.codeId in code_ids:
+        if street_address_1_code and street_address_1_code.codeId in code_ids:
             street_address_2_code = code_dao.get_code(PPI_SYSTEM, STREET_ADDRESS2_QUESTION_CODE)
-            if street_address_2_code.codeId not in code_ids:
+            if street_address_2_code and street_address_2_code.codeId not in code_ids:
                 code_ids.append(street_address_2_code.codeId)
 
     def insert_with_session(self, session, questionnaire_response):
