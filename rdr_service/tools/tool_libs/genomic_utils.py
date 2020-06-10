@@ -33,7 +33,8 @@ tool_desc = "Genomic system utilities"
 _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
 
-class ResendSamplesClass(object):
+
+class GenomicManifestBase(object):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
@@ -51,8 +52,13 @@ class ResendSamplesClass(object):
         self.DRC_BIOBANK_PREFIX = "Genomic-Manifest-AoU"
 
         self.nowts = clock.CLOCK.now()
-        self.nowf = _UTC.localize(self.nowts).astimezone(_US_CENTRAL)\
+        self.nowf = _UTC.localize(self.nowts).astimezone(_US_CENTRAL) \
             .replace(tzinfo=None).strftime(self.OUTPUT_CSV_TIME_FORMAT)
+
+
+class ResendSamplesClass(GenomicManifestBase):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(GenerateManifestClass, self).__init__(args, gcp_env)
 
     def get_members_for_samples(self, samples):
         """
@@ -202,6 +208,11 @@ class ResendSamplesClass(object):
         return 0
 
 
+class GenerateManifestClass(GenomicManifestBase):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(GenerateManifestClass, self).__init__(args, gcp_env)
+
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -228,13 +239,23 @@ def run():
     resend_parser.add_argument("--csv", help="csv file with multiple sample ids to resend", default=None)  # noqa
     resend_parser.add_argument("--samples", help="a comma-separated list of samples to resend", default=None)  # noqa
 
-    # Genomic Test Datasets
+    # Manual Manifest Generation
+    new_manifest_parser = subparser.add_parser("generate-manifest")
+    manifest_type_list = [m.name for m in GenomicManifestTypes]
+    new_manifest_help = f"which manifest type to generate: {manifest_type_list}"
+    new_manifest_parser.add_argument("--manifest", help=new_manifest_help, default=None)  # noqa
+
+
 
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
         if hasattr(args, 'manifest'):
             process = ResendSamplesClass(args, gcp_env)
+            exit_code = process.run()
+
+        elif hasattr(args, 'generate-manifest'):
+            process = GenerateManifestClass(args, gcp_env)
             exit_code = process.run()
         else:
             _logger.info('Please select a utility option to run. For help use "genomic --help".')
