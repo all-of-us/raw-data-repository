@@ -12,9 +12,8 @@ import shutil
 from zipfile import ZipFile
 
 from rdr_service import config
-from rdr_service.api_util import copy_cloud_file, download_cloud_file, get_blob, list_blobs
+from rdr_service.api_util import copy_cloud_file, download_cloud_file, get_blob, list_blobs, upload_from_file
 from rdr_service.dao import database_factory
-from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.services.gcp_utils import gcp_cp
 
 SOURCE_BUCKET = {
@@ -89,7 +88,7 @@ def archive_and_upload_consents(dry_run=True):
                         zip_file=zip_file_name,
                         destination=destination
                     ))
-                    gcp_cp(zip_file_name, destination, flags="-m")
+                    upload_from_file(zip_file_name, destination)
     shutil.rmtree(TEMP_CONSENTS_PATH)
 
 
@@ -99,7 +98,7 @@ def do_sync_recent_consent_files():
     do_sync_consent_files(start_date=start_date.strftime('%Y-%m-01'))
 
 
-def do_sync_consent_files(**kwargs):
+def do_sync_consent_files(zip_files=False, **kwargs):
     """
   entrypoint
   """
@@ -108,22 +107,20 @@ def do_sync_consent_files(**kwargs):
     start_date = kwargs.get('start_date')
     file_filter = kwargs.get('file_filter', 'pdf')
     for participant_data in _iter_participants_data(org_ids, **kwargs):
-        kwargs = {
-            "source_bucket": SOURCE_BUCKET.get(participant_data.origin_id, SOURCE_BUCKET[next(iter(SOURCE_BUCKET))]),
-            "destination_bucket": org_buckets[participant_data.org_id],
-            "participant_id": participant_data.participant_id,
-            "google_group": participant_data.google_group or DEFAULT_GOOGLE_GROUP,
-        }
-        source = "/{source_bucket}/Participant/P{participant_id}/".format(**kwargs)
-        destination = "/{destination_bucket}/Participant/{google_group}/P{participant_id}/".format(**kwargs)
+        source_bucket = SOURCE_BUCKET.get(participant_data.origin_id, SOURCE_BUCKET[next(iter(SOURCE_BUCKET))])
+        source = "/{source_bucket}/Participant/P{participant_id}/"\
+            .format(source_bucket=source_bucket,
+                    participant_id=participant_data.participant_id)
+        destination = get_consent_destination(zip_files,
+                                              bucket_name=org_buckets[participant_data.org_id],
+                                              org_external_id=participant_data.org_id,
+                                              site_name=participant_data.google_group or DEFAULT_GOOGLE_GROUP,
+                                              p_id=participant_data.participant_id)
 
-        if config.GAE_PROJECT == 'localhost':
-            cloudstorage_copy_objects_task(source, destination, date_limit=start_date, file_filter=file_filter)
-        else:
-            params = {'source': source, 'destination': destination, 'date_limit': start_date,
-                      'file_filter': file_filter}
-            task = GCPCloudTask('copy_cloudstorage_object_task', payload=params)
-            task.execute()
+        cloudstorage_copy_objects_task(source, destination, date_limit=start_date, file_filter=file_filter)
+
+    if zip_files:
+        archive_and_upload_consents(dry_run=False)
 
 
 def get_org_data_map():

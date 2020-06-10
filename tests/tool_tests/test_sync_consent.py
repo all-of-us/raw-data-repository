@@ -13,6 +13,7 @@ from tests.helpers.unittest_base import BaseTestCase
 FakeFile = namedtuple('FakeFile', ['name', 'updated'])
 
 
+@mock.patch("rdr_service.offline.sync_consent_files.upload_from_file")
 @mock.patch("rdr_service.offline.sync_consent_files.gcp_cp")
 class SyncConsentTest(BaseTestCase):
     def setUp(self):
@@ -78,7 +79,7 @@ class SyncConsentTest(BaseTestCase):
         mock_zip_write = zip_instance_context.write
         mock_zip_write.assert_any_call(os.path.join(directory, relative_path), arcname=f'/{relative_path}')
 
-    def test_zip_file_download(self, mock_gcp_cp):
+    def test_zip_file_download(self, mock_gcp_cp, _):
         self.run_sync(zip_files=True, consent_files=[self._fake_file(self.participant, 'one.pdf')])
 
         # Assert that the files were copied locally for zipping
@@ -88,7 +89,7 @@ class SyncConsentTest(BaseTestCase):
             flags='-m')
 
     @mock.patch('rdr_service.offline.sync_consent_files.ZipFile')
-    def test_zip_file_write(self, mock_zip_file, mock_gcp_cp):
+    def test_zip_file_write(self, mock_zip_file, mock_gcp_cp, _):
         self.setup_local_file_creation(mock_gcp_cp)
 
         self.run_sync(zip_files=True, consent_files=[self._fake_file(self.participant, 'one.pdf')])
@@ -98,19 +99,18 @@ class SyncConsentTest(BaseTestCase):
                                    './temp_consents/test_dest_bucket/test_org/test_site_google_group/',
                                    f'P{self.participant.participantId}/one.pdf')
 
-    def test_zip_file_upload(self, mock_gcp_cp):
+    def test_zip_file_upload(self, mock_gcp_cp, mock_upload_file):
         self.setup_local_file_creation(mock_gcp_cp)
 
         self.run_sync(zip_files=True, consent_files=[self._fake_file(self.participant, 'one.pdf')])
 
         # Assert that the zip was uploaded to the correct location
-        mock_gcp_cp.assert_any_call(
-            f'./temp_consents/test_dest_bucket/test_org/test_site_google_group.zip',
-            'gs://test_dest_bucket/Participant/test_org/',
-            flags='-m'
+        mock_upload_file.assert_any_call(
+            './temp_consents/test_dest_bucket/test_org/test_site_google_group.zip',
+            'gs://test_dest_bucket/Participant/test_org/'
         )
 
-    def test_moving_cloud_file(self, mock_gcp_cp):
+    def test_moving_cloud_file(self, mock_gcp_cp, _):
         self.run_sync(consent_files=[self._fake_file(self.participant, 'one.pdf')])
 
         # Make sure the file was moved on the cloud if we aren't zipping
@@ -120,7 +120,7 @@ class SyncConsentTest(BaseTestCase):
             flags='-m', args='-r')
 
     # There's a switch that targets the VA upload bucket for all organizations that belong under the VA hpo
-    def test_va_zip_upload(self, mock_gcp_cp):
+    def test_va_zip_upload(self, mock_gcp_cp, mock_upload_file):
         self.setup_local_file_creation(mock_gcp_cp)
         site = self.create_database_site(googleGroup='boston_site')
         org = self.create_database_organization(externalId='VA_BOSTON')
@@ -133,17 +133,16 @@ class SyncConsentTest(BaseTestCase):
         self.run_sync(zip_files=True, all_va=True, consent_files=[self._fake_file(va_participant, 'consent.pdf')])
 
         # Assert that the zip was uploaded to the VA bucket
-        mock_gcp_cp.assert_any_call(
+        mock_upload_file.assert_any_call(
             f'./temp_consents/aou179/VA_BOSTON/boston_site.zip',
-            'gs://aou179/Participant/VA_BOSTON/',
-            flags='-m'
+            'gs://aou179/Participant/VA_BOSTON/'
         )
 
-    def test_loading_only_va_participants(self, mock_gcp_cp):
+    def test_loading_only_va_participants(self, _, mock_upload_file):
         # The test setup creates a participant that should have a file downloaded if they were loaded from the database.
         # But they're not in a VA organization, so we shouldn't see a call for them.
 
         self.run_sync(zip_files=True, all_va=True, consent_files=[self._fake_file(self.participant, 'consent.pdf')])
 
         # Assert that the zip was uploaded to the correct location
-        mock_gcp_cp.assert_not_called()
+        mock_upload_file.assert_not_called()
