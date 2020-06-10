@@ -1622,7 +1622,7 @@ class GenomicPipelineTest(BaseTestCase):
             "sample_id",
             "sex_at_birth",
         )
-        sub_folder = config.getSetting(config.GENOMIC_GEM_A1_MANIFEST_SUBFOLDER)
+        sub_folder = config.GENOMIC_GEM_A1_MANIFEST_SUBFOLDER
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_Manifest_{a1f}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             missing_cols = set(expected_gem_columns) - set(csv_reader.fieldnames)
@@ -1821,7 +1821,7 @@ class GenomicPipelineTest(BaseTestCase):
             "test_name"
         )
 
-        sub_folder = config.getSetting(config.CVL_W1_MANIFEST_SUBFOLDER)
+        sub_folder = config.CVL_W1_MANIFEST_SUBFOLDER
 
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_CVL_Manifest_{w1_dtf}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
