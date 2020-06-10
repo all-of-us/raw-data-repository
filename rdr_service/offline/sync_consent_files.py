@@ -12,7 +12,7 @@ import shutil
 from zipfile import ZipFile
 
 from rdr_service import config
-from rdr_service.api_util import copy_cloud_file, download_cloud_file, get_blob, list_blobs, upload_from_file
+from rdr_service.api_util import copy_cloud_file, download_cloud_file, get_blob, list_blobs
 from rdr_service.dao import database_factory
 from rdr_service.services.gcp_utils import gcp_cp
 
@@ -88,7 +88,8 @@ def archive_and_upload_consents(dry_run=True):
                         zip_file=zip_file_name,
                         destination=destination
                     ))
-                    upload_from_file(zip_file_name, destination)
+                    gcp_cp(zip_file_name, destination, flags="-m", )
+
     shutil.rmtree(TEMP_CONSENTS_PATH)
 
 
@@ -124,7 +125,7 @@ def do_sync_consent_files(zip_files=False, **kwargs):
 
 
 def get_org_data_map():
-    return config.getSettingJson(config.CONSENT_SYNC_ORGANIZATIONS)
+    return config.getSettingJson(config.CONSENT_SYNC_BUCKETS)
 
 
 PARTICIPANT_DATA_SQL = """

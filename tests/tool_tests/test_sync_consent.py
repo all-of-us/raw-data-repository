@@ -19,7 +19,7 @@ class SyncConsentTest(BaseTestCase):
     def setUp(self):
         super().setUp()
 
-        config.override_setting(config.CONSENT_SYNC_ORGANIZATIONS, {
+        config.override_setting(config.CONSENT_SYNC_BUCKETS, {
             'test_org': 'test_dest_bucket'
         })
 
@@ -107,7 +107,7 @@ class SyncConsentTest(BaseTestCase):
         # Assert that the zip was uploaded to the correct location
         mock_upload_file.assert_any_call(
             './temp_consents/test_dest_bucket/test_org/test_site_google_group.zip',
-            'gs://test_dest_bucket/Participant/test_org/'
+            'test_dest_bucket/Participant/test_org/'
         )
 
     def test_moving_cloud_file(self, mock_gcp_cp, _):
@@ -135,7 +135,7 @@ class SyncConsentTest(BaseTestCase):
         # Assert that the zip was uploaded to the VA bucket
         mock_upload_file.assert_any_call(
             f'./temp_consents/aou179/VA_BOSTON/boston_site.zip',
-            'gs://aou179/Participant/VA_BOSTON/'
+            'aou179/Participant/VA_BOSTON/'
         )
 
     def test_loading_only_va_participants(self, _, mock_upload_file):

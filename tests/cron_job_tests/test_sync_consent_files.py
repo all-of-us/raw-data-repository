@@ -40,7 +40,7 @@ class SyncConsentFilesTest(BaseTestCase):
             "test_one": "testbucket123",
             "test_two": "testbucket456"
         }
-        config.override_setting(config.CONSENT_SYNC_ORGANIZATIONS, self.org_buckets)
+        config.override_setting(config.CONSENT_SYNC_BUCKETS, self.org_buckets)
 
         self.org1 = self.create_database_organization(externalId='test_one')
         self.site1 = self.create_database_site(googleGroup="group1")
@@ -264,8 +264,8 @@ class SyncConsentFilesTest(BaseTestCase):
         sync_consent_files.do_sync_consent_files(zip_files=True)
 
         mock_upload_file.assert_has_calls([
-            mock.call('./temp_consents/testbucket123/test_one/group1.zip', 'gs://testbucket123/Participant/test_one/'),
-            mock.call('./temp_consents/testbucket456/test_two/group2.zip', 'gs://testbucket456/Participant/test_two/')
+            mock.call('./temp_consents/testbucket123/test_one/group1.zip', 'testbucket123/Participant/test_one/'),
+            mock.call('./temp_consents/testbucket456/test_two/group2.zip', 'testbucket456/Participant/test_two/')
         ])
 
     def test_iter_participants_data(self):
