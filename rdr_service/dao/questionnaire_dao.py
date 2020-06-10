@@ -7,7 +7,7 @@ from rdr_service import clock
 from rdr_service.code_constants import PPI_EXTRA_SYSTEM
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaire
-from rdr_service.model.code import Code, CodeType
+from rdr_service.model.code import CodeType
 from rdr_service.model.questionnaire import (
     Questionnaire,
     QuestionnaireConcept,
@@ -273,15 +273,6 @@ class QuestionnaireQuestionDao(BaseDao):
         return (
             session.query(QuestionnaireQuestion).filter(QuestionnaireQuestion.questionnaireQuestionId.in_(ids)).all()
         )
-
-    def get_for_questionnaire_and_code(self, session, questionnaire_id, semantic_version, question_code):
-        return session.query(QuestionnaireQuestion).join(Code)\
-            .join(Questionnaire, Questionnaire.questionnaireId == QuestionnaireQuestion.questionnaireId)\
-            .filter(
-                Questionnaire.questionnaireId == questionnaire_id,
-                Questionnaire.semanticVersion == semantic_version,
-                Code.value == question_code
-            ).one_or_none()
 
 def _add_codes_if_missing():
     # Only import "config" on demand, as it depends on Datastore packages (and
