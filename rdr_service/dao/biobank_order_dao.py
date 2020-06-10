@@ -35,6 +35,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.participant_enums import BiobankOrderStatus, OrderStatus
 from rdr_service.model.config_utils import to_client_biobank_id
+from rdr_service.code_constants import UNMAPPED, UNSET
 
 
 # Timezones for MayoLINK
@@ -532,6 +533,7 @@ class BiobankOrderDao(UpdatableDao):
         code_dao = CodeDao()
         format_json_code(code_dict, code_dao, "genderIdentityId")
         format_json_code(code_dict, code_dao, "stateId")
+
         if "genderIdentity" in code_dict and code_dict["genderIdentity"]:
             if code_dict["genderIdentity"] == "GenderIdentity_Woman":
                 gender_val = "F"
@@ -568,7 +570,7 @@ class BiobankOrderDao(UpdatableDao):
                     "address1": summary.streetAddress,
                     "address2": summary.streetAddress2,
                     "city": summary.city,
-                    "state": code_dict["state"],
+                    "state": code_dict["state"][-2:] if code_dict["state"] not in (UNMAPPED, UNSET) else '',
                     "postal_code": str(summary.zipCode),
                     "phone": str(summary.phoneNumber),
                     "account_number": None,

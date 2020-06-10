@@ -41,7 +41,7 @@ class MayoLinkApi:
                 result = self._xml_to_dict(content)
                 return result
             else:
-                ServiceUnavailable("Mayolink service return {} rather than 201".format(response['status']))
+                raise ServiceUnavailable("Mayolink service return {} rather than 201".format(response['status']))
         except httplib2.HttpLib2Error:
             pass
         except OSError:
