@@ -88,7 +88,7 @@ def archive_and_upload_consents(dry_run=True):
                         zip_file=zip_file_name,
                         destination=destination
                     ))
-                    gcp_cp(zip_file_name, destination, flags="-m", )
+                    gcp_cp(zip_file_name, destination, flags="-m")
 
     shutil.rmtree(TEMP_CONSENTS_PATH)
 
