@@ -6,7 +6,7 @@ from dateutil import parser
 
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import BadRequest, Conflict, NotFound
-
+from rdr_service.code_constants import UNMAPPED, UNSET
 from rdr_service import clock, app_util
 from rdr_service.api.mayolink_api import MayoLinkApi
 from rdr_service.api_util import (
@@ -100,7 +100,7 @@ class DvOrderDao(UpdatableDao):
                     "address1": summary.streetAddress,
                     "address2": summary.streetAddress2,
                     "city": summary.city,
-                    "state": code_dict["state"][-2:] if code_dict["state"] else code_dict["state"],
+                    "state": code_dict["state"][-2:] if code_dict["state"] not in (UNMAPPED, UNSET) else '',
                     "postal_code": str(summary.zipCode),
                     "phone": str(summary.phoneNumber),
                     "account_number": None,
