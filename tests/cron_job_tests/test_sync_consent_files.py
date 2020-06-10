@@ -221,9 +221,10 @@ class SyncConsentFilesTest(BaseTestCase):
             Path(destination).touch()
         mock_download_cloud_file.side_effect = create_local_file
 
+    @mock.patch('rdr_service.offline.sync_consent_files.gcp_cp')
     @mock.patch('rdr_service.offline.sync_consent_files.list_blobs')
     @mock.patch('rdr_service.offline.sync_consent_files.download_cloud_file')
-    def test_file_download(self, mock_download_cloud_file, mock_list_blobs):
+    def test_file_download(self, mock_download_cloud_file, mock_list_blobs, _):
         self._mock_files_for_participants(mock_list_blobs, [
             FakeConsentFile()
         ])
