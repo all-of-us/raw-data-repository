@@ -47,6 +47,9 @@ def _alert_on_exceptions(func):
             # regular CSV uploads. In other environments, it's OK to just abort the CSV import if there's
             # no new data.
             biobank_recipients = config.getSettingList(config.BIOBANK_STATUS_MAIL_RECIPIENTS, default=[])
+
+            # send_failure_alert() is deprecated as of migration to App Engine 2, making this if/else
+            # a no-op.  Leaving code in place in case email alerting is re-enabled later.
             if not e.external or (e.external and biobank_recipients):
                 send_failure_alert(
                     func.__name__,
@@ -55,9 +58,14 @@ def _alert_on_exceptions(func):
                     extra_recipients=biobank_recipients,
                 )
             else:
+                pass
                 # Don't alert for stale CSVs except in prod (where external recipients are configured).
-                logging.info("Not alerting on external-only DataError (%s).", e)
-            return json.dumps({"data_error": str(e)})
+                # logging.info(f'Not alerting on external-only DataError')
+
+            # DA-1591: Since email alerting is deprecated, always log DataErrors and trigger GAE default
+            # exception handling/500 response so cron job is marked "failed" on the GCP (cron jobs) console
+            logging.error(f"Data error in Biobank samples pipeline: {e}")
+            raise
         except:
             send_failure_alert(func.__name__, "Exception in cron: %s" % traceback.format_exc())
             raise
