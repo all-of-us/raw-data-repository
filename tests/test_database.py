@@ -31,7 +31,7 @@ class DatabaseTest(BaseTestCase):
         self.database = dao.database_factory.get_database()
 
     def test_schema(self):
-        session = self.database.make_session()
+        session = self.session
 
         hpo = HPO(hpoId=1, name="UNSET", displayName="No organization set", organizationType=OrganizationType.UNSET)
         calendar = Calendar(day=datetime.date(2018, 1, 1))
@@ -156,7 +156,7 @@ class DatabaseTest(BaseTestCase):
             lastModified=datetime.datetime.now(),
         )
         ps = self._participant_summary_with_defaults(
-            participantId=1,
+            participant=p,
             biobankId=2,
             lastModified=datetime.datetime.now(),
             hpoId=hpo.hpoId,

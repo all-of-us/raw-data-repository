@@ -10,7 +10,9 @@ from rdr_service import clock
 from rdr_service.config import (
     GENOMIC_GC_METRICS_BUCKET_NAME,
     getSetting,
-    getSettingList)
+    getSettingList,
+    GENOME_TYPE_ARRAY,
+)
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     GenomicSubProcessStatus)
@@ -127,6 +129,20 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
+    def run_c2_participant_workflow(self):
+        """
+        Creates new GenomicSet, GenomicSetMembers,
+        And manifest file for Cohort 2 participants
+        """
+        self.biobank_coupler = GenomicBiobankSamplesCoupler(self.job_run.id)
+
+        try:
+            last_run_date = self._get_last_successful_run_time()
+            logging.info('Running C2 Participant Workflow.')
+            self.job_result = self.biobank_coupler.create_c2_genomic_participants(last_run_date)
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
     def run_biobank_return_manifest_workflow(self):
         """
         Uses ingester to ingest manifest result files.
@@ -230,6 +246,18 @@ class GenomicJobController:
             self.job_result = self._aggregate_run_results()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
+
+    def reconcile_report_states(self, _genome_type):
+        """
+        Wrapper for the Reconciler reconcile_gem_report_states
+        and reconcile_rhp_report_states
+        :param _genome_type: array or wgs
+        """
+
+        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id)
+
+        if _genome_type == GENOME_TYPE_ARRAY:
+            self.reconciler.reconcile_gem_report_states(_last_run_time=self.last_run_time)
 
     def run_gem_a2_workflow(self):
         """

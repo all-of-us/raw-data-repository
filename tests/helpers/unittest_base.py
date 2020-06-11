@@ -3,6 +3,7 @@ import collections
 import contextlib
 import copy
 import csv
+from datetime import datetime
 import http.client
 import io
 import json
@@ -21,12 +22,15 @@ from rdr_service import config
 from rdr_service import main
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
-from rdr_service.dao import questionnaire_dao, questionnaire_response_dao
+from rdr_service.dao import database_factory, questionnaire_dao, questionnaire_response_dao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.code import Code
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.organization import Organization
+from rdr_service.model.hpo import HPO
+from rdr_service.model.site import Site
 from rdr_service.offline import sql_exporter
 from rdr_service.participant_enums import (
     EnrollmentStatus,
@@ -37,6 +41,9 @@ from rdr_service.participant_enums import (
 from rdr_service.storage import LocalFilesystemStorageProvider
 from tests.helpers.mysql_helper import reset_mysql_instance
 from tests.test_data import data_path
+
+QUESTIONNAIRE_NONE_ANSWER = 'no_answer_given'
+
 
 
 class CodebookTestMixin:
@@ -87,15 +94,23 @@ class QuestionnaireTestMixin:
                         "answer": [{"valueCoding": {"code": answer[1].code, "system": answer[1].system}}],
                     }
                 )
+
+        def add_question_result(question_data, answer_value, answer_structure):
+            result = {"linkId": question_data}
+            if answer_value != QUESTIONNAIRE_NONE_ANSWER:
+                result["answer"] = [answer_structure]
+            results.append(result)
+
         if string_answers:
             for answer in string_answers:
-                results.append({"linkId": answer[0], "answer": [{"valueString": answer[1]}]})
+                add_question_result(answer[0], answer[1], {"valueString": answer[1]})
         if date_answers:
             for answer in date_answers:
-                results.append({"linkId": answer[0], "answer": [{"valueDate": "%s" % answer[1].isoformat()}]})
+                add_question_result(answer[0], answer[1], {"valueDate": "%s" % answer[1].isoformat()})
         if uri_answers:
             for answer in uri_answers:
-                results.append({"linkId": answer[0], "answer": [{"valueUri": answer[1]}]})
+                results.append({"linkId": answer[0], "answer": []})
+                add_question_result(answer[0], answer[1], {"valueUri": answer[1]})
 
         response_json = {
             "resourceType": "QuestionnaireResponse",
@@ -128,9 +143,12 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
     def __init__(self, *args, **kwargs):
         super(BaseTestCase, self).__init__(*args, **kwargs)
         self.fake = faker.Faker()
+        self._next_unique_participant_id = 900000000
+        self._next_unique_participant_biobank_id = 500000000
 
     def setUp(self, with_data=True, with_consent_codes=False) -> None:
         super(BaseTestCase, self).setUp()
+
         logger = logging.getLogger()
         stream_handler = logging.StreamHandler(sys.stdout)
         logger.addHandler(stream_handler)
@@ -150,6 +168,12 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         questionnaire_dao._add_codes_if_missing = lambda: True
         questionnaire_response_dao._add_codes_if_missing = lambda email: True
         self._consent_questionnaire_id = None
+
+        self.session = database_factory.get_database().make_session()
+
+    def tearDown(self):
+        super(BaseTestCase, self).tearDown()
+        self.session.close()
 
     def setup_storage(self):
         temp_folder_path = mkdtemp()
@@ -182,25 +206,106 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             os.mkdir(bucket_dir)
         shutil.copy(os.path.join(os.path.dirname(__file__), "..", "test-data", test_file_name), bucket_dir)
 
-    @staticmethod
-    def _participant_with_defaults(**kwargs):
+    def _commit_to_database(self, model):
+        self.session.add(model)
+        self.session.commit()
+
+    def unique_participant_id(self):
+        next_participant_id = self._next_unique_participant_id
+        self._next_unique_participant_id += 1
+        return next_participant_id
+
+    def unique_participant_biobank_id(self):
+        next_biobank_id = self._next_unique_participant_biobank_id
+        self._next_unique_participant_biobank_id += 1
+        return next_biobank_id
+
+    def create_database_site(self, **kwargs):
+        site = self._site_with_defaults(**kwargs)
+        self._commit_to_database(site)
+        return site
+
+    def _site_with_defaults(self, **kwargs):
+        defaults = {
+            'siteName': 'example_site'
+        }
+        defaults.update(kwargs)
+        return Site(**defaults)
+
+    def create_database_organization(self, **kwargs):
+        organization = self._organization_with_defaults(**kwargs)
+        self._commit_to_database(organization)
+        return organization
+
+    def _organization_with_defaults(self, **kwargs):
+        defaults = {
+            'displayName': 'example_org_display'
+        }
+        defaults.update(kwargs)
+
+        if 'hpoId' not in defaults:
+            hpo = self.create_database_hpo()
+            defaults['hpoId'] = hpo.hpoId
+
+        return Organization(**defaults)
+
+    def create_database_hpo(self, **kwargs):
+        hpo = self._hpo_with_defaults(**kwargs)
+
+        # hpoId is the primary key but is not automatically set when inserting
+        if hpo.hpoId is None:
+            hpo.hpoId = self.session.query(HPO).count() + 50  # There was code somewhere using lower numbers
+        self._commit_to_database(hpo)
+
+        return hpo
+
+    def _hpo_with_defaults(self, **kwargs):
+        return HPO(**kwargs)
+
+    def create_database_participant(self, **kwargs):
+        participant = self._participant_with_defaults(**kwargs)
+        self._commit_to_database(participant)
+        return participant
+
+    def _participant_with_defaults(self, **kwargs):
         """Creates a new Participant model, filling in some default constructor args.
 
         This is intended especially for updates, where more fields are required than for inserts.
         """
-        common_args = {
-            "hpoId": UNSET_HPO_ID,
-            "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
-            "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
-            "participantOrigin": "example"
+        defaults = {
+            'hpoId': UNSET_HPO_ID,
+            'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
+            'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
+            'participantOrigin': 'example',
+            'version': 1,
+            'lastModified': datetime.now(),
+            'signUpTime': datetime.now()
         }
-        common_args.update(kwargs)
-        return Participant(**common_args)
+        defaults.update(kwargs)
 
-    @staticmethod
-    def _participant_summary_with_defaults(**kwargs):
-        common_args = {
-            "hpoId": UNSET_HPO_ID,
+        if 'biobankId' not in defaults:
+            defaults['biobankId'] = self.unique_participant_biobank_id()
+        if 'participantId' not in defaults:
+            defaults['participantId'] = self.unique_participant_id()
+
+        return Participant(**defaults)
+
+    def create_database_participant_summary(self, **kwargs):
+        participant_summary = self._participant_summary_with_defaults(**kwargs)
+        self._commit_to_database(participant_summary)
+        return participant_summary
+
+    def _participant_summary_with_defaults(self, **kwargs):
+        participant = kwargs.get('participant')
+        if participant is None:
+            participant = self.create_database_participant()
+
+        defaults = {
+            "participantId": participant.participantId,
+            "biobankId": participant.biobankId,
+            "hpoId": participant.hpoId,
+            "firstName": self.fake.first_name(),
+            "lastName": self.fake.last_name(),
             "numCompletedPPIModules": 0,
             "numCompletedBaselinePPIModules": 0,
             "numBaselineSamplesArrived": 0,
@@ -208,10 +313,18 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
             "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
             "enrollmentStatus": EnrollmentStatus.INTERESTED,
-            "participantOrigin": "example"
+            "participantOrigin": participant.participantOrigin
         }
-        common_args.update(kwargs)
-        return ParticipantSummary(**common_args)
+
+        defaults.update(kwargs)
+        for questionnaire_field in ['consentForStudyEnrollment']:
+            if questionnaire_field in defaults:
+                if f'{questionnaire_field}Time' not in defaults:
+                    defaults[f'{questionnaire_field}Time'] = datetime.now()
+                if f'{questionnaire_field}Authored' not in defaults:
+                    defaults[f'{questionnaire_field}Authored'] = datetime.now()
+
+        return ParticipantSummary(**defaults)
 
     @staticmethod
     def _participant_history_with_defaults(**kwargs):

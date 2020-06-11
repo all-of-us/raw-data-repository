@@ -7,9 +7,12 @@
 
 import argparse
 import logging
+import os
 import random
+import shutil
 import sys
 from datetime import datetime
+from zipfile import ZipFile
 
 import MySQLdb
 import pytz
@@ -36,6 +39,9 @@ SOURCE_BUCKET = {
 
 HPO_REPORT_CONFIG_GCS_PATH = "gs://all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
 DEST_BUCKET = "gs://{bucket_name}/Participant/{org_external_id}/{site_name}/P{p_id}/"
+
+TEMP_CONSENTS_PATH = "./temp_consents"
+
 
 class SyncConsentClass(object):
     def __init__(self, args, gcp_env):
@@ -77,12 +83,39 @@ class SyncConsentClass(object):
         _logger.debug("    src: {0}".format(src))
         _logger.debug("   dest: {0}".format(dest))
 
+    @staticmethod
+    def _add_path_to_zip(zip_file, directory_path):
+        for current_path, _, files in os.walk(directory_path):
+            # os.walk will recurse into sub_directories, so we only need to handle the files in the current directory
+            for file in files:
+                file_path = os.path.join(current_path, file)
+                archive_name = file_path[len(directory_path):]
+                zip_file.write(file_path, arcname=archive_name)
+
+    @staticmethod
+    def _directories_in(directory_path):
+        with os.scandir(directory_path) as objects:
+            return [directory_object for directory_object in objects if directory_object.is_dir()]
+
+    def _copy(self, source, destination, participant_id):
+        if not self.args.dry_run:
+            if self.args.zip_files:
+                # gcp_cp doesn't create local directories when they don't exist
+                os.makedirs(destination, exist_ok=True)
+
+            copy_args = {'flags': '-m'}
+            if not self.args.zip_files:
+                copy_args['args'] = '-r'
+            gcp_cp(source, destination, **copy_args)
+
+        self._format_debug_out(participant_id, source, destination)
+
     def run(self):
         """
     Main program process
     :return: Exit code value
     """
-        sites = get_org_data_map()
+        org_buckets = get_org_data_map()
 
         _logger.info("retrieving db configuration...")
         headers = gcp_make_auth_header()
@@ -109,10 +142,6 @@ class SyncConsentClass(object):
             return 1
 
         try:
-            _logger.info("connecting to mysql instance...")
-            sql_conn = MySQLdb.connect(host="127.0.0.1", user="rdr", passwd=str(passwd), db="rdr", port=port)
-            cursor = sql_conn.cursor()
-
             _logger.info("retrieving participant information...")
             # get record count
             query_args = {}
@@ -122,43 +151,43 @@ class SyncConsentClass(object):
             if self.args.end_date:
                 # TODO: Add execption handling for incorrect date format
                 query_args['end_date'] = self.args.end_date
-            if self.args.org_id:
-                org_ids = [self.args.org_id]
+            org_ids = None
+            if not self.args.all_va:
+                if self.args.org_id:
+                    org_ids = [self.args.org_id]
+                else:
+                    raise Exception("Org id required for consent sync")
             else:
-                raise Exception("Org id required for consent sync")
+                query_args['all_va'] = True
 
             participant_sql, params = build_participant_query(org_ids, **query_args)
             count_sql = self._get_count_sql(participant_sql)
             with database_factory.make_server_cursor_database().session() as session:
-                count_result = session.execute(count_sql, params).scalar()
-                total_recs = count_result
+                total_participants = session.execute(count_sql, params).scalar()
 
                 _logger.info("transferring files to destinations...")
                 count = 0
                 for rec in session.execute(participant_sql, params):
                     if not self.args.debug:
                         print_progress_bar(
-                            count, total_recs, prefix="{0}/{1}:".format(count, total_recs), suffix="complete"
+                            count, total_participants, prefix="{0}/{1}:".format(count, total_participants),
+                            suffix="complete"
                         )
 
                     p_id = rec[0]
                     origin_id = rec[1]
                     site = rec[2]
+                    org_id = rec[3]
                     if self.args.destination_bucket is not None:
                         # override destination bucket lookup (the lookup table is incomplete)
                         bucket = self.args.destination_bucket
+                    elif self.args.all_va:
+                        bucket = 'aou179'
                     else:
-                        site_info = sites.get(rec[3])
-                        if not site_info:
-                            _logger.warning("\nsite info not found for [{0}].".format(rec[2]))
-                            count += 1
-                            rec = cursor.fetchone()
-                            continue
-                        bucket = site_info.get("bucket_name")
+                        bucket = org_buckets.get(org_id, None)
                     if not bucket:
-                        _logger.warning("\nno bucket name found for [{0}].".format(rec[2]))
+                        _logger.warning("\nno bucket name found for [{0}].".format(site))
                         count += 1
-                        rec = cursor.fetchone()
                         continue
 
                     # Copy all files, not just PDFs
@@ -169,9 +198,14 @@ class SyncConsentClass(object):
                         next(iter(SOURCE_BUCKET))
                     ]).format(p_id=p_id, file_ext=self.file_filter)
 
-                    dest_bucket = DEST_BUCKET.format(
+                    if self.args.zip_files:
+                        destination_pattern =\
+                            TEMP_CONSENTS_PATH + '/{bucket_name}/{org_external_id}/{site_name}/P{p_id}/'
+                    else:
+                        destination_pattern = DEST_BUCKET
+                    destination = destination_pattern.format(
                         bucket_name=bucket,
-                        org_external_id=self.args.org_id,
+                        org_external_id=org_id,
                         site_name=site if site else "no-site-assigned",
                         p_id=p_id,
                     )
@@ -183,25 +217,38 @@ class SyncConsentClass(object):
                         if not files_in_range or len(files_in_range) == 0:
                             _logger.info(f'No files in bucket updated after {self.args.date_limit}')
                         for f in files_in_range:
-                            if not self.args.dry_run:
-                                # actually copy the fles
-                                gcp_cp(f, dest_bucket, args="-r", flags="-m")
-
-                            self._format_debug_out(p_id, f, dest_bucket)
-
+                            self._copy(f, destination, p_id)
                     else:
-                        if not self.args.dry_run:
-                            gcp_cp(src_bucket, dest_bucket, args="-r", flags="-m")
-
-                        self._format_debug_out(p_id, src_bucket, dest_bucket)
+                        self._copy(src_bucket, destination, p_id)
 
                     count += 1
 
             # print progressbar one more time to show completed.
-            if total_recs > 0 and not self.args.debug:
+            if total_participants > 0 and not self.args.debug:
                 print_progress_bar(
-                    count, total_recs, prefix="{0}/{1}:".format(count, total_recs), suffix="complete"
+                    count, total_participants, prefix="{0}/{1}:".format(count, total_participants), suffix="complete"
                 )
+
+            if self.args.zip_files and count > 0:
+                _logger.info("zipping and uploading consent files...")
+                for bucket_dir in self._directories_in(TEMP_CONSENTS_PATH):
+                    for org_dir in self._directories_in(bucket_dir):
+                        for site_dir in self._directories_in(org_dir):
+                            zip_file_name = os.path.join(org_dir.path, site_dir.name + '.zip')
+                            with ZipFile(zip_file_name, 'w') as zip_file:
+                                self._add_path_to_zip(zip_file, site_dir.path)
+
+                            destination = "gs://{bucket_name}/Participant/{org_external_id}/".format(
+                                bucket_name=bucket,
+                                org_external_id=org_dir.name
+                            )
+                            if not self.args.dry_run:
+                                _logger.debug("Uploading file '{zip_file}' to '{destination}'".format(
+                                    zip_file=zip_file_name,
+                                    destination=destination
+                                ))
+                                gcp_cp(zip_file_name, destination, flags="-m")
+                shutil.rmtree(TEMP_CONSENTS_PATH)
 
         except MySQLdb.OperationalError as e:
             _logger.error("failed to connect to {0} mysql instance. [{1}]".format(self.gcp_env.project, e))
@@ -229,6 +276,12 @@ def run():
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="Do not copy files, only print the list of files that would be copied"
+    )
+    parser.add_argument(
+        "--zip-files", action="store_true", help="Zip the consent files by site rather than uploading them individually"
+    )
+    parser.add_argument(
+        "--all-va", action="store_true", help="Zip consents for all VA organizations"
     )
 
     parser.add_argument(

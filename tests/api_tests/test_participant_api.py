@@ -4,11 +4,14 @@ import http.client
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.clock import FakeClock
-from rdr_service.code_constants import PPI_SYSTEM, RACE_WHITE_CODE
+from rdr_service.code_constants import PPI_SYSTEM, RACE_WHITE_CODE, PMI_SKIP_CODE
 from rdr_service.concepts import Concept
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
+from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
+from rdr_service.model.questionnaire import QuestionnaireQuestion
+from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     OrganizationType,
     SuspensionStatus,
@@ -16,7 +19,7 @@ from rdr_service.participant_enums import (
     TEST_HPO_NAME,
     WithdrawalStatus,
 )
-from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.unittest_base import BaseTestCase, QUESTIONNAIRE_NONE_ANSWER
 from tests.test_data import load_biobank_order_json
 
 TIME_1 = datetime.datetime(2018, 1, 1)
@@ -348,35 +351,41 @@ class ParticipantApiTest(BaseTestCase):
         _add_code_answer(code_answers, "education", education_code)
         _add_code_answer(code_answers, "income", income_code)
 
+        string_answers = [
+            ("firstName", first_name),
+            ("middleName", middle_name),
+            ("lastName", last_name),
+            ("city", city),
+            ("phoneNumber", phone_number),
+            ("loginPhoneNumber", login_phone_number),
+            ("zipCode", zip_code),
+        ]
+        if street_address is not None:
+            string_answers.append(("streetAddress", street_address))
+        if street_address2 is not None:
+            if street_address2 == PMI_SKIP_CODE:
+                _add_code_answer(code_answers, "streetAddress2", street_address2)
+            else:
+                string_answers.append(("streetAddress2", street_address2))
         qr = self.make_questionnaire_response_json(
             participant_id,
             questionnaire_id,
             code_answers=code_answers,
-            string_answers=[
-                ("firstName", first_name),
-                ("middleName", middle_name),
-                ("lastName", last_name),
-                ("streetAddress", street_address),
-                ("streetAddress2", street_address2),
-                ("city", city),
-                ("phoneNumber", phone_number),
-                ("loginPhoneNumber", login_phone_number),
-                ("zipCode", zip_code),
-            ],
+            string_answers=string_answers,
             date_answers=[("dateOfBirth", date_of_birth)],
             uri_answers=[("CABoRSignature", cabor_signature_uri)],
         )
         with FakeClock(time):
             self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
 
-    def test_switch_to_test_account(self):
+    def _setup_initial_participant_data(self):
         with FakeClock(TIME_1):
-            participant_1 = self.send_post("Participant", {"providerLink": [self.provider_link_2]})
+            participant = self.send_post("Participant", {"providerLink": [self.provider_link_2]})
         questionnaire_id = self.create_questionnaire("questionnaire3.json")
-        participant_id_1 = participant_1["participantId"]
-        self.send_consent(participant_id_1)
+        participant_id = participant["participantId"]
+        self.send_consent(participant_id)
         self.submit_questionnaire_response(
-            participant_id_1,
+            participant_id,
             questionnaire_id,
             RACE_WHITE_CODE,
             "male",
@@ -400,18 +409,23 @@ class ParticipantApiTest(BaseTestCase):
             "signature.pdf",
         )
 
-        ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
+        return participant_id, questionnaire_id
+
+    def test_switch_to_test_account(self):
+        participant_id, questionnaire_id = self._setup_initial_participant_data()
+
+        ps_1 = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual("215-222-2222", ps_1["loginPhoneNumber"])
         self.assertEqual("PITT", ps_1["hpoId"])
 
-        p_1 = self.send_get("Participant/%s" % participant_id_1)
+        p_1 = self.send_get("Participant/%s" % participant_id)
         self.assertEqual("PITT", p_1["hpoId"])
         self.assertEqual(TIME_1.strftime("%Y" "-" "%m" "-" "%d" "T" "%X"), p_1["lastModified"])
         self.assertEqual('W/"1"', p_1["meta"]["versionId"])
 
         # change login phone number to 444-222-2222
         self.submit_questionnaire_response(
-            participant_id_1,
+            participant_id,
             questionnaire_id,
             RACE_WHITE_CODE,
             "male",
@@ -436,17 +450,126 @@ class ParticipantApiTest(BaseTestCase):
             TIME_2,
         )
 
-        ps_1_with_test_login_phone_number = self.send_get("Participant/%s/Summary" % participant_id_1)
+        ps_1_with_test_login_phone_number = self.send_get("Participant/%s/Summary" % participant_id)
 
         self.assertEqual("444-222-2222", ps_1_with_test_login_phone_number["loginPhoneNumber"])
         self.assertEqual("TEST", ps_1_with_test_login_phone_number["hpoId"])
         self.assertEqual("1234 Main Street", ps_1_with_test_login_phone_number["streetAddress"])
         self.assertEqual("APT C", ps_1_with_test_login_phone_number["streetAddress2"])
 
-        p_1 = self.send_get("Participant/%s" % participant_id_1)
+        p_1 = self.send_get("Participant/%s" % participant_id)
         self.assertEqual("TEST", p_1["hpoId"])
         self.assertEqual(TIME_2.strftime("%Y" "-" "%m" "-" "%d" "T" "%X"), p_1["lastModified"])
         self.assertEqual('W/"2"', p_1["meta"]["versionId"])
+
+    def test_street_address_two_clears_on_address_update(self):
+        participant_id, questionnaire_id = self._setup_initial_participant_data()
+
+        # Change street address to only have one line
+        self.submit_questionnaire_response(
+            participant_id,
+            questionnaire_id,
+            RACE_WHITE_CODE,
+            "male",
+            "Bob",
+            "Q",
+            "Jones",
+            "78751",
+            "PIIState_VA",
+            "44 Hickory Lane",
+            "",
+            "Austin",
+            "male_sex",
+            "444-222-2222",
+            "straight",
+            "512-555-5555",
+            "email_code",
+            "en",
+            "highschool",
+            "lotsofmoney",
+            datetime.date(1978, 10, 9),
+            "signature.pdf",
+            TIME_2,
+        )
+
+        participant_summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual("", participant_summary["streetAddress2"])
+
+    def test_street_address_two_clears_on_no_answer(self):
+        participant_id, questionnaire_id = self._setup_initial_participant_data()
+
+        # We could see a submission to the street address line 2 without an answer included with it
+        self.submit_questionnaire_response(
+            participant_id,
+            questionnaire_id,
+            RACE_WHITE_CODE,
+            "male",
+            "Bob",
+            "Q",
+            "Jones",
+            "78751",
+            "PIIState_VA",
+            "44 Hickory Lane",
+            QUESTIONNAIRE_NONE_ANSWER,
+            "Austin",
+            "male_sex",
+            "444-222-2222",
+            "straight",
+            "512-555-5555",
+            "email_code",
+            "en",
+            "highschool",
+            "lotsofmoney",
+            datetime.date(1978, 10, 9),
+            "signature.pdf",
+            TIME_2,
+        )
+
+        participant_summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertNotIn("streetAddress2", participant_summary)
+
+        # Make sure the street address 2 answer is set inactive too
+        street_address_2_active_answer = self.session.query(QuestionnaireResponseAnswer)\
+                                             .join(QuestionnaireQuestion)\
+                                             .join(Code, Code.codeId == QuestionnaireQuestion.codeId)\
+                                             .filter(Code.value == 'PIIAddress_StreetAddress2',
+                                                     QuestionnaireResponseAnswer.endTime.is_(None))\
+                                             .one_or_none()
+        self.assertIsNone(street_address_2_active_answer)
+
+
+    def test_street_address_two_clears_on_skip(self):
+        participant_id, questionnaire_id = self._setup_initial_participant_data()
+
+        # We could see a submission to the street address line 2 without an answer included with it
+        self.submit_questionnaire_response(
+            participant_id,
+            questionnaire_id,
+            RACE_WHITE_CODE,
+            "male",
+            "Bob",
+            "Q",
+            "Jones",
+            "78751",
+            "PIIState_VA",
+            "44 Hickory Lane",
+            PMI_SKIP_CODE,
+            "Austin",
+            "male_sex",
+            "444-222-2222",
+            "straight",
+            "512-555-5555",
+            "email_code",
+            "en",
+            "highschool",
+            "lotsofmoney",
+            datetime.date(1978, 10, 9),
+            "signature.pdf",
+            TIME_2,
+        )
+
+        participant_summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertNotIn("streetAddress2", participant_summary)
 
 
 def _add_code_answer(code_answers, link_id, code):

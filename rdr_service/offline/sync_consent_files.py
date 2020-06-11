@@ -45,14 +45,14 @@ def do_sync_consent_files(**kwargs):
     """
   entrypoint
   """
-    org_data_map = get_org_data_map()
-    org_ids = [org_id for org_id, org_data in org_data_map.items()]
+    org_buckets = get_org_data_map()
+    org_ids = [org_id for org_id, org_data in org_buckets.items()]
     start_date = kwargs.get('start_date')
     file_filter = kwargs.get('file_filter', 'pdf')
     for participant_data in _iter_participants_data(org_ids, **kwargs):
         kwargs = {
             "source_bucket": SOURCE_BUCKET.get(participant_data.origin_id, SOURCE_BUCKET[next(iter(SOURCE_BUCKET))]),
-            "destination_bucket": org_data_map[participant_data.org_id]['bucket_name'],
+            "destination_bucket": org_buckets[participant_data.org_id],
             "participant_id": participant_data.participant_id,
             "google_group": participant_data.google_group or DEFAULT_GOOGLE_GROUP,
         }
@@ -69,7 +69,7 @@ def do_sync_consent_files(**kwargs):
 
 
 def get_org_data_map():
-    return config.getSetting(config.CONSENT_SYNC_ORGANIZATIONS)
+    return config.getSettingJson(config.CONSENT_SYNC_ORGANIZATIONS)
 
 
 PARTICIPANT_DATA_SQL = """
@@ -91,7 +91,6 @@ where participant.is_ghost_id is not true
     summary.email is null
     or summary.email not like '%@example.com'
   )
-  and organization.external_id in :org_ids
 """
 
 participant_filters_sql = {
@@ -108,18 +107,30 @@ participant_filters_sql = {
             or
             summary.consent_for_electronic_health_records_time < :end_date
             )
-        """
+        """,
+    'org_ids': """
+        and organization.external_id in :org_ids
+    """,
+    'all_va': """
+        and organization.external_id like 'VA_%'
+    """
 }
 
 
 def build_participant_query(org_ids, **kwargs):
     participant_sql = PARTICIPANT_DATA_SQL
-    parameters = {'org_ids': org_ids}
+    parameters = {}
 
     for filter_field in ['start_date', 'end_date']:
         if filter_field in kwargs:
             participant_sql += participant_filters_sql[filter_field]
             parameters[filter_field] = kwargs[filter_field]
+
+    if kwargs.get('all_va'):
+        participant_sql += participant_filters_sql['all_va']
+    else:
+        participant_sql += participant_filters_sql['org_ids']
+        parameters['org_ids'] = org_ids
 
     return participant_sql, parameters
 

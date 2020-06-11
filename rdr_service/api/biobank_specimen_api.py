@@ -98,13 +98,13 @@ class BiobankTargetedUpdateBase(BiobankApiBase):
 
 class BiobankStatusApiMixin:
     def update_model(self, model, resource, session):
-        self.dao.read_client_status(resource, model)
+        self.dao.read_client_status(resource, model, clear_disposal_fields=True)
         self.dao.update_with_session(session, model)
 
 
 class BiobankDisposalApiMixin:
     def update_model(self, model, resource, session):
-        self.dao.read_client_disposal(resource, model)
+        self.dao.read_client_disposal(resource, model, set_status=True)
         self.dao.update_with_session(session, model)
 
 

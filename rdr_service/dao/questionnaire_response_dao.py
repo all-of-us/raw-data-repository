@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytz
 from sqlalchemy.orm import subqueryload
@@ -34,7 +34,10 @@ from rdr_service.code_constants import (
     GROR_CONSENT_QUESTION_CODE,
     CONSENT_COPE_YES_CODE,
     CONSENT_COPE_NO_CODE,
-    COPE_CONSENT_QUESTION_CODE)
+    CONSENT_COPE_DEFERRED_CODE,
+    COPE_CONSENT_QUESTION_CODE,
+    STREET_ADDRESS_QUESTION_CODE,
+    STREET_ADDRESS2_QUESTION_CODE)
 from rdr_service.config_api import is_config_admin
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -144,6 +147,15 @@ class QuestionnaireResponseDao(BaseDao):
                 ):
                     logging.error(f"Questionnaire response contains invalid link ID {section['linkId']}.")
 
+    @staticmethod
+    def _imply_street_address_2_from_street_address_1(code_ids):
+        code_dao = CodeDao()
+        street_address_1_code = code_dao.get_code(PPI_SYSTEM, STREET_ADDRESS_QUESTION_CODE)
+        if street_address_1_code and street_address_1_code.codeId in code_ids:
+            street_address_2_code = code_dao.get_code(PPI_SYSTEM, STREET_ADDRESS2_QUESTION_CODE)
+            if street_address_2_code and street_address_2_code.codeId not in code_ids:
+                code_ids.append(street_address_2_code.codeId)
+
     def insert_with_session(self, session, questionnaire_response):
 
         # Look for a questionnaire that matches any of the questionnaire history records.
@@ -186,12 +198,13 @@ class QuestionnaireResponseDao(BaseDao):
         self._validate_link_ids_from_resource_json_group(resource_json, link_ids)
 
         code_ids = [question.codeId for question in questions]
+        self._imply_street_address_2_from_street_address_1(code_ids)
         current_answers = QuestionnaireResponseAnswerDao().get_current_answers_for_concepts(
             session, questionnaire_response.participantId, code_ids
         )
 
         # IMPORTANT: update the participant summary first to grab an exclusive lock on the participant
-        # row. If you insetad do this after the insert of the questionnaire response, MySQL will get a
+        # row. If you instead do this after the insert of the questionnaire response, MySQL will get a
         # shared lock on the participant row due the foreign key, and potentially deadlock later trying
         # to get the exclusive lock if another thread is updating the participant. See DA-269.
         # (We need to lock both participant and participant summary because the summary row may not
@@ -283,6 +296,8 @@ class QuestionnaireResponseDao(BaseDao):
         ehr_consent = False
         gror_consent = None
         dvehr_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+        street_address_submitted = False
+        street_address2_submitted = False
         # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
         for answer in questionnaire_response.answers:
             question = question_map.get(answer.questionId)
@@ -291,6 +306,10 @@ class QuestionnaireResponseDao(BaseDao):
                 if code:
                     if code.value == GENDER_IDENTITY_QUESTION_CODE:
                         gender_code_ids.append(answer.valueCodeId)
+                    elif code.value == STREET_ADDRESS_QUESTION_CODE:
+                        street_address_submitted = answer.valueString is not None
+                    elif code.value == STREET_ADDRESS2_QUESTION_CODE:
+                        street_address2_submitted = answer.valueString is not None
 
                     summary_field = QUESTION_CODE_TO_FIELD.get(code.value)
                     if summary_field:
@@ -329,13 +348,15 @@ class QuestionnaireResponseDao(BaseDao):
                         elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NOT_SURE:
                             gror_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
                     elif code.value == COPE_CONSENT_QUESTION_CODE:
-                        month_name = questionnaire_history.lastModified.strftime('%B')
+                        # COPE survey updates can occur at the end of the previous month
+                        adjusted_last_modified = questionnaire_history.lastModified + timedelta(days=5)
+                        month_name = adjusted_last_modified.strftime('%B')
                         # Currently only have fields in participant summary for May, Jun and July
                         if month_name in ['May', 'June', 'July']:
                             answer_value = code_dao.get(answer.valueCodeId).value
                             if answer_value == CONSENT_COPE_YES_CODE:
                                 submission_status = QuestionnaireStatus.SUBMITTED
-                            elif answer_value == CONSENT_COPE_NO_CODE:
+                            elif answer_value in [CONSENT_COPE_NO_CODE, CONSENT_COPE_DEFERRED_CODE]:
                                 submission_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
                             else:
                                 submission_status = QuestionnaireStatus.SUBMITTED_INVALID
@@ -347,6 +368,14 @@ class QuestionnaireResponseDao(BaseDao):
 
                             # COPE Survey changes need to update number of modules complete in summary
                             module_changed = True
+
+        # If the answer for line 2 of the street address was left out then it needs to be clear on summary.
+        # So when it hasn't been submitted and there is something set for streetAddress2 we want to clear it out.
+        summary_has_street_line_two = participant_summary.streetAddress2 is not None\
+            and participant_summary.streetAddress2 != ""
+        if street_address_submitted and not street_address2_submitted and summary_has_street_line_two:
+            something_changed = True
+            participant_summary.streetAddress2 = None
 
         # If race was provided in the response in one or more answers, set the new value.
         if race_code_ids:
@@ -588,7 +617,7 @@ class QuestionnaireResponseDao(BaseDao):
                                     qr_answer.valueDecimal = answer.valueDecimal
                                 if answer.valueInteger is not None:
                                     qr_answer.valueInteger = answer.valueInteger
-                                if answer.valueString:
+                                if answer.valueString is not None:
                                     answer_length = len(answer.valueString)
                                     max_length = QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN
                                     if answer_length > max_length:

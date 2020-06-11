@@ -8,7 +8,7 @@ from rdr_service import config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import GENDER_IDENTITY_QUESTION_CODE, PMI_SKIP_CODE, PPI_SYSTEM, THE_BASICS_PPI_MODULE,\
-    CONSENT_COPE_YES_CODE, CONSENT_COPE_NO_CODE
+    CONSENT_COPE_YES_CODE, CONSENT_COPE_NO_CODE, CONSENT_COPE_DEFERRED_CODE
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -93,6 +93,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
                                      codeType=CodeType.ANSWER)
         self.cope_consent_no = Code(codeId=10, system=PPI_SYSTEM, value=CONSENT_COPE_NO_CODE, mapped=True,
                                      codeType=CodeType.ANSWER)
+        self.cope_consent_deferred = Code(codeId=11, system=PPI_SYSTEM, value=CONSENT_COPE_DEFERRED_CODE, mapped=True,
+                                    codeType=CodeType.ANSWER)
 
         config.override_setting(config.CONSENT_PDF_BUCKET, _FAKE_BUCKET)
 
@@ -119,6 +121,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self.code_dao.insert(self.skip_code)
         self.code_dao.insert(self.cope_consent_yes)
         self.code_dao.insert(self.cope_consent_no)
+        self.code_dao.insert(self.cope_consent_deferred)
         self.consent_code_id = self.code_dao.insert(consent_code()).codeId
         self.first_name_code_id = self.code_dao.insert(first_name_code()).codeId
         self.last_name_code_id = self.code_dao.insert(last_name_code()).codeId
@@ -688,12 +691,26 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
         self._setup_participant()
         self._create_cope_questionnaire()  # May survey
-        self._bump_questionnaire_version(2, updated_time=datetime.datetime(2020, 6, 7))  # June survey
+        self._bump_questionnaire_version(2, updated_time=datetime.datetime(2020, 5, 28))  # update for June survey
 
         self._submit_cope_consent(self.cope_consent_yes, questionnaire_version=2, cope_consent_question_id=8)
 
         participant_summary = self.participant_summary_dao.get(1)
         self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeJune)
+
+    def test_cope_june_survey_consent_deferred(self):
+        self.insert_codes()
+        p = Participant(participantId=1, biobankId=2)
+        self.participant_dao.insert(p)
+
+        self._setup_participant()
+        self._create_cope_questionnaire()  # May survey
+        self._bump_questionnaire_version(2, updated_time=datetime.datetime(2020, 6, 7))  # June survey
+
+        self._submit_cope_consent(self.cope_consent_deferred, questionnaire_version=2, cope_consent_question_id=8)
+
+        participant_summary = self.participant_summary_dao.get(1)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED_NO_CONSENT, participant_summary.questionnaireOnCopeJune)
 
     def test_from_client_json_raises_BadRequest_for_excessively_long_value_string(self):
         self.insert_codes()

@@ -49,6 +49,15 @@ def new_participant_workflow():
         controller.run_new_participant_workflow()
 
 
+def c2_participant_workflow():
+    """
+    Entrypoint for Cohort 2 Participant Workflow,
+    Sources from Cohort 2 participants that have reconsented.
+    """
+    with GenomicJobController(GenomicJob.C2_PARTICIPANT_WORKFLOW) as controller:
+        controller.run_c2_participant_workflow()
+
+
 def genomic_centers_manifest_workflow():
     """
     Entrypoint for Ingestion:
@@ -117,6 +126,7 @@ def gem_a1_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.GEM_A1_MANIFEST,
                               bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
+        controller.reconcile_report_states(_genome_type=config.GENOME_TYPE_ARRAY)
         controller.generate_manifest(GenomicManifestTypes.GEM_A1, _genome_type=config.GENOME_TYPE_ARRAY)
 
 
@@ -126,6 +136,7 @@ def gem_a2_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.GEM_A2_MANIFEST,
                               bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
+        controller.reconcile_report_states(_genome_type=config.GENOME_TYPE_ARRAY)
         controller.run_gem_a2_workflow()
 
 
@@ -135,6 +146,7 @@ def gem_a3_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.GEM_A3_MANIFEST,
                               bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
+        controller.reconcile_report_states(_genome_type=config.GENOME_TYPE_ARRAY)
         controller.generate_manifest(GenomicManifestTypes.GEM_A3, _genome_type=config.GENOME_TYPE_ARRAY)
 
 

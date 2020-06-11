@@ -213,9 +213,6 @@ class PhysicalMeasurementsDao(UpdatableDao):
         if result["resource"].get("id", None):
             del result["resource"]["id"]
 
-        # TODO: Future: Delete this code when 'old_resource' is deleted from database.
-        if 'old_resource' in result:
-            del result['old_resource']
         return result
 
     @staticmethod
@@ -751,22 +748,17 @@ class PhysicalMeasurementsDao(UpdatableDao):
         :param record: Measurement DB record
         :param doc: FHIR document dict
         :return: Measurement DB record
-
-        Note: Later on after all older fhir documents have been upgraded, 'old_resource' can go away.
         """
         if isinstance(doc, str):
             doc = json.loads(doc)
         # DA-1435 Support old/new resource field type
         if str(PhysicalMeasurements.resource.property.columns[0].type) == 'JSON':
             record.resource = doc
-            record.old_resource = json.dumps(doc)
         else:
             record.resource = json.dumps(doc)
-            record.old_resource = doc
 
         # sqlalchemy does not mark the 'resource' field as dirty, we need to force it.
         flag_modified(record, 'resource')
-        flag_modified(record, 'old_resource')
 
         return record
 

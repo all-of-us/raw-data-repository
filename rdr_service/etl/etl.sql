@@ -537,7 +537,6 @@ CREATE TABLE cdm.dose_era
 -- table: src_clean
 -- Contains persons observations
 -- -------------------------------------------------------------------
-/*
 DROP TABLE IF EXISTS cdm.src_clean;
 
 CREATE TABLE cdm.src_clean (
@@ -557,7 +556,7 @@ CREATE TABLE cdm.src_clean (
     unit_id                     varchar(50),
     filter                      smallint
 );
-*/
+
 -- -------------------------------------------------------------------
 -- Rules all together
 -- Takes data from source tables and puts together participant_id
@@ -565,7 +564,6 @@ CREATE TABLE cdm.src_clean (
 -- -------------------------------------------------------------------
 
 -- Do not set locks, allow dirty reads.
-/*
 SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 
 INSERT INTO cdm.src_clean
@@ -664,7 +662,7 @@ UPDATE cdm.src_clean
         cdm.src_clean.question_ppi_code = cdm.combined_question_filter.question_ppi_code
 SET cdm.src_clean.filter = 1
 WHERE TRUE;
-*/
+
 -- -------------------------------------------------------------------
 -- source_file: src/src_mapped.sql
 -- -------------------------------------------------------------------
@@ -728,7 +726,7 @@ ALTER TABLE cdm.src_participant ADD KEY (participant_id);
 -- 'value_source_concept_id' and 'value_concept_id' - the same
 -- relation.
 -- -------------------------------------------------------------------
-/*
+
 DROP TABLE IF EXISTS cdm.src_mapped;
 CREATE TABLE cdm.src_mapped
 (
@@ -807,7 +805,7 @@ WHERE src_c.filter = 0
 ALTER TABLE cdm.src_mapped ADD KEY (question_ppi_code);
 CREATE INDEX mapped_p_id_and_ppi ON cdm.src_mapped (participant_id, question_ppi_code);
 CREATE INDEX mapped_qr_id_and_ppi ON cdm.src_mapped (questionnaire_response_id, question_ppi_code);
-*/
+
 -- -------------------------------------------------------------------
 -- source_file: src/location.sql
 -- -------------------------------------------------------------------

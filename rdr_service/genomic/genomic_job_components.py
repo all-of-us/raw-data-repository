@@ -41,7 +41,7 @@ from rdr_service.participant_enums import (
     GenomicSetMemberStatus,
     SuspensionStatus,
     GenomicWorkflowState,
-)
+    ParticipantCohort)
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,
@@ -59,7 +59,6 @@ from rdr_service.genomic.genomic_biobank_manifest_handler import (
 )
 from rdr_service.genomic.validation import (
     GENOMIC_VALID_AGE,
-    GENOMIC_VALID_CONSENT_CUTOFF,
 )
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.config import (
@@ -739,6 +738,7 @@ class GenomicReconciler:
 
         # Iterate over metrics, searching the bucket for filenames
         for metric in metrics:
+            member = self.member_dao.get(metric.genomicSetMemberId)
 
             file = self.file_dao.get(metric.genomicFileProcessedId)
             missing_data_files = []
@@ -754,18 +754,21 @@ class GenomicReconciler:
 
             self.metrics_dao.update(metric)
 
-            # Update Job Run ID on member
-            self.member_dao.update_member_job_run_id(
-              self.member_dao.get(metric.genomicSetMemberId),
-              self.run_id, 'reconcileMetricsSequencingJobRunId')
+            next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='gem-ready')
 
             # Make a roc ticket for missing data files
             if len(missing_data_files) > 0:
+                next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
+
                 alert = GenomicAlertHandler()
 
                 summary = '[Genomic System Alert] Missing AW2 Array Manifest Files'
                 description = self._compile_missing_data_alert(file.fileName, missing_data_files)
                 alert.make_genomic_alert(summary, description)
+
+            # Update Job Run ID on member
+            self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId')
+            self.member_dao.update_member_state(member, next_state)
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -857,6 +860,34 @@ class GenomicReconciler:
                 else GenomicSubProcessResult.ERROR
 
         return GenomicSubProcessResult.NO_FILES
+
+    def reconcile_gem_report_states(self, _last_run_time=None):
+        """
+        Scans GEM report states for changes
+        :param _last_run_time: the time when the current job last ran
+        """
+
+        # Get unconsented members to update (consent > last run time of job_id)
+        unconsented_gror_members = self.member_dao.get_unconsented_gror_since_date(_last_run_time)
+
+        # update each member with the new state
+        for member in unconsented_gror_members:
+            new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
+                                                          signal='unconsented')
+
+            if new_state is not None or new_state != member.genomicWorkflowState:
+                self.member_dao.update_member_state(member, new_state)
+
+        # Get reconsented members to update (consent > last run time of job_id)
+        reconsented_gror_members = self.member_dao.get_reconsented_gror_since_date(_last_run_time)
+
+        # update each member with the new state
+        for member in reconsented_gror_members:
+            new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
+                                                          signal='reconsented')
+
+            if new_state is not None or new_state != member.genomicWorkflowState:
+                self.member_dao.update_member_state(member, new_state)
 
     def _check_genotyping_file_exists(self, bucket_name, filename):
         files = list_blobs('/' + bucket_name)
@@ -964,75 +995,105 @@ class GenomicBiobankSamplesCoupler:
         self.run_id = run_id
 
     def create_new_genomic_participants(self, from_date):
-        """This method is the main execution method for this class
-        It determines which biobankIDs to process and then executes subprocesses
-        Validation is handled in the query that retrieves the new Biobank IDs to process.
+        """
+        This method determines which samples to enter into the genomic system
+        from Cohort 3 (New Participants).
+        Validation is handled in the query that retrieves the newly consented
+        participants' samples to process.
         :param: from_date : the date from which to lookup new biobank_ids
         :return: result
         """
         samples = self._get_new_biobank_samples(from_date)
         if len(samples) > 0:
-            # Get the genomic data to insert into GenomicSetMember as multi-dim tuple
-            GenomicSampleMeta = namedtuple("GenomicSampleMeta", ["bids",
-                                                                 "pids",
-                                                                 "order_ids",
-                                                                 "site_ids",
-                                                                 "sample_ids",
-                                                                 "valid_withdrawal_status",
-                                                                 "valid_suspension_status",
-                                                                 "gen_consents",
-                                                                 "valid_ages",
-                                                                 "sabs",
-                                                                 "gror",
-                                                                 "valid_ai_ans"])
-            samples_meta = GenomicSampleMeta(*samples)
-            logging.info(f'{self.__class__.__name__}: Processing new biobank_ids {samples_meta.bids}')
-            new_genomic_set = self._create_new_genomic_set()
-            # Create genomic set members
-            for i, bid in enumerate(samples_meta.bids):
-                logging.info(f'Validating sample: {samples_meta.sample_ids[i]}')
-                validation_criteria = (
-                    samples_meta.valid_withdrawal_status[i],
-                    samples_meta.valid_suspension_status[i],
-                    samples_meta.gen_consents[i],
-                    samples_meta.valid_ages[i],
-                    samples_meta.valid_ai_ans[i],
-                    samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()
-                )
-                valid_flags = self._calculate_validation_flags(validation_criteria)
-                logging.info(f'Creating genomic set members for PID: {samples_meta.pids[i]}')
-                new_array_member_obj = GenomicSetMember(
-                    biobankId=bid,
-                    genomicSetId=new_genomic_set.id,
-                    participantId=samples_meta.pids[i],
-                    nyFlag=self._get_new_york_flag(samples_meta.site_ids[i]),
-                    sexAtBirth=samples_meta.sabs[i],
-                    biobankOrderId=samples_meta.order_ids[i],
-                    sampleId=samples_meta.sample_ids[i],
-                    validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
-                                      else GenomicSetMemberStatus.VALID),
-                    validationFlags=valid_flags,
-                    ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
-                    genomeType=self._ARRAY_GENOME_TYPE,
-                )
-                # Also create a WGS member
-                new_wgs_member_obj = deepcopy(new_array_member_obj)
-                new_wgs_member_obj.genomeType = self._WGS_GENOME_TYPE
+            return self.process_samples_into_manifest(samples)
 
-                self.member_dao.insert(new_array_member_obj)
-                self.member_dao.insert(new_wgs_member_obj)
-
-            # Create & transfer the Biobank Manifest based on the new genomic set
-            try:
-                create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id,
-                                                                cohort_id=self.COHORT_3_ID)
-                logging.info(f'{self.__class__.__name__}: Genomic set members created ')
-                return GenomicSubProcessResult.SUCCESS
-            except RuntimeError:
-                return GenomicSubProcessResult.ERROR
         else:
-            logging.info(f'New Participant Workflow: No new biobank_ids to process.')
+            logging.info(f'New Participant Workflow: No new samples to process.')
             return GenomicSubProcessResult.NO_FILES
+
+    def create_c2_genomic_participants(self, from_date):
+        """
+        This method determines which samples to enter into the genomic system
+        from Cohort 2.
+        Validation is handled in the query that retrieves the newly consented
+        participants' samples to process.
+        :param: from_date : the date from which to lookup new biobank_ids
+        :return: result
+        """
+        samples = self._get_new_c2_consent_samples(from_date)
+
+        if len(samples) > 0:
+            return self.process_samples_into_manifest(samples)
+
+        else:
+            logging.info(f'Cohort 2 Participant Workflow: No samples to process.')
+            return GenomicSubProcessResult.NO_FILES
+
+    def process_samples_into_manifest(self, samples):
+        """
+        Compiles AW0 Manifest from samples list.
+        :param samples:
+        :return: job result code
+        """
+        # Get the genomic data to insert into GenomicSetMember as multi-dim tuple
+        GenomicSampleMeta = namedtuple("GenomicSampleMeta", ["bids",
+                                                             "pids",
+                                                             "order_ids",
+                                                             "site_ids",
+                                                             "sample_ids",
+                                                             "valid_withdrawal_status",
+                                                             "valid_suspension_status",
+                                                             "gen_consents",
+                                                             "valid_ages",
+                                                             "sabs",
+                                                             "gror",
+                                                             "valid_ai_ans"])
+        samples_meta = GenomicSampleMeta(*samples)
+        logging.info(f'{self.__class__.__name__}: Processing new biobank_ids {samples_meta.bids}')
+        new_genomic_set = self._create_new_genomic_set()
+
+        # Create genomic set members
+        for i, bid in enumerate(samples_meta.bids):
+            logging.info(f'Validating sample: {samples_meta.sample_ids[i]}')
+            validation_criteria = (
+                samples_meta.valid_withdrawal_status[i],
+                samples_meta.valid_suspension_status[i],
+                samples_meta.gen_consents[i],
+                samples_meta.valid_ages[i],
+                samples_meta.valid_ai_ans[i],
+                samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()
+            )
+            valid_flags = self._calculate_validation_flags(validation_criteria)
+            logging.info(f'Creating genomic set members for PID: {samples_meta.pids[i]}')
+            new_array_member_obj = GenomicSetMember(
+                biobankId=bid,
+                genomicSetId=new_genomic_set.id,
+                participantId=samples_meta.pids[i],
+                nyFlag=self._get_new_york_flag(samples_meta.site_ids[i]),
+                sexAtBirth=samples_meta.sabs[i],
+                biobankOrderId=samples_meta.order_ids[i],
+                sampleId=samples_meta.sample_ids[i],
+                validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
+                                  else GenomicSetMemberStatus.VALID),
+                validationFlags=valid_flags,
+                ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
+                genomeType=self._ARRAY_GENOME_TYPE,
+            )
+            # Also create a WGS member
+            new_wgs_member_obj = deepcopy(new_array_member_obj)
+            new_wgs_member_obj.genomeType = self._WGS_GENOME_TYPE
+
+            self.member_dao.insert(new_array_member_obj)
+            self.member_dao.insert(new_wgs_member_obj)
+
+        # Create & transfer the Biobank Manifest based on the new genomic set
+        try:
+            create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id,
+                                                            cohort_id=self.COHORT_3_ID)
+            logging.info(f'{self.__class__.__name__}: Genomic set members created ')
+            return GenomicSubProcessResult.SUCCESS
+        except RuntimeError:
+            return GenomicSubProcessResult.ERROR
 
     def _get_new_biobank_samples(self, from_date):
         """
@@ -1043,7 +1104,7 @@ class GenomicBiobankSamplesCoupler:
         :param: from_date
         :return: list of tuples (bid, pid, biobank_identifier.value, collected_site_id)
         """
-        # TODO: add Genomic RoR Consent when that Code is added
+
         _new_samples_sql = """
         SELECT DISTINCT
           ss.biobank_id,
@@ -1069,7 +1130,7 @@ class GenomicBiobankSamplesCoupler:
             ELSE "NA"
           END as sab,
           CASE
-            WHEN TRUE THEN 0 ELSE 0
+            WHEN ps.consent_for_genomics_ror = 1 THEN 1 ELSE 0
           END AS gror_consent,
           CASE
               WHEN native.participant_id IS NULL THEN 1 ELSE 0
@@ -1095,20 +1156,98 @@ class GenomicBiobankSamplesCoupler:
                 )
             AND ss.test IN ("1ED04", "1SAL2")
             AND ss.rdr_created > :from_date_param
-            AND ps.consent_for_study_enrollment_time > :consent_cutoff_param
+            AND ps.consent_cohort = :cohort_3_param
         """
         params = {
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
             "dob_param": GENOMIC_VALID_AGE,
             "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
-            "consent_cutoff_param": GENOMIC_VALID_CONSENT_CUTOFF.strftime("%Y-%m-%d"),
             "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
             "from_date_param": from_date.strftime("%Y-%m-%d"),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
+            "cohort_3_param": ParticipantCohort.COHORT_CURRENT.__int__(),
         }
         with self.samples_dao.session() as session:
             result = session.execute(_new_samples_sql, params).fetchall()
+        return list(zip(*result))
+
+    # pylint: disable=unused-argument
+    def _get_new_c2_consent_samples(self, from_date):
+        """
+        Returns cohort 2 samples th
+        :param from_date:
+        :return:
+        """
+        # TODO: Change consent date param to be for C2 reconsent response
+
+        _c2_samples_sql = """
+                SELECT DISTINCT
+                  ss.biobank_id,
+                  p.participant_id,
+                  o.biobank_order_id,
+                  o.collected_site_id,
+                  ss.biobank_stored_sample_id,
+                  CASE
+                    WHEN p.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
+                  END as valid_withdrawal_status,
+                  CASE
+                    WHEN p.suspension_status = :suspension_param THEN 1 ELSE 0
+                  END as valid_suspension_status,
+                  CASE
+                    WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
+                  END as general_consent_given,
+                  CASE
+                    WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param*365 DAY) THEN 1 ELSE 0
+                  END AS valid_age,
+                  CASE
+                    WHEN c.value = "SexAtBirth_Male" THEN "M"
+                    WHEN c.value = "SexAtBirth_Female" THEN "F"
+                    ELSE "NA"
+                  END as sab,
+                  CASE
+                    WHEN ps.consent_for_genomics_ror = 1 THEN 1 ELSE 0
+                  END AS gror_consent,
+                  CASE
+                      WHEN native.participant_id IS NULL THEN 1 ELSE 0
+                  END AS valid_ai_an
+                FROM
+                    biobank_stored_sample ss
+                    JOIN participant p ON ss.biobank_id = p.biobank_id
+                    JOIN biobank_order_identifier oi ON ss.biobank_order_identifier = oi.value
+                    JOIN biobank_order o ON oi.biobank_order_id = o.biobank_order_id
+                    JOIN participant_summary ps ON ps.participant_id = p.participant_id
+                    JOIN code c ON c.code_id = ps.sex_id
+                    LEFT JOIN (
+                      SELECT ra.participant_id
+                      FROM participant_race_answers ra
+                          JOIN code cr ON cr.code_id = ra.code_id
+                              AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
+                    ) native ON native.participant_id = p.participant_id
+                WHERE TRUE
+                    AND (
+                            ps.sample_status_1ed04 = :sample_status_param
+                            OR
+                            ps.sample_status_1sal2 = :sample_status_param
+                        )
+                    AND ss.test IN ("1ED04", "1SAL2")
+                    AND ps.consent_cohort = :cohort_2_param                    
+                """
+
+        params = {
+            "sample_status_param": SampleStatus.RECEIVED.__int__(),
+            "dob_param": GENOMIC_VALID_AGE,
+            "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
+            "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
+            #"from_date_param": from_date.strftime("%Y-%m-%d"),
+            "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
+            "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
+            "cohort_2_param": ParticipantCohort.COHORT_LAUNCH.__int__(),
+        }
+
+        with self.samples_dao.session() as session:
+            result = session.execute(_c2_samples_sql, params).fetchall()
+
         return list(zip(*result))
 
     def _create_new_genomic_set(self):
@@ -1179,7 +1318,7 @@ class ManifestDefinitionProvider:
             job_run_field='cvlW1ManifestJobRunId',
             source_data=self._get_source_data_query(GenomicManifestTypes.CVL_W1),
             destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{getSetting(CVL_W1_MANIFEST_SUBFOLDER)}/AoU_CVL_Manifest_{now_formatted}.csv',
+            output_filename=f'{CVL_W1_MANIFEST_SUBFOLDER}/AoU_CVL_Manifest_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.CVL_W1),
         )
 
@@ -1188,7 +1327,7 @@ class ManifestDefinitionProvider:
             job_run_field='gemA1ManifestJobRunId',
             source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A1),
             destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{getSetting(GENOMIC_GEM_A1_MANIFEST_SUBFOLDER)}/AoU_GEM_Manifest_{now_formatted}.csv',
+            output_filename=f'{GENOMIC_GEM_A1_MANIFEST_SUBFOLDER}/AoU_GEM_Manifest_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A1),
         )
 
@@ -1278,54 +1417,50 @@ class ManifestDefinitionProvider:
 
         # Color GEM A1 Manifest
         if manifest_type == GenomicManifestTypes.GEM_A1:
-            query_sql = """
-                SELECT m.biobank_id
-                    , m.sample_id
-                    , m.sex_at_birth
-                    , m.consent_for_ror
-                FROM genomic_set_member m
-                    JOIN genomic_gc_validation_metrics gcv
-                        ON gcv.genomic_set_member_id = m.id
-                    JOIN participant_summary ps
-                        ON ps.participant_id = m.participant_id
-                    LEFT JOIN genomic_job_run a3 ON a3.id = m.gem_a3_manifest_job_run_id
-                WHERE gcv.processing_status = "pass"
-                    AND m.reconcile_gc_manifest_job_run_id IS NOT NULL
-                    AND m.reconcile_metrics_bb_manifest_job_run_id IS NOT NULL
-                    AND gcv.idat_green_received = 1
-                    AND gcv.idat_red_received = 1
-                    AND gcv.tbi_received = 1
-                    AND gcv.vcf_received = 1
-                    AND m.genome_type = "aou_array"
-                    AND ps.suspension_status = 1
-                    AND ps.withdrawal_status = 1
-                    AND ps.consent_for_genomics_ror = 1
-                    # For withdrawn consents that have re-consented
-                    AND (m.gem_a1_manifest_job_run_id IS NULL
-                        OR  (  a3.start_time < ps.consent_for_genomics_ror_authored
-                               OR a3.start_time < ps.consent_for_study_enrollment_authored	    		
-                            ))
-            """
+            query_sql = (
+                sqlalchemy.select(
+                    [
+                        GenomicSetMember.biobankId,
+                        GenomicSetMember.sampleId,
+                        GenomicSetMember.sexAtBirth,
+                        ParticipantSummary.consentForGenomicsROR,
+                    ]
+                ).select_from(
+                    sqlalchemy.join(
+                        sqlalchemy.join(ParticipantSummary,
+                                        GenomicSetMember,
+                                        GenomicSetMember.participantId == ParticipantSummary.participantId),
+                        GenomicGCValidationMetrics,
+                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                    )
+                ).where(
+                    (GenomicGCValidationMetrics.processingStatus == 'pass') &
+                    (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_READY) &
+                    (GenomicSetMember.genomeType == "aou_array") &
+                    (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
+                    (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
+                    (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
+                )
+            )
 
         # Color GEM A3 Manifest
         # Those with A1 and not A3 or updated consents since sent A3
         if manifest_type == GenomicManifestTypes.GEM_A3:
-            query_sql = """
-                    SELECT m.biobank_id
-                        , m.sample_id
-                    FROM genomic_set_member m
-                        JOIN participant_summary ps
-                            ON ps.participant_id = m.participant_id
-                        LEFT JOIN genomic_job_run a3 ON a3.id = m.gem_a3_manifest_job_run_id
-                    WHERE m.gem_a1_manifest_job_run_id IS NOT NULL                        
-                        AND (m.gem_a3_manifest_job_run_id IS NULL
-                            OR (  a3.start_time < ps.consent_for_genomics_ror_authored
-                                  OR a3.start_time < ps.consent_for_study_enrollment_authored	    		
-                            ))
-                        AND (ps.suspension_status <> 1
-                            OR ps.withdrawal_status <> 1
-                            OR ps.consent_for_genomics_ror <> 1)
-            """
+            query_sql = (
+                sqlalchemy.select(
+                    [
+                        GenomicSetMember.biobankId,
+                        GenomicSetMember.sampleId,
+                    ]
+                ).select_from(
+                    sqlalchemy.join(ParticipantSummary,
+                                    GenomicSetMember,
+                                    GenomicSetMember.participantId == ParticipantSummary.participantId)
+                ).where(
+                    (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_RPT_PENDING_DELETE) &
+                    (GenomicSetMember.genomeType == "aou_array")
+                )
+            )
 
         return query_sql
 
