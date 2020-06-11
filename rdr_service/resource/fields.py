@@ -36,7 +36,8 @@ class _ValidateEnum(object):
         return [i.name for i in self.enum_class]
 
     def enum_values(self):
-        return [i.value for i in self.enum_class]
+        # Support old Python 2 protorpc.messages Enum class.
+        return [i.value if hasattr(i, 'value') else i.number for i in self.enum_class]
 
     def keys(self):
         return validate.OneOf(self.enum_keys(), labels=self.enum_values())
@@ -47,6 +48,11 @@ class _ValidateEnum(object):
 
 validateEnum = _ValidateEnum
 
+#
+# Nest Schemas
+#
+class Nested(fields.Nested):
+    pass
 
 #
 # String type fields
@@ -216,7 +222,10 @@ class EnumString(fields.String):
     validator = None
 
     def __init__(self, enum, *args, **kwargs):
-        if not enum or type(enum) != EnumMeta:
+        self.enum = enum
+        # Support old Python 2 protorpc.messages Enum class.
+        import protorpc
+        if not enum or (type(enum) != EnumMeta and type(enum) != protorpc.messages._EnumClass):
             raise exceptions.ValidationError(f'Invalid enum argument, expected type Enum.')
 
         self.validator = validateEnum(enum).keys()
@@ -232,7 +241,10 @@ class EnumInteger(fields.Integer):
     validator = None
 
     def __init__(self, enum, *args, **kwargs):
-        if not enum or type(enum) != EnumMeta:
+        self.enum = enum
+        # Support old Python 2 protorpc.messages Enum class.
+        import protorpc
+        if not enum or (type(enum) != EnumMeta and type(enum) != protorpc.messages._EnumClass):
             raise exceptions.ValidationError(f'Invalid enum argument, expected type Enum.')
 
         self.validator = validateEnum(enum).values()

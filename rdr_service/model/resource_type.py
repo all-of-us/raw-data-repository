@@ -1,9 +1,9 @@
 from protorpc import messages
 
-from sqlalchemy import Column, event, String, UniqueConstraint, BigInteger
+from sqlalchemy import Column, event, String, UniqueConstraint, BigInteger, SmallInteger
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
-from rdr_service.model.utils import UTCDateTime6, Enum
+from rdr_service.model.utils import UTCDateTime6
 
 
 class ResourceTypeEnum(messages.Enum):
@@ -66,11 +66,13 @@ class ResourceType(Base):
     # have mysql always update the modified data when the record is changed
     modified = Column("modified", UTCDateTime6, nullable=True)
     resourceURI = Column("resource_uri", String(80), nullable=False)
-    resourceKey = Column("resource_Key", String(80), nullable=False)
-    resourceKeyId = Column("resource_key_id", Enum(ResourceTypeEnum), nullable=False)
+    resourcePKField = Column("resource_pk_field", String(65), nullable=False)
+    typeName = Column("type_name", String(80), nullable=False)
+    typeUID = Column("type_uid", SmallInteger, nullable=False)
 
     __table_args__ = (
         UniqueConstraint("resource_uri"),
+        UniqueConstraint("type_uid", "type_name"),
     )
 
 
