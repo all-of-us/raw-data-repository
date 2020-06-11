@@ -270,7 +270,7 @@ class SyncConsentFilesTest(BaseTestCase):
             mock.call('./temp_consents/testbucket456/test_two/group2.zip',
                       'gs://testbucket456/Participant/test_two/',
                       flags='-m')
-        ])
+        ], any_order=True)
 
     def test_iter_participants_data(self):
         """should list consenting participants
