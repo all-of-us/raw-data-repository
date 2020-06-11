@@ -18,7 +18,7 @@ EXPECTED_CLOUD_DESTINATION_PATTERN =\
     '{org_bucket_name}/Participant/{org_id}/{site_name}/P{participant_id}/{file_name}'
 # TODO: make sure cloud copy works when using the gs:// protocol
 EXPECTED_DOWNLOAD_DESTINATION_PATTERN =\
-    './temp_consents/{org_bucket_name}/{org_id}/{site_name}/P{participant_id}/{file_name}'
+    '/tmp/temp_consents/{org_bucket_name}/{org_id}/{site_name}/P{participant_id}/{file_name}'
 
 FakeConsentFile = namedtuple('FakeConsentFile', ['name', 'updated'], defaults=['consent.pdf', None])
 
@@ -221,7 +221,7 @@ class SyncConsentFilesTest(BaseTestCase):
             Path(destination).touch()
         mock_download_cloud_file.side_effect = create_local_file
 
-    @mock.patch('rdr_service.offline.sync_consent_files.gcp_cp')
+    @mock.patch('rdr_service.storage.GoogleCloudStorageProvider.upload_from_file')
     @mock.patch('rdr_service.offline.sync_consent_files.list_blobs')
     @mock.patch('rdr_service.offline.sync_consent_files.download_cloud_file')
     def test_file_download(self, mock_download_cloud_file, mock_list_blobs, _):
@@ -245,10 +245,10 @@ class SyncConsentFilesTest(BaseTestCase):
             EXPECTED_DOWNLOAD_DESTINATION_PATTERN.format(**pattern_args, file_name='consent.pdf')
         )
 
-    @mock.patch('rdr_service.offline.sync_consent_files.gcp_cp')
+    @mock.patch('rdr_service.storage.GoogleCloudStorageProvider.upload_from_file')
     @mock.patch('rdr_service.offline.sync_consent_files.list_blobs')
     @mock.patch('rdr_service.offline.sync_consent_files.download_cloud_file')
-    def test_zip_upload_destinations(self, mock_download_cloud_file, mock_list_blobs, mock_gcp_cp):
+    def test_zip_upload_destinations(self, mock_download_cloud_file, mock_list_blobs, mock_file_upload):
         # Test that the zip files are uploaded to the correct buckets
         org2 = self.create_database_organization(externalId='test_two')
         site2 = self.create_database_site(googleGroup="group2")
@@ -263,13 +263,11 @@ class SyncConsentFilesTest(BaseTestCase):
         self._create_participant(2, org2.organizationId, site2.siteId, consents=True)
         sync_consent_files.do_sync_consent_files(zip_files=True)
 
-        mock_gcp_cp.assert_has_calls([
-            mock.call('./temp_consents/testbucket123/test_one/group1.zip',
-                      'gs://testbucket123/Participant/test_one/',
-                      flags='-m'),
-            mock.call('./temp_consents/testbucket456/test_two/group2.zip',
-                      'gs://testbucket456/Participant/test_two/',
-                      flags='-m')
+        mock_file_upload.assert_has_calls([
+            mock.call('/tmp/temp_consents/testbucket123/test_one/group1.zip',
+                      'testbucket123/Participant/test_one/group1.zip'),
+            mock.call('/tmp/temp_consents/testbucket456/test_two/group2.zip',
+                      'testbucket456/Participant/test_two/group2.zip')
         ], any_order=True)
 
     def test_iter_participants_data(self):
