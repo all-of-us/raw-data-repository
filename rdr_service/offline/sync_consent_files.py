@@ -120,7 +120,7 @@ def do_sync_consent_files(zip_files=False, **kwargs):
                                               p_id=participant_data.participant_id)
 
         cloudstorage_copy_objects_task(source, destination, date_limit=start_date,
-                                       file_filter=file_filter, zip_files=True)
+                                       file_filter=file_filter, zip_files=zip_files)
 
     if zip_files:
         archive_and_upload_consents(dry_run=False)
@@ -221,9 +221,9 @@ def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_fi
         if not source_blob.name.endswith('/'):  # Exclude folders
             source_file_path = os.path.normpath('/' + bucket_name + '/' + source_blob.name)
             destination_file_path = destination + source_file_path[len(source):]
-            if zip_files or (_not_previously_copied(source_file_path, destination_file_path) and
-                             _after_date_limit(source_blob, date_limit) and
-                             _matches_file_filter(source_blob.name, file_filter)):
+            if (zip_files or _not_previously_copied(source_file_path, destination_file_path)) and\
+                    _after_date_limit(source_blob, date_limit) and\
+                    _matches_file_filter(source_blob.name, file_filter):
                 move_file_function = _download_file if destination.startswith('.') else copy_cloud_file
                 move_file_function(source_file_path, destination_file_path)
 

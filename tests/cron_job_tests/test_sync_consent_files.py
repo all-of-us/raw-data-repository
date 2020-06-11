@@ -15,7 +15,7 @@ from rdr_service.offline import sync_consent_files
 from tests.helpers.unittest_base import BaseTestCase
 
 EXPECTED_CLOUD_DESTINATION_PATTERN =\
-    'gs://{org_bucket_name}/Participant/{org_id}/{site_name}/P{participant_id}/{file_name}'
+    '{org_bucket_name}/Participant/{org_id}/{site_name}/P{participant_id}/{file_name}'
 # TODO: make sure cloud copy works when using the gs:// protocol
 EXPECTED_DOWNLOAD_DESTINATION_PATTERN =\
     './temp_consents/{org_bucket_name}/{org_id}/{site_name}/P{participant_id}/{file_name}'
