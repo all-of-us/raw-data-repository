@@ -147,6 +147,15 @@ class QuestionnaireResponseDao(BaseDao):
                 ):
                     logging.error(f"Questionnaire response contains invalid link ID {section['linkId']}.")
 
+    @staticmethod
+    def _imply_street_address_2_from_street_address_1(code_ids):
+        code_dao = CodeDao()
+        street_address_1_code = code_dao.get_code(PPI_SYSTEM, STREET_ADDRESS_QUESTION_CODE)
+        if street_address_1_code and street_address_1_code.codeId in code_ids:
+            street_address_2_code = code_dao.get_code(PPI_SYSTEM, STREET_ADDRESS2_QUESTION_CODE)
+            if street_address_2_code and street_address_2_code.codeId not in code_ids:
+                code_ids.append(street_address_2_code.codeId)
+
     def insert_with_session(self, session, questionnaire_response):
 
         # Look for a questionnaire that matches any of the questionnaire history records.
@@ -189,12 +198,13 @@ class QuestionnaireResponseDao(BaseDao):
         self._validate_link_ids_from_resource_json_group(resource_json, link_ids)
 
         code_ids = [question.codeId for question in questions]
+        self._imply_street_address_2_from_street_address_1(code_ids)
         current_answers = QuestionnaireResponseAnswerDao().get_current_answers_for_concepts(
             session, questionnaire_response.participantId, code_ids
         )
 
         # IMPORTANT: update the participant summary first to grab an exclusive lock on the participant
-        # row. If you insetad do this after the insert of the questionnaire response, MySQL will get a
+        # row. If you instead do this after the insert of the questionnaire response, MySQL will get a
         # shared lock on the participant row due the foreign key, and potentially deadlock later trying
         # to get the exclusive lock if another thread is updating the participant. See DA-269.
         # (We need to lock both participant and participant summary because the summary row may not

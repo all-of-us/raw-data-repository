@@ -274,7 +274,6 @@ class QuestionnaireQuestionDao(BaseDao):
             session.query(QuestionnaireQuestion).filter(QuestionnaireQuestion.questionnaireQuestionId.in_(ids)).all()
         )
 
-
 def _add_codes_if_missing():
     # Only import "config" on demand, as it depends on Datastore packages (and
     # GAE). This code path may not be executed via CLI or test code.

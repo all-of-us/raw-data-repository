@@ -8,7 +8,10 @@ from rdr_service.code_constants import PPI_SYSTEM, RACE_WHITE_CODE, PMI_SKIP_COD
 from rdr_service.concepts import Concept
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
+from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
+from rdr_service.model.questionnaire import QuestionnaireQuestion
+from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     OrganizationType,
     SuspensionStatus,
@@ -524,6 +527,16 @@ class ParticipantApiTest(BaseTestCase):
 
         participant_summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertNotIn("streetAddress2", participant_summary)
+
+        # Make sure the street address 2 answer is set inactive too
+        street_address_2_active_answer = self.session.query(QuestionnaireResponseAnswer)\
+                                             .join(QuestionnaireQuestion)\
+                                             .join(Code, Code.codeId == QuestionnaireQuestion.codeId)\
+                                             .filter(Code.value == 'PIIAddress_StreetAddress2',
+                                                     QuestionnaireResponseAnswer.endTime.is_(None))\
+                                             .one_or_none()
+        self.assertIsNone(street_address_2_active_answer)
+
 
     def test_street_address_two_clears_on_skip(self):
         participant_id, questionnaire_id = self._setup_initial_participant_data()
