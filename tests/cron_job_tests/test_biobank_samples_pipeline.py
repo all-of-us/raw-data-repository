@@ -269,6 +269,15 @@ class BiobankSamplesPipelineTest(BaseTestCase):
             with self.assertRaises(biobank_samples_pipeline.DataError):
                 biobank_samples_pipeline._upsert_samples_from_csv(reader)
 
+    def test_wrong_csv_delimiter(self):
+        self.clear_default_storage()
+        self.create_mock_buckets(self.mock_bucket_paths)
+        # Use a valid file containing commas as separators
+        with open(test_data.data_path("biobank_samples_wrong_delimiter.csv")) as samples_file:
+            reader = csv.DictReader(samples_file, delimiter="\t")
+            with self.assertRaises(biobank_samples_pipeline.DataError):
+                biobank_samples_pipeline._upsert_samples_from_csv(reader)
+
     def test_get_reconciliation_report_paths(self):
         self.clear_default_storage()
         self.create_mock_buckets(self.mock_bucket_paths)
