@@ -1,5 +1,5 @@
 
-from sqlalchemy import event, Index, Column, String, Integer, ForeignKey, BigInteger, UniqueConstraint
+from sqlalchemy import event, Column, String, Integer, ForeignKey, BigInteger, UniqueConstraint
 from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
@@ -20,7 +20,7 @@ class ResourceData(Base):
     modified = Column("modified", UTCDateTime6, nullable=True)
     resourceTypeID = Column("resource_type_id", ForeignKey("resource_type.id"), nullable=False)
     resourceSchemaID = Column("resource_schema_id", ForeignKey("resource_schema.id"), nullable=False)
-    uri = Column("uri", String(2048), nullable=True)
+    uri = Column("uri", String(1024), nullable=True)
     hpoId = Column("hpo_id", Integer, nullable=True)
     resourcePKID = Column("resource_pk_id", Integer, nullable=True)
     # Alternate Primary Key when the primary key is a string instead of an Integer.
@@ -34,7 +34,7 @@ class ResourceData(Base):
         UniqueConstraint("uri"),
     )
 
-Index("ix_res_data_type_modified_hpo_id", ResourceData.resourceTypeID, ResourceData.modified, ResourceData.hpoId)
+# Index("ix_res_data_type_modified_hpo_id", ResourceData.resourceTypeID, ResourceData.modified, ResourceData.hpoId)
 
 event.listen(ResourceData, "before_insert", model_insert_listener)
 event.listen(ResourceData, "before_update", model_update_listener)
