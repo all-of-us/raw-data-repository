@@ -26,11 +26,12 @@ TEMP_CONSENTS_PATH = "./temp_consents"
 ParticipantData = collections.namedtuple("ParticipantData", ("participant_id", "origin_id", "google_group", "org_id"))
 
 
-def get_consent_destination(zipping=False, **kwargs):
-    destination_pattern = \
-        TEMP_CONSENTS_PATH + '/{bucket_name}/{org_external_id}/{site_name}/P{p_id}/' \
-        if zipping else \
-        "gs://{bucket_name}/Participant/{org_external_id}/{site_name}/P{p_id}/"
+def get_consent_destination(zipping=False, add_protocol=False, **kwargs):
+    if zipping:
+        destination_pattern = TEMP_CONSENTS_PATH + '/{bucket_name}/{org_external_id}/{site_name}/P{p_id}/'
+    else:
+        prefix = 'gs://' if add_protocol else ''
+        destination_pattern = prefix + '{bucket_name}/Participant/{org_external_id}/{site_name}/P{p_id}/'
 
     return destination_pattern.format(**kwargs)
 
@@ -93,10 +94,10 @@ def archive_and_upload_consents(dry_run=True):
     shutil.rmtree(TEMP_CONSENTS_PATH)
 
 
-def do_sync_recent_consent_files():
+def do_sync_recent_consent_files(all_va=False, zip_files=False):
     # Sync everything from the start of the previous month
     start_date = datetime.now().replace(day=1) - timedelta(days=10)
-    do_sync_consent_files(start_date=start_date.strftime('%Y-%m-01'))
+    do_sync_consent_files(start_date=start_date.strftime('2019-04-30'), zip_files=zip_files, all_va=all_va)
 
 
 def do_sync_consent_files(zip_files=False, **kwargs):
@@ -118,7 +119,8 @@ def do_sync_consent_files(zip_files=False, **kwargs):
                                               site_name=participant_data.google_group or DEFAULT_GOOGLE_GROUP,
                                               p_id=participant_data.participant_id)
 
-        cloudstorage_copy_objects_task(source, destination, date_limit=start_date, file_filter=file_filter)
+        cloudstorage_copy_objects_task(source, destination, date_limit=start_date,
+                                       file_filter=file_filter, zip_files=True)
 
     if zip_files:
         archive_and_upload_consents(dry_run=False)
@@ -199,7 +201,12 @@ def _iter_participants_data(org_ids, **kwargs):
             yield ParticipantData(*row)
 
 
-def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_filter=None):
+def _download_file(source, destination):
+    os.makedirs(destination, exist_ok=True)
+    download_cloud_file(source, destination)
+
+
+def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_filter=None, zip_files=False):
     """
     Cloud Task: Copies all objects matching the source to the destination.
     Both source and destination use the following format: /bucket/prefix/
@@ -214,10 +221,10 @@ def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_fi
         if not source_blob.name.endswith('/'):  # Exclude folders
             source_file_path = os.path.normpath('/' + bucket_name + '/' + source_blob.name)
             destination_file_path = destination + source_file_path[len(source):]
-            if _not_previously_copied(source_file_path, destination_file_path) and \
-                    _after_date_limit(source_blob, date_limit) and \
-                    _matches_file_filter(source_blob.name, file_filter):
-                move_file_function = download_cloud_file if destination.startswith('.') else copy_cloud_file
+            if zip_files or (_not_previously_copied(source_file_path, destination_file_path) and
+                             _after_date_limit(source_blob, date_limit) and
+                             _matches_file_filter(source_blob.name, file_filter)):
+                move_file_function = _download_file if destination.startswith('.') else copy_cloud_file
                 move_file_function(source_file_path, destination_file_path)
 
 

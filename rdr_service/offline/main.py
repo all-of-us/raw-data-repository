@@ -191,6 +191,13 @@ def run_sync_consent_files():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
+def run_va_sync_consent_files():
+    sync_consent_files.do_sync_recent_consent_files(all_va=False, zip_files=True)
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
 def update_ehr_status_cron():
     update_ehr_status.update_ehr_status()
     return '{"success": "true"}'
@@ -365,6 +372,13 @@ def _build_pipeline_app():
 
     offline_app.add_url_rule(
         PREFIX + "SyncConsentFiles", endpoint="sync_consent_files", view_func=run_sync_consent_files, methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        PREFIX + "SyncVaConsentFiles",
+        endpoint="sync_va_consent_files",
+        view_func=run_va_sync_consent_files,
+        methods=["GET"]
     )
 
     offline_app.add_url_rule(

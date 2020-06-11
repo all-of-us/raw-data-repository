@@ -160,6 +160,7 @@ class SyncConsentClass(object):
                     ]).format(p_id=p_id, file_ext=self.file_filter)
 
                     destination = get_consent_destination(
+                        add_protocol=True,
                         zipping=self.args.zip_files,
                         bucket_name=bucket,
                         org_external_id=org_id,
