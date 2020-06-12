@@ -192,7 +192,7 @@ def run_sync_consent_files():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def run_va_sync_consent_files():
-    sync_consent_files.do_sync_recent_consent_files(all_va=False, zip_files=True)
+    sync_consent_files.do_sync_recent_consent_files(all_va=True, zip_files=True)
     return '{"success": "true"}'
 
 

@@ -77,8 +77,6 @@ class SyncConsentTest(BaseTestCase):
         zip_instance = mock_zip_file.return_value
         zip_instance_context = zip_instance.__enter__.return_value
         mock_zip_write = zip_instance_context.write
-        print('expecting', os.path.join(directory, relative_path), 'arcname', f'/{relative_path}')
-        print(mock_zip_write.mock_calls)
         mock_zip_write.assert_any_call(os.path.join(directory, relative_path), arcname=f'/{relative_path}')
 
     def test_zip_file_download(self, mock_gcp_cp, _):
@@ -134,7 +132,6 @@ class SyncConsentTest(BaseTestCase):
 
         self.run_sync(zip_files=True, all_va=True, consent_files=[self._fake_file(va_participant, 'consent.pdf')])
 
-        print(mock_upload_file.mock_calls)
         # Assert that the zip was uploaded to the VA bucket
         mock_upload_file.assert_any_call(
             f'/tmp/temp_consents/aou179/VA_BOSTON/boston_site.zip',
