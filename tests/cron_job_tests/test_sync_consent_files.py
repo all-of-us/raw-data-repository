@@ -3,6 +3,7 @@ import datetime
 import mock
 import os
 from pathlib import Path
+import tempfile
 
 from google.cloud.storage import Blob
 from rdr_service import config
@@ -16,10 +17,12 @@ from tests.helpers.unittest_base import BaseTestCase
 
 EXPECTED_CLOUD_DESTINATION_PATTERN =\
     '{org_bucket_name}/Participant/{org_id}/{site_name}/P{participant_id}/{file_name}'
-EXPECTED_DOWNLOAD_DESTINATION_PATTERN =\
-    '/tmp/temp_consents/{org_bucket_name}/{org_id}/{site_name}/P{participant_id}/{file_name}'
+EXPECTED_DOWNLOAD_DESTINATION_PATTERN = os.path.join(
+    tempfile.gettempdir(),
+    'temp_consents/{org_bucket_name}/{org_id}/{site_name}/P{participant_id}/{file_name}')
 
 FakeConsentFile = namedtuple('FakeConsentFile', ['name', 'updated'], defaults=['consent.pdf', None])
+
 
 @mock.patch('rdr_service.dao.participant_dao.get_account_origin_id', lambda: 'vibrent')
 class SyncConsentFilesTest(BaseTestCase):
@@ -263,9 +266,9 @@ class SyncConsentFilesTest(BaseTestCase):
         sync_consent_files.do_sync_consent_files(zip_files=True)
 
         mock_file_upload.assert_has_calls([
-            mock.call('/tmp/temp_consents/testbucket123/test_one/group1.zip',
+            mock.call(f'{tempfile.gettempdir()}/temp_consents/testbucket123/test_one/group1.zip',
                       'testbucket123/Participant/test_one/group1.zip'),
-            mock.call('/tmp/temp_consents/testbucket456/test_two/group2.zip',
+            mock.call(f'{tempfile.gettempdir()}/temp_consents/testbucket456/test_two/group2.zip',
                       'testbucket456/Participant/test_two/group2.zip')
         ], any_order=True)
 

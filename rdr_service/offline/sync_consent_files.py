@@ -9,6 +9,7 @@ import logging
 import pytz
 import os
 import shutil
+import tempfile
 from zipfile import ZipFile
 
 from rdr_service import config
@@ -22,7 +23,7 @@ SOURCE_BUCKET = {
     "careevolution": "ce-uploads-all-of-us-rdr-prod"
 }
 DEFAULT_GOOGLE_GROUP = "no-site-assigned"
-TEMP_CONSENTS_PATH = "/tmp/temp_consents"
+TEMP_CONSENTS_PATH = os.path.join(tempfile.gettempdir(), "temp_consents")
 
 ParticipantData = collections.namedtuple("ParticipantData", ("participant_id", "origin_id", "google_group", "org_id"))
 

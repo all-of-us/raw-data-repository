@@ -4,6 +4,7 @@ import mock
 import os
 from pathlib import Path
 import pytz
+import tempfile
 
 from rdr_service import config
 from rdr_service.participant_enums import QuestionnaireStatus
@@ -35,7 +36,7 @@ class SyncConsentTest(BaseTestCase):
     def setup_local_file_creation(mock_gcp_cp):
         # Actually create the files locally so the zipping code will have something to work with
         def create_local_file(source, destination, **_):
-            if destination.startswith('/tmp/'):
+            if destination.startswith(tempfile.gettempdir()):
                 Path(os.path.join(destination, Path(source).name)).touch()
         mock_gcp_cp.side_effect = create_local_file
 
@@ -83,9 +84,16 @@ class SyncConsentTest(BaseTestCase):
         self.run_sync(zip_files=True, consent_files=[self._fake_file(self.participant, 'one.pdf')])
 
         # Assert that the files were copied locally for zipping
+        zip_path = '{temp_dir}/temp_consents/{bucket}/{org_id}/{site}/P{participant_id}/'.format(
+            temp_dir=tempfile.gettempdir(),
+            bucket='test_dest_bucket',
+            org_id='test_org',
+            site='test_site_google_group',
+            participant_id=self.participant.participantId
+        )
         mock_gcp_cp.assert_any_call(
             f'gs://uploads_bucket/Participant/P{self.participant.participantId}/one.pdf',
-            f'/tmp/temp_consents/test_dest_bucket/test_org/test_site_google_group/P{self.participant.participantId}/',
+            zip_path,
             flags='-m')
 
     @mock.patch('rdr_service.offline.sync_consent_files.ZipFile')
@@ -95,8 +103,9 @@ class SyncConsentTest(BaseTestCase):
         self.run_sync(zip_files=True, consent_files=[self._fake_file(self.participant, 'one.pdf')])
 
         # Assert that the correct files were written into the zip
+        zip_path = f'{tempfile.gettempdir()}/temp_consents/test_dest_bucket/test_org/test_site_google_group/'
         self.assertZipFilesCreated(mock_zip_file,
-                                   '/tmp/temp_consents/test_dest_bucket/test_org/test_site_google_group/',
+                                   zip_path,
                                    f'P{self.participant.participantId}/one.pdf')
 
     def test_zip_file_upload(self, mock_gcp_cp, mock_upload_file):
@@ -106,7 +115,7 @@ class SyncConsentTest(BaseTestCase):
 
         # Assert that the zip was uploaded to the correct location
         mock_upload_file.assert_any_call(
-            '/tmp/temp_consents/test_dest_bucket/test_org/test_site_google_group.zip',
+            f'{tempfile.gettempdir()}/temp_consents/test_dest_bucket/test_org/test_site_google_group.zip',
             'test_dest_bucket/Participant/test_org/test_site_google_group.zip'
         )
 
@@ -134,7 +143,7 @@ class SyncConsentTest(BaseTestCase):
 
         # Assert that the zip was uploaded to the VA bucket
         mock_upload_file.assert_any_call(
-            f'/tmp/temp_consents/aou179/VA_BOSTON/boston_site.zip',
+            f'{tempfile.gettempdir()}/temp_consents/aou179/VA_BOSTON/boston_site.zip',
             'aou179/Participant/VA_BOSTON/boston_site.zip'
         )
 
