@@ -585,7 +585,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             lastModified=TIME_2,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_CURRENT
+            consentCohort=ParticipantCohort.COHORT_3
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -827,7 +827,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             email=self.email,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_CURRENT
+            consentCohort=ParticipantCohort.COHORT_3
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -900,7 +900,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             email=self.email,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_CURRENT
+            consentCohort=ParticipantCohort.COHORT_3
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -978,7 +978,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             email=self.email,
             patientStatus=[],
             semanticVersionForPrimaryConsent = 'V1',
-            consentCohort=ParticipantCohort.COHORT_CURRENT
+            consentCohort=ParticipantCohort.COHORT_3
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.
@@ -1047,7 +1047,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             email=self.email,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_CURRENT
+            consentCohort=ParticipantCohort.COHORT_3
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.

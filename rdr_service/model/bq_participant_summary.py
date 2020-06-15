@@ -29,12 +29,12 @@ class BQConsentCohort(Enum):
     Which cohort does a participant belong too, based on consent date.
     """
     UNSET = 0
-    COHORT_BETA = 1  # Beta participants.  Consent before April 24, 2018.
-    COHORT_LAUNCH = 2  # National Launch Participants. Consent between April 24, 2018 and April 16, 2020.
-    COHORT_CURRENT = 3  # New Participants with consent starting from April 17, 2020.
+    COHORT_1 = 1  # Beta participants.  Consent before April 24, 2018.
+    COHORT_2 = 2  # National Launch Participants. Consent between April 24, 2018 and April 16, 2020.
+    COHORT_3 = 3  # New Participants with consent starting from April 17, 2020.
 
-COHORT_BETA_CUTOFF = date(2018, 4, 24)
-COHORT_LAUNCH_CUTOFF = date(2020, 4, 16)
+COHORT_1_CUTOFF = date(2018, 4, 24)
+COHORT_2_CUTOFF = date(2020, 4, 16)
 
 class BQAddressSchema(BQSchema):
     """
