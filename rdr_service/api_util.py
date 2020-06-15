@@ -209,3 +209,8 @@ def delete_cloud_file(path):
 def copy_cloud_file(source_path, destination_path):
     provider = get_storage_provider()
     return provider.copy_blob(source_path, destination_path)
+
+
+def download_cloud_file(source_path, destination_path):
+    provider = get_storage_provider()
+    return provider.download_blob(source_path, destination_path)

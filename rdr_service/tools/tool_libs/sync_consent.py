@@ -7,23 +7,21 @@
 
 import argparse
 import logging
-import os
 import random
-import shutil
 import sys
 from datetime import datetime
-from zipfile import ZipFile
 
 import MySQLdb
 import pytz
 
 from rdr_service.dao import database_factory
 from rdr_service.storage import GoogleCloudStorageProvider
-from rdr_service.services.gcp_utils import gcp_cp, gcp_format_sql_instance, gcp_make_auth_header
+from rdr_service.services.gcp_utils import gcp_format_sql_instance, gcp_make_auth_header
 from rdr_service.services.system_utils import make_api_request, print_progress_bar, setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
 
-from rdr_service.offline.sync_consent_files import get_org_data_map, build_participant_query
+from rdr_service.offline.sync_consent_files import get_org_data_map, build_participant_query,\
+        DEFAULT_GOOGLE_GROUP, get_consent_destination, archive_and_upload_consents, copy_file
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -36,11 +34,6 @@ SOURCE_BUCKET = {
     "vibrent": "gs://ptc-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*{file_ext}",
     "careevolution": "gs://ce-uploads-all-of-us-rdr-prod/Participant/P{p_id}/*{file_ext}"
 }
-
-HPO_REPORT_CONFIG_GCS_PATH = "gs://all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
-DEST_BUCKET = "gs://{bucket_name}/Participant/{org_external_id}/{site_name}/P{p_id}/"
-
-TEMP_CONSENTS_PATH = "./temp_consents"
 
 
 class SyncConsentClass(object):
@@ -77,38 +70,6 @@ class SyncConsentClass(object):
             return file_list
         except FileNotFoundError:
             return False
-
-    def _format_debug_out(self, p_id, src, dest):
-        _logger.debug(" Participant: {0}".format(p_id))
-        _logger.debug("    src: {0}".format(src))
-        _logger.debug("   dest: {0}".format(dest))
-
-    @staticmethod
-    def _add_path_to_zip(zip_file, directory_path):
-        for current_path, _, files in os.walk(directory_path):
-            # os.walk will recurse into sub_directories, so we only need to handle the files in the current directory
-            for file in files:
-                file_path = os.path.join(current_path, file)
-                archive_name = file_path[len(directory_path):]
-                zip_file.write(file_path, arcname=archive_name)
-
-    @staticmethod
-    def _directories_in(directory_path):
-        with os.scandir(directory_path) as objects:
-            return [directory_object for directory_object in objects if directory_object.is_dir()]
-
-    def _copy(self, source, destination, participant_id):
-        if not self.args.dry_run:
-            if self.args.zip_files:
-                # gcp_cp doesn't create local directories when they don't exist
-                os.makedirs(destination, exist_ok=True)
-
-            copy_args = {'flags': '-m'}
-            if not self.args.zip_files:
-                copy_args['args'] = '-r'
-            gcp_cp(source, destination, **copy_args)
-
-        self._format_debug_out(participant_id, source, destination)
 
     def run(self):
         """
@@ -198,16 +159,13 @@ class SyncConsentClass(object):
                         next(iter(SOURCE_BUCKET))
                     ]).format(p_id=p_id, file_ext=self.file_filter)
 
-                    if self.args.zip_files:
-                        destination_pattern =\
-                            TEMP_CONSENTS_PATH + '/{bucket_name}/{org_external_id}/{site_name}/P{p_id}/'
-                    else:
-                        destination_pattern = DEST_BUCKET
-                    destination = destination_pattern.format(
+                    destination = get_consent_destination(
+                        add_protocol=True,
+                        zipping=self.args.zip_files,
                         bucket_name=bucket,
                         org_external_id=org_id,
-                        site_name=site if site else "no-site-assigned",
-                        p_id=p_id,
+                        site_name=site if site else DEFAULT_GOOGLE_GROUP,
+                        p_id=p_id
                     )
                     if self.args.date_limit:
                         # only copy files newer than date limit
@@ -217,9 +175,10 @@ class SyncConsentClass(object):
                         if not files_in_range or len(files_in_range) == 0:
                             _logger.info(f'No files in bucket updated after {self.args.date_limit}')
                         for f in files_in_range:
-                            self._copy(f, destination, p_id)
+                            copy_file(f, destination, p_id, dry_run=self.args.dry_run, zip_files=self.args.zip_files)
                     else:
-                        self._copy(src_bucket, destination, p_id)
+                        copy_file(src_bucket, destination, p_id,
+                                  dry_run=self.args.dry_run, zip_files=self.args.zip_files)
 
                     count += 1
 
@@ -230,25 +189,7 @@ class SyncConsentClass(object):
                 )
 
             if self.args.zip_files and count > 0:
-                _logger.info("zipping and uploading consent files...")
-                for bucket_dir in self._directories_in(TEMP_CONSENTS_PATH):
-                    for org_dir in self._directories_in(bucket_dir):
-                        for site_dir in self._directories_in(org_dir):
-                            zip_file_name = os.path.join(org_dir.path, site_dir.name + '.zip')
-                            with ZipFile(zip_file_name, 'w') as zip_file:
-                                self._add_path_to_zip(zip_file, site_dir.path)
-
-                            destination = "gs://{bucket_name}/Participant/{org_external_id}/".format(
-                                bucket_name=bucket,
-                                org_external_id=org_dir.name
-                            )
-                            if not self.args.dry_run:
-                                _logger.debug("Uploading file '{zip_file}' to '{destination}'".format(
-                                    zip_file=zip_file_name,
-                                    destination=destination
-                                ))
-                                gcp_cp(zip_file_name, destination, flags="-m")
-                shutil.rmtree(TEMP_CONSENTS_PATH)
+                archive_and_upload_consents(dry_run=self.args.dry_run)
 
         except MySQLdb.OperationalError as e:
             _logger.error("failed to connect to {0} mysql instance. [{1}]".format(self.gcp_env.project, e))
