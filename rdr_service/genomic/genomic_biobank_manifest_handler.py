@@ -127,8 +127,10 @@ def update_package_id_from_manifest_result_file(genomic_set_id, csv_file):
 
 
 def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=None,
-                                                    bucket_name=None, cohort_id=None):
-    result_filename = _get_output_manifest_file_name(genomic_set_id, timestamp, cohort_id)
+                                                    bucket_name=None, cohort_id=None, filename=None):
+    result_filename = filename if filename is not None \
+        else _get_output_manifest_file_name(genomic_set_id, timestamp, cohort_id)
+
     if bucket_name is None:
         bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
     exporter = SqlExporter(bucket_name)

@@ -41,7 +41,7 @@ def process_genomic_water_line():
 
 def new_participant_workflow():
     """
-    Entrypoint for New Participant Workflow,
+    Entrypoint for New Participant Workflow (Cohort 3),
     Sources from newly-created biobank_stored_samples
     from the BiobankSamplesPipeline.
     """

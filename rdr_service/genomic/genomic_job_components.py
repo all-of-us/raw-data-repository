@@ -1005,13 +1005,13 @@ class GenomicBiobankSamplesCoupler:
         """
         samples = self._get_new_biobank_samples(from_date)
         if len(samples) > 0:
-            return self.process_samples_into_manifest(samples)
+            return self.process_samples_into_manifest(samples, cohort=self.COHORT_3_ID)
 
         else:
             logging.info(f'New Participant Workflow: No new samples to process.')
             return GenomicSubProcessResult.NO_FILES
 
-    def create_c2_genomic_participants(self, from_date):
+    def create_c2_genomic_participants(self, from_date, local=False):
         """
         This method determines which samples to enter into the genomic system
         from Cohort 2.
@@ -1023,16 +1023,17 @@ class GenomicBiobankSamplesCoupler:
         samples = self._get_new_c2_consent_samples(from_date)
 
         if len(samples) > 0:
-            return self.process_samples_into_manifest(samples)
+            return self.process_samples_into_manifest(samples, cohort=self.COHORT_2_ID, local=local)
 
         else:
             logging.info(f'Cohort 2 Participant Workflow: No samples to process.')
             return GenomicSubProcessResult.NO_FILES
 
-    def process_samples_into_manifest(self, samples):
+    def process_samples_into_manifest(self, samples, cohort, local=False):
         """
         Compiles AW0 Manifest from samples list.
         :param samples:
+        :param cohort:
         :return: job result code
         """
         # Get the genomic data to insert into GenomicSetMember as multi-dim tuple
@@ -1088,8 +1089,11 @@ class GenomicBiobankSamplesCoupler:
 
         # Create & transfer the Biobank Manifest based on the new genomic set
         try:
-            create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id,
-                                                            cohort_id=self.COHORT_3_ID)
+            if local:
+                return new_genomic_set.id
+            else:
+                create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id,
+                                                                cohort_id=cohort)
             logging.info(f'{self.__class__.__name__}: Genomic set members created ')
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
@@ -1231,7 +1235,7 @@ class GenomicBiobankSamplesCoupler:
                             ps.sample_status_1sal2 = :sample_status_param
                         )
                     AND ss.test IN ("1ED04", "1SAL2")
-                    AND ps.consent_cohort = :cohort_2_param                    
+                    AND ps.consent_cohort = :cohort_2_param                  
                 """
 
         params = {
