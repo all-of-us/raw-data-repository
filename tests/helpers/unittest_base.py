@@ -352,14 +352,12 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         return questionnaire
 
     def _questionnaire(self, **kwargs):
-        if 'version' not in kwargs:
-            kwargs['version'] = 1
-        if 'created' not in kwargs:
-            kwargs['created'] = datetime.now()
-        if 'lastModified' not in kwargs:
-            kwargs['lastModified'] = datetime.now()
-        if 'resource' not in kwargs:
-            kwargs['resource'] = 'test'
+        for field, default in [('version', 1),
+                               ('created', datetime.now()),
+                               ('lastModified', datetime.now()),
+                               ('resource', 'test')]:
+            if field not in kwargs:
+                kwargs[field] = default
 
         return Questionnaire(**kwargs)
 
@@ -369,14 +367,13 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         return questionnaire_history
 
     def _questionnaire_history(self, **kwargs):
-        if 'version' not in kwargs:
-            kwargs['version'] = 1
-        if 'created' not in kwargs:
-            kwargs['created'] = datetime.now()
-        if 'lastModified' not in kwargs:
-            kwargs['lastModified'] = datetime.now()
-        if 'resource' not in kwargs:
-            kwargs['resource'] = 'test'
+        for field, default in [('version', 1),
+                               ('created', datetime.now()),
+                               ('lastModified', datetime.now()),
+                               ('resource', 'test')]:
+            if field not in kwargs:
+                kwargs[field] = default
+
         if 'questionnaireId' not in kwargs:
             questionnaire = self.create_database_questionnaire()
             kwargs['questionnaireId'] = questionnaire.questionnaireId

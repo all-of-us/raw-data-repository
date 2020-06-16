@@ -2,9 +2,6 @@ from collections import namedtuple
 from datetime import datetime
 import json
 import mock
-import os
-from pathlib import Path
-import tempfile
 
 from rdr_service.tools.tool_libs.cope_answers import CopeAnswersClass
 from tests.helpers.unittest_base import BaseTestCase
@@ -47,14 +44,6 @@ class CopeAnswerTest(BaseTestCase):
             )
 
     @staticmethod
-    def setup_local_file_creation(mock_gcp_cp):
-        # Actually create the files locally so the zipping code will have something to work with
-        def create_local_file(source, destination, **_):
-            if destination.startswith(tempfile.gettempdir()):
-                Path(os.path.join(destination, Path(source).name)).touch()
-        mock_gcp_cp.side_effect = create_local_file
-
-    @staticmethod
     def run_tool(cope_month='2020-06'):
         environment = mock.MagicMock()
         environment.project = 'unit_test'
@@ -62,7 +51,7 @@ class CopeAnswerTest(BaseTestCase):
         args = mock.MagicMock(spec=['cope_month'])
         args.cope_month = cope_month
 
-        # Patching things to keep tool from trying to call GAE and to provide test data
+        # Patching things to keep tool from trying to call GAE and to get result data
         with mock.patch('rdr_service.tools.tool_libs.cope_answers.make_api_request',
                         return_value=(200, {'rdr_db_password': 'test'})),\
                 mock.patch('rdr_service.tools.tool_libs.cope_answers.open') as mock_open:
@@ -111,9 +100,6 @@ class CopeAnswerTest(BaseTestCase):
         }, result)
 
     def test_count_from_specified_month(self):
-        may_questionnaire_history = self.create_database_questionnaire_history(
-            lastModified=datetime.strptime('2020-05-18', '%Y-%m-%d')
-        )
         self.create_response(self.questionnaire_history, [
             {'question': 'ipaq_1', 'answer': 'a1'},
             {'question': 'ipaq_3', 'answer': 'a1'}
@@ -124,6 +110,9 @@ class CopeAnswerTest(BaseTestCase):
         ])
 
         # Create May response that should not be counted for June results
+        may_questionnaire_history = self.create_database_questionnaire_history(
+            lastModified=datetime.strptime('2020-05-18', '%Y-%m-%d')
+        )
         self.create_response(may_questionnaire_history, [
             {'question': 'ipaq_1', 'answer': 'a1'},
             {'question': 'ipaq_3', 'answer': 'a3'}
