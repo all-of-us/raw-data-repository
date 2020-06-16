@@ -1080,6 +1080,7 @@ class GenomicBiobankSamplesCoupler:
                 validationFlags=valid_flags,
                 ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
                 genomeType=self._ARRAY_GENOME_TYPE,
+                genomicWorkflowState=GenomicWorkflowState.AW0_READY
             )
             # Also create a WGS member
             new_wgs_member_obj = deepcopy(new_array_member_obj)

@@ -16,7 +16,14 @@ class AW0ReadyState(GenomicStateBase):
     """State representing the AW0 manifest state"""
     def transition_function(self, signal):
         if signal == 'manifest-generated':
-            return GenomicWorkflowState.AW2_MISSING
+            return GenomicWorkflowState.AW0
+
+
+class AW0State(GenomicStateBase):
+    """State representing the AW0 manifest state"""
+    def transition_function(self, signal):
+        if signal == 'reconciled':
+            return GenomicWorkflowState.AW0
 
 
 class AW2State(GenomicStateBase):
@@ -142,6 +149,7 @@ class GenomicStateHandler:
     """
     states = {
         GenomicWorkflowState.AW0_READY: AW0ReadyState(),
+        GenomicWorkflowState.AW0: AW0State(),
         GenomicWorkflowState.AW2: AW2State(),
         GenomicWorkflowState.CVL_READY: CVLReadyState(),
         GenomicWorkflowState.W1: W1State(),
