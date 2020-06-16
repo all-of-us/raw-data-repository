@@ -59,6 +59,7 @@ _FAKE_BUCKET_FOLDER = "rdr_fake_sub_folder"
 _FAKE_BUCKET_RESULT_FOLDER = "rdr_fake_sub_result_folder"
 _FAKE_GENOMIC_CENTER_BUCKET_A = 'rdr_fake_genomic_center_a_bucket'
 _FAKE_GENOMIC_CENTER_BUCKET_B = 'rdr_fake_genomic_center_b_bucket'
+_FAKE_GENOMIC_CENTER_DATA_BUCKET_A = 'rdr_fake_genomic_center_a_data_bucket'
 _FAKE_GENOTYPING_FOLDER = 'rdr_fake_genotyping_folder'
 _FAKE_CVL_REPORT_FOLDER = 'fake_cvl_reconciliation_reports'
 _FAKE_CVL_MANIFEST_FOLDER = 'fake_cvl_manifest_folder'
@@ -80,6 +81,8 @@ class GenomicPipelineTest(BaseTestCase):
         config.override_setting(config.GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME, [_FAKE_BUCKET_RESULT_FOLDER])
         config.override_setting(config.GENOMIC_CENTER_BUCKET_NAME, [_FAKE_GENOMIC_CENTER_BUCKET_A,
                                                                     _FAKE_GENOMIC_CENTER_BUCKET_B])
+        config.override_setting(config.GENOMIC_CENTER_DATA_BUCKET_NAME, [_FAKE_GENOMIC_CENTER_BUCKET_A,
+                                                                         _FAKE_GENOMIC_CENTER_BUCKET_B])
         config.override_setting(config.GENOMIC_CVL_BUCKET_NAME, [_FAKE_BUCKET])
 
         config.override_setting(config.GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME,
@@ -592,13 +595,15 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_gc_validation_metrics_end_to_end(self):
         # Create the fake Google Cloud CSV files to ingest
-        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        # add to subfolder
         end_to_end_test_files = (
             'RDR_AoU_GEN_TestDataManifest.csv',
             'test_empty_wells.csv'
         )
         for test_file in end_to_end_test_files:
-            self._create_ingestion_test_file(test_file, bucket_name)
+            self._create_ingestion_test_file(test_file, bucket_name,
+                                             folder=config.GENOMIC_AW2_SUBFOLDERS[1])
 
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
                                                 array_participants=(1, 2))
@@ -621,7 +626,6 @@ class GenomicPipelineTest(BaseTestCase):
         member = self.member_dao.get(1)
         self.assertEqual(GenomicWorkflowState.AW2, member.genomicWorkflowState)
 
-
         # Test successful run result
         run_obj = self.job_run_dao.get(1)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
@@ -637,8 +641,9 @@ class GenomicPipelineTest(BaseTestCase):
                 )
                 self.assertEqual(
                     f.filePath,
-                    '/dev_genomics_cell_line_validation/'
-                    'RDR_AoU_SEQ_TestDataManifest_11192019.csv'
+                    f'/{_FAKE_GENOMIC_CENTER_BUCKET_A}/'
+                    f'{config.GENOMIC_AW2_SUBFOLDERS[0]}/'
+                    f'/RDR_AoU_SEQ_TestDataManifest_11192019.csv'
                 )
             else:
                 self.assertEqual(
@@ -647,8 +652,9 @@ class GenomicPipelineTest(BaseTestCase):
                 )
                 self.assertEqual(
                     f.filePath,
-                    '/dev_genomics_cell_line_validation/'
-                    'RDR_AoU_GEN_TestDataManifest_11192019.csv'
+                    f'/{_FAKE_GENOMIC_CENTER_BUCKET_A}/'
+                    f'{config.GENOMIC_AW2_SUBFOLDERS[1]}/'
+                    f'RDR_AoU_GEN_TestDataManifest_11192019.csv'
                 )
 
             self.assertEqual(f.fileStatus,
@@ -672,14 +678,15 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_gc_metrics_ingestion_bad_files(self):
         # Create the fake Google Cloud CSV files to ingest
-        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         end_to_end_test_files = (
             'RDR_AoU_SEQ_TestBadStructureDataManifest.csv',
             'RDR-AoU-TestBadFilename-DataManifest.csv',
             'test_empty_wells.csv'
         )
         for test_file in end_to_end_test_files:
-            self._create_ingestion_test_file(test_file, bucket_name)
+            self._create_ingestion_test_file(test_file, bucket_name,
+                                             folder=config.GENOMIC_AW2_SUBFOLDERS[0])
 
         # run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()
@@ -703,16 +710,17 @@ class GenomicPipelineTest(BaseTestCase):
         # run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()
 
-        # Test Unsuccessful run
+        # Test No Files run (should be success)
         run_obj = self.job_run_dao.get(1)
-        self.assertEqual(GenomicSubProcessResult.NO_FILES, run_obj.runResult)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_aw2_wgs_gc_metrics_ingestion(self):
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(2)
-        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
-                                         bucket_name)
+                                         bucket_name,
+                                         folder=config.GENOMIC_AW2_SUBFOLDERS[0])
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
         # Test the fields against the DB
@@ -940,9 +948,10 @@ class GenomicPipelineTest(BaseTestCase):
     def test_gc_metrics_reconciliation_vs_manifest(self):
         # Create the fake Google Cloud CSV files to ingest
         self._create_fake_datasets_for_gc_tests(1, arr_override=True, array_participants=[1])
-        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
-                                         bucket_name)
+                                         bucket_name,
+                                         folder=config.GENOMIC_AW2_SUBFOLDERS[1])
 
         # Run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
@@ -968,9 +977,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(2, arr_override=True, array_participants=[1,2])
-        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
-                                         bucket_name)
+                                         bucket_name,
+                                         folder=config.GENOMIC_AW2_SUBFOLDERS[1])
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
         manifest_file = self.file_processed_dao.get(1)
 
@@ -1036,9 +1046,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(2)
-        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
-                                         bucket_name)
+                                         bucket_name,
+                                         folder=config.GENOMIC_AW2_SUBFOLDERS[0])
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
         manifest_file = self.file_processed_dao.get(1)
 
@@ -1569,9 +1580,10 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
                                                 array_participants=range(1, 4),
                                                 recon_gc_man_id=1)
-        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
-                                         bucket_name)
+                                         bucket_name,
+                                         folder=config.GENOMIC_AW2_SUBFOLDERS[1])
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
         # Test sequencing file (required for GEM)
@@ -1770,8 +1782,9 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._create_fake_datasets_for_gc_tests(3, arr_override=False, recon_gc_man_id=1)
 
-        bucket_name = config.getSetting(config.GENOMIC_GC_METRICS_BUCKET_NAME)
-        self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv', bucket_name)
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv', bucket_name,
+                                         folder=config.GENOMIC_AW2_SUBFOLDERS[0])
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
@@ -1822,6 +1835,7 @@ class GenomicPipelineTest(BaseTestCase):
         )
 
         sub_folder = config.CVL_W1_MANIFEST_SUBFOLDER
+        bucket_name = config.getSetting(config.GENOMIC_CVL_BUCKET_NAME)
 
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_CVL_Manifest_{w1_dtf}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)

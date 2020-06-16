@@ -34,14 +34,16 @@ class GenomicJobController:
     def __init__(self, job_id,
                  bucket_name=GENOMIC_GC_METRICS_BUCKET_NAME,
                  sub_folder_name=None,
+                 sub_folder_tuple=None,
                  archive_folder_name=None,
-                 bucket_name_list=None
+                 bucket_name_list=None,
                  ):
 
         self.job_id = job_id
         self.job_run = None
         self.bucket_name = getSetting(bucket_name, default="")
         self.sub_folder_name = getSetting(sub_folder_name, default="")
+        self.sub_folder_tuple = sub_folder_tuple
         self.bucket_name_list = getSettingList(bucket_name_list, default=[])
         self.archive_folder_name = archive_folder_name
 
@@ -72,14 +74,23 @@ class GenomicJobController:
         """
         Uses ingester to ingest files.
         """
-        self.ingester = GenomicFileIngester(job_id=self.job_id,
-                                            job_run_id=self.job_run.id,
-                                            bucket=self.bucket_name,
-                                            sub_folder=self.sub_folder_name,
-                                            _controller=self)
         try:
             logging.info('Running Validation Metrics Ingestion Workflow.')
-            self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
+
+            for gc_bucket_name in self.bucket_name_list:
+                for folder in self.sub_folder_tuple:
+                    self.sub_folder_name = folder
+                    self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                                        job_run_id=self.job_run.id,
+                                                        bucket=gc_bucket_name,
+                                                        sub_folder=self.sub_folder_name,
+                                                        _controller=self)
+                    self.subprocess_results.add(
+                        self.ingester.generate_file_queue_and_do_ingestion()
+                    )
+
+            self.job_result = self._aggregate_run_results()
+
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 

@@ -536,7 +536,7 @@ class GenomicFileValidator:
 
         def gc_validation_metrics_name_rule(fn):
             """GC metrics file name rule"""
-            filename_components = [x.lower() for x in fn.split("_")]
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
                 len(filename_components) == 5 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
@@ -1034,6 +1034,7 @@ class GenomicBiobankSamplesCoupler:
         Compiles AW0 Manifest from samples list.
         :param samples:
         :param cohort:
+        :param local: overrides automatic push to bucket
         :return: job result code
         """
         # Get the genomic data to insert into GenomicSetMember as multi-dim tuple
