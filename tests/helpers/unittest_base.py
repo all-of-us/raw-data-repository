@@ -136,6 +136,80 @@ class QuestionnaireTestMixin:
             response_json.update({"authored": authored.isoformat()})
         return response_json
 
+    @staticmethod
+    def _commit_to_database(session, model):
+        session.add(model)
+        session.commit()
+
+    def create_database_questionnaire(self, **kwargs):
+        questionnaire = self._questionnaire(**kwargs)
+        self._commit_to_database(self.session, questionnaire)
+        return questionnaire
+
+    def _questionnaire(self, **kwargs):
+        for field, default in [('version', 1),
+                               ('created', datetime.now()),
+                               ('lastModified', datetime.now()),
+                               ('resource', 'test')]:
+            if field not in kwargs:
+                kwargs[field] = default
+
+        return Questionnaire(**kwargs)
+
+    def create_database_questionnaire_history(self, **kwargs):
+        questionnaire_history = self._questionnaire_history(**kwargs)
+        self._commit_to_database(self.session, questionnaire_history)
+        return questionnaire_history
+
+    def _questionnaire_history(self, **kwargs):
+        for field, default in [('version', 1),
+                               ('created', datetime.now()),
+                               ('lastModified', datetime.now()),
+                               ('resource', 'test')]:
+            if field not in kwargs:
+                kwargs[field] = default
+
+        if 'questionnaireId' not in kwargs:
+            questionnaire = self.create_database_questionnaire()
+            kwargs['questionnaireId'] = questionnaire.questionnaireId
+
+        return QuestionnaireHistory(**kwargs)
+
+    def create_database_questionnaire_response_answer(self, **kwargs):
+        questionnaire_response_answer = self._questionnaire_response_answer(**kwargs)
+        self._commit_to_database(self.session, questionnaire_response_answer)
+        return questionnaire_response_answer
+
+    def _questionnaire_response_answer(self, **kwargs):
+        return QuestionnaireResponseAnswer(**kwargs)
+
+    def create_database_questionnaire_response(self, **kwargs):
+        questionnaire_response = self._questionnaire_response(**kwargs)
+        self._commit_to_database(self.session, questionnaire_response)
+        return questionnaire_response
+
+    def _questionnaire_response(self, **kwargs):
+        for field, default in [('created', datetime.now()),
+                               ('resource', 'test')]:
+            if field not in kwargs:
+                kwargs[field] = default
+
+        if 'questionnaireResponseId' not in kwargs:
+            kwargs['questionnaireResponseId'] = self.unique_questionnaire_response_id()
+
+        return QuestionnaireResponse(**kwargs)
+
+    def create_database_questionnaire_question(self, **kwargs):
+        questionnaire_question = self._questionnaire_question(**kwargs)
+        self._commit_to_database(self.session, questionnaire_question)
+        return questionnaire_question
+
+    def _questionnaire_question(self, **kwargs):
+        if 'repeats' not in kwargs:
+            kwargs['repeats'] = True
+
+        return QuestionnaireQuestion(**kwargs)
+
 
 class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin):
     """ Base class for unit tests."""
@@ -209,10 +283,6 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             os.mkdir(bucket_dir)
         shutil.copy(os.path.join(os.path.dirname(__file__), "..", "test-data", test_file_name), bucket_dir)
 
-    def _commit_to_database(self, model):
-        self.session.add(model)
-        self.session.commit()
-
     def unique_participant_id(self):
         next_participant_id = self._next_unique_participant_id
         self._next_unique_participant_id += 1
@@ -230,7 +300,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
     def create_database_site(self, **kwargs):
         site = self._site_with_defaults(**kwargs)
-        self._commit_to_database(site)
+        self._commit_to_database(self.session, site)
         return site
 
     def _site_with_defaults(self, **kwargs):
@@ -242,7 +312,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
     def create_database_organization(self, **kwargs):
         organization = self._organization_with_defaults(**kwargs)
-        self._commit_to_database(organization)
+        self._commit_to_database(self.session, organization)
         return organization
 
     def _organization_with_defaults(self, **kwargs):
@@ -263,7 +333,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         # hpoId is the primary key but is not automatically set when inserting
         if hpo.hpoId is None:
             hpo.hpoId = self.session.query(HPO).count() + 50  # There was code somewhere using lower numbers
-        self._commit_to_database(hpo)
+        self._commit_to_database(self.session, hpo)
 
         return hpo
 
@@ -272,7 +342,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
     def create_database_participant(self, **kwargs):
         participant = self._participant_with_defaults(**kwargs)
-        self._commit_to_database(participant)
+        self._commit_to_database(self.session, participant)
         return participant
 
     def _participant_with_defaults(self, **kwargs):
@@ -300,7 +370,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
     def create_database_participant_summary(self, **kwargs):
         participant_summary = self._participant_summary_with_defaults(**kwargs)
-        self._commit_to_database(participant_summary)
+        self._commit_to_database(self.session, participant_summary)
         return participant_summary
 
     def _participant_summary_with_defaults(self, **kwargs):
@@ -346,78 +416,9 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         common_args.update(kwargs)
         return ParticipantHistory(**common_args)
 
-    def create_database_questionnaire(self, **kwargs):
-        questionnaire = self._questionnaire(**kwargs)
-        self._commit_to_database(questionnaire)
-        return questionnaire
-
-    def _questionnaire(self, **kwargs):
-        for field, default in [('version', 1),
-                               ('created', datetime.now()),
-                               ('lastModified', datetime.now()),
-                               ('resource', 'test')]:
-            if field not in kwargs:
-                kwargs[field] = default
-
-        return Questionnaire(**kwargs)
-
-    def create_database_questionnaire_history(self, **kwargs):
-        questionnaire_history = self._questionnaire_history(**kwargs)
-        self._commit_to_database(questionnaire_history)
-        return questionnaire_history
-
-    def _questionnaire_history(self, **kwargs):
-        for field, default in [('version', 1),
-                               ('created', datetime.now()),
-                               ('lastModified', datetime.now()),
-                               ('resource', 'test')]:
-            if field not in kwargs:
-                kwargs[field] = default
-
-        if 'questionnaireId' not in kwargs:
-            questionnaire = self.create_database_questionnaire()
-            kwargs['questionnaireId'] = questionnaire.questionnaireId
-
-        return QuestionnaireHistory(**kwargs)
-
-    def create_database_questionnaire_response_answer(self, **kwargs):
-        questionnaire_response_answer = self._questionnaire_response_answer(**kwargs)
-        self._commit_to_database(questionnaire_response_answer)
-        return questionnaire_response_answer
-
-    def _questionnaire_response_answer(self, **kwargs):
-        return QuestionnaireResponseAnswer(**kwargs)
-
-    def create_database_questionnaire_response(self, **kwargs):
-        questionnaire_response = self._questionnaire_response(**kwargs)
-        self._commit_to_database(questionnaire_response)
-        return questionnaire_response
-
-    def _questionnaire_response(self, **kwargs):
-        for field, default in [('created', datetime.now()),
-                               ('resource', 'test')]:
-            if field not in kwargs:
-                kwargs[field] = default
-
-        if 'questionnaireResponseId' not in kwargs:
-            kwargs['questionnaireResponseId'] = self.unique_questionnaire_response_id()
-
-        return QuestionnaireResponse(**kwargs)
-
-    def create_database_questionnaire_question(self, **kwargs):
-        questionnaire_question = self._questionnaire_question(**kwargs)
-        self._commit_to_database(questionnaire_question)
-        return questionnaire_question
-
-    def _questionnaire_question(self, **kwargs):
-        if 'repeats' not in kwargs:
-            kwargs['repeats'] = True
-
-        return QuestionnaireQuestion(**kwargs)
-
     def create_database_code(self, **kwargs):
         code = self._code(**kwargs)
-        self._commit_to_database(code)
+        self._commit_to_database(self.session, code)
         return code
 
     def _code(self, **kwargs):
