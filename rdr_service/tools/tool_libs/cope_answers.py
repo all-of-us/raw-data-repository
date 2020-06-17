@@ -6,12 +6,10 @@
 import argparse
 import json
 import logging
-import random
 import sys
 
 from rdr_service.dao import database_factory
-from rdr_service.services.gcp_utils import gcp_format_sql_instance, gcp_make_auth_header
-from rdr_service.services.system_utils import make_api_request, setup_logging, setup_i18n
+from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
 
 _logger = logging.getLogger("rdr_logger")
@@ -43,31 +41,6 @@ class CopeAnswersClass(object):
         self.args = args
         self.gcp_env = gcp_env
 
-    def _setup_database_connection(self):
-        _logger.info("retrieving db configuration...")
-        headers = gcp_make_auth_header()
-        resp_code, resp_data = make_api_request(
-            "{0}.appspot.com".format(self.gcp_env.project), "/rdr/v1/Config/db_config", headers=headers
-        )
-        if resp_code != 200:
-            _logger.error(resp_data)
-            _logger.error("failed to retrieve config, aborting.")
-            return 1
-
-        passwd = resp_data["rdr_db_password"]
-        if not passwd:
-            _logger.error("failed to retrieve database user password from config.")
-            return 1
-
-        # connect a sql proxy to the current project
-        _logger.info("starting google sql proxy...")
-        port = random.randint(10000, 65535)
-        instances = gcp_format_sql_instance(self.gcp_env.project, port=port)
-        proxy_pid = self.gcp_env.activate_sql_proxy(instance=instances, port=port)
-        if not proxy_pid:
-            _logger.error("activating google sql proxy failed.")
-            return 1
-
     @staticmethod
     def _new_answer_tracker():
         return {
@@ -82,7 +55,11 @@ class CopeAnswersClass(object):
         }
 
     def run(self):
-        self._setup_database_connection()
+        proxy_pid = self.gcp_env.activate_sql_proxy()
+        if not proxy_pid:
+            _logger.error("activating google sql proxy failed.")
+            return 1
+
         question_totals = {}
         with database_factory.make_server_cursor_database().session() as session:
             answer_counts = session.execute(ANSWER_COUNT_SQL, params={'cope_month': self.args.cope_month})

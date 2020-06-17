@@ -52,9 +52,7 @@ class CopeAnswerTest(BaseTestCase):
         args.cope_month = cope_month
 
         # Patching things to keep tool from trying to call GAE and to get result data
-        with mock.patch('rdr_service.tools.tool_libs.cope_answers.make_api_request',
-                        return_value=(200, {'rdr_db_password': 'test'})),\
-                mock.patch('rdr_service.tools.tool_libs.cope_answers.open') as mock_open:
+        with mock.patch('rdr_service.tools.tool_libs.cope_answers.open') as mock_open:
 
             cope_answer_tool = CopeAnswersClass(args, environment)
             cope_answer_tool.run()
