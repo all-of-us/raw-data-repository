@@ -22,8 +22,9 @@ class AW0ReadyState(GenomicStateBase):
 class AW0State(GenomicStateBase):
     """State representing the AW0 manifest state"""
     def transition_function(self, signal):
+        # TODO: this will be updated to appropriate states in a future PR
         if signal == 'reconciled':
-            return GenomicWorkflowState.AW0
+            pass
 
 
 class AW2State(GenomicStateBase):

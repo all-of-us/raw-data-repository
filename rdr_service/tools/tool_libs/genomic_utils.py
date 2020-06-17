@@ -18,7 +18,8 @@ from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, Gen
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
-from rdr_service.model.genomics import GenomicSetMember, GenomicSet
+from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
+from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicJobRun
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -214,8 +215,6 @@ class GenerateManifestClass(GenomicManifestBase):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(GenerateManifestClass, self).__init__(args, gcp_env)
 
-        self.job_run_dao = GenomicJobRunDao()
-
     def run(self):
         """
         Main program process
@@ -224,7 +223,7 @@ class GenerateManifestClass(GenomicManifestBase):
 
         # Activate the SQL Proxy
         self.gcp_env.activate_sql_proxy()
-        self.dao = GenomicSetMemberDao()
+        self.dao = GenomicJobRunDao()
 
         # Check Args
         if not self.args.manifest:
@@ -244,7 +243,7 @@ class GenerateManifestClass(GenomicManifestBase):
                 return 1
 
             if int(self.args.cohort) == 2:
-                print('Running c2 workflow')
+                _logger.info('Running c2 workflow')
                 self.generate_local_c2_manifest()
 
     def generate_local_c2_manifest(self):
@@ -252,8 +251,8 @@ class GenerateManifestClass(GenomicManifestBase):
         Creates a new C2 Manifest locally
         :return:
         """
-        job_run = self.job_run_dao.insert_run_record(GenomicJob.C2_PARTICIPANT_WORKFLOW)
-        last_run_time = self.job_run_dao.get_last_successful_runtime(GenomicJob.C2_PARTICIPANT_WORKFLOW)
+        job_run = self.dao.insert_run_record(GenomicJob.C2_PARTICIPANT_WORKFLOW)
+        last_run_time = self.dao.get_last_successful_runtime(GenomicJob.C2_PARTICIPANT_WORKFLOW)
 
         biobank_coupler = GenomicBiobankSamplesCoupler(job_run.id)
         new_set_id = biobank_coupler.create_c2_genomic_participants(last_run_time, local=True)
@@ -264,6 +263,7 @@ class GenerateManifestClass(GenomicManifestBase):
         """
         Processes samples into a local AW0, Cohort 2 manifest file
         :param genomic_set_id:
+        :param set_id:
         :return:
         """
 
@@ -278,11 +278,31 @@ class GenerateManifestClass(GenomicManifestBase):
         create_and_upload_genomic_biobank_manifest_file(set_id, self.nowts,
                                                         bucket_name=bucket_name, filename=_filename)
 
+        # Handle Genomic States for manifests
+        member_dao = GenomicSetMemberDao()
+        new_members = member_dao.get_members_from_set_id(set_id)
+
+        for member in new_members:
+            self.update_member_genomic_state(member, 'manifest-generated')
+
         local_path = f'{self.lsp.DEFAULT_STORAGE_ROOT}/{bucket_name}/{_filename}'
         print()
 
         _logger.info(f'Manifest Exported to local file:')
         _logger.warning(f'  {local_path}')
+
+    def update_member_genomic_state(self, member, _signal):
+        """
+        Updates a genomic member's genomic state after the manifest has been generated.
+        :param member:
+        :param signal:
+        """
+        member_dao = GenomicSetMemberDao()
+        new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
+                                                      signal=_signal)
+
+        if new_state is not None or new_state != member.genomicWorkflowState:
+            member_dao.update_member_state(member, new_state)
 
 
 def run():

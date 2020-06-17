@@ -1096,6 +1096,15 @@ class GenomicBiobankSamplesCoupler:
             else:
                 create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id,
                                                                 cohort_id=cohort)
+
+            # Handle Genomic States for manifests
+            for member in self.member_dao.get_members_from_set_id(new_genomic_set.id):
+                new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
+                                                              signal='manifest-generated')
+
+                if new_state is not None or new_state != member.genomicWorkflowState:
+                    self.member_dao.update_member_state(member, new_state)
+
             logging.info(f'{self.__class__.__name__}: Genomic set members created ')
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
@@ -1237,7 +1246,7 @@ class GenomicBiobankSamplesCoupler:
                             ps.sample_status_1sal2 = :sample_status_param
                         )
                     AND ss.test IN ("1ED04", "1SAL2")
-                    AND ps.consent_cohort = :cohort_2_param                  
+                    AND ps.consent_cohort = :cohort_2_param          
                 """
 
         params = {
