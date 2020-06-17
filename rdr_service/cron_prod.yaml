@@ -1,9 +1,5 @@
 cron:
 - description: Genomic new participant workflow (Cohort 3) from Biobank Samples
-- description: Genomic GC Manifest Workflow
-- description: Genomic Data Manifest Workflow (ingestion and reconciliation of data)
-- description: Genomic GEM A1 and A2 Workflow
-- description: Genomic GEM A3 (Delete Report) Manifest Workflow
 - description: Sync site bucket consent files
   url: /offline/SyncConsentFiles
   schedule: 1 of month 00:00
