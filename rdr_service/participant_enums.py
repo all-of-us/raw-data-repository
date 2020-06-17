@@ -43,9 +43,9 @@ TEST_LOGIN_PHONE_NUMBER_PREFIX = "444"
 class ParticipantCohort(messages.Enum):
     """ Participant Cohort Group"""
     UNSET = 0
-    COHORT_BETA = 1  # Beta participants.  Consent before April 24, 2018.
-    COHORT_LAUNCH = 2  # National Launch Participants. Consent between April 24, 2018 and April 16, 2020.
-    COHORT_CURRENT = 3  # New Participants with consent starting from April 17, 2020.
+    COHORT_1 = 1  # Beta participants.  Consent before April 24, 2018.
+    COHORT_2 = 2  # National Launch Participants. Consent between April 24, 2018 and April 16, 2020.
+    COHORT_3 = 3  # New Participants with consent starting from April 17, 2020.
 
 
 class PatientStatusFlag(messages.Enum):

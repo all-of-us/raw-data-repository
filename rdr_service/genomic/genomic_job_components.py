@@ -1181,7 +1181,7 @@ class GenomicBiobankSamplesCoupler:
             "from_date_param": from_date.strftime("%Y-%m-%d"),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
-            "cohort_3_param": ParticipantCohort.COHORT_CURRENT.__int__(),
+            "cohort_3_param": ParticipantCohort.COHORT_3.__int__(),
         }
         with self.samples_dao.session() as session:
             result = session.execute(_new_samples_sql, params).fetchall()
@@ -1257,7 +1257,7 @@ class GenomicBiobankSamplesCoupler:
             #"from_date_param": from_date.strftime("%Y-%m-%d"),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
-            "cohort_2_param": ParticipantCohort.COHORT_LAUNCH.__int__(),
+            "cohort_2_param": ParticipantCohort.COHORT_2.__int__(),
         }
 
         with self.samples_dao.session() as session:
