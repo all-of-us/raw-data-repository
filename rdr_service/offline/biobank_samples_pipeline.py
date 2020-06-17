@@ -447,7 +447,7 @@ _ORDER_JOINS = """
     INNER JOIN
       biobank_order_identifier
     ON biobank_order.biobank_order_id = biobank_order_identifier.biobank_order_id
-       AND biobank_order_identifier.system = :pmi_ops_system
+       AND biobank_order_identifier.system in (:pmi_ops_system, :kit_id_system)
     INNER JOIN
       biobank_ordered_sample
     ON

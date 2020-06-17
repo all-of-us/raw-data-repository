@@ -1,6 +1,8 @@
-import io
 import csv
-import datetime
+from decimal import Decimal
+import io
+from datetime import datetime, timedelta
+import mock
 import random
 import time
 import os
@@ -8,7 +10,7 @@ import pytz
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
-from rdr_service.code_constants import BIOBANK_TESTS
+from rdr_service.code_constants import BIOBANK_TESTS, PPI_SYSTEM, RACE_QUESTION_CODE, RACE_AIAN_CODE
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -25,6 +27,8 @@ from tests.helpers.unittest_base import BaseTestCase
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = "rdr_fake_bucket"
+
+_MAYO_KIT_SYSTEM = 'https://orders.mayomedicallaboratories.com/kit-id'
 
 
 class BiobankSamplesPipelineTest(BaseTestCase):
@@ -48,7 +52,7 @@ class BiobankSamplesPipelineTest(BaseTestCase):
     Kwargs pass through to BiobankOrder constructor, overriding defaults.
     """
         participantId = kwargs["participantId"]
-        modified = datetime.datetime(2019, 0o3, 25, 15, 59, 30)
+        modified = datetime(2019, 0o3, 25, 15, 59, 30)
 
         for k, default_value in (
             ("biobankOrderId", "1"),
@@ -80,8 +84,8 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         participant = self.participant_dao.insert(Participant())
         self.summary_dao.insert(self.participant_summary(participant))
 
-        created_ts = datetime.datetime(2019, 0o3, 22, 18, 30, 45)
-        confirmed_ts = datetime.datetime(2019, 0o3, 23, 12, 13, 00)
+        created_ts = datetime(2019, 0o3, 22, 18, 30, 45)
+        confirmed_ts = datetime(2019, 0o3, 23, 12, 13, 00)
 
         bo = self._make_biobank_order(participantId=participant.participantId)
         BiobankOrderDao().insert(bo)
@@ -160,14 +164,14 @@ class BiobankSamplesPipelineTest(BaseTestCase):
                     status = SampleStatus.DISPOSED
                     ts_str = cols[9]
 
-                ts = datetime.datetime.strptime(ts_str, "%Y/%m/%d %H:%M:%S")
+                ts = datetime.strptime(ts_str, "%Y/%m/%d %H:%M:%S")
                 self._check_summary(participant_ids[x], test_codes[x], ts, status)
 
     def test_old_csv_not_imported(self):
         self.clear_default_storage()
         self.create_mock_buckets(self.mock_bucket_paths)
         now = clock.CLOCK.now()
-        too_old_time = now - datetime.timedelta(hours=25)
+        too_old_time = now - timedelta(hours=25)
         input_filename = "cloud%s.csv" % self._naive_utc_to_naive_central(too_old_time).strftime(
             biobank_samples_pipeline.INPUT_CSV_TIME_FORMAT
         )
@@ -281,7 +285,7 @@ class BiobankSamplesPipelineTest(BaseTestCase):
     def test_get_reconciliation_report_paths(self):
         self.clear_default_storage()
         self.create_mock_buckets(self.mock_bucket_paths)
-        dt = datetime.datetime(2016, 12, 22, 18, 30, 45)
+        dt = datetime(2016, 12, 22, 18, 30, 45)
         expected_prefix = "reconciliation/report_2016-12-22"
         paths = biobank_samples_pipeline._get_report_paths(dt)
         self.assertEqual(len(paths), 5)
@@ -290,3 +294,74 @@ class BiobankSamplesPipelineTest(BaseTestCase):
                 path.startswith(expected_prefix), "Report path %r must start with %r." % (expected_prefix, path)
             )
             self.assertTrue(path.endswith(".csv"))
+
+    def _init_report_codes(self):
+        self.create_database_code(system=PPI_SYSTEM, value=RACE_QUESTION_CODE)
+        self.create_database_code(system=PPI_SYSTEM, value=RACE_AIAN_CODE)
+
+    @staticmethod
+    def _datetime_days_ago(num_days_ago):
+        today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
+        return today - timedelta(days=num_days_ago)
+
+    @staticmethod
+    def _format_datetime(timestamp):
+        return timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    def test_quest_samples_in_report(self):
+        self._init_report_codes()
+
+        # Generate data for a Quest sample to be in the report
+        participant = self.create_database_participant()
+        order = self.create_database_biobank_order(participantId=participant.participantId)
+        order_identifier = self.create_database_biobank_order_identifier(
+            biobankOrderId=order.biobankOrderId,
+            value='KIT-001',
+            system=_MAYO_KIT_SYSTEM
+        )
+        ordered_sample = self.create_database_biobank_ordered_sample(
+            biobankOrderId=order.biobankOrderId,
+            collected=datetime(2020, 6, 5),
+            processed=datetime(2020, 6, 6),
+            finalized=datetime(2020, 6, 7)
+        )
+        stored_sample = self.create_database_biobank_stored_sample(
+            test=ordered_sample.test,
+            biobankId=participant.biobankId,
+            biobankOrderIdentifier=order_identifier.value,
+            confirmed=self._datetime_days_ago(7)
+        )
+
+        # Mocking the file writer to catch what gets exported and mocking the upload method because
+        # that isn't what this test is meant to cover
+        with mock.patch('rdr_service.offline.sql_exporter.csv.writer') as mock_writer_class,\
+                mock.patch('rdr_service.offline.sql_exporter.SqlExporter.upload_export_file'):
+            biobank_samples_pipeline.write_reconciliation_report(datetime.now())
+
+            mock_write_rows = mock_writer_class.return_value.writerows
+            mock_write_rows.assert_called_once_with([(
+                f'Z{participant.biobankId}',
+                ordered_sample.test,
+                Decimal('1'),  # sent count
+                order_identifier.value,
+                self._format_datetime(ordered_sample.collected),
+                self._format_datetime(ordered_sample.processed),
+                self._format_datetime(ordered_sample.finalized),
+                None, None, None, 'UNKNOWN',  # site info: name, client_number, hpo, hpo_type
+                None, None, None, 'UNKNOWN',  # finalized site info: name, client_number, hpo, hpo_type
+                None,  # finalized username
+                ordered_sample.test,
+                1,  # received count
+                str(stored_sample.biobankStoredSampleId),
+                self._format_datetime(stored_sample.confirmed),  # received time
+                None,  # created family date
+                None,  # elapsed hours
+                order_identifier.value,  # kit identifier
+                None,  # fedex tracking number
+                'N',  # is Native American
+                None, None, None,  # notes info: collected, processed, finalized
+                None, None, None, None, None,  # cancelled_restored info: status_flag, name, name, time, reason
+                None  # order origin
+            )])
+
+
