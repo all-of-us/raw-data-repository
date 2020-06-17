@@ -19,12 +19,11 @@ from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoup
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
-from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicJobRun
+from rdr_service.model.genomics import GenomicSetMember, GenomicSet
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob
-from rdr_service.offline.sql_exporter import SqlExporter, SqlExportFileWriter
 
 _logger = logging.getLogger("rdr_logger")
 

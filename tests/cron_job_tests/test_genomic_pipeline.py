@@ -22,8 +22,6 @@ from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.code_dao import CodeDao, CodeType
-from rdr_service.genomic import genomic_set_file_handler
-from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.model.biobank_dv_order import BiobankDVOrder
 from rdr_service.model.biobank_order import (
     BiobankOrder,
