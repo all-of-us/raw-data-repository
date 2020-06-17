@@ -322,6 +322,13 @@ class GoogleCloudStorageProvider(StorageProvider):
 
         source_bucket.copy_blob(source_blob, destination_bucket, destination_blob_name)
 
+    def download_blob(self, source_path, destination_path):
+        source_bucket_name, source_blob_name = self._parse_path(source_path)
+        storage_client = storage.Client()
+        source_bucket = storage_client.get_bucket(source_bucket_name)
+        source_blob = source_bucket.blob(source_blob_name)
+        source_blob.download_to_filename(destination_path)
+
     def exists(self, path):
         bucket_name, blob_name = self._parse_path(path)
         client = storage.Client()
