@@ -113,6 +113,18 @@
   "genomic_biobank_manifest_folder_name": [
     "genomic_samples_manifests"
   ],
+  "genomic_center_bucket_name": [
+   "dev-genomics-baylor",
+   "dev-genomics-broad",
+   "dev-genomics-northwest",
+   "dev-genomics-color"
+  ],
+  "genomic_center_data_bucket_name": [
+   "dev-genomics-raw-baylor",
+   "dev-genomics-raw-broad",
+   "dev-genomics-raw-northwest",
+   "dev-genomics-raw-color"
+  ],
   "metrics_shards": [
     "10"
   ],

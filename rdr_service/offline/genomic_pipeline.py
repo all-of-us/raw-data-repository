@@ -41,7 +41,7 @@ def process_genomic_water_line():
 
 def new_participant_workflow():
     """
-    Entrypoint for New Participant Workflow,
+    Entrypoint for New Participant Workflow (Cohort 3),
     Sources from newly-created biobank_stored_samples
     from the BiobankSamplesPipeline.
     """
@@ -88,7 +88,10 @@ def ingest_genomic_centers_metrics_files():
     """
     Entrypoint for GC Metrics File Ingestion subprocess of genomic_pipeline.
     """
-    with GenomicJobController(GenomicJob.METRICS_INGESTION) as controller:
+    with GenomicJobController(GenomicJob.METRICS_INGESTION,
+                              bucket_name=None,
+                              bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME,
+                              sub_folder_tuple=config.GENOMIC_AW2_SUBFOLDERS) as controller:
         controller.ingest_gc_metrics()
 
 
@@ -164,7 +167,8 @@ def create_cvl_w1_manifest():
     Entrypoint for CVL Manifest workflow
     Sources from list of biobank_ids from CVL reconciliation report
     """
-    with GenomicJobController(GenomicJob.CREATE_CVL_W1_MANIFESTS) as controller:
+    with GenomicJobController(GenomicJob.CREATE_CVL_W1_MANIFESTS,
+                              bucket_name=config.GENOMIC_CVL_BUCKET_NAME) as controller:
         controller.generate_manifest(GenomicManifestTypes.CVL_W1, _genome_type=config.GENOME_TYPE_WGS)
 
 

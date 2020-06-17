@@ -536,7 +536,7 @@ class GenomicFileValidator:
 
         def gc_validation_metrics_name_rule(fn):
             """GC metrics file name rule"""
-            filename_components = [x.lower() for x in fn.split("_")]
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
                 len(filename_components) == 5 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
@@ -1005,13 +1005,13 @@ class GenomicBiobankSamplesCoupler:
         """
         samples = self._get_new_biobank_samples(from_date)
         if len(samples) > 0:
-            return self.process_samples_into_manifest(samples)
+            return self.process_samples_into_manifest(samples, cohort=self.COHORT_3_ID)
 
         else:
             logging.info(f'New Participant Workflow: No new samples to process.')
             return GenomicSubProcessResult.NO_FILES
 
-    def create_c2_genomic_participants(self, from_date):
+    def create_c2_genomic_participants(self, from_date, local=False):
         """
         This method determines which samples to enter into the genomic system
         from Cohort 2.
@@ -1023,16 +1023,18 @@ class GenomicBiobankSamplesCoupler:
         samples = self._get_new_c2_consent_samples(from_date)
 
         if len(samples) > 0:
-            return self.process_samples_into_manifest(samples)
+            return self.process_samples_into_manifest(samples, cohort=self.COHORT_2_ID, local=local)
 
         else:
             logging.info(f'Cohort 2 Participant Workflow: No samples to process.')
             return GenomicSubProcessResult.NO_FILES
 
-    def process_samples_into_manifest(self, samples):
+    def process_samples_into_manifest(self, samples, cohort, local=False):
         """
         Compiles AW0 Manifest from samples list.
         :param samples:
+        :param cohort:
+        :param local: overrides automatic push to bucket
         :return: job result code
         """
         # Get the genomic data to insert into GenomicSetMember as multi-dim tuple
@@ -1078,6 +1080,7 @@ class GenomicBiobankSamplesCoupler:
                 validationFlags=valid_flags,
                 ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
                 genomeType=self._ARRAY_GENOME_TYPE,
+                genomicWorkflowState=GenomicWorkflowState.AW0_READY
             )
             # Also create a WGS member
             new_wgs_member_obj = deepcopy(new_array_member_obj)
@@ -1088,8 +1091,20 @@ class GenomicBiobankSamplesCoupler:
 
         # Create & transfer the Biobank Manifest based on the new genomic set
         try:
-            create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id,
-                                                            cohort_id=self.COHORT_3_ID)
+            if local:
+                return new_genomic_set.id
+            else:
+                create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id,
+                                                                cohort_id=cohort)
+
+            # Handle Genomic States for manifests
+            for member in self.member_dao.get_members_from_set_id(new_genomic_set.id):
+                new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
+                                                              signal='manifest-generated')
+
+                if new_state is not None or new_state != member.genomicWorkflowState:
+                    self.member_dao.update_member_state(member, new_state)
+
             logging.info(f'{self.__class__.__name__}: Genomic set members created ')
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
@@ -1231,7 +1246,7 @@ class GenomicBiobankSamplesCoupler:
                             ps.sample_status_1sal2 = :sample_status_param
                         )
                     AND ss.test IN ("1ED04", "1SAL2")
-                    AND ps.consent_cohort = :cohort_2_param                    
+                    AND ps.consent_cohort = :cohort_2_param          
                 """
 
         params = {

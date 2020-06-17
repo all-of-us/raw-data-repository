@@ -342,6 +342,17 @@ class GenomicSetMemberDao(UpdatableDao):
             ).first()
         return member
 
+    def get_members_from_set_id(self, set_id):
+        """
+        Retrieves all genomic set member records matching the set_id
+        :param set_id
+        :return: result set of GenomicSetMembers
+        """
+        with self.session() as session:
+            return session.query(GenomicSetMember).filter(
+                GenomicSetMember.genomicSetId == set_id,
+            ).all()
+
     def update_member_job_run_id(self, member, job_run_id, field):
         """
         Updates the GenomicSetMember with a job_run_id for an arbitrary workflow

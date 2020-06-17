@@ -586,6 +586,8 @@ class GenomicWorkflowState(messages.Enum):
     A2F = 30
     A3 = 31
 
+    AW0_READY = 32
+
 
 class GenomicSubProcessStatus(messages.Enum):
     """The status of a Genomics Sub-Process"""
