@@ -48,6 +48,13 @@ class ParticipantCohort(messages.Enum):
     COHORT_CURRENT = 3  # New Participants with consent starting from April 17, 2020.
 
 
+# Added for DA-1622, enabling identification of Genomics pilot participants from Cohort 2
+class ParticipantCohortPilotFlag(messages.Enum):
+    """ Participant Cohort Pilot Group """
+    UNSET = 0
+    COHORT_2_PILOT = 1 # Genomics Cohort 2 Pilot Group
+
+
 class PatientStatusFlag(messages.Enum):
     """Site patient status"""
 
