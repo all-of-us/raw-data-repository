@@ -447,7 +447,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
     def create_database_biobank_order(self, **kwargs):
         biobank_order = self._biobank_order(**kwargs)
-        self._commit_to_database(biobank_order)
+        self._commit_to_database(self.session, biobank_order)
         return biobank_order
 
     def _biobank_order(self, log_position=None, **kwargs):
@@ -467,7 +467,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
     def create_database_biobank_order_identifier(self, **kwargs):
         biobank_order_identifier = self._biobank_order_identifier(**kwargs)
-        self._commit_to_database(biobank_order_identifier)
+        self._commit_to_database(self.session, biobank_order_identifier)
         return biobank_order_identifier
 
     def _biobank_order_identifier(self, **kwargs):
@@ -475,7 +475,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
     def create_database_biobank_ordered_sample(self, **kwargs):
         biobank_ordered_sample = self._biobank_ordered_sample(**kwargs)
-        self._commit_to_database(biobank_ordered_sample)
+        self._commit_to_database(self.session, biobank_ordered_sample)
         return biobank_ordered_sample
 
     def _biobank_ordered_sample(self, **kwargs):
@@ -489,7 +489,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
     def create_database_biobank_stored_sample(self, **kwargs):
         biobank_stored_sample = self._biobank_stored_sample(**kwargs)
-        self._commit_to_database(biobank_stored_sample)
+        self._commit_to_database(self.session, biobank_stored_sample)
         return biobank_stored_sample
 
     def _biobank_stored_sample(self, **kwargs):
@@ -500,7 +500,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
     def create_database_log_position(self, **kwargs):
         log_position = self._log_position(**kwargs)
-        self._commit_to_database(log_position)
+        self._commit_to_database(self.session, log_position)
         return log_position
 
     def _log_position(self, **kwargs):
