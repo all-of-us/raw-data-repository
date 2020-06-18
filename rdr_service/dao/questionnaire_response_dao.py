@@ -393,7 +393,7 @@ class QuestionnaireResponseDao(BaseDao):
                 participant_summary.genderIdentity = gender
                 something_changed = True
 
-        dna_program_consent_update_code = config.getSettingJson(config.DNA_PROGRAM_CONSENT_QUESTION_CODE, None)
+        dna_program_consent_update_code = config.getSettingJson(config.DNA_PROGRAM_CONSENT_UPDATE_CODE, None)
 
         # Set summary fields to SUBMITTED for questionnaire concepts that are found in
         # QUESTIONNAIRE_MODULE_CODE_TO_FIELD

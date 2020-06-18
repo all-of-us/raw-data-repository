@@ -99,7 +99,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
                                     codeType=CodeType.ANSWER)
 
         config.override_setting(config.CONSENT_PDF_BUCKET, _FAKE_BUCKET)
-        config.override_setting(config.DNA_PROGRAM_CONSENT_QUESTION_CODE, DNA_PROGRAM_CONSENT_UPDATE_CODE_VALUE)
+        config.override_setting(config.DNA_PROGRAM_CONSENT_UPDATE_CODE, DNA_PROGRAM_CONSENT_UPDATE_CODE_VALUE)
         self.dna_program_consent_update_code = Code(system=PPI_SYSTEM, mapped=True, codeType=CodeType.MODULE,
                                                     value=DNA_PROGRAM_CONSENT_UPDATE_CODE_VALUE)
 

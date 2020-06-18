@@ -86,7 +86,7 @@ HPO_REPORT_CONFIG_MIXIN_PATH = "hpo_report_config_mixin_path"
 LOCALHOST_DEFAULT_BUCKET_NAME = 'local_bucket'
 
 # Questionnaire Codes
-DNA_PROGRAM_CONSENT_QUESTION_CODE = 'dna_program_consent_update_code'
+DNA_PROGRAM_CONSENT_UPDATE_CODE = 'dna_program_consent_update_code'
 
 # For testing different account names locally
 LOCAL_AUTH_USER = "example@example.com"
