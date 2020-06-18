@@ -1073,7 +1073,8 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_gc_manifest_ingestion_workflow(self):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
-                                                array_participants=range(1, 4))
+                                                array_participants=range(1, 4),
+                                                genomic_workflow_state=GenomicWorkflowState.AW0)
 
         # Setup Test file
         gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-1.csv")
@@ -1114,6 +1115,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("aou_array", member.gcManifestTestName)
                 self.assertEqual("", member.gcManifestFailureMode)
                 self.assertEqual("", member.gcManifestFailureDescription)
+                self.assertEqual(GenomicWorkflowState.AW1, member.genomicWorkflowState)
             if member.id == 3:
                 self.assertNotEqual(1, member.reconcileGCManifestJobRunId)
 
@@ -1127,7 +1129,8 @@ class GenomicPipelineTest(BaseTestCase):
     def test_aw1f_ingestion_workflow(self):
         # Setup test data: 1 aou_array, 1 aou_wgs
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
-                                                array_participants=[1])
+                                                array_participants=[1],
+                                                genomic_workflow_state=GenomicWorkflowState.AW0)
 
         # Setup Test AW1 file
         gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-2.csv")
@@ -1159,6 +1162,7 @@ class GenomicPipelineTest(BaseTestCase):
         members = sorted(self.member_dao.get_all(), key=lambda x: x.id)
         self.assertEqual(members[1].gcManifestFailureMode, 'damaged')
         self.assertEqual(members[1].gcManifestFailureDescription, 'Arrived and damaged')
+        self.assertEqual(members[1].genomicWorkflowState, GenomicWorkflowState.AW1F_POST)
 
         # Test file processing queue
         files_processed = self.file_processed_dao.get_all()
@@ -1169,7 +1173,7 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_gem_a1_manifest_end_to_end(self):
         # Need GC Manifest for source query : run_id = 1
-        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.BB_GC_MANIFEST,
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
                                               startTime=clock.CLOCK.now(),
                                               runStatus=GenomicSubProcessStatus.COMPLETED,
                                               runResult=GenomicSubProcessResult.SUCCESS))
@@ -1371,7 +1375,7 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_cvl_w1_manifest(self):
         # Need GC Manifest for source query : run_id = 1
-        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.BB_GC_MANIFEST,
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
                                               startTime=clock.CLOCK.now(),
                                               runStatus=GenomicSubProcessStatus.COMPLETED,
                                               runResult=GenomicSubProcessResult.SUCCESS))

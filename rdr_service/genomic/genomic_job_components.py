@@ -201,7 +201,7 @@ class GenomicFileIngester:
             if validation_result != GenomicSubProcessResult.SUCCESS:
                 return validation_result
 
-            if self.job_id in [GenomicJob.BB_GC_MANIFEST, GenomicJob.AW1F_MANIFEST]:
+            if self.job_id in [GenomicJob.AW1_MANIFEST, GenomicJob.AW1F_MANIFEST]:
                 return self._ingest_gc_manifest(data_to_ingest)
 
             if self.job_id == GenomicJob.METRICS_INGESTION:
@@ -281,6 +281,17 @@ class GenomicFileIngester:
                         member.__setattr__(key, None)
 
                 member.reconcileGCManifestJobRunId = self.job_run_id
+
+                # Update genomic state for failures
+                _signal = "aw1-reconciled"
+                if member.gcManifestFailureMode is not None and \
+                    member.gcManifestFailureMode != '':
+                    _signal = 'aw1-failed'
+
+                member.genomicWorkflowState = GenomicStateHandler.get_new_state(
+                    member.genomicWorkflowState,
+                    signal=_signal)
+
                 self.member_dao.update(member)
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
@@ -599,7 +610,7 @@ class GenomicFileValidator:
         name_rules = {
             GenomicJob.BB_RETURN_MANIFEST: bb_result_name_rule,
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
-            GenomicJob.BB_GC_MANIFEST: bb_to_gc_manifest_name_rule,
+            GenomicJob.AW1_MANIFEST: bb_to_gc_manifest_name_rule,
             GenomicJob.AW1F_MANIFEST: aw1f_manifest_name_rule,
             GenomicJob.GEM_A2_MANIFEST: gem_a2_manifest_name_rule,
             GenomicJob.W2_INGEST: cvl_w2_manifest_name_rule,
@@ -636,7 +647,7 @@ class GenomicFileValidator:
                 file_type = filename.lower().split("_")[2]
                 self.genome_type = self.GENOME_TYPE_MAPPINGS[file_type]
                 return self.GC_METRICS_SCHEMAS[file_type]
-            if self.job_id == GenomicJob.BB_GC_MANIFEST:
+            if self.job_id == GenomicJob.AW1_MANIFEST:
                 return self.GC_MANIFEST_SCHEMA
             if self.job_id == GenomicJob.GEM_A2_MANIFEST:
                 return self.GEM_A2_SCHEMA
