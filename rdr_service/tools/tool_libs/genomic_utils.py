@@ -14,14 +14,16 @@ import os
 import pytz
 
 from rdr_service import clock, config
-from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao
+from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao
+from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
+from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
-from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus
+from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -33,7 +35,8 @@ tool_desc = "Genomic system utilities"
 _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
 
-class ResendSamplesClass(object):
+
+class GenomicManifestBase(object):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
@@ -51,8 +54,13 @@ class ResendSamplesClass(object):
         self.DRC_BIOBANK_PREFIX = "Genomic-Manifest-AoU"
 
         self.nowts = clock.CLOCK.now()
-        self.nowf = _UTC.localize(self.nowts).astimezone(_US_CENTRAL)\
+        self.nowf = _UTC.localize(self.nowts).astimezone(_US_CENTRAL) \
             .replace(tzinfo=None).strftime(self.OUTPUT_CSV_TIME_FORMAT)
+
+
+class ResendSamplesClass(GenomicManifestBase):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(ResendSamplesClass, self).__init__(args, gcp_env)
 
     def get_members_for_samples(self, samples):
         """
@@ -202,6 +210,100 @@ class ResendSamplesClass(object):
         return 0
 
 
+class GenerateManifestClass(GenomicManifestBase):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(GenerateManifestClass, self).__init__(args, gcp_env)
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicJobRunDao()
+
+        # Check Args
+        if not self.args.manifest:
+            _logger.error('--manifest must be provided.')
+            return 1
+
+        # Check Manifest Type
+        if self.args.manifest not in [m.name for m in GenomicManifestTypes]:
+            _logger.error('Please choose a valid manifest type:')
+            _logger.error(f'    {[m.name for m in GenomicManifestTypes]}')
+            return 1
+
+        # AW0 Manifest
+        if self.args.manifest == "DRC_BIOBANK":
+            if self.args.cohort not in ['1', '2', '3']:
+                _logger.error('--cohort [1, 2, 3] must be provided when generating DRC_BIOBANK manifest')
+                return 1
+
+            if int(self.args.cohort) == 2:
+                _logger.info('Running c2 workflow')
+                self.generate_local_c2_manifest()
+
+    def generate_local_c2_manifest(self):
+        """
+        Creates a new C2 Manifest locally
+        :return:
+        """
+        job_run = self.dao.insert_run_record(GenomicJob.C2_PARTICIPANT_WORKFLOW)
+        last_run_time = self.dao.get_last_successful_runtime(GenomicJob.C2_PARTICIPANT_WORKFLOW)
+
+        biobank_coupler = GenomicBiobankSamplesCoupler(job_run.id)
+        new_set_id = biobank_coupler.create_c2_genomic_participants(last_run_time, local=True)
+
+        self.export_c2_manifest_to_local_file(new_set_id)
+
+    def export_c2_manifest_to_local_file(self, set_id):
+        """
+        Processes samples into a local AW0, Cohort 2 manifest file
+        :param genomic_set_id:
+        :param set_id:
+        :return:
+        """
+
+        project_config = self.gcp_env.get_app_config()
+        bucket_name = project_config.get(config.BIOBANK_SAMPLES_BUCKET_NAME)[0]
+        folder_name = "genomic_samples_manifests"
+
+        # creates local file
+        _logger.info(f"Exporting samples to manifest...")
+        _filename = f'{folder_name}/{self.DRC_BIOBANK_PREFIX}-{str(set_id)}-{self.nowf}_C2.CSV'
+
+        create_and_upload_genomic_biobank_manifest_file(set_id, self.nowts,
+                                                        bucket_name=bucket_name, filename=_filename)
+
+        # Handle Genomic States for manifests
+        member_dao = GenomicSetMemberDao()
+        new_members = member_dao.get_members_from_set_id(set_id)
+
+        for member in new_members:
+            self.update_member_genomic_state(member, 'manifest-generated')
+
+        local_path = f'{self.lsp.DEFAULT_STORAGE_ROOT}/{bucket_name}/{_filename}'
+        print()
+
+        _logger.info(f'Manifest Exported to local file:')
+        _logger.warning(f'  {local_path}')
+
+    def update_member_genomic_state(self, member, _signal):
+        """
+        Updates a genomic member's genomic state after the manifest has been generated.
+        :param member:
+        :param signal:
+        """
+        member_dao = GenomicSetMemberDao()
+        new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
+                                                      signal=_signal)
+
+        if new_state is not None or new_state != member.genomicWorkflowState:
+            member_dao.update_member_state(member, new_state)
+
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -217,7 +319,7 @@ def run():
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
 
-    subparser = parser.add_subparsers(help='genomic utilities')
+    subparser = parser.add_subparsers(help='genomic utilities', dest='util')
 
     # Resend to biobank tool
     resend_parser = subparser.add_parser("resend")
@@ -228,13 +330,22 @@ def run():
     resend_parser.add_argument("--csv", help="csv file with multiple sample ids to resend", default=None)  # noqa
     resend_parser.add_argument("--samples", help="a comma-separated list of samples to resend", default=None)  # noqa
 
-    # Genomic Test Datasets
+    # Manual Manifest Generation
+    new_manifest_parser = subparser.add_parser("generate-manifest")
+    manifest_type_list = [m.name for m in GenomicManifestTypes]
+    new_manifest_help = f"which manifest type to generate: {manifest_type_list}"
+    new_manifest_parser.add_argument("--manifest", help=new_manifest_help, default=None)  # noqa
+    new_manifest_parser.add_argument("--cohort", help="Cohort [1, 2, 3]", default=None)  # noqa
 
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-        if hasattr(args, 'manifest'):
+        if args.util == 'resend':
             process = ResendSamplesClass(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.util == 'generate-manifest':
+            process = GenerateManifestClass(args, gcp_env)
             exit_code = process.run()
         else:
             _logger.info('Please select a utility option to run. For help use "genomic --help".')

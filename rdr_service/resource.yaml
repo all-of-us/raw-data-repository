@@ -1,0 +1,10 @@
+# Configuration for resource service.
+
+runtime: python37
+service: resource
+entrypoint: gunicorn -c rdr_service/services/gunicorn_config.py --timeout 600 rdr_service.resource.main:app
+
+instance_class: F4
+
+automatic_scaling:
+  min_idle_instances: 1

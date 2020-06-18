@@ -9,6 +9,7 @@ import logging
 import os
 import pytz
 
+from rdr_service.participant_enums import GenomicWorkflowState
 from .genomic_set_file_handler import DataError, timestamp_from_filename
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs, open_cloud_file
@@ -127,8 +128,10 @@ def update_package_id_from_manifest_result_file(genomic_set_id, csv_file):
 
 
 def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=None,
-                                                    bucket_name=None, cohort_id=None):
-    result_filename = _get_output_manifest_file_name(genomic_set_id, timestamp, cohort_id)
+                                                    bucket_name=None, cohort_id=None, filename=None):
+    result_filename = filename if filename is not None \
+        else _get_output_manifest_file_name(genomic_set_id, timestamp, cohort_id)
+
     if bucket_name is None:
         bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
     exporter = SqlExporter(bucket_name)
@@ -150,9 +153,12 @@ def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=No
         ai_an
       FROM genomic_set_member
       WHERE genomic_set_id=:genomic_set_id
+        AND genomic_workflow_state=:aw0_ready_state
       ORDER BY id
     """
-    query_params = {"genomic_set_id": genomic_set_id, "prefix": BIOBANK_ID_PREFIX}
+    query_params = {"genomic_set_id": genomic_set_id,
+                    "prefix": BIOBANK_ID_PREFIX,
+                    "aw0_ready_state": int(GenomicWorkflowState.AW0_READY)}
     exporter.run_export(result_filename, export_sql, query_params)
 
 

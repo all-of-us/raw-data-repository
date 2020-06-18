@@ -292,7 +292,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
-            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
+            "consentCohort": str(ParticipantCohort.COHORT_3)
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -405,7 +405,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
-            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
+            "consentCohort": str(ParticipantCohort.COHORT_3)
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -570,7 +570,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "ehrStatus": "UNSET",
             "patientStatus": [],
             "participantOrigin": "example",
-            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
+            "consentCohort": str(ParticipantCohort.COHORT_3)
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -767,7 +767,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": 'example',
             "semanticVersionForPrimaryConsent": "v1",
-            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
+            "consentCohort": str(ParticipantCohort.COHORT_3)
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1109,7 +1109,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
-            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
+            "consentCohort": str(ParticipantCohort.COHORT_3)
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1235,7 +1235,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
-            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
+            "consentCohort": str(ParticipantCohort.COHORT_3)
         }
         self.assertJsonResponseMatches(expected, summary)
 

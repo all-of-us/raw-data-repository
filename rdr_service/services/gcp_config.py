@@ -48,6 +48,7 @@ GCP_REPLICA_INSTANCES = {
 GCP_SERVICES = [
     'default',
     'offline',
+    'resource'
 ]
 
 
@@ -66,6 +67,12 @@ GCP_SERVICE_CONFIG_MAP = OrderedDict({
             'type': 'service',
             'default': [
                 'rdr_service/offline.yaml'
+            ]
+        },
+        'resource': {
+            'type': 'service',
+            'default': [
+                'rdr_service/resource.yaml'
             ]
         },
         'cron': {
@@ -101,6 +108,12 @@ GCP_SERVICE_CONFIG_MAP = OrderedDict({
             'type': 'service',
             'default': [
                 'rdr_service/offline.yaml'
+            ]
+        },
+        'resource': {
+            'type': 'service',
+            'default': [
+                'rdr_service/resource.yaml'
             ]
         },
         'cron': {

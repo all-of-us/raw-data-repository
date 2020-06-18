@@ -139,14 +139,24 @@ _python()
             ;;
           genomic)
             # These are options specific to this tool.
-            local toolopts="resend"
+            local toolopts="resend generate-manifest"
             COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
             return 0
             ;;
           resend)
-            # app-engine split-traffic command
+            # genomic resend command
             if echo ${COMP_WORDS[@]} | grep -w "genomic" > /dev/null; then
               local toolopts="--help --manifest --csv --sample"
+              COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
+            else
+              COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
+            fi
+            return 0
+            ;;
+          generate-manifest)
+            # genomic generate-manifest command
+            if echo ${COMP_WORDS[@]} | grep -w "genomic" > /dev/null; then
+              local toolopts="--help --manifest --cohort"
               COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
             else
               COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
