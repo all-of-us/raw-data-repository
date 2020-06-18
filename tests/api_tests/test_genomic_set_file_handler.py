@@ -18,7 +18,8 @@ from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
 )
-from rdr_service.participant_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag
+from rdr_service.participant_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, \
+    GenomicWorkflowState
 from rdr_service.model.participant import Participant
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
@@ -424,6 +425,7 @@ class GenomicSetFileHandlerTest(BaseTestCase):
         sex_at_birth="F",
         genome_type="aou_array",
         ny_flag="Y",
+        genomic_workflow_state=GenomicWorkflowState.AW0_READY
     ):
         now = clock.CLOCK.now()
         genomic_set_member = GenomicSetMember()
@@ -439,6 +441,7 @@ class GenomicSetFileHandlerTest(BaseTestCase):
         genomic_set_member.biobankOrderId = biobank_order_id
         genomic_set_member.biobankId = biobank_id
         genomic_set_member.biobankOrderClientId = biobank_order_client_id
+        genomic_set_member.genomicWorkflowState = genomic_workflow_state
 
         member_dao = GenomicSetMemberDao()
         member_dao.insert(genomic_set_member)
