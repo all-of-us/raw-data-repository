@@ -62,6 +62,8 @@ class BiobankOrderApiTest(BaseTestCase):
         order_json = load_biobank_order_json(self.participant.participantId, filename="quest_biobank_order_1.json")
         result = self.send_post(self.path, order_json)
         self.assertEqual(result['id'], 'WEB1ABCD1234')
+        self.assertEqual(result['collectedInfo']['address'], {'city': 'Little Rock', 'line': ['address1', 'address2'],
+                                                              'postalCode': '72205-5302', 'state': 'AR'})
 
     @mock.patch('rdr_service.dao.biobank_order_dao.get_account_origin_id')
     def test_update_biobank_order_from_different_origin(self, quest_origin):
@@ -168,6 +170,14 @@ class BiobankOrderApiTest(BaseTestCase):
         result = self.send_get(get_path)
         self.assertEqual(result['total'], 1)
         self.assertEqual(len(result['data']), 1)
+        get_path = "BiobankOrder?origin=careevolution&state=AR&page=1&pageSize=2"
+        result = self.send_get(get_path)
+        self.assertEqual(result['total'], 1)
+        self.assertEqual(len(result['data']), 1)
+        get_path = "BiobankOrder?origin=careevolution&state=TN&page=1&pageSize=2"
+        result = self.send_get(get_path)
+        self.assertEqual(result['total'], 0)
+        self.assertEqual(len(result['data']), 0)
 
     def test_cancel_order(self):
         self.summary_dao.insert(self.participant_summary(self.participant))
