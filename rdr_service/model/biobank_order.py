@@ -121,6 +121,24 @@ class BiobankOrder(BiobankOrderBase, Base):
     samples = relationship("BiobankOrderedSample", cascade="all, delete-orphan")
     dvOrders = relationship("BiobankDVOrder", cascade="all, delete-orphan")
     genomicSetMember = relationship("GenomicSetMember", cascade="all, delete-orphan")
+    questSiteAddress = relationship("BiobankQuestOrderSiteAddress", uselist=False, cascade="all, delete-orphan",
+                                    backref="biobank_order")
+
+
+class BiobankQuestOrderSiteAddress(Base):
+    __tablename__ = "biobank_quest_order_site_address"
+    id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
+    address1 = Column("address1", String(500))
+    address2 = Column("address2", String(500))
+    city = Column("city", String(80))
+    state = Column("state", String(50))
+    zipCode = Column("zip_code", String(50))
+
+    @declared_attr
+    def biobankOrderId(cls):
+        return Column("biobank_order_id", String(80), ForeignKey("biobank_order.biobank_order_id"), nullable=False)
+
+
 
 
 class BiobankOrderIdentifierBase(object):
