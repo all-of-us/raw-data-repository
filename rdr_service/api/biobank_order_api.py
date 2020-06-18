@@ -30,6 +30,9 @@ class BiobankOrderApi(UpdatableApi):
         kwargs = {
             'participant_id': participant_id,
             'kit_id': request.args.get('kitId'),
+            'state': request.args.get('state'),
+            'city': request.args.get('city'),
+            'zip_code': request.args.get('zipCode'),
             'start_date': request.args.get('startDate'),
             'end_date': request.args.get('endDate'),
             'origin': request.args.get('origin'),
