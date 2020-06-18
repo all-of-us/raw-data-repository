@@ -298,6 +298,7 @@ class QuestionnaireResponseDao(BaseDao):
         dvehr_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
         street_address_submitted = False
         street_address2_submitted = False
+
         # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
         for answer in questionnaire_response.answers:
             question = question_map.get(answer.questionId)
@@ -392,6 +393,8 @@ class QuestionnaireResponseDao(BaseDao):
                 participant_summary.genderIdentity = gender
                 something_changed = True
 
+        dna_program_consent_update_code = config.getSettingJson(config.DNA_PROGRAM_CONSENT_QUESTION_CODE, None)
+
         # Set summary fields to SUBMITTED for questionnaire concepts that are found in
         # QUESTIONNAIRE_MODULE_CODE_TO_FIELD
         for concept in questionnaire_history.concepts:
@@ -436,6 +439,11 @@ class QuestionnaireResponseDao(BaseDao):
                         setattr(participant_summary, summary_field + "Authored", authored)
                         something_changed = True
                         module_changed = True
+                elif dna_program_consent_update_code is not None and code.value == dna_program_consent_update_code:
+                    # If we receive a questionnaire response it means they've viewed the update and we should mark
+                    # them as submitted
+                    participant_summary.questionnaireOnDnaProgram = QuestionnaireStatus.SUBMITTED
+                    participant_summary.questionnaireOnDnaProgramAuthored = authored
 
         if module_changed:
             participant_summary.numCompletedBaselinePPIModules = count_completed_baseline_ppi_modules(

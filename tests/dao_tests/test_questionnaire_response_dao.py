@@ -49,6 +49,8 @@ QUESTIONNAIRE_RESPONSE_RESOURCE_3 = '{"resourceType": "QuestionnaireResponse", "
 
 _FAKE_BUCKET = {"example": "ptc-uploads-unit-testing"}
 
+DNA_PROGRAM_CONSENT_UPDATE_CODE_VALUE = 'new_unknown_consent_update_code'
+
 
 def with_id(resource, id_):
     resource_json = json.loads(resource)
@@ -97,6 +99,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
                                     codeType=CodeType.ANSWER)
 
         config.override_setting(config.CONSENT_PDF_BUCKET, _FAKE_BUCKET)
+        config.override_setting(config.DNA_PROGRAM_CONSENT_QUESTION_CODE, DNA_PROGRAM_CONSENT_UPDATE_CODE_VALUE)
+        self.dna_program_consent_update_code = Code(system=PPI_SYSTEM, mapped=True, codeType=CodeType.MODULE,
+                                                    value=DNA_PROGRAM_CONSENT_UPDATE_CODE_VALUE)
 
     def _setup_questionnaire(self):
         q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
@@ -127,6 +132,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self.last_name_code_id = self.code_dao.insert(last_name_code()).codeId
         self.email_code_id = self.code_dao.insert(email_code()).codeId
         self.cope_consent_id = self.code_dao.insert(cope_consent_code()).codeId
+        self.dna_program_consent_update_code_id = self.code_dao.insert(self.dna_program_consent_update_code).codeId
         self.login_phone_number_code_id = self.code_dao.insert(login_phone_number_code()).codeId
         self.FN_QUESTION = QuestionnaireQuestion(linkId="fn", codeId=self.first_name_code_id, repeats=False)
         self.LN_QUESTION = QuestionnaireQuestion(linkId="ln", codeId=self.last_name_code_id, repeats=False)
@@ -619,12 +625,18 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         with FakeClock(TIME_2):
             self.questionnaire_response_dao.insert(qr)
 
-    def _create_cope_questionnaire(self, created_date=datetime.datetime(2020, 5, 5)):
-        q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
-        cope_consent_question = QuestionnaireQuestion(codeId=self.cope_consent_id, repeats=False)
-        q.questions.append(cope_consent_question)
+    def _create_questionnaire(self, created_date, question_code_id=None):
+        questionnaire = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
+
+        if question_code_id:
+            question = QuestionnaireQuestion(codeId=question_code_id, repeats=False)
+            questionnaire.questions.append(question)
+
         with FakeClock(created_date):
-            self.questionnaire_dao.insert(q)
+            self.questionnaire_dao.insert(questionnaire)
+
+    def _create_cope_questionnaire(self, created_date=datetime.datetime(2020, 5, 5)):
+        self._create_questionnaire(created_date, self.cope_consent_id)
 
     def _bump_questionnaire_version(self, questionnaire_id, updated_time):
         resource = json.loads(QUESTIONNAIRE_RESOURCE)
@@ -637,7 +649,10 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         with FakeClock(updated_time):
             self.questionnaire_dao.update(q)
 
-    def _submit_cope_consent(self, response_cope_consent_code, questionnaire_version=1, cope_consent_question_id=7):
+        return cope_consent_question
+
+    def _submit_questionnaire_response(self, response_consent_code=None, questionnaire_version=1,
+                                       consent_question_id=7):
         qr = QuestionnaireResponse(
             questionnaireId=2,
             questionnaireVersion=questionnaire_version,
@@ -646,14 +661,15 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
 
-        answer = QuestionnaireResponseAnswer(
-            questionnaireResponseId=2,
-            questionId=cope_consent_question_id,
-            valueSystem="a",
-            valueCodeId=response_cope_consent_code.codeId,
-        )
+        if response_consent_code:
+            answer = QuestionnaireResponseAnswer(
+                questionnaireResponseId=2,
+                questionId=consent_question_id,
+                valueSystem="a",
+                valueCodeId=response_consent_code.codeId,
+            )
 
-        qr.answers.extend([answer])
+            qr.answers.extend([answer])
 
         self.questionnaire_response_dao.insert(qr)
 
@@ -666,7 +682,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self._setup_participant()
         self._create_cope_questionnaire()
 
-        self._submit_cope_consent(self.cope_consent_yes)
+        self._submit_questionnaire_response(self.cope_consent_yes)
 
         self.assertEqual(2, self.participant_summary_dao.get(1).numCompletedPPIModules)
 
@@ -678,8 +694,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self._setup_participant()
         self._create_cope_questionnaire()
 
-        self._submit_cope_consent(self.cope_consent_yes)
-        self._submit_cope_consent(self.cope_consent_no)
+        self._submit_questionnaire_response(self.cope_consent_yes)
+        self._submit_questionnaire_response(self.cope_consent_no)
 
         self.assertEqual(QuestionnaireStatus.SUBMITTED_NO_CONSENT,
                          self.participant_summary_dao.get(1).questionnaireOnCopeMay)
@@ -693,7 +709,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self._create_cope_questionnaire()  # May survey
         self._bump_questionnaire_version(2, updated_time=datetime.datetime(2020, 5, 28))  # update for June survey
 
-        self._submit_cope_consent(self.cope_consent_yes, questionnaire_version=2, cope_consent_question_id=8)
+        self._submit_questionnaire_response(self.cope_consent_yes, questionnaire_version=2, consent_question_id=8)
 
         participant_summary = self.participant_summary_dao.get(1)
         self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeJune)
@@ -707,10 +723,28 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self._create_cope_questionnaire()  # May survey
         self._bump_questionnaire_version(2, updated_time=datetime.datetime(2020, 6, 7))  # June survey
 
-        self._submit_cope_consent(self.cope_consent_deferred, questionnaire_version=2, cope_consent_question_id=8)
+        self._submit_questionnaire_response(self.cope_consent_deferred, questionnaire_version=2, consent_question_id=8)
 
         participant_summary = self.participant_summary_dao.get(1)
         self.assertEqual(QuestionnaireStatus.SUBMITTED_NO_CONSENT, participant_summary.questionnaireOnCopeJune)
+
+    def _create_dna_program_questionnaire(self, created_date=datetime.datetime(2020, 5, 5)):
+        self._create_questionnaire(created_date)
+        self.create_database_questionnaire_concept(questionnaireId=2, questionnaireVersion=1,
+                                                   codeId=self.dna_program_consent_update_code_id)
+
+    def test_dna_program_consent_update_questionnaire(self):
+        self.insert_codes()
+        p = Participant(participantId=1, biobankId=2)
+        self.participant_dao.insert(p)
+        self._setup_participant()
+
+        self._create_dna_program_questionnaire()
+
+        self._submit_questionnaire_response()
+
+        participant_summary = self.participant_summary_dao.get(1)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnDnaProgram)
 
     def test_from_client_json_raises_BadRequest_for_excessively_long_value_string(self):
         self.insert_codes()
