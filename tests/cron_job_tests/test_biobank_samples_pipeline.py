@@ -28,7 +28,7 @@ from tests.helpers.unittest_base import BaseTestCase
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = "rdr_fake_bucket"
 
-_MAYO_KIT_SYSTEM = 'https://orders.mayomedicallaboratories.com/kit-id'
+_CE_QUEST_SYSTEM = 'http://careevolution.com/CareTask'
 
 
 class BiobankSamplesPipelineTest(BaseTestCase):
@@ -317,7 +317,7 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         order_identifier = self.create_database_biobank_order_identifier(
             biobankOrderId=order.biobankOrderId,
             value='KIT-001',
-            system=_MAYO_KIT_SYSTEM
+            system=_CE_QUEST_SYSTEM
         )
         ordered_sample = self.create_database_biobank_ordered_sample(
             biobankOrderId=order.biobankOrderId,
@@ -356,7 +356,7 @@ class BiobankSamplesPipelineTest(BaseTestCase):
                 self._format_datetime(stored_sample.confirmed),  # received time
                 None,  # created family date
                 None,  # elapsed hours
-                order_identifier.value,  # kit identifier
+                None,  # kit identifier
                 None,  # fedex tracking number
                 'N',  # is Native American
                 None, None, None,  # notes info: collected, processed, finalized
