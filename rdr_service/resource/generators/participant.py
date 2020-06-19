@@ -9,7 +9,7 @@ from rdr_service import config
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum, \
-    BQModuleStatusEnum, COHORT_BETA_CUTOFF, COHORT_LAUNCH_CUTOFF, BQConsentCohort
+    BQModuleStatusEnum, COHORT_1_CUTOFF, COHORT_2_CUTOFF, BQConsentCohort
 from rdr_service.model.hpo import HPO
 from rdr_service.model.measurements import PhysicalMeasurements, PhysicalMeasurementsStatus
 from rdr_service.model.organization import Organization
@@ -156,12 +156,12 @@ class ParticipantGenerator(generators.BaseGenerator):
 
         # Calculate consent cohort
         if consent_dt:
-            if consent_dt < COHORT_BETA_CUTOFF:
-                cohort = BQConsentCohort.COHORT_BETA
-            elif COHORT_BETA_CUTOFF <= consent_dt <= COHORT_LAUNCH_CUTOFF:
-                cohort = BQConsentCohort.COHORT_LAUNCH
+            if consent_dt < COHORT_1_CUTOFF:
+                cohort = BQConsentCohort.COHORT_1
+            elif COHORT_1_CUTOFF <= consent_dt <= COHORT_2_CUTOFF:
+                cohort = BQConsentCohort.COHORT_2
             else:
-                cohort = BQConsentCohort.COHORT_CURRENT
+                cohort = BQConsentCohort.COHORT_3
 
             data['consent_cohort'] = cohort.name
             data['consent_cohort_id'] = cohort.value
@@ -345,15 +345,15 @@ class ParticipantGenerator(generators.BaseGenerator):
         orders = list()
 
         sql = """
-          select bo.biobank_order_id, bo.created, bo.collected_site_id, bo.processed_site_id, bo.finalized_site_id, 
+          select bo.biobank_order_id, bo.created, bo.collected_site_id, bo.processed_site_id, bo.finalized_site_id,
                   bos.test, bos.collected, bos.processed, bos.finalized, bo.order_status,
-                  bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed, 
+                  bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed,
                   bss.status as bb_status, (
                     select count(1) from biobank_dv_order bdo where bdo.biobank_order_id = bo.biobank_order_id
                   ) as dv_order
             from biobank_order bo inner join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
                     inner join biobank_order_identifier boi on bo.biobank_order_id = boi.biobank_order_id
-                    left outer join 
+                    left outer join
                       biobank_stored_sample bss on boi.`value` = bss.biobank_order_identifier and bos.test = bss.test
             where boi.`system` = 'https://www.pmi-ops.org' and bo.participant_id = :pid
             order by bo.biobank_order_id, bos.test;

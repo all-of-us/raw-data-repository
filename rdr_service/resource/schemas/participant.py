@@ -18,8 +18,8 @@ class StreetAddressTypeEnum(Enum):
     EMPLOYMENT = 3
 
 
-COHORT_BETA_CUTOFF = date(2018, 4, 24)
-COHORT_LAUNCH_CUTOFF = date(2020, 4, 16)
+COHORT_1_CUTOFF = date(2018, 4, 24)
+COHORT_2_CUTOFF = date(2020, 4, 16)
 
 
 class AddressSchema(MarshmallowSchema):

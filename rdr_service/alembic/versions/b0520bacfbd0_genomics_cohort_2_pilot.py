@@ -1,7 +1,7 @@
 """genomics cohort 2 pilot
 
 Revision ID: b0520bacfbd0
-Revises: 94fa5d266916
+Revises: ed465f72e410
 Create Date: 2020-06-17 15:27:05.910908
 
 """
@@ -22,7 +22,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = 'b0520bacfbd0'
-down_revision = '94fa5d266916'
+down_revision = 'ed465f72e410'
 branch_labels = None
 depends_on = None
 

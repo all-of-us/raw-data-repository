@@ -334,8 +334,11 @@ class ParticipantSummary(Base):
     def siteId(cls):
         return Column("site_id", Integer, ForeignKey("site.site_id"))
 
-    consentCohort = Column("consent_cohort", Enum(ParticipantCohort), nullable=True)
-    cohort2PilotFlag = Column("cohort_2_pilot_flag", Enum(ParticipantCohortPilotFlag), nullable=True)
+    consentCohort = Column("consent_cohort", Enum(ParticipantCohort), default=ParticipantCohort.UNSET)
+    cohort2PilotFlag = Column(
+        "cohort_2_pilot_flag", Enum(ParticipantCohortPilotFlag), default=ParticipantCohortPilotFlag.UNSET
+    )
+
 
 Index("participant_summary_biobank_id", ParticipantSummary.biobankId)
 Index("participant_summary_ln_dob", ParticipantSummary.lastName, ParticipantSummary.dateOfBirth)
