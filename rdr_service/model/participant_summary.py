@@ -19,7 +19,8 @@ from rdr_service.participant_enums import (
     SuspensionStatus,
     WithdrawalReason,
     WithdrawalStatus,
-    ParticipantCohort)
+    ParticipantCohort,
+    ParticipantCohortPilotFlag)
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
 # participants.
@@ -337,7 +338,11 @@ class ParticipantSummary(Base):
     def siteId(cls):
         return Column("site_id", Integer, ForeignKey("site.site_id"))
 
-    consentCohort = Column("consent_cohort", Enum(ParticipantCohort), nullable=True, default=0)
+    consentCohort = Column("consent_cohort", Enum(ParticipantCohort), default=ParticipantCohort.UNSET)
+    cohort2PilotFlag = Column(
+        "cohort_2_pilot_flag", Enum(ParticipantCohortPilotFlag), default=ParticipantCohortPilotFlag.UNSET
+    )
+
 
 Index("participant_summary_biobank_id", ParticipantSummary.biobankId)
 Index("participant_summary_ln_dob", ParticipantSummary.lastName, ParticipantSummary.dateOfBirth)

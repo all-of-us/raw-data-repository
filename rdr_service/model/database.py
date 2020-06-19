@@ -11,6 +11,7 @@ from rdr_service.model.base import Base, MetricsBase
 # pylint: disable=unused-import
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample, \
     BiobankSpecimen, BiobankAliquot, BiobankAliquotDataset, BiobankAliquotDatasetItem, BiobankSpecimenAttribute, \
