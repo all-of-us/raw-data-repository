@@ -128,6 +128,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "questionnaireOnCopeMay": "UNSET",
                 "questionnaireOnCopeJune": "UNSET",
                 "questionnaireOnCopeJuly": "UNSET",
+                "questionnaireOnDnaProgram": "UNSET",
                 "questionnaireOnHealthcareAccess": "UNSET",
                 "enrollmentStatus": "INTERESTED",
                 "consentForGenomicsROR": "UNSET",

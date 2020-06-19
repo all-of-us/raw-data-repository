@@ -193,6 +193,10 @@ class ParticipantSummary(Base):
     )
     questionnaireOnCopeJulyTime = Column("questionnaire_on_cope_july_time", UTCDateTime)
     questionnaireOnCopeJulyAuthored = Column("questionnaire_on_cope_july_authored", UTCDateTime)
+    questionnaireOnDnaProgram = Column(
+        "questionnaire_on_dna_program", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
+    )
+    questionnaireOnDnaProgramAuthored = Column("questionnaire_on_dna_program_authored", UTCDateTime)
 
     # Fields for which samples have been received, and at what times.
     sampleStatus1SST8 = Column("sample_status_1sst8", Enum(SampleStatus), default=SampleStatus.UNSET)
