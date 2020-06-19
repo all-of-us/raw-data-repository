@@ -2,28 +2,20 @@
 import logging
 import os
 import signal
-from datetime import datetime
 
 from flask import Flask, Response, got_request_exception
+from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
 
 from rdr_service import app_util
-from rdr_service.offline.bigquery_sync import rebuild_bigquery_handler
+from rdr_service.api.cloud_tasks_api import RebuildParticipantsTaskApi, RebuildCodebookTaskApi, \
+    CopyCloudStorageObjectTaskApi, BQRebuildQuestionnaireTaskApi, GenerateBiobankSamplesTaskApi, \
+    RebuildOneParticipantTaskApi
+from rdr_service.services.flask import TASK_PREFIX
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
     flask_restful_log_exception_error
 
 PREFIX = "/resource/"
-
-
-@app_util.auth_required_cron
-def resource_rebuild_cron():
-    """ this should always be a manually run job, but we have to schedule it at least once a year. """
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    rebuild_bigquery_handler()
-    return '{"success": "true"}'
 
 
 def start():
@@ -49,8 +41,31 @@ def _stop():
 
 def _build_resource_app():
     _app = Flask(__name__)
+    _api = Api(_app)
 
-    _app.add_url_rule(PREFIX, endpoint="/", view_func=start, methods=["GET"])
+    #
+    # Cloud Tasks API endpoints
+    #
+    # Task Queue API endpoint to rebuild participant summary resources.
+    _api.add_resource(RebuildParticipantsTaskApi, TASK_PREFIX + "RebuildParticipantsTaskApi",
+                      endpoint="rebuild_participants_task", methods=["POST"])
+    # Task Queue API endpoint to rebuild ONE participant resource.
+    _api.add_resource(RebuildOneParticipantTaskApi, TASK_PREFIX + "RebuildOneParticipantTaskApi",
+                      endpoint="rebuild_one_participant_task", methods=["POST"])
+    # Task Queue API endpoing to rebuild codebook resources.
+    _api.add_resource(RebuildCodebookTaskApi, TASK_PREFIX + "RebuildCodebookTaskApi",
+                      endpoint="rebuild_codebook_task", methods=["POST"])
+    _api.add_resource(BQRebuildQuestionnaireTaskApi, TASK_PREFIX + "RebuildQuestionnaireTaskApi",
+                      endpoint="rebuild_questionnaire_task", methods=["POST"])
+
+    _api.add_resource(CopyCloudStorageObjectTaskApi, TASK_PREFIX + "CopyCloudStorageObjectTaskApi",
+                     endpoint="copy_cloudstorage_object_task", methods=["POST"])
+
+    _api.add_resource(GenerateBiobankSamplesTaskApi, TASK_PREFIX + "GenerateBiobankSamplesTaskApi",
+                     endpoint="generate_bio_samples_task", methods=["POST"])
+
+    # Simple API call for testing resource service.
+    # _app.add_url_rule(PREFIX, endpoint="/", view_func=start, methods=["GET"])
 
     _app.add_url_rule('/_ah/start', endpoint='start', view_func=start, methods=["GET"])
     _app.add_url_rule('/_ah/stop', endpoint='stop', view_func=_stop, methods=["GET"])

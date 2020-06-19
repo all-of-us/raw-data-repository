@@ -4,10 +4,12 @@
 #
 import hashlib
 import json
+import logging
 import re
 
 from marshmallow_jsonschema import JSONSchema
 from sqlalchemy import and_
+from sqlalchemy.exc import IntegrityError
 
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.code import Code
@@ -61,7 +63,11 @@ class ResourceRecordSet(object):
             rec.typeUID = type_uid
 
             session.add(rec)
-            session.commit()
+            try:
+                session.commit()
+            except IntegrityError:
+                # Record already exists, parallel tasks can cause this.  We should not see these often.
+                logging.warning(f'Resource type record already exists for {rec.typeName}.')
 
         return rec
 
@@ -121,7 +127,7 @@ class ResourceRecordSet(object):
 
                 hpo_id = resource['hpo_id'] if 'hpo_id' in resource else None
                 # TODO: Populate parent resource values in URI in recursive calls.
-                res_uri = type_rec.resourceURI + '/' + resource[type_rec.resourcePKField]
+                res_uri = type_rec.resourceURI + '/' + str(resource[type_rec.resourcePKField])
 
                 # Look for existing resource record.
                 rec = session.query(ResourceData).filter(ResourceData.uri == res_uri).first()

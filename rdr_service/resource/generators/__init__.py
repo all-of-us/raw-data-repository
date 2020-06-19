@@ -4,11 +4,11 @@
 #
 from ._base import BaseGenerator, ResourceRecordSet
 from .code import CodeGenerator
-from .participant import ParticipantGenerator
+from .participant import ParticipantSummaryGenerator
 
 __all__ = [
     'BaseGenerator',
     'ResourceRecordSet',
     'CodeGenerator',
-    'ParticipantGenerator'
+    'ParticipantSummaryGenerator'
 ]

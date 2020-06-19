@@ -4,7 +4,9 @@ runtime: python37
 service: resource
 entrypoint: gunicorn -c rdr_service/services/gunicorn_config.py --timeout 600 rdr_service.resource.main:app
 
-instance_class: F4
+instance_class: B4
 
-automatic_scaling:
-  min_idle_instances: 1
+# We need to specify basic scaling in order to use a backend instance class.
+basic_scaling:
+  max_instances: 10
+  idle_timeout: 60m

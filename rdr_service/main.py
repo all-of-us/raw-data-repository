@@ -18,9 +18,6 @@ from rdr_service import app_util
 from rdr_service.api import metrics_ehr_api
 from rdr_service.api.awardee_api import AwardeeApi
 from rdr_service.api.bigquery_participant_summary_api import BQParticipantSummaryApi
-from rdr_service.api.cloud_tasks_api import RebuildParticipantsBQTaskApi, RebuildCodebookBQTaskApi, \
-    CopyCloudStorageObjectTaskApi, BQRebuildQuestionnaireTaskApi, GenerateBiobankSamplesTaskApi, \
-    BQRebuildOneParticipantTaskApi
 from rdr_service.api.biobank_order_api import BiobankOrderApi
 from rdr_service.api.biobank_specimen_api import BiobankSpecimenApi, BiobankSpecimenStatusApi,\
     BiobankSpecimenDisposalApi, BiobankSpecimenAttributeApi, BiobankSpecimenAliquotApi, BiobankAliquotStatusApi,\
@@ -47,7 +44,7 @@ from rdr_service.api.research_projects_directory_api import ResearchProjectsDire
 from rdr_service.api.redcap_workbench_audit_api import RedcapWorkbenchAuditApi
 from rdr_service.config import get_config, get_db_config
 
-from rdr_service.services.flask import app, API_PREFIX, TASK_PREFIX
+from rdr_service.services.flask import app, API_PREFIX
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
     flask_restful_log_exception_error
 
@@ -347,28 +344,6 @@ api.add_resource(version_api.VersionApi, "/", API_PREFIX, endpoint="version", me
 
 # Data generator API used to load fake data into the database.
 api.add_resource(DataGenApi, API_PREFIX + "DataGen", endpoint="datagen", methods=["POST", "PUT"])
-
-#
-# Cloud Tasks API endpoints
-#
-# Task Queue API endpoint to rebuild BQ participant summary records.
-api.add_resource(RebuildParticipantsBQTaskApi, TASK_PREFIX + "BQRebuildParticipantsTaskApi",
-                 endpoint="bq_rebuild_participants_task", methods=["POST"])
-# Task Queue API endpoint to rebuild ONE participant id.
-api.add_resource(BQRebuildOneParticipantTaskApi, TASK_PREFIX + "BQRebuildOneParticipantTaskApi",
-                 endpoint="bq_rebuild_one_participant_task", methods=["POST"])
-# Task Queue API endpoing to rebuild BQ codebook records.
-api.add_resource(RebuildCodebookBQTaskApi, TASK_PREFIX + "BQRebuildCodebookTaskApi",
-                 endpoint="bq_rebuild_codebook_task", methods=["POST"])
-
-api.add_resource(CopyCloudStorageObjectTaskApi, TASK_PREFIX + "CopyCloudStorageObjectTaskApi",
-                 endpoint="copy_cloudstorage_object_task", methods=["POST"])
-
-api.add_resource(BQRebuildQuestionnaireTaskApi, TASK_PREFIX + "BQRebuildQuestionnaireTaskApi",
-                 endpoint="bq_rebuild_questionnaire_task", methods=["POST"])
-
-api.add_resource(GenerateBiobankSamplesTaskApi, TASK_PREFIX + "GenerateBiobankSamplesTaskApi",
-                 endpoint="generate_bio_samples_task", methods=["POST"])
 
 
 #
