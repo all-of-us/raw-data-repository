@@ -29,7 +29,8 @@ from rdr_service.model.code import Code
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.organization import Organization
-from rdr_service.model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
+from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireHistory,\
+    QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.model.hpo import HPO
 from rdr_service.model.site import Site
@@ -155,6 +156,14 @@ class QuestionnaireTestMixin:
                 kwargs[field] = default
 
         return Questionnaire(**kwargs)
+
+    def create_database_questionnaire_concept(self, **kwargs):
+        questionnaire_concept = self._questionnaire_concept(**kwargs)
+        self._commit_to_database(self.session, questionnaire_concept)
+        return questionnaire_concept
+
+    def _questionnaire_concept(self, **kwargs):
+        return QuestionnaireConcept(**kwargs)
 
     def create_database_questionnaire_history(self, **kwargs):
         questionnaire_history = self._questionnaire_history(**kwargs)

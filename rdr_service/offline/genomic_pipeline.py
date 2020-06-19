@@ -63,7 +63,7 @@ def genomic_centers_manifest_workflow():
     Entrypoint for Ingestion:
         Biobank to Genomic Centers Manifest (AW1)
     """
-    with GenomicJobController(GenomicJob.BB_GC_MANIFEST,
+    with GenomicJobController(GenomicJob.AW1_MANIFEST,
                               bucket_name=None,
                               bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
                               sub_folder_name=config.GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME
