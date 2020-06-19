@@ -171,7 +171,7 @@ class GenomicJobController:
 
     def run_genomic_centers_manifest_workflow(self):
         """
-        Uses GenomicFileIngester to ingest Genomic Manifest files.
+        Uses GenomicFileIngester to ingest Genomic Manifest files (AW1).
         Reconciles samples in manifests against GenomicSetMember.validationStatus
         """
         try:
