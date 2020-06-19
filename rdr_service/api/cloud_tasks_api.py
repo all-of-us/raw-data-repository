@@ -9,8 +9,10 @@ from rdr_service.api.data_gen_api import generate_samples_task
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
 from rdr_service.app_util import task_auth_required
-from rdr_service.offline.bigquery_sync import rebuild_bq_participant_task
+from rdr_service.resource.tasks import batch_rebuild_participants_task
 from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
+from rdr_service.resource.generators.participant import participant_summary_update_resource_task
+from rdr_service.resource.generators.code import rebuild_codebook_resources_task
 
 
 def log_task_headers():
@@ -24,21 +26,21 @@ def log_task_headers():
     logging.info(msg)
 
 
-class RebuildParticipantsBQTaskApi(Resource):
+class RebuildParticipantsTaskApi(Resource):
     """
-    Cloud Task endpoint: Rebuild all participant records for BigQuery.
+    Cloud Task endpoint: Rebuild all participant records for Resource/BigQuery.
     """
     @task_auth_required
     def post(self):
         log_task_headers()
         data = request.get_json(force=True)
-        rebuild_bq_participant_task(data)
+        batch_rebuild_participants_task(data)
         return '{"success": "true"}'
 
 
-class BQRebuildOneParticipantTaskApi(Resource):
+class RebuildOneParticipantTaskApi(Resource):
     """
-    Cloud Task endpoint: Rebuild one participant record for BigQuery.
+    Cloud Task endpoint: Rebuild one participant record for Resource/BigQuery.
     """
     @task_auth_required
     def post(self):
@@ -49,11 +51,12 @@ class BQRebuildOneParticipantTaskApi(Resource):
             raise NotFound('Invalid participant id')
         logging.info(f'Rebuilding participant summary for P{p_id}.')
         bq_participant_summary_update_task(p_id)
+        participant_summary_update_resource_task(p_id)
         logging.info('Complete.')
         return '{"success": "true"}'
 
 
-class RebuildCodebookBQTaskApi(Resource):
+class RebuildCodebookTaskApi(Resource):
     """
     Cloud Task endpoint: Rebuild Codebook records for BigQuery.
     """
@@ -62,6 +65,7 @@ class RebuildCodebookBQTaskApi(Resource):
         log_task_headers()
         logging.info('Rebuilding Codebook.')
         rebuild_bq_codebook_task()
+        rebuild_codebook_resources_task()
         logging.info('Complete.')
         return '{"success": "true"}'
 

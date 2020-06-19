@@ -37,7 +37,7 @@ class GCPCloudTask(object):
         if payload and not isinstance(payload, dict):
             raise TypeError('payload must be a dict object.')
 
-        from rdr_service.main import app
+        from rdr_service.resource.main import app
         if endpoint not in app.url_map._rules_by_endpoint:
             raise ValueError('endpoint is not registered in app.')
         res = app.url_map._rules_by_endpoint[endpoint][0]

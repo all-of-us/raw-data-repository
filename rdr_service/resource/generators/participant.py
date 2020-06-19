@@ -21,7 +21,7 @@ from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, 
 from rdr_service.resource import generators, schemas
 
 
-class ParticipantGenerator(generators.BaseGenerator):
+class ParticipantSummaryGenerator(generators.BaseGenerator):
     """
     Generate a Participant Summary Resource object
     """
@@ -452,8 +452,8 @@ class ParticipantGenerator(generators.BaseGenerator):
         # check physical measurements
         if 'pm' in ro_summary:
             for pm in ro_summary['pm']:
-                if pm['pm_status_id'] == int(PhysicalMeasurementsStatus.COMPLETED) or \
-                    (pm['pm_finalized'] and pm['pm_status_id'] != int(PhysicalMeasurementsStatus.CANCELLED)):
+                if pm['status_id'] == int(PhysicalMeasurementsStatus.COMPLETED) or \
+                    (pm['finalized'] and pm['status_id'] != int(PhysicalMeasurementsStatus.CANCELLED)):
                     pm_complete = True
 
         baseline_module_count = dna_sample_count = 0
@@ -513,7 +513,7 @@ class ParticipantGenerator(generators.BaseGenerator):
 
         if 'pm' in summary:
             for pm in summary['pm']:
-                if pm['pm_status_id'] != int(PhysicalMeasurementsStatus.CANCELLED) and pm['finalized']:
+                if pm['status_id'] != int(PhysicalMeasurementsStatus.CANCELLED) and pm['finalized']:
                     dates.append(datetime_to_date(pm['finalized']))
 
         if 'biobank_orders' in summary:
@@ -593,55 +593,38 @@ class ParticipantGenerator(generators.BaseGenerator):
 
         return None
 
-#
-# def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None):
-#     """
-#     Rebuild a BQ record for a specific participant
-#     :param p_id: participant id
-#     :param ps_bqgen: BQParticipantSummaryGenerator object
-#     :param pdr_bqgen: BQPDRParticipantSummaryGenerator object
-#     :param project_id: Project ID override value.
-#     :return:
-#     """
-#     # Allow for batch requests to rebuild participant summary data.
-#     if not ps_bqgen:
-#         ps_bqgen = BQParticipantSummaryGenerator()
-#     if not pdr_bqgen:
-#         from rdr_service.dao.bq_pdr_participant_summary_dao import BQPDRParticipantSummaryGenerator
-#         pdr_bqgen = BQPDRParticipantSummaryGenerator()
-#
-#     try:
-#         app_id = config.GAE_PROJECT
-#     except AttributeError:
-#         app_id = 'localhost'
-#
-#     ps_bqr = ps_bqgen.make_bqrecord(p_id)
-#
-#     # filter test or ghost participants if production
-#     if app_id == 'all-of-us-rdr-prod':  # or app_id == 'localhost':
-#         if ps_bqr.is_ghost_id == 1 or ps_bqr.hpo == 'TEST' or (ps_bqr.email and '@example.com' in ps_bqr.email):
-#             return None
-#
-#     # Since the PDR participant summary is primarily a subset of the Participant Summary, call the full
-#     # Participant Summary generator and take what we need from it.
-#     pdr_bqr = pdr_bqgen.make_bqrecord(p_id, ps_bqr=ps_bqr)
-#
-#     w_dao = BigQuerySyncDao()
-#     with w_dao.session() as w_session:
-#         # save the participant summary record.
-#         ps_bqgen.save_bqrecord(p_id, ps_bqr, bqtable=BQParticipantSummary, w_dao=w_dao, w_session=w_session,
-#                                project_id=project_id)
-#         # save the PDR participant summary record
-#         pdr_bqgen.save_bqrecord(p_id, pdr_bqr, bqtable=BQPDRParticipantSummary, w_dao=w_dao, w_session=w_session,
-#                                 project_id=project_id)
-#         w_session.flush()
-#
-#     return ps_bqr
-#
-#
-# def bq_participant_summary_update_task(p_id):
-#     """
-#     Cloud task to update the Participant Summary record for the given participant.
-#     :param p_id: Participant ID
-#     """
-#     rebuild_bq_participant(p_id)
+
+def rebuild_participant_summary_resource(p_id, res_gen=None, project_id=None):
+    """
+    Rebuild a resource record for a specific participant
+    :param p_id: participant id
+    :param res_gen: ParticipantSummaryGenerator object
+    :param project_id: Project ID override value.
+    :return:
+    """
+    # Allow for batch requests to rebuild participant summary data.
+    if not res_gen:
+        res_gen = ParticipantSummaryGenerator()
+    try:
+        app_id = project_id if project_id else config.GAE_PROJECT
+    except AttributeError:
+        app_id = 'localhost'
+
+    res = res_gen.make_resource(p_id)
+
+    # filter test or ghost participants if production
+    if app_id == 'all-of-us-rdr-prod':  # or app_id == 'localhost':
+        if res.is_ghost_id == 1 or res.hpo == 'TEST' or (res.email and '@example.com' in res.email):
+            return None
+
+    res.save()
+
+    return res
+
+
+def participant_summary_update_resource_task(p_id):
+    """
+    Cloud task to update the Participant Summary record for the given participant.
+    :param p_id: Participant ID
+    """
+    rebuild_participant_summary_resource(p_id)

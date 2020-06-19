@@ -34,8 +34,8 @@ class QuestionnaireResponseApi(BaseApi):
                 bq_questionnaire_update_task(p_id, qr_id)
             else:
                 params = {'p_id': p_id, 'qr_id': qr_id}
-                task = GCPCloudTask('bq_rebuild_questionnaire_task',
-                                    queue='bigquery-tasks', payload=params, in_seconds=5)
+                task = GCPCloudTask('rebuild_questionnaire_task',
+                                    queue='resource-tasks', payload=params, in_seconds=5)
                 task.execute()
 
         return resp

@@ -10,28 +10,26 @@ from sqlalchemy import func
 
 from rdr_service import config
 from rdr_service.cloud_utils.bigquery import BigQueryJob
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
 from rdr_service.dao.bq_hpo_dao import bq_hpo_update
 from rdr_service.dao.bq_organization_dao import bq_organization_update
-from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator, rebuild_bq_participant
-from rdr_service.dao.bq_pdr_participant_summary_dao import BQPDRParticipantSummaryGenerator
-from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.dao.bq_site_dao import bq_site_update
 from rdr_service.model.bigquery_sync import BigQuerySync
-from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
-    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay
 from rdr_service.model.participant import Participant
-from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.resource.generators.code import rebuild_codebook_resources_task
+from rdr_service.resource.tasks import batch_rebuild_participants_task
 
 
 # disable pylint warning for 'Exception':
 # pylint: disable=redefined-builtin
 # pylint: disable=unused-argument
+
 class BigQueryJobError(BaseException):
     """ BigQuery Job Exception """
 
-# Only perform BQ operations in these environments.
+# Only perform BQ/Resource operations in these environments.
 _bq_env = ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-sandbox', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']
 
 def rebuild_bigquery_handler():
@@ -68,10 +66,10 @@ def rebuild_bigquery_handler():
                 payload = {'batch': batch}
 
                 if config.GAE_PROJECT == 'localhost':
-                    rebuild_bq_participant_task(payload)
+                    batch_rebuild_participants_task(payload)
                 else:
-                    task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
-                                        queue='bigquery-rebuild')
+                    task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
+                                        queue='resource-rebuild')
                     task.execute(quiet=True)
                 batch_count += 1
                 # reset for next batch
@@ -83,10 +81,10 @@ def rebuild_bigquery_handler():
             payload = {'batch': batch}
             batch_count += 1
             if config.GAE_PROJECT == 'localhost':
-                rebuild_bq_participant_task(payload)
+                batch_rebuild_participants_task(payload)
             else:
-                task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
-                                    queue='bigquery-rebuild')
+                task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
+                                    queue='resource-rebuild')
                 task.execute(quiet=True)
 
         logging.info(f'Submitted {batch_count} tasks.')
@@ -96,6 +94,7 @@ def rebuild_bigquery_handler():
     #
     # Code Table
     rebuild_bq_codebook_task()
+    rebuild_codebook_resources_task()
     # HPO Table
     bq_hpo_update()
     # Organization Table
@@ -145,10 +144,10 @@ def daily_rebuild_bigquery_handler():
                 payload = {'batch': batch}
 
                 if config.GAE_PROJECT == 'localhost':
-                    rebuild_bq_participant_task(payload)
+                    batch_rebuild_participants_task(payload)
                 else:
-                    task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
-                                        queue='bigquery-rebuild')
+                    task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
+                                        queue='resource-rebuild')
                     task.execute(quiet=True)
                 batch_count += 1
                 # reset for next batch
@@ -160,63 +159,13 @@ def daily_rebuild_bigquery_handler():
             payload = {'batch': batch}
             batch_count += 1
             if config.GAE_PROJECT == 'localhost':
-                rebuild_bq_participant_task(payload)
+                batch_rebuild_participants_task(payload)
             else:
-                task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
-                                    queue='bigquery-rebuild')
+                task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
+                                    queue='resource-rebuild')
                 task.execute(quiet=True)
 
         logging.info(f'Submitted {batch_count} tasks.')
-
-
-def rebuild_bq_participant_task(payload):
-    """
-    Loop through all participants in batch and generate the BQ participant summary data and
-    store it in the biguqery_sync table.
-    Warning: this will force a rebuild and eventually a re-sync for every participant record.
-    :param payload: Dict object with list of participants to work on.
-    """
-    ps_bqgen = BQParticipantSummaryGenerator()
-    pdr_bqgen = BQPDRParticipantSummaryGenerator()
-    mod_bqgen = BQPDRQuestionnaireResponseGenerator()
-    count = 0
-
-    batch = payload['batch']
-
-    logging.info(f'Start time: {datetime.utcnow()}, batch size: {len(batch)}')
-
-    for item in batch:
-        p_id = item['pid']
-        count += 1
-
-        ps_bqr = rebuild_bq_participant(p_id, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen)
-        # Test to see if participant record has been filtered.
-        if not ps_bqr:
-            continue
-
-        # Generate participant questionnaire module response data
-        modules = (
-            BQPDRConsentPII,
-            BQPDRTheBasics,
-            BQPDRLifestyle,
-            BQPDROverallHealth,
-            BQPDREHRConsentPII,
-            BQPDRDVEHRSharing,
-            BQPDRCOPEMay,
-        )
-        for module in modules:
-            mod = module()
-            table, mod_bqrs = mod_bqgen.make_bqrecord(p_id, mod.get_schema().get_module_name())
-            if not table:
-                continue
-
-            w_dao = BigQuerySyncDao()
-            with w_dao.session() as w_session:
-                for mod_bqr in mod_bqrs:
-                    mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
-                                            w_dao=w_dao, w_session=w_session)
-
-    logging.info(f'End time: {datetime.utcnow()}, rebuilt BigQuery data for {count} participants.')
 
 
 def insert_batch_into_bq(bq, project_id, dataset, table, batch, dryrun=False):

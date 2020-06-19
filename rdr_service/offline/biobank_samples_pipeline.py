@@ -23,7 +23,7 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import from_client_biobank_id, get_biobank_id_prefix
 from rdr_service.model.participant import Participant
-from rdr_service.offline.bigquery_sync import rebuild_bq_participant_task
+from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import BiobankOrderStatus, OrganizationType, get_sample_status_enum_value
 
@@ -115,10 +115,10 @@ def update_bigquery_sync_participants(ts, dao):
                 payload = {'batch': batch}
 
                 if config.GAE_PROJECT == 'localhost':
-                    rebuild_bq_participant_task(payload)
+                    batch_rebuild_participants_task(payload)
                 else:
-                    task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
-                                        queue='bigquery-rebuild')
+                    task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
+                                        queue='resource-rebuild')
                     task.execute(quiet=True)
                 batch_count += 1
                 # reset for next batch
@@ -130,10 +130,10 @@ def update_bigquery_sync_participants(ts, dao):
             payload = {'batch': batch}
             batch_count += 1
             if config.GAE_PROJECT == 'localhost':
-                rebuild_bq_participant_task(payload)
+                batch_rebuild_participants_task(payload)
             else:
-                task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
-                                    queue='bigquery-rebuild')
+                task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
+                                    queue='resource-rebuild')
                 task.execute(quiet=True)
 
         logging.info(f'Biobank: submitted {batch_count} tasks.')

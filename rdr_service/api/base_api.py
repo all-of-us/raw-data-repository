@@ -174,8 +174,8 @@ class BaseApi(Resource):
                 bq_participant_summary_update_task(participant_id)
             else:
                 params = {'p_id': participant_id}
-                task = GCPCloudTask('bq_rebuild_one_participant_task',
-                                    queue='bigquery-tasks', payload=params, in_seconds=5)
+                task = GCPCloudTask('rebuild_one_participant_task',
+                                    queue='resource-tasks', payload=params, in_seconds=5)
                 task.execute()
 
         log_api_request(log=request.log_record, model_obj=result)
@@ -331,8 +331,8 @@ class UpdatableApi(BaseApi):
                 bq_participant_summary_update_task(participant_id)
             else:
                 params = {'p_id': participant_id}
-                task = GCPCloudTask('bq_rebuild_one_participant_task',
-                                    queue='bigquery-tasks', payload=params, in_seconds=5)
+                task = GCPCloudTask('rebuild_one_participant_task',
+                                    queue='resource-tasks', payload=params, in_seconds=5)
                 task.execute()
 
         log_api_request(log=request.log_record, model_obj=m)

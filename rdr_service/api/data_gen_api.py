@@ -150,7 +150,9 @@ class DataGenApi(Resource):
         include_biobank_orders = bool(resource_json.get("include_biobank_orders", False))
         requested_hpo = resource_json.get("hpo", None)
         if num_participants > 0:
-            participant_generator = FakeParticipantGenerator(InProcessClient())
+            participant_generator = FakeParticipantGenerator(InProcessClient(
+                headers={'Authorization': request.headers.get('Authorization', '')}
+            ))
             for _ in range(0, num_participants):
                 participant_generator.generate_participant(
                     include_physical_measurements, include_biobank_orders, requested_hpo
@@ -169,7 +171,9 @@ class DataGenApi(Resource):
     def put(self):
         resource = request.get_data()
         p_id = json.loads(resource)
-        participant_generator = FakeParticipantGenerator(InProcessClient(), withdrawn_percent=0, suspended_percent=0)
+        participant_generator = FakeParticipantGenerator(InProcessClient(
+            headers={'Authorization': request.headers.get('Authorization', '')}
+        ), withdrawn_percent=0, suspended_percent=0)
 
         participant_generator.add_pm_and_biospecimens_to_participants(p_id)
 
@@ -197,5 +201,5 @@ class SpecDataGenApi(Resource):
             raise BadRequest({"status": "error", "error": "target api invalid"})
 
         result = InProcessClient().request_json(target, method, body=data, pretend_date=timestamp,
-                                                headers=dict(request.headers))
+                                    headers={'Authorization': request.headers.get('Authorization', '')})
         return result

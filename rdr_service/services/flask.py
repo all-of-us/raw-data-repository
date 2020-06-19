@@ -13,7 +13,7 @@ app.url_map.converters["participant_id"] = ParticipantIdConverter
 app.config.setdefault("RESTFUL_JSON", {"cls": RdrJsonEncoder})
 
 API_PREFIX = "/rdr/v1/"
-TASK_PREFIX = API_PREFIX + "tasks/"
+TASK_PREFIX = "/resource/"
 
 
 # If we are being run under gunicorn, hookup gunicorn's logging handler.
