@@ -84,6 +84,19 @@ def genomic_centers_aw1f_manifest_workflow():
         controller.run_aw1f_manifest_workflow()
 
 
+def genomic_centers_accessioning_failures_workflow():
+    """
+        Entrypoint for Ingestion:
+            Failure Manifest (AW1F)
+        """
+    with GenomicJobController(GenomicJob.AW1F_MANIFEST,
+                              bucket_name=None,
+                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
+                              sub_folder_tuple=config.GENOMIC_AW1F_SUBFOLDERS
+                              ) as controller:
+        controller.process_new_aw1f_for_alerts()
+
+
 def ingest_genomic_centers_metrics_files():
     """
     Entrypoint for GC Metrics File Ingestion subprocess of genomic_pipeline.

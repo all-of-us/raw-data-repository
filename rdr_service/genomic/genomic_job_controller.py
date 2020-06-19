@@ -207,6 +207,11 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
+    def process_new_aw1f_for_alerts(self):
+        """
+        Scans for new AW1F files in GC buckets and sends email alert
+        """
+        pass
 
     def run_cvl_reconciliation_report(self):
         """
