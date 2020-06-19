@@ -237,12 +237,13 @@ class DeployAppClass(object):
 
         # Get version and make sure this is a primary sprint release.
         version = matches.group().replace('-', '.')
-        if version[-2:] != '-1':
+        if version[-2:] != '.1':
             _logger.warning(f'Hotfix release {version}, skipping adding ROC ticket.')
             return
 
         # Make the release date Thursday of next week.
         today = datetime.date.today()
+        # TODO: Make this calculate the next Thursday correctly if today is not Thursday.
         push_date = (today + datetime.timedelta(((3 - today.weekday()) % 7) + 7)).strftime('%b %d, %Y')
         summary = f'Deploy RDR v{version} to production on {push_date}.'
 
