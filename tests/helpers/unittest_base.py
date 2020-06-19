@@ -25,7 +25,10 @@ from rdr_service.concepts import Concept
 from rdr_service.dao import database_factory, questionnaire_dao, questionnaire_response_dao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
+from rdr_service.model.log_position import LogPosition
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.organization import Organization
@@ -46,7 +49,6 @@ from tests.helpers.mysql_helper import reset_mysql_instance
 from tests.test_data import data_path
 
 QUESTIONNAIRE_NONE_ANSWER = 'no_answer_given'
-
 
 
 class CodebookTestMixin:
@@ -230,6 +232,8 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         self.fake = faker.Faker()
         self._next_unique_participant_id = 900000000
         self._next_unique_participant_biobank_id = 500000000
+        self._next_unique_biobank_order_id = 100000000
+        self._next_unique_biobank_stored_sample_id = 800000000
         self._next_unique_questionnaire_response_id = 500000000
 
     def setUp(self, with_data=True, with_consent_codes=False) -> None:
@@ -301,6 +305,16 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         next_biobank_id = self._next_unique_participant_biobank_id
         self._next_unique_participant_biobank_id += 1
         return next_biobank_id
+
+    def unique_biobank_order_id(self):
+        next_biobank_order_id = self._next_unique_biobank_order_id
+        self._next_unique_biobank_order_id += 1
+        return next_biobank_order_id
+
+    def unique_biobank_stored_sample_id(self):
+        next_biobank_stored_sameple_id = self._next_unique_biobank_stored_sample_id
+        self._next_unique_biobank_stored_sample_id += 1
+        return next_biobank_stored_sameple_id
 
     def unique_questionnaire_response_id(self):
         next_questionnaire_response_id = self._next_unique_questionnaire_response_id
@@ -439,6 +453,67 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
                 kwargs[field] = default
 
         return Code(**kwargs)
+
+    def create_database_biobank_order(self, **kwargs):
+        biobank_order = self._biobank_order(**kwargs)
+        self._commit_to_database(self.session, biobank_order)
+        return biobank_order
+
+    def _biobank_order(self, log_position=None, **kwargs):
+        for field, default in [('version', 1),
+                               ('created', datetime.now())]:
+            if field not in kwargs:
+                kwargs[field] = default
+
+        if 'logPositionId' not in kwargs:
+            if log_position is None:
+                log_position = self.create_database_log_position()
+            kwargs['logPositionId'] = log_position.logPositionId
+        if 'biobankOrderId' not in kwargs:
+            kwargs['biobankOrderId'] = self.unique_biobank_order_id()
+
+        return BiobankOrder(**kwargs)
+
+    def create_database_biobank_order_identifier(self, **kwargs):
+        biobank_order_identifier = self._biobank_order_identifier(**kwargs)
+        self._commit_to_database(self.session, biobank_order_identifier)
+        return biobank_order_identifier
+
+    def _biobank_order_identifier(self, **kwargs):
+        return BiobankOrderIdentifier(**kwargs)
+
+    def create_database_biobank_ordered_sample(self, **kwargs):
+        biobank_ordered_sample = self._biobank_ordered_sample(**kwargs)
+        self._commit_to_database(self.session, biobank_ordered_sample)
+        return biobank_ordered_sample
+
+    def _biobank_ordered_sample(self, **kwargs):
+        for field, default in [('description', 'test ordered sample'),
+                               ('processingRequired', False),
+                               ('test', 'C3PO')]:
+            if field not in kwargs:
+                kwargs[field] = default
+
+        return BiobankOrderedSample(**kwargs)
+
+    def create_database_biobank_stored_sample(self, **kwargs):
+        biobank_stored_sample = self._biobank_stored_sample(**kwargs)
+        self._commit_to_database(self.session, biobank_stored_sample)
+        return biobank_stored_sample
+
+    def _biobank_stored_sample(self, **kwargs):
+        if 'biobankStoredSampleId' not in kwargs:
+            kwargs['biobankStoredSampleId'] = self.unique_biobank_stored_sample_id()
+
+        return BiobankStoredSample(**kwargs)
+
+    def create_database_log_position(self, **kwargs):
+        log_position = self._log_position(**kwargs)
+        self._commit_to_database(self.session, log_position)
+        return log_position
+
+    def _log_position(self, **kwargs):
+        return LogPosition(**kwargs)
 
     def submit_questionnaire_response(
         self, participant_id, questionnaire_id, race_code, gender_code, state, date_of_birth):
