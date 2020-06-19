@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 import re
+import time
 
 from marshmallow_jsonschema import JSONSchema
 from sqlalchemy import and_
@@ -50,26 +51,36 @@ class ResourceRecordSet(object):
         :return: ResourceType object
         """
         type_uid = schema_meta.uid()
+        retry_count = 5
+        notified = False
 
-        with dao.session() as session:
-            rec = session.query(ResourceType).filter(ResourceType.typeUID == type_uid).first()
-            if rec:
-                return rec
+        while retry_count:
+            with dao.session() as session:
+                rec = session.query(ResourceType).filter(ResourceType.typeUID == type_uid).first()
+                if rec:
+                    return rec
 
-            rec = ResourceType()
-            rec.resourceURI = schema_meta.resource_uri()
-            rec.resourcePKField = schema_meta.resource_pk_field()
-            rec.typeName = schema_meta.name()
-            rec.typeUID = type_uid
+                retry_count -= 1
 
-            session.add(rec)
-            try:
-                session.commit()
-            except IntegrityError:
-                # Record already exists, parallel tasks can cause this.  We should not see these often.
-                logging.warning(f'Resource type record already exists for {rec.typeName}.')
+                rec = ResourceType()
+                rec.resourceURI = schema_meta.resource_uri()
+                rec.resourcePKField = schema_meta.resource_pk_field()
+                rec.typeName = schema_meta.name()
+                rec.typeUID = type_uid
 
-        return rec
+                session.add(rec)
+                try:
+                    session.commit()
+                    return rec
+                except IntegrityError:
+                    # Record already exists, parallel tasks can cause this when the record does not already exist.
+                    # We should not see these often. Only log this once.
+                    if not notified:
+                        logging.warning(f'Resource type record already exists for {rec.typeName}.')
+                        notified = True
+                    time.sleep(0.25)
+
+        raise LookupError('Failed to retrieve resource Type record.')
 
     def _get_or_create_schema_record(self, dao, type_rec, schema):
         """
