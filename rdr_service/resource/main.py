@@ -1,9 +1,6 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
-import logging
-import os
-import signal
 
-from flask import Flask, Response, got_request_exception
+from flask import Flask, got_request_exception
 from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
 
@@ -11,32 +8,9 @@ from rdr_service import app_util
 from rdr_service.api.cloud_tasks_api import RebuildParticipantsTaskApi, RebuildCodebookTaskApi, \
     CopyCloudStorageObjectTaskApi, BQRebuildQuestionnaireTaskApi, GenerateBiobankSamplesTaskApi, \
     RebuildOneParticipantTaskApi
-from rdr_service.services.flask import TASK_PREFIX
+from rdr_service.services.flask import RESOURCE_PREFIX, TASK_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
     flask_restful_log_exception_error
-
-PREFIX = "/resource/"
-
-
-def start():
-    return '{"success": "true"}'
-
-
-def _stop():
-    pid_file = '/tmp/supervisord.pid'
-    if os.path.exists(pid_file):
-        try:
-            pid = int(open(pid_file).read())
-            if pid:
-                logging.info('******** Shutting down, sent supervisor the termination signal. ********')
-                response = Response()
-                response.status_code = 200
-                end_request_logging(response)
-                os.kill(pid, signal.SIGTERM)
-        except TypeError:
-            logging.warning('******** Shutting down, supervisor pid file is invalid. ********')
-            pass
-    return '{ "success": "true" }'
 
 
 def _build_resource_app():
@@ -44,7 +18,7 @@ def _build_resource_app():
     _api = Api(_app)
 
     #
-    # Cloud Tasks API endpoints
+    # Cloud Task API endpoints
     #
     # Task Queue API endpoint to rebuild participant summary resources.
     _api.add_resource(RebuildParticipantsTaskApi, TASK_PREFIX + "RebuildParticipantsTaskApi",
@@ -67,8 +41,8 @@ def _build_resource_app():
     # Simple API call for testing resource service.
     # _app.add_url_rule(PREFIX, endpoint="/", view_func=start, methods=["GET"])
 
-    _app.add_url_rule('/_ah/start', endpoint='start', view_func=start, methods=["GET"])
-    _app.add_url_rule('/_ah/stop', endpoint='stop', view_func=_stop, methods=["GET"])
+    _app.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
+    _app.add_url_rule('/_ah/stop', endpoint='stop', view_func=flask_stop, methods=["GET"])
 
     _app.before_request(begin_request_logging)  # Must be first before_request() call.
     _app.before_request(app_util.request_logging)
