@@ -121,7 +121,7 @@ class UpdateEhrStatusUpdatesTestCase(SqlTestBase):
         return org
 
     def _make_participant(self, hpo, org, int_id):
-        participant = self._participant_with_defaults(participantId=int_id, biobankId=int_id)
+        participant = self.data_generator._participant_with_defaults(participantId=int_id, biobankId=int_id)
         participant.hpoId = hpo.hpoId
         participant.organizationId = org.organizationId
         self.participant_dao.insert(participant)

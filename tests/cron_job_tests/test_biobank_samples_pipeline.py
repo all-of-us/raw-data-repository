@@ -296,8 +296,8 @@ class BiobankSamplesPipelineTest(BaseTestCase):
             self.assertTrue(path.endswith(".csv"))
 
     def _init_report_codes(self):
-        self.create_database_code(system=PPI_SYSTEM, value=RACE_QUESTION_CODE)
-        self.create_database_code(system=PPI_SYSTEM, value=RACE_AIAN_CODE)
+        self.data_generator.create_database_code(system=PPI_SYSTEM, value=RACE_QUESTION_CODE)
+        self.data_generator.create_database_code(system=PPI_SYSTEM, value=RACE_AIAN_CODE)
 
     @staticmethod
     def _datetime_days_ago(num_days_ago):
@@ -312,20 +312,20 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         self._init_report_codes()
 
         # Generate data for a Quest sample to be in the report
-        participant = self.create_database_participant()
-        order = self.create_database_biobank_order(participantId=participant.participantId)
-        order_identifier = self.create_database_biobank_order_identifier(
+        participant = self.data_generator.create_database_participant()
+        order = self.data_generator.create_database_biobank_order(participantId=participant.participantId)
+        order_identifier = self.data_generator.create_database_biobank_order_identifier(
             biobankOrderId=order.biobankOrderId,
             value='KIT-001',
             system=_CE_QUEST_SYSTEM
         )
-        ordered_sample = self.create_database_biobank_ordered_sample(
+        ordered_sample = self.data_generator.create_database_biobank_ordered_sample(
             biobankOrderId=order.biobankOrderId,
             collected=datetime(2020, 6, 5),
             processed=datetime(2020, 6, 6),
             finalized=datetime(2020, 6, 7)
         )
-        stored_sample = self.create_database_biobank_stored_sample(
+        stored_sample = self.data_generator.create_database_biobank_stored_sample(
             test=ordered_sample.test,
             biobankId=participant.biobankId,
             biobankOrderIdentifier=order_identifier.value,

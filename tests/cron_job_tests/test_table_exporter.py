@@ -32,11 +32,11 @@ class TableExporterTest(BaseTestCase):
         self.clear_default_storage()
         self.create_mock_buckets(mock_bucket)
 
-        p1 = self._participant_with_defaults(
+        p1 = self.data_generator._participant_with_defaults(
             participantId=1, version=2, biobankId=2, providerLink=make_primary_provider_link_for_name("PITT")
         )
         ParticipantDao().insert(p1)
-        p2 = self._participant_with_defaults(
+        p2 = self.data_generator._participant_with_defaults(
             participantId=2, version=3, biobankId=3, providerLink=make_primary_provider_link_for_name("PITT")
         )
         ParticipantDao().insert(p2)

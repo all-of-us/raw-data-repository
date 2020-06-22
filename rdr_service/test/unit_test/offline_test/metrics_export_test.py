@@ -158,7 +158,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
             # `participant.hpoId` evaluates to 4, which is the value given in `unit_test_util.AZ_HPO_ID`).
             # The original intent of the test is not clear.
             # This update to participant has no effect, as the HPO ID didn't change.
-            participant = self._participant_with_defaults(
+            participant = self.data_generator._participant_with_defaults(
                 participantId=1,
                 version=1,
                 biobankId=2,

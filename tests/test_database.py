@@ -146,7 +146,7 @@ class DatabaseTest(BaseTestCase):
 
         session.commit()
 
-        p = self._participant_with_defaults(
+        p = self.data_generator._participant_with_defaults(
             participantId=1,
             version=1,
             biobankId=2,
@@ -155,7 +155,7 @@ class DatabaseTest(BaseTestCase):
             signUpTime=datetime.datetime.now(),
             lastModified=datetime.datetime.now(),
         )
-        ps = self._participant_summary_with_defaults(
+        ps = self.data_generator._participant_summary_with_defaults(
             participant=p,
             biobankId=2,
             lastModified=datetime.datetime.now(),
@@ -173,7 +173,7 @@ class DatabaseTest(BaseTestCase):
         )
         p.participantSummary = ps
         session.add(p)
-        ph = self._participant_history_with_defaults(
+        ph = self.data_generator._participant_history_with_defaults(
             participantId=1,
             biobankId=2,
             clientId="fake@client.id",
@@ -339,7 +339,7 @@ class DatabaseTest(BaseTestCase):
         hpo = HPO(hpoId=1, name="UNSET")
         session.add(hpo)
         session.commit()
-        p = self._participant_with_defaults(
+        p = self.data_generator._participant_with_defaults(
             participantId=1,
             version=1,
             biobankId=2,

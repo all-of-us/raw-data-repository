@@ -61,7 +61,7 @@ class GenomicSetValidationBaseTestCase(BaseTestCase):
             participantOrigin='example'
         )
         kwargs = dict(valid_kwargs, **override_kwargs)
-        summary = self._participant_summary_with_defaults(**kwargs)
+        summary = self.data_generator._participant_summary_with_defaults(**kwargs)
         self.summary_dao.insert(summary)
         return summary
 
