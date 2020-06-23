@@ -441,29 +441,30 @@ class ParticipantSummaryDaoTest(BaseTestCase):
                 ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
             ),
         )
-        # Check that cohort 3 participants without gror consent are not full participants
         self.assertEqual(
             EnrollmentStatus.MEMBER,
             self.dao.calculate_enrollment_status(
                 True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
                 ParticipantCohort.COHORT_3, QuestionnaireStatus.UNSET
             ),
+            "Cohort 3 participants with all other requirements but without GROR consent"
+            "are not full participants [DA-1623]"
         )
-        # Check that cohort 3 participants with gror consent are full participants
         self.assertEqual(
             EnrollmentStatus.FULL_PARTICIPANT,
             self.dao.calculate_enrollment_status(
                 True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
                 ParticipantCohort.COHORT_3, QuestionnaireStatus.SUBMITTED
             ),
+            "Cohort 3 participants with GROR consent and all other requirements are full participants [DA-1623]"
         )
-        # Check that participants that are not in cohort 3 participants can be full participants without GROR consent
         self.assertEqual(
             EnrollmentStatus.FULL_PARTICIPANT,
             self.dao.calculate_enrollment_status(
                 True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
                 ParticipantCohort.COHORT_2, QuestionnaireStatus.UNSET
             ),
+            "Participants that are not in cohort 3 participants can be full participants without GROR consent [DA-1623]"
         )
 
     def testUpdateEnrollmentStatus(self):
@@ -479,6 +480,22 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.dao.update_enrollment_status(summary)
         self.assertEqual(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
         self.assertEqual(ehr_consent_time, summary.enrollmentStatusMemberTime)
+
+    def testCoreStatusRemains(self):
+        member_time = datetime.datetime(2020, 6, 1)
+        sample_ordered_time = datetime.datetime(2020, 6, 2)
+        sample_stored_time = datetime.datetime(2020, 6, 3)
+        participant_summary = self.data_generator._participant_summary_with_defaults(
+            enrollmentStatus=EnrollmentStatus.FULL_PARTICIPANT,
+            enrollmentStatusCoreOrderedSampleTime=sample_ordered_time,
+            enrollmentStatusCoreStoredSampleTime=sample_stored_time,
+            enrollmentStatusMemberTime=member_time
+        )
+        self.dao.update_enrollment_status(participant_summary)
+        self.assertEqual(EnrollmentStatus.FULL_PARTICIPANT, participant_summary.enrollmentStatus)
+        self.assertEqual(sample_ordered_time, participant_summary.enrollmentStatusCoreOrderedSampleTime)
+        self.assertEqual(sample_stored_time, participant_summary.enrollmentStatusCoreStoredSampleTime)
+        self.assertEqual(member_time, participant_summary.enrollmentStatusMemberTime)
 
     def testUpdateEnrollmentStatusLastModified(self):
         """DA-631: enrollment_status update should update last_modified."""
