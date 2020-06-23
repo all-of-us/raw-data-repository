@@ -483,18 +483,12 @@ class ParticipantSummaryDaoTest(BaseTestCase):
 
     def testCoreStatusRemains(self):
         member_time = datetime.datetime(2020, 6, 1)
-        sample_ordered_time = datetime.datetime(2020, 6, 2)
-        sample_stored_time = datetime.datetime(2020, 6, 3)
         participant_summary = self.data_generator._participant_summary_with_defaults(
             enrollmentStatus=EnrollmentStatus.FULL_PARTICIPANT,
-            enrollmentStatusCoreOrderedSampleTime=sample_ordered_time,
-            enrollmentStatusCoreStoredSampleTime=sample_stored_time,
             enrollmentStatusMemberTime=member_time
         )
         self.dao.update_enrollment_status(participant_summary)
         self.assertEqual(EnrollmentStatus.FULL_PARTICIPANT, participant_summary.enrollmentStatus)
-        self.assertEqual(sample_ordered_time, participant_summary.enrollmentStatusCoreOrderedSampleTime)
-        self.assertEqual(sample_stored_time, participant_summary.enrollmentStatusCoreStoredSampleTime)
         self.assertEqual(member_time, participant_summary.enrollmentStatusMemberTime)
 
     def testUpdateEnrollmentStatusLastModified(self):

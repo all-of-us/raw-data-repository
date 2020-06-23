@@ -545,36 +545,34 @@ class ParticipantSummaryDao(UpdatableDao):
         """Updates the enrollment status field on the provided participant summary to
     the correct value based on the other fields on it. Called after
     a questionnaire response or physical measurements are submitted."""
+        consent = (
+            summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
+            and summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED
+        ) or (
+            summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
+            and summary.consentForElectronicHealthRecords is None
+            and summary.consentForDvElectronicHealthRecordsSharing == QuestionnaireStatus.SUBMITTED
+        )
+
+        enrollment_status = self.calculate_enrollment_status(
+            consent,
+            summary.numCompletedBaselinePPIModules,
+            summary.physicalMeasurementsStatus,
+            summary.samplesToIsolateDNA,
+            summary.consentCohort,
+            summary.consentForGenomicsROR
+        )
+        summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
+        summary.enrollmentStatusCoreStoredSampleTime = self.calculate_core_stored_sample_time(consent, summary)
 
         # [DA-1623] Participants that have 'Core' status should never lose it
         if summary.enrollmentStatus != EnrollmentStatus.FULL_PARTICIPANT:
-
-            consent = (
-                summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
-                and summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED
-            ) or (
-                summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED
-                and summary.consentForElectronicHealthRecords is None
-                and summary.consentForDvElectronicHealthRecordsSharing == QuestionnaireStatus.SUBMITTED
-            )
-
-            enrollment_status = self.calculate_enrollment_status(
-                consent,
-                summary.numCompletedBaselinePPIModules,
-                summary.physicalMeasurementsStatus,
-                summary.samplesToIsolateDNA,
-                summary.consentCohort,
-                summary.consentForGenomicsROR
-            )
-            summary.enrollmentStatusMemberTime = self.calculate_member_time(consent, summary)
-            summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
-            summary.enrollmentStatusCoreStoredSampleTime = self.calculate_core_stored_sample_time(consent, summary)
-
             # Update last modified date if status changes
             if summary.enrollmentStatus != enrollment_status:
                 summary.lastModified = clock.CLOCK.now()
 
             summary.enrollmentStatus = enrollment_status
+            summary.enrollmentStatusMemberTime = self.calculate_member_time(consent, summary)
 
     def calculate_enrollment_status(
         self, consent, num_completed_baseline_ppi_modules, physical_measurements_status, samples_to_isolate_dna,
