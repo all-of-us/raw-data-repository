@@ -1,4 +1,5 @@
 from flask import request
+import logging
 
 from rdr_service.api.base_api import UpdatableApi, log_api_request
 from rdr_service.api_util import BIOBANK
@@ -37,10 +38,7 @@ class BiobankSpecimenApi(BiobankApiBase):
             errors = []
             with self.dao.session() as session:
                 for specimen_json in resource:
-                    if 'rlimsID' in specimen_json:
-                        descriptor = specimen_json['rlimsID']
-                    else:
-                        descriptor = f'specimen #{total_count+1}'
+                    rlims_id = specimen_json.get('rlimsID', '')
 
                     try:
                         self._check_required_specimen_fields(specimen_json)
@@ -51,17 +49,29 @@ class BiobankSpecimenApi(BiobankApiBase):
                         else:
                             self.dao.insert_with_session(session, m)
                     except BadRequest as e:
-                        errors.append(f'[{descriptor}] {e.description}')
+                        logging.error('RLIMS Migration: BadRequest encountered', exc_info=True)
+                        errors.append({
+                            'rlimsID': rlims_id,
+                            'error': e.description
+                        })
                     except Exception: # pylint: disable=broad-except
-                        # Handle most anything but continue with processing specimen anyway
-                        errors.append(f'[{descriptor}] Unknown error')
+                        logging.error('RLIMS Migration: Server error encountered', exc_info=True)
+                        errors.append({
+                            'rlimsID': rlims_id,
+                            'error': 'Unknown error'
+                        })
                     else:
                         success_count += 1
                     finally:
                         total_count += 1
 
             log_api_request(log=request.log_record)
-            result = {'summary': f'Added {success_count} of {total_count} specimen'}
+            result = {
+                'summary': {
+                    'total_received': total_count,
+                    'success_count': success_count
+                }
+            }
             if errors:
                 result['errors'] = errors
             return result
