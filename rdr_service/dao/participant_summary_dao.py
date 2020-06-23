@@ -43,6 +43,7 @@ from rdr_service.participant_enums import (
     BiobankOrderStatus,
     EhrStatus,
     EnrollmentStatus,
+    ParticipantCohort,
     PatientStatusFlag,
     PhysicalMeasurementsStatus,
     QuestionnaireStatus,
@@ -558,6 +559,8 @@ class ParticipantSummaryDao(UpdatableDao):
             summary.numCompletedBaselinePPIModules,
             summary.physicalMeasurementsStatus,
             summary.samplesToIsolateDNA,
+            summary.consentCohort,
+            summary.consentForGenomicsROR
         )
         summary.enrollmentStatusMemberTime = self.calculate_member_time(consent, summary)
         summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
@@ -570,13 +573,15 @@ class ParticipantSummaryDao(UpdatableDao):
         summary.enrollmentStatus = enrollment_status
 
     def calculate_enrollment_status(
-        self, consent, num_completed_baseline_ppi_modules, physical_measurements_status, samples_to_isolate_dna
+        self, consent, num_completed_baseline_ppi_modules, physical_measurements_status, samples_to_isolate_dna,
+        consent_cohort, gror_consent
     ):
         if consent:
             if (
                 num_completed_baseline_ppi_modules == self._get_num_baseline_ppi_modules()
                 and physical_measurements_status == PhysicalMeasurementsStatus.COMPLETED
                 and samples_to_isolate_dna == SampleStatus.RECEIVED
+                and (gror_consent == QuestionnaireStatus.SUBMITTED or consent_cohort != ParticipantCohort.COHORT_3)
             ):
                 return EnrollmentStatus.FULL_PARTICIPANT
             return EnrollmentStatus.MEMBER

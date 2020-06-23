@@ -19,6 +19,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import (
     EnrollmentStatus,
+    ParticipantCohort,
     PhysicalMeasurementsStatus,
     QuestionnaireStatus,
     SampleStatus,
@@ -408,31 +409,60 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(
             EnrollmentStatus.FULL_PARTICIPANT,
             self.dao.calculate_enrollment_status(
-                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
             ),
         )
         self.assertEqual(
             EnrollmentStatus.MEMBER,
             self.dao.calculate_enrollment_status(
-                True, NUM_BASELINE_PPI_MODULES - 1, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED
+                True, NUM_BASELINE_PPI_MODULES - 1, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
             ),
         )
         self.assertEqual(
             EnrollmentStatus.MEMBER,
             self.dao.calculate_enrollment_status(
-                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.UNSET, SampleStatus.RECEIVED
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.UNSET, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
             ),
         )
         self.assertEqual(
             EnrollmentStatus.MEMBER,
             self.dao.calculate_enrollment_status(
-                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.UNSET
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.UNSET,
+                ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
             ),
         )
         self.assertEqual(
             EnrollmentStatus.INTERESTED,
             self.dao.calculate_enrollment_status(
-                False, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED
+                False, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
+            ),
+        )
+        # Check that cohort 3 participants without gror consent are not full participants
+        self.assertEqual(
+            EnrollmentStatus.MEMBER,
+            self.dao.calculate_enrollment_status(
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_3, QuestionnaireStatus.UNSET
+            ),
+        )
+        # Check that cohort 3 participants with gror consent are full participants
+        self.assertEqual(
+            EnrollmentStatus.FULL_PARTICIPANT,
+            self.dao.calculate_enrollment_status(
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_3, QuestionnaireStatus.SUBMITTED
+            ),
+        )
+        # Check that participants that are not in cohort 3 participants can be full participants without GROR consent
+        self.assertEqual(
+            EnrollmentStatus.FULL_PARTICIPANT,
+            self.dao.calculate_enrollment_status(
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_2, QuestionnaireStatus.UNSET
             ),
         )
 
