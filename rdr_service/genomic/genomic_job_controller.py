@@ -5,7 +5,10 @@ This module tracks and validates the status of Genomics Pipeline Subprocesses.
 import logging
 from datetime import datetime
 
+import pytz
+
 from rdr_service import clock
+from rdr_service.api_util import list_blobs
 
 from rdr_service.config import (
     GENOMIC_GC_METRICS_BUCKET_NAME,
@@ -211,7 +214,37 @@ class GenomicJobController:
         """
         Scans for new AW1F files in GC buckets and sends email alert
         """
-        pass
+
+        # Setup date
+        timezone = pytz.timezone('Etc/Greenwich')
+        date_limit = timezone.localize(self.last_run_time)
+
+        new_failure_files = dict()
+
+        # Get files in each gc bucket and folder where updated date > last run date
+        for gc_bucket_name in self.bucket_name_list:
+            failures_in_bucket = list()
+
+            for folder in self.sub_folder_tuple:
+                bucket = '/' + gc_bucket_name
+                files = list_blobs(bucket, prefix=folder)
+
+                files_filtered = [s.name for s in files
+                                  if s.updated > date_limit
+                                  and s.name.endswith("_FAILURE.csv")]
+
+                if len(files_filtered) > 0:
+                    for f in files_filtered:
+                        failures_in_bucket.append(f)
+
+            if len(failures_in_bucket) > 0:
+                new_failure_files[gc_bucket_name] = failures_in_bucket
+
+        # Compile email message
+        email_req = self._compile_accesioning_failure_alert_email(new_failure_files)
+
+        # send email
+        self._send_email_with_sendgrid(email_req)
 
     def run_cvl_reconciliation_report(self):
         """
@@ -325,4 +358,60 @@ class GenomicJobController:
 
     def _create_run(self, job_id):
         return self.job_run_dao.insert_run_record(job_id)
+
+    def _compile_accesioning_failure_alert_email(self, alert_files):
+        """
+        Takes a dict of all new failure files from
+        GC buckets' accessioning folders
+        :param alert_files: dict
+        :return: email dict ready for SendGrid API
+        """
+
+        # Set email data here
+        # Todo: add recipient list to config
+        recipients = ["test-genomic@vumc.org"]
+        subject = "All of Us GC Manifest Failure Alert"
+        from_email = "noreply-genomics@pmi-ops.org"
+        email_message = "New AW1 Failure manifests have been found:\n"
+
+        for bucket in alert_files.keys():
+            email_message += f"\t{bucket}:\n"
+            for file in alert_files[bucket]:
+                email_message += f"\t\t{file}:\n"
+
+        data = {
+            "personalizations": [
+                {
+                    "to": [{"email": r} for r in recipients],
+                    "subject": subject
+                }
+            ],
+            "from": {
+                "email": from_email
+            },
+            "content": [
+                {
+                    "type": "text/plain",
+                    "value": email_message
+                }
+            ]
+        }
+
+        return data
+
+    def _send_email_with_sendgrid(self, _email):
+        """
+        Calls SendGrid API with email request
+        :param _email:
+        :return: sendgrid response
+        """
+        # sg = sendgrid.SendGridAPIClient(api_key=os.environ.get('SENDGRID_API_KEY'))
+        #
+        # response = sg.client.mail.send.post(request_body=_email)
+        #
+        # print(response.status_code)
+        # print(response.body)
+        # print(response.headers)
+
+        return "SUCCESS"
 
