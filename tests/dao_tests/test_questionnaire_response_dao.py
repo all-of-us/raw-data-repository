@@ -570,7 +570,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         expected_qr.answers.extend(self._names_and_email_answers())
         self.check_response(expected_qr)
 
-        expected_ps = self._participant_summary_with_defaults(
+        expected_ps = self.data_generator._participant_summary_with_defaults(
             genderIdentity=GenderIdentity.PMI_Skip,
             genderIdentityId=8,
             participantId=1,
@@ -729,7 +729,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
     def _create_dna_program_questionnaire(self, created_date=datetime.datetime(2020, 5, 5)):
         self._create_questionnaire(created_date)
-        self.create_database_questionnaire_concept(questionnaireId=2, questionnaireVersion=1,
+        self.data_generator.create_database_questionnaire_concept(questionnaireId=2, questionnaireVersion=1,
                                                    codeId=self.dna_program_consent_update_code_id)
 
     def test_dna_program_consent_update_questionnaire(self):
@@ -841,7 +841,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         expected_qr.answers.extend(names_and_email_answers)
         self.check_response(expected_qr)
 
-        expected_ps = self._participant_summary_with_defaults(
+        expected_ps = self.data_generator._participant_summary_with_defaults(
             participantId=1,
             biobankId=2,
             genderIdentityId=3,
@@ -914,7 +914,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         with FakeClock(TIME_2):
             self.questionnaire_response_dao.insert(qr)
 
-        expected_ps = self._participant_summary_with_defaults(
+        expected_ps = self.data_generator._participant_summary_with_defaults(
             participantId=1,
             biobankId=2,
             genderIdentityId=3,
@@ -992,7 +992,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         expected_qr2.answers.append(answer_3)
         self.check_response(expected_qr2)
 
-        expected_ps2 = self._participant_summary_with_defaults(
+        expected_ps2 = self.data_generator._participant_summary_with_defaults(
             participantId=1,
             biobankId=2,
             genderIdentityId=5,
@@ -1061,7 +1061,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         expected_qr3.answers.append(answer_4)
         self.check_response(expected_qr3)
 
-        expected_ps3 = self._participant_summary_with_defaults(
+        expected_ps3 = self.data_generator._participant_summary_with_defaults(
             participantId=1,
             biobankId=2,
             genderIdentityId=6,

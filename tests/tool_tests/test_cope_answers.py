@@ -14,30 +14,30 @@ class CopeAnswerTest(BaseTestCase):
         super().setUp()
 
         # June COPE survey
-        self.questionnaire_history = self.create_database_questionnaire_history(
+        self.questionnaire_history = self.data_generator.create_database_questionnaire_history(
             lastModified=datetime.strptime('2020-06-04', '%Y-%m-%d')
         )
 
         self.questions = {}
         for code in ['ipaq_1', 'ipaq_3', 'ipaq_5', 'ipaq_7']:
-            question_code = self.create_database_code(value=code)
-            self.questions[code] = self.create_database_questionnaire_question(codeId=question_code.codeId)
+            question_code = self.data_generator.create_database_code(value=code)
+            self.questions[code] = self.data_generator.create_database_questionnaire_question(codeId=question_code.codeId)
 
         self.answer_codes = {}
         for code in ['a1', 'a2', 'a3']:
-            self.answer_codes[code] = self.create_database_code(value=code)
+            self.answer_codes[code] = self.data_generator.create_database_code(value=code)
 
     def create_response(self, questionnaire_history, answers):
-        participant = self.create_database_participant()
+        participant = self.data_generator.create_database_participant()
 
-        questionnaire_response = self.create_database_questionnaire_response(
+        questionnaire_response = self.data_generator.create_database_questionnaire_response(
             participantId=participant.participantId,
             questionnaireId=questionnaire_history.questionnaireId,
             questionnaireVersion=questionnaire_history.version,
         )
 
         for answer in answers:
-            self.create_database_questionnaire_response_answer(
+            self.data_generator.create_database_questionnaire_response_answer(
                 questionnaireResponseId=questionnaire_response.questionnaireResponseId,
                 questionId=self.questions[answer['question']].questionnaireQuestionId,
                 valueCodeId=self.answer_codes[answer['answer']].codeId
@@ -108,7 +108,7 @@ class CopeAnswerTest(BaseTestCase):
         ])
 
         # Create May response that should not be counted for June results
-        may_questionnaire_history = self.create_database_questionnaire_history(
+        may_questionnaire_history = self.data_generator.create_database_questionnaire_history(
             lastModified=datetime.strptime('2020-05-18', '%Y-%m-%d')
         )
         self.create_response(may_questionnaire_history, [

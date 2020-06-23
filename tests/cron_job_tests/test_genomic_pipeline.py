@@ -185,7 +185,7 @@ class GenomicPipelineTest(BaseTestCase):
             consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
         )
         kwargs = dict(valid_kwargs, **override_kwargs)
-        summary = self._participant_summary_with_defaults(**kwargs)
+        summary = self.data_generator._participant_summary_with_defaults(**kwargs)
         self.summary_dao.insert(summary)
         return summary
 

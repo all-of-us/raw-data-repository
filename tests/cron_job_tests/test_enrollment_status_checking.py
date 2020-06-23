@@ -35,7 +35,7 @@ class CheckEnrollmentStatusTest(BaseTestCase):
         at least one biosample suitable for genetic sequencing.
         """
         twenty_nine = datetime.now() - timedelta(days=29)
-        p = self._participant_with_defaults(participantId=6666666, biobankId=9999999, version=1,
+        p = self.data_generator._participant_with_defaults(participantId=6666666, biobankId=9999999, version=1,
                                             lastModified=twenty_nine, signUpTime=twenty_nine)
         valid_kwargs = dict(
             participantId=p.participantId,
@@ -55,7 +55,7 @@ class CheckEnrollmentStatusTest(BaseTestCase):
             enrollmentStatus=EnrollmentStatus.FULL_PARTICIPANT,
             lastModified=twenty_nine)
 
-        person = self._participant_summary_with_defaults(**valid_kwargs)
+        person = self.data_generator._participant_summary_with_defaults(**valid_kwargs)
         from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
         from rdr_service.dao.participant_dao import ParticipantDao
         dao = ParticipantDao()
