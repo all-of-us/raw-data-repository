@@ -594,31 +594,18 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         return None
 
 
-def rebuild_participant_summary_resource(p_id, res_gen=None, project_id=None):
+def rebuild_participant_summary_resource(p_id, res_gen=None):
     """
     Rebuild a resource record for a specific participant
     :param p_id: participant id
     :param res_gen: ParticipantSummaryGenerator object
-    :param project_id: Project ID override value.
     :return:
     """
     # Allow for batch requests to rebuild participant summary data.
     if not res_gen:
         res_gen = ParticipantSummaryGenerator()
-    try:
-        app_id = project_id if project_id else config.GAE_PROJECT
-    except AttributeError:
-        app_id = 'localhost'
-
     res = res_gen.make_resource(p_id)
-
-    # filter test or ghost participants if production
-    if app_id == 'all-of-us-rdr-prod':  # or app_id == 'localhost':
-        if res.is_ghost_id == 1 or res.hpo == 'TEST' or (res.email and '@example.com' in res.email):
-            return None
-
     res.save()
-
     return res
 
 
