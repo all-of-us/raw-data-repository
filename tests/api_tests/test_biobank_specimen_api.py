@@ -621,7 +621,10 @@ class BiobankOrderApiTest(BaseTestCase):
 
         result = self.send_put(f"Biobank/specimens", request_data=specimens)
         self.assertJsonResponseMatches(result, {
-            'summary': 'Added 2 of 2 specimen'
+            'summary': {
+                'total_received': 2,
+                'success_count': 2
+            }
         })
 
     def test_update_multiple_specimen(self):
@@ -629,7 +632,10 @@ class BiobankOrderApiTest(BaseTestCase):
         inital_test_code = specimens[0]['testcode']
         result = self.send_put(f"Biobank/specimens", request_data=specimens)
         self.assertJsonResponseMatches(result, {
-            'summary': 'Added 5 of 5 specimen'
+            'summary': {
+                'total_received': 5,
+                'success_count': 5
+            }
         })
 
         third = self.get_specimen_from_dao(rlims_id='three')
@@ -656,11 +662,21 @@ class BiobankOrderApiTest(BaseTestCase):
 
         result = self.send_put(f"Biobank/specimens", request_data=specimens)
         self.assertJsonResponseMatches(result, {
-            'summary': 'Added 1 of 4 specimen',
+            'summary': {
+                'total_received': 4,
+                'success_count': 1
+            },
             'errors': [
-                '[sabrina] Missing fields: orderID, testcode',
-                '[specimen #2] Missing fields: rlimsID, orderID',
-                '[salem] Missing fields: testcode'
+                {
+                    'rlimsID': 'sabrina',
+                    'error': 'Missing fields: orderID, testcode'
+                }, {
+                    'rlimsID': '',
+                    'error': 'Missing fields: rlimsID, orderID',
+                }, {
+                    'rlimsID': 'salem',
+                    'error': 'Missing fields: testcode'
+                }
             ]
         })
 
