@@ -66,7 +66,7 @@ def genomic_centers_manifest_workflow():
     with GenomicJobController(GenomicJob.AW1_MANIFEST,
                               bucket_name=None,
                               bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
-                              sub_folder_name=config.GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME
+                              sub_folder_tuple=config.GENOMIC_AW1_SUBFOLDERS
                               ) as controller:
         controller.run_genomic_centers_manifest_workflow()
 
