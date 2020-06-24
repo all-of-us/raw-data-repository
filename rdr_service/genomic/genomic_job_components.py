@@ -1257,7 +1257,9 @@ class GenomicBiobankSamplesCoupler:
                             ps.sample_status_1sal2 = :sample_status_param
                         )
                     AND ss.test IN ("1ED04", "1SAL2")
-                    AND ps.consent_cohort = :cohort_2_param          
+                    AND ps.consent_cohort = :cohort_2_param
+                    AND ps.questionnaire_on_dna_program_authored > :from_date_param
+                    AND ps.questionnaire_on_dna_program = :general_consent_param
                 """
 
         params = {
@@ -1265,7 +1267,7 @@ class GenomicBiobankSamplesCoupler:
             "dob_param": GENOMIC_VALID_AGE,
             "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
             "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
-            #"from_date_param": from_date.strftime("%Y-%m-%d"),
+            "from_date_param": from_date.strftime("%Y-%m-%d"),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
             "cohort_2_param": ParticipantCohort.COHORT_2.__int__(),

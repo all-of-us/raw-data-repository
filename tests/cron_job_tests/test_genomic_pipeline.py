@@ -951,6 +951,8 @@ class GenomicPipelineTest(BaseTestCase):
                                sampleStatus1ED04=0,
                                sampleStatus1SAL2=1,
                                consentCohort=3 if bid == 100003 else 2,
+                               questionnaireOnDnaProgram=QuestionnaireStatus.SUBMITTED if bid != 100003 else None,
+                               questionnaireOnDnaProgramAuthored=clock.CLOCK.now() if bid != 100003 else None,
                                race=Race.HISPANIC_LATINO_OR_SPANISH)
             # Insert participant races
             race_answer = ParticipantRaceAnswers(
