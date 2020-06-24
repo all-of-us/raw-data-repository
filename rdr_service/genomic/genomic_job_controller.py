@@ -176,14 +176,16 @@ class GenomicJobController:
         """
         try:
             for gc_bucket_name in self.bucket_name_list:
-                self.ingester = GenomicFileIngester(job_id=self.job_id,
-                                                    job_run_id=self.job_run.id,
-                                                    bucket=gc_bucket_name,
-                                                    sub_folder=self.sub_folder_name,
-                                                    _controller=self)
-                self.subprocess_results.add(
-                    self.ingester.generate_file_queue_and_do_ingestion()
-                )
+                for folder in self.sub_folder_tuple:
+                    self.sub_folder_name = folder
+                    self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                                        job_run_id=self.job_run.id,
+                                                        bucket=gc_bucket_name,
+                                                        sub_folder=self.sub_folder_name,
+                                                        _controller=self)
+                    self.subprocess_results.add(
+                        self.ingester.generate_file_queue_and_do_ingestion()
+                    )
             self.job_result = self._aggregate_run_results()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR

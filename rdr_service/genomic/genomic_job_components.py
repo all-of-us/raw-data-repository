@@ -451,7 +451,7 @@ class GenomicFileValidator:
                 "notes",
             ),
         }
-        self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bi', 'jh', 'rdr')
+        self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'rdr')
         self.VALID_CVL_FACILITIES = ('rdr', 'color', 'uw', 'baylor')
 
         self.GC_MANIFEST_SCHEMA = (
