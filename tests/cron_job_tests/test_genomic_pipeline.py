@@ -58,7 +58,8 @@ _FAKE_BUCKET_RESULT_FOLDER = "rdr_fake_sub_result_folder"
 _FAKE_GENOMIC_CENTER_BUCKET_A = 'rdr_fake_genomic_center_a_bucket'
 _FAKE_GENOMIC_CENTER_BUCKET_B = 'rdr_fake_genomic_center_b_bucket'
 _FAKE_GENOMIC_CENTER_DATA_BUCKET_A = 'rdr_fake_genomic_center_a_data_bucket'
-_FAKE_GENOTYPING_FOLDER = 'rdr_fake_genotyping_folder'
+_FAKE_GENOTYPING_FOLDER = 'genotyping_sample_manifests'
+_FAKE_SEQUENCING_FOLDER = 'sequencing_sample_manifests'
 _FAKE_CVL_REPORT_FOLDER = 'fake_cvl_reconciliation_reports'
 _FAKE_CVL_MANIFEST_FOLDER = 'fake_cvl_manifest_folder'
 _FAKE_GEM_BUCKET = 'fake_gem_bucket'
@@ -390,7 +391,6 @@ class GenomicPipelineTest(BaseTestCase):
         biobankId=None,
         genome_type="aou_array",
         ny_flag="Y",
-        consent_for_ror="Y",
         sequencing_filename=None,
         recon_bb_manifest_job_id=None,
         recon_gc_manifest_job_id=None,
@@ -412,7 +412,6 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.genomeType = genome_type
         genomic_set_member.nyFlag = 1 if ny_flag == "Y" else 0
         genomic_set_member.biobankOrderId = biobank_order_id
-        genomic_set_member.consentForRor = consent_for_ror
         genomic_set_member.sequencingFileName = sequencing_filename
         genomic_set_member.reconcileMetricsBBManifestJobRunId = recon_bb_manifest_job_id
         genomic_set_member.reconcileGCManifestJobRunId = recon_gc_manifest_job_id
@@ -950,6 +949,8 @@ class GenomicPipelineTest(BaseTestCase):
                                sampleStatus1ED04=0,
                                sampleStatus1SAL2=1,
                                consentCohort=3 if bid == 100003 else 2,
+                               questionnaireOnDnaProgram=QuestionnaireStatus.SUBMITTED if bid != 100003 else None,
+                               questionnaireOnDnaProgramAuthored=clock.CLOCK.now() if bid != 100003 else None,
                                race=Race.HISPANIC_LATINO_OR_SPANISH)
             # Insert participant races
             race_answer = ParticipantRaceAnswers(
