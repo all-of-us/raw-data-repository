@@ -405,7 +405,6 @@ class GenomicSetMemberDao(UpdatableDao):
         with self.session() as session:
             members = session.query(GenomicSetMember).filter(
                 GenomicSetMember.reconcileCvlJobRunId == None,
-                GenomicSetMember.consentForRor == "Y",
                 GenomicSetMember.sequencingFileName != None,
             ).all()
         return members
