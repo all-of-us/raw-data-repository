@@ -391,7 +391,6 @@ class GenomicPipelineTest(BaseTestCase):
         biobankId=None,
         genome_type="aou_array",
         ny_flag="Y",
-        consent_for_ror="Y",
         sequencing_filename=None,
         recon_bb_manifest_job_id=None,
         recon_gc_manifest_job_id=None,
@@ -413,7 +412,6 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.genomeType = genome_type
         genomic_set_member.nyFlag = 1 if ny_flag == "Y" else 0
         genomic_set_member.biobankOrderId = biobank_order_id
-        genomic_set_member.consentForRor = consent_for_ror
         genomic_set_member.sequencingFileName = sequencing_filename
         genomic_set_member.reconcileMetricsBBManifestJobRunId = recon_bb_manifest_job_id
         genomic_set_member.reconcileGCManifestJobRunId = recon_gc_manifest_job_id
