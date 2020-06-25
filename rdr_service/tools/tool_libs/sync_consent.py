@@ -78,8 +78,8 @@ class SyncConsentClass(object):
             return 1
 
         filter_pids = None
-        if self.args.from_file:
-            filter_pids = open(self.args.from_file).read().strip().split('\n')
+        if self.args.pid_file:
+            filter_pids = open(self.args.pid_file).read().strip().split('\n')
             filter_pids = [int(x) for x in filter_pids]
 
         org_buckets = get_org_data_map()
@@ -219,12 +219,12 @@ def run():
     parser.add_argument(
         "--all-files", help="Transfer all file types, default is only PDF.",
         default=False, action="store_true")  # noqa
-    parser.add_argument('--from-file', help="File with list of pids to sync", default=None, type=str)  # noqa
+    parser.add_argument('--pid-file', help="File with list of pids to sync", default=None, type=str)  # noqa
 
     args = parser.parse_args()
 
-    if args.from_file and not os.path.exists(args.from_file):
-        _logger.error(f'File "{args.from_file}" does not exist.')
+    if args.pid_file and not os.path.exists(args.pid_file):
+        _logger.error(f'File "{args.pid_file}" does not exist.')
         return 1
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:

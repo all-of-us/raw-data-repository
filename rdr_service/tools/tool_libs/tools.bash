@@ -53,7 +53,7 @@ _python()
             ;;
         sync-consents)
             # These are options specific to this tool.
-            local toolopts="--org-id --destination-bucket --dry-run --date-limit --end-date --all-files"
+            local toolopts="--org-id --destination-bucket --dry-run --date-limit --end-date --zip-files --all-va --all-files --pid-file"
             COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
             return 0
             ;;
