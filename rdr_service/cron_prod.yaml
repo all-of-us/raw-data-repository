@@ -15,3 +15,8 @@ cron:
   schedule: 2 of month 00:00
   timezone: America/New_York
   target: offline
+- description: BigQuery Sync
+  url: /offline/BigQuerySync
+  timezone: America/New_York
+  schedule: every 3 minutes
+  target: offline
