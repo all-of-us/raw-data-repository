@@ -417,7 +417,8 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
                         participant_summary.semanticVersionForPrimaryConsent = \
                             questionnaire_response.questionnaireSemanticVersion
-                        participant_summary.consentCohort = ParticipantCohort.COHORT_3
+                        if authored >= datetime(2020, 4, 17, 0, 0, 0):
+                            participant_summary.consentCohort = ParticipantCohort.COHORT_3
                         # set language of consent to participant summary
                         for extension in resource_json.get("extension", []):
                             if (
