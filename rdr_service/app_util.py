@@ -342,6 +342,9 @@ class DateRange:
 
 
 class DateCollection:
+    """
+    Start and stop dates must be added in order for the intersection calculations to work.
+    """
     def __init__(self):
         self.ranges = []
         self.latest_active_range = None
