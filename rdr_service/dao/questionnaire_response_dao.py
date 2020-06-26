@@ -8,7 +8,7 @@ from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
-
+from rdr_service.participant_enums import PARTICIPANT_COHORT_3_START_TIME
 from rdr_service.app_util import get_account_origin_id
 from rdr_service import storage
 from rdr_service import clock, config
@@ -417,7 +417,7 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
                         participant_summary.semanticVersionForPrimaryConsent = \
                             questionnaire_response.questionnaireSemanticVersion
-                        if authored >= datetime(2020, 4, 17, 0, 0, 0) and \
+                        if authored >= PARTICIPANT_COHORT_3_START_TIME and \
                                 (participant_summary.consentCohort is None or
                                  participant_summary.consentCohort == ParticipantCohort.UNSET):
                             participant_summary.consentCohort = ParticipantCohort.COHORT_3
