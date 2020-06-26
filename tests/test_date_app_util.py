@@ -307,3 +307,36 @@ class DateCollectionTest(BaseTestCase):
         date_range = intersection.ranges[5]
         self.assertEqual(datetime(2020, 7, 20), date_range.start)
         self.assertIsNone(date_range.end)
+
+    def test_two_starts_and_an_end(self):
+        # Ensure that the utility can handle duplicate starts and a single end to them both.
+        # This scenario could come up if we get two consent questionnaires for some reason,
+        # and then only one NO response. In that case, the NO response should deactivate any previous
+        # YESs we're tracking
+        first = DateCollection()
+        first.add_start(datetime(2020, 4, 10))
+        first.add_start(datetime(2020, 5, 17))
+        first.add_stop(datetime(2020, 8, 1))
+
+        second = DateCollection()
+        second.add_start(datetime(2020, 3, 8))
+        second.add_stop(datetime(2020, 4, 18))
+        second.add_start(datetime(2020, 4, 22))
+        second.add_stop(datetime(2020, 5, 20))
+        second.add_start(datetime(2020, 7, 22))
+
+        # first range:         4/10_______________________________8/1
+        # second ranges:  3/8________4/18    4/22__5/20     7/22_______...
+        # expected result:     4/10__4/18    4/22__5/20     7/22__8/1
+
+        intersection = first.get_intersection(second)
+        self.assertEqual(3, len(intersection.ranges))
+        date_range = intersection.ranges[0]
+        self.assertEqual(datetime(2020, 4, 10), date_range.start)
+        self.assertEqual(datetime(2020, 4, 18), date_range.end)
+        date_range = intersection.ranges[1]
+        self.assertEqual(datetime(2020, 4, 22), date_range.start)
+        self.assertEqual(datetime(2020, 5, 20), date_range.end)
+        date_range = intersection.ranges[2]
+        self.assertEqual(datetime(2020, 7, 22), date_range.start)
+        self.assertEqual(datetime(2020, 8, 1), date_range.end)
