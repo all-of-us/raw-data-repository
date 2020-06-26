@@ -349,12 +349,19 @@ class DateCollection:
         self.ranges = []
         self.latest_active_range = None
 
+    def _convert_date_to_datetime(self, date):
+        if type(date) is datetime.date:
+            date = datetime.datetime(date.year, date.month, date.day)
+
+        return date
+
     def add_stop(self, date_time):
         if self.latest_active_range:
-            self.latest_active_range.end = date_time
+            self.latest_active_range.end = self._convert_date_to_datetime(date_time)
             self.latest_active_range = None
 
     def add_start(self, date_time):
+        date_time = self._convert_date_to_datetime(date_time)
         active_range = DateRange(date_time, None)
         self.latest_active_range = active_range
         self.ranges.append(active_range)
