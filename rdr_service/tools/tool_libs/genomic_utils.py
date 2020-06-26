@@ -23,7 +23,7 @@ from rdr_service.model.genomics import GenomicSetMember, GenomicSet
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
-from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob
+from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob, GenomicSubProcessResult
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -243,7 +243,7 @@ class GenerateManifestClass(GenomicManifestBase):
 
             if int(self.args.cohort) == 2:
                 _logger.info('Running c2 workflow')
-                self.generate_local_c2_manifest()
+                return self.generate_local_c2_manifest()
 
     def generate_local_c2_manifest(self):
         """
@@ -255,8 +255,15 @@ class GenerateManifestClass(GenomicManifestBase):
 
         biobank_coupler = GenomicBiobankSamplesCoupler(job_run.id)
         new_set_id = biobank_coupler.create_c2_genomic_participants(last_run_time, local=True)
+        if new_set_id == GenomicSubProcessResult.NO_FILES:
+            _logger.info("No records to include in manifest.")
+            self.dao.update_run_record(job_run.id, GenomicSubProcessResult.NO_FILES, 1)
+            return 1
 
         self.export_c2_manifest_to_local_file(new_set_id)
+        self.dao.update_run_record(job_run.id, GenomicSubProcessResult.SUCCESS, 1)
+
+        return 0
 
     def export_c2_manifest_to_local_file(self, set_id):
         """
