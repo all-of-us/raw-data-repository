@@ -205,6 +205,8 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
                                                 array_participants=(1, 2))
 
+        self._update_test_sample_ids()
+
         # run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()
 
@@ -226,6 +228,12 @@ class GenomicPipelineTest(BaseTestCase):
         # Test successful run result
         run_obj = self.job_run_dao.get(1)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def _update_test_sample_ids(self):
+        # update sample ID (mock AW1 manifest)
+        for m in self.member_dao.get_all():
+            m.sampleId = f"100{m.collectionTubeId}"
+            self.member_dao.update(m)
 
     def _gc_files_processed_test_cases(self, files_processed):
         """ sub tests for the GC Metrics end to end test """
@@ -318,6 +326,9 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name,
                                          folder=config.GENOMIC_AW2_SUBFOLDERS[0])
+
+        self._update_test_sample_ids()
+
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
         # Test the fields against the DB
@@ -408,7 +419,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.participantId = participant_id
         genomic_set_member.sexAtBirth = sex_at_birth
         genomic_set_member.biobankId = biobankId
-        genomic_set_member.sampleId = participant_id
+        genomic_set_member.collectionTubeId = participant_id
         genomic_set_member.genomeType = genome_type
         genomic_set_member.nyFlag = 1 if ny_flag == "Y" else 0
         genomic_set_member.biobankOrderId = biobank_order_id
@@ -548,6 +559,8 @@ class GenomicPipelineTest(BaseTestCase):
                                          bucket_name,
                                          folder=config.GENOMIC_AW2_SUBFOLDERS[1])
 
+        self._update_test_sample_ids()
+
         # Run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
@@ -576,6 +589,9 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name,
                                          folder=config.GENOMIC_AW2_SUBFOLDERS[1])
+
+        self._update_test_sample_ids()
+
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
         manifest_file = self.file_processed_dao.get(1)
 
@@ -645,21 +661,23 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name,
                                          folder=config.GENOMIC_AW2_SUBFOLDERS[0])
+
+        self._update_test_sample_ids()
+
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
         manifest_file = self.file_processed_dao.get(1)
 
         # Test the reconciliation process
         sequencing_test_files = (
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.hard-filtered.vcf.md5sum',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.vcf.gz',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.vcf.md5sum',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.cram',
-            # f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.crai',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.cram.md5sum',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.crai.md5sum',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz.tbi',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.hard-filtered.vcf.md5sum',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.vcf.gz',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.vcf.gz.tbi',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.vcf.md5sum',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.cram',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.cram.md5sum',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.crai.md5sum',
         )
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
@@ -690,7 +708,7 @@ class GenomicPipelineTest(BaseTestCase):
         description = "The following AW2 manifest file listed missing data."
         description += f"\nManifest File: {manifest_file.fileName}"
         description += "\nGenomic Job Run ID: 2"
-        description += "\nMissing Genotype Data: ['RDR_2_2_LocalID_InternalRevisionNumber.crai']"
+        description += "\nMissing Genotype Data: ['RDR_2_1002_LocalID_InternalRevisionNumber.crai']"
 
         mock_alert_handler.make_genomic_alert.assert_called_with(summary, description)
 
@@ -781,35 +799,35 @@ class GenomicPipelineTest(BaseTestCase):
             if member.biobankId == '100002':
                 # 100002 : Included, Valid
                 self.assertEqual(1, member.nyFlag)
-                self.assertEqual('100002', member.sampleId)
+                self.assertEqual('100002', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
             if member.biobankId == '100003':
                 # 100003 : Included, Valid
                 self.assertEqual(0, member.nyFlag)
-                self.assertEqual('100003', member.sampleId)
+                self.assertEqual('100003', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
             if member.biobankId == '100004':
                 # 100004 : Included, Invalid SAB
                 self.assertEqual(0, member.nyFlag)
-                self.assertEqual('100004', member.sampleId)
+                self.assertEqual('100004', member.collectionTubeId)
                 self.assertEqual('NA', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.INVALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
             if member.biobankId == '100006':
                 # 100006 : Included, Invalid consent
                 self.assertEqual(0, member.nyFlag)
-                self.assertEqual('100006', member.sampleId)
+                self.assertEqual('100006', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.INVALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
             if member.biobankId == '100007':
                 # 100007 : Included, Invalid Indian/Native
                 self.assertEqual(0, member.nyFlag)
-                self.assertEqual('100007', member.sampleId)
+                self.assertEqual('100007', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.INVALID, member.validationStatus)
                 self.assertEqual('Y', member.ai_an)
@@ -998,7 +1016,7 @@ class GenomicPipelineTest(BaseTestCase):
             if member.biobankId == '100001':
                 # 100002 : Included, Valid
                 self.assertEqual(0, member.nyFlag)
-                self.assertEqual('100001', member.sampleId)
+                self.assertEqual('100001', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
@@ -1006,7 +1024,7 @@ class GenomicPipelineTest(BaseTestCase):
             if member.biobankId == '100002':
                 # 100003 : Included, Valid
                 self.assertEqual(1, member.nyFlag)
-                self.assertEqual('100002', member.sampleId)
+                self.assertEqual('100002', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
@@ -1185,6 +1203,9 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name,
                                          folder=config.GENOMIC_AW2_SUBFOLDERS[1])
+
+        self._update_test_sample_ids()
+
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
         # Test sequencing file (required for GEM)
@@ -1292,6 +1313,9 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
                                                 array_participants=range(1, 4),
                                                 gem_a1_run_id=1)
+
+        self._update_test_sample_ids()
+
         # Set up test A2 manifest
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
         sub_folder = config.GENOMIC_GEM_A2_MANIFEST_SUBFOLDER
@@ -1332,6 +1356,9 @@ class GenomicPipelineTest(BaseTestCase):
                                                 array_participants=range(1, 4),
                                                 gem_a1_run_id=1,
                                                 genomic_workflow_state=GenomicWorkflowState.GEM_RPT_READY)
+
+        self._update_test_sample_ids()
+
         p3 = self.summary_dao.get(3)
         p3.consentForGenomicsROR = QuestionnaireStatus.SUBMITTED_NO_CONSENT
         p3.consentForGenomicsRORAuthored = datetime.datetime(2020, 5, 25, 0, 0, 0)
@@ -1387,20 +1414,22 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv', bucket_name,
                                          folder=config.GENOMIC_AW2_SUBFOLDERS[0])
 
+        self._update_test_sample_ids()
+
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
         # Create the Sequencing test files
         sequencing_test_files = (
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.hard-filtered.vcf.md5sum',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.vcf.gz',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.vcf.md5sum',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.cram',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.crai',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.cram.md5sum',
-            f'test_data_folder/RDR_2_2_LocalID_InternalRevisionNumber.crai.md5sum',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz.tbi',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.hard-filtered.vcf.md5sum',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.vcf.gz',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.vcf.gz.tbi',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.vcf.md5sum',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.cram',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.crai',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.cram.md5sum',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.crai.md5sum',
         )
 
         for f in sequencing_test_files:
@@ -1522,6 +1551,8 @@ class GenomicPipelineTest(BaseTestCase):
                                                 cvl_w1_run_id=1,
                                                 cvl=True,
                                                 genomic_workflow_state=GenomicWorkflowState.W2)
+
+        self._update_test_sample_ids()
 
         # Run Workflow with specific time
         fake_now = datetime.datetime.utcnow()

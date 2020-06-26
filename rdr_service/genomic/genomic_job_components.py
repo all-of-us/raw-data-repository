@@ -240,10 +240,12 @@ class GenomicFileIngester:
         """
         gc_manifest_column_mappings = {
             'packageId': 'packageid',
+            'sampleId': 'sampleid',
             'gcManifestBoxStorageUnitId': 'boxstorageunitid',
             'gcManifestBoxPlateId': 'boxid/plateid',
             'gcManifestWellPosition': 'wellposition',
             'gcManifestParentSampleId': 'parentsampleid',
+            'collectionTubeId': 'collectiontubeid',
             'gcManifestMatrixId': 'matrixid',
             'gcManifestTreatments': 'treatments',
             'gcManifestQuantity_ul': 'quantity(ul)',
@@ -264,11 +266,11 @@ class GenomicFileIngester:
             for row in data['rows']:
                 row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                      for key in row], row.values()))
-                sample_id = row_copy['biobankidsampleid'].split('_')[-1]
+                collection_tube_id = row_copy['collectiontubeid']
                 genome_type = row_copy['testname']
-                member = self.member_dao.get_member_from_sample_id(sample_id, genome_type)
+                member = self.member_dao.get_member_from_collection_tube(collection_tube_id, genome_type)
                 if member is None:
-                    logging.warning(f'Invalid sample ID: {sample_id}'
+                    logging.warning(f'Invalid collection tube ID: {collection_tube_id}'
                                     f' or genome_type: {genome_type}')
                     continue
                 if member.validationStatus != GenomicSetMemberStatus.VALID:
@@ -462,6 +464,7 @@ class GenomicFileValidator:
             "wellposition",
             "sampleid",
             "parentsampleid",
+            "collectiontubeid",
             "matrixid",
             "collectiondate",
             "biobankid",
@@ -1085,7 +1088,7 @@ class GenomicBiobankSamplesCoupler:
                 nyFlag=self._get_new_york_flag(samples_meta.site_ids[i]),
                 sexAtBirth=samples_meta.sabs[i],
                 biobankOrderId=samples_meta.order_ids[i],
-                sampleId=samples_meta.sample_ids[i],
+                collectionTubeId=samples_meta.sample_ids[i],
                 validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
                                   else GenomicSetMemberStatus.VALID),
                 validationFlags=valid_flags,
