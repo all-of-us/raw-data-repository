@@ -514,11 +514,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         if status == EnrollmentStatusV2.PARTICIPANT and ehr_consent is True:
             status = EnrollmentStatusV2.FULLY_CONSENTED
         if status == EnrollmentStatusV2.FULLY_CONSENTED and \
-            pm_complete and \
-            (ro_summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or gror_consent) and \
-            'modules' in ro_summary and \
-            completed_all_baseline_modules and \
-            dna_sample_count > 0:
+                pm_complete and \
+                (ro_summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or gror_consent) and \
+                'modules' in ro_summary and \
+                completed_all_baseline_modules and \
+                dna_sample_count > 0:
             status = EnrollmentStatusV2.CORE_PARTICIPANT
 
         # TODO: Get Enrollment dates for additional fields -> participant_summary_dao.py:499
