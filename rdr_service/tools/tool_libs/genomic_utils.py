@@ -62,15 +62,15 @@ class ResendSamplesClass(GenomicManifestBase):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(ResendSamplesClass, self).__init__(args, gcp_env)
 
-    def get_members_for_samples(self, samples):
+    def get_members_for_collection_tubes(self, samples):
         """
-        returns the genomic set members' data for samples
+        returns the genomic set members' data for collection tube
         :param samples: list of samples to resend
         :return: the members' records for the samples
         """
         with self.dao.session() as session:
             return session.query(GenomicSetMember)\
-                .filter(GenomicSetMember.sampleId.in_(samples)).all()
+                .filter(GenomicSetMember.collectionTubeId.in_(samples)).all()
 
     def update_members_genomic_set(self, members, set_id):
         """
@@ -83,7 +83,7 @@ class ResendSamplesClass(GenomicManifestBase):
             updated_members = list()
             for member in members:
                 member.genomicSetId = set_id
-                _logger.warning(f"Updating genomic set for sample: {member.sampleId}")
+                _logger.warning(f"Updating genomic set for collection tube id: {member.collectionTubeId}")
                 updated_members.append(session.merge(member))
         return updated_members
 
@@ -134,7 +134,7 @@ class ResendSamplesClass(GenomicManifestBase):
         get the Genomic Set Members, and export the data
         :return:
         """
-        members = self.get_members_for_samples(samples)
+        members = self.get_members_for_collection_tubes(samples)
         if len(members) > 0:
             genset = self.create_new_genomic_set()
             self.update_members_genomic_set(members, genset.id)
