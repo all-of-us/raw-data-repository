@@ -7,6 +7,7 @@ import argparse
 
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
+import datetime
 import logging
 import sys
 import os
@@ -252,6 +253,9 @@ class GenerateManifestClass(GenomicManifestBase):
         """
         job_run = self.dao.insert_run_record(GenomicJob.C2_PARTICIPANT_WORKFLOW)
         last_run_time = self.dao.get_last_successful_runtime(GenomicJob.C2_PARTICIPANT_WORKFLOW)
+
+        if last_run_time is None:
+            last_run_time = datetime.datetime(2020, 6, 29, 0, 0, 0, 0)
 
         biobank_coupler = GenomicBiobankSamplesCoupler(job_run.id)
         new_set_id = biobank_coupler.create_c2_genomic_participants(last_run_time, local=True)
