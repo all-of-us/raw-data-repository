@@ -367,7 +367,7 @@ class GenomicFileIngester:
                                  for key in row],
                                 row.values()))
             row_copy['file_id'] = self.file_obj.id
-            sample_id = row_copy['biobankidsampleid'].split('_')[-1]
+            sample_id = row_copy['sampleid']
             genome_type = self.file_validator.genome_type
             member = self.member_dao.get_member_from_sample_id(int(sample_id), genome_type)
             if member is not None:
@@ -439,6 +439,7 @@ class GenomicFileValidator:
         self.GC_METRICS_SCHEMAS = {
             'seq': (
                 "biobankid",
+                "sampleid",
                 "biobankidsampleid",
                 "limsid",
                 "meancoverage",
@@ -452,6 +453,7 @@ class GenomicFileValidator:
             ),
             'gen': (
                 "biobankid",
+                "sampleid",
                 "biobankidsampleid",
                 "limsid",
                 "chipwellbarcode",

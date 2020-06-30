@@ -224,6 +224,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test Genomic State updated
         member = self.member_dao.get(1)
         self.assertEqual(GenomicWorkflowState.AW2, member.genomicWorkflowState)
+        self.assertEqual('1001', member.sampleId)
 
         # Test successful run result
         run_obj = self.job_run_dao.get(1)
