@@ -1113,6 +1113,7 @@ class GenomicPipelineTest(BaseTestCase):
         for member in self.member_dao.get_all():
             if member.id in [1, 2]:
                 self.assertEqual(1, member.reconcileGCManifestJobRunId)
+                self.assertEqual('rdr', member.gcSiteId)
                 # Package ID represents that BB sample was reconciled to GC Manifest
                 self.assertEqual("PKG-1908-218051", member.packageId)
                 self.assertEqual("SU-0026388097", member.gcManifestBoxStorageUnitId)
