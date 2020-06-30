@@ -4,7 +4,8 @@ import http.client
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.clock import FakeClock
-from rdr_service.code_constants import PPI_SYSTEM, RACE_WHITE_CODE, PMI_SKIP_CODE
+from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, PPI_SYSTEM,\
+    RACE_WHITE_CODE, PMI_SKIP_CODE
 from rdr_service.concepts import Concept
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
@@ -41,6 +42,8 @@ class ParticipantApiTest(BaseTestCase):
             HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName="Test", organizationType=OrganizationType.UNSET)
         )
         self.order = BiobankOrderDao()
+
+        self._ehr_questionnaire_id = None
 
     def test_participant_id_out_of_range(self):
         response = self.send_get("Participant/P12345678", expected_status=404)
@@ -570,6 +573,73 @@ class ParticipantApiTest(BaseTestCase):
 
         participant_summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertNotIn("streetAddress2", participant_summary)
+
+    def test_first_study_consent_time_set(self):
+        with FakeClock(TIME_1):
+            participant = self.send_post("Participant", {"providerLink": [self.provider_link_2]})
+        participant_id = participant["participantId"]
+
+        with FakeClock(datetime.datetime(2020, 6, 1)):
+            self.send_consent(participant_id)
+
+        participant_summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual('2020-06-01T00:00:00', participant_summary['consentForStudyEnrollmentFirstYesAuthored'])
+
+    def test_first_study_consent_not_modified(self):
+        with FakeClock(TIME_1):
+            participant = self.send_post("Participant", {"providerLink": [self.provider_link_2]})
+        participant_id = participant["participantId"]
+
+        with FakeClock(datetime.datetime(2020, 6, 1)):
+            self.send_consent(participant_id)
+        with FakeClock(datetime.datetime(2020, 8, 1)):
+            self.send_consent(participant_id)
+
+        participant_summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual('2020-06-01T00:00:00', participant_summary['consentForStudyEnrollmentFirstYesAuthored'])
+
+    def submit_ehr_questionnaire(self, participant_id, ehr_response_code):
+        if not self._ehr_questionnaire_id:
+            self._ehr_questionnaire_id = self.create_questionnaire("ehr_consent_questionnaire.json")
+
+        code_answers = []
+        _add_code_answer(code_answers, 'ehrConsent', ehr_response_code)
+        qr_json = self.make_questionnaire_response_json(
+            participant_id,
+            self._ehr_questionnaire_id,
+            code_answers=code_answers,
+        )
+        self.send_post(self.questionnaire_response_url(participant_id), qr_json)
+
+    def test_first_ehr_consent_time_set(self):
+        participant_id, _ = self._setup_initial_participant_data()
+        with FakeClock(datetime.datetime(2020, 3, 12)):
+            self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_YES_CODE)
+
+        participant_summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual('2020-03-12T00:00:00',
+                         participant_summary['consentForElectronicHealthRecordsFirstYesAuthored'])
+
+    def test_first_ehr_consent_not_modified(self):
+        participant_id, _ = self._setup_initial_participant_data()
+
+        with FakeClock(datetime.datetime(2020, 3, 12)):
+            self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_YES_CODE)
+        with FakeClock(datetime.datetime(2020, 9, 12)):
+            self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_YES_CODE)
+
+        participant_summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual('2020-03-12T00:00:00',
+                         participant_summary['consentForElectronicHealthRecordsFirstYesAuthored'])
+
+    def test_first_ehr_consent_not_set_on_no(self):
+        participant_id, _ = self._setup_initial_participant_data()
+
+        with FakeClock(datetime.datetime(2020, 3, 12)):
+            self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_NO_CODE)
+
+        participant_summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertNotIn('consentForElectronicHealthRecordsFirstYesAuthored', participant_summary)
 
 
 def _add_code_answer(code_answers, link_id, code):
