@@ -1263,6 +1263,15 @@ class GenomicBiobankSamplesCoupler:
                     AND ps.consent_cohort = :cohort_2_param
                     AND ps.questionnaire_on_dna_program_authored > :from_date_param
                     AND ps.questionnaire_on_dna_program = :general_consent_param
+                HAVING TRUE
+                    # Validations for Cohort 2
+                    # TODO: may need to refactor these conditions if performance is poor 
+                    AND valid_ai_an = 1
+                    AND sab <> "NA"
+                    AND valid_age = 1
+                    AND general_consent_given = 1
+                    AND valid_suspension_status = 1
+                    AND valid_withdrawal_status = 1
                 """
 
         params = {
