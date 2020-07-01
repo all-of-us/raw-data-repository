@@ -112,7 +112,7 @@ class SyncConsentClass(object):
                 _logger.info("transferring files to destinations...")
                 count = 0
                 for rec in session.execute(participant_sql, params):
-                    if rec[0] not in filter_pids:
+                    if filter_pids and rec[0] not in filter_pids:
                         continue
                     if not self.args.debug:
                         print_progress_bar(
@@ -158,7 +158,8 @@ class SyncConsentClass(object):
                             date_limit=self.args.date_limit,
                             source_bucket=src_bucket, p_id=p_id)
                         if not files_in_range or len(files_in_range) == 0:
-                            _logger.info(f'No files in bucket updated after {self.args.date_limit}')
+                            # _logger.info(f'No files in bucket updated after {self.args.date_limit}')
+                            pass
                         for f in files_in_range:
                             copy_file(f, destination, p_id, dry_run=self.args.dry_run, zip_files=self.args.zip_files)
                     else:

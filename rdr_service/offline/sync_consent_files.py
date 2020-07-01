@@ -118,6 +118,7 @@ def do_sync_consent_files(zip_files=False, **kwargs):
         source = "/{source_bucket}/Participant/P{participant_id}/"\
             .format(source_bucket=source_bucket,
                     participant_id=participant_data.participant_id)
+        # if kwargs.get('all_va')
         destination = get_consent_destination(zip_files,
                                               bucket_name=org_buckets[participant_data.org_id],
                                               org_external_id=participant_data.org_id,
@@ -155,6 +156,10 @@ where participant.is_ghost_id is not true
     or summary.email not like '%@example.com'
   )
 """
+
+# todo: warn on missing consents
+# todo: log when the dates are
+# todo: use authored for consent rather than time
 
 participant_filters_sql = {
     'start_date': """
