@@ -204,6 +204,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "consentForStudyEnrollment": "SUBMITTED",
                 "consentForStudyEnrollmentTime": TIME_1.isoformat(),
                 "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+                "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
                 "ageRange": "36-45",
                 "email": self.email,
                 "withdrawalStatus": "NOT_WITHDRAWN",

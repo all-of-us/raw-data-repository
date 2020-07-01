@@ -330,6 +330,8 @@ class QuestionnaireResponseDao(BaseDao):
                         code = code_dao.get(answer.valueCodeId)
                         if code and code.value == CONSENT_PERMISSION_YES_CODE:
                             ehr_consent = True
+                            if participant_summary.consentForElectronicHealthRecordsFirstYesAuthored is None:
+                                participant_summary.consentForElectronicHealthRecordsFirstYesAuthored = authored
                     elif code.value == CABOR_SIGNATURE_QUESTION_CODE:
                         if answer.valueUri or answer.valueString:
                             # TODO: validate the URI? [DA-326]
@@ -422,6 +424,8 @@ class QuestionnaireResponseDao(BaseDao):
                                 participant_summary.consentCohort = ParticipantCohort.COHORT_2
                             elif authored < PARTICIPANT_COHORT_2_START_TIME:
                                 participant_summary.consentCohort = ParticipantCohort.COHORT_1
+                        if participant_summary.consentForStudyEnrollmentFirstYesAuthored is None:
+                            participant_summary.consentForStudyEnrollmentFirstYesAuthored = authored
                         # set language of consent to participant summary
                         for extension in resource_json.get("extension", []):
                             if (
