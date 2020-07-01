@@ -204,6 +204,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "consentForStudyEnrollment": "SUBMITTED",
                 "consentForStudyEnrollmentTime": TIME_1.isoformat(),
                 "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+                "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
                 "ageRange": "36-45",
                 "email": self.email,
                 "withdrawalStatus": "NOT_WITHDRAWN",
@@ -213,7 +214,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "ehrStatus": "UNSET",
                 "patientStatus": patient_statuses or [],
                 "participantOrigin": "example",
-                "consentCohort": "COHORT_3",
+                "consentCohort": "COHORT_1",
                 "cohort2PilotFlag": "UNSET"
             }
         )

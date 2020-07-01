@@ -228,6 +228,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollment": "SUBMITTED",
             "consentForStudyEnrollmentTime": TIME_1.isoformat(),
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "consentForCABoR": "UNSET",
             "questionnaireOnFamilyHealth": "UNSET",
             "questionnaireOnHealthcareAccess": "UNSET",
@@ -294,7 +295,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
-            "consentCohort": str(ParticipantCohort.COHORT_3),
+            "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         }
         self.assertJsonResponseMatches(expected, summary)
@@ -344,6 +345,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollment": "SUBMITTED",
             "consentForStudyEnrollmentTime": TIME_1.isoformat(),
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "consentForCABoR": "UNSET",
             "primaryLanguage": "es",
             "questionnaireOnFamilyHealth": "UNSET",
@@ -409,7 +411,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
-            "consentCohort": str(ParticipantCohort.COHORT_3),
+            "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         }
         self.assertJsonResponseMatches(expected, summary)
@@ -512,6 +514,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollment": "SUBMITTED",
             "consentForStudyEnrollmentTime": TIME_1.isoformat(),
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "consentForCABoR": "UNSET",
             "primaryLanguage": "es",
             "questionnaireOnFamilyHealth": "UNSET",
@@ -576,7 +579,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "ehrStatus": "UNSET",
             "patientStatus": [],
             "participantOrigin": "example",
-            "consentCohort": str(ParticipantCohort.COHORT_3),
+            "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         }
         self.assertJsonResponseMatches(expected, summary)
@@ -709,6 +712,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollment": "SUBMITTED",
             "consentForStudyEnrollmentTime": TIME_1.isoformat(),
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "consentForCABoR": "UNSET",
             "questionnaireOnFamilyHealth": "UNSET",
             "questionnaireOnHealthcareAccess": "UNSET",
@@ -775,7 +779,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": 'example',
             "semanticVersionForPrimaryConsent": "v1",
-            "consentCohort": str(ParticipantCohort.COHORT_3),
+            "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         }
         self.assertJsonResponseMatches(expected, summary)
@@ -930,6 +934,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollment": "SUBMITTED",
             "consentForStudyEnrollmentTime": TIME_1.isoformat(),
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "consentForCABoR": "UNSET",
             "questionnaireOnFamilyHealth": "UNSET",
             "questionnaireOnHealthcareAccess": "UNSET",
@@ -1054,6 +1059,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollment": "SUBMITTED",
             "consentForStudyEnrollmentTime": TIME_1.isoformat(),
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "consentForCABoR": "UNSET",
             "questionnaireOnFamilyHealth": "UNSET",
             "questionnaireOnHealthcareAccess": "UNSET",
@@ -1120,7 +1126,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
-            "consentCohort": str(ParticipantCohort.COHORT_3),
+            "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         }
         self.assertJsonResponseMatches(expected, summary)
@@ -1182,6 +1188,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollment": "SUBMITTED",
             "consentForStudyEnrollmentTime": TIME_1.isoformat(),
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "consentForCABoR": "UNSET",
             "questionnaireOnFamilyHealth": "UNSET",
             "questionnaireOnHealthcareAccess": "UNSET",
@@ -1248,7 +1255,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
-            "consentCohort": str(ParticipantCohort.COHORT_3),
+            "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         }
         self.assertJsonResponseMatches(expected, summary)

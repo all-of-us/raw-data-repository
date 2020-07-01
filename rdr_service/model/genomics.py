@@ -92,14 +92,17 @@ class GenomicSetMember(Base):
 
     validatedTime = Column("validated_time", DateTime, nullable=True)
 
+    # collectionTubeId corresponds to biobank_stored_sample_id
+    collectionTubeId = Column('collection_tube_id', String(80), nullable=True)
+
+    # sampleId is the great-grandchild aliquot of collectionTubeID
     sampleId = Column('sample_id', String(80), nullable=True)
     sampleType = Column('sample_type', String(50), nullable=True)
 
-    consentForRor = Column('consent_for_ror', String(10), nullable=True)
-    withdrawnStatus = Column('withdrawn_status', Integer, nullable=True)
-
     sequencingFileName = Column('sequencing_file_name',
                                 String(128), nullable=True)
+
+    gcSiteId = Column('gc_site_id', String(11), nullable=True)
 
     # BBGC Manifest Columns; ingested from GC manifest
     gcManifestBoxStorageUnitId = Column('gc_manifest_box_storage_unit_id', String(50), nullable=True)
@@ -149,9 +152,6 @@ class GenomicSetMember(Base):
                                    Integer, ForeignKey("genomic_job_run.id"),
                                    nullable=True)
 
-    gemPtscSentJobRunId = Column('gem_ptsc_sent_job_run_id',
-                                 Integer, ForeignKey("genomic_job_run.id"),
-                                 nullable=True)
 
     # CVL WGS Fields
     cvlW1ManifestJobRunId = Column('cvl_w1_manifest_job_run_id',

@@ -584,13 +584,14 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
             consentForStudyEnrollmentTime=TIME_2,
             consentForStudyEnrollmentAuthored=TIME_2,
+            consentForStudyEnrollmentFirstYesAuthored=TIME_2,
             firstName=self.first_name,
             lastName=self.last_name,
             email=self.email,
             lastModified=TIME_2,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_3
+            consentCohort=ParticipantCohort.COHORT_1
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -854,13 +855,14 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
             consentForStudyEnrollmentTime=TIME_2,
             consentForStudyEnrollmentAuthored=TIME_2,
+            consentForStudyEnrollmentFirstYesAuthored=TIME_2,
             lastModified=TIME_2,
             firstName=self.first_name,
             lastName=self.last_name,
             email=self.email,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_3
+            consentCohort=ParticipantCohort.COHORT_1
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -927,13 +929,14 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
             consentForStudyEnrollmentTime=TIME_2,
             consentForStudyEnrollmentAuthored=TIME_2,
+            consentForStudyEnrollmentFirstYesAuthored=TIME_2,
             lastModified=TIME_2,
             firstName=self.first_name,
             lastName=self.last_name,
             email=self.email,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_3
+            consentCohort=ParticipantCohort.COHORT_1
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -1006,12 +1009,13 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
             consentForStudyEnrollmentTime=TIME_2,
             consentForStudyEnrollmentAuthored=TIME_2,
+            consentForStudyEnrollmentFirstYesAuthored=TIME_2,
             firstName=self.first_name,
             lastName=self.last_name,
             email=self.email,
             patientStatus=[],
-            semanticVersionForPrimaryConsent = 'V1',
-            consentCohort=ParticipantCohort.COHORT_3
+            semanticVersionForPrimaryConsent='V1',
+            consentCohort=ParticipantCohort.COHORT_1
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.
@@ -1074,13 +1078,14 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
             consentForStudyEnrollmentTime=TIME_2,
             consentForStudyEnrollmentAuthored=TIME_2,
+            consentForStudyEnrollmentFirstYesAuthored=TIME_2,
             lastModified=TIME_4,
             firstName=self.first_name,
             lastName=self.last_name,
             email=self.email,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_3
+            consentCohort=ParticipantCohort.COHORT_1
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.

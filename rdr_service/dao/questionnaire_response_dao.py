@@ -8,7 +8,7 @@ from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
-
+from rdr_service.participant_enums import PARTICIPANT_COHORT_2_START_TIME, PARTICIPANT_COHORT_3_START_TIME
 from rdr_service.app_util import get_account_origin_id
 from rdr_service import storage
 from rdr_service import clock, config
@@ -83,8 +83,6 @@ def count_completed_ppi_modules(participant_summary):
     return sum(
         1 for field in ppi_module_fields if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED
     )
-
-
 
 
 class QuestionnaireResponseDao(BaseDao):
@@ -223,7 +221,6 @@ class QuestionnaireResponseDao(BaseDao):
 
         return questionnaire_response
 
-
     def _get_field_value(self, field_type, answer):
         if field_type == FieldType.CODE:
             return answer.valueCodeId
@@ -333,6 +330,8 @@ class QuestionnaireResponseDao(BaseDao):
                         code = code_dao.get(answer.valueCodeId)
                         if code and code.value == CONSENT_PERMISSION_YES_CODE:
                             ehr_consent = True
+                            if participant_summary.consentForElectronicHealthRecordsFirstYesAuthored is None:
+                                participant_summary.consentForElectronicHealthRecordsFirstYesAuthored = authored
                     elif code.value == CABOR_SIGNATURE_QUESTION_CODE:
                         if answer.valueUri or answer.valueString:
                             # TODO: validate the URI? [DA-326]
@@ -372,8 +371,8 @@ class QuestionnaireResponseDao(BaseDao):
 
         # If the answer for line 2 of the street address was left out then it needs to be clear on summary.
         # So when it hasn't been submitted and there is something set for streetAddress2 we want to clear it out.
-        summary_has_street_line_two = participant_summary.streetAddress2 is not None\
-            and participant_summary.streetAddress2 != ""
+        summary_has_street_line_two = participant_summary.streetAddress2 is not None \
+                                      and participant_summary.streetAddress2 != ""
         if street_address_submitted and not street_address2_submitted and summary_has_street_line_two:
             something_changed = True
             participant_summary.streetAddress2 = None
@@ -417,7 +416,16 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
                         participant_summary.semanticVersionForPrimaryConsent = \
                             questionnaire_response.questionnaireSemanticVersion
-                        participant_summary.consentCohort = ParticipantCohort.COHORT_3
+                        if participant_summary.consentCohort is None or \
+                            participant_summary.consentCohort == ParticipantCohort.UNSET:
+                            if authored >= PARTICIPANT_COHORT_3_START_TIME:
+                                participant_summary.consentCohort = ParticipantCohort.COHORT_3
+                            elif PARTICIPANT_COHORT_2_START_TIME <= authored < PARTICIPANT_COHORT_3_START_TIME:
+                                participant_summary.consentCohort = ParticipantCohort.COHORT_2
+                            elif authored < PARTICIPANT_COHORT_2_START_TIME:
+                                participant_summary.consentCohort = ParticipantCohort.COHORT_1
+                        if participant_summary.consentForStudyEnrollmentFirstYesAuthored is None:
+                            participant_summary.consentForStudyEnrollmentFirstYesAuthored = authored
                         # set language of consent to participant summary
                         for extension in resource_json.get("extension", []):
                             if (
@@ -457,12 +465,12 @@ class QuestionnaireResponseDao(BaseDao):
             if not all(first_last):
                 raise BadRequest(
                     "First name ({:s}), and last name ({:s}) required for consenting."
-                    .format(*["present" if part else "missing" for part in first_last])
+                        .format(*["present" if part else "missing" for part in first_last])
                 )
             if not any(email_phone):
                 raise BadRequest(
                     "Email address ({:s}), or phone number ({:s}) required for consenting."
-                    .format(*["present" if part else "missing" for part in email_phone])
+                        .format(*["present" if part else "missing" for part in email_phone])
                 )
 
             ParticipantSummaryDao().update_enrollment_status(participant_summary)
@@ -724,10 +732,10 @@ class QuestionnaireResponseAnswerDao(BaseDao):
             return []
         return (
             session.query(QuestionnaireResponseAnswer)
-            .join(QuestionnaireResponse)
-            .join(QuestionnaireQuestion)
-            .filter(QuestionnaireResponse.participantId == participant_id)
-            .filter(QuestionnaireResponseAnswer.endTime == None)
-            .filter(QuestionnaireQuestion.codeId.in_(code_ids))
-            .all()
+                .join(QuestionnaireResponse)
+                .join(QuestionnaireQuestion)
+                .filter(QuestionnaireResponse.participantId == participant_id)
+                .filter(QuestionnaireResponseAnswer.endTime == None)
+                .filter(QuestionnaireQuestion.codeId.in_(code_ids))
+                .all()
         )
