@@ -7,6 +7,7 @@ import argparse
 
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
+import datetime
 import logging
 import sys
 import os
@@ -23,7 +24,7 @@ from rdr_service.model.genomics import GenomicSetMember, GenomicSet
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
-from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob
+from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob, GenomicSubProcessResult
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -62,15 +63,15 @@ class ResendSamplesClass(GenomicManifestBase):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(ResendSamplesClass, self).__init__(args, gcp_env)
 
-    def get_members_for_samples(self, samples):
+    def get_members_for_collection_tubes(self, samples):
         """
-        returns the genomic set members' data for samples
+        returns the genomic set members' data for collection tube
         :param samples: list of samples to resend
         :return: the members' records for the samples
         """
         with self.dao.session() as session:
             return session.query(GenomicSetMember)\
-                .filter(GenomicSetMember.sampleId.in_(samples)).all()
+                .filter(GenomicSetMember.collectionTubeId.in_(samples)).all()
 
     def update_members_genomic_set(self, members, set_id):
         """
@@ -83,7 +84,7 @@ class ResendSamplesClass(GenomicManifestBase):
             updated_members = list()
             for member in members:
                 member.genomicSetId = set_id
-                _logger.warning(f"Updating genomic set for sample: {member.sampleId}")
+                _logger.warning(f"Updating genomic set for collection tube id: {member.collectionTubeId}")
                 updated_members.append(session.merge(member))
         return updated_members
 
@@ -134,7 +135,7 @@ class ResendSamplesClass(GenomicManifestBase):
         get the Genomic Set Members, and export the data
         :return:
         """
-        members = self.get_members_for_samples(samples)
+        members = self.get_members_for_collection_tubes(samples)
         if len(members) > 0:
             genset = self.create_new_genomic_set()
             self.update_members_genomic_set(members, genset.id)
@@ -243,7 +244,7 @@ class GenerateManifestClass(GenomicManifestBase):
 
             if int(self.args.cohort) == 2:
                 _logger.info('Running c2 workflow')
-                self.generate_local_c2_manifest()
+                return self.generate_local_c2_manifest()
 
     def generate_local_c2_manifest(self):
         """
@@ -253,10 +254,20 @@ class GenerateManifestClass(GenomicManifestBase):
         job_run = self.dao.insert_run_record(GenomicJob.C2_PARTICIPANT_WORKFLOW)
         last_run_time = self.dao.get_last_successful_runtime(GenomicJob.C2_PARTICIPANT_WORKFLOW)
 
+        if last_run_time is None:
+            last_run_time = datetime.datetime(2020, 6, 29, 0, 0, 0, 0)
+
         biobank_coupler = GenomicBiobankSamplesCoupler(job_run.id)
         new_set_id = biobank_coupler.create_c2_genomic_participants(last_run_time, local=True)
+        if new_set_id == GenomicSubProcessResult.NO_FILES:
+            _logger.info("No records to include in manifest.")
+            self.dao.update_run_record(job_run.id, GenomicSubProcessResult.NO_FILES, 1)
+            return 1
 
         self.export_c2_manifest_to_local_file(new_set_id)
+        self.dao.update_run_record(job_run.id, GenomicSubProcessResult.SUCCESS, 1)
+
+        return 0
 
     def export_c2_manifest_to_local_file(self, set_id):
         """

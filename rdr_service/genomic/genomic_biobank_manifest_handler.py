@@ -138,7 +138,10 @@ def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=No
     export_sql = """
       SELECT 
         '' as value,
-        sample_id,
+        CASE 
+            WHEN collection_tube_id IS NOT NULL THEN collection_tube_id
+            ELSE sample_id 
+        END AS sample_id,
         CONCAT(:prefix, biobank_id) as biobank_id,
         sex_at_birth,
         genome_type,

@@ -213,7 +213,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "ehrStatus": "UNSET",
                 "patientStatus": patient_statuses or [],
                 "participantOrigin": "example",
-                "consentCohort": "COHORT_3",
+                "consentCohort": "COHORT_1",
                 "cohort2PilotFlag": "UNSET"
             }
         )
