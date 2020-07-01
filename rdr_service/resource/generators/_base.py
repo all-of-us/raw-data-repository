@@ -150,11 +150,11 @@ class ResourceRecordSet(object):
                 rec.uri = res_uri
                 rec.hpoId = hpo_id
                 rec.resourcePKID = resource[pk_fld] if isinstance(resource[pk_fld], int) else None
-                rec.resource_PKAltID = str(resource[pk_fld]) if isinstance(resource[pk_fld], str) else None
+                rec.resourcePKAltID = str(resource[pk_fld]) if isinstance(resource[pk_fld], str) else None
                 rec.resource = resource
 
                 if pk_fld in ['participant_id']:
-                    rec.resourcePKID = int(re.sub('[^0-9]', '', rec.resource_PKAltID))
+                    rec.resourcePKID = int(re.sub('[^0-9]', '', rec.resourcePKAltID))
 
                 # TODO: Populate rec.parent_id and rec.parent_type_id in recursive calls.
 

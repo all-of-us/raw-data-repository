@@ -3,8 +3,6 @@
 This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
 import logging
-import os
-import signal
 
 # pylint: disable=unused-import
 from flask import got_request_exception, Response

@@ -11,12 +11,11 @@ from rdr_service.api.cloud_tasks_api import RebuildParticipantsTaskApi, RebuildC
 from rdr_service.services.flask import RESOURCE_PREFIX, TASK_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
     flask_restful_log_exception_error
-
+from rdr_service.api.resource_api import ResourceRequestApi
 
 def _build_resource_app():
     _app = Flask(__name__)
     _api = Api(_app)
-
     #
     # Cloud Task API endpoints
     #
@@ -37,9 +36,18 @@ def _build_resource_app():
 
     _api.add_resource(GenerateBiobankSamplesTaskApi, TASK_PREFIX + "GenerateBiobankSamplesTaskApi",
                      endpoint="generate_bio_samples_task", methods=["POST"])
+    #
+    # End Task API endpoints
+    #
 
-    # Simple API call for testing resource service.
-    # _app.add_url_rule(PREFIX, endpoint="/", view_func=start, methods=["GET"])
+    #
+    # Primary Resource API endpoint
+    #
+    _api.add_resource(ResourceRequestApi, RESOURCE_PREFIX + "<path:path>",
+                      endpoint="resource_request", methods=["GET"])
+    #
+    # End primary Resource API endpoint
+    #
 
     _app.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
     _app.add_url_rule('/_ah/stop', endpoint='stop', view_func=flask_stop, methods=["GET"])

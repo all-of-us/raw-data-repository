@@ -15,6 +15,7 @@ STOREFRONT = "storefront"
 EXPORTER = "exporter"
 WORKBENCH = "workbench"
 REDCAP = 'redcap'
+RESOURCE = 'resource'
 DEV_MAIL = "example@example.com"
 GEM = "gem"
 BIOBANK = 'biobank'

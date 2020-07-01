@@ -355,7 +355,8 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "SyncConsentFiles", endpoint="sync_consent_files", view_func=run_sync_consent_files, methods=["GET"]
+        OFFLINE_PREFIX + "SyncConsentFiles", endpoint="sync_consent_files", view_func=run_sync_consent_files,
+        methods=["GET"]
     )
 
     offline_app.add_url_rule(
@@ -366,7 +367,8 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "UpdateEhrStatus", endpoint="update_ehr_status", view_func=update_ehr_status_cron, methods=["GET"]
+        OFFLINE_PREFIX + "UpdateEhrStatus", endpoint="update_ehr_status", view_func=update_ehr_status_cron,
+        methods=["GET"]
     )
 
     # BEGIN Genomic Pipeline Jobs
@@ -398,11 +400,13 @@ def _build_pipeline_app():
     # END Genomic Pipeline Jobs
 
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "BigQueryRebuild", endpoint="bigquery_rebuild", view_func=bigquery_rebuild_cron, methods=["GET"]
+        OFFLINE_PREFIX + "BigQueryRebuild", endpoint="bigquery_rebuild", view_func=bigquery_rebuild_cron,
+        methods=["GET"]
     )
 
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "BigQueryDailyRebuild", endpoint="bigquery_daily_rebuild", view_func=bigquery_daily_rebuild_cron,
+        OFFLINE_PREFIX + "BigQueryDailyRebuild", endpoint="bigquery_daily_rebuild",
+        view_func=bigquery_daily_rebuild_cron,
         methods=["GET"]
     )
 

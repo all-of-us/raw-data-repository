@@ -362,10 +362,10 @@ class ParticipantSchema(Schema):
         ordered = True
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            2001,
-            'participant',
-            'Participant',
-            'participant_id',
+            type_uid=2001,
+            type_name='participant',
+            resource_uri='Participant',
+            resource_pk_field='participant_id',
             nested_schemas=[
                 ('addresses', StandaloneAddressSchema),
                 ('pm', StandalonePhysicalMeasurementsSchema),

@@ -6,7 +6,6 @@ import logging
 
 from sqlalchemy.sql import text
 
-from rdr_service.app_util import task_auth_required
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.code import Code
 from rdr_service.resource import generators, schemas
@@ -29,7 +28,6 @@ class CodeGenerator(generators.BaseGenerator):
             return generators.ResourceRecordSet(schemas.CodeSchema, data)
 
 
-@task_auth_required
 def rebuild_codebook_resources_task():
     """
     Cloud Tasks: Generate all new Codebook resource records.
