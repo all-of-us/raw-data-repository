@@ -224,6 +224,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test Genomic State updated
         member = self.member_dao.get(1)
         self.assertEqual(GenomicWorkflowState.AW2, member.genomicWorkflowState)
+        self.assertEqual('1001', member.sampleId)
 
         # Test successful run result
         run_obj = self.job_run_dao.get(1)
@@ -1113,6 +1114,7 @@ class GenomicPipelineTest(BaseTestCase):
         for member in self.member_dao.get_all():
             if member.id in [1, 2]:
                 self.assertEqual(1, member.reconcileGCManifestJobRunId)
+                self.assertEqual('rdr', member.gcSiteId)
                 # Package ID represents that BB sample was reconciled to GC Manifest
                 self.assertEqual("PKG-1908-218051", member.packageId)
                 self.assertEqual("SU-0026388097", member.gcManifestBoxStorageUnitId)

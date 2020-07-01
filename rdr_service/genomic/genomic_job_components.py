@@ -202,7 +202,8 @@ class GenomicFileIngester:
                 return validation_result
 
             if self.job_id in [GenomicJob.AW1_MANIFEST, GenomicJob.AW1F_MANIFEST]:
-                return self._ingest_gc_manifest(data_to_ingest)
+                gc_site_id = self._get_site_from_aw1()
+                return self._ingest_gc_manifest(data_to_ingest, gc_site_id)
 
             if self.job_id == GenomicJob.METRICS_INGESTION:
                 return self._process_gc_metrics_data_for_insert(data_to_ingest)
@@ -232,10 +233,11 @@ class GenomicFileIngester:
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
-    def _ingest_gc_manifest(self, data):
+    def _ingest_gc_manifest(self, data, _site):
         """
         Updates the GenomicSetMember with GC Manifest data
         :param data:
+        :param _site: gc_site ID
         :return: result code
         """
         gc_manifest_column_mappings = {
@@ -269,6 +271,9 @@ class GenomicFileIngester:
                 collection_tube_id = row_copy['collectiontubeid']
                 genome_type = row_copy['testname']
                 member = self.member_dao.get_member_from_collection_tube(collection_tube_id, genome_type)
+
+                member.gcSiteId = _site
+
                 if member is None:
                     logging.warning(f'Invalid collection tube ID: {collection_tube_id}'
                                     f' or genome_type: {genome_type}')
@@ -362,7 +367,7 @@ class GenomicFileIngester:
                                  for key in row],
                                 row.values()))
             row_copy['file_id'] = self.file_obj.id
-            sample_id = row_copy['biobankidsampleid'].split('_')[-1]
+            sample_id = row_copy['sampleid']
             genome_type = self.file_validator.genome_type
             member = self.member_dao.get_member_from_sample_id(int(sample_id), genome_type)
             if member is not None:
@@ -407,6 +412,13 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
+    def _get_site_from_aw1(self):
+        """
+        Returns the Genomic Center's site ID from the AW1 filename
+        :return: GC site ID string
+        """
+        return self.file_obj.fileName.split('/')[-1].split("_")[0].lower()
+
 
 class GenomicFileValidator:
     """
@@ -427,6 +439,7 @@ class GenomicFileValidator:
         self.GC_METRICS_SCHEMAS = {
             'seq': (
                 "biobankid",
+                "sampleid",
                 "biobankidsampleid",
                 "limsid",
                 "meancoverage",
@@ -440,6 +453,7 @@ class GenomicFileValidator:
             ),
             'gen': (
                 "biobankid",
+                "sampleid",
                 "biobankidsampleid",
                 "limsid",
                 "chipwellbarcode",
