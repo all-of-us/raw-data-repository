@@ -48,6 +48,7 @@ class BiobankSpecimenApi(BiobankApiBase):
                             self.dao.update_with_session(session, m)
                         else:
                             self.dao.insert_with_session(session, m)
+                        session.commit()
                     except BadRequest as e:
                         logging.error('RLIMS Migration: BadRequest encountered', exc_info=True)
                         errors.append({
