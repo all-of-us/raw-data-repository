@@ -608,7 +608,7 @@ class ParticipantSummaryDao(UpdatableDao):
             and participant_summary.numCompletedBaselinePPIModules == self._get_num_baseline_ppi_modules()
             and participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED
             and participant_summary.samplesToIsolateDNA == SampleStatus.RECEIVED
-        ):
+        ) or participant_summary.enrollmentStatus == EnrollmentStatus.FULL_PARTICIPANT:
 
             max_core_sample_time = self.calculate_max_core_sample_time(
                 participant_summary, field_name_prefix="sampleStatus"
@@ -626,7 +626,7 @@ class ParticipantSummaryDao(UpdatableDao):
             consent
             and participant_summary.numCompletedBaselinePPIModules == self._get_num_baseline_ppi_modules()
             and participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED
-        ):
+        ) or participant_summary.enrollmentStatus == EnrollmentStatus.FULL_PARTICIPANT:
 
             max_core_sample_time = self.calculate_max_core_sample_time(
                 participant_summary, field_name_prefix="sampleOrderStatus"
