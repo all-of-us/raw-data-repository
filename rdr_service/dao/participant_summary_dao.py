@@ -647,15 +647,15 @@ class ParticipantSummaryDao(UpdatableDao):
         sample_time = min(sample_time_list) if sample_time_list else None
 
         if sample_time is not None:
-            return max(
-                [
-                    sample_time,
-                    participant_summary.enrollmentStatusMemberTime,
-                    participant_summary.questionnaireOnTheBasicsTime,
-                    participant_summary.questionnaireOnLifestyleTime,
-                    participant_summary.questionnaireOnOverallHealthTime,
-                    participant_summary.physicalMeasurementsFinalizedTime,
-                ]
+            return max([time for time in
+                        [
+                            sample_time,
+                            participant_summary.enrollmentStatusMemberTime,
+                            participant_summary.questionnaireOnTheBasicsTime,
+                            participant_summary.questionnaireOnLifestyleTime,
+                            participant_summary.questionnaireOnOverallHealthTime,
+                            participant_summary.physicalMeasurementsFinalizedTime,
+                        ] if time is not None]
             )
         else:
             return None
