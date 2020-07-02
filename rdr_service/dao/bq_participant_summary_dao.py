@@ -127,7 +127,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             return {'email': None, 'is_ghost_id': 0}
         qnan = BQRecord(schema=None, data=qnans)  # use only most recent response.
 
-        consent_dt = parser.parse(qnan.get('authored')).date() if qnan.get('authored') else None
+        consent_dt = parser.parse(qnan.get('authored')) if qnan.get('authored') else None
 
         data = {
             'first_name': qnan.get('PIIName_First'),
