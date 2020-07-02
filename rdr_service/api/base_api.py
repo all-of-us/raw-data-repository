@@ -14,7 +14,9 @@ from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_up
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.query import OrderBy, Query
+from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+
 
 DEFAULT_MAX_RESULTS = 100
 MAX_MAX_RESULTS = 10000
@@ -172,6 +174,7 @@ class BaseApi(Resource):
             # Rebuild participant for BigQuery
             if GAE_PROJECT == 'localhost':
                 bq_participant_summary_update_task(participant_id)
+                rebuild_participant_summary_resource(participant_id)
             else:
                 params = {'p_id': participant_id}
                 task = GCPCloudTask('rebuild_one_participant_task',
@@ -329,6 +332,7 @@ class UpdatableApi(BaseApi):
             # Rebuild participant for BigQuery
             if GAE_PROJECT == 'localhost':
                 bq_participant_summary_update_task(participant_id)
+                rebuild_participant_summary_resource(participant_id)
             else:
                 params = {'p_id': participant_id}
                 task = GCPCloudTask('rebuild_one_participant_task',

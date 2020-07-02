@@ -3,8 +3,6 @@
 This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
 import logging
-import os
-import signal
 
 # pylint: disable=unused-import
 from flask import got_request_exception, Response
@@ -42,40 +40,11 @@ from rdr_service.api.organization_hierarchy_api import OrganizationHierarchyApi
 from rdr_service.api.workbench_api import WorkbenchWorkspaceApi, WorkbenchResearcherApi
 from rdr_service.api.research_projects_directory_api import ResearchProjectsDirectoryApi
 from rdr_service.api.redcap_workbench_audit_api import RedcapWorkbenchAuditApi
-from rdr_service.config import get_config, get_db_config
 
-from rdr_service.services.flask import app, API_PREFIX
+from rdr_service.services.flask import app, API_PREFIX, flask_warmup, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
     flask_restful_log_exception_error
 
-
-def _warmup():
-    # Load configurations into the cache.
-    # Not called in AppEngine2????
-    get_config()
-    get_db_config()
-    return '{ "success": "true" }'
-
-def _start():
-    get_config()
-    get_db_config()
-    return '{ "success": "true" }'
-
-def _stop():
-    pid_file = '/tmp/supervisord.pid'
-    if os.path.exists(pid_file):
-        try:
-            pid = int(open(pid_file).read())
-            if pid:
-                logging.info('******** Shutting down, sent supervisor the termination signal. ********')
-                response = Response()
-                response.status_code = 200
-                end_request_logging(response)
-                os.kill(pid, signal.SIGTERM)
-        except TypeError:
-            logging.warning('******** Shutting down, supervisor pid file is invalid. ********')
-            pass
-    return '{ "success": "true" }'
 
 def _log_request_exception(sender, exception, **extra):  # pylint: disable=unused-argument
     """Logs HTTPExceptions.
@@ -364,9 +333,9 @@ app.add_url_rule(API_PREFIX + "ImportCodebook", endpoint="import_codebook", view
                  methods=["POST"])
 
 
-app.add_url_rule("/_ah/warmup", endpoint="warmup", view_func=_warmup, methods=["GET"])
-app.add_url_rule("/_ah/start", endpoint="start", view_func=_start, methods=["GET"])
-app.add_url_rule("/_ah/stop", endpoint="stop", view_func=_stop, methods=["GET"])
+app.add_url_rule("/_ah/warmup", endpoint="warmup", view_func=flask_warmup, methods=["GET"])
+app.add_url_rule("/_ah/start", endpoint="start", view_func=flask_start, methods=["GET"])
+app.add_url_rule("/_ah/stop", endpoint="stop", view_func=flask_stop, methods=["GET"])
 
 app.before_request(begin_request_logging)  # Must be first before_request() call.
 app.before_request(app_util.request_logging)
