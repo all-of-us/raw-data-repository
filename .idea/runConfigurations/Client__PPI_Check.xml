@@ -13,7 +13,7 @@
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
     <option name="SCRIPT_NAME" value="client" />
-    <option name="PARAMETERS" value="ppi-check --project all-of-us-rdr-stable --sheet-id 1HTBugtC0Hm4nIE5beotAD-PUs-BzTBWsRdixnzqTrtc --sheet-gid 1454145699 --email ptsc.test.persona+41@gmail.com" />
+    <option name="PARAMETERS" value="ppi-check --project all-of-us-rdr-stable --service-account configurator@all-of-us-rdr-stable.iam.gserviceaccount.com --sheet-id 1br-cez82vVmucrmsTsHMrfMB0xFYvAa6kIabFQbJp_I --sheet-gid 1767083096 --email ptsc.test.persona+105@gmail.com" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="true" />
