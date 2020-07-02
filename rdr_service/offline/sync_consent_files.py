@@ -234,6 +234,7 @@ def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_fi
     path = source if source[0:1] != '/' else source[1:]
     bucket_name, _, prefix = path.partition('/')
     prefix = None if prefix == '' else prefix
+    files_found = False
     for source_blob in list_blobs(bucket_name, prefix):
         if not source_blob.name.endswith('/'):  # Exclude folders
             source_file_path = os.path.normpath('/' + bucket_name + '/' + source_blob.name)
@@ -241,8 +242,11 @@ def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_fi
             if (zip_files or _not_previously_copied(source_file_path, destination_file_path)) and\
                     _after_date_limit(source_blob, date_limit) and\
                     _matches_file_filter(source_blob.name, file_filter):
+                files_found = True
                 move_file_function = _download_file if zip_files else copy_cloud_file
                 move_file_function(source_file_path, destination_file_path)
+    if not files_found:
+        logging.warning(f'No files copied from {source}')
 
 
 def _not_previously_copied(source_file_path, destination_file_path):
