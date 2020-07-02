@@ -96,8 +96,6 @@ class CheckPPIDataClass(object):
 
         http = urllib3.PoolManager(cert_reqs="CERT_NONE", assert_hostname=False)
         resp = http.request('GET', url)
-        _logger.warning(resp.status)
-        _logger.warning(resp.data)
         if resp.status == 200:
             csv_data = list(csv.reader(io.StringIO(resp.data.decode('utf-8'))))
             return csv_data
