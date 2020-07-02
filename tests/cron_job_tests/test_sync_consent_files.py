@@ -216,6 +216,31 @@ class SyncConsentFilesTest(BaseTestCase):
                       EXPECTED_CLOUD_DESTINATION_PATTERN.format(**pattern_args, file_name='another.bin'))
         ])
 
+    @mock.patch('rdr_service.offline.sync_consent_files.list_blobs')
+    @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
+    def test_all_file_filter(self, mock_copy_cloud_file, mock_list_blobs):
+        today = datetime.datetime.today()
+        today_without_timestamp = datetime.datetime(today.year, today.month, today.day)
+        self._mock_files_for_participants(mock_list_blobs, [
+            FakeConsentFile(updated=today_without_timestamp)
+        ])
+
+        va_org = self.data_generator.create_database_organization(externalId='VA_TEST')
+        self._create_participant(1, va_org.organizationId, self.site1.siteId, consents=True,
+                                 consent_time=datetime.datetime(2020, 2, 3))
+        sync_consent_files.do_sync_consent_files(all_va=True)
+
+        pattern_args = {
+            'org_bucket_name': 'aou179',
+            'org_id': 'VA_TEST',
+            'site_name': self.site1.googleGroup,
+            'participant_id': 1
+        }
+        mock_copy_cloud_file.assert_has_calls([
+            mock.call(f'/{self.source_consent_bucket}/Participant/P1/consent.pdf',
+                      EXPECTED_CLOUD_DESTINATION_PATTERN.format(**pattern_args, file_name='consent.pdf'))
+        ])
+
     @staticmethod
     def _create_local_files_with_download(mock_download_cloud_file):
         def create_local_file(_, destination):

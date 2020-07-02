@@ -109,17 +109,29 @@ def do_sync_consent_files(zip_files=False, **kwargs):
     """
   entrypoint
   """
+    logging.info('Syncing consent files.')
     org_buckets = get_org_data_map()
     org_ids = [org_id for org_id, org_data in org_buckets.items()]
     start_date = kwargs.get('start_date')
+    all_va = kwargs.get('all_va')
+    if start_date:
+        logging.info(f'syncing consents from {start_date}')
+    if zip_files:
+        logging.info('zipping consent files')
+    if all_va:
+        logging.info('only interacting with VA files')
     file_filter = kwargs.get('file_filter', 'pdf')
     for participant_data in _iter_participants_data(org_ids, **kwargs):
         source_bucket = SOURCE_BUCKET.get(participant_data.origin_id, SOURCE_BUCKET[next(iter(SOURCE_BUCKET))])
         source = "/{source_bucket}/Participant/P{participant_id}/"\
             .format(source_bucket=source_bucket,
                     participant_id=participant_data.participant_id)
+        if all_va:
+            destination_bucket = 'aou179'
+        else:
+            destination_bucket = org_buckets[participant_data.org_id]
         destination = get_consent_destination(zip_files,
-                                              bucket_name=org_buckets[participant_data.org_id],
+                                              bucket_name=destination_bucket,
                                               org_external_id=participant_data.org_id,
                                               site_name=participant_data.google_group or DEFAULT_GOOGLE_GROUP,
                                               p_id=participant_data.participant_id)
@@ -222,6 +234,7 @@ def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_fi
     path = source if source[0:1] != '/' else source[1:]
     bucket_name, _, prefix = path.partition('/')
     prefix = None if prefix == '' else prefix
+    files_found = False
     for source_blob in list_blobs(bucket_name, prefix):
         if not source_blob.name.endswith('/'):  # Exclude folders
             source_file_path = os.path.normpath('/' + bucket_name + '/' + source_blob.name)
@@ -229,8 +242,11 @@ def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_fi
             if (zip_files or _not_previously_copied(source_file_path, destination_file_path)) and\
                     _after_date_limit(source_blob, date_limit) and\
                     _matches_file_filter(source_blob.name, file_filter):
+                files_found = True
                 move_file_function = _download_file if zip_files else copy_cloud_file
                 move_file_function(source_file_path, destination_file_path)
+    if not files_found:
+        logging.warning(f'No files copied from {source}')
 
 
 def _not_previously_copied(source_file_path, destination_file_path):
