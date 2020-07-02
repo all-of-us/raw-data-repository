@@ -1267,6 +1267,8 @@ class GenomicBiobankSamplesCoupler:
                           JOIN code cr ON cr.code_id = ra.code_id
                               AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
                     ) native ON native.participant_id = p.participant_id
+                    LEFT JOIN genomic_set_member m ON m.collection_tube_id = ss.biobank_stored_sample_id
+                      AND m.genomic_workflow_state <> :ignore_param
                 WHERE TRUE
                     AND (
                             ps.sample_status_1ed04 = :sample_status_param
@@ -1277,6 +1279,16 @@ class GenomicBiobankSamplesCoupler:
                     AND ps.consent_cohort = :cohort_2_param
                     AND ps.questionnaire_on_dna_program_authored > :from_date_param
                     AND ps.questionnaire_on_dna_program = :general_consent_param
+                    AND m.id IS NULL
+                HAVING TRUE
+                    # Validations for Cohort 2
+                    # TODO: may need to refactor these conditions if performance is poor 
+                    AND valid_ai_an = 1
+                    AND sab <> "NA"
+                    AND valid_age = 1
+                    AND general_consent_given = 1
+                    AND valid_suspension_status = 1
+                    AND valid_withdrawal_status = 1
                 """
 
         params = {
@@ -1288,6 +1300,7 @@ class GenomicBiobankSamplesCoupler:
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
             "cohort_2_param": ParticipantCohort.COHORT_2.__int__(),
+            "ignore_param": GenomicWorkflowState.IGNORE,
         }
 
         with self.samples_dao.session() as session:

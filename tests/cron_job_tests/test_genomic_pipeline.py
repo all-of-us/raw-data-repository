@@ -947,7 +947,7 @@ class GenomicPipelineTest(BaseTestCase):
     def test_c2_participant_workflow(self):
         # Test for Cohort 2 workflow
         # create test samples
-        test_biobank_ids = (100001, 100002, 100003)
+        test_biobank_ids = (100001, 100002, 100003, 100004)
         fake_datetime_old = datetime.datetime(2019, 12, 31, tzinfo=pytz.utc)
         fake_datetime_new = datetime.datetime(2020, 1, 5, tzinfo=pytz.utc)
 
@@ -959,10 +959,12 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Setup race codes for unittests
         non_native_code = self._setup_fake_race_codes(native=False)
+        native_code = self._setup_fake_race_codes(native=True)
 
         # Setup the biobank order backend
         for bid in test_biobank_ids:
             p = self._make_participant(biobankId=bid)
+
             self._make_summary(p, sexId=female_code,
                                consentForStudyEnrollment=1,
                                sampleStatus1ED04=0,
@@ -971,10 +973,11 @@ class GenomicPipelineTest(BaseTestCase):
                                questionnaireOnDnaProgram=QuestionnaireStatus.SUBMITTED if bid != 100003 else None,
                                questionnaireOnDnaProgramAuthored=clock.CLOCK.now() if bid != 100003 else None,
                                race=Race.HISPANIC_LATINO_OR_SPANISH)
+
             # Insert participant races
             race_answer = ParticipantRaceAnswers(
                 participantId=p.participantId,
-                codeId=non_native_code
+                codeId=native_code if bid == 100004 else non_native_code
             )
 
             self.race_dao.insert(race_answer)

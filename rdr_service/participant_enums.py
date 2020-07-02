@@ -596,6 +596,7 @@ class GenomicWorkflowState(messages.Enum):
     A3 = 31
 
     AW0_READY = 32
+    IGNORE = 33
 
 
 class GenomicSubProcessStatus(messages.Enum):
