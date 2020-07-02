@@ -55,6 +55,7 @@ class BiobankSpecimenApi(BiobankApiBase):
                             'rlimsID': rlims_id,
                             'error': e.description
                         })
+                        session.rollback()
                     except Exception: # pylint: disable=broad-except
                         logging.error('RLIMS Migration: Server error encountered', exc_info=True)
                         errors.append({
