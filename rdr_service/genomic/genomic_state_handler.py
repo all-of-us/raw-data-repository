@@ -12,6 +12,15 @@ class GenomicStateBase:
         return
 
 
+class IgnoreState(GenomicStateBase):
+    """
+    Ignore State, used to effectively remove GenomicSetMembers from
+    the genomics system.
+    """
+    def transition_function(self, signal):
+        return GenomicWorkflowState.IGNORE
+
+
 class AW0ReadyState(GenomicStateBase):
     """
     State representing new Genomic Set Members
@@ -159,6 +168,7 @@ class GenomicStateHandler:
     Basic FSM for Genomic States. Returns call to state's transision_function()
     """
     states = {
+        GenomicWorkflowState.IGNORE: IgnoreState(),
         GenomicWorkflowState.AW0_READY: AW0ReadyState(),
         GenomicWorkflowState.AW0: AW0State(),
         GenomicWorkflowState.AW1: AW1State(),

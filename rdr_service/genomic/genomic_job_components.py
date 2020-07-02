@@ -313,7 +313,9 @@ class GenomicFileIngester:
         try:
             for row in file_data['rows']:
                 sample_id = row['sample_id']
-                member = self.member_dao.get_member_from_sample_id(sample_id, GENOME_TYPE_ARRAY)
+                member = self.member_dao.get_member_from_sample_id_with_state(sample_id,
+                                                                              GENOME_TYPE_ARRAY,
+                                                                              GenomicWorkflowState.A1)
                 if member is None:
                     logging.warning(f'Invalid sample ID: {sample_id}')
                     continue
@@ -369,7 +371,9 @@ class GenomicFileIngester:
             row_copy['file_id'] = self.file_obj.id
             sample_id = row_copy['sampleid']
             genome_type = self.file_validator.genome_type
-            member = self.member_dao.get_member_from_sample_id(int(sample_id), genome_type)
+            member = self.member_dao.get_member_from_sample_id_with_state(int(sample_id),
+                                                                          genome_type,
+                                                                          GenomicWorkflowState.AW1)
             if member is not None:
                 self.member_dao.update_member_state(member, GenomicWorkflowState.AW2)
                 row_copy['member_id'] = member.id
@@ -1300,7 +1304,7 @@ class GenomicBiobankSamplesCoupler:
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
             "cohort_2_param": ParticipantCohort.COHORT_2.__int__(),
-            "ignore_param": GenomicWorkflowState.IGNORE,
+            "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
         }
 
         with self.samples_dao.session() as session:
@@ -1439,6 +1443,7 @@ class ManifestDefinitionProvider:
                 ).where(
                     (GenomicGCValidationMetrics.processingStatus == 'pass') &
                     (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY) &
+                    (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicSetMember.genomeType == "aou_wgs")
                 )
             )
@@ -1468,6 +1473,7 @@ class ManifestDefinitionProvider:
                     )
                 ).where(
                     (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.W2) &
+                    (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicSetMember.genomeType == "aou_cvl") &
                     (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
                 )
@@ -1494,6 +1500,7 @@ class ManifestDefinitionProvider:
                 ).where(
                     (GenomicGCValidationMetrics.processingStatus == 'pass') &
                     (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_READY) &
+                    (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicSetMember.genomeType == "aou_array") &
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                     (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
@@ -1516,6 +1523,7 @@ class ManifestDefinitionProvider:
                                     GenomicSetMember.participantId == ParticipantSummary.participantId)
                 ).where(
                     (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_RPT_PENDING_DELETE) &
+                    (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicSetMember.genomeType == "aou_array")
                 )
             )

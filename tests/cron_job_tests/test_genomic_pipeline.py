@@ -203,7 +203,8 @@ class GenomicPipelineTest(BaseTestCase):
                                              folder=config.GENOMIC_AW2_SUBFOLDERS[1])
 
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
-                                                array_participants=(1, 2))
+                                                array_participants=(1, 2),
+                                                genomic_workflow_state=GenomicWorkflowState.AW1)
 
         self._update_test_sample_ids()
 
@@ -322,7 +323,7 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_aw2_wgs_gc_metrics_ingestion(self):
         # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(2)
+        self._create_fake_datasets_for_gc_tests(2, genomic_workflow_state=GenomicWorkflowState.AW1)
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name,
@@ -554,7 +555,8 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_gc_metrics_reconciliation_vs_manifest(self):
         # Create the fake Google Cloud CSV files to ingest
-        self._create_fake_datasets_for_gc_tests(1, arr_override=True, array_participants=[1])
+        self._create_fake_datasets_for_gc_tests(1, arr_override=True, array_participants=[1],
+                                                genomic_workflow_state=GenomicWorkflowState.AW1)
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name,
@@ -585,7 +587,8 @@ class GenomicPipelineTest(BaseTestCase):
         mock_alert_handler.make_genomic_alert.return_value = 1
 
         # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(2, arr_override=True, array_participants=[1,2])
+        self._create_fake_datasets_for_gc_tests(2, arr_override=True, array_participants=[1,2],
+                                                genomic_workflow_state=GenomicWorkflowState.AW1)
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name,
@@ -657,7 +660,7 @@ class GenomicPipelineTest(BaseTestCase):
         mock_alert_handler.make_genomic_alert.return_value = 1
 
         # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(2)
+        self._create_fake_datasets_for_gc_tests(2, genomic_workflow_state=GenomicWorkflowState.AW1)
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name,
@@ -1201,9 +1204,11 @@ class GenomicPipelineTest(BaseTestCase):
                                               startTime=clock.CLOCK.now(),
                                               runStatus=GenomicSubProcessStatus.COMPLETED,
                                               runResult=GenomicSubProcessResult.SUCCESS))
+
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
                                                 array_participants=range(1, 4),
-                                                recon_gc_man_id=1)
+                                                recon_gc_man_id=1,
+                                                genomic_workflow_state=GenomicWorkflowState.AW1)
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name,
@@ -1317,7 +1322,8 @@ class GenomicPipelineTest(BaseTestCase):
         # Create genomic set members
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
                                                 array_participants=range(1, 4),
-                                                gem_a1_run_id=1)
+                                                gem_a1_run_id=1,
+                                                genomic_workflow_state=GenomicWorkflowState.A1)
 
         self._update_test_sample_ids()
 
@@ -1413,7 +1419,9 @@ class GenomicPipelineTest(BaseTestCase):
                                               runStatus=GenomicSubProcessStatus.COMPLETED,
                                               runResult=GenomicSubProcessResult.SUCCESS))
 
-        self._create_fake_datasets_for_gc_tests(3, arr_override=False, recon_gc_man_id=1)
+        self._create_fake_datasets_for_gc_tests(3, arr_override=False,
+                                                recon_gc_man_id=1,
+                                                genomic_workflow_state=GenomicWorkflowState.AW1)
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv', bucket_name,
