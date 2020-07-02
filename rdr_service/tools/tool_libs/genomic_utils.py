@@ -24,7 +24,8 @@ from rdr_service.model.genomics import GenomicSetMember, GenomicSet
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
-from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob, GenomicSubProcessResult
+from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob, GenomicSubProcessResult, \
+    GenomicWorkflowState
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -317,6 +318,64 @@ class GenerateManifestClass(GenomicManifestBase):
             member_dao.update_member_state(member, new_state)
 
 
+class IgnoreStateClass(object):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        """
+        :param args: command line arguments.
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        """
+        # Tool_lib attributes
+        self.args = args
+        self.gcp_env = gcp_env
+        self.dao = None
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+        _logger.info("Running ignore tool")
+
+        # Validate Aruguments
+        if self.args.csv is None:
+            _logger.error('Argument --csv must be provided.')
+            return 1
+
+        if not os.path.exists(self.args.csv):
+            _logger.error(f'File {self.args.csv} was not found.')
+            return 1
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicSetMemberDao()
+
+        # Update gsm IDs from file
+        with open(self.args.csv, encoding='utf-8-sig') as f:
+            lines = f.readlines()
+            for _member_id in lines:
+                _member = self.dao.get(_member_id)
+
+                if _member is None:
+                    _logger.warning(f"Member id {_member_id.rstrip()} does not exist.")
+                    continue
+
+                self.update_genomic_set_member_state(_member)
+
+        return 0
+
+    def update_genomic_set_member_state(self, member):
+        """
+        Sets the member.genomicWorkflowState = IGNORE for member
+        :param member:
+        :return:
+        """
+        member.genomicWorkflowState = GenomicWorkflowState.IGNORE
+
+        with self.dao.session() as session:
+            _logger.info(f"Updating member id {member.id}")
+            session.merge(member)
+
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -350,6 +409,10 @@ def run():
     new_manifest_parser.add_argument("--manifest", help=new_manifest_help, default=None)  # noqa
     new_manifest_parser.add_argument("--cohort", help="Cohort [1, 2, 3]", default=None)  # noqa
 
+    # Set GenomicWorkflowState to IGNORE for provided member IDs
+    ignore_state_parser = subparser.add_parser("ignore-state")
+    ignore_state_parser.add_argument("--csv", help="csv file with genomic_set_member ids", default=None)  # noqa
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -360,6 +423,11 @@ def run():
         elif args.util == 'generate-manifest':
             process = GenerateManifestClass(args, gcp_env)
             exit_code = process.run()
+
+        elif args.util == 'ignore-state':
+            process = IgnoreStateClass(args, gcp_env)
+            exit_code = process.run()
+
         else:
             _logger.info('Please select a utility option to run. For help use "genomic --help".')
             exit_code = 1
