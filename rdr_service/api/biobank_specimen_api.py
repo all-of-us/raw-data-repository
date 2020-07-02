@@ -48,18 +48,21 @@ class BiobankSpecimenApi(BiobankApiBase):
                             self.dao.update_with_session(session, m)
                         else:
                             self.dao.insert_with_session(session, m)
+                        session.commit()
                     except BadRequest as e:
                         logging.error('RLIMS Migration: BadRequest encountered', exc_info=True)
                         errors.append({
                             'rlimsID': rlims_id,
                             'error': e.description
                         })
+                        session.rollback()
                     except Exception: # pylint: disable=broad-except
                         logging.error('RLIMS Migration: Server error encountered', exc_info=True)
                         errors.append({
                             'rlimsID': rlims_id,
                             'error': 'Unknown error'
                         })
+                        session.rollback()
                     else:
                         success_count += 1
                     finally:
