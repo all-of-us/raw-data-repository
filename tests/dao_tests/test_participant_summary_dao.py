@@ -19,6 +19,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import (
     EnrollmentStatus,
+    ParticipantCohort,
     PhysicalMeasurementsStatus,
     QuestionnaireStatus,
     SampleStatus,
@@ -408,32 +409,62 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(
             EnrollmentStatus.FULL_PARTICIPANT,
             self.dao.calculate_enrollment_status(
-                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
             ),
         )
         self.assertEqual(
             EnrollmentStatus.MEMBER,
             self.dao.calculate_enrollment_status(
-                True, NUM_BASELINE_PPI_MODULES - 1, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED
+                True, NUM_BASELINE_PPI_MODULES - 1, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
             ),
         )
         self.assertEqual(
             EnrollmentStatus.MEMBER,
             self.dao.calculate_enrollment_status(
-                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.UNSET, SampleStatus.RECEIVED
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.UNSET, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
             ),
         )
         self.assertEqual(
             EnrollmentStatus.MEMBER,
             self.dao.calculate_enrollment_status(
-                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.UNSET
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.UNSET,
+                ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
             ),
         )
         self.assertEqual(
             EnrollmentStatus.INTERESTED,
             self.dao.calculate_enrollment_status(
-                False, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED
+                False, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
             ),
+        )
+        self.assertEqual(
+            EnrollmentStatus.MEMBER,
+            self.dao.calculate_enrollment_status(
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_3, QuestionnaireStatus.UNSET
+            ),
+            "Cohort 3 participants with all other requirements but without GROR consent"
+            "are not full participants [DA-1623]"
+        )
+        self.assertEqual(
+            EnrollmentStatus.FULL_PARTICIPANT,
+            self.dao.calculate_enrollment_status(
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_3, QuestionnaireStatus.SUBMITTED
+            ),
+            "Cohort 3 participants with GROR consent and all other requirements are full participants [DA-1623]"
+        )
+        self.assertEqual(
+            EnrollmentStatus.FULL_PARTICIPANT,
+            self.dao.calculate_enrollment_status(
+                True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.COMPLETED, SampleStatus.RECEIVED,
+                ParticipantCohort.COHORT_2, QuestionnaireStatus.UNSET
+            ),
+            "Participants that are not in cohort 3 participants can be full participants without GROR consent [DA-1623]"
         )
 
     def testUpdateEnrollmentStatus(self):
@@ -449,6 +480,16 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.dao.update_enrollment_status(summary)
         self.assertEqual(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
         self.assertEqual(ehr_consent_time, summary.enrollmentStatusMemberTime)
+
+    def testCoreStatusRemains(self):
+        member_time = datetime.datetime(2020, 6, 1)
+        participant_summary = self.data_generator._participant_summary_with_defaults(
+            enrollmentStatus=EnrollmentStatus.FULL_PARTICIPANT,
+            enrollmentStatusMemberTime=member_time
+        )
+        self.dao.update_enrollment_status(participant_summary)
+        self.assertEqual(EnrollmentStatus.FULL_PARTICIPANT, participant_summary.enrollmentStatus)
+        self.assertEqual(member_time, participant_summary.enrollmentStatusMemberTime)
 
     def testUpdateEnrollmentStatusLastModified(self):
         """DA-631: enrollment_status update should update last_modified."""
