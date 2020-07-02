@@ -158,8 +158,7 @@ class SyncConsentClass(object):
                             date_limit=self.args.date_limit,
                             source_bucket=src_bucket, p_id=p_id)
                         if not files_in_range or len(files_in_range) == 0:
-                            # _logger.info(f'No files in bucket updated after {self.args.date_limit}')
-                            pass
+                            _logger.info(f'No files in bucket updated after {self.args.date_limit}')
                         for f in files_in_range:
                             copy_file(f, destination, p_id, dry_run=self.args.dry_run, zip_files=self.args.zip_files)
                     else:
