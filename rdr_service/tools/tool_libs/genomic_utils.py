@@ -7,7 +7,6 @@ import argparse
 
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
-import csv
 import datetime
 import logging
 import sys
