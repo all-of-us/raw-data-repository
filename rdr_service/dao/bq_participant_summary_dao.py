@@ -470,7 +470,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             gror_consent = gror_answer == CONSENT_GROR_YES_CODE
 
         # check physical measurements
-        physical_measurements_date = datetime.datetime.min
+        physical_measurements_date = datetime.datetime.max
         if 'pm' in ro_summary:
             for pm in ro_summary['pm']:
                 if pm['pm_status_id'] == int(PhysicalMeasurementsStatus.COMPLETED) or \
