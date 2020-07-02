@@ -61,6 +61,7 @@ class BiobankSpecimenApi(BiobankApiBase):
                             'rlimsID': rlims_id,
                             'error': 'Unknown error'
                         })
+                        session.rollback()
                     else:
                         success_count += 1
                     finally:
