@@ -39,7 +39,7 @@ TEST_HPO_ID = 19
 # Test login phone number prefix
 TEST_LOGIN_PHONE_NUMBER_PREFIX = "444"
 PARTICIPANT_COHORT_2_START_TIME = datetime(2018, 4, 24, 0, 0, 0)
-PARTICIPANT_COHORT_3_START_TIME = datetime(2020, 4, 21, 0, 4, 0)
+PARTICIPANT_COHORT_3_START_TIME = datetime(2020, 4, 21, 4, 0, 0)
 
 
 class ParticipantCohort(messages.Enum):
