@@ -128,6 +128,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "questionnaireOnCopeMay": "UNSET",
                 "questionnaireOnCopeJune": "UNSET",
                 "questionnaireOnCopeJuly": "UNSET",
+                "questionnaireOnDnaProgram": "UNSET",
                 "questionnaireOnHealthcareAccess": "UNSET",
                 "enrollmentStatus": "INTERESTED",
                 "consentForGenomicsROR": "UNSET",
@@ -203,6 +204,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "consentForStudyEnrollment": "SUBMITTED",
                 "consentForStudyEnrollmentTime": TIME_1.isoformat(),
                 "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+                "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
                 "ageRange": "36-45",
                 "email": self.email,
                 "withdrawalStatus": "NOT_WITHDRAWN",
@@ -212,7 +214,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "ehrStatus": "UNSET",
                 "patientStatus": patient_statuses or [],
                 "participantOrigin": "example",
-                "consentCohort": "COHORT_CURRENT",
+                "consentCohort": "COHORT_1",
+                "cohort2PilotFlag": "UNSET"
             }
         )
 
@@ -1782,15 +1785,15 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("2016-01-04T10:55:41", ps_1.get("enrollmentStatusCoreOrderedSampleTime"))
         self.assertEqual(TIME_4.isoformat(), ps_1.get("enrollmentStatusCoreStoredSampleTime"))
 
-        # cancel a physical measurement
+        # cancel a physical measurement ([DA-1623] core status and dates should remain)
         path = "Participant/%s/PhysicalMeasurements" % participant_id_1
         path = path + "/" + pm_response["id"]
         cancel_info = self.get_restore_or_cancel_info()
         self.send_patch(path, cancel_info)
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("CANCELLED", ps_1.get("physicalMeasurementsStatus"))
-        self.assertIsNone(ps_1.get("enrollmentStatusCoreOrderedSampleTime"))
-        self.assertIsNone(ps_1.get("enrollmentStatusCoreStoredSampleTime"))
+        self.assertEqual("2016-01-04T10:55:41", ps_1.get("enrollmentStatusCoreOrderedSampleTime"))
+        self.assertEqual(TIME_4.isoformat(), ps_1.get("enrollmentStatusCoreStoredSampleTime"))
 
     def test_physical_measurement_status(self):
         questionnaire_id_1 = self.create_questionnaire("all_consents_questionnaire.json")

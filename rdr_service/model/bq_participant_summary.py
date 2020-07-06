@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 from enum import Enum
 
 from rdr_service.model.bq_base import BQTable, BQSchema, BQView, BQField, BQFieldTypeEnum, BQFieldModeEnum, \
@@ -29,12 +29,12 @@ class BQConsentCohort(Enum):
     Which cohort does a participant belong too, based on consent date.
     """
     UNSET = 0
-    COHORT_BETA = 1  # Beta participants.  Consent before April 24, 2018.
-    COHORT_LAUNCH = 2  # National Launch Participants. Consent between April 24, 2018 and April 16, 2020.
-    COHORT_CURRENT = 3  # New Participants with consent starting from April 17, 2020.
+    COHORT_1 = 1  # Beta participants.  Consent before April 24, 2018.
+    COHORT_2 = 2  # National Launch Participants. Consent between April 24, 2018 and April 21, 2020 (03:59:59 UTC)
+    COHORT_3 = 3  # New Participants with consent starting from April 21, 2020 04:00:00 UTC (midnight eastern)
 
-COHORT_BETA_CUTOFF = date(2018, 4, 24)
-COHORT_LAUNCH_CUTOFF = date(2020, 4, 16)
+COHORT_1_CUTOFF = datetime(2018, 4, 24, 0, 0, 0)
+COHORT_2_CUTOFF = datetime(2020, 4, 21, 4, 0, 0)
 
 class BQAddressSchema(BQSchema):
     """

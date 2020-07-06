@@ -14,7 +14,8 @@ from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
 from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.model.utils import from_client_participant_id
-from rdr_service.participant_enums import QuestionnaireDefinitionStatus, ParticipantCohort
+from rdr_service.participant_enums import QuestionnaireDefinitionStatus, ParticipantCohort, ParticipantCohortPilotFlag
+
 from tests.test_data import data_path
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -227,6 +228,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollment": "SUBMITTED",
             "consentForStudyEnrollmentTime": TIME_1.isoformat(),
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "consentForCABoR": "UNSET",
             "questionnaireOnFamilyHealth": "UNSET",
             "questionnaireOnHealthcareAccess": "UNSET",
@@ -240,6 +242,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "questionnaireOnCopeMay": "UNSET",
             "questionnaireOnCopeJune": "UNSET",
             "questionnaireOnCopeJuly": "UNSET",
+            "questionnaireOnDnaProgram": "UNSET",
             "biospecimenCollectedSite": "UNSET",
             "biospecimenFinalizedSite": "UNSET",
             "biospecimenProcessedSite": "UNSET",
@@ -292,7 +295,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
-            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
+            "consentCohort": str(ParticipantCohort.COHORT_1),
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -341,6 +345,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollment": "SUBMITTED",
             "consentForStudyEnrollmentTime": TIME_1.isoformat(),
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "consentForCABoR": "UNSET",
             "primaryLanguage": "es",
             "questionnaireOnFamilyHealth": "UNSET",
@@ -356,6 +361,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "questionnaireOnCopeMay": "UNSET",
             "questionnaireOnCopeJune": "UNSET",
             "questionnaireOnCopeJuly": "UNSET",
+            "questionnaireOnDnaProgram": "UNSET",
             "biospecimenSourceSite": "UNSET",
             "physicalMeasurementsCreatedSite": "UNSET",
             "physicalMeasurementsFinalizedSite": "UNSET",
@@ -405,7 +411,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
-            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
+            "consentCohort": str(ParticipantCohort.COHORT_1),
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -507,6 +514,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollment": "SUBMITTED",
             "consentForStudyEnrollmentTime": TIME_1.isoformat(),
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "consentForCABoR": "UNSET",
             "primaryLanguage": "es",
             "questionnaireOnFamilyHealth": "UNSET",
@@ -519,6 +527,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "questionnaireOnCopeMay": "UNSET",
             "questionnaireOnCopeJune": "UNSET",
             "questionnaireOnCopeJuly": "UNSET",
+            "questionnaireOnDnaProgram": "UNSET",
             "biospecimenCollectedSite": "UNSET",
             "biospecimenFinalizedSite": "UNSET",
             "biospecimenProcessedSite": "UNSET",
@@ -570,7 +579,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "ehrStatus": "UNSET",
             "patientStatus": [],
             "participantOrigin": "example",
-            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
+            "consentCohort": str(ParticipantCohort.COHORT_1),
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -702,6 +712,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollment": "SUBMITTED",
             "consentForStudyEnrollmentTime": TIME_1.isoformat(),
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "consentForCABoR": "UNSET",
             "questionnaireOnFamilyHealth": "UNSET",
             "questionnaireOnHealthcareAccess": "UNSET",
@@ -713,6 +724,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "questionnaireOnCopeMay": "UNSET",
             "questionnaireOnCopeJune": "UNSET",
             "questionnaireOnCopeJuly": "UNSET",
+            "questionnaireOnDnaProgram": "UNSET",
             "questionnaireOnTheBasicsTime": TIME_2.isoformat(),
             "questionnaireOnTheBasicsAuthored": TIME_2.isoformat(),
             "biospecimenCollectedSite": "UNSET",
@@ -767,7 +779,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": 'example',
             "semanticVersionForPrimaryConsent": "v1",
-            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
+            "consentCohort": str(ParticipantCohort.COHORT_1),
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -921,6 +934,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollment": "SUBMITTED",
             "consentForStudyEnrollmentTime": TIME_1.isoformat(),
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "consentForCABoR": "UNSET",
             "questionnaireOnFamilyHealth": "UNSET",
             "questionnaireOnHealthcareAccess": "UNSET",
@@ -932,6 +946,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "questionnaireOnCopeMay": "UNSET",
             "questionnaireOnCopeJune": "UNSET",
             "questionnaireOnCopeJuly": "UNSET",
+            "questionnaireOnDnaProgram": "UNSET",
             "questionnaireOnTheBasicsTime": TIME_2.isoformat(),
             "questionnaireOnTheBasicsAuthored": TIME_2.isoformat(),
             "biospecimenCollectedSite": "UNSET",
@@ -1044,6 +1059,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollment": "SUBMITTED",
             "consentForStudyEnrollmentTime": TIME_1.isoformat(),
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "consentForCABoR": "UNSET",
             "questionnaireOnFamilyHealth": "UNSET",
             "questionnaireOnHealthcareAccess": "UNSET",
@@ -1055,6 +1071,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "questionnaireOnCopeMay": "UNSET",
             "questionnaireOnCopeJune": "UNSET",
             "questionnaireOnCopeJuly": "UNSET",
+            "questionnaireOnDnaProgram": "UNSET",
             "questionnaireOnTheBasicsTime": TIME_2.isoformat(),
             "questionnaireOnTheBasicsAuthored": TIME_2.isoformat(),
             "biospecimenCollectedSite": "UNSET",
@@ -1109,7 +1126,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
-            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
+            "consentCohort": str(ParticipantCohort.COHORT_1),
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         }
         self.assertJsonResponseMatches(expected, summary)
 
@@ -1170,6 +1188,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollment": "SUBMITTED",
             "consentForStudyEnrollmentTime": TIME_1.isoformat(),
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "consentForCABoR": "UNSET",
             "questionnaireOnFamilyHealth": "UNSET",
             "questionnaireOnHealthcareAccess": "UNSET",
@@ -1181,6 +1200,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "questionnaireOnCopeMay": "UNSET",
             "questionnaireOnCopeJune": "UNSET",
             "questionnaireOnCopeJuly": "UNSET",
+            "questionnaireOnDnaProgram": "UNSET",
             "questionnaireOnTheBasicsTime": TIME_2.isoformat(),
             "questionnaireOnTheBasicsAuthored": TIME_2.isoformat(),
             "biospecimenCollectedSite": "UNSET",
@@ -1235,7 +1255,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
-            "consentCohort": str(ParticipantCohort.COHORT_CURRENT)
+            "consentCohort": str(ParticipantCohort.COHORT_1),
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
         }
         self.assertJsonResponseMatches(expected, summary)
 

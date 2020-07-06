@@ -23,7 +23,7 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import from_client_biobank_id, get_biobank_id_prefix
 from rdr_service.model.participant import Participant
-from rdr_service.offline.bigquery_sync import rebuild_bq_participant_task
+from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import BiobankOrderStatus, OrganizationType, get_sample_status_enum_value
 
@@ -45,6 +45,7 @@ _CSV_SUFFIX_LENGTH = 4
 _THIRTY_SIX_HOURS_AGO = datetime.timedelta(hours=36)
 _MAX_INPUT_AGE = datetime.timedelta(hours=24)
 _PMI_OPS_SYSTEM = "https://www.pmi-ops.org"
+_CE_QUEST_SYSTEM = "http://careevolution.com/CareTask"
 _KIT_ID_SYSTEM = "https://orders.mayomedicallaboratories.com/kit-id"
 _TRACKING_NUMBER_SYSTEM = "https://orders.mayomedicallaboratories.com/tracking-number"
 
@@ -114,10 +115,10 @@ def update_bigquery_sync_participants(ts, dao):
                 payload = {'batch': batch}
 
                 if config.GAE_PROJECT == 'localhost':
-                    rebuild_bq_participant_task(payload)
+                    batch_rebuild_participants_task(payload)
                 else:
-                    task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
-                                        queue='bigquery-rebuild')
+                    task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
+                                        queue='resource-rebuild')
                     task.execute(quiet=True)
                 batch_count += 1
                 # reset for next batch
@@ -129,10 +130,10 @@ def update_bigquery_sync_participants(ts, dao):
             payload = {'batch': batch}
             batch_count += 1
             if config.GAE_PROJECT == 'localhost':
-                rebuild_bq_participant_task(payload)
+                batch_rebuild_participants_task(payload)
             else:
-                task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
-                                    queue='bigquery-rebuild')
+                task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
+                                    queue='resource-rebuild')
                 task.execute(quiet=True)
 
         logging.info(f'Biobank: submitted {batch_count} tasks.')
@@ -387,6 +388,7 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
                     "native_american_race_code_id": native_american_race_code.codeId,
                     "biobank_id_prefix": get_biobank_id_prefix(),
                     "pmi_ops_system": _PMI_OPS_SYSTEM,
+                    "ce_quest_system": _CE_QUEST_SYSTEM,
                     "kit_id_system": _KIT_ID_SYSTEM,
                     "tracking_number_system": _TRACKING_NUMBER_SYSTEM,
                     "n_days_ago": now - datetime.timedelta(days=(report_cover_range + 1)),
@@ -447,7 +449,7 @@ _ORDER_JOINS = """
     INNER JOIN
       biobank_order_identifier
     ON biobank_order.biobank_order_id = biobank_order_identifier.biobank_order_id
-       AND biobank_order_identifier.system = :pmi_ops_system
+       AND biobank_order_identifier.system in (:pmi_ops_system, :ce_quest_system)
     INNER JOIN
       biobank_ordered_sample
     ON

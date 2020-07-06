@@ -1,0 +1,7 @@
+#
+# Route requests to different services
+#
+dispatch:
+  # Route all resource requests to the resource service.
+  - url: "*/resource/*"
+    service: resource

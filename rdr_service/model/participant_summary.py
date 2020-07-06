@@ -19,7 +19,8 @@ from rdr_service.participant_enums import (
     SuspensionStatus,
     WithdrawalReason,
     WithdrawalStatus,
-    ParticipantCohort)
+    ParticipantCohort,
+    ParticipantCohortPilotFlag)
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
 # participants.
@@ -119,6 +120,7 @@ class ParticipantSummary(Base):
     )
     consentForStudyEnrollmentTime = Column("consent_for_study_enrollment_time", UTCDateTime)
     consentForStudyEnrollmentAuthored = Column("consent_for_study_enrollment_authored", UTCDateTime)
+    consentForStudyEnrollmentFirstYesAuthored = Column("consent_for_study_enrollment_first_yes_authored", UTCDateTime)
     semanticVersionForPrimaryConsent = Column("semantic_version_for_primary_consent", String(100))
     consentForGenomicsROR = Column("consent_for_genomics_ror", Enum(QuestionnaireStatus),
                                    default=QuestionnaireStatus.UNSET)
@@ -129,6 +131,10 @@ class ParticipantSummary(Base):
     )
     consentForElectronicHealthRecordsTime = Column("consent_for_electronic_health_records_time", UTCDateTime)
     consentForElectronicHealthRecordsAuthored = Column("consent_for_electronic_health_records_authored", UTCDateTime)
+    consentForElectronicHealthRecordsFirstYesAuthored = Column(
+        "consent_for_electronic_health_records_first_yes_authored",
+        UTCDateTime
+    )
     consentForDvElectronicHealthRecordsSharing = Column(
         "consent_for_dv_electronic_health_records_sharing",
         Enum(QuestionnaireStatus),
@@ -193,6 +199,10 @@ class ParticipantSummary(Base):
     )
     questionnaireOnCopeJulyTime = Column("questionnaire_on_cope_july_time", UTCDateTime)
     questionnaireOnCopeJulyAuthored = Column("questionnaire_on_cope_july_authored", UTCDateTime)
+    questionnaireOnDnaProgram = Column(
+        "questionnaire_on_dna_program", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
+    )
+    questionnaireOnDnaProgramAuthored = Column("questionnaire_on_dna_program_authored", UTCDateTime)
 
     # Fields for which samples have been received, and at what times.
     sampleStatus1SST8 = Column("sample_status_1sst8", Enum(SampleStatus), default=SampleStatus.UNSET)
@@ -333,7 +343,11 @@ class ParticipantSummary(Base):
     def siteId(cls):
         return Column("site_id", Integer, ForeignKey("site.site_id"))
 
-    consentCohort = Column("consent_cohort", Enum(ParticipantCohort), nullable=True, default=0)
+    consentCohort = Column("consent_cohort", Enum(ParticipantCohort), default=ParticipantCohort.UNSET)
+    cohort2PilotFlag = Column(
+        "cohort_2_pilot_flag", Enum(ParticipantCohortPilotFlag), default=ParticipantCohortPilotFlag.UNSET
+    )
+
 
 Index("participant_summary_biobank_id", ParticipantSummary.biobankId)
 Index("participant_summary_ln_dob", ParticipantSummary.lastName, ParticipantSummary.dateOfBirth)

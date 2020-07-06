@@ -36,6 +36,12 @@
         "site": {
          "system": "https://www.pmi-ops.org/quest-site",
          "value": "hpo-site-monroeville"
+        },
+        "address": {
+          "line" : ["address1", "address2"],
+          "city" : "Little Rock",
+          "state" : "AR",
+          "postalCode" : "72205-5302"
         }
     },
     "collectedInfo": {
@@ -46,6 +52,12 @@
         "site": {
          "system": "https://www.pmi-ops.org/quest-site",
          "value": "hpo-site-monroeville"
+        },
+        "address": {
+          "line" : ["address1", "address2"],
+          "city" : "Little Rock",
+          "state" : "AR",
+          "postalCode" : "72205-5302"
         }
     },
     "finalizedInfo": {

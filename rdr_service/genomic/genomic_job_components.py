@@ -202,7 +202,8 @@ class GenomicFileIngester:
                 return validation_result
 
             if self.job_id in [GenomicJob.AW1_MANIFEST, GenomicJob.AW1F_MANIFEST]:
-                return self._ingest_gc_manifest(data_to_ingest)
+                gc_site_id = self._get_site_from_aw1()
+                return self._ingest_gc_manifest(data_to_ingest, gc_site_id)
 
             if self.job_id == GenomicJob.METRICS_INGESTION:
                 return self._process_gc_metrics_data_for_insert(data_to_ingest)
@@ -232,18 +233,21 @@ class GenomicFileIngester:
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
-    def _ingest_gc_manifest(self, data):
+    def _ingest_gc_manifest(self, data, _site):
         """
         Updates the GenomicSetMember with GC Manifest data
         :param data:
+        :param _site: gc_site ID
         :return: result code
         """
         gc_manifest_column_mappings = {
             'packageId': 'packageid',
+            'sampleId': 'sampleid',
             'gcManifestBoxStorageUnitId': 'boxstorageunitid',
             'gcManifestBoxPlateId': 'boxid/plateid',
             'gcManifestWellPosition': 'wellposition',
             'gcManifestParentSampleId': 'parentsampleid',
+            'collectionTubeId': 'collectiontubeid',
             'gcManifestMatrixId': 'matrixid',
             'gcManifestTreatments': 'treatments',
             'gcManifestQuantity_ul': 'quantity(ul)',
@@ -264,11 +268,14 @@ class GenomicFileIngester:
             for row in data['rows']:
                 row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                      for key in row], row.values()))
-                sample_id = row_copy['biobankidsampleid'].split('_')[-1]
+                collection_tube_id = row_copy['collectiontubeid']
                 genome_type = row_copy['testname']
-                member = self.member_dao.get_member_from_sample_id(sample_id, genome_type)
+                member = self.member_dao.get_member_from_collection_tube(collection_tube_id, genome_type)
+
+                member.gcSiteId = _site
+
                 if member is None:
-                    logging.warning(f'Invalid sample ID: {sample_id}'
+                    logging.warning(f'Invalid collection tube ID: {collection_tube_id}'
                                     f' or genome_type: {genome_type}')
                     continue
                 if member.validationStatus != GenomicSetMemberStatus.VALID:
@@ -284,8 +291,9 @@ class GenomicFileIngester:
 
                 # Update genomic state for failures
                 _signal = "aw1-reconciled"
-                if member.gcManifestFailureMode is not None \
-                   and member.gcManifestFailureMode != '':
+
+                if member.gcManifestFailureMode is not None and \
+                    member.gcManifestFailureMode != '':
                     _signal = 'aw1-failed'
 
                 member.genomicWorkflowState = GenomicStateHandler.get_new_state(
@@ -306,7 +314,9 @@ class GenomicFileIngester:
         try:
             for row in file_data['rows']:
                 sample_id = row['sample_id']
-                member = self.member_dao.get_member_from_sample_id(sample_id, GENOME_TYPE_ARRAY)
+                member = self.member_dao.get_member_from_sample_id_with_state(sample_id,
+                                                                              GENOME_TYPE_ARRAY,
+                                                                              GenomicWorkflowState.A1)
                 if member is None:
                     logging.warning(f'Invalid sample ID: {sample_id}')
                     continue
@@ -360,9 +370,11 @@ class GenomicFileIngester:
                                  for key in row],
                                 row.values()))
             row_copy['file_id'] = self.file_obj.id
-            sample_id = row_copy['biobankidsampleid'].split('_')[-1]
+            sample_id = row_copy['sampleid']
             genome_type = self.file_validator.genome_type
-            member = self.member_dao.get_member_from_sample_id(int(sample_id), genome_type)
+            member = self.member_dao.get_member_from_sample_id_with_state(int(sample_id),
+                                                                          genome_type,
+                                                                          GenomicWorkflowState.AW1)
             if member is not None:
                 self.member_dao.update_member_state(member, GenomicWorkflowState.AW2)
                 row_copy['member_id'] = member.id
@@ -405,6 +417,13 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
+    def _get_site_from_aw1(self):
+        """
+        Returns the Genomic Center's site ID from the AW1 filename
+        :return: GC site ID string
+        """
+        return self.file_obj.fileName.split('/')[-1].split("_")[0].lower()
+
 
 class GenomicFileValidator:
     """
@@ -425,6 +444,7 @@ class GenomicFileValidator:
         self.GC_METRICS_SCHEMAS = {
             'seq': (
                 "biobankid",
+                "sampleid",
                 "biobankidsampleid",
                 "limsid",
                 "meancoverage",
@@ -438,6 +458,7 @@ class GenomicFileValidator:
             ),
             'gen': (
                 "biobankid",
+                "sampleid",
                 "biobankidsampleid",
                 "limsid",
                 "chipwellbarcode",
@@ -451,7 +472,7 @@ class GenomicFileValidator:
                 "notes",
             ),
         }
-        self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bi', 'jh', 'rdr')
+        self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'rdr')
         self.VALID_CVL_FACILITIES = ('rdr', 'color', 'uw', 'baylor')
 
         self.GC_MANIFEST_SCHEMA = (
@@ -462,6 +483,7 @@ class GenomicFileValidator:
             "wellposition",
             "sampleid",
             "parentsampleid",
+            "collectiontubeid",
             "matrixid",
             "collectiondate",
             "biobankid",
@@ -1085,7 +1107,7 @@ class GenomicBiobankSamplesCoupler:
                 nyFlag=self._get_new_york_flag(samples_meta.site_ids[i]),
                 sexAtBirth=samples_meta.sabs[i],
                 biobankOrderId=samples_meta.order_ids[i],
-                sampleId=samples_meta.sample_ids[i],
+                collectionTubeId=samples_meta.sample_ids[i],
                 validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
                                   else GenomicSetMemberStatus.VALID),
                 validationFlags=valid_flags,
@@ -1192,7 +1214,7 @@ class GenomicBiobankSamplesCoupler:
             "from_date_param": from_date.strftime("%Y-%m-%d"),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
-            "cohort_3_param": ParticipantCohort.COHORT_CURRENT.__int__(),
+            "cohort_3_param": ParticipantCohort.COHORT_3.__int__(),
         }
         with self.samples_dao.session() as session:
             result = session.execute(_new_samples_sql, params).fetchall()
@@ -1250,6 +1272,8 @@ class GenomicBiobankSamplesCoupler:
                           JOIN code cr ON cr.code_id = ra.code_id
                               AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
                     ) native ON native.participant_id = p.participant_id
+                    LEFT JOIN genomic_set_member m ON m.collection_tube_id = ss.biobank_stored_sample_id
+                      AND m.genomic_workflow_state <> :ignore_param
                 WHERE TRUE
                     AND (
                             ps.sample_status_1ed04 = :sample_status_param
@@ -1257,7 +1281,19 @@ class GenomicBiobankSamplesCoupler:
                             ps.sample_status_1sal2 = :sample_status_param
                         )
                     AND ss.test IN ("1ED04", "1SAL2")
-                    AND ps.consent_cohort = :cohort_2_param          
+                    AND ps.consent_cohort = :cohort_2_param
+                    AND ps.questionnaire_on_dna_program_authored > :from_date_param
+                    AND ps.questionnaire_on_dna_program = :general_consent_param
+                    AND m.id IS NULL
+                HAVING TRUE
+                    # Validations for Cohort 2
+                    # TODO: may need to refactor these conditions if performance is poor 
+                    AND valid_ai_an = 1
+                    AND sab <> "NA"
+                    AND valid_age = 1
+                    AND general_consent_given = 1
+                    AND valid_suspension_status = 1
+                    AND valid_withdrawal_status = 1
                 """
 
         params = {
@@ -1265,10 +1301,11 @@ class GenomicBiobankSamplesCoupler:
             "dob_param": GENOMIC_VALID_AGE,
             "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
             "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
-            #"from_date_param": from_date.strftime("%Y-%m-%d"),
+            "from_date_param": from_date.strftime("%Y-%m-%d"),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
-            "cohort_2_param": ParticipantCohort.COHORT_LAUNCH.__int__(),
+            "cohort_2_param": ParticipantCohort.COHORT_2.__int__(),
+            "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
         }
 
         with self.samples_dao.session() as session:
@@ -1407,6 +1444,7 @@ class ManifestDefinitionProvider:
                 ).where(
                     (GenomicGCValidationMetrics.processingStatus == 'pass') &
                     (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY) &
+                    (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicSetMember.genomeType == "aou_wgs")
                 )
             )
@@ -1436,6 +1474,7 @@ class ManifestDefinitionProvider:
                     )
                 ).where(
                     (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.W2) &
+                    (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicSetMember.genomeType == "aou_cvl") &
                     (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
                 )
@@ -1462,6 +1501,7 @@ class ManifestDefinitionProvider:
                 ).where(
                     (GenomicGCValidationMetrics.processingStatus == 'pass') &
                     (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_READY) &
+                    (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicSetMember.genomeType == "aou_array") &
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                     (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
@@ -1484,6 +1524,7 @@ class ManifestDefinitionProvider:
                                     GenomicSetMember.participantId == ParticipantSummary.participantId)
                 ).where(
                     (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_RPT_PENDING_DELETE) &
+                    (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicSetMember.genomeType == "aou_array")
                 )
             )

@@ -4,10 +4,9 @@
 #
 # Replaces older ehr_upload_for_organization.sh script.
 #
-
 import argparse
 import logging
-import random
+import os
 import sys
 from datetime import datetime
 
@@ -15,13 +14,11 @@ import MySQLdb
 import pytz
 
 from rdr_service.dao import database_factory
+from rdr_service.offline.sync_consent_files import get_org_data_map, build_participant_query, \
+    DEFAULT_GOOGLE_GROUP, get_consent_destination, archive_and_upload_consents, copy_file
+from rdr_service.services.system_utils import print_progress_bar, setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider
-from rdr_service.services.gcp_utils import gcp_format_sql_instance, gcp_make_auth_header
-from rdr_service.services.system_utils import make_api_request, print_progress_bar, setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
-
-from rdr_service.offline.sync_consent_files import get_org_data_map, build_participant_query,\
-        DEFAULT_GOOGLE_GROUP, get_consent_destination, archive_and_upload_consents, copy_file
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -73,34 +70,19 @@ class SyncConsentClass(object):
 
     def run(self):
         """
-    Main program process
-    :return: Exit code value
-    """
-        org_buckets = get_org_data_map()
-
-        _logger.info("retrieving db configuration...")
-        headers = gcp_make_auth_header()
-        resp_code, resp_data = make_api_request(
-            "{0}.appspot.com".format(self.gcp_env.project), "/rdr/v1/Config/db_config", headers=headers
-        )
-        if resp_code != 200:
-            _logger.error(resp_data)
-            _logger.error("failed to retrieve config, aborting.")
-            return 1
-
-        passwd = resp_data["rdr_db_password"]
-        if not passwd:
-            _logger.error("failed to retrieve database user password from config.")
-            return 1
-
-        # connect a sql proxy to the current project
-        _logger.info("starting google sql proxy...")
-        port = random.randint(10000, 65535)
-        instances = gcp_format_sql_instance(self.gcp_env.project, port=port)
-        proxy_pid = self.gcp_env.activate_sql_proxy(instance=instances, port=port)
+        Main program process
+        :return: Exit code value
+        """
+        proxy_pid = self.gcp_env.activate_sql_proxy()
         if not proxy_pid:
-            _logger.error("activating google sql proxy failed.")
             return 1
+
+        filter_pids = None
+        if self.args.pid_file:
+            filter_pids = open(self.args.pid_file).read().strip().split('\n')
+            filter_pids = [int(x) for x in filter_pids]
+
+        org_buckets = get_org_data_map()
 
         try:
             _logger.info("retrieving participant information...")
@@ -124,11 +106,14 @@ class SyncConsentClass(object):
             participant_sql, params = build_participant_query(org_ids, **query_args)
             count_sql = self._get_count_sql(participant_sql)
             with database_factory.make_server_cursor_database().session() as session:
-                total_participants = session.execute(count_sql, params).scalar()
+                total_participants = session.execute(count_sql, params).scalar() if not filter_pids \
+                                            else len(filter_pids)
 
                 _logger.info("transferring files to destinations...")
                 count = 0
                 for rec in session.execute(participant_sql, params):
+                    if filter_pids and rec[0] not in filter_pids:
+                        continue
                     if not self.args.debug:
                         print_progress_bar(
                             count, total_participants, prefix="{0}/{1}:".format(count, total_participants),
@@ -234,8 +219,13 @@ def run():
     parser.add_argument(
         "--all-files", help="Transfer all file types, default is only PDF.",
         default=False, action="store_true")  # noqa
+    parser.add_argument('--pid-file', help="File with list of pids to sync", default=None, type=str)  # noqa
 
     args = parser.parse_args()
+
+    if args.pid_file and not os.path.exists(args.pid_file):
+        _logger.error(f'File "{args.pid_file}" does not exist.')
+        return 1
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
         process = SyncConsentClass(args, gcp_env)

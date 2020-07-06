@@ -24,7 +24,7 @@ class ResourceData(Base):
     hpoId = Column("hpo_id", Integer, nullable=True)
     resourcePKID = Column("resource_pk_id", Integer, nullable=True)
     # Alternate Primary Key when the primary key is a string instead of an Integer.
-    resource_PKAltID = Column("resource_pk_alt_id", String(80), nullable=True)
+    resourcePKAltID = Column("resource_pk_alt_id", String(80), nullable=True)
     # Points to parent record in ResourceData. To keep the number of indexes down, these are not setup as ForeignKeys.
     parentID = Column("parent_id", BigInteger, nullable=True)
     parentTypeID = Column("parent_type_id", BigInteger, nullable=True)

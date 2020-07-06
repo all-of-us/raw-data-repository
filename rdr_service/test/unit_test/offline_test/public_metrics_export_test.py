@@ -76,7 +76,7 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         questionnaire_id_3 = self.create_questionnaire("all_consents_questionnaire.json")
 
         with FakeClock(TIME):
-            participant = self._participant_with_defaults(
+            participant = self.data_generator._participant_with_defaults(
                 participantId=1, version=2, biobankId=2, providerLink=make_primary_provider_link_for_name("PITT")
             )
             participant_dao.insert(participant)

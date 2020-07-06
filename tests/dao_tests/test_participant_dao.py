@@ -40,7 +40,7 @@ class ParticipantDaoTest(BaseTestCase):
         with random_ids([1, 2]):
             with FakeClock(time):
                 self.dao.insert(p)
-        expected_participant = self._participant_with_defaults(
+        expected_participant = self.data_generator._participant_with_defaults(
             participantId=1, version=1, biobankId=2, lastModified=time, signUpTime=time
         )
         self.assertEqual(expected_participant.asdict(), p.asdict())
@@ -52,7 +52,7 @@ class ParticipantDaoTest(BaseTestCase):
         ps = self.participant_summary_dao.get(1)
         self.assertIsNone(ps)
         ph = self.participant_history_dao.get([1, 1])
-        expected_ph = self._participant_history_with_defaults(
+        expected_ph = self.data_generator._participant_history_with_defaults(
             participantId=1, biobankId=2, lastModified=time, signUpTime=time
         )
         self.assertEqual(expected_ph.asdict(), ph.asdict())
@@ -63,7 +63,7 @@ class ParticipantDaoTest(BaseTestCase):
         with random_ids([1, 2]):
             with FakeClock(time):
                 self.dao.insert(p)
-        expected_participant = self._participant_with_defaults(
+        expected_participant = self.data_generator._participant_with_defaults(
             participantId=1, externalId=3, version=1, biobankId=2, lastModified=time, signUpTime=time
         )
         self.assertEqual(expected_participant.asdict(), p.asdict())
@@ -75,7 +75,7 @@ class ParticipantDaoTest(BaseTestCase):
         ps = self.participant_summary_dao.get(1)
         self.assertIsNone(ps)
         ph = self.participant_history_dao.get([1, 1])
-        expected_ph = self._participant_history_with_defaults(
+        expected_ph = self.data_generator._participant_history_with_defaults(
             participantId=1, externalId=3, biobankId=2, lastModified=time, signUpTime=time
         )
         self.assertEqual(expected_ph.asdict(), ph.asdict())
@@ -89,7 +89,7 @@ class ParticipantDaoTest(BaseTestCase):
         with random_ids([1, 3, 2, 3]):
             with FakeClock(time):
                 p2 = self.dao.insert(p2)
-        expected_participant = self._participant_with_defaults(
+        expected_participant = self.data_generator._participant_with_defaults(
             participantId=2, version=1, biobankId=3, lastModified=time, signUpTime=time
         )
         self.assertEqual(expected_participant.asdict(), p2.asdict())
@@ -133,7 +133,7 @@ class ParticipantDaoTest(BaseTestCase):
             self.dao.update(p)
         # lastModified, hpoId, version is updated on p after being passed in
         p2 = self.dao.get(1)
-        expected_participant = self._participant_with_defaults(
+        expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
             version=2,
             biobankId=2,
@@ -148,14 +148,14 @@ class ParticipantDaoTest(BaseTestCase):
         ps = self.participant_summary_dao.get(1)
         self.assertIsNone(ps)
 
-        expected_ph = self._participant_history_with_defaults(
+        expected_ph = self.data_generator._participant_history_with_defaults(
             participantId=1, biobankId=2, lastModified=time, signUpTime=time
         )
         # Updating the participant adds a new ParticipantHistory row.
         ph = self.participant_history_dao.get([1, 1])
         self.assertEqual(expected_ph.asdict(), ph.asdict())
         ph2 = self.participant_history_dao.get([1, 2])
-        expected_ph2 = self._participant_history_with_defaults(
+        expected_ph2 = self.data_generator._participant_history_with_defaults(
             participantId=1,
             version=2,
             biobankId=2,
@@ -182,7 +182,7 @@ class ParticipantDaoTest(BaseTestCase):
 
         # lastModified, hpoId, version is updated on p after being passed in
         p2 = self.dao.get(1)
-        expected_participant = self._participant_with_defaults(
+        expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
             version=2,
             biobankId=2,
@@ -196,7 +196,7 @@ class ParticipantDaoTest(BaseTestCase):
 
         # Updating the participant provider link also updates the HPO ID on the participant summary.
         ps = self.participant_summary_dao.get(1)
-        expected_ps = self._participant_summary_with_defaults(
+        expected_ps = self.data_generator._participant_summary_with_defaults(
             participantId=1,
             biobankId=2,
             signUpTime=time,
@@ -216,14 +216,14 @@ class ParticipantDaoTest(BaseTestCase):
         self.assertNotEqual(p2_last_modified, p2_update.lastModified)
         self.assertEqual(p2_update.lastModified, p2.lastModified)
 
-        expected_ph = self._participant_history_with_defaults(
+        expected_ph = self.data_generator._participant_history_with_defaults(
             participantId=1, biobankId=2, lastModified=time, signUpTime=time
         )
         # And updating the participant adds a new ParticipantHistory row.
         ph = self.participant_history_dao.get([1, 1])
         self.assertEqual(expected_ph.asdict(), ph.asdict())
         ph2 = self.participant_history_dao.get([1, 2])
-        expected_ph2 = self._participant_history_with_defaults(
+        expected_ph2 = self.data_generator._participant_history_with_defaults(
             participantId=1,
             version=2,
             biobankId=2,
@@ -247,7 +247,7 @@ class ParticipantDaoTest(BaseTestCase):
             self.dao.update(p)
 
         p2 = self.dao.get(1)
-        expected_participant = self._participant_with_defaults(
+        expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
             version=2,
             biobankId=2,
@@ -271,7 +271,7 @@ class ParticipantDaoTest(BaseTestCase):
             self.dao.update(p)
 
         p2 = self.dao.get(1)
-        expected_participant = self._participant_with_defaults(
+        expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
             version=2,
             biobankId=2,
@@ -291,7 +291,7 @@ class ParticipantDaoTest(BaseTestCase):
 
         # Withdrawal time should get copied over.
         p2 = self.dao.get(1)
-        expected_participant = self._participant_with_defaults(
+        expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
             version=3,
             biobankId=2,
@@ -317,7 +317,7 @@ class ParticipantDaoTest(BaseTestCase):
             self.dao.update(p)
 
         p2 = self.dao.get(1)
-        expected_participant = self._participant_with_defaults(
+        expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
             version=2,
             biobankId=2,
@@ -337,7 +337,7 @@ class ParticipantDaoTest(BaseTestCase):
 
         # Withdrawal time should get copied over.
         p2 = self.dao.get(1)
-        expected_participant = self._participant_with_defaults(
+        expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
             version=3,
             biobankId=2,
@@ -372,7 +372,7 @@ class ParticipantDaoTest(BaseTestCase):
 
         # Withdrawal time should get copied over.
         p2 = self.dao.get(p.participantId)
-        expected_participant = self._participant_with_defaults(
+        expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
             version=3,
             biobankId=2,
@@ -392,7 +392,7 @@ class ParticipantDaoTest(BaseTestCase):
             self.dao.update(p)
 
         p2 = self.dao.get(p.participantId)
-        expected_participant = self._participant_with_defaults(
+        expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
             version=4,
             biobankId=2,
@@ -428,7 +428,7 @@ class ParticipantDaoTest(BaseTestCase):
             with FakeClock(time):
                 self.dao.insert(p)
 
-        expected_participant = self._participant_with_defaults(
+        expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
             version=1,
             biobankId=2,
@@ -452,7 +452,7 @@ class ParticipantDaoTest(BaseTestCase):
             with FakeClock(time):
                 self.dao.insert(p)
 
-        expected_participant = self._participant_with_defaults(
+        expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
             version=1,
             biobankId=2,
@@ -471,7 +471,7 @@ class ParticipantDaoTest(BaseTestCase):
             self.dao.update(p)
 
     def test_update_not_exists(self):
-        p = self._participant_with_defaults(participantId=1, biobankId=2)
+        p = self.data_generator._participant_with_defaults(participantId=1, biobankId=2)
         with self.assertRaises(NotFound):
             self.dao.update(p)
 
@@ -551,7 +551,7 @@ class ParticipantDaoTest(BaseTestCase):
             self.dao.update(p)
 
         p2 = self.dao.get(1)
-        ep = self._participant_with_defaults(
+        ep = self.data_generator._participant_with_defaults(
             participantId=1,
             version=2,
             biobankId=2,

@@ -1,15 +1,11 @@
 cron:
 - description: Genomic new participant workflow (Cohort 3) from Biobank Samples
-- description: Genomic GC Manifest Workflow
-- description: Genomic Data Manifest Workflow (ingestion and reconciliation of data)
-- description: Genomic GEM A1 and A2 Workflow
-- description: Genomic GEM A3 (Delete Report) Manifest Workflow
 - description: Sync site bucket consent files
   url: /offline/SyncConsentFiles
   schedule: 1 of month 00:00
   timezone: America/New_York
   target: offline
-- description: Sync VA bucket consent files
+- description: Sync VA consent files
   url: /offline/SyncVaConsentFiles
   schedule: 1 of month 00:30
   timezone: America/New_York
@@ -23,4 +19,9 @@ cron:
   url: /offline/EnrollmentStatusCheck
   schedule: 2 of month 00:00
   timezone: America/New_York
+  target: offline
+- description: BigQuery Sync
+  url: /offline/BigQuerySync
+  timezone: America/New_York
+  schedule: every 3 minutes
   target: offline

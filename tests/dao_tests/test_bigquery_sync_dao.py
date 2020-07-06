@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import json
 
 from rdr_service.clock import FakeClock
@@ -18,8 +18,8 @@ from tests.helpers.unittest_base import BaseTestCase, QuestionnaireTestMixin
 
 
 class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
-    TIME_1 = datetime.datetime(2018, 9, 20, 5, 49, 11)
-    TIME_2 = datetime.datetime(2018, 9, 24, 14, 21, 1)
+    TIME_1 = datetime(2018, 9, 20, 5, 49, 11)
+    TIME_2 = datetime(2018, 9, 24, 14, 21, 1)
 
     site = None
     hpo = None
@@ -31,8 +31,10 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
 
     qn_thebasics_id = None
     qn_ehrconsent_id = None
+    qn_dvehrconsent_id = None
     qn_lifestyle_id = None
     qn_overall_health_id = None
+    qn_gror_id = None
 
     def setUp(self):
         super(BigQuerySyncDaoTest, self).setUp(with_consent_codes=True)
@@ -58,17 +60,30 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
         response = self.send_post("Participant", provider_link)
         return response
 
-    def _submit_ehrconsent(self, participant_id):
+    def _submit_ehrconsent(self, participant_id, response_code=CONSENT_PERMISSION_YES_CODE, response_time=None):
         """ Submit the EHRConsent questionnaire """
         if not self.qn_ehrconsent_id:
             self.qn_ehrconsent_id = self.create_questionnaire("ehr_consent_questionnaire.json")
 
         code_answers = list()
-        code_answers.append(self.make_code_answer('ehrConsent', CONSENT_PERMISSION_YES_CODE))
+        code_answers.append(self.make_code_answer('ehrConsent', response_code))
 
         qr = self.make_questionnaire_response_json(self.participant_id, self.qn_ehrconsent_id,
                                                    code_answers=code_answers)
-        with FakeClock(self.TIME_1):
+        with FakeClock(response_time or self.TIME_1):
+            self.send_post(f"Participant/P{participant_id}/QuestionnaireResponse", qr)
+
+    def _submit_dvehrconsent(self, participant_id, response_code=DVEHRSHARING_CONSENT_CODE_YES, response_time=None):
+        """ Submit the DVEHRConsent questionnaire """
+        if not self.qn_dvehrconsent_id:
+            self.qn_dvehrconsent_id = self.create_questionnaire("dv_ehr_share_consent_questionnaire.json")
+
+        code_answers = list()
+        code_answers.append(self.make_code_answer(DVEHR_SHARING_QUESTION_CODE, response_code))
+
+        qr = self.make_questionnaire_response_json(self.participant_id, self.qn_dvehrconsent_id,
+                                                   code_answers=code_answers)
+        with FakeClock(response_time or self.TIME_1):
             self.send_post(f"Participant/P{participant_id}/QuestionnaireResponse", qr)
 
     def _submit_thebasics(self, participant_id):
@@ -109,6 +124,18 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
         qr = self.make_questionnaire_response_json(self.participant_id, self.qn_overall_health_id,
                                                    code_answers=code_answers)
         with FakeClock(self.TIME_1):
+            self.send_post(f"Participant/P{participant_id}/QuestionnaireResponse", qr)
+
+    def _submit_genomics_ror(self, participant_id, consent_response=CONSENT_GROR_YES_CODE, response_time=None):
+        """ Submit the Genomics ROR questionnaire """
+        if not self.qn_gror_id:
+            self.qn_gror_id = self.create_questionnaire("consent_for_genomic_ror_question.json")
+
+        code_answers = list()
+        code_answers.append(self.make_code_answer('genomic_consent', consent_response))
+
+        qr = self.make_questionnaire_response_json(self.participant_id, self.qn_gror_id, code_answers=code_answers)
+        with FakeClock(response_time or self.TIME_1):
             self.send_post(f"Participant/P{participant_id}/QuestionnaireResponse", qr)
 
     def _make_physical_measurements(self, **kwargs):
@@ -161,6 +188,7 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
         bss.test = '1ED04'
         bss.biobankOrderIdentifier = '123456789'
         bss.confirmed = self.TIME_2
+        bss.created = self.TIME_2
         bss.biobankStoredSampleId = 'I11111111'
         bss.family_id = 'F11111111'
 
@@ -203,27 +231,115 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
         self.assertIsNotNone(ps_json)
         self.assertEqual(ps_json['enrollment_status'], 'FULLY_CONSENTED')
 
-    def test_full_participant_status(self):
-        """ Full Participant Test"""
+    def _set_up_participant_data(self, fake_time=None, skip_ehr=False):
         # set up questionnaires to hit the calculate_max_core_sample_time in participant summary
-        self.send_consent(self.participant_id)
-        self._submit_ehrconsent(self.participant_id)
-        self._submit_lifestyle(self.participant_id)
-        self._submit_thebasics(self.participant_id)
-        self._submit_overall_health(self.participant_id)
+        with clock.FakeClock(fake_time or self.TIME_2):
+            self.send_consent(self.participant_id)
+            if not skip_ehr:
+                self._submit_ehrconsent(self.participant_id)
+            self._submit_lifestyle(self.participant_id)
+            self._submit_thebasics(self.participant_id)
+            self._submit_overall_health(self.participant_id)
 
-        self.pm_json = json.dumps(load_measurement_json(self.participant_id, self.TIME_1.isoformat()))
-        self.pm = PhysicalMeasurementsDao().insert(self._make_physical_measurements())
+            self.pm_json = json.dumps(load_measurement_json(self.participant_id, self.TIME_1.isoformat()))
+            self.pm = PhysicalMeasurementsDao().insert(self._make_physical_measurements())
 
-        with clock.FakeClock(self.TIME_2):
             self.dao = BiobankOrderDao()
             self.bio_order = BiobankOrderDao().insert(
                 self._make_biobank_order(participantId=self.participant_id))
+
+    def test_full_participant_status(self):
+        """ Full Participant Test"""
+        self._set_up_participant_data()
+        gen = BQParticipantSummaryGenerator()
+        ps_json = gen.make_bqrecord(self.participant_id)
+
+        self.assertIsNotNone(ps_json)
+        self.assertEqual('COHORT_2', ps_json['consent_cohort'], 'Test is built assuming cohort 2')
+        self.assertEqual(ps_json['pm'][0]['pm_finalized_site'], 'hpo-site-monroeville')
+        self.assertEqual(ps_json['pm'][0]['pm_status'], 'COMPLETED')
+        self.assertEqual(ps_json['enrollment_status'], 'CORE_PARTICIPANT')
+
+    def test_cohort_3_without_gror(self):
+        self._set_up_participant_data(fake_time=datetime(2020, 6, 1))
+        gen = BQParticipantSummaryGenerator()
+        ps_json = gen.make_bqrecord(self.participant_id)
+
+        self.assertIsNotNone(ps_json)
+        self.assertEqual('COHORT_3', ps_json['consent_cohort'], 'Test is built assuming cohort 3')
+        self.assertEqual('FULLY_CONSENTED', ps_json['enrollment_status'])
+
+    def test_cohort_3_with_gror(self):
+        self._set_up_participant_data(fake_time=datetime(2020, 6, 1))
+        self._submit_genomics_ror(self.participant_id)
 
         gen = BQParticipantSummaryGenerator()
         ps_json = gen.make_bqrecord(self.participant_id)
 
         self.assertIsNotNone(ps_json)
-        self.assertEqual(ps_json['pm'][0]['pm_finalized_site'], 'hpo-site-monroeville')
-        self.assertEqual(ps_json['pm'][0]['pm_status'], 'COMPLETED')
-        self.assertEqual(ps_json['enrollment_status'], 'CORE_PARTICIPANT')
+        self.assertEqual('COHORT_3', ps_json['consent_cohort'], 'Test is built assuming cohort 3')
+        self.assertEqual('CORE_PARTICIPANT', ps_json['enrollment_status'])
+
+    def test_participant_stays_core(self):
+        self._set_up_participant_data(fake_time=datetime(2020, 5, 1))
+        self._submit_genomics_ror(self.participant_id,
+                                  consent_response=CONSENT_GROR_YES_CODE,
+                                  response_time=datetime(2020, 7, 1))
+
+        gen = BQParticipantSummaryGenerator()
+        ps_json = gen.make_bqrecord(self.participant_id)
+        self.assertEqual('COHORT_3', ps_json['consent_cohort'], 'Test is built assuming cohort 3')
+        self.assertEqual('CORE_PARTICIPANT', ps_json['enrollment_status'],
+                         'Test is built assuming participant starts as core')
+
+        # Send an update to remove GROR consent and make sure participant is still CORE
+        self._submit_genomics_ror(self.participant_id,
+                                  consent_response=CONSENT_GROR_NO_CODE,
+                                  response_time=datetime(2020, 9, 1))
+        ps_json = gen.make_bqrecord(self.participant_id)
+        self.assertEqual('CORE_PARTICIPANT', ps_json['enrollment_status'])
+
+    def test_previous_ehr_unsure_with_dv_yes(self):
+        # Scenario: a participant previously had their EHR consent as UNSURE, but their DV_EHR as YES.
+        # As long as everything else at the same time was right for them to be Core, they should remain Core
+        self._set_up_participant_data(skip_ehr=True)
+
+        gen = BQParticipantSummaryGenerator()
+        ps_json = gen.make_bqrecord(self.participant_id)
+        self.assertEqual('COHORT_2', ps_json['consent_cohort'],
+                         'Test is built assuming cohort 2 (and that GROR consent is not required for Core status')
+        self.assertNotEqual('CORE_PARTICIPANT', ps_json['enrollment_status'],
+                            'Test is built assuming participant does not initialize as Core')
+
+        # Get Core status through EHR consents
+        self._submit_ehrconsent(self.participant_id,
+                                response_code=CONSENT_PERMISSION_NOT_SURE,
+                                response_time=datetime(2019, 2, 14))
+        self._submit_dvehrconsent(self.participant_id, response_time=datetime(2019, 4, 1))
+        ps_json = gen.make_bqrecord(self.participant_id)
+        self.assertEqual('CORE_PARTICIPANT', ps_json['enrollment_status'],
+                         'Test is built assuming participant achieves Core status')
+
+        # Send an update to remove EHR consent and make sure participant is still CORE
+        self._submit_ehrconsent(self.participant_id,
+                                response_code=CONSENT_PERMISSION_NO_CODE,
+                                response_time=datetime(2019, 7, 1))
+        ps_json = gen.make_bqrecord(self.participant_id)
+        self.assertEqual('CORE_PARTICIPANT', ps_json['enrollment_status'])
+
+    def test_no_on_ehr_overrides_yes_on_dv(self):
+        # Scenario: a participant has had DV_EHR yes, but previously had a no on EHR.
+        # No on EHR should supersede a yes on DV_EHR.
+        self._set_up_participant_data(skip_ehr=True)
+
+        gen = BQParticipantSummaryGenerator()
+        ps_json = gen.make_bqrecord(self.participant_id)
+        self.assertEqual('COHORT_2', ps_json['consent_cohort'],
+                         'Test is built assuming cohort 2 (and that GROR consent is not required for Core status')
+
+        self._submit_ehrconsent(self.participant_id,
+                                response_code=CONSENT_PERMISSION_NO_CODE,
+                                response_time=datetime(2019, 2, 14))
+        self._submit_dvehrconsent(self.participant_id, response_time=datetime(2019, 4, 1))
+        ps_json = gen.make_bqrecord(self.participant_id)
+        self.assertEqual('PARTICIPANT', ps_json['enrollment_status'])

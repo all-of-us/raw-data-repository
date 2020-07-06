@@ -14,7 +14,7 @@ import sys
 
 from werkzeug.exceptions import NotFound
 
-from rdr_service.offline.bigquery_sync import rebuild_bq_participant_task
+from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -75,10 +75,10 @@ class PDRParticipantRebuildClass(object):
                 payload = {'batch': batch}
 
                 if self.gcp_env.project == 'localhost':
-                    rebuild_bq_participant_task(payload)
+                    batch_rebuild_participants_task(payload)
                 else:
-                    task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
-                                        queue='bigquery-rebuild', project_id=self.gcp_env.project)
+                    task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
+                                        queue='resource-rebuild', project_id=self.gcp_env.project)
                     task.execute(quiet=True)
                 batch_count += 1
                 # reset for next batch
@@ -90,10 +90,10 @@ class PDRParticipantRebuildClass(object):
             payload = {'batch': batch}
             batch_count += 1
             if self.gcp_env.project == 'localhost':
-                rebuild_bq_participant_task(payload)
+                batch_rebuild_participants_task(payload)
             else:
-                task = GCPCloudTask('bq_rebuild_participants_task', payload=payload, in_seconds=15,
-                                    queue='bigquery-rebuild', project_id=self.gcp_env.project)
+                task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
+                                    queue='resource-rebuild', project_id=self.gcp_env.project)
                 task.execute(quiet=True)
 
         logging.info(f'Submitted {batch_count} tasks.')

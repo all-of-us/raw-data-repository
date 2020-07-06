@@ -35,9 +35,12 @@ class SqlExporter(object):
     def __init__(self, bucket_name):
         self._bucket_name = bucket_name
 
-
     def run_export(self, file_name, sql, query_params=None, backup=False, transformf=None, instance_name=None,
                    predicate=None):
+        tmp_file_name = self.write_temp_export_file(sql, query_params, backup, transformf, instance_name, predicate)
+        self.upload_export_file(tmp_file_name, file_name, predicate)
+
+    def write_temp_export_file(self, sql, query_params, backup, transformf, instance_name, predicate):
         with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
             tmp_file_name = tmp_file.name
 
@@ -49,6 +52,9 @@ class SqlExporter(object):
                 sql_writer, sql, query_params, backup=backup, transformf=transformf, instance_name=instance_name
             )
 
+        return tmp_file_name
+
+    def upload_export_file(self, tmp_file_name, file_name, predicate):
         logging.info(f"Opening {tmp_file_name} for export.")
         with open(tmp_file_name) as tmp_file:
             csv_reader = csv.reader(tmp_file)

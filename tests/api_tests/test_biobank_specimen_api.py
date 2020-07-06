@@ -621,7 +621,10 @@ class BiobankOrderApiTest(BaseTestCase):
 
         result = self.send_put(f"Biobank/specimens", request_data=specimens)
         self.assertJsonResponseMatches(result, {
-            'summary': 'Added 2 of 2 specimen'
+            'summary': {
+                'total_received': 2,
+                'success_count': 2
+            }
         })
 
     def test_update_multiple_specimen(self):
@@ -629,7 +632,10 @@ class BiobankOrderApiTest(BaseTestCase):
         inital_test_code = specimens[0]['testcode']
         result = self.send_put(f"Biobank/specimens", request_data=specimens)
         self.assertJsonResponseMatches(result, {
-            'summary': 'Added 5 of 5 specimen'
+            'summary': {
+                'total_received': 5,
+                'success_count': 5
+            }
         })
 
         third = self.get_specimen_from_dao(rlims_id='three')
@@ -647,22 +653,55 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual(fifth.testCode, 'checking last too')
 
     def test_error_missing_fields_specimen_migration(self):
-        specimens = [self.get_minimal_specimen_json(rlims_id) for rlims_id in ['sabrina', 'two', 'salem', 'bob']]
+        specimens = [self.get_minimal_specimen_json(rlims_id) for rlims_id in ['sabrina', 'two', 'salem',
+                                                                               'invalid', 'bob']]
         del specimens[0]['testcode']
         del specimens[0]['orderID']
         del specimens[1]['rlimsID']
         del specimens[1]['orderID']
         del specimens[2]['testcode']
 
+        # Add aliquot with invalid data to cause an exception in the API code.
+        # We need to cause an exception we haven't built code around (rather than something like an error we would
+        # raise on missing fields). It should be something we could crash on without having built
+        # code to specifically handle the scenario.
+        # The goal is to test that the endpoint gracefully handles any errors for individual specimen and continues
+        # to process the rest of the request.
+        specimens[3]['aliquots'] = [
+            {
+                'rlimsID': 'matching'
+            }, {
+                'rlimsID': 'matching'
+            }
+        ]
+
         result = self.send_put(f"Biobank/specimens", request_data=specimens)
         self.assertJsonResponseMatches(result, {
-            'summary': 'Added 1 of 4 specimen',
+            'summary': {
+                'total_received': 5,
+                'success_count': 1
+            },
             'errors': [
-                '[sabrina] Missing fields: orderID, testcode',
-                '[specimen #2] Missing fields: rlimsID, orderID',
-                '[salem] Missing fields: testcode'
+                {
+                    'rlimsID': 'sabrina',
+                    'error': 'Missing fields: orderID, testcode'
+                }, {
+                    'rlimsID': '',
+                    'error': 'Missing fields: rlimsID, orderID',
+                }, {
+                    'rlimsID': 'salem',
+                    'error': 'Missing fields: testcode'
+                }, {
+                    # WARNING: read the note above and ensure the error for this specimen is caught by the
+                    # catch-all for any specimen errors
+                    'rlimsID': 'invalid',
+                    'error': 'Unknown error'
+                }
             ]
         })
+
+        successful_specimen = self.get_specimen_from_dao(rlims_id='bob')
+        self.assertIsNotNone(successful_specimen)
 
     def _create_minimal_specimen(self, rlims_id='sabrina'):
         return self.put_specimen(self.get_minimal_specimen_json(rlims_id))

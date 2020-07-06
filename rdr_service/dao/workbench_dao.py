@@ -3,7 +3,7 @@ import json
 from werkzeug.exceptions import BadRequest
 from dateutil.parser import parse
 import pytz
-from sqlalchemy import desc, or_
+from sqlalchemy import desc, or_, func
 from sqlalchemy.orm import subqueryload, joinedload
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
@@ -408,13 +408,21 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         now = clock.CLOCK.now()
         sequest_hours_ago = now - timedelta(hours=sequest_hour)
         with self.session() as session:
+            snapshot_subquery = (
+                session.query(func.max(WorkbenchWorkspaceSnapshot.id).label('snapshot_id'),
+                              WorkbenchWorkspaceSnapshot.workspaceSourceId)
+                    .filter(WorkbenchWorkspaceSnapshot.excludeFromPublicDirectory == 0)
+                    .group_by(WorkbenchWorkspaceSnapshot.workspaceSourceId).subquery()
+            )
             query = (
-                session.query(WorkbenchWorkspaceApproved, WorkbenchResearcher)
+                session.query(WorkbenchWorkspaceApproved, WorkbenchResearcher,
+                              snapshot_subquery.c.snapshot_id)
                     .options(joinedload(WorkbenchWorkspaceApproved.workbenchWorkspaceUser),
                              joinedload(WorkbenchResearcher.workbenchInstitutionalAffiliations))
                     .filter(WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
                             WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId,
                             WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                            WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
                             or_(WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
                                 WorkbenchWorkspaceApproved.isReviewed == 1))
             )
@@ -423,7 +431,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 query = query.filter(WorkbenchWorkspaceApproved.status == status)
 
             items = query.all()
-            for workspace, researcher in items:
+            for workspace, researcher, snapshot_id in items:
                 affiliations = []
                 researcher_has_verified_institution = False
                 workspace_has_verified_institution = False
@@ -471,6 +479,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
                 record = {
                     'workspaceId': workspace.workspaceSourceId,
+                    'snapshotId': snapshot_id,
                     'name': workspace.name,
                     'creationTime': workspace.creationTime,
                     'modifiedTime': workspace.modifiedTime,

@@ -7,6 +7,7 @@ from rdr_service.lib_fhir.fhirclient_1_0_6.models.backboneelement import Backbon
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainResource
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirdate import FHIRDate
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.identifier import Identifier
+from rdr_service.lib_fhir.fhirclient_1_0_6.models.address import Address
 from sqlalchemy import or_, cast, Date, and_
 from sqlalchemy.orm import subqueryload, joinedload
 from werkzeug.exceptions import BadRequest, Conflict, PreconditionFailed, ServiceUnavailable
@@ -28,7 +29,8 @@ from rdr_service.model.biobank_order import (
     BiobankOrderIdentifierHistory,
     BiobankOrderedSample,
     BiobankOrderedSampleHistory,
-    MayolinkCreateOrderHistory
+    MayolinkCreateOrderHistory,
+    BiobankQuestOrderSiteAddress
 )
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.participant import Participant
@@ -73,7 +75,8 @@ class _FhirBiobankOrderHandlingInfo(FhirMixin, BackboneElement):
     """Information about what user and site handled an order."""
 
     resource_name = "BiobankOrderHandlingInfo"
-    _PROPERTIES = [FhirProperty("author", Identifier), FhirProperty("site", Identifier)]
+    _PROPERTIES = [FhirProperty("author", Identifier), FhirProperty("site", Identifier),
+                   FhirProperty("address", Address)]
 
 
 class _FhirBiobankOrder(FhirMixin, DomainResource):
@@ -149,7 +152,18 @@ class BiobankOrderDao(UpdatableDao):
         self._update_history(session, obj)
         return inserted_obj
 
-    def handle_list_queries(self, participant_id, kit_id, start_date, end_date, origin, page, page_size):
+    def handle_list_queries(self, **kwargs):
+        participant_id = kwargs.get('participant_id')
+        kit_id = kwargs.get('kit_id')
+        state = kwargs.get('state')
+        city = kwargs.get('city')
+        zip_code = kwargs.get('zip_code')
+        start_date = kwargs.get('start_date')
+        end_date = kwargs.get('end_date')
+        origin = kwargs.get('origin') if kwargs.get('origin') else QUEST_BIOBANK_ORDER_ORIGIN
+        page = kwargs.get('page') if kwargs.get('page') else 1
+        page_size = kwargs.get('page_size') if kwargs.get('page_size') else 10
+
         if participant_id:
             # return all biobank order by participant id
             items = self.get_biobank_orders_with_children_for_participant(participant_id)
@@ -166,8 +180,9 @@ class BiobankOrderDao(UpdatableDao):
                 response_json = self.to_client_json(item)
                 result['data'].append(response_json)
             return result
-        elif start_date and end_date and origin and page and page_size:
-            total, items = self.get_biobank_order_by_time_range(start_date, end_date, int(page), int(page_size), origin)
+        else:
+            total, items = self.get_biobank_order_by_search_criteria(start_date, end_date, state, city, zip_code,
+                                                                     int(page), int(page_size), origin)
             result = {
                 "total": total,
                 "page": int(page),
@@ -175,6 +190,9 @@ class BiobankOrderDao(UpdatableDao):
                 "startDate": start_date,
                 "endDate": end_date,
                 "origin": origin,
+                "state": state,
+                "city": city,
+                "zipCode": zip_code,
                 "data": []
             }
             for item in items:
@@ -182,61 +200,71 @@ class BiobankOrderDao(UpdatableDao):
                 response_json['biobankId'] = str(to_client_biobank_id(item[1]))
                 result['data'].append(response_json)
             return result
-        else:
-            raise BadRequest("invalid parameters")
 
-    def get_biobank_order_by_time_range(self, start_date, end_date, page, page_size, origin):
+    def get_biobank_order_by_search_criteria(self, start_date, end_date, state, city, zip_code, page, page_size,
+                                             origin):
+        states = state.split(',') if state else []
+        cities = city.split(',') if city else []
+        zip_codes = zip_code.split(',') if zip_code else []
         date_format = "%Y-%m-%d"
         offset = (page - 1) * page_size
         if offset < 0:
             raise BadRequest("invalid parameter: page")
-        try:
-            start_date = datetime.datetime.strptime(start_date, date_format).date()
-        except ValueError:
-            raise BadRequest("Invalid start date: {}".format(start_date))
-        try:
-            end_date = datetime.datetime.strptime(end_date, date_format).date()
-        except ValueError:
-            raise BadRequest("Invalid end date: {}".format(end_date))
+        if start_date:
+            try:
+                start_date = datetime.datetime.strptime(start_date, date_format).date()
+            except ValueError:
+                raise BadRequest("Invalid start date: {}".format(start_date))
+        if end_date:
+            try:
+                end_date = datetime.datetime.strptime(end_date, date_format).date()
+            except ValueError:
+                raise BadRequest("Invalid end date: {}".format(end_date))
 
         with self.session() as session:
-            total = (
-                session.query(BiobankOrder).filter(
-                    or_(
-                        and_(
-                            cast(BiobankOrder.created, Date) >= start_date,
-                            cast(BiobankOrder.created, Date) <= end_date
-                        ),
-                        and_(
-                            cast(BiobankOrder.finalizedTime, Date) >= start_date,
-                            cast(BiobankOrder.finalizedTime, Date) <= end_date
-                        )
-                    ),
-                ).filter(BiobankOrder.orderOrigin == origin).count()
-            )
-            query = (
-                session.query(BiobankOrder, Participant.biobankId)
-                .options(joinedload(BiobankOrder.identifiers), joinedload(BiobankOrder.samples))
-                .join(Participant, Participant.participantId == BiobankOrder.participantId)
-                .filter(BiobankOrder.orderOrigin == origin)
-                .filter(
-                    or_(
-                        and_(
-                            cast(BiobankOrder.created, Date) >= start_date,
-                            cast(BiobankOrder.created, Date) <= end_date
-                        ),
-                        and_(
-                            cast(BiobankOrder.finalizedTime, Date) >= start_date,
-                            cast(BiobankOrder.finalizedTime, Date) <= end_date
-                        )
-                    ),
-                )
-                .order_by(BiobankOrder.created)
-                .limit(page_size)
-                .offset(offset)
-            )
+            total_query = session.query(BiobankOrder)\
+                .outerjoin(BiobankQuestOrderSiteAddress,
+                           BiobankQuestOrderSiteAddress.biobankOrderId == BiobankOrder.biobankOrderId)
+            total_query = self._add_filter_for_biobank_order_search(total_query, states, cities, zip_codes, origin,
+                                                                    start_date, end_date)
+            total = total_query.count()
+
+            query = session.query(BiobankOrder, Participant.biobankId)\
+                    .options(joinedload(BiobankOrder.identifiers), joinedload(BiobankOrder.samples),
+                             joinedload(BiobankOrder.questSiteAddress))\
+                    .join(Participant, Participant.participantId == BiobankOrder.participantId) \
+                    .outerjoin(BiobankQuestOrderSiteAddress,
+                               BiobankQuestOrderSiteAddress.biobankOrderId == BiobankOrder.biobankOrderId)
+            query = self._add_filter_for_biobank_order_search(query, states, cities, zip_codes, origin, start_date,
+                                                              end_date)
+
+            query = query.order_by(BiobankOrder.created).limit(page_size).offset(offset)
             items = query.all()
         return total, items
+
+    def _add_filter_for_biobank_order_search(self, query, states, cities, zip_codes, origin, start_date, end_date):
+        if states:
+            query = query.filter(BiobankQuestOrderSiteAddress.state.in_(states))
+        if cities:
+            query = query.filter(BiobankQuestOrderSiteAddress.city.in_(cities))
+        if zip_codes:
+            query = query.filter(BiobankQuestOrderSiteAddress.zipCode.in_(zip_codes))
+        if origin:
+            query = query.filter(BiobankOrder.orderOrigin == origin)
+        if start_date and end_date:
+            query = query.filter(
+                or_(
+                    and_(
+                        cast(BiobankOrder.created, Date) >= start_date,
+                        cast(BiobankOrder.created, Date) <= end_date
+                    ),
+                    and_(
+                        cast(BiobankOrder.finalizedTime, Date) >= start_date,
+                        cast(BiobankOrder.finalizedTime, Date) <= end_date
+                    )
+                ),
+            )
+        return query
 
     def _validate_model(self, session, obj):
         if obj.participantId is None:
@@ -271,7 +299,8 @@ class BiobankOrderDao(UpdatableDao):
 
     def get_with_children_in_session(self, session, obj_id, for_update=False):
         query = session.query(BiobankOrder).options(
-            subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples)
+            subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples),
+            subqueryload(BiobankOrder.questSiteAddress)
         )
 
         if for_update:
@@ -295,7 +324,8 @@ class BiobankOrderDao(UpdatableDao):
             raise BadRequest("invalid participant id")
         with self.session() as session:
             return session.query(BiobankOrder).\
-                options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples)).\
+                options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples),
+                        subqueryload(BiobankOrder.questSiteAddress)).\
                 filter(BiobankOrder.participantId == pid).all()
 
     def get_biobank_order_by_kit_id(self, kit_id):
@@ -304,7 +334,8 @@ class BiobankOrderDao(UpdatableDao):
         with self.session() as session:
             return (session.query(BiobankOrder).
                     join(BiobankOrderIdentifier).
-                    options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples)).
+                    options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples),
+                            subqueryload(BiobankOrder.questSiteAddress)).
                     filter(BiobankOrder.biobankOrderId == BiobankOrderIdentifier.biobankOrderId,
                            BiobankOrderIdentifier.system == KIT_ID_SYSTEM,
                            BiobankOrderIdentifier.value == kit_id)
@@ -460,7 +491,7 @@ class BiobankOrderDao(UpdatableDao):
                 raise BadRequest(f"Invalid author system: {handling_info.author.system}")
         return username, site_id
 
-    def _to_handling_info(self, username, site_id):
+    def _to_handling_info(self, username, site_id, address=None):
         if not username and not site_id:
             return None
         info = _FhirBiobankOrderHandlingInfo()
@@ -473,6 +504,12 @@ class BiobankOrderDao(UpdatableDao):
             info.author = Identifier()
             info.author.system = HEALTHPRO_USERNAME_SYSTEM
             info.author.value = username
+        if address:
+            info.address = Address()
+            info.address.city = address.city
+            info.address.state = address.state
+            info.address.postalCode = address.zipCode
+            info.address.line = [address.address1, address.address2]
         return info
 
     # pylint: disable=unused-argument
@@ -507,7 +544,9 @@ class BiobankOrderDao(UpdatableDao):
         # if id_ is not None, that means it's for update, no need to create new mayolink order
         if order.orderOrigin == QUEST_BIOBANK_ORDER_ORIGIN and id_ is None:
             biobank_order_id = self._make_mayolink_order(participant_id, resource)
+            order.biobankOrderId = biobank_order_id
 
+        self._add_quest_site_address(order, resource)
         self._add_identifiers_and_main_id(order, resource, biobank_order_id)
         self._add_samples(order, resource)
 
@@ -618,6 +657,20 @@ class BiobankOrderDao(UpdatableDao):
         return biobank_order_id
 
     @classmethod
+    def _add_quest_site_address(cls, order, resource):
+        if resource.collected_info and resource.collected_info.address:
+            address = BiobankQuestOrderSiteAddress(city=resource.collected_info.address.city,
+                                                   state=resource.collected_info.address.state,
+                                                   zipCode=resource.collected_info.address.postalCode,
+                                                   address1=resource.collected_info.address.line[0]
+                                                   if resource.collected_info.address.line else None,
+                                                   address2=resource.collected_info.address.line[1]
+                                                   if len(resource.collected_info.address.line) > 1 else None)
+            order.questSiteAddress = address
+        else:
+            order.questSiteAddress = None
+
+    @classmethod
     def _add_identifiers_and_main_id(cls, order, resource, biobank_order_id):
         found_main_id = False
         for i in resource.identifier:
@@ -684,7 +737,8 @@ class BiobankOrderDao(UpdatableDao):
         resource.notes.finalized = model.finalizedNote
         resource.source_site = Identifier()
         resource.created_info = self._to_handling_info(model.sourceUsername, model.sourceSiteId)
-        resource.collected_info = self._to_handling_info(model.collectedUsername, model.collectedSiteId)
+        resource.collected_info = self._to_handling_info(model.collectedUsername, model.collectedSiteId,
+                                                         model.questSiteAddress)
         resource.processed_info = self._to_handling_info(model.processedUsername, model.processedSiteId)
         resource.finalized_info = self._to_handling_info(model.finalizedUsername, model.finalizedSiteId)
         resource.amendedReason = model.amendedReason

@@ -94,7 +94,7 @@ class GenomicApiTestBase(BaseTestCase):
             consentForGenomicsROR=1,
         )
         kwargs = dict(valid_kwargs, **override_kwargs)
-        summary = self._participant_summary_with_defaults(**kwargs)
+        summary = self.data_generator._participant_summary_with_defaults(**kwargs)
         self.ps_dao.insert(summary)
         return summary
 

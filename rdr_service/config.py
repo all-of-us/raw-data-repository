@@ -59,6 +59,7 @@ CVL_W2_MANIFEST_SUBFOLDER = "w2_wgs_cvl_manifests"
 CVL_W3_MANIFEST_SUBFOLDER = "w3_wgs_cvl_manifests"
 GENOMIC_AW2_SUBFOLDERS = ("aw2_wgs_data_manifests", "aw2_array_data_manifests")
 GENOMIC_AW1F_SUBFOLDERS = ("pre_accessioning_results", "post_accessioning_results")
+GENOMIC_AW1_SUBFOLDERS = ("genotyping_sample_manifests", "sequencing_sample_manifests")
 GENOMIC_GEM_BUCKET_NAME = "genomic_gem_bucket_name"
 GENOMIC_CVL_BUCKET_NAME = "genomic_cvl_bucket_name"
 GENOMIC_GEM_A1_MANIFEST_SUBFOLDER = "a1_manifests"
@@ -85,6 +86,9 @@ EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT = "ehr_status_bigquery_view_participant"
 EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION = "ehr_status_bigquery_view_organization"
 HPO_REPORT_CONFIG_MIXIN_PATH = "hpo_report_config_mixin_path"
 LOCALHOST_DEFAULT_BUCKET_NAME = 'local_bucket'
+
+# Questionnaire Codes
+DNA_PROGRAM_CONSENT_UPDATE_CODE = 'dna_program_consent_update_code'
 
 # For testing different account names locally
 LOCAL_AUTH_USER = "example@example.com"

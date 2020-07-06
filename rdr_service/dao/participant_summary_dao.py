@@ -43,6 +43,7 @@ from rdr_service.participant_enums import (
     BiobankOrderStatus,
     EhrStatus,
     EnrollmentStatus,
+    ParticipantCohort,
     PatientStatusFlag,
     PhysicalMeasurementsStatus,
     QuestionnaireStatus,
@@ -558,25 +559,31 @@ class ParticipantSummaryDao(UpdatableDao):
             summary.numCompletedBaselinePPIModules,
             summary.physicalMeasurementsStatus,
             summary.samplesToIsolateDNA,
+            summary.consentCohort,
+            summary.consentForGenomicsROR
         )
-        summary.enrollmentStatusMemberTime = self.calculate_member_time(consent, summary)
         summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
         summary.enrollmentStatusCoreStoredSampleTime = self.calculate_core_stored_sample_time(consent, summary)
 
-        # Update last modified date if status changes
-        if summary.enrollmentStatus != enrollment_status:
-            summary.lastModified = clock.CLOCK.now()
+        # [DA-1623] Participants that have 'Core' status should never lose it
+        if summary.enrollmentStatus != EnrollmentStatus.FULL_PARTICIPANT:
+            # Update last modified date if status changes
+            if summary.enrollmentStatus != enrollment_status:
+                summary.lastModified = clock.CLOCK.now()
 
-        summary.enrollmentStatus = enrollment_status
+            summary.enrollmentStatus = enrollment_status
+            summary.enrollmentStatusMemberTime = self.calculate_member_time(consent, summary)
 
     def calculate_enrollment_status(
-        self, consent, num_completed_baseline_ppi_modules, physical_measurements_status, samples_to_isolate_dna
+        self, consent, num_completed_baseline_ppi_modules, physical_measurements_status, samples_to_isolate_dna,
+        consent_cohort, gror_consent
     ):
         if consent:
             if (
                 num_completed_baseline_ppi_modules == self._get_num_baseline_ppi_modules()
                 and physical_measurements_status == PhysicalMeasurementsStatus.COMPLETED
                 and samples_to_isolate_dna == SampleStatus.RECEIVED
+                and (gror_consent == QuestionnaireStatus.SUBMITTED or consent_cohort != ParticipantCohort.COHORT_3)
             ):
                 return EnrollmentStatus.FULL_PARTICIPANT
             return EnrollmentStatus.MEMBER
@@ -601,7 +608,7 @@ class ParticipantSummaryDao(UpdatableDao):
             and participant_summary.numCompletedBaselinePPIModules == self._get_num_baseline_ppi_modules()
             and participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED
             and participant_summary.samplesToIsolateDNA == SampleStatus.RECEIVED
-        ):
+        ) or participant_summary.enrollmentStatus == EnrollmentStatus.FULL_PARTICIPANT:
 
             max_core_sample_time = self.calculate_max_core_sample_time(
                 participant_summary, field_name_prefix="sampleStatus"
@@ -619,7 +626,7 @@ class ParticipantSummaryDao(UpdatableDao):
             consent
             and participant_summary.numCompletedBaselinePPIModules == self._get_num_baseline_ppi_modules()
             and participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED
-        ):
+        ) or participant_summary.enrollmentStatus == EnrollmentStatus.FULL_PARTICIPANT:
 
             max_core_sample_time = self.calculate_max_core_sample_time(
                 participant_summary, field_name_prefix="sampleOrderStatus"
@@ -640,15 +647,15 @@ class ParticipantSummaryDao(UpdatableDao):
         sample_time = min(sample_time_list) if sample_time_list else None
 
         if sample_time is not None:
-            return max(
-                [
-                    sample_time,
-                    participant_summary.enrollmentStatusMemberTime,
-                    participant_summary.questionnaireOnTheBasicsTime,
-                    participant_summary.questionnaireOnLifestyleTime,
-                    participant_summary.questionnaireOnOverallHealthTime,
-                    participant_summary.physicalMeasurementsFinalizedTime,
-                ]
+            return max([time for time in
+                        [
+                            sample_time,
+                            participant_summary.enrollmentStatusMemberTime,
+                            participant_summary.questionnaireOnTheBasicsTime,
+                            participant_summary.questionnaireOnLifestyleTime,
+                            participant_summary.questionnaireOnOverallHealthTime,
+                            participant_summary.physicalMeasurementsFinalizedTime,
+                        ] if time is not None]
             )
         else:
             return None

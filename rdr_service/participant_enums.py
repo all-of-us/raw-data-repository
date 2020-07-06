@@ -1,5 +1,5 @@
 import json
-
+from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from protorpc import messages
 
@@ -38,14 +38,23 @@ TEST_HPO_NAME = "TEST"
 TEST_HPO_ID = 19
 # Test login phone number prefix
 TEST_LOGIN_PHONE_NUMBER_PREFIX = "444"
+PARTICIPANT_COHORT_2_START_TIME = datetime(2018, 4, 24, 0, 0, 0)
+PARTICIPANT_COHORT_3_START_TIME = datetime(2020, 4, 21, 4, 0, 0)
 
 
 class ParticipantCohort(messages.Enum):
     """ Participant Cohort Group"""
     UNSET = 0
-    COHORT_BETA = 1  # Beta participants.  Consent before April 24, 2018.
-    COHORT_LAUNCH = 2  # National Launch Participants. Consent between April 24, 2018 and April 16, 2020.
-    COHORT_CURRENT = 3  # New Participants with consent starting from April 17, 2020.
+    COHORT_1 = 1  # Beta participants.  Consent before April 24, 2018.
+    COHORT_2 = 2  # National Launch Participants. Consent between April 24, 2018 and April 21, 2020 (03:59:59 UTC)
+    COHORT_3 = 3  # New Participants with consent starting from April 21, 2020 04:00:00 UTC  (midnight eastern)
+
+
+# Added for DA-1622, enabling identification of Genomics pilot participants from Cohort 2
+class ParticipantCohortPilotFlag(messages.Enum):
+    """ Participant Cohort Pilot Group """
+    UNSET = 0
+    COHORT_2_PILOT = 1 # Genomics Cohort 2 Pilot Group
 
 
 class PatientStatusFlag(messages.Enum):
@@ -588,6 +597,7 @@ class GenomicWorkflowState(messages.Enum):
     A3 = 31
 
     AW0_READY = 32
+    IGNORE = 33
 
 
 class GenomicSubProcessStatus(messages.Enum):

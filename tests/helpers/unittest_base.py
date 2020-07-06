@@ -3,7 +3,6 @@ import collections
 import contextlib
 import copy
 import csv
-from datetime import datetime
 import http.client
 import io
 import json
@@ -26,26 +25,13 @@ from rdr_service.dao import database_factory, questionnaire_dao, questionnaire_r
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.code import Code
-from rdr_service.model.participant import Participant, ParticipantHistory
-from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.model.organization import Organization
-from rdr_service.model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from rdr_service.model.hpo import HPO
-from rdr_service.model.site import Site
 from rdr_service.offline import sql_exporter
-from rdr_service.participant_enums import (
-    EnrollmentStatus,
-    SuspensionStatus,
-    UNSET_HPO_ID,
-    WithdrawalStatus,
-)
 from rdr_service.storage import LocalFilesystemStorageProvider
+from tests.helpers.data_generator import DataGenerator
 from tests.helpers.mysql_helper import reset_mysql_instance
 from tests.test_data import data_path
 
 QUESTIONNAIRE_NONE_ANSWER = 'no_answer_given'
-
 
 
 class CodebookTestMixin:
@@ -136,80 +122,6 @@ class QuestionnaireTestMixin:
             response_json.update({"authored": authored.isoformat()})
         return response_json
 
-    @staticmethod
-    def _commit_to_database(session, model):
-        session.add(model)
-        session.commit()
-
-    def create_database_questionnaire(self, **kwargs):
-        questionnaire = self._questionnaire(**kwargs)
-        self._commit_to_database(self.session, questionnaire)
-        return questionnaire
-
-    def _questionnaire(self, **kwargs):
-        for field, default in [('version', 1),
-                               ('created', datetime.now()),
-                               ('lastModified', datetime.now()),
-                               ('resource', 'test')]:
-            if field not in kwargs:
-                kwargs[field] = default
-
-        return Questionnaire(**kwargs)
-
-    def create_database_questionnaire_history(self, **kwargs):
-        questionnaire_history = self._questionnaire_history(**kwargs)
-        self._commit_to_database(self.session, questionnaire_history)
-        return questionnaire_history
-
-    def _questionnaire_history(self, **kwargs):
-        for field, default in [('version', 1),
-                               ('created', datetime.now()),
-                               ('lastModified', datetime.now()),
-                               ('resource', 'test')]:
-            if field not in kwargs:
-                kwargs[field] = default
-
-        if 'questionnaireId' not in kwargs:
-            questionnaire = self.create_database_questionnaire()
-            kwargs['questionnaireId'] = questionnaire.questionnaireId
-
-        return QuestionnaireHistory(**kwargs)
-
-    def create_database_questionnaire_response_answer(self, **kwargs):
-        questionnaire_response_answer = self._questionnaire_response_answer(**kwargs)
-        self._commit_to_database(self.session, questionnaire_response_answer)
-        return questionnaire_response_answer
-
-    def _questionnaire_response_answer(self, **kwargs):
-        return QuestionnaireResponseAnswer(**kwargs)
-
-    def create_database_questionnaire_response(self, **kwargs):
-        questionnaire_response = self._questionnaire_response(**kwargs)
-        self._commit_to_database(self.session, questionnaire_response)
-        return questionnaire_response
-
-    def _questionnaire_response(self, **kwargs):
-        for field, default in [('created', datetime.now()),
-                               ('resource', 'test')]:
-            if field not in kwargs:
-                kwargs[field] = default
-
-        if 'questionnaireResponseId' not in kwargs:
-            kwargs['questionnaireResponseId'] = self.unique_questionnaire_response_id()
-
-        return QuestionnaireResponse(**kwargs)
-
-    def create_database_questionnaire_question(self, **kwargs):
-        questionnaire_question = self._questionnaire_question(**kwargs)
-        self._commit_to_database(self.session, questionnaire_question)
-        return questionnaire_question
-
-    def _questionnaire_question(self, **kwargs):
-        if 'repeats' not in kwargs:
-            kwargs['repeats'] = True
-
-        return QuestionnaireQuestion(**kwargs)
-
 
 class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin):
     """ Base class for unit tests."""
@@ -219,9 +131,6 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
     def __init__(self, *args, **kwargs):
         super(BaseTestCase, self).__init__(*args, **kwargs)
         self.fake = faker.Faker()
-        self._next_unique_participant_id = 900000000
-        self._next_unique_participant_biobank_id = 500000000
-        self._next_unique_questionnaire_response_id = 500000000
 
     def setUp(self, with_data=True, with_consent_codes=False) -> None:
         super(BaseTestCase, self).setUp()
@@ -247,6 +156,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         self._consent_questionnaire_id = None
 
         self.session = database_factory.get_database().make_session()
+        self.data_generator = DataGenerator(self.session, self.fake)
 
     def tearDown(self):
         super(BaseTestCase, self).tearDown()
@@ -282,154 +192,6 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         if not os.path.exists(bucket_dir):
             os.mkdir(bucket_dir)
         shutil.copy(os.path.join(os.path.dirname(__file__), "..", "test-data", test_file_name), bucket_dir)
-
-    def unique_participant_id(self):
-        next_participant_id = self._next_unique_participant_id
-        self._next_unique_participant_id += 1
-        return next_participant_id
-
-    def unique_participant_biobank_id(self):
-        next_biobank_id = self._next_unique_participant_biobank_id
-        self._next_unique_participant_biobank_id += 1
-        return next_biobank_id
-
-    def unique_questionnaire_response_id(self):
-        next_questionnaire_response_id = self._next_unique_questionnaire_response_id
-        self._next_unique_questionnaire_response_id += 1
-        return next_questionnaire_response_id
-
-    def create_database_site(self, **kwargs):
-        site = self._site_with_defaults(**kwargs)
-        self._commit_to_database(self.session, site)
-        return site
-
-    def _site_with_defaults(self, **kwargs):
-        defaults = {
-            'siteName': 'example_site'
-        }
-        defaults.update(kwargs)
-        return Site(**defaults)
-
-    def create_database_organization(self, **kwargs):
-        organization = self._organization_with_defaults(**kwargs)
-        self._commit_to_database(self.session, organization)
-        return organization
-
-    def _organization_with_defaults(self, **kwargs):
-        defaults = {
-            'displayName': 'example_org_display'
-        }
-        defaults.update(kwargs)
-
-        if 'hpoId' not in defaults:
-            hpo = self.create_database_hpo()
-            defaults['hpoId'] = hpo.hpoId
-
-        return Organization(**defaults)
-
-    def create_database_hpo(self, **kwargs):
-        hpo = self._hpo_with_defaults(**kwargs)
-
-        # hpoId is the primary key but is not automatically set when inserting
-        if hpo.hpoId is None:
-            hpo.hpoId = self.session.query(HPO).count() + 50  # There was code somewhere using lower numbers
-        self._commit_to_database(self.session, hpo)
-
-        return hpo
-
-    def _hpo_with_defaults(self, **kwargs):
-        return HPO(**kwargs)
-
-    def create_database_participant(self, **kwargs):
-        participant = self._participant_with_defaults(**kwargs)
-        self._commit_to_database(self.session, participant)
-        return participant
-
-    def _participant_with_defaults(self, **kwargs):
-        """Creates a new Participant model, filling in some default constructor args.
-
-        This is intended especially for updates, where more fields are required than for inserts.
-        """
-        defaults = {
-            'hpoId': UNSET_HPO_ID,
-            'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
-            'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
-            'participantOrigin': 'example',
-            'version': 1,
-            'lastModified': datetime.now(),
-            'signUpTime': datetime.now()
-        }
-        defaults.update(kwargs)
-
-        if 'biobankId' not in defaults:
-            defaults['biobankId'] = self.unique_participant_biobank_id()
-        if 'participantId' not in defaults:
-            defaults['participantId'] = self.unique_participant_id()
-
-        return Participant(**defaults)
-
-    def create_database_participant_summary(self, **kwargs):
-        participant_summary = self._participant_summary_with_defaults(**kwargs)
-        self._commit_to_database(self.session, participant_summary)
-        return participant_summary
-
-    def _participant_summary_with_defaults(self, **kwargs):
-        participant = kwargs.get('participant')
-        if participant is None:
-            participant = self.create_database_participant()
-
-        defaults = {
-            "participantId": participant.participantId,
-            "biobankId": participant.biobankId,
-            "hpoId": participant.hpoId,
-            "firstName": self.fake.first_name(),
-            "lastName": self.fake.last_name(),
-            "numCompletedPPIModules": 0,
-            "numCompletedBaselinePPIModules": 0,
-            "numBaselineSamplesArrived": 0,
-            "numberDistinctVisits": 0,
-            "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
-            "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
-            "enrollmentStatus": EnrollmentStatus.INTERESTED,
-            "participantOrigin": participant.participantOrigin
-        }
-
-        defaults.update(kwargs)
-        for questionnaire_field in ['consentForStudyEnrollment']:
-            if questionnaire_field in defaults:
-                if f'{questionnaire_field}Time' not in defaults:
-                    defaults[f'{questionnaire_field}Time'] = datetime.now()
-                if f'{questionnaire_field}Authored' not in defaults:
-                    defaults[f'{questionnaire_field}Authored'] = datetime.now()
-
-        return ParticipantSummary(**defaults)
-
-    @staticmethod
-    def _participant_history_with_defaults(**kwargs):
-        common_args = {
-            "hpoId": UNSET_HPO_ID,
-            "version": 1,
-            "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
-            "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
-            "participantOrigin": "example"
-        }
-        common_args.update(kwargs)
-        return ParticipantHistory(**common_args)
-
-    def create_database_code(self, **kwargs):
-        code = self._code(**kwargs)
-        self._commit_to_database(self.session, code)
-        return code
-
-    def _code(self, **kwargs):
-        for field, default in [('system', 'test'),
-                               ('codeType', 1),
-                               ('mapped', False),
-                               ('created', datetime.now())]:
-            if field not in kwargs:
-                kwargs[field] = default
-
-        return Code(**kwargs)
 
     def submit_questionnaire_response(
         self, participant_id, questionnaire_id, race_code, gender_code, state, date_of_birth):

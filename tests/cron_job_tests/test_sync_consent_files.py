@@ -44,8 +44,8 @@ class SyncConsentFilesTest(BaseTestCase):
         }
         config.override_setting(config.CONSENT_SYNC_BUCKETS, self.org_buckets)
 
-        self.org1 = self.create_database_organization(externalId='test_one')
-        self.site1 = self.create_database_site(googleGroup="group1")
+        self.org1 = self.data_generator.create_database_organization(externalId='test_one')
+        self.site1 = self.data_generator.create_database_site(googleGroup="group1")
 
         self.source_consent_bucket = sync_consent_files.SOURCE_BUCKET['vibrent']
 
@@ -54,10 +54,10 @@ class SyncConsentFilesTest(BaseTestCase):
 
     def _create_participant(self, id_, org_id, site_id, consents=False, ghost=None, email=None, null_email=False,
                             consent_time=None):
-        participant = self.create_database_participant(participantId=id_, organizationId=org_id, siteId=site_id,
-                                                       isGhostId=ghost)
+        participant = self.data_generator.create_database_participant(participantId=id_, organizationId=org_id,
+                                                                      siteId=site_id, isGhostId=ghost)
         summary_data = {'participant': participant}
-        summary = self.create_database_participant_summary(participant=participant)
+        summary = self.data_generator.create_database_participant_summary(participant=participant)
         if consents:
             summary_data.update(consentForElectronicHealthRecords=1,
                                 consentForStudyEnrollment=1,
@@ -67,7 +67,7 @@ class SyncConsentFilesTest(BaseTestCase):
             summary_data['email'] = email
         if null_email:
             summary_data['email'] = None
-        self.create_database_participant_summary(**summary_data)
+        self.data_generator.create_database_participant_summary(**summary_data)
         return participant
 
     @staticmethod
@@ -216,6 +216,31 @@ class SyncConsentFilesTest(BaseTestCase):
                       EXPECTED_CLOUD_DESTINATION_PATTERN.format(**pattern_args, file_name='another.bin'))
         ])
 
+    @mock.patch('rdr_service.offline.sync_consent_files.list_blobs')
+    @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
+    def test_all_file_filter(self, mock_copy_cloud_file, mock_list_blobs):
+        today = datetime.datetime.today()
+        today_without_timestamp = datetime.datetime(today.year, today.month, today.day)
+        self._mock_files_for_participants(mock_list_blobs, [
+            FakeConsentFile(updated=today_without_timestamp)
+        ])
+
+        va_org = self.data_generator.create_database_organization(externalId='VA_TEST')
+        self._create_participant(1, va_org.organizationId, self.site1.siteId, consents=True,
+                                 consent_time=datetime.datetime(2020, 2, 3))
+        sync_consent_files.do_sync_consent_files(all_va=True)
+
+        pattern_args = {
+            'org_bucket_name': 'aou179',
+            'org_id': 'VA_TEST',
+            'site_name': self.site1.googleGroup,
+            'participant_id': 1
+        }
+        mock_copy_cloud_file.assert_has_calls([
+            mock.call(f'/{self.source_consent_bucket}/Participant/P1/consent.pdf',
+                      EXPECTED_CLOUD_DESTINATION_PATTERN.format(**pattern_args, file_name='consent.pdf'))
+        ])
+
     @staticmethod
     def _create_local_files_with_download(mock_download_cloud_file):
         def create_local_file(_, destination):
@@ -252,8 +277,8 @@ class SyncConsentFilesTest(BaseTestCase):
     @mock.patch('rdr_service.offline.sync_consent_files.download_cloud_file')
     def test_zip_upload_destinations(self, mock_download_cloud_file, mock_list_blobs, mock_file_upload):
         # Test that the zip files are uploaded to the correct buckets
-        org2 = self.create_database_organization(externalId='test_two')
-        site2 = self.create_database_site(googleGroup="group2")
+        org2 = self.data_generator.create_database_organization(externalId='test_two')
+        site2 = self.data_generator.create_database_site(googleGroup="group2")
 
         self._mock_files_for_participants(mock_list_blobs, [
             FakeConsentFile()
@@ -275,8 +300,8 @@ class SyncConsentFilesTest(BaseTestCase):
     def test_iter_participants_data(self):
         """should list consenting participants
     """
-        org2 = self.create_database_organization(externalId='test_two')
-        site2 = self.create_database_site(googleGroup="group2")
+        org2 = self.data_generator.create_database_organization(externalId='test_two')
+        site2 = self.data_generator.create_database_site(googleGroup="group2")
         self._create_participant(1, self.org1.organizationId, self.site1.siteId, consents=True, null_email=True)
         self._create_participant(2, org2.organizationId, site2.siteId)
         self._create_participant(3, self.org1.organizationId, None, consents=True, ghost=False)

@@ -26,7 +26,7 @@ _MAX_INPUT_AGE = datetime.timedelta(hours=24)
 # sample suffix: -v12019-04-05-00-30-10.csv
 _RESULT_CSV_FILE_SUFFIX_LENGTH = 26
 
-BIOBANK_ID_PREFIX = "T"
+BIOBANK_ID_PREFIX = "A" if config.GAE_PROJECT == "all-of-us-rdr-prod" else "T"
 
 
 def process_genomic_manifest_result_file_from_bucket():
@@ -138,7 +138,10 @@ def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=No
     export_sql = """
       SELECT 
         '' as value,
-        sample_id,
+        CASE 
+            WHEN collection_tube_id IS NOT NULL THEN collection_tube_id
+            ELSE sample_id 
+        END AS sample_id,
         CONCAT(:prefix, biobank_id) as biobank_id,
         sex_at_birth,
         genome_type,
@@ -158,7 +161,7 @@ def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=No
     """
     query_params = {"genomic_set_id": genomic_set_id,
                     "prefix": BIOBANK_ID_PREFIX,
-                    "aw0_ready_state": int(GenomicWorkflowState.AW0_READY)}
+                    "aw0_ready_state": int(GenomicWorkflowState.AW0_READY),}
     exporter.run_export(result_filename, export_sql, query_params)
 
 

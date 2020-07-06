@@ -1,12 +1,10 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
 import json
 import logging
-import os
-import signal
 import traceback
 from datetime import datetime
 
-from flask import Flask, Response, got_request_exception, request
+from flask import Flask, got_request_exception, request
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import BadRequest
 
@@ -25,20 +23,17 @@ from rdr_service.offline.patient_status_backfill import backfill_patient_status
 from rdr_service.offline.public_metrics_export import LIVE_METRIC_SET_ID, PublicMetricsExport
 from rdr_service.offline.sa_key_remove import delete_service_account_keys
 from rdr_service.offline.table_exporter import TableExporter
+from rdr_service.services.flask import OFFLINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
     flask_restful_log_exception_error
 
-PREFIX = "/offline/"
-
 
 def _alert_on_exceptions(func):
-    """Sends e-mail alerts for any failure of the decorated function.
-
-  This handles Biobank DataErrors specially.
-
-  This must be the innermost (bottom) decorator in order to discover the wrapped function's name.
-  """
-
+    """
+    Sends e-mail alerts for any failure of the decorated function.
+    This handles Biobank DataErrors specially.
+    This must be the innermost (bottom) decorator in order to discover the wrapped function's name.
+    """
     def alert_on_exceptions_wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
@@ -107,7 +102,7 @@ def recalculate_public_metrics():
 
 
 @app_util.auth_required_cron
-@_alert_on_exceptions
+#@_alert_on_exceptions
 def import_biobank_samples():
     # Note that crons always have a 10 minute deadline instead of the normal 60s; additionally our
     # offline service uses basic scaling with has no deadline.
@@ -118,7 +113,7 @@ def import_biobank_samples():
 
 
 @app_util.auth_required_cron
-@_alert_on_exceptions
+#@_alert_on_exceptions
 def biobank_daily_reconciliation_report():
     # TODO: setup to only run after import_biobank_samples completion instead of 1hr after start.
     timestamp = biobank_samples_pipeline.get_last_biobank_sample_file_info()[2]
@@ -129,7 +124,7 @@ def biobank_daily_reconciliation_report():
     return '{"success": "true"}'
 
 @app_util.auth_required_cron
-@_alert_on_exceptions
+#@_alert_on_exceptions
 def biobank_monthly_reconciliation_report():
     # make sure this cron job is executed after import_biobank_samples
     timestamp = biobank_samples_pipeline.get_last_biobank_sample_file_info(monthly=True)[2]
@@ -286,25 +281,6 @@ def patient_status_backfill():
     backfill_patient_status()
     return '{"success": "true"}'
 
-def start():
-    return '{"success": "true"}'
-
-def _stop():
-    pid_file = '/tmp/supervisord.pid'
-    if os.path.exists(pid_file):
-        try:
-            pid = int(open(pid_file).read())
-            if pid:
-                logging.info('******** Shutting down, sent supervisor the termination signal. ********')
-                response = Response()
-                response.status_code = 200
-                end_request_logging(response)
-                os.kill(pid, signal.SIGTERM)
-        except TypeError:
-            logging.warning('******** Shutting down, supervisor pid file is invalid. ********')
-            pass
-    return '{ "success": "true" }'
-
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
@@ -318,34 +294,34 @@ def _build_pipeline_app():
     offline_app = Flask(__name__)
 
     offline_app.add_url_rule(
-        PREFIX + "EnrollmentStatusCheck",
+        OFFLINE_PREFIX + "EnrollmentStatusCheck",
         endpoint="enrollmentStatusCheck",
         view_func=check_enrollment_status,
         methods=["GET"],
     )
 
     offline_app.add_url_rule(
-        PREFIX + "BiobankSamplesImport",
+        OFFLINE_PREFIX + "BiobankSamplesImport",
         endpoint="biobankSamplesImport",
         view_func=import_biobank_samples,
         methods=["GET"],
     )
 
     offline_app.add_url_rule(
-        PREFIX + "DailyReconciliationReport",
+        OFFLINE_PREFIX + "DailyReconciliationReport",
         endpoint="dailyReconciliationReport",
         view_func=biobank_daily_reconciliation_report,
         methods=["GET"],
     )
     offline_app.add_url_rule(
-        PREFIX + "MonthlyReconciliationReport",
+        OFFLINE_PREFIX + "MonthlyReconciliationReport",
         endpoint="monthlyReconciliationReport",
         view_func=biobank_monthly_reconciliation_report,
         methods=["GET"],
     )
 
     offline_app.add_url_rule(
-        PREFIX + "SkewDuplicates", endpoint="skew_duplicates", view_func=skew_duplicates, methods=["GET"]
+        OFFLINE_PREFIX + "SkewDuplicates", endpoint="skew_duplicates", view_func=skew_duplicates, methods=["GET"]
     )
 
     # offline_app.add_url_rule(
@@ -353,96 +329,100 @@ def _build_pipeline_app():
     # )
 
     offline_app.add_url_rule(
-        PREFIX + "PublicMetricsRecalculate",
+        OFFLINE_PREFIX + "PublicMetricsRecalculate",
         endpoint="public_metrics_recalc",
         view_func=recalculate_public_metrics,
         methods=["GET"],
     )
 
     offline_app.add_url_rule(
-        PREFIX + "ExportTables", endpoint="ExportTables", view_func=export_tables, methods=["POST"]
+        OFFLINE_PREFIX + "ExportTables", endpoint="ExportTables", view_func=export_tables, methods=["POST"]
     )
 
     offline_app.add_url_rule(
-        PREFIX + "DeleteOldKeys", endpoint="delete_old_keys", view_func=delete_old_keys, methods=["GET"]
+        OFFLINE_PREFIX + "DeleteOldKeys", endpoint="delete_old_keys", view_func=delete_old_keys, methods=["GET"]
     )
 
     offline_app.add_url_rule(
-        PREFIX + "ParticipantCountsOverTime",
+        OFFLINE_PREFIX + "ParticipantCountsOverTime",
         endpoint="participant_counts_over_time",
         view_func=participant_counts_over_time,
         methods=["GET"],
     )
 
     offline_app.add_url_rule(
-        PREFIX + "MarkGhostParticipants", endpoint="exclude_ghosts", view_func=exclude_ghosts, methods=["GET"]
+        OFFLINE_PREFIX + "MarkGhostParticipants", endpoint="exclude_ghosts", view_func=exclude_ghosts, methods=["GET"]
     )
 
     offline_app.add_url_rule(
-        PREFIX + "SyncConsentFiles", endpoint="sync_consent_files", view_func=run_sync_consent_files, methods=["GET"]
+        OFFLINE_PREFIX + "SyncConsentFiles", endpoint="sync_consent_files", view_func=run_sync_consent_files,
+        methods=["GET"]
     )
 
     offline_app.add_url_rule(
-        PREFIX + "SyncVaConsentFiles",
+        OFFLINE_PREFIX + "SyncVaConsentFiles",
         endpoint="sync_va_consent_files",
         view_func=run_va_sync_consent_files,
         methods=["GET"]
     )
 
     offline_app.add_url_rule(
-        PREFIX + "UpdateEhrStatus", endpoint="update_ehr_status", view_func=update_ehr_status_cron, methods=["GET"]
+        OFFLINE_PREFIX + "UpdateEhrStatus", endpoint="update_ehr_status", view_func=update_ehr_status_cron,
+        methods=["GET"]
     )
 
     # BEGIN Genomic Pipeline Jobs
     offline_app.add_url_rule(
-        PREFIX + "GenomicNewParticipantWorkflow",
+        OFFLINE_PREFIX + "GenomicNewParticipantWorkflow",
         endpoint="genomic_new_participant_workflow",
         view_func=genomic_new_participant_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
-        PREFIX + "GenomicGCManifestWorkflow",
+        OFFLINE_PREFIX + "GenomicGCManifestWorkflow",
         endpoint="genomic_gc_manifest_workflow",
         view_func=genomic_gc_manifest_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
-        PREFIX + "GenomicDataManifestWorkflow",
+        OFFLINE_PREFIX + "GenomicDataManifestWorkflow",
         endpoint="genomic_data_manifest_workflow",
         view_func=genomic_data_manifest_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
-        PREFIX + "GenomicGemA1A2Workflow",
+        OFFLINE_PREFIX + "GenomicGemA1A2Workflow",
         endpoint="genomic_gem_a1_a2_workflow",
         view_func=genomic_gem_a1_a2_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
-        PREFIX + "GenomicGemA3Workflow",
+        OFFLINE_PREFIX + "GenomicGemA3Workflow",
         endpoint="genomic_gem_a3_workflow",
         view_func=genomic_gem_a3_workflow, methods=["GET"]
     )
     # END Genomic Pipeline Jobs
 
     offline_app.add_url_rule(
-        PREFIX + "BigQueryRebuild", endpoint="bigquery_rebuild", view_func=bigquery_rebuild_cron, methods=["GET"]
-    )
-
-    offline_app.add_url_rule(
-        PREFIX + "BigQueryDailyRebuild", endpoint="bigquery_daily_rebuild", view_func=bigquery_daily_rebuild_cron,
+        OFFLINE_PREFIX + "BigQueryRebuild", endpoint="bigquery_rebuild", view_func=bigquery_rebuild_cron,
         methods=["GET"]
     )
 
     offline_app.add_url_rule(
-        PREFIX + "BigQuerySync", endpoint="bigquery_sync", view_func=bigquery_sync, methods=["GET"]
+        OFFLINE_PREFIX + "BigQueryDailyRebuild", endpoint="bigquery_daily_rebuild",
+        view_func=bigquery_daily_rebuild_cron,
+        methods=["GET"]
     )
 
     offline_app.add_url_rule(
-        PREFIX + "PatientStatusBackfill",
+        OFFLINE_PREFIX + "BigQuerySync", endpoint="bigquery_sync", view_func=bigquery_sync, methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "PatientStatusBackfill",
         endpoint="patient_status_backfill",
         view_func=patient_status_backfill,
         methods=["GET"],
     )
 
-    offline_app.add_url_rule('/_ah/start', endpoint='start', view_func=start, methods=["GET"])
-    offline_app.add_url_rule("/_ah/stop", endpoint="stop", view_func=_stop, methods=["GET"])
+    offline_app.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
+    offline_app.add_url_rule("/_ah/stop", endpoint="stop", view_func=flask_stop, methods=["GET"])
 
     offline_app.before_request(begin_request_logging)  # Must be first before_request() call.
     offline_app.before_request(app_util.request_logging)

@@ -24,10 +24,10 @@ class SyncConsentTest(BaseTestCase):
             'test_org': 'test_dest_bucket'
         })
 
-        site = self.create_database_site(googleGroup='test_site_google_group')
-        org = self.create_database_organization(externalId='test_org')
-        self.participant = self.create_database_participant(organizationId=org.organizationId, siteId=site.siteId)
-        self.create_database_participant_summary(
+        site = self.data_generator.create_database_site(googleGroup='test_site_google_group')
+        org = self.data_generator.create_database_organization(externalId='test_org')
+        self.participant = self.data_generator.create_database_participant(organizationId=org.organizationId, siteId=site.siteId)
+        self.data_generator.create_database_participant_summary(
             participant=self.participant,
             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED
         )
@@ -131,10 +131,10 @@ class SyncConsentTest(BaseTestCase):
     # There's a switch that targets the VA upload bucket for all organizations that belong under the VA hpo
     def test_va_zip_upload(self, mock_gcp_cp, mock_upload_file):
         self.setup_local_file_creation(mock_gcp_cp)
-        site = self.create_database_site(googleGroup='boston_site')
-        org = self.create_database_organization(externalId='VA_BOSTON')
-        va_participant = self.create_database_participant(organizationId=org.organizationId, siteId=site.siteId)
-        self.create_database_participant_summary(
+        site = self.data_generator.create_database_site(googleGroup='boston_site')
+        org = self.data_generator.create_database_organization(externalId='VA_BOSTON')
+        va_participant = self.data_generator.create_database_participant(organizationId=org.organizationId, siteId=site.siteId)
+        self.data_generator.create_database_participant_summary(
             participant=va_participant,
             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED
         )

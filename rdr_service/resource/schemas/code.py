@@ -32,8 +32,8 @@ class CodeSchema(Schema):
         resource_pk_field = 'code_id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            1001,
-            'codes',
-            'Codes',
-            'code_id'
+            type_uid=1001,
+            type_name='codes',
+            resource_uri='Codes',
+            resource_pk_field='code_id'
         )
