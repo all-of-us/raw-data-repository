@@ -105,6 +105,10 @@ def setup_log_line(record: logging.LogRecord, resource=None, method=None):
     if isinstance(message, dict):
         message = json.dumps(message)
 
+    # At this point the message is expected to be a string
+    if not isinstance(message, str):
+        message = str(message)
+
     # Look for embedded traceback source location override information
     if '%%' in message:
         tmp_sl = message[message.find('%%'):message.rfind('%%')+2]

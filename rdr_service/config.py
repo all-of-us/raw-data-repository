@@ -85,6 +85,8 @@ EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT = "ehr_status_bigquery_view_participant"
 EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION = "ehr_status_bigquery_view_organization"
 HPO_REPORT_CONFIG_MIXIN_PATH = "hpo_report_config_mixin_path"
 LOCALHOST_DEFAULT_BUCKET_NAME = 'local_bucket'
+BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN = 'biobank_samples_daily_inventory_file_pattern'
+BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN = 'biobank_samples_monthly_inventory_file_pattern'
 
 # Questionnaire Codes
 DNA_PROGRAM_CONSENT_UPDATE_CODE = 'dna_program_consent_update_code'
