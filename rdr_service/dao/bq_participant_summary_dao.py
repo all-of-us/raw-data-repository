@@ -5,7 +5,9 @@ from dateutil import parser, tz
 from sqlalchemy import func, desc
 from werkzeug.exceptions import NotFound
 
-from rdr_service import config
+from rdr_service import app_util, config
+from rdr_service.code_constants import CONSENT_GROR_YES_CODE, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE,\
+    DVEHR_SHARING_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES, GROR_CONSENT_QUESTION_CODE
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummary
@@ -183,7 +185,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
             QuestionnaireResponse.created, QuestionnaireResponse.language, code_id_query). \
             filter(QuestionnaireResponse.participantId == p_id). \
-            order_by(QuestionnaireResponse.questionnaireResponseId)
+            order_by(QuestionnaireResponse.authored)
         # sql = self.ro_dao.query_to_text(query)
         results = query.all()
 
@@ -218,7 +220,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
                 qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
                 if qnans:
-                    qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
+                    qnan = BQRecord(schema=None, data=qnans)
                     consent = {
                         'consent': consent_modules[module_name],
                         'consent_id': self._lookup_code_id(consent_modules[module_name], ro_session),
@@ -243,6 +245,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             data['modules'] = [dict(t) for t in {tuple(d.items()) for d in modules}]
             if len(consents) > 0:
                 data['consents'] = [dict(t) for t in {tuple(d.items()) for d in consents}]
+                # keep consents in order if dates need to be checked
+                data['consents'].sort(key=lambda consent_data: consent_data['consent_date'])
 
         return data
 
@@ -409,6 +413,13 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             data['biobank_orders'] = orders
         return data
 
+    @staticmethod
+    def _create_enrollment_status_dict(status):
+        return {
+            'enrollment_status': str(status) if status else None,
+            'enrollment_status_id': int(status) if status else None,
+        }
+
     def _calculate_enrollment_status(self, p_id, ro_session, ro_summary):
         """
         Calculate the participant's enrollment status
@@ -419,77 +430,164 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         """
         status = EnrollmentStatusV2.REGISTERED
         if 'consents' not in ro_summary:
-            return {
-                'enrollment_status': str(status),
-                'enrollment_status_id': int(status),
-            }
+            return self._create_enrollment_status_dict(status)
 
-        consents = dict()
-        study_consent = ehr_consent = pm_complete = False
+        consents = {}
+        study_consent = ehr_consent = pm_complete = gror_consent = had_gror_consent = had_ehr_consent = False
+        study_consent_date = datetime.date.max
         # iterate over consents
         for consent in ro_summary['consents']:
+            response_value = consent['consent_value']
+            response_date = consent['consent_date']
             if consent['consent'] == 'ConsentPII':
                 study_consent = True
-            if consent['consent'] == 'EHRConsentPII_ConsentPermission':
-                consents['EHRConsent'] = (consent['consent_value'], consent['consent_date'])
-            if consent['consent'] == 'DVEHRSharing_AreYouInterested':
-                consents['DVEHRConsent'] = (consent['consent_value'], consent['consent_date'])
+                study_consent_date = min(study_consent_date, response_date)
+            elif consent['consent'] == EHR_CONSENT_QUESTION_CODE:
+                consents['EHRConsent'] = (response_value, response_date)
+                had_ehr_consent = had_ehr_consent or response_value == CONSENT_PERMISSION_YES_CODE
+            elif consent['consent'] == DVEHR_SHARING_QUESTION_CODE:
+                consents['DVEHRConsent'] = (response_value, response_date)
+                had_ehr_consent = had_ehr_consent or response_value == DVEHRSHARING_CONSENT_CODE_YES
+            elif consent['consent'] == GROR_CONSENT_QUESTION_CODE:
+                consents['GRORConsent'] = (response_value, response_date)
+                had_gror_consent = had_gror_consent or response_value == CONSENT_GROR_YES_CODE
 
         if 'EHRConsent' in consents and 'DVEHRConsent' in consents:
-            if consents['DVEHRConsent'] == 'DVEHRSharing_Yes' and consents['EHRConsent'][0] != 'ConsentPermission_No':
+            if consents['DVEHRConsent'] == DVEHRSHARING_CONSENT_CODE_YES\
+                    and consents['EHRConsent'][0] != CONSENT_PERMISSION_NO_CODE:
                 ehr_consent = True
-            if consents['EHRConsent'][0] == 'ConsentPermission_Yes':
+            if consents['EHRConsent'][0] == CONSENT_PERMISSION_YES_CODE:
                 ehr_consent = True
         elif 'EHRConsent' in consents:
-            if consents['EHRConsent'][0] == 'ConsentPermission_Yes':
+            if consents['EHRConsent'][0] == CONSENT_PERMISSION_YES_CODE:
                 ehr_consent = True
         elif 'DVEHRConsent' in consents:
             if consents['DVEHRConsent'][0] == 'DVEHRSharing_Yes':
                 ehr_consent = True
 
+        if 'GRORConsent' in consents:
+            gror_answer = consents['GRORConsent'][0]
+            gror_consent = gror_answer == CONSENT_GROR_YES_CODE
+
         # check physical measurements
+        physical_measurements_date = datetime.datetime.max
         if 'pm' in ro_summary:
             for pm in ro_summary['pm']:
                 if pm['pm_status_id'] == int(PhysicalMeasurementsStatus.COMPLETED) or \
-                    (pm['pm_finalized'] and pm['pm_status_id'] != int(PhysicalMeasurementsStatus.CANCELLED)):
+                        (pm['pm_finalized'] and pm['pm_status_id'] != int(PhysicalMeasurementsStatus.CANCELLED)):
                     pm_complete = True
+                    physical_measurements_date = min(physical_measurements_date, pm['pm_finalized'])
 
-        baseline_module_count = dna_sample_count = 0
+        baseline_module_count = 0
+        latest_baseline_module_completion = datetime.datetime.min
+        completed_all_baseline_modules = False
         if 'modules' in ro_summary:
-            baseline_module_count = len(
-                list(filter(lambda module: module['mod_baseline_module'] == 1, ro_summary['modules'])))
+            for module in ro_summary['modules']:
+                if module['mod_baseline_module'] == 1:
+                    baseline_module_count += 1
+                    latest_baseline_module_completion = max(latest_baseline_module_completion, module['mod_created'])
+            completed_all_baseline_modules = baseline_module_count >= len(self._baseline_modules)
 
         # It seems we have around 100 participants that BioBank has received and processed samples for
         # and RDR knows about them, but RDR has no record of the orders or which tests were ordered.
         # These participants can still count as Full/Core Participants, so we need to look at only what
         # is in the `biobank_stored_sample` table to calculate the enrollment status.
         # https://precisionmedicineinitiative.atlassian.net/browse/DA-812
-        sql = """select bss.test from biobank_stored_sample bss
+        sql = """select bss.test, bss.created from biobank_stored_sample bss
                     inner join participant p on bss.biobank_id = p.biobank_id
                     where p.participant_id = :pid"""
 
         cursor = ro_session.execute(sql, {'pid': p_id})
         results = [r for r in cursor]
-        dna_sample_count = len(list(filter(lambda test: test[0] in self._dna_sample_test_codes, results)))
+        first_dna_sample_date = datetime.datetime.max
+        dna_sample_count = 0
+        for test, created in results:
+            if test in self._dna_sample_test_codes:
+                dna_sample_count += 1
+                first_dna_sample_date = min(first_dna_sample_date, created)
 
         if study_consent is True:
             status = EnrollmentStatusV2.PARTICIPANT
         if status == EnrollmentStatusV2.PARTICIPANT and ehr_consent is True:
             status = EnrollmentStatusV2.FULLY_CONSENTED
-        if status == EnrollmentStatusV2.FULLY_CONSENTED and pm_complete and 'modules' in ro_summary and\
-                        baseline_module_count >= len(self._baseline_modules) and \
-            dna_sample_count > 0:
+        if status == EnrollmentStatusV2.FULLY_CONSENTED and\
+                pm_complete and\
+                (ro_summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or gror_consent) and\
+                'modules' in ro_summary and\
+                completed_all_baseline_modules and \
+                dna_sample_count > 0:
             status = EnrollmentStatusV2.CORE_PARTICIPANT
 
         # TODO: Get Enrollment dates for additional fields -> participant_summary_dao.py:499
 
         # TODO: Calculate EHR status and dates -> participant_summary_dao.py:707
 
-        data = {
-            'enrollment_status': str(status) if status else None,
-            'enrollment_status_id': int(status) if status else None,
-        }
-        return data
+        if status != EnrollmentStatusV2.CORE_PARTICIPANT:
+            # Check to see if the participant might have had all the right ingredients to be Core at some point
+            # This assumes consent for study, completion of baseline modules, stored dna sample,
+            # and physical measurements can't be reversed
+            if study_consent and completed_all_baseline_modules and dna_sample_count > 0 and pm_complete and\
+                    had_ehr_consent and\
+                    (ro_summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or had_gror_consent):
+                # If they've had everything right at some point, go through and see if there was any time that they
+                # had them all at once
+                study_consent_date_range = app_util.DateCollection()
+                study_consent_date_range.add_start(study_consent_date)
+
+                pm_date_range = app_util.DateCollection()
+                pm_date_range.add_start(physical_measurements_date)
+
+                baseline_modules_date_range = app_util.DateCollection()
+                baseline_modules_date_range.add_start(latest_baseline_module_completion)
+
+                dna_date_range = app_util.DateCollection()
+                dna_date_range.add_start(first_dna_sample_date)
+
+                ehr_date_range = app_util.DateCollection()
+                gror_date_range = app_util.DateCollection()
+
+                current_ehr_response = current_dv_ehr_response = None
+                # These consent responses are expected to be in order by their authored date
+                for consent in ro_summary['consents']:
+                    consent_question = consent['consent']
+                    consent_response = consent['consent_value']
+                    response_date = consent['consent_date']
+                    if consent_question == EHR_CONSENT_QUESTION_CODE:
+                        current_ehr_response = consent_response
+                        if current_ehr_response == CONSENT_PERMISSION_YES_CODE:
+                            ehr_date_range.add_start(response_date)
+                        elif current_ehr_response == CONSENT_PERMISSION_NO_CODE or \
+                                current_dv_ehr_response != CONSENT_PERMISSION_YES_CODE:
+                            # dv_ehr should be honored if ehr value is UNSURE
+                            ehr_date_range.add_stop(response_date)
+                    elif consent_question == DVEHR_SHARING_QUESTION_CODE:
+                        current_dv_ehr_response = consent_response
+                        if current_dv_ehr_response == DVEHRSHARING_CONSENT_CODE_YES and\
+                                current_ehr_response != CONSENT_PERMISSION_NO_CODE:
+                            ehr_date_range.add_start(response_date)
+                        elif current_dv_ehr_response != DVEHRSHARING_CONSENT_CODE_YES and\
+                                current_ehr_response != CONSENT_PERMISSION_YES_CODE:
+                            ehr_date_range.add_stop(response_date)
+                    elif consent_question == GROR_CONSENT_QUESTION_CODE:
+                        if consent_response == CONSENT_GROR_YES_CODE:
+                            gror_date_range.add_start(response_date)
+                        else:
+                            gror_date_range.add_stop(response_date)
+
+                date_overlap = study_consent_date_range\
+                    .get_intersection(pm_date_range)\
+                    .get_intersection(baseline_modules_date_range)\
+                    .get_intersection(dna_date_range)\
+                    .get_intersection(ehr_date_range)
+
+                if ro_summary['consent_cohort'] == BQConsentCohort.COHORT_3.name:
+                    date_overlap = date_overlap.get_intersection(gror_date_range)
+
+                # If there's any time that they had everything at once, then they should be a Core participant
+                if date_overlap.any():
+                    status = EnrollmentStatusV2.CORE_PARTICIPANT
+
+        return self._create_enrollment_status_dict(status)
 
     def _calculate_distinct_visits(self, summary):  # pylint: disable=unused-argument
         """
