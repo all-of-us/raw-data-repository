@@ -43,6 +43,9 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
 
+        config.override_setting(BIOBANK_SAMPLES_INVENTORY_FILE_PATTERN, 'Sample Inventory Report v1')
+        config.override_setting(BIOBANK_SAMPLES_INVENTORY_MANIFEST_FILE_PATTERN, 'Sample Inventory Report 60d')
+
     mock_bucket_paths = [_FAKE_BUCKET, _FAKE_BUCKET + os.sep + biobank_samples_pipeline._REPORT_SUBDIR]
 
     def _write_cloud_csv(self, file_name, contents_str):
@@ -117,6 +120,8 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         self.assertEqual(ps.sampleStatus1SAL2Time, confirmed_ts)
 
     def test_end_to_end(self):
+        config.override_setting(BIOBANK_SAMPLES_INVENTORY_FILE_PATTERN, 'cloud')
+
         self.clear_default_storage()
         self.create_mock_buckets(self.mock_bucket_paths)
         dao = BiobankStoredSampleDao()
@@ -198,8 +203,6 @@ class BiobankSamplesPipelineTest(BaseTestCase):
 
     @mock.patch('rdr_service.offline.biobank_samples_pipeline.list_blobs')
     def test_find_latest_csv(self, mock_list_blobs):
-        config.override_setting(BIOBANK_SAMPLES_INVENTORY_FILE_PATTERN, 'Sample Inventory Report v1')
-
         mock_list_blobs.return_value = [
             FakeBlob(name='Sample Inventory Report v12020-06-01.csv',  # older file
                      updated=datetime(2020, 6, 1)),
@@ -220,8 +223,6 @@ class BiobankSamplesPipelineTest(BaseTestCase):
 
     @mock.patch('rdr_service.offline.biobank_samples_pipeline.list_blobs')
     def test_find_latest_csv(self, mock_list_blobs):
-        config.override_setting(BIOBANK_SAMPLES_INVENTORY_MANIFEST_FILE_PATTERN, 'Sample Inventory Report 60d')
-
         mock_list_blobs.return_value = [
             FakeBlob(name='60_day_manifests/Sample Inventory Report 60d2020-06-01-04-00-21.csv',  # older file
                      updated=datetime(2020, 6, 1)),
