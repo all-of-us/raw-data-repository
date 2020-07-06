@@ -1,3 +1,4 @@
+from collections import namedtuple
 import csv
 from decimal import Decimal
 import io
@@ -11,6 +12,7 @@ import pytz
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.code_constants import BIOBANK_TESTS, PPI_SYSTEM, RACE_QUESTION_CODE, RACE_AIAN_CODE
+from rdr_service.config import BIOBANK_SAMPLES_INVENTORY_FILE_PATTERN, BIOBANK_SAMPLES_INVENTORY_MANIFEST_FILE_PATTERN
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -29,6 +31,8 @@ _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = "rdr_fake_bucket"
 
 _CE_QUEST_SYSTEM = 'http://careevolution.com/CareTask'
+
+FakeBlob = namedtuple('FakeBlob', ['name', 'updated'])
 
 
 class BiobankSamplesPipelineTest(BaseTestCase):
@@ -193,23 +197,49 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         sample_time = self._naive_utc_to_naive_central(getattr(summary, "sampleStatus" + test + "Time"))
         self.assertEqual(date_formatted, sample_time)
 
-    def test_find_latest_csv(self):
-        self.clear_default_storage()
-        self.create_mock_buckets(self.mock_bucket_paths)
-        # The cloud storage testbed does not expose an injectable time function.
-        # Creation time is stored at second granularity.
-        self._write_cloud_csv("a_lex_first_created_first.csv", "any contents")
-        time.sleep(1.0)
-        self._write_cloud_csv("z_lex_last_created_middle.csv", "any contents")
-        time.sleep(1.0)
-        created_last = "b_lex_middle_created_last.csv"
-        self._write_cloud_csv(created_last, "any contents")
-        self._write_cloud_csv(
-            "%s/created_last_in_subdir.csv" % biobank_samples_pipeline._REPORT_SUBDIR, "any contents"
-        )
+    @mock.patch('rdr_service.offline.biobank_samples_pipeline.list_blobs')
+    def test_find_latest_csv(self, mock_list_blobs):
+        config.override_setting(BIOBANK_SAMPLES_INVENTORY_FILE_PATTERN, 'Sample Inventory Report v1')
+
+        mock_list_blobs.return_value = [
+            FakeBlob(name='Sample Inventory Report v12020-06-01.csv',  # older file
+                     updated=datetime(2020, 6, 1)),
+            FakeBlob(name='Sample Inventory Report v12020-07-14.csv',  # last inventory file (should use this one)
+                     updated=datetime(2020, 7, 14)),
+            FakeBlob(name='not an inventory file v12020-08-01.csv',  # not the correct name pattern
+                     updated=datetime(2020, 8, 1)),
+            FakeBlob(name='60_day_manifests/Sample Inventory Report 60d2020-08-02-04-00-21.csv',  # 60 day manifest
+                     updated=datetime(2020, 8, 2)),
+            FakeBlob(name='genomic_samples_manifests/Genomic-Manifest-AoU-4-2020-06-30-08-22-52_C2.CSV',  # genomic file
+                     updated=datetime(2020, 8, 3)),
+            FakeBlob(name='Sample Inventory Report v12020-08-04',  # not a csv
+                     updated=datetime(2020, 8, 4)),
+        ]  # todo: make sure file names that get listed by google actually look like this
 
         latest_filename = biobank_samples_pipeline._find_latest_samples_csv(_FAKE_BUCKET)
-        self.assertEqual(latest_filename, "%s" % created_last)
+        self.assertEqual('Sample Inventory Report v12020-07-14.csv', latest_filename)
+
+    @mock.patch('rdr_service.offline.biobank_samples_pipeline.list_blobs')
+    def test_find_latest_csv(self, mock_list_blobs):
+        config.override_setting(BIOBANK_SAMPLES_INVENTORY_MANIFEST_FILE_PATTERN, 'Sample Inventory Report 60d')
+
+        mock_list_blobs.return_value = [
+            FakeBlob(name='60_day_manifests/Sample Inventory Report 60d2020-06-01-04-00-21.csv',  # older file
+                     updated=datetime(2020, 6, 1)),
+            FakeBlob(name='60_day_manifests/Sample Inventory Report 60d2020-07-14-04-00-21.csv',  # current manifest
+                     updated=datetime(2020, 7, 14)),
+            FakeBlob(name='not an inventory file 60d2020-08-01.csv',  # not the correct name pattern
+                     updated=datetime(2020, 8, 1)),
+            FakeBlob(name='Sample Inventory Report v12020-08-02.csv',  # single day inventory file
+                     updated=datetime(2020, 8, 2)),
+            FakeBlob(name='genomic_samples_manifests/Genomic-Manifest-AoU-4-2020-06-30-08-22-52_C2.CSV',  # genomic file
+                     updated=datetime(2020, 8, 3)),
+            FakeBlob(name='60_day_manifests/Sample Inventory Report 60d2020-08-04',  # not a csv
+                     updated=datetime(2020, 8, 4)),
+        ]  # todo: make sure file names that get listed by google actually look like this
+
+        latest_filename = biobank_samples_pipeline._find_latest_samples_csv(_FAKE_BUCKET, monthly=True)
+        self.assertEqual('60_day_manifests/Sample Inventory Report 60d2020-07-14-04-00-21.csv', latest_filename)
 
     def test_sample_from_row(self):
         self.clear_default_storage()
@@ -363,5 +393,3 @@ class BiobankSamplesPipelineTest(BaseTestCase):
                 None, None, None, None, None,  # cancelled_restored info: status_flag, name, name, time, reason
                 None  # order origin
             )])
-
-

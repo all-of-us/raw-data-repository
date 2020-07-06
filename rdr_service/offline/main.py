@@ -118,6 +118,8 @@ def biobank_daily_reconciliation_report():
     # TODO: setup to only run after import_biobank_samples completion instead of 1hr after start.
     timestamp = biobank_samples_pipeline.get_last_biobank_sample_file_info()[2]
     logging.info("Generating reconciliation report.")
+    sample_file_path, sample_file, timestamp = biobank_samples_pipeline.get_last_biobank_sample_file_info(monthly=False)
+    logging.info(f"Generating reconciliation report from {sample_file_path}, {sample_file}")
     # iterate new list and write reports
     biobank_samples_pipeline.write_reconciliation_report(timestamp)
     logging.info("Generated reconciliation report.")
@@ -127,9 +129,8 @@ def biobank_daily_reconciliation_report():
 @_alert_on_exceptions
 def biobank_monthly_reconciliation_report():
     # make sure this cron job is executed after import_biobank_samples
-    timestamp = biobank_samples_pipeline.get_last_biobank_sample_file_info(monthly=True)[2]
-
-    logging.info("Generating monthly reconciliation report.")
+    sample_file_path, sample_file, timestamp = biobank_samples_pipeline.get_last_biobank_sample_file_info(monthly=True)
+    logging.info(f"Generating reconciliation report from {sample_file_path}, {sample_file}")
     # iterate new list and write reports
     biobank_samples_pipeline.write_reconciliation_report(timestamp, "monthly")
     logging.info("Generated monthly reconciliation report.")

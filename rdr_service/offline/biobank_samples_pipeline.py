@@ -13,8 +13,10 @@ import pytz
 
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs, open_cloud_file
+from rdr_service.services.gcp_logging import flush_request_logs
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.code_constants import PPI_SYSTEM, RACE_AIAN_CODE, RACE_QUESTION_CODE
+from rdr_service.config import BIOBANK_SAMPLES_INVENTORY_FILE_PATTERN, BIOBANK_SAMPLES_INVENTORY_MANIFEST_FILE_PATTERN
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import parse_datetime, replace_isodate
@@ -145,7 +147,7 @@ def get_last_biobank_sample_file_info(monthly=False):
     if monthly:
         bucket_name = bucket_name + "/60_day_manifests"
 
-    csv_file_path, csv_filename = _open_latest_samples_file(bucket_name)
+    csv_file_path, csv_filename = _open_latest_samples_file(bucket_name, monthly=monthly)
     timestamp = _timestamp_from_filename(csv_filename)
 
     return csv_file_path, csv_filename, timestamp
@@ -168,33 +170,34 @@ def _timestamp_from_filename(csv_filename):
     return _US_CENTRAL.localize(timestamp).astimezone(pytz.utc).replace(tzinfo=None)
 
 
-def _open_latest_samples_file(cloud_bucket_name):
+def _open_latest_samples_file(cloud_bucket_name, monthly=False):
     """Returns an open stream for the most recently created CSV in the given bucket."""
-    blob_name = _find_latest_samples_csv(cloud_bucket_name)
+    blob_name = _find_latest_samples_csv(cloud_bucket_name, monthly)
     file_name = os.path.basename(blob_name)
     path = os.path.normpath(cloud_bucket_name + '/' + blob_name)
-    logging.info(f'Opening latest samples CSV in {cloud_bucket_name}: {file_name}')
+    logging.info(f'Using CSV from {cloud_bucket_name} as latest samples file: {file_name}')
     return path, file_name
 
 
-def _find_latest_samples_csv(cloud_bucket_name):
+def _find_latest_samples_csv(cloud_bucket_name, monthly=False):
     """Returns the full path (including bucket name) of the most recently created CSV in the bucket.
 
   Raises:
     RuntimeError: if no CSVs are found in the cloud storage bucket.
   """
+    if monthly:
+        file_name_pattern = config.getSettingJson(BIOBANK_SAMPLES_INVENTORY_MANIFEST_FILE_PATTERN)
+    else:
+        file_name_pattern = config.getSettingJson(BIOBANK_SAMPLES_INVENTORY_FILE_PATTERN)
+
     bucket_stat_list = list_blobs(cloud_bucket_name)
     if not bucket_stat_list:
         raise DataError("No files in cloud bucket %r." % cloud_bucket_name)
     # GCS does not really have the concept of directories (it's just a filename convention), so all
     # directory listings are recursive and we must filter out subdirectory contents.
-    bucket_stat_list = [
-        s
-        for s in bucket_stat_list
-        if s.name.lower().endswith(".csv")
-        and "%s/" % _REPORT_SUBDIR not in s.name
-        and "%s" % _GENOMIC_SUBDIR_PREFIX not in s.name
-    ]
+    bucket_stat_list = [s for s in bucket_stat_list
+                        if s.name.lower().endswith(".csv")
+                        and file_name_pattern in s.name]
     if not bucket_stat_list:
         raise DataError("No CSVs in cloud bucket %r (all files: %s)." % (cloud_bucket_name, bucket_stat_list))
     bucket_stat_list.sort(key=lambda s: s.updated)
