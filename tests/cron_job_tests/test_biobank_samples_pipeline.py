@@ -5,7 +5,6 @@ import io
 from datetime import datetime, timedelta
 import mock
 import random
-import time
 import os
 import pytz
 

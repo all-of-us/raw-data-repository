@@ -13,7 +13,6 @@ import pytz
 
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs, open_cloud_file
-from rdr_service.services.gcp_logging import flush_request_logs
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.code_constants import PPI_SYSTEM, RACE_AIAN_CODE, RACE_QUESTION_CODE
 from rdr_service.config import BIOBANK_SAMPLES_INVENTORY_FILE_PATTERN, BIOBANK_SAMPLES_INVENTORY_MANIFEST_FILE_PATTERN
