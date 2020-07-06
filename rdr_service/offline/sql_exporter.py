@@ -76,8 +76,10 @@ class SqlExporter(object):
         # Each query from AppEngine standard environment must finish in 60 seconds.
         # If we start running into trouble with that, we'll either
         # need to break the SQL up into pages, or (more likely) switch to cloud SQL export.
+        logging.info('Processing export SQL')
         cursor = session.execute(text(sql), params=query_params)
         try:
+            logging.info('Writing data to file')
             fields = list(cursor.keys())
             writer.write_header(fields)
             results = cursor.fetchmany(_BATCH_SIZE)
