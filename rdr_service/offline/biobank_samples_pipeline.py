@@ -731,7 +731,7 @@ _RECONCILIATION_REPORT_SQL = (
                 ELSE TRUE
             END
         )
-    AND reconciled.confirmed IS NOT NULL AND reconciled.confirmed >= :n_days_ago
+    AND confirmed IS NOT NULL AND confirmed >= :n_days_ago
   ) reconciled
   GROUP BY
     biobank_id, sent_order_id, order_test, test
