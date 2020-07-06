@@ -11,7 +11,8 @@ import pytz
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.code_constants import BIOBANK_TESTS, PPI_SYSTEM, RACE_QUESTION_CODE, RACE_AIAN_CODE
-from rdr_service.config import BIOBANK_SAMPLES_INVENTORY_FILE_PATTERN, BIOBANK_SAMPLES_INVENTORY_MANIFEST_FILE_PATTERN
+from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN,\
+    BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -43,8 +44,8 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
 
-        config.override_setting(BIOBANK_SAMPLES_INVENTORY_FILE_PATTERN, 'Sample Inventory Report v1')
-        config.override_setting(BIOBANK_SAMPLES_INVENTORY_MANIFEST_FILE_PATTERN, 'Sample Inventory Report 60d')
+        config.override_setting(BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN, 'Sample Inventory Report v1')
+        config.override_setting(BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN, 'Sample Inventory Report 60d')
 
     mock_bucket_paths = [_FAKE_BUCKET, _FAKE_BUCKET + os.sep + biobank_samples_pipeline._REPORT_SUBDIR]
 
@@ -120,7 +121,7 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         self.assertEqual(ps.sampleStatus1SAL2Time, confirmed_ts)
 
     def test_end_to_end(self):
-        config.override_setting(BIOBANK_SAMPLES_INVENTORY_FILE_PATTERN, 'cloud')
+        config.override_setting(BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN, 'cloud')
 
         self.clear_default_storage()
         self.create_mock_buckets(self.mock_bucket_paths)
