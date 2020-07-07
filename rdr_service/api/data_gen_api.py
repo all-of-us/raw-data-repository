@@ -201,5 +201,6 @@ class SpecDataGenApi(Resource):
             raise BadRequest({"status": "error", "error": "target api invalid"})
 
         result = InProcessClient().request_json(target, method, body=data, pretend_date=timestamp,
-                                    headers={'Authorization': request.headers.get('Authorization', '')})
+                                                headers={'Authorization': request.headers.get('Authorization', ''),
+                                                         'If-Match': request.headers.get('If-Match', '')})
         return result
