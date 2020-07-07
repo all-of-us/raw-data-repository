@@ -8,11 +8,11 @@ import io
 import logging
 import re
 import sys
-
+import urllib3
 
 from rdr_service.code_constants import EMAIL_QUESTION_CODE as EQC, LOGIN_PHONE_NUMBER_QUESTION_CODE as PNQC
 from rdr_service.services.gcp_utils import gcp_make_auth_header
-from rdr_service.services.system_utils import make_api_request
+from rdr_service.services.system_utils import make_api_request, run_external_program
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
 
@@ -51,6 +51,9 @@ class CheckPPIDataClass(object):
             self.args.email = list()
 
         csv_data = self.fetch_csv_data()
+        if not csv_data:
+            _logger.warning('No spreadsheet data, aborting operation.')
+            return
         ppi_data = dict()
 
         # iterate over each data column, convert them into a dict.
@@ -87,15 +90,26 @@ class CheckPPIDataClass(object):
         """
         host = 'docs.google.com'
         path = f'spreadsheets/d/{self.args.sheet_id}/export?format=csv&' + \
-               f'id={self.args.sheet_id}s&gid={self.args.sheet_gid}'
+               f'id={self.args.sheet_id}&gid={self.args.sheet_gid}'
+        url = f'https://{host}/{path}'
+        _logger.info(f'Downloading : {url}')
 
-        code, resp = make_api_request(host, path, ret_type='text')
-        if code != 200:
-            _logger.error(f'Error fetching https://{host}{path}. {code}: {resp}')
-            return
+        http = urllib3.PoolManager(cert_reqs="CERT_NONE", assert_hostname=False)
+        resp = http.request('GET', url)
+        if resp.status == 200:
+            csv_data = list(csv.reader(io.StringIO(resp.data.decode('utf-8'))))
+            return csv_data
 
-        csv_data = list(csv.reader(io.StringIO(resp)))
-        return csv_data
+        _logger.error(f'Failed to download spreadsheet data using urllib3, trying "curl"...')
+
+        args = ['curl', '--insecure', '-L', f'{url}']
+        code, so, se = run_external_program(args)  # pylint: disable=unused-variable
+        if code == 0:
+            csv_data = list(csv.reader(io.StringIO(so)))
+            return csv_data
+
+        _logger.error(f'Failed to download spreadsheet data with "curl". (error: {code}).')
+        return None
 
     def convert_csv_column_to_dict(self, csv_data, column):
         """
