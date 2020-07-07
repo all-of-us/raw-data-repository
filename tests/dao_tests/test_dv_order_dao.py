@@ -19,6 +19,7 @@ from rdr_service.model.biobank_order import BiobankOrder
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
 from rdr_service.model.participant import Participant
+from rdr_service.offline.biobank_samples_pipeline import _PMI_OPS_SYSTEM
 from rdr_service.participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus
 from tests.test_data import load_test_data_json
 from tests.helpers.unittest_base import BaseTestCase
@@ -43,11 +44,12 @@ class DvOrderDaoTestBase(BaseTestCase):
         self.participant_dao.insert(self.participant)
         self.summary = self.participant_summary(self.participant)
         self.summary_dao.insert(self.summary)
+        self.mayolink_barcode = "barcode"
         self.mayolink_response = {
             "orders": {
                 "order": {
                     "status": "Queued",
-                    "reference_number": "barcode",
+                    "reference_number": self.mayolink_barcode,
                     "received": "2019-04-05 12:00:00",
                     "number": "12345",
                     "patient": {"medical_record_number": "WEB1ABCD1234"},
@@ -80,7 +82,7 @@ class DvOrderDaoTestBase(BaseTestCase):
         self.assertEqual(put_response["barcode"], "SABR90160121INA")
         self.assertEqual(put_response["order_id"], 999999)
 
-    def test_biobank_order_created_and_finalized(self):
+    def test_biobank_order_finalized_and_identifier_created(self):
         self.send_post("SupplyRequest", request_data=self.post_request, expected_status=http.client.CREATED)
         payload = self.send_post(
             "SupplyDelivery",
@@ -92,7 +94,10 @@ class DvOrderDaoTestBase(BaseTestCase):
             BiobankOrder.biobankOrderId == post_response['biobankOrderId']
         ).one()
         self.assertIsNotNone(biobank_order.finalizedTime,
-                             'Salivary DV orders that create biobank orders should set them as finalized')
+                             'Salivary DV orders should create biobank orders and set them as finalized')
+        self.assertTrue(any([identifier.system == _PMI_OPS_SYSTEM and identifier.value == self.mayolink_barcode
+                             for identifier in biobank_order.identifiers]),
+                        'BiobankOrderIdentifiers should be created with the barcode as a value')
 
     def test_enumerate_shipping_status(self):
         fhir_resource = SimpleFhirR4Reader(self.post_request)
