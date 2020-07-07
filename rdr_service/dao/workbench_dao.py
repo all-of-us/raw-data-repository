@@ -256,11 +256,19 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         return workspace_users
 
     def insert_with_session(self, session, workspaces):
+        new_workspaces = []
+        workspace_snapshot_dao = WorkbenchWorkspaceHistoryDao()
         for workspace in workspaces:
+            is_exist = workspace_snapshot_dao.is_snapshot_exist_with_session(session, workspace.workspaceSourceId,
+                                                                             workspace.modifiedTime)
+            if is_exist:
+                continue
             session.add(workspace)
+            new_workspaces.append(workspace)
             if workspace.excludeFromPublicDirectory is not True:
                 self.add_approved_workspace_with_session(session, workspace)
-        return workspaces
+
+        return new_workspaces
 
     def to_client_json(self, obj):
         if isinstance(obj, WorkbenchWorkspaceSnapshot):
@@ -590,6 +598,13 @@ class WorkbenchWorkspaceHistoryDao(UpdatableDao):
             .options(subqueryload(WorkbenchWorkspaceSnapshot.workbenchWorkspaceUser))\
             .filter(WorkbenchWorkspaceSnapshot.id == snapshot_id).first()
 
+    def is_snapshot_exist_with_session(self, session, workspace_id, modified_time):
+        record = session.query(WorkbenchWorkspaceSnapshot)\
+            .filter(WorkbenchWorkspaceSnapshot.workspaceSourceId == workspace_id,
+                    WorkbenchWorkspaceSnapshot.modifiedTime == modified_time)\
+            .first()
+        return True if record else False
+
     def get_all_with_children(self):
         with self.session() as session:
             query = session.query(WorkbenchWorkspaceSnapshot).options(
@@ -761,7 +776,13 @@ class WorkbenchResearcherDao(UpdatableDao):
         return affiliations
 
     def insert_with_session(self, session, researchers):
+        new_researchers = []
+        researcher_snapshot_dao = WorkbenchResearcherHistoryDao()
         for researcher in researchers:
+            is_snapshot_exist = researcher_snapshot_dao.is_snapshot_exist_with_session(session, researcher.userSourceId,
+                                                                                       researcher.modifiedTime)
+            if is_snapshot_exist:
+                continue
             exist = self.get_researcher_by_user_id_with_session(session, researcher.userSourceId)
             if exist:
                 for attr_name in researcher.__dict__.keys():
@@ -769,8 +790,9 @@ class WorkbenchResearcherDao(UpdatableDao):
                         setattr(exist, attr_name, getattr(researcher, attr_name))
             else:
                 session.add(researcher)
-        self._insert_history(session, researchers)
-        return researchers
+            new_researchers.append(researcher)
+        self._insert_history(session, new_researchers)
+        return new_researchers
 
     def to_client_json(self, obj):
         if isinstance(obj, WorkbenchResearcher):
@@ -816,6 +838,13 @@ class WorkbenchResearcherHistoryDao(UpdatableDao):
             return session.query(WorkbenchResearcherHistory).filter(WorkbenchResearcherHistory.userSourceId ==
                                                                     user_source_id) \
                 .order_by(desc(WorkbenchResearcherHistory.created)).first()
+
+    def is_snapshot_exist_with_session(self, session, user_source_id, modified_time):
+        record = session.query(WorkbenchResearcherHistory)\
+            .filter(WorkbenchResearcherHistory.userSourceId == user_source_id,
+                    WorkbenchResearcherHistory.modifiedTime == modified_time)\
+            .first()
+        return True if record else False
 
     def get_researcher_history_by_id_with_session(self, researcher_history_id):
         with self.session() as session:
