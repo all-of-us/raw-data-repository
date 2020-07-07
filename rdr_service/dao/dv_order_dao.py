@@ -1,4 +1,3 @@
-import datetime
 import json
 import logging
 import pytz
@@ -260,7 +259,7 @@ class DvOrderDao(UpdatableDao):
         obj = BiobankOrder()
         obj.participantId = int(pid)
         obj.created = clock.CLOCK.now()
-        obj.created = datetime.datetime.now()
+        obj.finalizedTime = obj.created
         obj.orderStatus = BiobankOrderStatus.UNSET
         obj.biobankOrderId = resource["biobankOrderId"]
         obj.orderOrigin = resource.get("orderOrigin")

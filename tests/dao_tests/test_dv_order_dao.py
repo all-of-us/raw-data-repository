@@ -15,6 +15,7 @@ from rdr_service.dao.dv_order_dao import DvOrderDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.biobank_dv_order import BiobankDVOrder
+from rdr_service.model.biobank_order import BiobankOrder
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
 from rdr_service.model.participant import Participant
@@ -78,6 +79,20 @@ class DvOrderDaoTestBase(BaseTestCase):
         self.assertEqual(put_response["meta"]["versionId"].strip("W/"), '"4"')
         self.assertEqual(put_response["barcode"], "SABR90160121INA")
         self.assertEqual(put_response["order_id"], 999999)
+
+    def test_biobank_order_created_and_finalized(self):
+        self.send_post("SupplyRequest", request_data=self.post_request, expected_status=http.client.CREATED)
+        payload = self.send_post(
+            "SupplyDelivery",
+            request_data=load_test_data_json("dv_order_api_post_supply_delivery_alt.json"),
+            expected_status=http.client.CREATED
+        )
+        post_response = json.loads(payload.response[0])
+        biobank_order = self.session.query(BiobankOrder).filter(
+            BiobankOrder.biobankOrderId == post_response['biobankOrderId']
+        ).one()
+        self.assertIsNotNone(biobank_order.finalizedTime,
+                             'Salivary DV orders that create biobank orders should set them as finalized')
 
     def test_enumerate_shipping_status(self):
         fhir_resource = SimpleFhirR4Reader(self.post_request)
