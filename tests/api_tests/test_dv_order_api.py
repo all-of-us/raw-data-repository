@@ -19,6 +19,7 @@ from rdr_service.model.biobank_order import (
 )
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
+from rdr_service.offline.biobank_samples_pipeline import _PMI_OPS_SYSTEM
 from tests.test_data import load_test_data_json
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -131,9 +132,9 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
             self.assertEqual(i.biobankTrackingId, "PAT-123-456")
 
         with self.dv_order_dao.session() as session:
-            # there should be two identifier records in the BiobankOrderIdentifier table
+            # there should be three identifier records in the BiobankOrderIdentifier table
             identifiers = session.query(BiobankOrderIdentifier).all()
-            self.assertEqual(2, len(identifiers))
+            self.assertEqual(3, len(identifiers))
             # there should be one ordered sample in the BiobankOrderedSample table
             samples = session.query(BiobankOrderedSample).all()
             self.assertEqual(1, len(samples))
@@ -199,6 +200,9 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
                     for identifier in identifiers:
                         if identifier.system.endswith('/trackingId'):
                             self.assertEqual(identifier.system, expected_system_identifier[1] + "/trackingId")
+                        elif identifier.system == _PMI_OPS_SYSTEM:
+                            # Skip identifier that is created for each dv salivary order regardless of user
+                            continue
                         else:
                             self.assertEqual(identifier.system, expected_system_identifier[1])
                         session.delete(identifier)
