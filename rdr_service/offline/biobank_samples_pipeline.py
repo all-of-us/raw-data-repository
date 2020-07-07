@@ -666,6 +666,10 @@ _RECONCILIATION_REPORT_SQL = (
         SELECT 0 FROM participant
         WHERE participant.participant_id = dv_order.participant_id
       )
+      AND
+        (
+            (confirmed IS NOT NULL AND confirmed >= :n_days_ago) OR (collected IS NOT NULL AND collected >= :n_days_ago)
+        )
     UNION ALL
     SELECT
       biobank_stored_sample.biobank_id raw_biobank_id,
@@ -727,17 +731,8 @@ _RECONCILIATION_REPORT_SQL = (
                 ELSE TRUE
             END
         )
+    AND confirmed IS NOT NULL AND confirmed >= :n_days_ago
   ) reconciled
-  WHERE (reconciled.collected IS NOT NULL
-    AND reconciled.confirmed IS NOT NULL
-    AND reconciled.collected >= reconciled.confirmed
-    AND reconciled.collected >= :n_days_ago)
-  OR (reconciled.collected IS NOT NULL
-    AND reconciled.confirmed IS NOT NULL
-    AND reconciled.confirmed >= reconciled.collected
-    AND reconciled.confirmed >= :n_days_ago)
-  OR (reconciled.collected IS NULL AND reconciled.confirmed  IS NOT NULL AND reconciled.confirmed >= :n_days_ago)
-  OR (reconciled.collected IS NOT NULL AND reconciled.confirmed  IS NULL AND reconciled.collected >= :n_days_ago)
   GROUP BY
     biobank_id, sent_order_id, order_test, test
   ORDER BY
