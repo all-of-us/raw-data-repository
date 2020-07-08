@@ -1110,6 +1110,10 @@ class GenomicBiobankSamplesCoupler:
 
         # Create genomic set members
         for i, bid in enumerate(samples_meta.bids):
+            # Don't write participant to table if no sample
+            if samples_meta.sample_ids[i] == 0:
+                continue
+
             logging.info(f'Validating sample: {samples_meta.sample_ids[i]}')
             validation_criteria = (
                 samples_meta.valid_withdrawal_status[i],
