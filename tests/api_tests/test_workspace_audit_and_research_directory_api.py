@@ -1112,7 +1112,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
             {
                 "userId": 1,
                 "creationTime": "2019-11-27T21:21:13.056Z",
-                "modifiedTime": "2019-11-27T21:21:13.056Z",
+                "modifiedTime": "2019-11-27T21:21:14.056Z",
                 "givenName": "given name 2",
                 "familyName": "family name 2",
                 "streetAddress1": "string2",
