@@ -1428,7 +1428,7 @@ class GenomicBiobankSamplesCoupler:
         Select based on max collected date and 1ED04 over 1SAL2
         :param pid: participant_id
         :param bid: biobank_id
-        :return: tuple(sample_id to use, collected_site_ID)
+        :return: tuple(sample_id to use, collected_site_ID, biobank_order_id)
         """
         _samples_sql = """
             SELECT
@@ -1439,18 +1439,8 @@ class GenomicBiobankSamplesCoupler:
                     WHEN blood_collected IS NOT NULL AND saliva_collected IS NULL THEN blood_sample
                     WHEN saliva_collected IS NOT NULL AND blood_collected IS NULL THEN saliva_sample
                     ELSE NULL
-                END as sample_to_use,
-                /*
+                END as sample_to_use,                
                 CASE 
-                    WHEN blood_collected > saliva_collected THEN blood_collected
-                    WHEN blood_collected = saliva_collected THEN blood_collected
-                    WHEN blood_collected < saliva_collected THEN saliva_collected
-                    WHEN blood_collected IS NOT NULL AND saliva_collected IS NULL THEN blood_collected
-                    WHEN saliva_collected IS NOT NULL AND blood_collected IS NULL THEN saliva_collected
-                    ELSE NULL
-                END as sample_collected,
-                */
-                    CASE 
                     WHEN blood_collected > saliva_collected THEN blood_site
                     WHEN blood_collected = saliva_collected THEN blood_site
                     WHEN blood_collected < saliva_collected THEN saliva_site
