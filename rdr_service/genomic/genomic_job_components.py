@@ -1079,8 +1079,8 @@ class GenomicBiobankSamplesCoupler:
                 sample_data = self._get_usable_sample_from_participant(pid=participant_matrix.pids[i],
                                                                        bid=_bid)
 
-                # update the sample id and collected site
-                if sample_data != (None, None):
+                # update the sample id, collected site, and biobank order
+                if None not in sample_data:
                     participant_matrix.sample_ids[i] = sample_data[0]
                     participant_matrix.site_ids[i] = sample_data[1]
                     participant_matrix.order_ids[i] = sample_data[2]
@@ -1195,7 +1195,7 @@ class GenomicBiobankSamplesCoupler:
             WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
           END as general_consent_given,
           CASE
-            WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param*365 DAY) THEN 1 ELSE 0
+            WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
           END AS valid_age,
           CASE
             WHEN c.value = "SexAtBirth_Male" THEN "M"
@@ -1269,7 +1269,7 @@ class GenomicBiobankSamplesCoupler:
                 WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
               END as general_consent_given,
               CASE
-                WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param*365 DAY) THEN 1 ELSE 0
+                WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
               END AS valid_age,
               CASE
                 WHEN c.value = "SexAtBirth_Male" THEN "M"
@@ -1356,7 +1356,7 @@ class GenomicBiobankSamplesCoupler:
                     WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
                   END as general_consent_given,
                   CASE
-                    WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param*365 DAY) THEN 1 ELSE 0
+                    WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
                   END AS valid_age,
                   CASE
                     WHEN c.value = "SexAtBirth_Male" THEN "M"
