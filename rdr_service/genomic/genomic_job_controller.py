@@ -6,8 +6,9 @@ import logging
 from datetime import datetime
 
 import pytz
+from sendgrid import sendgrid
 
-from rdr_service import clock
+from rdr_service import clock, config
 from rdr_service.api_util import list_blobs
 
 from rdr_service.config import (
@@ -15,7 +16,7 @@ from rdr_service.config import (
     getSetting,
     getSettingList,
     GENOME_TYPE_ARRAY,
-)
+    MissingConfigException)
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     GenomicSubProcessStatus)
@@ -370,8 +371,11 @@ class GenomicJobController:
         """
 
         # Set email data here
-        # Todo: add recipient list to config
-        recipients = ["test-genomic@vumc.org"]
+        try:
+            recipients = config.getSettingList(config.AW1F_ALERT_RECIPIENTS)
+        except MissingConfigException:
+            recipients = ["test-genomic@vumc.org"]
+
         subject = "All of Us GC Manifest Failure Alert"
         from_email = "noreply-genomics@pmi-ops.org"
         email_message = "New AW1 Failure manifests have been found:\n"
@@ -407,13 +411,13 @@ class GenomicJobController:
         :param _email:
         :return: sendgrid response
         """
-        # sg = sendgrid.SendGridAPIClient(api_key=os.environ.get('SENDGRID_API_KEY'))
-        #
-        # response = sg.client.mail.send.post(request_body=_email)
-        #
+        sg = sendgrid.SendGridAPIClient(api_key=config.getSetting(config.SENDGRID_KEY))
+
+        response = sg.client.mail.send.post(request_body=_email)
+
         # print(response.status_code)
         # print(response.body)
         # print(response.headers)
 
-        return "SUCCESS"
+        return response
 
