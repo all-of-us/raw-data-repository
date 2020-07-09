@@ -123,6 +123,8 @@ def get_oauth_id():
             else:
                 message = str(data.get("error_description", response.content))
                 logging.info(f"Oauth failure: {message}")
+                if message == 'Invalid Value':
+                    raise Forbidden()
 
         sleep(0.25)
         logging.info('Retrying authentication call to Google after failure.')
