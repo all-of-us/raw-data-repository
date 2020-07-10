@@ -5,7 +5,7 @@ from dateutil import parser, tz
 from sqlalchemy import func, desc
 from werkzeug.exceptions import NotFound
 
-from rdr_service import app_util, config
+from rdr_service import config
 from rdr_service.code_constants import CONSENT_GROR_YES_CODE, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE,\
     DVEHR_SHARING_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES, GROR_CONSENT_QUESTION_CODE
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
@@ -21,6 +21,7 @@ from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus
+from rdr_service.resource.helpers import DateCollection
 
 
 class BQParticipantSummaryGenerator(BigQueryGenerator):
@@ -531,20 +532,20 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                     (ro_summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or had_gror_consent):
                 # If they've had everything right at some point, go through and see if there was any time that they
                 # had them all at once
-                study_consent_date_range = app_util.DateCollection()
+                study_consent_date_range = DateCollection()
                 study_consent_date_range.add_start(study_consent_date)
 
-                pm_date_range = app_util.DateCollection()
+                pm_date_range = DateCollection()
                 pm_date_range.add_start(physical_measurements_date)
 
-                baseline_modules_date_range = app_util.DateCollection()
+                baseline_modules_date_range = DateCollection()
                 baseline_modules_date_range.add_start(latest_baseline_module_completion)
 
-                dna_date_range = app_util.DateCollection()
+                dna_date_range = DateCollection()
                 dna_date_range.add_start(first_dna_sample_date)
 
-                ehr_date_range = app_util.DateCollection()
-                gror_date_range = app_util.DateCollection()
+                ehr_date_range = DateCollection()
+                gror_date_range = DateCollection()
 
                 current_ehr_response = current_dv_ehr_response = None
                 # These consent responses are expected to be in order by their authored date

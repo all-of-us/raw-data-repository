@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from rdr_service.app_util import DateCollection
+from rdr_service.resource.helpers import DateCollection
 from tests.helpers.unittest_base import BaseTestCase
 
 
