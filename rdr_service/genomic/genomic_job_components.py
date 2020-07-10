@@ -1439,7 +1439,7 @@ class GenomicBiobankSamplesCoupler:
         :param bid: biobank_id
         :return: tuple(blood_collected date, blood sample, blood site, blood order)
         """
-        _samples_sql = """                    
+        _samples_sql = """
             # Max 1ED04 Sample
             SELECT ed04.collected AS blood_collected
                 , ssed.biobank_stored_sample_id AS blood_sample
@@ -1474,14 +1474,14 @@ class GenomicBiobankSamplesCoupler:
 
         return result
 
-    def _get_usable_saliva_sample(self,pid, bid):
+    def _get_usable_saliva_sample(self, pid, bid):
         """
         Select 1SAL2 based on max collected date
         :param pid: participant_id
         :param bid: biobank_id
         :return: tuple(saliva date, saliva sample, saliva site, saliva order)
         """
-        _samples_sql = """                    
+        _samples_sql = """
             # Max 1SAL2 Sample
             select sal2.collected AS saliva_collected
                 , sssal.biobank_stored_sample_id AS saliva_sample
