@@ -364,6 +364,12 @@ class WithdrawalReason(messages.Enum):
     TEST = 3
 
 
+class ConsentExpireStatus(messages.Enum):
+    UNSET = 0
+    NOT_EXPIRED = 1
+    EXPIRED = 2
+
+
 class SuspensionStatus(messages.Enum):
     """Whether a participant has been suspended from the study."""
 
