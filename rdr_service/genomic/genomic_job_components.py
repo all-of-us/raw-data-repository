@@ -1076,11 +1076,19 @@ class GenomicBiobankSamplesCoupler:
 
         if len(participants) > 0:
             for i, _bid in enumerate(participant_matrix.bids):
-                sample_data = self._get_usable_sample_from_participant(pid=participant_matrix.pids[i],
-                                                                       bid=_bid)
+                logging.info(f'Retrieving samples for PID: f{participant_matrix.pids[i]}')
+                blood_sample_data = self._get_usable_blood_sample(pid=participant_matrix.pids[i],
+                                                                  bid=_bid)
+
+                saliva_sample_data = self._get_usable_saliva_sample(pid=participant_matrix.pids[i],
+                                                                    bid=_bid)
+
+                # Determine which sample ID to use
+                sample_data = self._determine_best_sample(blood=blood_sample_data,
+                                                          saliva=saliva_sample_data)
 
                 # update the sample id, collected site, and biobank order
-                if None not in sample_data:
+                if sample_data is not None:
                     participant_matrix.sample_ids[i] = sample_data[0]
                     participant_matrix.site_ids[i] = sample_data[1]
                     participant_matrix.order_ids[i] = sample_data[2]
@@ -1392,7 +1400,7 @@ class GenomicBiobankSamplesCoupler:
                         )
                     AND ss.test IN ("1ED04", "1SAL2")
                     AND ps.consent_cohort = :cohort_2_param
-                    AND ps.questionnaire_on_dna_program_authored > :from_date_param
+                    AND ps.questionnaire_on_dna_program_authored > "2020-06-29"
                     AND ps.questionnaire_on_dna_program = :general_consent_param
                     AND m.id IS NULL
                 HAVING TRUE
@@ -1404,6 +1412,7 @@ class GenomicBiobankSamplesCoupler:
                     AND general_consent_given = 1
                     AND valid_suspension_status = 1
                     AND valid_withdrawal_status = 1
+                LIMIT 1000
                 """
 
         params = {
@@ -1411,7 +1420,7 @@ class GenomicBiobankSamplesCoupler:
             "dob_param": GENOMIC_VALID_AGE,
             "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
             "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
-            "from_date_param": from_date.strftime("%Y-%m-%d"),
+            #"from_date_param": from_date.strftime("%Y-%m-%d"),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
             "cohort_2_param": ParticipantCohort.COHORT_2.__int__(),
@@ -1423,94 +1432,37 @@ class GenomicBiobankSamplesCoupler:
 
         return list(zip(*result))
 
-    def _get_usable_sample_from_participant(self, pid, bid):
+    def _get_usable_blood_sample(self, pid, bid):
         """
-        Select based on max collected date and 1ED04 over 1SAL2
+        Select 1ED04 based on max collected date and 1ED04
         :param pid: participant_id
         :param bid: biobank_id
-        :return: tuple(sample_id to use, collected_site_ID, biobank_order_id)
+        :return: tuple(blood_collected date, blood sample, blood site, blood order)
         """
-        _samples_sql = """
-            SELECT
-                CASE 
-                    WHEN blood_collected > saliva_collected THEN blood_sample
-                    WHEN blood_collected = saliva_collected THEN blood_sample
-                    WHEN blood_collected < saliva_collected THEN saliva_sample
-                    WHEN blood_collected IS NOT NULL AND saliva_collected IS NULL THEN blood_sample
-                    WHEN saliva_collected IS NOT NULL AND blood_collected IS NULL THEN saliva_sample
-                    ELSE NULL
-                END as sample_to_use,                
-                CASE 
-                    WHEN blood_collected > saliva_collected THEN blood_site
-                    WHEN blood_collected = saliva_collected THEN blood_site
-                    WHEN blood_collected < saliva_collected THEN saliva_site
-                    WHEN blood_collected IS NOT NULL AND saliva_collected IS NULL THEN blood_site
-                    WHEN saliva_collected IS NOT NULL AND blood_collected IS NULL THEN saliva_site
-                    ELSE NULL
-                END as sample_site,
-                CASE 
-                    WHEN blood_collected > saliva_collected THEN blood_order
-                    WHEN blood_collected = saliva_collected THEN blood_order
-                    WHEN blood_collected < saliva_collected THEN saliva_order
-                    WHEN blood_collected IS NOT NULL AND saliva_collected IS NULL THEN blood_order
-                    WHEN saliva_collected IS NOT NULL AND blood_collected IS NULL THEN saliva_order
-                    ELSE NULL
-                END as sample_order
-            FROM 
-                participant p
-                LEFT JOIN (
-                    # Max 1ED04 Sample
-                    SELECT ssed.biobank_id
-                        , ed04.collected AS blood_collected
-                        , ssed.biobank_stored_sample_id AS blood_sample
-                        , oed.collected_site_id AS blood_site
-                        , oed.biobank_order_id AS blood_order
-                    FROM biobank_stored_sample ssed
-                        JOIN biobank_order_identifier edid ON edid.value = ssed.biobank_order_identifier
-                        JOIN biobank_order oed ON oed.biobank_order_id = edid.biobank_order_id
-                        JOIN biobank_ordered_sample ed04 ON oed.biobank_order_id = ed04.order_id
-                            AND ed04.test = "1ED04"
-                    WHERE TRUE
-                        and ssed.biobank_id = :bid_param
-                        and ssed.test = "1ED04"
-                        and ssed.status < 13
-                        and ed04.collected = (
-                            SELECT MAX(os.collected)
-                            FROM biobank_ordered_sample os
-                                JOIN biobank_order o ON o.biobank_order_id = os.order_id
-                            WHERE os.test = "1ED04"
-                                AND o.participant_id = :pid_param
-                            GROUP BY o.participant_id
-                        )
-                ) ed04 ON p.biobank_id = ed04.biobank_id
-                LEFT JOIN (
-                    # Max 1SAL2 Sample
-                    select sssal.biobank_id
-                        , sal2.collected AS saliva_collected
-                        , sssal.biobank_stored_sample_id AS saliva_sample
-                        , osal.collected_site_id AS saliva_site
-                        , osal.biobank_order_id AS saliva_order
-                    FROM biobank_stored_sample sssal
-                        JOIN biobank_order_identifier salid ON salid.value = sssal.biobank_order_identifier
-                        JOIN biobank_order osal ON osal.biobank_order_id = salid.biobank_order_id
-                        JOIN biobank_ordered_sample sal2 ON osal.biobank_order_id = sal2.order_id
-                            AND sal2.test = "1SAL2"
-                    WHERE TRUE
-                        and sssal.biobank_id = :bid_param
-                        and sssal.status < 13
-                        and sssal.test = "1SAL2"
-                        and sal2.collected = (
-                            SELECT MAX(os.collected)
-                            FROM biobank_ordered_sample os
-                                JOIN biobank_order o ON o.biobank_order_id = os.order_id
-                            WHERE os.test = "1SAL2"
-                                AND o.participant_id = :pid_param
-                            GROUP BY o.participant_id
-                        )
-                ) sal2 ON p.biobank_id = sal2.biobank_id
+        _samples_sql = """                    
+            # Max 1ED04 Sample
+            SELECT ed04.collected AS blood_collected
+                , ssed.biobank_stored_sample_id AS blood_sample
+                , oed.collected_site_id AS blood_site
+                , oed.biobank_order_id AS blood_order
+            FROM biobank_stored_sample ssed
+                JOIN biobank_order_identifier edid ON edid.value = ssed.biobank_order_identifier
+                JOIN biobank_order oed ON oed.biobank_order_id = edid.biobank_order_id
+                JOIN biobank_ordered_sample ed04 ON oed.biobank_order_id = ed04.order_id
+                    AND ed04.test = "1ED04"
             WHERE TRUE
-                AND p.participant_id = :pid_param
-        """
+                and ssed.biobank_id = :bid_param
+                and ssed.test = "1ED04"
+                and ssed.status < 13
+                and ed04.collected = (
+                    SELECT MAX(os.collected)
+                    FROM biobank_ordered_sample os
+                        JOIN biobank_order o ON o.biobank_order_id = os.order_id
+                    WHERE os.test = "1ED04"
+                        AND o.participant_id = :pid_param
+                    GROUP BY o.participant_id
+                )              
+            """
 
         params = {
             "pid_param": pid,
@@ -1521,6 +1473,75 @@ class GenomicBiobankSamplesCoupler:
             result = session.execute(_samples_sql, params).first()
 
         return result
+
+    def _get_usable_saliva_sample(self,pid, bid):
+        """
+        Select 1SAL2 based on max collected date
+        :param pid: participant_id
+        :param bid: biobank_id
+        :return: tuple(saliva date, saliva sample, saliva site, saliva order)
+        """
+        _samples_sql = """                    
+            # Max 1SAL2 Sample
+            select sal2.collected AS saliva_collected
+                , sssal.biobank_stored_sample_id AS saliva_sample
+                , osal.collected_site_id AS saliva_site
+                , osal.biobank_order_id AS saliva_order
+            FROM biobank_order osal
+                JOIN biobank_order_identifier salid ON osal.biobank_order_id = salid.biobank_order_id
+                JOIN biobank_ordered_sample sal2 ON osal.biobank_order_id = sal2.order_id
+                    AND sal2.test = "1SAL2"
+                JOIN biobank_stored_sample sssal ON salid.value = sssal.biobank_order_identifier
+            WHERE TRUE
+                and sssal.biobank_id = :bid_param
+                and sssal.status < 13
+                and sssal.test = "1SAL2"
+                and sal2.collected = (
+                    SELECT MAX(os.collected)
+                    FROM biobank_ordered_sample os
+                        JOIN biobank_order o ON o.biobank_order_id = os.order_id
+                    WHERE os.test = "1SAL2"
+                            AND o.participant_id = :pid_param
+                        GROUP BY o.participant_id
+                    )            
+            """
+
+        params = {
+            "pid_param": pid,
+            "bid_param": bid,
+        }
+
+        with self.samples_dao.session() as session:
+            result = session.execute(_samples_sql, params).first()
+
+        return result
+
+    def _determine_best_sample(self, blood, saliva):
+        """
+        Determines which sample to use based on:
+        latest collection date, Blood over Saliva
+        :param blood:
+        :param saliva:
+        :return: tuple of sample to use (sample_id to use, collected_site_ID, biobank_order_id)
+        """
+        if blood is None:
+            if saliva is None:
+                # If both None, return None
+                return None
+
+            # if only blood is none, return saliva
+            return saliva[1:]
+
+        # if only saliva is None, return blood
+        if saliva is None:
+            return blood[1:]
+
+        # if both samples, return latest or blood if same date
+        if blood[0] >= saliva[0]:
+            return blood[1:]
+
+        else:
+            return saliva[1:]
 
     def _create_new_genomic_set(self):
         """Inserts a new genomic set for this run"""
