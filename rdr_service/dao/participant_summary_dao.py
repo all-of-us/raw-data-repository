@@ -593,8 +593,7 @@ class ParticipantSummaryDao(UpdatableDao):
         return EnrollmentStatus.INTERESTED
 
     def calculate_member_time(self, consent, participant_summary):
-        if (consent or participant_summary.ehrConsentExpireStatus == ConsentExpireStatus.EXPIRED) and \
-            participant_summary.enrollmentStatusMemberTime is not None:
+        if consent and participant_summary.enrollmentStatusMemberTime is not None:
             return participant_summary.enrollmentStatusMemberTime
         elif consent:
             if (

@@ -147,9 +147,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2020-03-20T00:00:00')
         self.assertEqual(summary.get('consentForElectronicHealthRecords'), 'SUBMITTED_NO_CONSENT')
-        # even the consent is expired, we should keep the original enrollmentStatusMemberTime for participant
-        # status over time calculation
-        self.assertEqual(summary.get('enrollmentStatusMemberTime'), '2020-03-12T00:00:00')
+        # keep the same behaviour with the withdrawal participant for enrollmentStatusMemberTime
+        self.assertEqual(summary.get('enrollmentStatusMemberTime'), None)
         self.assertEqual(summary.get('enrollmentStatus'), 'INTERESTED')
         self.assertEqual(summary.get('ehrConsentExpireStatus'), 'EXPIRED')
         self.assertEqual(summary.get('ehrConsentExpireTime'), '2020-04-12T00:00:00')
