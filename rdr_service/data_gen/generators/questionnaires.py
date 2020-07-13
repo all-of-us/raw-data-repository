@@ -691,6 +691,9 @@ class QuestionnaireGen(BaseGen):
     :param quantity: models.quantity.Quantity object
     :return: QuestionnaireResponseGroupQuestion object
     """
+        if question is None:
+            _logger.debug("code not found, skip this question")
+            return None
         if question.type not in self._answer_types:
             _logger.debug("unhandled or invalid question answer type [{0}].".format(question.type))
             return None
