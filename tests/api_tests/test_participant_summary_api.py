@@ -212,6 +212,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "suspensionStatus": "NOT_SUSPENDED",
                 "numberDistinctVisits": 0,
                 "ehrStatus": "UNSET",
+                "ehrConsentExpireStatus": "UNSET",
                 "patientStatus": patient_statuses or [],
                 "participantOrigin": "example",
                 "consentCohort": "COHORT_1",

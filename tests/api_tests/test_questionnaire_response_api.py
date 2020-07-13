@@ -7,7 +7,8 @@ from dateutil.parser import parse
 from sqlalchemy.orm.session import make_transient
 
 from rdr_service.clock import FakeClock
-from rdr_service.code_constants import PPI_EXTRA_SYSTEM
+from rdr_service.code_constants import PPI_EXTRA_SYSTEM, CONSENT_PERMISSION_YES_CODE, PPI_SYSTEM, \
+    CONSENT_PERMISSION_NO_CODE
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantRaceAnswersDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
@@ -18,6 +19,7 @@ from rdr_service.participant_enums import QuestionnaireDefinitionStatus, Partici
 
 from tests.test_data import data_path
 from tests.helpers.unittest_base import BaseTestCase
+from rdr_service.concepts import Concept
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
@@ -29,6 +31,11 @@ def _questionnaire_response_url(participant_id):
 
 
 class QuestionnaireResponseApiTest(BaseTestCase):
+
+    def setUp(self):
+        super(QuestionnaireResponseApiTest, self).setUp()
+        self._ehr_questionnaire_id = None
+
     def test_duplicate_consent_submission(self):
         """
     Submit duplicate study enrollment questionnaires, so we can make sure
@@ -54,6 +61,114 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         # created should remain the same as the first submission.
         self.assertEqual(parse(summary["consentForStudyEnrollmentTime"]), created.replace(tzinfo=None))
         self.assertEqual(parse(summary["consentForStudyEnrollmentAuthored"]), authored_1.replace(tzinfo=None))
+
+    def test_ehr_consent_expired(self):
+        participant_id = self.create_participant()
+        authored_1 = datetime.datetime(2019, 3, 16, 1, 39, 33, tzinfo=pytz.utc)
+        created = datetime.datetime(2019, 3, 16, 1, 51, 22)
+        with FakeClock(created):
+            self.send_consent(participant_id, authored=authored_1)
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(parse(summary["consentForStudyEnrollmentTime"]), created.replace(tzinfo=None))
+        self.assertEqual(parse(summary["consentForStudyEnrollmentAuthored"]), authored_1.replace(tzinfo=None))
+
+        self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), None)
+        self.assertEqual(summary.get('enrollmentStatusMemberTime'), None)
+        self.assertEqual(summary.get('enrollmentStatus'), 'INTERESTED')
+
+        self._ehr_questionnaire_id = self.create_questionnaire("ehr_consent_questionnaire.json")
+
+        # send ConsentPermission_Yes questionnaire response
+        with FakeClock(datetime.datetime(2020, 3, 12)):
+            self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_YES_CODE, None,
+                                          datetime.datetime(2020, 2, 12))
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2020-02-12T00:00:00')
+        self.assertEqual(summary.get('enrollmentStatusMemberTime'), '2020-03-12T00:00:00')
+        self.assertEqual(summary.get('enrollmentStatus'), 'MEMBER')
+        self.assertEqual(summary.get('ehrConsentExpireStatus'), 'UNSET')
+
+        # send EHRConsentPII_ConsentExpired_Yes questionnaire response
+        # response payload sample
+        # {
+        #     "resourceType": "QuestionnaireResponse",
+        #     "extension": [
+        #         {
+        #             "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
+        #             "valueCode": "en"
+        #         }
+        #     ],
+        #     "identifier": {
+        #         "value": "1592553285370"
+        #     },
+        #     "questionnaire": {
+        #         "reference": "Questionnaire/475180/_history/V2020.04.20"
+        #     },
+        #     "status": "completed",
+        #     "subject": {
+        #         "reference": "Patient/P443846736"
+        #     },
+        #     "authored": "2020-06-19T07:54:45+00:00",
+        #     "group": {
+        #         "linkId": "root_group",
+        #         "title": "Consent to Share Electronic Health Records",
+        #         "text": "Consent to Share Electronic Health Records",
+        #         "question": [
+        #             {
+        #                 "linkId": "7068",
+        #                 "text": "EHRConsentPII_ConsentPermission",
+        #                 "answer": [
+        #                     {
+        #                         "valueCoding": {
+        #                             "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+        #                             "code": "ConsentPermission_No",
+        #                             "display": "No, I do not wish to give All of Us access to my EHR"
+        #                         }
+        #                     }
+        #                 ]
+        #             },
+        #             {
+        #                 "linkId": "47771",
+        #                 "text": "EHRConsentPII_ConsentExpired",
+        #                 "answer": [
+        #                     {
+        #                         "valueString": "EHRConsentPII_ConsentExpired_Yes"
+        #                     }
+        #                 ]
+        #             }
+        #         ]
+        #     },
+        #     "id": "431459662"
+        # }
+        with FakeClock(datetime.datetime(2020, 4, 12)):
+            string_answer = ['ehrConsentExpired', 'EHRConsentPII_ConsentExpired_Yes']
+            self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_NO_CODE, [string_answer],
+                                          datetime.datetime(2020, 3, 20))
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2020-03-20T00:00:00')
+        self.assertEqual(summary.get('consentForElectronicHealthRecords'), 'SUBMITTED_NO_CONSENT')
+        # keep the same behaviour with the withdrawal participant for enrollmentStatusMemberTime
+        self.assertEqual(summary.get('enrollmentStatusMemberTime'), None)
+        self.assertEqual(summary.get('enrollmentStatus'), 'INTERESTED')
+        self.assertEqual(summary.get('ehrConsentExpireStatus'), 'EXPIRED')
+        self.assertEqual(summary.get('ehrConsentExpireTime'), '2020-04-12T00:00:00')
+        self.assertEqual(summary.get('ehrConsentExpireAuthored'), '2020-03-20T00:00:00')
+
+    def submit_ehr_questionnaire(self, participant_id, ehr_response_code, string_answers, authored):
+        if not self._ehr_questionnaire_id:
+            self._ehr_questionnaire_id = self.create_questionnaire("ehr_consent_questionnaire.json")
+        code_answers = []
+        if ehr_response_code:
+            _add_code_answer(code_answers, 'ehrConsent', ehr_response_code)
+        qr_json = self.make_questionnaire_response_json(
+            participant_id,
+            self._ehr_questionnaire_id,
+            string_answers=string_answers,
+            code_answers=code_answers,
+            authored=authored
+        )
+        self.send_post(self.questionnaire_response_url(participant_id), qr_json)
+
 
     def test_insert_raises_400_for_excessively_long_valueString(self):
         participant_id = self.create_participant()
@@ -292,6 +407,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "suspensionStatus": "NOT_SUSPENDED",
             "numberDistinctVisits": 0,
             "ehrStatus": "UNSET",
+            "ehrConsentExpireStatus": "UNSET",
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
@@ -408,6 +524,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "suspensionStatus": "NOT_SUSPENDED",
             "numberDistinctVisits": 0,
             "ehrStatus": "UNSET",
+            "ehrConsentExpireStatus": "UNSET",
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
@@ -577,6 +694,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "suspensionStatus": "NOT_SUSPENDED",
             "numberDistinctVisits": 0,
             "ehrStatus": "UNSET",
+            "ehrConsentExpireStatus": "UNSET",
             "patientStatus": [],
             "participantOrigin": "example",
             "consentCohort": str(ParticipantCohort.COHORT_1),
@@ -776,6 +894,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "suspensionStatus": "NOT_SUSPENDED",
             "numberDistinctVisits": 0,
             "ehrStatus": "UNSET",
+            "ehrConsentExpireStatus": "UNSET",
             "patientStatus": [],
             "participantOrigin": 'example',
             "semanticVersionForPrimaryConsent": "v1",
@@ -1123,6 +1242,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "suspensionStatus": "NOT_SUSPENDED",
             "numberDistinctVisits": 0,
             "ehrStatus": "UNSET",
+            "ehrConsentExpireStatus": "UNSET",
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
@@ -1252,6 +1372,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "suspensionStatus": "NOT_SUSPENDED",
             "numberDistinctVisits": 0,
             "ehrStatus": "UNSET",
+            "ehrConsentExpireStatus": "UNSET",
             "patientStatus": [],
             "participantOrigin": "example",
             "semanticVersionForPrimaryConsent": "v1",
@@ -1291,3 +1412,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             summary = self.send_get("Participant/%s/Summary" % participant_id)
             # Posting a QR should not change origin.
             self.assertEqual(summary["participantOrigin"], "example")
+
+
+def _add_code_answer(code_answers, link_id, code):
+    if code:
+        code_answers.append((link_id, Concept(PPI_SYSTEM, code)))
