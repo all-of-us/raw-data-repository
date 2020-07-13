@@ -23,6 +23,7 @@ from rdr_service.code_constants import (
     DVEHRSHARING_CONSENT_CODE_YES,
     DVEHR_SHARING_QUESTION_CODE,
     EHR_CONSENT_QUESTION_CODE,
+    EHR_CONSENT_EXPIRED_QUESTION_CODE,
     GENDER_IDENTITY_QUESTION_CODE,
     LANGUAGE_OF_CONSENT,
     PPI_EXTRA_SYSTEM,
@@ -37,7 +38,8 @@ from rdr_service.code_constants import (
     CONSENT_COPE_DEFERRED_CODE,
     COPE_CONSENT_QUESTION_CODE,
     STREET_ADDRESS_QUESTION_CODE,
-    STREET_ADDRESS2_QUESTION_CODE)
+    STREET_ADDRESS2_QUESTION_CODE,
+    EHR_CONSENT_EXPIRED_YES)
 from rdr_service.config_api import is_config_admin
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -58,7 +60,8 @@ from rdr_service.participant_enums import (
     TEST_LOGIN_PHONE_NUMBER_PREFIX,
     get_gender_identity,
     get_race,
-    ParticipantCohort)
+    ParticipantCohort,
+    ConsentExpireStatus)
 
 _QUESTIONNAIRE_PREFIX = "Questionnaire/"
 _QUESTIONNAIRE_HISTORY_SEGMENT = "/_history/"
@@ -332,6 +335,12 @@ class QuestionnaireResponseDao(BaseDao):
                             ehr_consent = True
                             if participant_summary.consentForElectronicHealthRecordsFirstYesAuthored is None:
                                 participant_summary.consentForElectronicHealthRecordsFirstYesAuthored = authored
+                    elif code.value == EHR_CONSENT_EXPIRED_QUESTION_CODE:
+                        if answer.valueString and answer.valueString == EHR_CONSENT_EXPIRED_YES:
+                            participant_summary.ehrConsentExpireStatus = ConsentExpireStatus.EXPIRED
+                            participant_summary.ehrConsentExpireAuthored = authored
+                            participant_summary.ehrConsentExpireTime = questionnaire_response.created
+                            something_changed = True
                     elif code.value == CABOR_SIGNATURE_QUESTION_CODE:
                         if answer.valueUri or answer.valueString:
                             # TODO: validate the URI? [DA-326]

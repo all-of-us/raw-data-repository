@@ -35,6 +35,19 @@
             "display": "I have read this consent form. I understand the information in this form. All of my questions have been answered. I freely and willingly choose to not to take part."
           }
         ]
-      }]
+      },
+      {
+        "linkId": "ehrConsentExpired",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "EHRConsentPII_ConsentExpired"
+          }
+        ],
+        "text": "EHRConsentPII_ConsentExpired",
+        "type": "text",
+        "required": false
+      }
+    ]
   }
 }

@@ -43,6 +43,7 @@ from rdr_service.participant_enums import (
     BiobankOrderStatus,
     EhrStatus,
     EnrollmentStatus,
+    ConsentExpireStatus,
     ParticipantCohort,
     PatientStatusFlag,
     PhysicalMeasurementsStatus,
@@ -560,7 +561,8 @@ class ParticipantSummaryDao(UpdatableDao):
             summary.physicalMeasurementsStatus,
             summary.samplesToIsolateDNA,
             summary.consentCohort,
-            summary.consentForGenomicsROR
+            summary.consentForGenomicsROR,
+            summary.ehrConsentExpireStatus
         )
         summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
         summary.enrollmentStatusCoreStoredSampleTime = self.calculate_core_stored_sample_time(consent, summary)
@@ -576,7 +578,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
     def calculate_enrollment_status(
         self, consent, num_completed_baseline_ppi_modules, physical_measurements_status, samples_to_isolate_dna,
-        consent_cohort, gror_consent
+        consent_cohort, gror_consent, consent_expire_status=ConsentExpireStatus.NOT_EXPIRED
     ):
         if consent:
             if (
@@ -586,7 +588,8 @@ class ParticipantSummaryDao(UpdatableDao):
                 and (gror_consent == QuestionnaireStatus.SUBMITTED or consent_cohort != ParticipantCohort.COHORT_3)
             ):
                 return EnrollmentStatus.FULL_PARTICIPANT
-            return EnrollmentStatus.MEMBER
+            if consent_expire_status != ConsentExpireStatus.EXPIRED:
+                return EnrollmentStatus.MEMBER
         return EnrollmentStatus.INTERESTED
 
     def calculate_member_time(self, consent, participant_summary):
