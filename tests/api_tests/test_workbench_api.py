@@ -51,6 +51,9 @@ class WorkbenchApiTest(BaseTestCase):
         ]
 
         self.send_post('workbench/directory/researchers', request_data=request_json)
+        # duplicate researchers will be ignored
+        self.send_post('workbench/directory/researchers', request_data=request_json)
+
         researcher_dao = WorkbenchResearcherDao()
         self.assertEqual(researcher_dao.count(), 1)
         results = researcher_dao.get_all_with_children()
@@ -96,7 +99,7 @@ class WorkbenchApiTest(BaseTestCase):
             {
                 "userId": 1,
                 "creationTime": "2019-11-26T21:21:13.056Z",
-                "modifiedTime": "2019-11-26T21:21:13.056Z",
+                "modifiedTime": "2019-11-26T21:21:14.056Z",
                 "givenName": "string_modify",
                 "familyName": "string_modify",
                 "email": "yyy@yyy.com",
@@ -129,7 +132,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "userId": 2,
                 # test creationTime can be NULL
                 # "creationTime": "2019-11-27T21:21:13.056Z",
-                "modifiedTime": "2019-11-27T21:21:13.056Z",
+                "modifiedTime": "2019-11-27T21:21:14.056Z",
                 "givenName": "string2",
                 "familyName": "string2",
                 "streetAddress1": "string2",
@@ -354,6 +357,8 @@ class WorkbenchApiTest(BaseTestCase):
             }
         ]
 
+        self.send_post('workbench/directory/workspaces', request_data=request_json)
+        # duplicate workspaces will be ignored
         self.send_post('workbench/directory/workspaces', request_data=request_json)
 
         workspace_dao = WorkbenchWorkspaceDao()
@@ -626,7 +631,7 @@ class WorkbenchApiTest(BaseTestCase):
             {
                 "userId": 1,
                 "creationTime": "2019-11-26T21:21:13.056Z",
-                "modifiedTime": "2019-11-26T21:21:13.056Z",
+                "modifiedTime": "2019-11-26T21:21:14.056Z",
                 "givenName": "string_modify2",
                 "familyName": "string_modify2",
                 "streetAddress1": "string2",

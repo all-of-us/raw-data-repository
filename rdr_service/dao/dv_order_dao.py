@@ -1,4 +1,3 @@
-import datetime
 import json
 import logging
 import pytz
@@ -29,6 +28,7 @@ from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
     MayolinkCreateOrderHistory
 from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.model.utils import to_client_participant_id
+from rdr_service.offline.biobank_samples_pipeline import _PMI_OPS_SYSTEM
 from rdr_service.participant_enums import BiobankOrderStatus, OrderShipmentStatus, OrderShipmentTrackingStatus
 
 
@@ -260,7 +260,7 @@ class DvOrderDao(UpdatableDao):
         obj = BiobankOrder()
         obj.participantId = int(pid)
         obj.created = clock.CLOCK.now()
-        obj.created = datetime.datetime.now()
+        obj.finalizedTime = obj.created
         obj.orderStatus = BiobankOrderStatus.UNSET
         obj.biobankOrderId = resource["biobankOrderId"]
         obj.orderOrigin = resource.get("orderOrigin")
@@ -286,7 +286,9 @@ class DvOrderDao(UpdatableDao):
         biobank_order_dao.insert_mayolink_create_order_history(mayolink_create_order_history)
 
     def _add_identifiers_and_main_id(self, order, resource):
-        order.identifiers = []
+        order.identifiers = [
+            BiobankOrderIdentifier(system=_PMI_OPS_SYSTEM, value=resource.barcode)
+        ]
         client_id = app_util.lookup_user_info(resource.auth_user).get('clientId')
         for i in resource.identifier:
             try:
