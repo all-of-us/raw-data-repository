@@ -826,11 +826,11 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
             if member.biobankId == '100004':
-                # 100004 : Included, Invalid SAB
+                # 100004 : Included, NA is now a valid SAB
                 self.assertEqual(0, member.nyFlag)
                 self.assertEqual('100004', member.collectionTubeId)
                 self.assertEqual('NA', member.sexAtBirth)
-                self.assertEqual(GenomicSetMemberStatus.INVALID, member.validationStatus)
+                self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
             if member.biobankId == '100006':
                 # 100006 : Included, Invalid consent
@@ -911,7 +911,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(100004, int(rows[4][ExpectedCsvColumns.SAMPLE_ID]))
             self.assertEqual("NA", rows[4][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[4][ExpectedCsvColumns.NY_FLAG])
-            self.assertEqual("N", rows[4][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("Y", rows[4][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[4][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_array", rows[4][ExpectedCsvColumns.GENOME_TYPE])
 
@@ -919,7 +919,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(100004, int(rows[5][ExpectedCsvColumns.SAMPLE_ID]))
             self.assertEqual("NA", rows[5][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[5][ExpectedCsvColumns.NY_FLAG])
-            self.assertEqual("N", rows[5][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("Y", rows[5][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[5][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_wgs", rows[5][ExpectedCsvColumns.GENOME_TYPE])
 

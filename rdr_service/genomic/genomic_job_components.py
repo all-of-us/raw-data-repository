@@ -1003,7 +1003,8 @@ class GenomicBiobankSamplesCoupler:
 
     _SEX_AT_BIRTH_CODES = {
         'male': 'M',
-        'female': 'F'
+        'female': 'F',
+        'none_intersex': 'NA'
     }
     _VALIDATION_FLAGS = (GenomicValidationFlag.INVALID_WITHDRAW_STATUS,
                          GenomicValidationFlag.INVALID_SUSPENSION_STATUS,
@@ -1314,7 +1315,6 @@ class GenomicBiobankSamplesCoupler:
             HAVING TRUE
                 # Validations for Cohort 2
                 AND valid_ai_an = 1
-                AND sab <> "NA"
                 AND valid_age = 1
                 AND general_consent_given = 1
                 AND valid_suspension_status = 1
