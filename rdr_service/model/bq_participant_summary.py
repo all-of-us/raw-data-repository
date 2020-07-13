@@ -182,6 +182,13 @@ class BQParticipantSummarySchema(BQSchema):
     ehr_receipt = BQField('ehr_receipt', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     ehr_update = BQField('ehr_update', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
 
+    ehr_consent_expire_status = BQField('ehr_consent_expire_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    ehr_consent_expire_status_id = BQField('ehr_consent_expire_status_id', BQFieldTypeEnum.INTEGER,
+                                           BQFieldModeEnum.NULLABLE)
+    ehr_consent_expire_time = BQField('ehr_consent_expire_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    ehr_consent_expire_authored = BQField('ehr_consent_expire_authored', BQFieldTypeEnum.DATETIME,
+                                          BQFieldModeEnum.NULLABLE)
+
     withdrawal_status = BQField('withdrawal_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     withdrawal_status_id = BQField('withdrawal_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     withdrawal_time = BQField('withdrawal_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)

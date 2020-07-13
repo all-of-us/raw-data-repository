@@ -8,7 +8,7 @@ from marshmallow import validate, Schema as MarshmallowSchema
 
 from rdr_service.participant_enums import QuestionnaireStatus, ParticipantCohort, Race, GenderIdentity, \
     PhysicalMeasurementsStatus, OrderStatus, EnrollmentStatusV2, EhrStatus, WithdrawalStatus, WithdrawalReason, \
-    SuspensionStatus
+    SuspensionStatus, ConsentExpireStatus
 from rdr_service.resource import Schema, fields, SchemaMeta
 
 
@@ -317,6 +317,10 @@ class ParticipantSchema(Schema):
     suspension_status = fields.EnumString(enum=SuspensionStatus)
     suspension_status_id = fields.EnumInteger(enum=SuspensionStatus)
     suspension_time = fields.DateTime()
+    ehr_consent_expire_status = fields.EnumString(enum=ConsentExpireStatus)
+    ehr_consent_expire_status_id = fields.EnumInteger(enum=ConsentExpireStatus)
+    ehr_consent_expire_time = fields.DateTime()
+    ehr_consent_expire_authored = fields.DateTime()
 
     hpo = fields.String(validate=validate.Length(max=20))
     hpo_id = fields.Int32()

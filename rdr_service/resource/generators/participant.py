@@ -19,7 +19,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
-    SampleStatus, BiobankOrderStatus
+    SampleStatus, BiobankOrderStatus, ConsentExpireStatus
 from rdr_service.resource import generators, schemas
 
 
@@ -87,6 +87,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         withdrawal_status = WithdrawalStatus(p.withdrawalStatus)
         withdrawal_reason = WithdrawalReason(p.withdrawalReason if p.withdrawalReason else 0)
         suspension_status = SuspensionStatus(p.suspensionStatus)
+        ehr_consent_expire_status = ConsentExpireStatus(p.ehrConsentExpireStatus if p.ehrConsentExpireStatus else 0)
 
         data = {
             'participant_id': f'P{p_id}',
@@ -110,6 +111,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             'suspension_status': str(suspension_status),
             'suspension_status_id': int(suspension_status),
             'suspension_time': p.suspensionTime,
+
+            'ehr_consent_expire_status': str(ehr_consent_expire_status),
+            'ehr_consent_expire_status_id': int(ehr_consent_expire_status),
+            'ehr_consent_expire_time': p.ehrConsentExpireTime,
+            'ehr_consent_expire_authored': p.ehrConsentExpireAuthored,
 
             'site': self._lookup_site_name(p.siteId, ro_session),
             'site_id': p.siteId,
