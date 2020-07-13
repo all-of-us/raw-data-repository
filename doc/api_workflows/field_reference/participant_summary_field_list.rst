@@ -1,7 +1,12 @@
 ============================================================
 Participant Summary Field List
 ============================================================
-  .. glossary:
+
+
+Participant IDs / Personal Information
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. glossary::
 
   participantId
       The RDR internal unique ID of a participant.
@@ -53,10 +58,13 @@ Participant Summary Field List
 
   ageRange
       The "bucketed" age range of participant.
-      :ref:`Field options <age_range>`
+
+      :ref:`Enumerated values <age_range>`
 
   genderIdentity
       The personal sense of one's own gender. It can correlate with assigned sex at birth or can differ from it.
+
+      :ref:`Enumerated values <gender_identity>`
 
   sex
       Assigned sex at birth.
@@ -64,21 +72,48 @@ Participant Summary Field List
   sexualOrientation
       A person's sexual identity in relation to the gender to which they are attracted.
 
+  race
+      A race is a grouping of humans based on shared physical or social qualities into categories generally viewed as distinct by society.
+      First used to refer to speakers of a common language and then to denote national affiliations, by the 17th century the term race began to refer to physical (phenotypical) traits.
+
+      :ref:`Enumerated values <race>`
+
   education
       The highest level of education the participant has received.
 
   income
       The participants income. Income is defined as a persons salary in a given year.
 
-  enrollmentStatus
-      Depends on a number of factors including questionnaires and biobank samples completed.
-      :ref:`Field options <enrollment_status>`
 
-  race
-      A race is a grouping of humans based on shared physical or social qualities into categories generally viewed as distinct by society. First used to refer to speakers of a common language and then to denote national affiliations, by the 17th century the term race began to refer to physical (phenotypical) traits.
+Participant Enrollment Information
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. glossary::
+
+  enrollmentStatus
+      Depends on a number of factors including questionnaires and biobank samples completed
+
+      :ref:`Enumerated values <enrollment_status>`
+
+  ehrStatus
+      Indicates whether Electronic Health Records (EHR) are present for this participant
+
+      :ref:`Enumerated values <ehr_status>`
+
+  consentCohort
+      Cohort assignment based on the date the participant enrolled in the program
+
+      :ref:`Enumerated values <consent_cohort>`
+
+  cohort2PilotFlag
+      indicates whether a participant was designated for the genomics pilot.  Only participants in Cohort 2 were designated.
+
+      :ref:`Enumerated values <cohort_2_pilot_flag>`
 
   physicalMeasurementsStatus
       Indicates whether this participant has completed physical measurements.
+
+      :ref:`Enumerated values <physical_measurements_status>`
 
   physicalMeasurementsFinalizedTime
       indicates the latest time physical measurements were finalized for the participant
@@ -99,17 +134,65 @@ Participant Summary Field List
       HPO marked as primary for this participant, if any (just the resource id, like PITT — not a reference like Organization/PITT)
 
   awardee
-      An awardee a participant is paired with or "unset" if none.
+      An awardee a participant is paired with or UNSET if none.
 
   organization
-      An organization a participant is paired with or "unset" if none.
+      An organization a participant is paired with or UNSET if none.
 
   site
-      A physical location a participant is paired with or "unset" if none.
+      A physical location a participant is paired with or UNSET if none.
+
+  withdrawalStatus
+      The satus of withdrawal for a participant.
+
+      :ref:`Enumerated values <withdrawal_status>`
+
+  withdrawalReason
+      If withdrawalReason is UNSET the participant is self withdrawn, any other enumeration means the participant was administratively withdrawn.
+
+      :ref:`Enumerated values <withdrawal_reason>`
+
+  withdrawalAuthored
+      The time the participant withdrew from program participation.
+
+  suspensionStatus
+      The status of suspension for a participant.
+
+      :ref:`Enumerated values <suspension_status>`
+
+  participantOrigin
+      The sign up portal the participant used to enroll (Vibrent, Care Evolution).
+
+
+  patientStatus
+      A flag available for sites of in person enrollment. A participant can have a status from multiple sites.  Example:
+
+  .. code-block:: json
+
+            patientStatus: {
+            “PITT_UPMC”: “YES”,
+            “PITT_TEMPLE”: “NO_ACCESS”,
+            “PITT_SOMETHING”: “NO”
+            }
+
+  .. note::
+      The following values are available.
+        |    Yes: Confirmed in EHR system.
+        |    No: Not found in EHR system.
+        |    No Access: Unable to check EHR system.
+        |    Unknown: Inconclusive search results.
+        |    Not Applicable (will apply to DVs only).
+
+
+Participant Consent and Questionnaire Details
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. glossary::
 
   consentForStudyEnrollment
       indicates whether enrollment consent has been received
-      :ref:`Field options <consent_for_study_enrollment>`
+
+      :ref:`Enumerated values <questionnaire_status>`
 
   consentForStudyEnrollmentAuthored
       The UTC Date time the participant completed the survey, regardless of when it was sent to RDR
@@ -118,8 +201,9 @@ Participant Summary Field List
       indicates the time at which enrollment consent has been received (ISO-8601 time)
 
   consentForElectronicHealthRecords
-      indicates whether electronic health recode (EHR) consent has been received
-      :ref:`Field options <consent_for_ehr>`
+      indicates whether electronic health records (EHR) consent has been received
+
+      :ref:`Enumerated values <questionnaire_status>`
 
   consentForElectronicHealthRecordsTime
       indicates the time at which the RDR received notice of consentForElectronicHealthRecords.
@@ -127,8 +211,24 @@ Participant Summary Field List
   consentForElectronicHealthRecordsAuthored
       indicates the time at which the participant completed consent, regardless of when it was sent to RDR.
 
+  consentForDvElectronicHealthRecordsSharing
+      indicates whether electronic health record sharing consent has been received
+
+      :ref:`Enumerated values <questionnaire_status>`
+
+  consentForDVElectronicHealthRecordsSharingTime
+      indicates the time at which the RDR received notice of consentForDvElectronicHealthRecordsSharing.
+
   consentForDvElectronicHealthRecordsSharingAuthored
       indicates the time at which the participant completed consent, regardless of when it was sent to RDR.
+
+  consentForCABor
+      indicates whether California Bill of Rights (Bor) consent has been received
+
+      :ref:`Enumerated values <questionnaire_status>`
+
+  consentForCABorTime
+      indicates the time at which the RDR received notice of consentForElectronicHealthRecords.
 
   consentForCABoRTimeAuthored
       indicates the time at which the participant completed California Bill of Rights consent, regardless of when it was sent to RDR
@@ -136,14 +236,19 @@ Participant Summary Field List
   consentForGenomicsROR
       indicates whether genomic return of results consent has been recieved.
 
+      :ref:`Enumerated values <questionnaire_status>`
+
   consentForGenomicsRORTime
       indicates the time the genomic return of results was recieved by the RDR.
 
   consentForGenomicsRORAuthored
       indicates the time the participant signed the genomic return of results.
 
+
   questionnaireOnOverallHealth
       indicates status for Overall Health PPI module.
+
+      :ref:`Enumerated values <questionnaire_status>`
 
   questionnaireOnOverallHealthTime
       indicates the time at which the RDR received notice of overall health questionnaire.
@@ -152,7 +257,9 @@ Participant Summary Field List
       indicates the time at which the participant completed the overall health questionnaire.
 
   questionnaireOnHealthcareAccess
-      A questionnaire on HealthcareAccess that a participant can fill out.
+      indicates status of a questionnaire on HealthcareAccess that a participant can fill out.
+
+      :ref:`Enumerated values <questionnaire_status>`
 
   questionnaireOnHealthcareAccessTime
       indicates the time at which the RDR received notice of health care access questionnaire.
@@ -160,17 +267,21 @@ Participant Summary Field List
   questionnaireOnHealthcareAccessAuthored
       indicates the time at which the participant completed the health care access questionnaire.
 
-  questionnaireOnlifestyle
-      A questionnaire on lifestyle that a participant can fill out.
+  questionnaireOnLifestyle
+      indicates the status of a questionnaire on lifestyle that a participant can fill out.
 
-  questionnaireOnlifestyleTime
+      :ref:`Enumerated values <questionnaire_status>`
+
+  questionnaireOnLifestyleTime
       indicates the time at which the RDR received notice of lifestyle questionnaire.
 
-  questionnaireOnlifestyleAuthored
+  questionnaireOnLifestyleAuthored
       indicates the time at which the participant completed the lifestyle questionnaire.
 
   questionnaireOnMedicalHistory
-      A questionnaire on MedicalHistory that a participant can fill out.
+      indicates the status of a questionnaire on MedicalHistory that a participant can fill out.
+
+      :ref:`Enumerated values <questionnaire_status>`
 
   questionnaireOnMedicalHistoryTime
       indicates the time at which the RDR received notice of medical history questionnaire.
@@ -179,7 +290,9 @@ Participant Summary Field List
       indicates the time at which the participant completed the medical history questionnaire.
 
   questionnaireOnMedications
-      A questionnaire on Medications that a participant can fill out.
+      indicates status of a questionnaire on Medications that a participant can fill out.
+
+      :ref:`Enumerated values <questionnaire_status>`
 
   questionnaireOnMedicationsTime
       Indicates the time at which the RDR received notice of medications questionnaire.
@@ -188,7 +301,9 @@ Participant Summary Field List
       indicates the time at which the participant completed the medications questionnaire.
 
   questionnaireOnFamilyHealth
-      A questionnaire on FamilyHealth that a participant can fill out.
+      indicates the status of a questionnaire on FamilyHealth that a participant can fill out.
+
+      :ref:`Enumerated values <questionnaire_status>`
 
   questionnaireOnFamilyHealthTime
       Indicates the time at which the RDR received notice of family health questionnaire.
@@ -197,7 +312,9 @@ Participant Summary Field List
       indicates the time at which the participant completed the family health questionnaire.
 
   questionnaireOnTheBasics
-      A questionnaire on TheBasics that a participant can fill out.
+      indicates the status of a questionnaire on TheBasics that a participant can fill out.
+
+      :ref:`Enumerated values <questionnaire_status>`
 
   questionnaireOnTheBasicsTime
       The UTC Date time of when the RDR received the basics questionnaire.
@@ -205,9 +322,35 @@ Participant Summary Field List
   questionnaireOnTheBasicsAuthored
       The UTC Date time of when the participant completed the basics questionnaire.
 
+  questionnaireOnCopeMay, questionnaireOnCopeJune, questionnaireOnCopeJuly
+      indicates the status of a periodic questionnaire on COVID Participant Experience (COPE) that a participant can fill out.
+
+      :ref:`Enumerated values <questionnaire_status>`
+
+  questionnaireOnCopeMayTime, questionnaireOnCopeJuneTime, questionnaireOnCopeJulyTime
+      Indicates the time at which the RDR received notice of the specified COPE questionnaire.
+
+  questionnaireOnCopeMayAuthored, questionnaireOnCopeJuneAuthored, questionnaireOnCopeJulyAuthored
+      indicates the time at which the participant completed the specified COPE questionnaire.
+
+  semanticVersionForPrimaryConsent
+      The human readable version of primary consent the participant signed.
+
+  numCompletedBaselinePPIModules
+      The count of how many of [questionnaireOnTheBasics, questionnaireOnOverallHealth, questionnaireOnLifestyle] the participant has completed.
+
+  numCompletedPPIModules
+      The count of all PPI modules the participant has completed.
+
+
+Participant Biospecimen Details
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. glossary::
+
   biospecimenStatus
       Whether biospecimens have been finalized for the participant.
-      :ref:`Field options <biospecimen_status>`
+
+      :ref:`Enumerated values <biospecimen_status>`
 
   biospecimenOrderTime
       the first time at which biospecimens were finalized in UTC.
@@ -226,290 +369,254 @@ Participant Summary Field List
 
   sampleOrderStatus1SST8
       The individual order status of sample 1SST8.
-      :ref:`Field options <sample_order_status>`
+
+      :ref:`Enumerated values <sample_order_status>`
 
   sampleOrderStatus1SST8Time
       The time the sample was marked as finalized by the processing site.
 
   sampleOrderStatus1PST8
       The individual order status of sample 1PST8.
-      :ref:`Field options <sample_order_status>`
+
+      :ref:`Enumerated values <sample_order_status>`
 
   sampleOrderStatus1PST8Time
       The time the sample was marked as finalized by the processing site.
 
   sampleOrderStatus1PS08
       The individual order status of sample 1PS08.
-      :ref:`Field options <sample_order_status>`
+
+      :ref:`Enumerated values <sample_order_status>`
 
   sampleOrderStatus1PS08Time
       The time the sample was marked as finalized by the processing site.
 
   sampleOrderStatus1HEP4
       The individual order status of sample 1HEP4.
-      :ref:`Field options <sample_order_status>`
+
+      :ref:`Enumerated values <sample_order_status>`
 
   sampleOrderStatus1HEP4Time
       The time the sample was marked as finalized by the processing site.
 
   sampleOrderStatus1ED04
       The individual order status of sample 1ED04.
-      :ref:`Field options <sample_order_status>`
+
+      :ref:`Enumerated values <sample_order_status>`
 
   sampleOrderStatus1ED04Time
       The time the sample was marked as finalized by the processing site.
 
   sampleOrderStatus1ED10
       The individual order status of sample 1ED10.
-      :ref:`Field options <sample_order_status>`
+
+      :ref:`Enumerated values <sample_order_status>`
 
   sampleOrderStatus1ED10Time
       The time the sample was marked as finalized by the processing site.
 
   sampleOrderStatus2ED10
       The individual order status of sample 2ED10.
-      :ref:`Field options <sample_order_status>`
+
+      :ref:`Enumerated values <sample_order_status>`
 
   sampleOrderStatus2ED10Time
       The time the sample was marked as finalized by the processing site.
 
   sampleOrderStatus1UR10
       The individual order status of sample 1UR10.
-      :ref:`Field options <sample_order_status>`
+
+      :ref:`Enumerated values <sample_order_status>`
 
   sampleOrderStatus1UR10Time
       The time the sample was marked as finalized by the processing site.
 
   sampleOrderStatus1UR90
       The individual order status of sample 1UR90.
-      :ref:`Field options <sample_order_status>`
+
+      :ref:`Enumerated values <sample_order_status>`
 
   sampleOrderStatus1UR90Time
       The time the sample was marked as finalized by the processing site.
 
   sampleOrderStatus1ED02
       The individual order status of sample 1ED02.
-      :ref:`Field options <sample_order_status>`
+
+      :ref:`Enumerated values <sample_order_status>`
 
   sampleOrderStatus1ED02Time
       The time the sample was marked as finalized by the processing site.
 
   sampleOrderStatus1CFD9
       The individual order status of sample 1CFD9.
-      :ref:`Field options <sample_order_status>`
+
+      :ref:`Enumerated values <sample_order_status>`
 
   sampleOrderStatus1CFD9Time
       The time the sample was marked as finalized by the processing site.
 
   sampleOrderStatus1PXR2
       The individual order status of sample 1PXR2.
-      :ref:`Field options <sample_order_status>`
+
+      :ref:`Enumerated values <sample_order_status>`
 
   sampleOrderStatus1PXR2Time
       The time the sample was marked as finalized by the processing site.
 
   sampleOrderStatus1SAL
       The individual order status of sample 1SAL.
-      :ref:`Field options <sample_order_status>`
+
+      :ref:`Enumerated values <sample_order_status>`
 
   sampleOrderStatus1SALTime
       The time the sample was marked as finalized by the processing site.
 
   sampleOrderStatus1SAL2
       The individual order status of sample 1SAL2.
-      :ref:`Field options <sample_order_status>`
+
+      :ref:`Enumerated values <sample_order_status>`
 
   sampleOrderStatus1SAL2Time
       The time the sample was marked as finalized by the processing site.
 
   sampleStatus1SS08
-      The result of biobank processing on sample 1SS08. The possible enumerations are (UNSET, RECEIVED, DISPOSED, CONSUMED, UNKNOWN, SAMPLE_NOT_RECEIVED, SAMPLE_NOT_PROCESSED, ACCESSIONING_ERROR, LAB_ACCIDENT, QNS_FOR_PROCESSING, QUALITY_ISSUE).
+      The result of biobank processing on sample 1SS08.
+
+      :ref:`Enumerated values <sample_status>`
 
   sampleStatus1SS08Time
       The datetime in UTC in which the biobank processed the sample.
 
   sampleStatus1SST8
-      The result of biobank processing on sample 1SST8. The possible enumerations are (UNSET, RECEIVED, DISPOSED, CONSUMED, UNKNOWN, SAMPLE_NOT_RECEIVED, SAMPLE_NOT_PROCESSED, ACCESSIONING_ERROR, LAB_ACCIDENT, QNS_FOR_PROCESSING, QUALITY_ISSUE).
+      The result of biobank processing on sample 1SST8.
+
+      :ref:`Enumerated values <sample_status>`
 
   sampleStatus1SST8Time
       The datetime in UTC in which the biobank processed the sample.
 
   sampleStatus2SST8
-      The result of biobank processing on sample 2SST8. The possible enumerations are (UNSET, RECEIVED, DISPOSED, CONSUMED, UNKNOWN, SAMPLE_NOT_RECEIVED, SAMPLE_NOT_PROCESSED, ACCESSIONING_ERROR, LAB_ACCIDENT, QNS_FOR_PROCESSING, QUALITY_ISSUE).
+      The result of biobank processing on sample 2SST8.
 
   sampleStatus2SST8Time
       The datetime in UTC in which the biobank processed the sample.
 
   sampleStatus2PST8
-      The result of biobank processing on sample 2PST8. The possible enumerations are (UNSET, RECEIVED, DISPOSED, CONSUMED, UNKNOWN, SAMPLE_NOT_RECEIVED, SAMPLE_NOT_PROCESSED, ACCESSIONING_ERROR, LAB_ACCIDENT, QNS_FOR_PROCESSING, QUALITY_ISSUE).
+      The result of biobank processing on sample 2PST8.
+
+      :ref:`Enumerated values <sample_status>`
 
   sampleStatus2PST8Time
       The datetime in UTC in which the biobank processed the sample.
 
   sampleStatus1HEP4
-      The result of biobank processing on sample 1HEP4. The possible enumerations are (UNSET, RECEIVED, DISPOSED, CONSUMED, UNKNOWN, SAMPLE_NOT_RECEIVED, SAMPLE_NOT_PROCESSED, ACCESSIONING_ERROR, LAB_ACCIDENT, QNS_FOR_PROCESSING, QUALITY_ISSUE).
+      The result of biobank processing on sample 1HEP4.
+
+      :ref:`Enumerated values <sample_status>`
 
   sampleStatus1HEP4Time
       The datetime in UTC in which the biobank processed the sample.
 
   sampleStatus1ED04
-      The result of biobank processing on sample 1ED04. The possible enumerations are (UNSET, RECEIVED, DISPOSED, CONSUMED, UNKNOWN, SAMPLE_NOT_RECEIVED, SAMPLE_NOT_PROCESSED, ACCESSIONING_ERROR, LAB_ACCIDENT, QNS_FOR_PROCESSING, QUALITY_ISSUE).
+      The result of biobank processing on sample 1ED04.
+
+      :ref:`Enumerated values <sample_status>`
 
   sampleStatus1ED04Time
       The datetime in UTC in which the biobank processed the sample.
 
   sampleStatus1ED10
-      The result of biobank processing on sample 1ED10. The possible enumerations are (UNSET, RECEIVED, DISPOSED, CONSUMED, UNKNOWN, SAMPLE_NOT_RECEIVED, SAMPLE_NOT_PROCESSED, ACCESSIONING_ERROR, LAB_ACCIDENT, QNS_FOR_PROCESSING, QUALITY_ISSUE).
+      The result of biobank processing on sample 1ED10.
+
+      :ref:`Enumerated values <sample_status>`
 
   sampleStatus1ED10Time
       The datetime in UTC in which the biobank processed the sample.
 
   sampleStatus2ED10
-      The result of biobank processing on sample 2ED10. The possible enumerations are (UNSET, RECEIVED, DISPOSED, CONSUMED, UNKNOWN, SAMPLE_NOT_RECEIVED, SAMPLE_NOT_PROCESSED, ACCESSIONING_ERROR, LAB_ACCIDENT, QNS_FOR_PROCESSING, QUALITY_ISSUE).
+      The result of biobank processing on sample 2ED10.
+
+      :ref:`Enumerated values <sample_status>`
 
   sampleStatus2ED10Time
       The datetime in UTC in which the biobank processed the sample.
 
   sampleStatus1UR10
-      The result of biobank processing on sample 1UR10. The possible enumerations are (UNSET, RECEIVED, DISPOSED, CONSUMED, UNKNOWN, SAMPLE_NOT_RECEIVED, SAMPLE_NOT_PROCESSED, ACCESSIONING_ERROR, LAB_ACCIDENT, QNS_FOR_PROCESSING, QUALITY_ISSUE).
+      The result of biobank processing on sample 1UR10.
+
+      :ref:`Enumerated values <sample_status>`
 
   sampleStatus1UR10Time
       The datetime in UTC in which the biobank processed the sample.
 
   sampleStatus1UR90
-      The result of biobank processing on sample 1UR90. The possible enumerations are (UNSET, RECEIVED, DISPOSED, CONSUMED, UNKNOWN, SAMPLE_NOT_RECEIVED, SAMPLE_NOT_PROCESSED, ACCESSIONING_ERROR, LAB_ACCIDENT, QNS_FOR_PROCESSING, QUALITY_ISSUE).
+      The result of biobank processing on sample 1UR90.
+
+      :ref:`Enumerated values <sample_status>`
 
   sampleStatus1UR90Time
       The datetime in UTC in which the biobank processed the sample.
 
   sampleStatus1ED02
-      The result of biobank processing on sample 1ED02. The possible enumerations are (UNSET, RECEIVED, DISPOSED, CONSUMED, UNKNOWN, SAMPLE_NOT_RECEIVED, SAMPLE_NOT_PROCESSED, ACCESSIONING_ERROR, LAB_ACCIDENT, QNS_FOR_PROCESSING, QUALITY_ISSUE).
+      The result of biobank processing on sample 1ED02.
+
+      :ref:`Enumerated values <sample_status>`
 
   sampleStatus1ED02Time
       The datetime in UTC in which the biobank processed the sample.
 
   sampleStatus1CFD9
-      The result of biobank processing on sample 1CFD9. The possible enumerations are (UNSET, RECEIVED, DISPOSED, CONSUMED, UNKNOWN, SAMPLE_NOT_RECEIVED, SAMPLE_NOT_PROCESSED, ACCESSIONING_ERROR, LAB_ACCIDENT, QNS_FOR_PROCESSING, QUALITY_ISSUE).
+      The result of biobank processing on sample 1CFD9.
+
+      :ref:`Enumerated values <sample_status>`
 
   sampleStatus1CFD9Time
       The datetime in UTC in which the biobank processed the sample.
 
   sampleStatus1PXR2
-      The result of biobank processing on sample 1PXR2. The possible enumerations are (UNSET, RECEIVED, DISPOSED, CONSUMED, UNKNOWN, SAMPLE_NOT_RECEIVED, SAMPLE_NOT_PROCESSED, ACCESSIONING_ERROR, LAB_ACCIDENT, QNS_FOR_PROCESSING, QUALITY_ISSUE).
+      The result of biobank processing on sample 1PXR2.
+
+      :ref:`Enumerated values <sample_status>`
 
   sampleStatus1PXR2Time
       The datetime in UTC in which the biobank processed the sample.
 
   sampleStatus1SAL
-      The result of biobank processing on sample 1SAL. The possible enumerations are (UNSET, RECEIVED, DISPOSED, CONSUMED, UNKNOWN, SAMPLE_NOT_RECEIVED, SAMPLE_NOT_PROCESSED, ACCESSIONING_ERROR, LAB_ACCIDENT, QNS_FOR_PROCESSING, QUALITY_ISSUE).
+      The result of biobank processing on sample 1SAL.
+
+      :ref:`Enumerated values <sample_status>`
 
   sampleStatus1SALTime
       The datetime in UTC in which the biobank processed the sample.
 
-  semanticVersionForPrimaryConsent
-      The human readable version of primary consent the participant signed.
-
-  numCompletedBaselinePPIModules
-      The count of how many of [questionnaireOnTheBasics, questionnaireOnOverallHealth, questionnaireOnLifestyle] the participant has completed.
-
-  numCompletedPPIModules
-      The count of all PPI modules the participant has completed.
-
   numBaselineSamplesArrived
       The count of samples the biobank has recorded from baseline sample list
 
-  :
+      * 1ED04
+      * 1ED10
+      * 1HEP4
+      * 1PST8
+      * 2PST8
+      * 1SST8
+      * 2SST8
+      * 1PS08
+      * 1SS08
+      * 1UR10
+      * 1CFD9
+      * 1PXR2
+      * 1UR90
+      * 2ED10
 
+  samplesToIsolateDNA
+      The sample status of any dna retrievable samples ordered for participant.
 
-    1ED04,
+      :ref:`Enumerated values <sample_status>`
 
+      DNA sample test codes
 
-    1ED10,
-
-
-    1HEP4,
-
-
-    1PST8,
-
-
-    2PST8,
-
-
-    1SST8,
-
-
-    2SST8,
-
-
-    1PS08,
-
-
-    1SS08,
-
-
-    1UR10,
-
-
-    1CFD9,
-
-
-    1PXR2,
-
-
-    1UR90,
-
-
-    2ED10
-
-    samplesToIsolateDNA
-      The sample status of any dna retrievable samples ordered for participant. The possible enumerations are (UNSET, RECEIVED, DISPOSED, CONSUMED, UNKNOWN, SAMPLE_NOT_RECEIVED, SAMPLE_NOT_PROCESSED, ACCESSIONING_ERROR, LAB_ACCIDENT, QNS_FOR_PROCESSING, QUALITY_ISSUE).
-
-    dna_sample_test_codes
-      :
-
-      1ED10,
-
-      2ED10,
-
-      1ED04,
-
-      1SAL,
-
-      1SAL2
-
-
-  withdrawalStatus
-      The satus of withdrawal for a participant. The possible enumerations are (NOT_WITHDRAWN, NO_USE).
-
-  withdrawalReason
-      Possible enumerations are (UNSET, FRAUDULENT, DUPLICATE, TEST). If withdrawalReason is UNSET the participant is self withdrawn, any other enumeration means the participant was administratively withdrawn.
-
-  withdrawalAuthored
-      The time the participant withdrew from program participation.
-
-  suspensionStatus
-      The satus of suspension for a participant. The possible enumerations are (NOT_SUSPENDED, NO_CONTACT).
-
-  participantOrigin
-      The sign up portal the participant used to enroll (Vibrent, Care Evolution).
-
-  patientStatus
-      A flag available for sites of in person enrollment. A participant can have a status from multiple sites.
-    example
-     .. code-block:: json
-
-            patientStatus: {
-            “PITT_UPMC”: “YES”,
-            “PITT_TEMPLE”: “NO_ACCESS”,
-            “PITT_SOMETHING”: “NO”
-            }
-
-    .. note::
-      The following values are available.
-        |    Yes: Confirmed in EHR system.
-        |    No: Not found in EHR system.
-        |    No Access: Unable to check EHR system.
-        |    Unknown: Inconclusive search results.
-        |    Not Applicable (will apply to DVs only).
+      * 1ED10
+      * 2ED10
+      * 1ED04
+      * 1SAL
+      * 1SAL2
 
