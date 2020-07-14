@@ -196,7 +196,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         modules = list()
         consents = list()
 
-        consent_modules = {
+        consent_module_question_map = {
             # module: question code string
             'ConsentPII': None,
             'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
@@ -218,15 +218,15 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 })
 
                 # check if this is a module with consents.
-                if module_name not in consent_modules:
+                if module_name not in consent_module_question_map:
                     continue
 
                 qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
                 if qnans:
                     qnan = BQRecord(schema=None, data=qnans)
                     consent = {
-                        'consent': consent_modules[module_name],
-                        'consent_id': self._lookup_code_id(consent_modules[module_name], ro_session),
+                        'consent': consent_module_question_map[module_name],
+                        'consent_id': self._lookup_code_id(consent_module_question_map[module_name], ro_session),
                         'consent_date': parser.parse(qnan['authored']).date() if qnan['authored'] else None,
                         'consent_module': module_name,
                         'consent_module_authored': row.authored,
@@ -238,9 +238,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                         consent['consent_value'] = 'ConsentPermission_Yes'
                         consent['consent_value_id'] = self._lookup_code_id('ConsentPermission_Yes', ro_session)
                     else:
-                        consent['consent_value'] = qnan.get(consent_modules[module_name], None)
+                        consent['consent_value'] = qnan.get(consent_module_question_map[module_name], None)
                         consent['consent_value_id'] = self._lookup_code_id(
-                            qnan.get(consent_modules[module_name], None), ro_session)
+                            qnan.get(consent_module_question_map[module_name], None), ro_session)
 
                     consents.append(consent)
 
@@ -626,7 +626,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         alt_time = max(
             summary.get('enrollment_member', datetime.datetime.min),
             max(mod['mod_created'] for mod in summary['modules'] if mod['mod_baseline_module'] == 1),
-            max(pm['pm_finalized'] for pm in summary['pm'])
+            max(pm['pm_finalized'] for pm in summary['pm']) if 'pm' in summary else datetime.datetime.min
         )
 
         if data['enrollment_core_ordered']:
