@@ -13,7 +13,7 @@ from rdr_service.api_util import EXPORTER
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
 from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status
 from rdr_service.offline.base_pipeline import send_failure_alert
-from rdr_service.offline.bigquery_sync import rebuild_bigquery_handler, sync_bigquery_handler, \
+from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
     daily_rebuild_bigquery_handler
 from rdr_service.offline.enrollment_check import check_enrollment
 from rdr_service.offline.exclude_ghost_participants import mark_ghost_participants
@@ -243,16 +243,16 @@ def genomic_gem_a3_workflow():
     return '{"success": "true"}'
 
 
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def bigquery_rebuild_cron():
-    """ this should always be a manually run job, but we have to schedule it at least once a year. """
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    rebuild_bigquery_handler()
-    return '{"success": "true"}'
+# @app_util.auth_required_cron
+# @_alert_on_exceptions
+# def bigquery_rebuild_cron():
+#     """ this should always be a manually run job, but we have to schedule it at least once a year. """
+#     now = datetime.utcnow()
+#     if now.day == 0o1 and now.month == 0o1:
+#         logging.info("skipping the scheduled run.")
+#         return '{"success": "true"}'
+#     rebuild_bigquery_handler()
+#     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
