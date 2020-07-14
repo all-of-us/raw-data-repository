@@ -200,6 +200,7 @@ Participant Consent and Questionnaire Details
   consentForStudyEnrollmentTime
       indicates the time at which enrollment consent has been received (ISO-8601 time)
 
+
   consentForElectronicHealthRecords
       indicates whether electronic health records (EHR) consent has been received
 
@@ -244,6 +245,17 @@ Participant Consent and Questionnaire Details
   consentForGenomicsRORAuthored
       indicates the time the participant signed the genomic return of results.
 
+  ehrConsentExpireStatus
+      indicates whether the EHR consent has expired per rules for impacted states (Maine, Maryland, Montana, Wyoming)
+      For HPO participants, the EHR consent is based on the HPO state and not the participant's residence
+
+      :ref:`Enumerated values <ehr_consent_expire_status>`
+
+  ehrConsentExpireTime
+      indicates the time at which the RDR received notice of the EHR consent which may be subject to expiration in certain states
+
+  ehrConsentExpireAuthored
+      indicates the time at which the participant completed an EHR consent which may be qsubject to expiration in certain states
 
   questionnaireOnOverallHealth
       indicates status for Overall Health PPI module.

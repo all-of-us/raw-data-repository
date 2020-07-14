@@ -182,3 +182,11 @@ suspensionStatus
 
   * NOT_SUSPENDED
   * NO_CONTACT
+
+.. _ehr_consent_expire_status:
+
+ehrConsentExpireStatus
+------------------------------------------------------------
+  * UNSET
+  * NOT_EXPIRED
+  * EXPIRED
