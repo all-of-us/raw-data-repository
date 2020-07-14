@@ -334,6 +334,14 @@ Participant Consent and Questionnaire Details
   questionnaireOnTheBasicsAuthored
       The UTC Date time of when the participant completed the basics questionnaire.
 
+  questionnaireOnDnaProgram
+      indicates the status of a questionnaire of the DNA program that a participant can fill out
+
+      :ref:`Enumerated values <questionnaire_status>`
+
+  questionnaireOnDnaAuthored
+      The UTC Date time of when the participant completed the DNA program questionnaire
+
   questionnaireOnCopeMay, questionnaireOnCopeJune, questionnaireOnCopeJuly
       indicates the status of a periodic questionnaire on COVID Participant Experience (COPE) that a participant can fill out.
 
