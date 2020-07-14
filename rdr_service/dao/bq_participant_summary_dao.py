@@ -603,7 +603,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :param summary: summary data
         :return: dict
         """
-        if not summary.get('enrollment_status', None) or \
+        if 'biobank_orders' not in summary or not summary.get('enrollment_status', None) or \
                 not summary.get('enrollment_member', None):
             return {}
 
