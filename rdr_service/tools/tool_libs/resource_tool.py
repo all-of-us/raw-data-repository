@@ -18,18 +18,20 @@ from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
-from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator, rebuild_bq_participant
-from rdr_service.dao.bq_pdr_participant_summary_dao import BQPDRParticipantSummaryGenerator
+from rdr_service.dao.bq_participant_summary_dao import rebuild_bq_participant
+from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
+from rdr_service.dao.resource_dao import ResourceDataDao
+from rdr_service.model.participant import Participant
 
 _logger = logging.getLogger("rdr_logger")
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
-tool_cmd = "pdr-tool"
-tool_desc = "Tools for updating RDR data in PDR"
+tool_cmd = "resource-tool"
+tool_desc = "Tools for updating resource records in RDR"
 
 
-class PDRParticipantRebuildClass(object):
+class ResourceClass(object):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
@@ -39,16 +41,24 @@ class PDRParticipantRebuildClass(object):
         self.gcp_env = gcp_env
 
 
-    def update_single_pid(self, pid, ps_bqgen=None, pdr_bqgen=None):
+    def update_single_pid(self, pid):
         """
         Update a single pid
         :param pid: participant id
         :return: 0 if successful otherwise 1
         """
-        try:
-            rebuild_bq_participant(pid, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen, project_id=self.gcp_env.project)
-        except NotFound:
-            return 1
+        if self.gcp_env.project == 'localhost':
+            try:
+                rebuild_bq_participant(pid, project_id=self.gcp_env.project)
+                rebuild_participant_summary_resource(pid)
+            except NotFound:
+                return 1
+            return 0
+
+        params = {'p_id': pid}
+        task = GCPCloudTask('rebuild_one_participant_task', project_id=self.gcp_env.project, queue='resource-tasks',
+                            payload=params, in_seconds=5)
+        task.execute()
         return 0
 
     def update_batch(self, pids):
@@ -108,11 +118,8 @@ class PDRParticipantRebuildClass(object):
         if not pids:
             return 1
 
-        if self.args.batch:
+        if self.args.batch or self.args.all_pids:
             return self.update_batch(pids)
-
-        ps_bqgen = BQParticipantSummaryGenerator()
-        pdr_bqgen = BQPDRParticipantSummaryGenerator()
 
         total_pids = len(pids)
         count = 0
@@ -121,7 +128,7 @@ class PDRParticipantRebuildClass(object):
         for pid in pids:
             count += 1
 
-            if self.update_single_pid(pid, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen) != 0:
+            if self.update_single_pid(pid) != 0:
                 errors += 1
                 if self.args.debug:
                     _logger.error(f'PID {pid} not found.')
@@ -145,9 +152,12 @@ class PDRParticipantRebuildClass(object):
         clr = self.gcp_env.terminal_colors
         pids = None
 
-        if not self.args.from_file and not self.args.pid:
+        if not self.args.from_file and not self.args.pid and not self.args.all_pids:
             _logger.error('Nothing to do')
             return 1
+
+        self.gcp_env.activate_sql_proxy()
+        _logger.info('')
 
         _logger.info(clr.fmt('\nRebuild Participant Summaries for PDR:', clr.custom_fg_color(156)))
         _logger.info('')
@@ -166,16 +176,20 @@ class PDRParticipantRebuildClass(object):
             pids = [int(i) for i in pids]
             _logger.info('  PIDs File             : {0}'.format(clr.fmt(self.args.from_file)))
             _logger.info('  Total PIDs            : {0}'.format(clr.fmt(len(pids))))
+        elif self.args.all_pids:
+            dao = ResourceDataDao()
+            with dao.session() as session:
+                results = session.query(Participant.participantId).all()
+                pids = [p.participantId for p in results]
+                _logger.info('  Rebuild All PIDs      : {0}'.format(clr.fmt('Yes')))
+                _logger.info('  Total PIDs            : {0}'.format(clr.fmt(len(pids))))
         else:
             _logger.info('  PID                   : {0}'.format(clr.fmt(self.args.pid)))
 
         _logger.info('=' * 90)
         _logger.info('')
 
-        self.gcp_env.activate_sql_proxy()
-        _logger.info('')
-
-        if self.args.from_file:
+        if self.args.from_file or self.args.all_pids:
             return self.update_many_pids(pids)
 
         if self.args.pid:
@@ -207,6 +221,8 @@ def run():
     # Rebuild PDR participants
     rebuild_parser = subparser.add_parser("rebuild-pids")
     rebuild_parser.add_argument("--pid", help="rebuild single participant id", type=int, default=None)  # noqa
+    rebuild_parser.add_argument("--all-pids", help="rebuild all participants", default=False,
+                                action="store_true")  # noqa
     rebuild_parser.add_argument("--from-file", help="rebuild participant ids from a file with a list of pids",
                                 default=None)  # noqa
     rebuild_parser.add_argument("--batch", help="Submit pids in batch to Cloud Tasks", default=False,
@@ -217,7 +233,7 @@ def run():
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
 
         if hasattr(args, 'pid') and hasattr(args, 'from_file'):
-            process = PDRParticipantRebuildClass(args, gcp_env)
+            process = ResourceClass(args, gcp_env)
             exit_code = process.run()
         else:
             _logger.info('Please select an option to run. For help use "pdr-tool --help".')
