@@ -10,6 +10,7 @@ from rdr_service.resource.helpers import DateCollection
 from rdr_service.code_constants import CONSENT_GROR_YES_CODE, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE,\
     DVEHR_SHARING_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES, GROR_CONSENT_QUESTION_CODE
 from rdr_service.dao.resource_dao import ResourceDataDao
+# TODO: Replace BQRecord here with a Resource alternative.
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum, \
     BQModuleStatusEnum, COHORT_1_CUTOFF, COHORT_2_CUTOFF, BQConsentCohort
@@ -22,6 +23,23 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus
 from rdr_service.resource import generators, schemas
+
+
+_consent_module_question_map = {
+    # module: question code string
+    'ConsentPII': None,
+    'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
+    'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
+    'GROR': 'ResultsConsent_CheckDNA'
+}
+
+# _consent_expired_question_map must contain every module ID from _consent_module_question_map.
+_consent_expired_question_map = {
+    'ConsentPII': None,
+    'DVEHRSharing': None,
+    'EHRConsentPII': 'EHRConsentPII_ConsentExpired',
+    'GROR': None
+}
 
 
 class ParticipantSummaryGenerator(generators.BaseGenerator):
@@ -198,14 +216,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         modules = list()
         consents = list()
 
-        consent_module_question_map = {
-            # module: question code string
-            'ConsentPII': None,
-            'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
-            'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
-            'GROR': 'ResultsConsent_CheckDNA'
-        }
-
         if results:
             for row in results:
                 module_name = self._lookup_code_value(row.codeId, ro_session)
@@ -220,15 +230,15 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 })
 
                 # check if this is a module with consents.
-                if module_name not in consent_module_question_map:
+                if module_name not in _consent_module_question_map:
                     continue
 
                 qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
                 if qnans:
                     qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
                     consent = {
-                        'consent': consent_module_question_map[module_name],
-                        'consent_id': self._lookup_code_id(consent_module_question_map[module_name], ro_session),
+                        'consent': _consent_module_question_map[module_name],
+                        'consent_id': self._lookup_code_id(_consent_module_question_map[module_name], ro_session),
                         'consent_date': parser.parse(qnan['authored']).date() if qnan['authored'] else None,
                         'consent_module': module_name,
                         'consent_module_authored': row.authored,
@@ -240,9 +250,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         consent['consent_value'] = 'ConsentPermission_Yes'
                         consent['consent_value_id'] = self._lookup_code_id('ConsentPermission_Yes', ro_session)
                     else:
-                        consent['consent_value'] = qnan.get(consent_module_question_map[module_name], None)
+                        consent['consent_value'] = qnan.get(_consent_module_question_map[module_name], None)
                         consent['consent_value_id'] = self._lookup_code_id(
-                            qnan.get(consent_module_question_map[module_name], None), ro_session)
+                            qnan.get(_consent_module_question_map[module_name], None), ro_session)
+                        consent['consent_expired'] = \
+                            qnan.get(_consent_expired_question_map[module_name] or 'None', None)
 
                     consents.append(consent)
 
