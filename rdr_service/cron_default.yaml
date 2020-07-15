@@ -59,6 +59,11 @@ cron:
   schedule: every monday 07:00
   timezone: America/New_York
   target: offline
+- description: Rebuild BigQuery Data (Manual)
+  url: /offline/BigQueryRebuild
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
 - description: Daily Rebuild BigQuery Data
   url: /offline/BigQueryDailyRebuild
   timezone: America/New_York
