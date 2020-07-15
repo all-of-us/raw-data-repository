@@ -79,7 +79,8 @@ class BQConsentSchema(BQSchema):
     consent_value_id = BQField('consent_value_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     consent_module = BQField('consent_module', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     consent_module_authored = BQField('consent_module_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
-
+    consent_module_created = BQField('consent_module_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    consent_expired = BQField('consent_expired', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 class BQRaceSchema(BQSchema):
     """

@@ -826,11 +826,11 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
             if member.biobankId == '100004':
-                # 100004 : Included, Invalid SAB
+                # 100004 : Included, NA is now a valid SAB
                 self.assertEqual(0, member.nyFlag)
                 self.assertEqual('100004', member.collectionTubeId)
                 self.assertEqual('NA', member.sexAtBirth)
-                self.assertEqual(GenomicSetMemberStatus.INVALID, member.validationStatus)
+                self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
             if member.biobankId == '100006':
                 # 100006 : Included, Invalid consent
@@ -911,7 +911,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(100004, int(rows[4][ExpectedCsvColumns.SAMPLE_ID]))
             self.assertEqual("NA", rows[4][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[4][ExpectedCsvColumns.NY_FLAG])
-            self.assertEqual("N", rows[4][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("Y", rows[4][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[4][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_array", rows[4][ExpectedCsvColumns.GENOME_TYPE])
 
@@ -919,7 +919,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(100004, int(rows[5][ExpectedCsvColumns.SAMPLE_ID]))
             self.assertEqual("NA", rows[5][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[5][ExpectedCsvColumns.NY_FLAG])
-            self.assertEqual("N", rows[5][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("Y", rows[5][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("N", rows[5][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_wgs", rows[5][ExpectedCsvColumns.GENOME_TYPE])
 
@@ -961,7 +961,7 @@ class GenomicPipelineTest(BaseTestCase):
     def test_c2_participant_workflow(self):
         # Test for Cohort 2 workflow
         # create test samples
-        test_biobank_ids = (100001, 100002, 100003, 100004)
+        test_biobank_ids = (100001, 100002, 100003, 100004, 100005)
         fake_datetime_old = datetime.datetime(2019, 12, 31, tzinfo=pytz.utc)
         fake_datetime_new = datetime.datetime(2020, 1, 5, tzinfo=pytz.utc)
 
@@ -1095,6 +1095,30 @@ class GenomicPipelineTest(BaseTestCase):
                     self._make_stored_sample(**sample_args1)
                     self._make_stored_sample(**sample_args2)
 
+            elif bid == 100005:
+                # ED04 and no SAL2 -> Use ED04
+                sample_1 = self._make_ordered_sample(_test="1ED04", _collected=col_date_1)
+
+                self._make_biobank_order(biobankOrderId=f'W{bid}-01',
+                                         participantId=p.participantId,
+                                         collectedSiteId=1,
+                                         identifiers=[test_identifier],
+                                         samples=[sample_1])
+
+                insert_dtm = fake_datetime_old
+
+                sample_args1 = {
+                    'test': '1ED04',
+                    'confirmed': fake_datetime_new,
+                    'created': fake_datetime_old,
+                    'biobankId': bid,
+                    'biobankOrderIdentifier': test_identifier.value,
+                    'biobankStoredSampleId': 10000501,
+                }
+
+                with clock.FakeClock(insert_dtm):
+                    self._make_stored_sample(**sample_args1)
+
             else:
                 self._make_biobank_order(biobankOrderId=f'W{bid}',
                                          participantId=p.participantId,
@@ -1121,7 +1145,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Should be a aou_wgs and aou_array for each pid
         new_genomic_members = self.member_dao.get_all()
-        self.assertEqual(4, len(new_genomic_members))
+        self.assertEqual(6, len(new_genomic_members))
 
         # Test member data
         member_genome_types = {_member.biobankId: list() for _member in new_genomic_members}
@@ -1129,7 +1153,7 @@ class GenomicPipelineTest(BaseTestCase):
             member_genome_types[member.biobankId].append(member.genomeType)
 
             if member.biobankId == '100001':
-                # 100002 : Included, Valid
+                # 100001 : Included, Valid
                 self.assertEqual(0, member.nyFlag)
                 self.assertEqual('10000102', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
@@ -1137,9 +1161,17 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual('N', member.ai_an)
 
             if member.biobankId == '100002':
-                # 100003 : Included, Valid
+                # 100002 : Included, Valid
                 self.assertEqual(1, member.nyFlag)
                 self.assertEqual('10000201', member.collectionTubeId)
+                self.assertEqual('F', member.sexAtBirth)
+                self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
+                self.assertEqual('N', member.ai_an)
+
+            if member.biobankId == '100005':
+                # 100005 : Included, Valid
+                self.assertEqual(1, member.nyFlag)
+                self.assertEqual('10000501', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)

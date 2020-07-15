@@ -13,8 +13,8 @@ from rdr_service.api_util import EXPORTER
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
 from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status
 from rdr_service.offline.base_pipeline import send_failure_alert
-from rdr_service.offline.bigquery_sync import rebuild_bigquery_handler, sync_bigquery_handler, \
-    daily_rebuild_bigquery_handler
+from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
+    daily_rebuild_bigquery_handler, rebuild_bigquery_handler
 from rdr_service.offline.enrollment_check import check_enrollment
 from rdr_service.offline.exclude_ghost_participants import mark_ghost_participants
 from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics

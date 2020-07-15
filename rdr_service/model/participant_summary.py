@@ -20,7 +20,8 @@ from rdr_service.participant_enums import (
     WithdrawalReason,
     WithdrawalStatus,
     ParticipantCohort,
-    ParticipantCohortPilotFlag)
+    ParticipantCohortPilotFlag,
+    ConsentExpireStatus)
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
 # participants.
@@ -305,6 +306,11 @@ class ParticipantSummary(Base):
     ehrStatus = Column("ehr_status", Enum(EhrStatus), default=EhrStatus.NOT_PRESENT)
     ehrReceiptTime = Column("ehr_receipt_time", UTCDateTime)
     ehrUpdateTime = Column("ehr_update_time", UTCDateTime)
+
+    ehrConsentExpireStatus = Column("ehr_consent_expire_status", Enum(ConsentExpireStatus),
+                                    default=ConsentExpireStatus.UNSET)
+    ehrConsentExpireTime = Column("ehr_consent_expire_time", UTCDateTime)
+    ehrConsentExpireAuthored = Column("ehr_consent_expire_authored", UTCDateTime)
 
     # Withdrawal from the study of the participant's own accord.
     withdrawalStatus = Column("withdrawal_status", Enum(WithdrawalStatus), nullable=False)
