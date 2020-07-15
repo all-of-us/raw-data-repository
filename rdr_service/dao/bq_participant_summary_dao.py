@@ -24,6 +24,22 @@ from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, 
 from rdr_service.resource.helpers import DateCollection
 
 
+_consent_module_question_map = {
+    # module: question code string
+    'ConsentPII': None,
+    'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
+    'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
+    'GROR': 'ResultsConsent_CheckDNA'
+}
+
+# _consent_expired_question_map must contain every module ID from _consent_module_question_map.
+_consent_expired_question_map = {
+    'ConsentPII': None,
+    'DVEHRSharing': None,
+    'EHRConsentPII': 'EHRConsentPII_ConsentExpired',
+    'GROR': None
+}
+
 class BQParticipantSummaryGenerator(BigQueryGenerator):
     """
     Generate a Participant Summary BQRecord object
@@ -196,14 +212,6 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         modules = list()
         consents = list()
 
-        consent_module_question_map = {
-            # module: question code string
-            'ConsentPII': None,
-            'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
-            'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
-            'GROR': 'ResultsConsent_CheckDNA'
-        }
-
         if results:
             for row in results:
                 module_name = self._lookup_code_value(row.codeId, ro_session)
@@ -218,15 +226,15 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 })
 
                 # check if this is a module with consents.
-                if module_name not in consent_module_question_map:
+                if module_name not in _consent_module_question_map:
                     continue
 
                 qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
                 if qnans:
                     qnan = BQRecord(schema=None, data=qnans)
                     consent = {
-                        'consent': consent_module_question_map[module_name],
-                        'consent_id': self._lookup_code_id(consent_module_question_map[module_name], ro_session),
+                        'consent': _consent_module_question_map[module_name],
+                        'consent_id': self._lookup_code_id(_consent_module_question_map[module_name], ro_session),
                         'consent_date': parser.parse(qnan['authored']).date() if qnan['authored'] else None,
                         'consent_module': module_name,
                         'consent_module_authored': row.authored,
@@ -238,9 +246,11 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                         consent['consent_value'] = 'ConsentPermission_Yes'
                         consent['consent_value_id'] = self._lookup_code_id('ConsentPermission_Yes', ro_session)
                     else:
-                        consent['consent_value'] = qnan.get(consent_module_question_map[module_name], None)
+                        consent['consent_value'] = qnan.get(_consent_module_question_map[module_name], None)
                         consent['consent_value_id'] = self._lookup_code_id(
-                            qnan.get(consent_module_question_map[module_name], None), ro_session)
+                            qnan.get(_consent_module_question_map[module_name], None), ro_session)
+                        consent['consent_expired'] = \
+                            qnan.get(_consent_expired_question_map[module_name] or 'None', None)
 
                     consents.append(consent)
 

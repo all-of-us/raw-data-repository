@@ -95,6 +95,7 @@ class ConsentSchema(MarshmallowSchema):
     consent_module = fields.String(validate=validate.Length(max=80))
     consent_module_authored = fields.DateTime()
     consent_module_created = fields.DateTime()
+    consent_expired = fields.String(validate=validate.Length(max=80))
 
     class Meta:
         ordered = True
