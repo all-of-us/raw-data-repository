@@ -106,7 +106,7 @@ Participant Enrollment Information
       :ref:`Enumerated values <consent_cohort>`
 
   cohort2PilotFlag
-      indicates whether a participant was designated for the genomics pilot.  Only participants in Cohort 2 were designated.
+      indicates whether a participant was designated for the genomics pilot.  The pilot participants were only drawn from Cohort 2.
 
       :ref:`Enumerated values <cohort_2_pilot_flag>`
 
@@ -339,7 +339,7 @@ Participant Consent and Questionnaire Details
 
       :ref:`Enumerated values <questionnaire_status>`
 
-  questionnaireOnDnaAuthored
+  questionnaireOnDnaProgramAuthored
       The UTC Date time of when the participant completed the DNA program questionnaire
 
   questionnaireOnCopeMay, questionnaireOnCopeJune, questionnaireOnCopeJuly
