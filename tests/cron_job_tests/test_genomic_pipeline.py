@@ -4,6 +4,8 @@ import os
 import mock
 
 import pytz
+from dateutil.parser import parse
+
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file, list_blobs
@@ -36,7 +38,7 @@ from rdr_service.model.genomics import (
     GenomicGCValidationMetrics)
 from rdr_service.model.participant import Participant
 from rdr_service.model.code import Code
-from rdr_service.model.participant_summary import ParticipantRaceAnswers
+from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
 from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import (
     SampleStatus,
@@ -424,6 +426,7 @@ class GenomicPipelineTest(BaseTestCase):
         gem_a1_manifest_job_id=None,
         cvl_w1_manifest_job_id=None,
         genomic_workflow_state=None,
+        genome_center=None,
     ):
         genomic_set_member = GenomicSetMember()
         genomic_set_member.genomicSetId = genomic_set_id
@@ -445,6 +448,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.gemA1ManifestJobRunId = gem_a1_manifest_job_id
         genomic_set_member.cvlW1ManifestJobRunId = cvl_w1_manifest_job_id
         genomic_set_member.genomicWorkflowState = genomic_workflow_state
+        genomic_set_member.gcSiteId = genome_center
 
         member_dao = GenomicSetMemberDao()
         member_dao.insert(genomic_set_member)
@@ -527,7 +531,8 @@ class GenomicPipelineTest(BaseTestCase):
                 recon_gc_manifest_job_id=kwargs.get('recon_gc_man_id'),
                 gem_a1_manifest_job_id=kwargs.get('gem_a1_run_id'),
                 cvl_w1_manifest_job_id=kwargs.get('cvl_w1_run_id'),
-                genomic_workflow_state=kwargs.get('genomic_workflow_state')
+                genomic_workflow_state=kwargs.get('genomic_workflow_state'),
+                genome_center=kwargs.get('genome_center'),
             )
 
     def _update_site_states(self):
@@ -1348,8 +1353,18 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
                                                 array_participants=range(1, 4),
                                                 recon_gc_man_id=1,
+                                                genome_center='JH',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
+
+        # Set starting RoR authored
+        ps_list = self.summary_dao.get_all()
+        ror_start = datetime.datetime(2020, 7, 11, 0, 0, 0, 0)
+        for p in ps_list:
+            p.consentForGenomicsRORAuthored = ror_start
+            self.summary_dao.update(p)
+
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name,
                                          folder=config.GENOMIC_AW2_SUBFOLDERS[1])
@@ -1388,12 +1403,16 @@ class GenomicPipelineTest(BaseTestCase):
                 GenomicSetMember.biobankId,
                 GenomicSetMember.sampleId,
                 GenomicSetMember.sexAtBirth,
+                ParticipantSummary.consentForGenomicsROR,
+                ParticipantSummary.consentForGenomicsRORAuthored,
                 GenomicSetMember.nyFlag,
                 GenomicSetMember.gemA1ManifestJobRunId,
-                GenomicGCValidationMetrics.siteId,
+                GenomicSetMember.gcSiteId,
+                GenomicGCValidationMetrics.chipwellbarcode,
                 GenomicSetMember.genomicWorkflowState).filter(
                 GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
                 GenomicSet.id == GenomicSetMember.genomicSetId,
+                ParticipantSummary.participantId == GenomicSetMember.participantId,
                 GenomicSetMember.id == 1
             ).one()
 
@@ -1405,9 +1424,13 @@ class GenomicPipelineTest(BaseTestCase):
             "biobank_id",
             "sample_id",
             "sex_at_birth",
+            "consent_for_ror",
+            "date_of_consent_for_ror",
+            "chipwellbarcode",
+            "genome_center",
         )
         sub_folder = config.GENOMIC_GEM_A1_MANIFEST_SUBFOLDER
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_Manifest_{a1f}.csv')) as csv_file:
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_A1_manifest_{a1f}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             missing_cols = set(expected_gem_columns) - set(csv_reader.fieldnames)
             self.assertEqual(0, len(missing_cols))
@@ -1416,11 +1439,15 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(test_member_1.biobankId, rows[0]['biobank_id'])
             self.assertEqual(test_member_1.sampleId, rows[0]['sample_id'])
             self.assertEqual(test_member_1.sexAtBirth, rows[0]['sex_at_birth'])
+            self.assertEqual("yes", rows[0]['consent_for_ror'])
+            self.assertEqual(test_member_1.consentForGenomicsRORAuthored, parse(rows[0]['date_of_consent_for_ror']))
+            self.assertEqual(test_member_1.chipwellbarcode, rows[0]['chipwellbarcode'])
+            self.assertEqual(test_member_1.gcSiteId, rows[0]['genome_center'])
 
         # Array
         file_record = self.file_processed_dao.get(2)  # remember, GC Metrics is #1
         self.assertEqual(5, file_record.runId)
-        self.assertEqual(f'{sub_folder}/AoU_GEM_Manifest_{a1f}.csv', file_record.fileName)
+        self.assertEqual(f'{sub_folder}/AoU_GEM_A1_manifest_{a1f}.csv', file_record.fileName)
 
         # Test the job result
         run_obj = self.job_run_dao.get(4)
@@ -1447,7 +1474,7 @@ class GenomicPipelineTest(BaseTestCase):
             genomic_pipeline.gem_a1_manifest_workflow()  # run_id 7
         a1f = reconsent_time.strftime("%Y-%m-%d-%H-%M-%S")
         # Test record was included again
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_Manifest_{a1f}.csv')) as csv_file:
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_A1_manifest_{a1f}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             rows = list(csv_reader)
             self.assertEqual(1, len(rows))

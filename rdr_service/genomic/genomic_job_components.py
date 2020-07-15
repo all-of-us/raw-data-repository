@@ -1527,7 +1527,7 @@ class ManifestDefinitionProvider:
             job_run_field='gemA1ManifestJobRunId',
             source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A1),
             destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{GENOMIC_GEM_A1_MANIFEST_SUBFOLDER}/AoU_GEM_Manifest_{now_formatted}.csv',
+            output_filename=f'{GENOMIC_GEM_A1_MANIFEST_SUBFOLDER}/AoU_GEM_A1_manifest_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A1),
         )
 
@@ -1625,7 +1625,13 @@ class ManifestDefinitionProvider:
                         GenomicSetMember.biobankId,
                         GenomicSetMember.sampleId,
                         GenomicSetMember.sexAtBirth,
-                        ParticipantSummary.consentForGenomicsROR,
+                        #ParticipantSummary.consentForGenomicsROR,
+                        sqlalchemy.func.IF(ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
+                                           sqlalchemy.sql.expression.literal("yes"),
+                                           sqlalchemy.sql.expression.literal("no")),
+                        ParticipantSummary.consentForGenomicsRORAuthored,
+                        GenomicGCValidationMetrics.chipwellbarcode,
+                        GenomicSetMember.gcSiteId,
                     ]
                 ).select_from(
                     sqlalchemy.join(
@@ -1692,6 +1698,10 @@ class ManifestDefinitionProvider:
                 'biobank_id',
                 'sample_id',
                 "sex_at_birth",
+                "consent_for_ror",
+                "date_of_consent_for_ror",
+                "chipwellbarcode",
+                "genome_center",
             )
         elif manifest_type == GenomicManifestTypes.GEM_A3:
             columns = (
