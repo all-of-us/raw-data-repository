@@ -319,7 +319,7 @@ class GenomicFileIngester:
                 if member is None:
                     logging.warning(f'Invalid sample ID: {sample_id}')
                     continue
-                member.gemPass = row['Success / Fail']
+                member.gemPass = row['success']
 
                 member.gemA2ManifestJobRunId = self.job_run_id
 
@@ -510,7 +510,7 @@ class GenomicFileValidator:
             "biobankid",
             "sampleid",
             "success",
-            "date_of_import",
+            "dateofimport",
         )
 
         self.CVL_W2_SCHEMA = (

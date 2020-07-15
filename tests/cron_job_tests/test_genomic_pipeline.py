@@ -1509,6 +1509,8 @@ class GenomicPipelineTest(BaseTestCase):
             if member.id in (1, 2):
                 self.assertEqual("Y", member.gemPass)
                 self.assertEqual(2, member.gemA2ManifestJobRunId)
+                # TODO: add this field in genomic_set_member in separate PR
+                # self.assertEqual("2020-04-29 00:00:00", member.gemDateOfImport)
             if member.id == 3:
                 self.assertEqual("N", member.gemPass)
 
