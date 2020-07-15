@@ -13,7 +13,7 @@ _python()
 
 
     # These are the specific tools we support
-    tools="--help migrate-bq verify oauth-token mysql app-engine alembic sync-consents edit-config fix-dup-pids genomic"
+    tools="--help migrate-bq verify oauth-token mysql app-engine alembic sync-consents edit-config fix-dup-pids genomic resource"
     # These are the standard options all tools support.
     stdopts="--help --debug --log-file --project --account --service-account"
 
@@ -167,6 +167,18 @@ _python()
             COMPREPLY=( $(compgen -W "${tools}" -- ${cur}) )
             return 0
             ;;
+        resource)
+            # These are options specific to this tool.
+            local toolopts="rebuild-pids"
+            COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
+            return 0
+            ;;
+        rebuild-pids)
+          # These are options specific to this tool.
+          local toolopts="--pid --batch --all-pids --from-file"
+          COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
+          return 0
+          ;;
         *)
         ;;
     esac
