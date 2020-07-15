@@ -88,6 +88,11 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         self.assertEqual(summary.get('enrollmentStatus'), 'MEMBER')
         self.assertEqual(summary.get('ehrConsentExpireStatus'), 'UNSET')
 
+        summary2 = self.send_get("ParticipantSummary?_count=25&_offset=0&_sort%3Adesc=consentForStudyEnrollmentAuthored"
+                                 "&consentForElectronicHealthRecords=SUBMITTED&ehrConsentExpireStatus=UNSET"
+                                 "&_includeTotal=true")
+        self.assertEqual(len(summary2.get('entry')), 1)
+
         # send EHRConsentPII_ConsentExpired_Yes questionnaire response
         # response payload sample
         # {
@@ -154,6 +159,12 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         self.assertEqual(summary.get('ehrConsentExpireTime'), '2020-04-12T00:00:00')
         self.assertEqual(summary.get('ehrConsentExpireAuthored'), '2020-03-20T00:00:00')
 
+        # test participant summary api ehr consent expire status returns right info
+        summary2 = self.send_get("ParticipantSummary?_count=25&_offset=0&_sort%3Adesc=consentForStudyEnrollmentAuthored"
+                                 "&consentForElectronicHealthRecords=SUBMITTED_NO_CONSENT"
+                                 "&ehrConsentExpireStatus=EXPIRED&_includeTotal=true")
+        self.assertEqual(len(summary2.get('entry')), 1)
+
     def submit_ehr_questionnaire(self, participant_id, ehr_response_code, string_answers, authored):
         if not self._ehr_questionnaire_id:
             self._ehr_questionnaire_id = self.create_questionnaire("ehr_consent_questionnaire.json")
@@ -168,7 +179,6 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             authored=authored
         )
         self.send_post(self.questionnaire_response_url(participant_id), qr_json)
-
 
     def test_insert_raises_400_for_excessively_long_valueString(self):
         participant_id = self.create_participant()
