@@ -1497,7 +1497,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Set up test A2 manifest
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
         sub_folder = config.GENOMIC_GEM_A2_MANIFEST_SUBFOLDER
-        self._create_ingestion_test_file('AoU_GEM_Manifest_2.csv',
+        self._create_ingestion_test_file('AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv',
                                          bucket_name, folder=sub_folder,
                                          include_timestamp=False)
         # Run Workflow
@@ -1515,8 +1515,8 @@ class GenomicPipelineTest(BaseTestCase):
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
         self.assertEqual(2, file_record.runId)
-        self.assertEqual(f'/{bucket_name}/{sub_folder}/AoU_GEM_Manifest_2.csv', file_record.filePath)
-        self.assertEqual('AoU_GEM_Manifest_2.csv', file_record.fileName)
+        self.assertEqual(f'/{bucket_name}/{sub_folder}/AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv', file_record.filePath)
+        self.assertEqual('AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv', file_record.fileName)
 
         # Test the job result
         run_obj = self.job_run_dao.get(2)

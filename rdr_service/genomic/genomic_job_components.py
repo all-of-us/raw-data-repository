@@ -509,8 +509,8 @@ class GenomicFileValidator:
         self.GEM_A2_SCHEMA = (
             "biobankid",
             "sampleid",
-            "sexatbirth",
-            "success/fail",
+            "success",
+            "date_of_import",
         )
 
         self.CVL_W2_SCHEMA = (
@@ -573,9 +573,7 @@ class GenomicFileValidator:
                 len(filename_components) == 5 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
-                filename_components[2] in self.GC_METRICS_SCHEMAS.keys() and
-                re.search(r"[0-1][0-9][0-3][0-9]20[1-9][0-9]\.csv",
-                          filename_components[4]) is not None
+                filename_components[2] in self.GC_METRICS_SCHEMAS.keys()
             )
 
         def bb_to_gc_manifest_name_rule(fn):
@@ -618,14 +616,13 @@ class GenomicFileValidator:
             )
 
         def gem_a2_manifest_name_rule(fn):
-            """GEM A2 manifest name rule: i.e. AoU_GEM_Manifest_2.csv"""
+            """GEM A2 manifest name rule: i.e. AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv"""
             filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
-                len(filename_components) == 4 and
+                len(filename_components) == 5 and
                 filename_components[0] == 'aou' and
                 filename_components[1] == 'gem' and
-                re.search(r"^[0-9]+\.csv$",
-                          filename_components[3]) is not None
+                filename_components[2] == 'a2'
             )
 
         name_rules = {
