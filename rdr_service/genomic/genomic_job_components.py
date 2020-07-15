@@ -1622,7 +1622,6 @@ class ManifestDefinitionProvider:
                         GenomicSetMember.biobankId,
                         GenomicSetMember.sampleId,
                         GenomicSetMember.sexAtBirth,
-                        #ParticipantSummary.consentForGenomicsROR,
                         sqlalchemy.func.IF(ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
                                            sqlalchemy.sql.expression.literal("yes"),
                                            sqlalchemy.sql.expression.literal("no")),
