@@ -18,7 +18,8 @@ class RedcapWorkbenchAuditApi(BaseApi):
     @auth_required(REDCAP)
     def get(self):
         params = {
-            'last_snapshot_id': request.args.get('last_snapshot_id')
+            'last_snapshot_id': request.args.get('last_snapshot_id'),
+            'snapshot_id': request.args.get('snapshot_id')
         }
 
         filters = self.validate_params(params)
@@ -26,13 +27,14 @@ class RedcapWorkbenchAuditApi(BaseApi):
 
         return results
 
-    def get_filtered_results(self, last_snapshot_id):
+    def get_filtered_results(self, last_snapshot_id, snapshot_id):
         """Queries DB, returns results in format consumed by front-end
-        :param last_snapshot_id: identicate the last max snapshot id which has been synced
+        :param last_snapshot_id: indicate the last max snapshot id which has been synced
+        :param snapshot_id: indicate the snapshot to be synced
         :return: Filtered results
         """
 
-        return self.workspace_dao.get_redcap_audit_workspaces(last_snapshot_id)
+        return self.workspace_dao.get_redcap_audit_workspaces(last_snapshot_id, snapshot_id)
 
     def validate_params(self, params):
         filters = {}
@@ -43,5 +45,13 @@ class RedcapWorkbenchAuditApi(BaseApi):
                 raise BadRequest(f"Invalid parameter last_snapshot_id: {params['last_snapshot_id']}")
         else:
             filters['last_snapshot_id'] = None
+
+        if params['snapshot_id']:
+            try:
+                filters['snapshot_id'] = int(params['snapshot_id'])
+            except TypeError:
+                raise BadRequest(f"Invalid parameter snapshot_id: {params['snapshot_id']}")
+        else:
+            filters['snapshot_id'] = None
 
         return filters
