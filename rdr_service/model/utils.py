@@ -1,3 +1,4 @@
+from dateutil import parser
 from dateutil.tz import tzutc
 from sqlalchemy import String
 from sqlalchemy.dialects.mysql import DATETIME
@@ -72,6 +73,8 @@ class UTCDateTime(TypeDecorator):
 
     def process_bind_param(self, value, engine):
         # pylint: disable=unused-argument
+        if isinstance(value, str):
+            value = parser.parse(value)
         if value is not None and value.tzinfo:
             return value.astimezone(tzutc()).replace(tzinfo=None)
         return value
@@ -82,6 +85,8 @@ class UTCDateTime6(TypeDecorator):
 
     def process_bind_param(self, value, engine):
         # pylint: disable=unused-argument
+        if isinstance(value, str):
+            value = parser.parse(value)
         if value is not None and value.tzinfo:
             return value.astimezone(tzutc()).replace(tzinfo=None)
         return value
