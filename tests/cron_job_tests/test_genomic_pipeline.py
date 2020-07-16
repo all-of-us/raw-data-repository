@@ -1773,6 +1773,7 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_fake_datasets_for_gc_tests(3, arr_override=False,
                                                 cvl_w1_run_id=1,
                                                 cvl=True,
+                                                genome_center='JH',
                                                 genomic_workflow_state=GenomicWorkflowState.W2)
 
         self._update_test_sample_ids()
@@ -1795,15 +1796,16 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the manifest file contents
         expected_w3_columns = (
             "value",
-            "sample_id",
             "biobank_id",
+            "collection_tube_id",
+            "sample_id",
             "sex_at_birth",
             "genome_type",
             "ny_flag",
             "request_id",
             "package_id",
             "ai_an",
-            "site_ID",
+            "site_id",
             "secondary_validation",
         )
 
@@ -1816,7 +1818,9 @@ class GenomicPipelineTest(BaseTestCase):
 
             self.assertEqual(3, len(rows))
             self.assertEqual(member.biobankId, rows[0]['biobank_id'])
+            self.assertEqual(member.collectionTubeId, rows[0]['collection_tube_id'])
             self.assertEqual(member.sampleId, rows[0]['sample_id'])
+            self.assertEqual(member.gcSiteId, rows[0]['site_id'])
             self.assertEqual("Y", rows[0]['secondary_validation'])
 
         # Test Manifest File Record Created
