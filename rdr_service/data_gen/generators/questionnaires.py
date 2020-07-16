@@ -867,7 +867,7 @@ class QuestionnaireGen(BaseGen):
                 print((question.concept[0].code))
             if question_code == question.concept[0].code:
                 return question
-
+        _logger.warning("question not found for question code {}.".format(question_code))
         return None
 
     def _answer_all_module_questions(self):
