@@ -172,6 +172,5 @@ def _get_output_manifest_file_name(genomic_set_id, timestamp=None, cohort_id=Non
     )
     cohort = f"_{cohort_id}" if cohort_id else ""
     folder_name = config.getSetting(GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME)
-    #full_name = f'{folder_name}/{_MANIFEST_FILE_NAME_PREFIX}{cohort}-{str(genomic_set_id)}-v1{now_cdt_str}.CSV'
     full_name = f'{folder_name}/{_MANIFEST_FILE_NAME_PREFIX}-{now_cdt_str}{cohort}-{str(genomic_set_id)}.CSV'
     return full_name
