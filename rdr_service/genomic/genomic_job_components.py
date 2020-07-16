@@ -291,6 +291,7 @@ class GenomicFileIngester:
 
                 # Update genomic state for failures
                 _signal = "aw1-reconciled"
+
                 if member.gcManifestFailureMode is not None and \
                     member.gcManifestFailureMode != '':
                     _signal = 'aw1-failed'

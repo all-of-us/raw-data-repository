@@ -54,6 +54,7 @@ dnspython
 xmltodict
 netaddr
 jira
+sendgrid
 
 ## testing
 coverage

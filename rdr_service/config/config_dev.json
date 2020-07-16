@@ -62,6 +62,9 @@
    "dev-genomics-raw-northwest",
    "dev-genomics-raw-color"
   ],
+  "aw1f_alert_recipients": [
+    "test-genomic@vumc.org"
+  ],
   "metrics_shards": [
     "10"
   ],

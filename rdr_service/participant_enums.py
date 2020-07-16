@@ -560,6 +560,7 @@ class GenomicJob(messages.Enum):
     W2_INGEST = 15
     W3_MANIFEST = 16
     C2_PARTICIPANT_WORKFLOW = 17
+    AW1F_ALERTS = 18
 
 
 class GenomicWorkflowState(messages.Enum):
