@@ -43,6 +43,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRModuleView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRConsentView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRBioSpecView'),
+    ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRPatientStatuesView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRConsentPIIView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRTheBasicsView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRLifestyleView'),

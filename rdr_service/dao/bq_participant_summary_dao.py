@@ -2,7 +2,7 @@ import datetime
 import logging
 
 from dateutil import parser, tz
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, exc
 from werkzeug.exceptions import NotFound
 
 from rdr_service import config
@@ -21,7 +21,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
-    SampleStatus, BiobankOrderStatus
+    SampleStatus, BiobankOrderStatus, PatientStatusFlag
 from rdr_service.resource.helpers import DateCollection
 
 
@@ -75,6 +75,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             summary = self._merge_schema_dicts(summary, self._prep_the_basics(p_id, ro_session))
             # prep biobank orders and samples
             summary = self._merge_schema_dicts(summary, self._prep_biobank_info(p_id, ro_session))
+            # prep patient status history
+            summary = self._merge_schema_dicts(summary, self._prep_patient_status_info(p_id, ro_session))
             # calculate enrollment status for participant
             summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(p_id, ro_session, summary))
             # calculate enrollment status times
@@ -428,6 +430,55 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             data['biobank_orders'] = orders
         return data
 
+
+    def _prep_patient_status_info(self, p_id, ro_session):
+        """
+        Lookup patient status history
+        :param p_id: participant_id
+        :param ro_session: Readonly DAO session object
+        :return: dict
+        """
+        data = {}
+        sql = """
+            SELECT psh.created AS created,
+                   psh.modified AS modified,
+                   psh.authored AS authored,
+                   psh.patient_status AS patient_status,
+                   psh.hpo_id AS hpo_id,
+                   (select t.name from hpo t where t.hpo_id = psh.hpo_id) as hpo_name,
+                   psh.organization_id AS organization_id,
+                   (select t.external_id from organization t where t.organization_id = psh.organization_id) AS organization_name,
+                   psh.site_id AS site_id,
+                   (select t.google_group from site t where t.site_id = psh.site_id) AS site_name
+            FROM patient_status_history psh
+            WHERE psh.participant_id = :pid
+            ORDER BY psh.id
+        """
+        try:
+            cursor = ro_session.execute(sql, {'pid': p_id})
+        except exc.ProgrammingError:
+            # The patient_status_history table does not exist when running unittests.
+            return data
+        results = [r for r in cursor]
+        if results:
+            status_recs = list()
+            for row in results:
+               status_recs.append({
+                   'patient_status_created': row.created,
+                   'patient_status_modified': row.modified,
+                   'patient_status_authored': row.authored,
+                   'patient_status': str(PatientStatusFlag(row.patient_status)),
+                   'patient_status_id': int(PatientStatusFlag(row.patient_status)),
+                   'hpo': row.hpo_name,
+                   'hpo_id': row.hpo_id,
+                   'organization': row.organization_name,
+                   'organization_id': row.organization_id,
+                   'site': row.site_name,
+                   'site_id': row.site_id
+               })
+            data['patient_statuses'] = status_recs
+
+        return data
 
     def _calculate_enrollment_status(self, p_id, ro_session, ro_summary):
         """
