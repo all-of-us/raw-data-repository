@@ -313,7 +313,7 @@ class GenomicSetFileHandlerTest(BaseTestCase):
         BiobankOrderDao().insert(bo3)
 
         genomic_set = self._create_fake_genomic_set(
-            "fake_genomic_set_name", "fake_genomic_set_criteria", "Genomic-Test-Set-v12019-04-05-00-30-10.CSV"
+            "fake_genomic_set_name", "fake_genomic_set_criteria", "Genomic-Test-Set-2019-04-05-00-30-10.CSV"
         )
         self._create_fake_genomic_member(
             genomic_set.id,
@@ -371,7 +371,7 @@ class GenomicSetFileHandlerTest(BaseTestCase):
 
             ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, REQUEST_ID, PACKAGE_ID)
 
-        expected_result_filename = "rdr_fake_sub_folder/Genomic-Manifest-AoU-1-v1" + now_cdt_str + ".CSV"
+        expected_result_filename = "rdr_fake_sub_folder/Genomic-Manifest-AoU-" + now_cdt_str + "-1.CSV"
         path = "/" + bucket_name + "/" + expected_result_filename
         with open_cloud_file(path) as csv_file:
             csv_reader = csv.DictReader(csv_file, delimiter=",")

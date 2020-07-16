@@ -117,7 +117,7 @@ class ResendSamplesClass(GenomicManifestBase):
 
         # creates local file
         _logger.info(f"Exporting samples to manifest...")
-        filename = f'{self.DRC_BIOBANK_PREFIX}-{str(set_id)}-{self.nowf}.CSV'
+        filename = f'{self.DRC_BIOBANK_PREFIX}-{self.nowf}_C2-{str(set_id)}.CSV'
 
         create_and_upload_genomic_biobank_manifest_file(set_id, self.nowts, bucket_name=bucket_name)
         local_path = f'{self.lsp.DEFAULT_STORAGE_ROOT}/{bucket_name}/{folder_name}/{filename}'
@@ -286,7 +286,7 @@ class GenerateManifestClass(GenomicManifestBase):
 
         # creates local file
         _logger.info(f"Exporting samples to manifest...")
-        _filename = f'{folder_name}/{self.DRC_BIOBANK_PREFIX}-{str(set_id)}-{self.nowf}_C2.CSV'
+        _filename = f'{folder_name}/{self.DRC_BIOBANK_PREFIX}-{self.nowf}_C2-{str(set_id)}.CSV'
 
         create_and_upload_genomic_biobank_manifest_file(set_id, self.nowts,
                                                         bucket_name=bucket_name, filename=_filename)
