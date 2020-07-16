@@ -82,6 +82,7 @@ class BQConsentSchema(BQSchema):
     consent_module_created = BQField('consent_module_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     consent_expired = BQField('consent_expired', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
+
 class BQRaceSchema(BQSchema):
     """
     Participant race information
@@ -147,6 +148,23 @@ class BQBiobankOrderSchema(BQSchema):
     bbo_finalized_site = BQField('bbo_finalized_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     bbo_finalized_site_id = BQField('bbo_finalized_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     bbo_samples = BQRecordField('bbo_samples', schema=BQBiobankSampleSchema)
+
+
+class BQPatientStatusSchema(BQSchema):
+    """
+    Patient Status History: PatientStatusFlag Enum
+    """
+    patient_status_created = BQField('patient_status_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    patient_status_modified = BQField('patient_status_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    patient_status_authored = BQField('patient_status_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    patient_status = BQField('patient_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    patient_status_id = BQField('patient_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    hpo = BQField('hpo', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    hpo_id = BQField('hpo_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    organization = BQField('organization', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    organization_id = BQField('organization_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    site = BQField('site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    site_id = BQField('site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQParticipantSummarySchema(BQSchema):
@@ -234,6 +252,8 @@ class BQParticipantSummarySchema(BQSchema):
 
     consent_cohort = BQField('consent_cohort', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     consent_cohort_id = BQField('consent_cohort_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
+    patient_statuses = BQRecordField('patient_statuses', schema=BQPatientStatusSchema)
 
 
 class BQParticipantSummary(BQTable):

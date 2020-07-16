@@ -47,18 +47,11 @@ class ResourceClass(object):
         :param pid: participant id
         :return: 0 if successful otherwise 1
         """
-        if self.gcp_env.project == 'localhost':
-            try:
-                rebuild_bq_participant(pid, project_id=self.gcp_env.project)
-                rebuild_participant_summary_resource(pid)
-            except NotFound:
-                return 1
-            return 0
-
-        params = {'p_id': pid}
-        task = GCPCloudTask('rebuild_one_participant_task', project_id=self.gcp_env.project, queue='resource-tasks',
-                            payload=params, in_seconds=5)
-        task.execute()
+        try:
+            rebuild_bq_participant(pid, project_id=self.gcp_env.project)
+            rebuild_participant_summary_resource(pid)
+        except NotFound:
+            return 1
         return 0
 
     def update_batch(self, pids):
