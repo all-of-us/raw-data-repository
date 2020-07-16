@@ -68,10 +68,28 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
         code_answers = list()
         code_answers.append(self.make_code_answer('ehrConsent', response_code))
 
-        qr = self.make_questionnaire_response_json(self.participant_id, self.qn_ehrconsent_id,
+        qr = self.make_questionnaire_response_json(participant_id, self.qn_ehrconsent_id,
                                                    code_answers=code_answers)
         with FakeClock(response_time or self.TIME_1):
             self.send_post(f"Participant/P{participant_id}/QuestionnaireResponse", qr)
+
+    def _submit_ehrconsent_expired(self, participant_id, response_code=CONSENT_PERMISSION_NO_CODE, response_time=None):
+        """ Submit the EHRConsent questionnaire """
+        if not self.qn_ehrconsent_id:
+            self.qn_ehrconsent_id = self.create_questionnaire("ehr_consent_questionnaire.json")
+
+        code_answers = []
+        code_answers.append(self.make_code_answer('ehrConsent', response_code))
+        qr_json = self.make_questionnaire_response_json(
+            participant_id,
+            self.qn_ehrconsent_id,
+            string_answers=[['ehrConsentExpired', 'EHRConsentPII_ConsentExpired_Yes']],
+            code_answers=code_answers,
+            authored=response_time if response_time else self.TIME_1
+        )
+
+        with FakeClock(response_time or self.TIME_1):
+            self.send_post(f"Participant/P{participant_id}/QuestionnaireResponse", qr_json)
 
     def _submit_dvehrconsent(self, participant_id, response_code=DVEHRSHARING_CONSENT_CODE_YES, response_time=None):
         """ Submit the DVEHRConsent questionnaire """
@@ -258,6 +276,45 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
         self.assertEqual('COHORT_2', ps_json['consent_cohort'], 'Test is built assuming cohort 2')
         self.assertEqual(ps_json['pm'][0]['pm_finalized_site'], 'hpo-site-monroeville')
         self.assertEqual(ps_json['pm'][0]['pm_status'], 'COMPLETED')
+        self.assertEqual(ps_json['enrollment_status'], 'CORE_PARTICIPANT')
+
+    def test_ehr_consent_expired_for_full_consent_participant(self):
+        p_response = self.create_participant(self.provider_link)
+        p_id = int(p_response['participantId'].replace('P', ''))
+        self.send_consent(p_id, authored=self.TIME_1)
+        self._submit_ehrconsent(p_id, response_time=self.TIME_1)
+
+        gen = BQParticipantSummaryGenerator()
+        ps_json = gen.make_bqrecord(p_id)
+
+        self.assertIsNotNone(ps_json)
+        self.assertEqual(ps_json['enrollment_status'], 'FULLY_CONSENTED')
+
+        # send ehr consent expired response
+        self._submit_ehrconsent_expired(p_id, response_time=self.TIME_2)
+        gen = BQParticipantSummaryGenerator()
+        ps_json = gen.make_bqrecord(p_id)
+        self.assertIsNotNone(ps_json)
+        # downgrade FULLY_CONSENTED to PARTICIPANT
+        self.assertEqual(ps_json['enrollment_status'], 'PARTICIPANT')
+
+    def test_ehr_consent_expired_for_core_participant(self):
+        self._set_up_participant_data()
+        gen = BQParticipantSummaryGenerator()
+        ps_json = gen.make_bqrecord(self.participant_id)
+
+        self.assertIsNotNone(ps_json)
+        self.assertEqual('COHORT_2', ps_json['consent_cohort'], 'Test is built assuming cohort 2')
+        self.assertEqual(ps_json['pm'][0]['pm_finalized_site'], 'hpo-site-monroeville')
+        self.assertEqual(ps_json['pm'][0]['pm_status'], 'COMPLETED')
+        self.assertEqual(ps_json['enrollment_status'], 'CORE_PARTICIPANT')
+
+        # send ehr consent expired response
+        self._submit_ehrconsent_expired(self.participant_id, response_time=self.TIME_2)
+        gen = BQParticipantSummaryGenerator()
+        ps_json = gen.make_bqrecord(self.participant_id)
+        self.assertIsNotNone(ps_json)
+        # once CORE, always CORE
         self.assertEqual(ps_json['enrollment_status'], 'CORE_PARTICIPANT')
 
     def test_cohort_3_without_gror(self):

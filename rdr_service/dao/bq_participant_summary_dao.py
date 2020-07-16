@@ -7,7 +7,8 @@ from werkzeug.exceptions import NotFound
 
 from rdr_service import config
 from rdr_service.code_constants import CONSENT_GROR_YES_CODE, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE,\
-    DVEHR_SHARING_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES, GROR_CONSENT_QUESTION_CODE
+    DVEHR_SHARING_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES, GROR_CONSENT_QUESTION_CODE,\
+    EHR_CONSENT_EXPIRED_YES
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummary
@@ -445,7 +446,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             return data
 
         consents = {}
-        study_consent = ehr_consent = pm_complete = gror_consent = had_gror_consent = had_ehr_consent = False
+        study_consent = ehr_consent = pm_complete = gror_consent = had_gror_consent = had_ehr_consent = \
+            ehr_consent_expired = False
         study_consent_date = datetime.date.max
         enrollment_member_time = datetime.datetime.max
         # iterate over consents
@@ -458,6 +460,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             elif consent['consent'] == EHR_CONSENT_QUESTION_CODE:
                 consents['EHRConsent'] = (response_value, response_date)
                 had_ehr_consent = had_ehr_consent or response_value == CONSENT_PERMISSION_YES_CODE
+                consents['EHRConsentExpired'] = (consent.get('consent_expired'), response_date)
+                ehr_consent_expired = consent.get('consent_expired') == EHR_CONSENT_EXPIRED_YES
                 enrollment_member_time = min(enrollment_member_time, consent['consent_module_created'])
             elif consent['consent'] == DVEHR_SHARING_QUESTION_CODE:
                 consents['DVEHRConsent'] = (response_value, response_date)
@@ -468,7 +472,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 had_gror_consent = had_gror_consent or response_value == CONSENT_GROR_YES_CODE
 
         if 'EHRConsent' in consents and 'DVEHRConsent' in consents:
-            if consents['DVEHRConsent'] == DVEHRSHARING_CONSENT_CODE_YES\
+            if consents['DVEHRConsent'][0] == DVEHRSHARING_CONSENT_CODE_YES\
                     and consents['EHRConsent'][0] != CONSENT_PERMISSION_NO_CODE:
                 ehr_consent = True
             if consents['EHRConsent'][0] == CONSENT_PERMISSION_YES_CODE:
@@ -477,7 +481,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             if consents['EHRConsent'][0] == CONSENT_PERMISSION_YES_CODE:
                 ehr_consent = True
         elif 'DVEHRConsent' in consents:
-            if consents['DVEHRConsent'][0] == 'DVEHRSharing_Yes':
+            if consents['DVEHRConsent'][0] == DVEHRSHARING_CONSENT_CODE_YES:
                 ehr_consent = True
 
         if 'GRORConsent' in consents:
@@ -525,7 +529,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             status = EnrollmentStatusV2.PARTICIPANT
         if status == EnrollmentStatusV2.PARTICIPANT and ehr_consent is True:
             status = EnrollmentStatusV2.FULLY_CONSENTED
-        if status == EnrollmentStatusV2.FULLY_CONSENTED and\
+        if (status == EnrollmentStatusV2.FULLY_CONSENTED or (ehr_consent_expired and not ehr_consent)) and\
                 pm_complete and\
                 (ro_summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or gror_consent) and\
                 'modules' in ro_summary and\
