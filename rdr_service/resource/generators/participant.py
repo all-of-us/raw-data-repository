@@ -470,22 +470,22 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         if results:
             status_recs = list()
             for row in results:
-               status_recs.append({
-                   'patient_status_history_id': row.id,
-                   'patient_status_created': row.created,
-                   'patient_status_modified': row.modified,
-                   'patient_status_authored': row.authored,
-                   'patient_status': str(PatientStatusFlag(row.patient_status)),
-                   'patient_status_id': int(PatientStatusFlag(row.patient_status)),
-                   'hpo': row.hpo_name,
-                   'hpo_id': row.hpo_id,
-                   'organization': row.organization_name,
-                   'organization_id': row.organization_id,
-                   'site': row.site_name,
-                   'site_id': row.site_id,
-                   'comment': row.comment,
-                   'user': row.user
-               })
+                status_recs.append({
+                    'patient_status_history_id': row.id,
+                    'patient_status_created': row.created,
+                    'patient_status_modified': row.modified,
+                    'patient_status_authored': row.authored,
+                    'patient_status': str(PatientStatusFlag(row.patient_status)),
+                    'patient_status_id': int(PatientStatusFlag(row.patient_status)),
+                    'hpo': row.hpo_name,
+                    'hpo_id': row.hpo_id,
+                    'organization': row.organization_name,
+                    'organization_id': row.organization_id,
+                    'site': row.site_name,
+                    'site_id': row.site_id,
+                    'comment': row.comment,
+                    'user': row.user
+                })
             data['patient_statuses'] = status_recs
 
         return data
