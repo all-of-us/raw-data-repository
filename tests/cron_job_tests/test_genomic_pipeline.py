@@ -1797,7 +1797,7 @@ class GenomicPipelineTest(BaseTestCase):
         expected_w3_columns = (
             "value",
             "biobank_id",
-            "collection_tube_id",
+            "collection_tubeid",
             "sample_id",
             "sex_at_birth",
             "genome_type",
@@ -1806,7 +1806,6 @@ class GenomicPipelineTest(BaseTestCase):
             "package_id",
             "ai_an",
             "site_id",
-            "secondary_validation",
         )
 
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_CVL_W1_{out_time}.csv')) as csv_file:
@@ -1818,10 +1817,9 @@ class GenomicPipelineTest(BaseTestCase):
 
             self.assertEqual(3, len(rows))
             self.assertEqual(member.biobankId, rows[0]['biobank_id'])
-            self.assertEqual(member.collectionTubeId, rows[0]['collection_tube_id'])
+            self.assertEqual(member.collectionTubeId, rows[0]['collection_tubeid'])
             self.assertEqual(member.sampleId, rows[0]['sample_id'])
             self.assertEqual(member.gcSiteId, rows[0]['site_id'])
-            self.assertEqual("Y", rows[0]['secondary_validation'])
 
         # Test Manifest File Record Created
         file_record = self.file_processed_dao.get(1)  # remember, GC Metrics is #1

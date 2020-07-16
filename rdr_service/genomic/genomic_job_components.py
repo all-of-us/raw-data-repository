@@ -1592,7 +1592,7 @@ class ManifestDefinitionProvider:
                         sqlalchemy.bindparam('value', ''),
                         GenomicSetMember.sampleId,
                         GenomicSetMember.biobankId,
-                        GenomicSetMember.collectionTubeId,
+                        GenomicSetMember.collectionTubeId.label("collection_tubeid"),
                         GenomicSetMember.sexAtBirth,
                         sqlalchemy.bindparam('genome_type', 'aou_wgs'),
                         GenomicSetMember.nyFlag,
@@ -1600,7 +1600,6 @@ class ManifestDefinitionProvider:
                         sqlalchemy.bindparam('package_id', ''),
                         GenomicSetMember.ai_an,
                         GenomicSetMember.gcSiteId.label('site_id'),
-                        sqlalchemy.bindparam('secondary_validation', "Y"),
                     ]
                 ).select_from(
                     sqlalchemy.join(
@@ -1712,7 +1711,7 @@ class ManifestDefinitionProvider:
                 "value",
                 "sample_id",
                 "biobank_id",
-                "collection_tube_id",
+                "collection_tubeid",
                 "sex_at_birth",
                 "genome_type",
                 "ny_flag",
@@ -1720,7 +1719,6 @@ class ManifestDefinitionProvider:
                 "package_id",
                 "ai_an",
                 "site_id",
-                "secondary_validation",
             )
 
         return columns
