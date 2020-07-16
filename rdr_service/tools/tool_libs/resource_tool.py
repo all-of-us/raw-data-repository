@@ -27,7 +27,7 @@ _logger = logging.getLogger("rdr_logger")
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
-tool_cmd = "resource-tool"
+tool_cmd = "resource"
 tool_desc = "Tools for updating resource records in RDR"
 
 
@@ -65,11 +65,16 @@ class ResourceClass(object):
         """
         Submit batches of pids to Cloud Tasks for rebuild.
         """
-        batch_size = 100
+        import gc
+        if self.gcp_env.project == 'all-of-us-rdr-prod':
+            batch_size = 100
+        else:
+            batch_size = 25
+
         total_rows = len(pids)
-        count = int(math.ceil(float(total_rows) / float(batch_size)))
+        batch_total = int(math.ceil(float(total_rows) / float(batch_size)))
         _logger.info('Calculated {0} tasks from {1} pids with a batch size of {2}.'.
-                     format(count, total_rows, batch_size))
+                     format(batch_total, total_rows, batch_size))
 
         count = 0
         batch_count = 0
@@ -94,6 +99,14 @@ class ResourceClass(object):
                 # reset for next batch
                 batch = list()
                 count = 0
+                if not self.args.debug:
+                    print_progress_bar(
+                        batch_count, len(pids), prefix="{0}/{1}:".format(batch_count, batch_total), suffix="complete"
+                    )
+
+                # Collect the garbage after so long to prevent hitting open file limit.
+                if batch_count % 250 == 0:
+                    gc.collect()
 
         # send last batch if needed.
         if count:
@@ -105,6 +118,11 @@ class ResourceClass(object):
                 task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
                                     queue='resource-rebuild', project_id=self.gcp_env.project)
                 task.execute(quiet=True)
+
+            if not self.args.debug:
+                print_progress_bar(
+                    batch_count, len(pids), prefix="{0}/{1}:".format(batch_count, batch_total), suffix="complete"
+                )
 
         logging.info(f'Submitted {batch_count} tasks.')
 
