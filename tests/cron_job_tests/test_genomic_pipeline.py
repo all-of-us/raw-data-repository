@@ -1773,6 +1773,7 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_fake_datasets_for_gc_tests(3, arr_override=False,
                                                 cvl_w1_run_id=1,
                                                 cvl=True,
+                                                genome_center='JH',
                                                 genomic_workflow_state=GenomicWorkflowState.W2)
 
         self._update_test_sample_ids()
@@ -1795,16 +1796,16 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the manifest file contents
         expected_w3_columns = (
             "value",
-            "sample_id",
             "biobank_id",
+            "collection_tubeid",
+            "sample_id",
             "sex_at_birth",
             "genome_type",
             "ny_flag",
             "request_id",
             "package_id",
             "ai_an",
-            "site_ID",
-            "secondary_validation",
+            "site_id",
         )
 
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_CVL_W1_{out_time}.csv')) as csv_file:
@@ -1816,8 +1817,9 @@ class GenomicPipelineTest(BaseTestCase):
 
             self.assertEqual(3, len(rows))
             self.assertEqual(member.biobankId, rows[0]['biobank_id'])
+            self.assertEqual(member.collectionTubeId, rows[0]['collection_tubeid'])
             self.assertEqual(member.sampleId, rows[0]['sample_id'])
-            self.assertEqual("Y", rows[0]['secondary_validation'])
+            self.assertEqual(member.gcSiteId, rows[0]['site_id'])
 
         # Test Manifest File Record Created
         file_record = self.file_processed_dao.get(1)  # remember, GC Metrics is #1
