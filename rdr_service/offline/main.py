@@ -17,6 +17,7 @@ from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
     daily_rebuild_bigquery_handler, rebuild_bigquery_handler
 from rdr_service.offline.enrollment_check import check_enrollment
 from rdr_service.offline.exclude_ghost_participants import mark_ghost_participants
+from rdr_service.offline.genomic_pipeline import c2_participant_workflow
 from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.offline.participant_maint import skew_duplicate_last_modified
 from rdr_service.offline.patient_status_backfill import backfill_patient_status
@@ -375,6 +376,11 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicNewParticipantWorkflow",
         endpoint="genomic_new_participant_workflow",
         view_func=genomic_new_participant_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicC2AW0Workflow",
+        endpoint="genomic_c2_aw0_workflow",
+        view_func=c2_participant_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicGCManifestWorkflow",
