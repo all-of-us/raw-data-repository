@@ -196,6 +196,32 @@ class BQPDRConsentPIIView(BQView):
 
 
 #
+# ReConsentPII
+#
+class BQPDRReConsentPIISchema(_BQModuleSchema):
+    """ ConsentPII Module """
+    _module = 'ReConsentPII'
+
+
+class BQPDRReConsentPII(BQTable):
+    """ PDR ReConsentPII BigQuery Table """
+    __tablename__ = 'pdr_mod_reconsentpii'
+    __schema__ = BQPDRReConsentPIISchema
+    __project_map__ = [
+        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
+    ]
+
+
+class BQPDRReConsentPIIView(BQView):
+    """ PDR ReConsentPII BigQuery View """
+    __viewname__ = 'v_pdr_mod_reconsentpii'
+    __viewdescr__ = 'PDR ReConsentPII Module View'
+    __table__ = BQPDRReConsentPII
+    __pk_id__ = 'participant_id'
+    _show_created = True
+
+
+#
 # TheBasics
 #
 class BQPDRTheBasicsSchema(_BQModuleSchema):
