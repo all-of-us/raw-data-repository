@@ -5,7 +5,9 @@ from enum import Enum
 
 from rdr_service.model.bq_base import BQField, BQFieldModeEnum, BQFieldTypeEnum, BQRecord, BQRecordField, BQSchema, \
     BQTable
-
+from rdr_service.model.bq_questionnaires import BQPDRTheBasicsSchema
+from tests.test_data import data_path
+from tests.helpers.unittest_base import BaseTestCase
 
 class BQTestEnum(Enum):
     FIRST = 1
@@ -151,6 +153,64 @@ class BigQueryRecordTest(unittest.TestCase):
 
         sql_fields = BQTestSchema.get_sql_field_names(exclude_fields=['timestamp'])
         self.assertEqual('descr, nested', sql_fields)
+
+
+def _questionnaire_response_url(participant_id):
+    return "Participant/%s/QuestionnaireResponse" % participant_id
+
+class BigQuerySchemaDataTest(BaseTestCase):
+
+    participant_id = None
+
+    def setUp(self, with_data=True, with_consent_codes=False) -> None:
+        super().setUp(with_data=with_data, with_consent_codes=with_consent_codes)
+
+        # Create a participant.
+        self.participant_id = self.create_participant()
+        self.send_consent(self.participant_id)
+
+        # Load TheBasics questionnaire.
+        questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
+        with open(data_path("questionnaire_the_basics_resp.json")) as f:
+            resource = json.load(f)
+
+        # Submit a TheBasics questionnaire response for the participant.
+        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=self.participant_id)
+        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
+            questionnaire_id=questionnaire_id
+        )
+        resource["authored"] = datetime.datetime.now().isoformat()
+        self.send_post(_questionnaire_response_url(self.participant_id), resource)
+
+    def test_included_fields_from_the_basics(self):
+        """ Ensure that when we generate a schema the included fields are in it."""
+
+        schema = BQPDRTheBasicsSchema()
+        schema_fields = schema.get_fields()
+
+        # Build a simple list of field names in the schema.
+        fields = list()
+        for schema_field in schema_fields:
+            fields.append(schema_field['name'])
+
+        included_fields = ['id', 'created', 'modified', 'authored', 'language', 'participant_id',
+                           'questionnaire_response_id', 'Race_WhatRaceEthnicity']
+
+        for included_field in included_fields:
+            self.assertIn(included_field, fields)
+
+    def test_excluded_fields_from_the_basics(self):
+        """ Ensure that when we generate a schema the excluded fields are not in it."""
+        schema = BQPDRTheBasicsSchema()
+        schema_fields = schema.get_fields()
+
+        # Build a simple list of field names in the schema.
+        fields = list()
+        for schema_field in schema_fields:
+            fields.append(schema_field['name'])
+
+        for excluded_field in schema._excluded_fields:
+            self.assertNotIn(excluded_field, fields)
 
 
     # TODO: Future: Test REQUIRED/NULLABLE BQ constraints when combining schema and data.

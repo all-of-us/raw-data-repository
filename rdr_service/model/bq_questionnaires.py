@@ -81,6 +81,9 @@ class _BQModuleSchema(BQSchema):
                     logging.warning(msg)
                     continue
 
+                if name in self._excluded_fields:
+                    continue
+
                 field = dict()
                 field['name'] = name
                 field['type'] = BQFieldTypeEnum.STRING.name
