@@ -158,6 +158,20 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
+    def run_c1_participant_workflow(self):
+        """
+        Creates new GenomicSet, GenomicSetMembers,
+        And manifest file for Cohort 1 participants
+        """
+        self.biobank_coupler = GenomicBiobankSamplesCoupler(self.job_run.id)
+
+        try:
+            last_run_date = self._get_last_successful_run_time()
+            logging.info('Running C1 Participant Workflow.')
+            self.job_result = self.biobank_coupler.create_c1_genomic_participants(last_run_date)
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
     def run_biobank_return_manifest_workflow(self):
         """
         Uses ingester to ingest manifest result files.
