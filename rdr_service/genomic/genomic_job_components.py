@@ -72,7 +72,7 @@ from rdr_service.config import (
     GENOME_TYPE_WGS,
     GAE_PROJECT,
 )
-
+from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 
 
 class GenomicFileIngester:
@@ -1413,6 +1413,12 @@ class GenomicBiobankSamplesCoupler:
                 ) native ON native.participant_id = ps.participant_id
                 LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
                     AND m.genomic_workflow_state <> :ignore_param
+                JOIN questionnaire_response qr
+                    ON qr.participant_id = ps.participant_id
+                JOIN questionnaire_response_answer qra 
+                    ON qra.questionnaire_response_id = qr.questionnaire_response_id
+                JOIN code recon ON recon.code_id = qra.value_code_id
+                    AND recon.value = :c1_reconsent_param
             WHERE TRUE
                 AND (
                         ps.sample_status_1ed04 = :sample_status_param
@@ -1420,11 +1426,10 @@ class GenomicBiobankSamplesCoupler:
                         ps.sample_status_1sal2 = :sample_status_param
                     )
                 AND ps.consent_cohort = :cohort_1_param
-                AND ps.questionnaire_on_dna_program_authored > :from_date_param
-                AND ps.questionnaire_on_dna_program = :general_consent_param
+                AND qr.authored > :from_date_param                
                 AND m.id IS NULL
             HAVING TRUE
-                # Validations for Cohort 2
+                # Validations for Cohort 1
                 AND valid_ai_an = 1
                 AND valid_age = 1
                 AND general_consent_given = 1
@@ -1442,6 +1447,7 @@ class GenomicBiobankSamplesCoupler:
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
             "cohort_1_param": ParticipantCohort.COHORT_1.__int__(),
+            "c1_reconsent_param": COHORT_1_REVIEW_CONSENT_YES_CODE,
             "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
         }
 

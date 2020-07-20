@@ -9,7 +9,8 @@ from dateutil.parser import parse
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file, list_blobs
-from rdr_service.code_constants import BIOBANK_TESTS
+from rdr_service.code_constants import (
+    BIOBANK_TESTS, COHORT_1_REVIEW_CONSENT_YES_CODE, COHORT_1_REVIEW_CONSENT_NO_CODE)
 from rdr_service.config import GENOMIC_GEM_A3_MANIFEST_SUBFOLDER
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
@@ -22,6 +23,8 @@ from rdr_service.dao.genomics_dao import (
 )
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
+from rdr_service.dao.questionnaire_dao import QuestionnaireDao, QuestionnaireQuestionDao
+from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao, QuestionnaireResponseAnswerDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.code_dao import CodeDao, CodeType
 from rdr_service.model.biobank_dv_order import BiobankDVOrder
@@ -39,6 +42,8 @@ from rdr_service.model.genomics import (
 from rdr_service.model.participant import Participant
 from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
+from rdr_service.model.questionnaire import Questionnaire, QuestionnaireQuestion
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import (
     SampleStatus,
@@ -106,6 +111,10 @@ class GenomicPipelineTest(BaseTestCase):
         self.sample_dao = BiobankStoredSampleDao()
         self.site_dao = SiteDao()
         self.code_dao = CodeDao()
+        self.q_dao = QuestionnaireDao()
+        self.qr_dao = QuestionnaireResponseDao()
+        self.qra_dao = QuestionnaireResponseAnswerDao()
+        self.qq_dao = QuestionnaireQuestionDao()
         self._participant_i = 1
 
     mock_bucket_paths = [_FAKE_BUCKET,
@@ -564,6 +573,24 @@ class GenomicPipelineTest(BaseTestCase):
         code_to_insert = Code(
             system="a",
             value=c_val,
+            display="c",
+            topic="d",
+            codeType=CodeType.ANSWER, mapped=True)
+        return self.code_dao.insert(code_to_insert).codeId
+
+    def _setup_fake_reconsent_question_code(self):
+        code_to_insert = Code(
+            system="a",
+            value="ReviewConsentAgree_Question",
+            display="c",
+            topic="d",
+            codeType=CodeType.QUESTION, mapped=True)
+        return self.code_dao.insert(code_to_insert).codeId
+
+    def _setup_fake_reconsent_codes(self, reconsent=True):
+        code_to_insert = Code(
+            system="a",
+            value=COHORT_1_REVIEW_CONSENT_YES_CODE if reconsent else COHORT_1_REVIEW_CONSENT_NO_CODE,
             display="c",
             topic="d",
             codeType=CodeType.ANSWER, mapped=True)
@@ -1191,6 +1218,29 @@ class GenomicPipelineTest(BaseTestCase):
         non_native_code = self._setup_fake_race_codes(native=False)
         native_code = self._setup_fake_race_codes(native=True)
 
+        # setup reconsent codes and questionnaire
+        recon_yes_code = self._setup_fake_reconsent_codes()
+        #recon_no_code = self._setup_fake_reconsent_codes(reconsent=False)
+        recon_question_code = self._setup_fake_reconsent_question_code()
+
+        recon_questionnaire = None
+        recon_qq = None
+
+        if c_test == 1:
+            reconsent_questionnaire = Questionnaire(version=1,
+                                                    semanticVersion='1',
+                                                    resource='{"version": 1}')
+            recon_questionnaire = self.q_dao.insert(reconsent_questionnaire)
+
+            qq = QuestionnaireQuestion(
+                questionnaireId=recon_questionnaire.questionnaireId,
+                questionnaireVersion=1,
+                codeId=recon_question_code,
+                repeats=False
+            )
+            recon_qq = self.qq_dao.insert(qq)
+
+
         # Setup the biobank order backend
         for bid in test_biobank_ids:
             p = self._make_participant(biobankId=bid)
@@ -1209,6 +1259,24 @@ class GenomicPipelineTest(BaseTestCase):
                 participantId=p.participantId,
                 codeId=native_code if bid == 100004 else non_native_code
             )
+
+            if recon_questionnaire is not None and recon_qq is not None:
+                # Insert Questionnaire Response and Answers for Reconsent
+                qr_to_insert = QuestionnaireResponse(
+                    questionnaireId=recon_questionnaire.questionnaireId,
+                    questionnaireVersion=1,
+                    questionnaireSemanticVersion='1',
+                    participantId=p.participantId,
+                    resource='{"resourceType": "QuestionnaireResponse"}',
+                )
+                qr = self.qr_dao.insert(qr_to_insert)
+
+                qra_to_insert = QuestionnaireResponseAnswer(
+                    questionnaireResponseId=qr.questionnaireResponseId,
+                    questionId=recon_qq.questionnaireQuestionId,
+                    valueCodeId=recon_yes_code,
+                )
+                self.qra_dao.insert(qra_to_insert)
 
             self.race_dao.insert(race_answer)
             test_identifier = BiobankOrderIdentifier(
@@ -1483,7 +1551,7 @@ class GenomicPipelineTest(BaseTestCase):
                 }
             ],
             "from": {
-                "email": "noreply-genomics@pmi-ops.org"
+                "email": "no-reply@pmi-ops.org"
             },
             "content": [
                 {

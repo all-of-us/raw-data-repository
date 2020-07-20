@@ -391,7 +391,7 @@ class GenomicJobController:
             recipients = ["test-genomic@vumc.org"]
 
         subject = "All of Us GC Manifest Failure Alert"
-        from_email = "noreply-genomics@pmi-ops.org"
+        from_email = config.SENDGRID_FROM_EMAIL
         email_message = "New AW1 Failure manifests have been found:\n"
 
         for bucket in alert_files.keys():
