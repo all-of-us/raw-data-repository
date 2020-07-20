@@ -13,7 +13,7 @@ _python()
 
 
     # These are the specific tools we support
-    tools="--help migrate-bq verify oauth-token mysql app-engine alembic sync-consents edit-config fix-dup-pids genomic"
+    tools="--help migrate-bq verify oauth-token mysql app-engine alembic sync-consents edit-config fix-dup-pids genomic rdr-docs"
     # These are the standard options all tools support.
     stdopts="--help --debug --log-file --project --account --service-account"
 
@@ -165,6 +165,48 @@ _python()
             ;;
         test-jira)
             COMPREPLY=( $(compgen -W "${tools}" -- ${cur}) )
+            return 0
+            ;;
+                app-engine)
+            # These are options specific to this tool.
+            local toolopts="--git-project list deploy split-traffic config"
+            COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
+            return 0
+            ;;
+        rdr-docs)
+            # These are options specific to this tool.
+            local toolopts="--help build list update"
+            COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
+            return 0
+            ;;
+        build)
+            # rdr-docs build command
+            if echo ${COMP_WORDS[@]} | grep -w "rdr-docs" > /dev/null; then
+              local toolopts="--help --slug --no-wait"
+              COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
+            else
+              COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
+            fi
+            return 0
+            ;;
+        list)
+            # rdr-docs list command
+            if echo ${COMP_WORDS[@]} | grep -w "rdr-docs" > /dev/null; then
+              local toolopts="--help --build --version --default-tag"
+              COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
+            else
+              COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
+            fi
+            return 0
+            ;;
+        update)
+            # rdr-docs update command
+            if echo ${COMP_WORDS[@]} | grep -w "rdr-docs" > /dev/null; then
+              local toolopts="--help --latest"
+              COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
+            else
+              COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
+            fi
             return 0
             ;;
         *)
