@@ -62,7 +62,10 @@ class FinalizeOrdersClass(object):
                 BiobankOrderedSampleHistory.biobankOrderId == biobank_order.biobankOrderId,
                 BiobankOrderedSampleHistory.test == sample.test
             ).order_by(BiobankOrderedSampleHistory.version.desc()).first()
-            ordered_sample_history.finalized = finalized_datetime
+            if ordered_sample_history is None:
+                print('no ordered sample history found for', biobank_order.biobankOrderId)
+            else:
+                ordered_sample_history.finalized = finalized_datetime
 
             order_status_field = 'sampleOrderStatus' + sample.test
             if hasattr(participant_summary, order_status_field):
