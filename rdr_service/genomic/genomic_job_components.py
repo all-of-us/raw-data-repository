@@ -274,8 +274,10 @@ class GenomicFileIngester:
 
                 if member is None:
                     # Check if Programmatic control
-                    if self._check_if_control_sample(row_copy['sampleid']):
-                        logging.info(f'Control sample found: {row_copy["sampleid"]}')
+                    if self._check_if_control_sample(row_copy['parentsampleid']):
+                        logging.info(f'Control sample found: {row_copy["parentsampleid"]}')
+                        # TODO: Ignoring control samples for now
+                        # RDR may need to do something with them in the future
 
                     else:
                         logging.warning(f'Invalid collection tube ID: {collection_tube_id}'
