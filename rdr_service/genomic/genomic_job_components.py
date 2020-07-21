@@ -272,12 +272,18 @@ class GenomicFileIngester:
                 genome_type = row_copy['testname']
                 member = self.member_dao.get_member_from_collection_tube(collection_tube_id, genome_type)
 
+                if member is None:
+                    # Check if Programmatic control
+                    if self._check_if_control_sample(row_copy['sampleid']):
+                        logging.info(f'Control sample found: {row_copy["sampleid"]}')
+
+                    else:
+                        logging.warning(f'Invalid collection tube ID: {collection_tube_id}'
+                                        f' or genome_type: {genome_type}')
+                    continue
+
                 member.gcSiteId = _site
 
-                if member is None:
-                    logging.warning(f'Invalid collection tube ID: {collection_tube_id}'
-                                    f' or genome_type: {genome_type}')
-                    continue
                 if member.validationStatus != GenomicSetMemberStatus.VALID:
                     logging.warning(f'Invalidated member found BID: {member.biobankId}')
 
@@ -423,6 +429,17 @@ class GenomicFileIngester:
         :return: GC site ID string
         """
         return self.file_obj.fileName.split('/')[-1].split("_")[0].lower()
+
+    def _check_if_control_sample(self, sample_id):
+        """
+        Checks a sample against the list of control samples
+        In genomic_set_member
+        :param sample_id:
+        :return: True if sample exists, else false.
+        """
+
+        return self.member_dao.get_control_sample(sample_id)
+
 
 
 class GenomicFileValidator:
