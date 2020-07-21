@@ -561,6 +561,7 @@ class GenomicJob(messages.Enum):
     W3_MANIFEST = 16
     C2_PARTICIPANT_WORKFLOW = 17
     AW1F_ALERTS = 18
+    C1_PARTICIPANT_WORKFLOW = 19
 
 
 class GenomicWorkflowState(messages.Enum):
