@@ -152,10 +152,10 @@ class ReadTheDocsHandler:
 
     def get_version_details(self, version_id):
         """"
-        Retrieve details about the RDR readthedocs.org project
-        See: https://docs.readthedocs.io/en/stable/api/v3.html#project-details
-        :returns:  JSON response data containing the project details
-        :raises RuntimeError:  Failed to retrieve the project details
+        Retrieve details about an RDR readthedocs.org version
+        See: https://docs.readthedocs.io/en/stable/api/v3.html#version-detail
+        :returns:  JSON response data containing the version details
+        :raises RuntimeError:  Failed to retrieve the version details
         """
         if not self._make_rtd_request('version_details', version_id):
             status = self._get_last_http_status()
