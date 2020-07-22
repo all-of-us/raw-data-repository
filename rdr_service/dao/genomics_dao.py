@@ -522,6 +522,20 @@ class GenomicSetMemberDao(UpdatableDao):
             ).all()
         return members
 
+    def get_control_sample(self, sample_id):
+        """
+        Returns the GenomicSetMember record for a control sample
+        :param sample_id:
+        :return: GenomicSetMember
+        """
+        with self.session() as session:
+            return session.query(
+                GenomicSetMember
+            ).filter(
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CONTROL_SAMPLE,
+                GenomicSetMember.sampleId == int(sample_id)
+            ).first()
+
 
 class GenomicJobRunDao(UpdatableDao):
     """ Stub for GenomicJobRun model """

@@ -21,6 +21,15 @@ class IgnoreState(GenomicStateBase):
         return GenomicWorkflowState.IGNORE
 
 
+class ControlSampleState(GenomicStateBase):
+    """
+    Control Sample State, used to mark programmatic control samples,
+     for example NIST samples.
+    """
+    def transition_function(self, signal):
+        return GenomicWorkflowState.IGNORE
+
+
 class AW0ReadyState(GenomicStateBase):
     """
     State representing new Genomic Set Members
@@ -169,6 +178,7 @@ class GenomicStateHandler:
     """
     states = {
         GenomicWorkflowState.IGNORE: IgnoreState(),
+        GenomicWorkflowState.CONTROL_SAMPLE: ControlSampleState(),
         GenomicWorkflowState.AW0_READY: AW0ReadyState(),
         GenomicWorkflowState.AW0: AW0State(),
         GenomicWorkflowState.AW1: AW1State(),

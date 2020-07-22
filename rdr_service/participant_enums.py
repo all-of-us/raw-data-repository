@@ -603,8 +603,10 @@ class GenomicWorkflowState(messages.Enum):
     A2F = 30
     A3 = 31
 
+    # Misc States
     AW0_READY = 32
     IGNORE = 33
+    CONTROL_SAMPLE = 34
 
 
 class GenomicSubProcessStatus(messages.Enum):

@@ -1421,7 +1421,8 @@ class GenomicPipelineTest(BaseTestCase):
                 with clock.FakeClock(insert_dtm):
                     self._make_stored_sample(**sample_args)
 
-    def test_gc_manifest_ingestion_workflow(self):
+    @mock.patch('rdr_service.genomic.genomic_job_components.GenomicFileIngester._check_if_control_sample')
+    def test_gc_manifest_ingestion_workflow(self, control_check_mock):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
                                                 array_participants=range(1, 4),
                                                 genomic_workflow_state=GenomicWorkflowState.AW0)
@@ -1469,6 +1470,9 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(GenomicWorkflowState.AW1, member.genomicWorkflowState)
             if member.id == 3:
                 self.assertNotEqual(1, member.reconcileGCManifestJobRunId)
+
+        # test control samples
+        control_check_mock.assert_called_with('1234')
 
         # Test file processing queue
         files_processed = self.file_processed_dao.get_all()
