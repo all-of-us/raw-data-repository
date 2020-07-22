@@ -72,7 +72,7 @@ from rdr_service.config import (
     GENOME_TYPE_WGS,
     GAE_PROJECT,
 )
-
+from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 
 
 class GenomicFileIngester:
@@ -1090,36 +1090,31 @@ class GenomicBiobankSamplesCoupler:
         """
 
         participants = self._get_new_c2_participants(from_date)
-        participant_matrix = self.GenomicSampleMeta(*participants)
 
         if len(participants) > 0:
-            for i, _bid in enumerate(participant_matrix.bids):
-                logging.info(f'Retrieving samples for PID: f{participant_matrix.pids[i]}')
-                blood_sample_data = self._get_usable_blood_sample(pid=participant_matrix.pids[i],
-                                                                  bid=_bid)
-
-                saliva_sample_data = self._get_usable_saliva_sample(pid=participant_matrix.pids[i],
-                                                                    bid=_bid)
-
-                # Determine which sample ID to use
-                sample_data = self._determine_best_sample(blood=blood_sample_data,
-                                                          saliva=saliva_sample_data)
-
-                # update the sample id, collected site, and biobank order
-                if sample_data is not None:
-                    participant_matrix.sample_ids[i] = sample_data[0]
-                    participant_matrix.site_ids[i] = sample_data[1]
-                    participant_matrix.order_ids[i] = sample_data[2]
-
-                else:
-                    logging.info(f'Cohort 2 Participant Workflow: '
-                                 f'No valid samples for pid {participant_matrix.pids[i]}.')
-
-            # insert new members and make the manifest
-            return self.process_samples_into_manifest(participant_matrix, cohort=self.COHORT_2_ID, local=local)
+            return self.create_matrix_and_process_samples(participants, cohort=self.COHORT_2_ID, local=local)
 
         else:
             logging.info(f'Cohort 2 Participant Workflow: No participants to process.')
+            return GenomicSubProcessResult.NO_FILES
+
+    def create_c1_genomic_participants(self, from_date, local=False):
+        """
+        Creates Cohort 1 Participants in the genomic system using reconsent.
+        Validation is handled in the query that retrieves the newly consented
+        participants. Only valid participants are currently sent.
+
+        :param: from_date : the date from which to lookup new participants
+        :return: result
+        """
+
+        participants = self._get_new_c1_participants(from_date)
+
+        if len(participants) > 0:
+            return self.create_matrix_and_process_samples(participants, cohort=self.COHORT_1_ID, local=local)
+
+        else:
+            logging.info(f'Cohort 1 Participant Workflow: No participants to process.')
             return GenomicSubProcessResult.NO_FILES
 
     def process_samples_into_manifest(self, samples_meta, cohort, local=False):
@@ -1193,6 +1188,40 @@ class GenomicBiobankSamplesCoupler:
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
+
+    def create_matrix_and_process_samples(self, participants, cohort, local):
+        """
+        Wrapper method for processing participants for C1 and C2 manifests
+        :param cohort:
+        :param participants:
+        :param local:
+        :return:
+        """
+        participant_matrix = self.GenomicSampleMeta(*participants)
+
+        for i, _bid in enumerate(participant_matrix.bids):
+            logging.info(f'Retrieving samples for PID: f{participant_matrix.pids[i]}')
+            blood_sample_data = self._get_usable_blood_sample(pid=participant_matrix.pids[i],
+                                                              bid=_bid)
+
+            saliva_sample_data = self._get_usable_saliva_sample(pid=participant_matrix.pids[i],
+                                                                bid=_bid)
+
+            # Determine which sample ID to use
+            sample_data = self._determine_best_sample(blood=blood_sample_data,
+                                                      saliva=saliva_sample_data)
+
+            # update the sample id, collected site, and biobank order
+            if sample_data is not None:
+                participant_matrix.sample_ids[i] = sample_data[0]
+                participant_matrix.site_ids[i] = sample_data[1]
+                participant_matrix.order_ids[i] = sample_data[2]
+
+            else:
+                logging.info(f'No valid samples for pid {participant_matrix.pids[i]}.')
+
+        # insert new members and make the manifest
+        return self.process_samples_into_manifest(participant_matrix, cohort=cohort, local=local)
 
     def _get_new_biobank_samples(self, from_date):
         """
@@ -1353,6 +1382,96 @@ class GenomicBiobankSamplesCoupler:
 
         with self.ps_dao.session() as session:
             result = session.execute(_c2_participant_sql, params).fetchall()
+
+        return list([list(r) for r in zip(*result)])
+
+    def _get_new_c1_participants(self, from_date):
+        """
+        Retrieves C1 participants and validation data.
+        :param from_date:
+        :return:
+        """
+        _c1_participant_sql = """
+            SELECT DISTINCT
+              ps.biobank_id,
+              ps.participant_id,
+              0 AS biobank_order_id,
+              0 AS collected_site_id,
+              0 AS biobank_stored_sample_id,
+              CASE
+                WHEN ps.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
+              END as valid_withdrawal_status,
+              CASE
+                WHEN ps.suspension_status = :suspension_param THEN 1 ELSE 0
+              END as valid_suspension_status,
+              CASE
+                WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
+              END as general_consent_given,
+              CASE
+                WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
+              END AS valid_age,
+              CASE
+                WHEN c.value = "SexAtBirth_Male" THEN "M"
+                WHEN c.value = "SexAtBirth_Female" THEN "F"
+                ELSE "NA"
+              END as sab,
+              CASE
+                WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
+              END AS gror_consent,
+              CASE
+                  WHEN native.participant_id IS NULL THEN 1 ELSE 0
+              END AS valid_ai_an
+            FROM
+                participant_summary ps    
+                JOIN code c ON c.code_id = ps.sex_id
+                LEFT JOIN (
+                  SELECT ra.participant_id
+                  FROM participant_race_answers ra
+                      JOIN code cr ON cr.code_id = ra.code_id
+                          AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
+                ) native ON native.participant_id = ps.participant_id
+                LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
+                    AND m.genomic_workflow_state <> :ignore_param
+                JOIN questionnaire_response qr
+                    ON qr.participant_id = ps.participant_id
+                JOIN questionnaire_response_answer qra 
+                    ON qra.questionnaire_response_id = qr.questionnaire_response_id
+                JOIN code recon ON recon.code_id = qra.value_code_id
+                    AND recon.value = :c1_reconsent_param
+            WHERE TRUE
+                AND (
+                        ps.sample_status_1ed04 = :sample_status_param
+                        OR
+                        ps.sample_status_1sal2 = :sample_status_param
+                    )
+                AND ps.consent_cohort = :cohort_1_param
+                AND qr.authored > :from_date_param                
+                AND m.id IS NULL
+            HAVING TRUE
+                # Validations for Cohort 1
+                AND valid_ai_an = 1
+                AND valid_age = 1
+                AND general_consent_given = 1
+                AND valid_suspension_status = 1
+                AND valid_withdrawal_status = 1
+            ORDER BY ps.biobank_id   
+        """
+
+        params = {
+            "sample_status_param": SampleStatus.RECEIVED.__int__(),
+            "dob_param": GENOMIC_VALID_AGE,
+            "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
+            "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
+            "from_date_param": from_date.strftime("%Y-%m-%d"),
+            "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
+            "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
+            "cohort_1_param": ParticipantCohort.COHORT_1.__int__(),
+            "c1_reconsent_param": COHORT_1_REVIEW_CONSENT_YES_CODE,
+            "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
+        }
+
+        with self.ps_dao.session() as session:
+            result = session.execute(_c1_participant_sql, params).fetchall()
 
         return list([list(r) for r in zip(*result)])
 

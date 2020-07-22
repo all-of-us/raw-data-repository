@@ -887,6 +887,9 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         result = self.send_get('workbench/audit/workspace/snapshots?last_snapshot_id=2')
         self.assertEqual(len(result), 0)
 
+        result = self.send_get('workbench/audit/workspace/snapshots?snapshot_id=1')
+        self.assertEqual(len(result), 1)
+
 
     def test_hide_workspace_without_verified_institution_from_RH(self):
         # create researchers
