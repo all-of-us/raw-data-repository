@@ -307,7 +307,8 @@ class ParticipantSummary(Base):
     ehrReceiptTime = Column("ehr_receipt_time", UTCDateTime)
     ehrUpdateTime = Column("ehr_update_time", UTCDateTime)
 
-    ehrConsentExpireStatus = Column("ehr_consent_expire_status", Enum(ConsentExpireStatus))
+    ehrConsentExpireStatus = Column("ehr_consent_expire_status", Enum(ConsentExpireStatus),
+                                    default=ConsentExpireStatus.UNSET)
     ehrConsentExpireTime = Column("ehr_consent_expire_time", UTCDateTime)
     ehrConsentExpireAuthored = Column("ehr_consent_expire_authored", UTCDateTime)
 

@@ -8,7 +8,7 @@ from rdr_service.model.bq_participant_summary import (
     BQRaceSchema,
     BQGenderSchema,
     BQModuleStatusSchema,
-    BQConsentSchema
+    BQConsentSchema, BQPatientStatusSchema
 )
 
 
@@ -119,6 +119,8 @@ class BQPDRParticipantSummarySchema(BQSchema):
 
     ubr_disability = BQField('ubr_disability', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
+    patient_status = BQRecordField('patient_statuses', schema=BQPatientStatusSchema)
+
 
 class BQPDRParticipantSummary(BQTable):
     """ PDR Participant Summary BigQuery Table """
@@ -151,7 +153,8 @@ class BQPDRParticipantSummaryView(BQView):
             'races',
             'modules',
             'consents',
-            'biospec'
+            'biospec',
+            'patent_statuses'
         ])
     )
 
@@ -245,5 +248,18 @@ class BQPDRBioSpecView(BQView):
         SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
           FROM `{project}`.{dataset}.pdr_participant 
       ) ps cross join unnest(biospec) as nt
+      WHERE ps.modified = ps.max_timestamp 
+  """
+
+class BQPDRPatientStatuesView(BQView):
+    __viewname__ = 'v_pdr_participant_patient_status'
+    __viewdescr__ = 'PDR Participant Patient Status View'
+    __table__ = BQPDRParticipantSummary
+    __sql__ = """
+    SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
+      FROM (
+        SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
+          FROM `{project}`.{dataset}.pdr_participant 
+      ) ps cross join unnest(patient_statuses) as nt
       WHERE ps.modified = ps.max_timestamp 
   """

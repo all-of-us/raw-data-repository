@@ -94,6 +94,8 @@ class ConsentSchema(MarshmallowSchema):
     consent_value_id = fields.Int32()
     consent_module = fields.String(validate=validate.Length(max=80))
     consent_module_authored = fields.DateTime()
+    consent_module_created = fields.DateTime()
+    consent_expired = fields.String(validate=validate.Length(max=80))
 
     class Meta:
         ordered = True
@@ -280,6 +282,44 @@ class StandaloneBiobankOrderSchema(Schema, BiobankOrderSchema):
         )
 
 
+class PatientStatusSchema(MarshmallowSchema):
+    """
+    Patient Status History: PatientStatusFlag Enum
+    """
+    patent_status_history_id = fields.Int32()
+    patient_status_created = fields.DateTime()
+    patient_status_modified = fields.DateTime()
+    patient_status_authored = fields.DateTime()
+    patient_status = fields.String(validate=validate.Length(max=20))
+    patient_status_id = fields.Int32()
+    hpo = fields.String(validate=validate.Length(max=20))
+    hpo_id = fields.Int32()
+    organization = fields.String(validate=validate.Length(max=255))
+    organization_id = fields.Int32()
+    site = fields.String(validate=validate.Length(max=255))
+    site_id = fields.Int32()
+    comment = fields.Text()
+    user = fields.String(validate=validate.Length(max=80))
+
+
+class StandalonePatientStatusSchema(Schema, PatientStatusSchema):
+    """
+    Standalone Schema
+    Adds: id, created, modified, participant id.
+    """
+    participant_id = fields.String(validate=validate.Length(max=10), required=True)
+
+    class Meta:
+        ordered = True
+        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
+        schema_meta = SchemaMeta(
+            2090,
+            'patient_statuses',
+            'Participant/{participant_id}/PatientStatuses',
+            'patent_status_history_id',
+        )
+
+
 class ParticipantSchema(Schema):
     """ Participant Activity Summary Schema """
     last_modified = fields.DateTime()
@@ -358,6 +398,8 @@ class ParticipantSchema(Schema):
     consent_cohort = fields.EnumString(enum=ParticipantCohort)
     consent_cohort_id = fields.EnumInteger(enum=ParticipantCohort)
 
+    patient_statuses = fields.Nested(PatientStatusSchema)
+
     class Meta:
         ordered = True
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
@@ -373,5 +415,6 @@ class ParticipantSchema(Schema):
                 ('genders', StandaloneGenderSchema),
                 ('modules', StandaloneModuleStatusSchema),
                 ('consents', StandaloneConsentSchema),
-                ('biobank_orders', StandaloneBiobankOrderSchema)
+                ('biobank_orders', StandaloneBiobankOrderSchema),
+                ('patient_statues', StandalonePatientStatusSchema)
             ])

@@ -1,5 +1,6 @@
 from datetime import datetime
-from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier
+from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderHistory, BiobankOrderedSample,\
+    BiobankOrderedSampleHistory, BiobankOrderIdentifier
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.log_position import LogPosition
@@ -271,6 +272,11 @@ class DataGenerator:
     def create_database_biobank_order(self, **kwargs):
         biobank_order = self._biobank_order(**kwargs)
         self._commit_to_database(biobank_order)
+
+        order_history = BiobankOrderHistory()
+        order_history.fromdict(biobank_order.asdict(follow=["logPosition"]), allow_pk=True)
+        self._commit_to_database(order_history)
+
         return biobank_order
 
     def _biobank_order(self, log_position=None, **kwargs):
@@ -299,6 +305,12 @@ class DataGenerator:
     def create_database_biobank_ordered_sample(self, **kwargs):
         biobank_ordered_sample = self._biobank_ordered_sample(**kwargs)
         self._commit_to_database(biobank_ordered_sample)
+
+        ordered_sample_history = BiobankOrderedSampleHistory()
+        ordered_sample_history.fromdict(biobank_ordered_sample.asdict(), allow_pk=True)
+        ordered_sample_history.version = 1
+        self._commit_to_database(ordered_sample_history)
+
         return biobank_ordered_sample
 
     def _biobank_ordered_sample(self, **kwargs):

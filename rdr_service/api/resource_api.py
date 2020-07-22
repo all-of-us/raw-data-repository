@@ -9,7 +9,7 @@ import re
 
 from flask import request
 from flask_restful import Resource
-from sqlalchemy.sql.functions import max as _max
+from sqlalchemy.sql.functions import max as _max, coalesce as _coalesce
 from werkzeug.exceptions import NotFound, BadRequest
 
 from rdr_service.api_util import RESOURCE
@@ -23,6 +23,16 @@ from rdr_service.services.flask import RESOURCE_PREFIX
 # Import all of the available resource schema objects.
 RESOURCE_SCHEMAS = importlib.import_module("rdr_service.resource.schemas.__init__")
 
+# TODO: Fill out all the possible FHIR operands.
+# TODO: Is this mapping really needed?
+FIHR_TO_SQLACHEMY_OPERATOR_MAP = {
+    'eq': 'eq',
+    'ne': 'ne',
+    'gt': 'gt',
+    'lt': 'lt',
+    'ge': 'ge',
+    'le': 'le'
+}
 
 class RequestResource(object):
 
@@ -37,6 +47,7 @@ class RequestResource(object):
     pk_alt_id = None  # String Primary Key value.
     batch_ids = None  # List of resource id values.
     uri_args = None  # URI arguments
+    uri_args_filter = None  # URI argument SQLAlchemy filter tuples.
 
     def __init__(self):
 
@@ -95,6 +106,14 @@ class RequestResource(object):
                 raise BadRequest('Invalid batch request data.')
 
         self.uri_args = request.values
+        if self.uri_args:
+            self.uri_args_filter = list()
+            for k, v in self.uri_args.items():
+                op = v[:2] if v[:2] in FIHR_TO_SQLACHEMY_OPERATOR_MAP else None
+                if op:
+                    self.uri_args_filter.append((k, FIHR_TO_SQLACHEMY_OPERATOR_MAP[op], v[2:]))
+                else:
+                    self.uri_args_filter.append((k, FIHR_TO_SQLACHEMY_OPERATOR_MAP['eq'], v))
 
         mod = getattr(RESOURCE_SCHEMAS, self.schema_name)
         self.schema = mod()
@@ -132,6 +151,31 @@ class ResourceRequestApi(Resource):
         # TODO: Handle awardee filtering (probably very last todo item).
 
         return resp
+
+    def _add_arg_filters(self, resource, query):
+        """
+        Add any argument filters to query.
+        :param resource: RequestResource object
+        :param query: SQLAlchemy Query object
+        :return: SQLAlchemy Query object
+        """
+        if not resource.uri_args_filter:
+            return query
+
+        # https://stackoverflow.com/questions/14845196/dynamically-constructing-filters-in-sqlalchemy
+        for field_name, op, value in resource.uri_args_filter:
+            column = getattr(ResourceData, field_name, None)
+            if column:
+                try:
+                    attr = list(filter(lambda e: hasattr(column, e % op), ['%s', '%s_', '__%s__']))[0] % op
+                    query = query.filter(getattr(column, attr)(value))
+                except IndexError:
+                    raise BadRequest(f'Invalid filter operator ({op})')
+            else:
+                # TODO: implement filtering by resource JSON here.
+                continue
+
+        return query
 
     def _get_resource(self, resource):
         """
@@ -206,10 +250,15 @@ class ResourceRequestApi(Resource):
 
             # If no specific resource record requested, return all meta data records.
             if not resource.pk_id and not resource.pk_alt_id:
-                query = session.query(ResourceData.id, ResourceData.created, ResourceData.modified).\
+                query = session.query(ResourceData.id, ResourceData.created, ResourceData.modified,
+                            ResourceData.resourceSchemaID.label('schema_id'),
+                            ResourceData.resourceTypeID.label('type_id'),
+                            _coalesce(ResourceData.resourcePKAltID, ResourceData.resourcePKID).label('resource_pk')).\
                         join(ResourceType, ResourceType.id == ResourceData.resourceTypeID).\
-                        filter(ResourceType.resourceURI == resource.resource_uri).\
-                        order_by(ResourceData.id)
+                        filter(ResourceType.resourceURI == resource.resource_uri)
+                query = self._add_arg_filters(resource, query)
+                query = query.order_by(ResourceData.id)
+
                 # sql = self.dao.query_to_text(query)
                 if '_count' in resource.uri_args:
                     return {"count": query.count()}
@@ -221,7 +270,10 @@ class ResourceRequestApi(Resource):
 
             # Return the meta data for the requested Resource Data record.
             for _id in [resource.pk_id, resource.pk_alt_id]:
-                query = session.query(ResourceData.id, ResourceData.created, ResourceData.modified)
+                query = session.query(ResourceData.id, ResourceData.created, ResourceData.modified,
+                        ResourceData.resourceSchemaID.label('schema_id'),
+                        ResourceData.resourceTypeID.label('type_id'),
+                        _coalesce(ResourceData.resourcePKAltID, ResourceData.resourcePKID).label('resource_pk'))
                 if isinstance(_id, int):
                     query = query.filter(ResourceData.resourcePKID == _id)
                 elif isinstance(_id, str):

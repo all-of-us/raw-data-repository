@@ -13,7 +13,7 @@ _python()
 
 
     # These are the specific tools we support
-    tools="--help migrate-bq verify oauth-token mysql app-engine alembic sync-consents edit-config fix-dup-pids genomic rdr-docs"
+    tools="--help migrate-bq verify oauth-token mysql app-engine alembic sync-consents edit-config fix-dup-pids genomic resource rdr-docs"
     # These are the standard options all tools support.
     stdopts="--help --debug --log-file --project --account --service-account"
 
@@ -137,13 +137,13 @@ _python()
             fi
             return 0
             ;;
-          genomic)
+        genomic)
             # These are options specific to this tool.
             local toolopts="resend generate-manifest"
             COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
             return 0
             ;;
-          resend)
+        resend)
             # genomic resend command
             if echo ${COMP_WORDS[@]} | grep -w "genomic" > /dev/null; then
               local toolopts="--help --manifest --csv --sample"
@@ -153,7 +153,7 @@ _python()
             fi
             return 0
             ;;
-          generate-manifest)
+        generate-manifest)
             # genomic generate-manifest command
             if echo ${COMP_WORDS[@]} | grep -w "genomic" > /dev/null; then
               local toolopts="--help --manifest --cohort"
@@ -167,12 +167,18 @@ _python()
             COMPREPLY=( $(compgen -W "${tools}" -- ${cur}) )
             return 0
             ;;
-                app-engine)
+        resource)
             # These are options specific to this tool.
-            local toolopts="--git-project list deploy split-traffic config"
+            local toolopts="rebuild-pids"
             COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
             return 0
             ;;
+        rebuild-pids)
+          # These are options specific to this tool.
+          local toolopts="--pid --batch --all-pids --from-file"
+          COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
+          return 0
+          ;;
         rdr-docs)
             # These are options specific to this tool.
             local toolopts="--help build list update"

@@ -58,6 +58,15 @@ def c2_participant_workflow():
         controller.run_c2_participant_workflow()
 
 
+def c1_participant_workflow():
+    """
+    Entrypoint for Cohort 1 Participant Workflow,
+    Sources from Cohort 1 participants that have reconsented.
+    """
+    with GenomicJobController(GenomicJob.C1_PARTICIPANT_WORKFLOW) as controller:
+        controller.run_c1_participant_workflow()
+
+
 def genomic_centers_manifest_workflow():
     """
     Entrypoint for Ingestion:
@@ -82,6 +91,19 @@ def genomic_centers_aw1f_manifest_workflow():
                               sub_folder_name=config.GENOMIC_AW1F_SUBFOLDER
                               ) as controller:
         controller.run_aw1f_manifest_workflow()
+
+
+def genomic_centers_accessioning_failures_workflow():
+    """
+        Entrypoint for Ingestion:
+            Failure Manifest (AW1F)
+        """
+    with GenomicJobController(GenomicJob.AW1F_MANIFEST,
+                              bucket_name=None,
+                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
+                              sub_folder_tuple=config.GENOMIC_AW1F_SUBFOLDERS
+                              ) as controller:
+        controller.process_new_aw1f_for_alerts()
 
 
 def ingest_genomic_centers_metrics_files():
