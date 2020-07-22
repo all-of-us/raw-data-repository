@@ -5,17 +5,13 @@
 
 import argparse
 
-# pylint: disable=superfluous-parens
-# pylint: disable=broad-except
 import logging
 import sys
 
 from json import dumps
 from time import sleep
 
-#from rdr_service import config
 from rdr_service.services.system_utils import setup_logging, setup_i18n
-#from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.documentation_utils import ReadTheDocsHandler
 
 _logger = logging.getLogger("rdr_logger")
