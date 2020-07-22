@@ -244,8 +244,12 @@ class GenerateManifestClass(GenomicManifestBase):
                 return 1
 
             if int(self.args.cohort) == 2:
-                _logger.info('Running c2 workflow')
+                _logger.info('Running Cohort 2 workflow')
                 return self.generate_local_c2_manifest()
+
+            if int(self.args.cohort) == 1:
+                _logger.info('Running Cohort 1 workflow')
+                return self.generate_local_c1_manifest()
 
     def generate_local_c2_manifest(self):
         """
@@ -275,7 +279,6 @@ class GenerateManifestClass(GenomicManifestBase):
     def export_c2_manifest_to_local_file(self, set_id):
         """
         Processes samples into a local AW0, Cohort 2 manifest file
-        :param genomic_set_id:
         :param set_id:
         :return:
         """
@@ -287,6 +290,62 @@ class GenerateManifestClass(GenomicManifestBase):
         # creates local file
         _logger.info(f"Exporting samples to manifest...")
         _filename = f'{folder_name}/{self.DRC_BIOBANK_PREFIX}-{self.nowf}_C2-{str(set_id)}.CSV'
+
+        create_and_upload_genomic_biobank_manifest_file(set_id, self.nowts,
+                                                        bucket_name=bucket_name, filename=_filename)
+
+        # Handle Genomic States for manifests
+        member_dao = GenomicSetMemberDao()
+        new_members = member_dao.get_members_from_set_id(set_id)
+
+        for member in new_members:
+            self.update_member_genomic_state(member, 'manifest-generated')
+
+        local_path = f'{self.lsp.DEFAULT_STORAGE_ROOT}/{bucket_name}/{_filename}'
+        print()
+
+        _logger.info(f'Manifest Exported to local file:')
+        _logger.warning(f'  {local_path}')
+
+    def generate_local_c1_manifest(self):
+        """
+        Creates a new C1 Manifest locally
+        :return:
+        """
+
+        last_run_time = self.dao.get_last_successful_runtime(GenomicJob.C1_PARTICIPANT_WORKFLOW)
+
+        if last_run_time is None:
+            last_run_time = datetime.datetime(2020, 7, 27, 0, 0, 0, 0)
+
+        job_run = self.dao.insert_run_record(GenomicJob.C1_PARTICIPANT_WORKFLOW)
+
+        biobank_coupler = GenomicBiobankSamplesCoupler(job_run.id)
+        new_set_id = biobank_coupler.create_c1_genomic_participants(last_run_time, local=True)
+        if new_set_id == GenomicSubProcessResult.NO_FILES:
+            _logger.info("No records to include in manifest.")
+            self.dao.update_run_record(job_run.id, GenomicSubProcessResult.NO_FILES, 1)
+            return 1
+
+        self.export_c1_manifest_to_local_file(new_set_id)
+        self.dao.update_run_record(job_run.id, GenomicSubProcessResult.SUCCESS, 1)
+
+        return 0
+
+    def export_c1_manifest_to_local_file(self, set_id):
+        """
+        Processes samples into a local AW0, Cohort 1 manifest file
+        :param set_id:
+        :return:
+        """
+
+        project_config = self.gcp_env.get_app_config()
+        bucket_name = project_config.get(config.BIOBANK_SAMPLES_BUCKET_NAME)[0]
+        folder_name = "genomic_samples_manifests"
+
+        # creates local file
+        _logger.info(f"Exporting samples to manifest...")
+        _filename = f'{folder_name}/{self.DRC_BIOBANK_PREFIX}-{self.nowf}_C1-{str(set_id)}.CSV'
 
         create_and_upload_genomic_biobank_manifest_file(set_id, self.nowts,
                                                         bucket_name=bucket_name, filename=_filename)
