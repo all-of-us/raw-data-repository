@@ -753,6 +753,18 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         resource["questionnaire"]["reference"] = "Questionnaire/%s/_history/2" % questionnaire_id
         self.send_post(_questionnaire_response_url(participant_id), resource, expected_status=http.client.BAD_REQUEST)
 
+    def test_response_allows_for_missing_group(self):
+        participant_id = self.create_participant()
+        self.send_consent(participant_id)
+
+        questionnaire_id = self.create_questionnaire("questionnaire1.json")
+
+        with open(data_path("questionnaire_response_empty.json")) as fd:
+            resource = json.load(fd)
+        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
+        resource["questionnaire"]["reference"] = "Questionnaire/%s" % questionnaire_id
+        self.send_post(_questionnaire_response_url(participant_id), resource)  # will fail if status 200 isn't returned
+
     def test_invalid_questionnaire_linkid(self):
         """
     DA-623 - Make sure that an invalid link id in response triggers a BadRequest status.
