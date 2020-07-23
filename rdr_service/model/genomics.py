@@ -278,20 +278,26 @@ class GenomicGCValidationMetrics(Base):
     # Genotyping Data (Array) reconciliation
     idatRedReceived = Column('idat_red_received', SmallInteger, nullable=False, default=0)
     idatGreenReceived = Column('idat_green_received', SmallInteger, nullable=False, default=0)
+    idatRedMd5Received = Column('idat_red_md5_received', SmallInteger, nullable=False, default=0)
+    idatGreenMd5Received = Column('idat_green_md5_received', SmallInteger, nullable=False, default=0)
     vcfReceived = Column('vcf_received', SmallInteger, nullable=False, default=0)
-    tbiReceived = Column('tbi_received', SmallInteger, nullable=False, default=0)
+    vcfMd5Received = Column('vcf_md5_received', SmallInteger, nullable=False, default=0)
 
     # Sequencing Data (WGS) reconciliation
+    # Single sample VCF: Hard - filtered for clinical purpose
     hfVcfReceived = Column('hf_vcf_received', SmallInteger, nullable=False, default=0)
     hfVcfTbiReceived = Column('hf_vcf_tbi_received', SmallInteger, nullable=False, default=0)
     hfVcfMd5Received = Column('hf_vcf_md5_received', SmallInteger, nullable=False, default=0)
+
+    # Single sample VCF: Raw for research purpose
     rawVcfReceived = Column('raw_vcf_received', SmallInteger, nullable=False, default=0)
     rawVcfTbiReceived = Column('raw_vcf_tbi_received', SmallInteger, nullable=False, default=0)
     rawVcfMd5Received = Column('raw_vcf_md5_received', SmallInteger, nullable=False, default=0)
+
+    # CRAMs and CRAIs
     cramReceived = Column('cram_received', SmallInteger, nullable=False, default=0)
     cramMd5Received = Column('cram_md5_received', SmallInteger, nullable=False, default=0)
     craiReceived = Column('crai_received', SmallInteger, nullable=False, default=0)
-    craiMd5Received = Column('crai_md5_received', SmallInteger, nullable=False, default=0)
 
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)

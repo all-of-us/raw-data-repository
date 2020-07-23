@@ -645,12 +645,16 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the reconciliation process
         sequencing_test_files = (
             f'test_data_folder/10001_R01C01.vcf.gz',
-            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
-            f'test_data_folder/10001_R01C01.red.idat.gz',
+            f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
+            f'test_data_folder/10001_R01C01_red.idat',
+            f'test_data_folder/10001_R01C01_grn.idat',
+            f'test_data_folder/10001_R01C01_red.idat.md5sum',
             f'test_data_folder/10002_R01C02.vcf.gz',
-            f'test_data_folder/10002_R01C02.vcf.gz.tbi',
-            f'test_data_folder/10002_R01C02.red.idat.gz',
-            f'test_data_folder/10002_R01C02.grn.idat.md5',
+            f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
+            f'test_data_folder/10002_R01C02_red.idat',
+            f'test_data_folder/10002_R01C02_grn.idat',
+            f'test_data_folder/10002_R01C02_red.idat.md5sum',
+            f'test_data_folder/10002_R01C02_grn.idat.md5sum',
         )
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
@@ -661,17 +665,21 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the gc_metrics were updated with reconciliation data
         self.assertEqual(1, gc_record.vcfReceived)
-        self.assertEqual(1, gc_record.tbiReceived)
+        self.assertEqual(1, gc_record.vcfMd5Received)
         self.assertEqual(1, gc_record.idatRedReceived)
-        self.assertEqual(0, gc_record.idatGreenReceived)
+        self.assertEqual(1, gc_record.idatGreenReceived)
+        self.assertEqual(1, gc_record.idatRedMd5Received)
+        self.assertEqual(0, gc_record.idatGreenMd5Received)
 
         gc_record = self.metrics_dao.get(2)
 
         # Test the gc_metrics were updated with reconciliation data
         self.assertEqual(1, gc_record.vcfReceived)
-        self.assertEqual(1, gc_record.tbiReceived)
+        self.assertEqual(1, gc_record.vcfMd5Received)
         self.assertEqual(1, gc_record.idatRedReceived)
         self.assertEqual(1, gc_record.idatGreenReceived)
+        self.assertEqual(1, gc_record.idatRedMd5Received)
+        self.assertEqual(1, gc_record.idatGreenMd5Received)
 
         # Test member updated with job ID
         member = self.member_dao.get(1)
@@ -688,7 +696,7 @@ class GenomicPipelineTest(BaseTestCase):
         description = "The following AW2 manifest file listed missing data."
         description += f"\nManifest File: {manifest_file.fileName}"
         description += "\nGenomic Job Run ID: 2"
-        description += "\nMissing Genotype Data: ['10001_R01C01.grn.idat.md5']"
+        description += "\nMissing Genotype Data: ['10001_R01C01_grn.idat.md5sum']"
 
         mock_alert_handler.make_genomic_alert.assert_called_with(summary, description)
 
@@ -724,7 +732,6 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.vcf.md5sum',
             f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.cram',
             f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.cram.md5sum',
-            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.crai.md5sum',
         )
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
@@ -743,7 +750,6 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(1, gc_record.cramReceived)
         self.assertEqual(1, gc_record.cramMd5Received)
         self.assertEqual(0, gc_record.craiReceived)
-        self.assertEqual(1, gc_record.craiMd5Received)
 
         # Test member updated with job ID and state
         member = self.member_dao.get(2)
@@ -1600,13 +1606,17 @@ class GenomicPipelineTest(BaseTestCase):
         # Test sequencing file (required for GEM)
         sequencing_test_files = (
             f'test_data_folder/10001_R01C01.vcf.gz',
-            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
-            f'test_data_folder/10001_R01C01.red.idat.gz',
-            f'test_data_folder/10001_R01C01.grn.idat.md5',
+            f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
+            f'test_data_folder/10001_R01C01_red.idat',
+            f'test_data_folder/10001_R01C01_grn.idat',
+            f'test_data_folder/10001_R01C01_red.idat.md5sum',
+            f'test_data_folder/10001_R01C01_grn.idat.md5sum',
             f'test_data_folder/10002_R01C02.vcf.gz',
-            f'test_data_folder/10002_R01C02.vcf.gz.tbi',
-            f'test_data_folder/10002_R01C02.red.idat.gz',
-            f'test_data_folder/10002_R01C02.grn.idat.md5',
+            f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
+            f'test_data_folder/10002_R01C02_red.idat',
+            f'test_data_folder/10002_R01C02_grn.idat',
+            f'test_data_folder/10002_R01C02_red.idat.md5sum',
+            f'test_data_folder/10002_R01C02_grn.idat.md5sum',
         )
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)

@@ -789,8 +789,10 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     (GenomicGCValidationMetrics.idatRedReceived == 0) |
                     (GenomicGCValidationMetrics.idatGreenReceived == 0) |
+                    (GenomicGCValidationMetrics.idatRedMd5Received == 0) |
+                    (GenomicGCValidationMetrics.idatGreenMd5Received == 0) |
                     (GenomicGCValidationMetrics.vcfReceived == 0) |
-                    (GenomicGCValidationMetrics.tbiReceived == 0)
+                    (GenomicGCValidationMetrics.vcfMd5Received == 0)
                 )
                 .all()
             )
@@ -819,8 +821,7 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                     (GenomicGCValidationMetrics.rawVcfMd5Received == 0) |
                     (GenomicGCValidationMetrics.cramReceived == 0) |
                     (GenomicGCValidationMetrics.cramMd5Received == 0) |
-                    (GenomicGCValidationMetrics.craiReceived == 0) |
-                    (GenomicGCValidationMetrics.craiMd5Received == 0)
+                    (GenomicGCValidationMetrics.craiReceived == 0)
                 )
                 .all()
             )
