@@ -691,7 +691,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         alt_time = max(
             summary.get('enrollment_member', datetime.datetime.min),
             max(mod['mod_created'] for mod in summary['modules'] if mod['mod_baseline_module'] == 1),
-            max(pm['pm_finalized'] for pm in summary['pm']) if 'pm' in summary else datetime.datetime.min
+            max(pm['pm_finalized'] or datetime.datetime.min for pm in summary['pm']) if 'pm' in summary
+                    else datetime.datetime.min
         )
 
         if data['enrollment_core_ordered']:
