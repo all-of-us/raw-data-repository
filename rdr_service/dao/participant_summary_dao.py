@@ -112,7 +112,7 @@ _ENROLLMENT_STATUS_SQL = """
       enrollment_status = {enrollment_status_case_sql},
       last_modified = :now
     WHERE
-      enrollment_status != {enrollment_status_case_sql}
+      enrollment_status != :full_participant AND enrollment_status != {enrollment_status_case_sql}
    """.format(
     enrollment_status_case_sql=_ENROLLMENT_STATUS_CASE_SQL
 )
