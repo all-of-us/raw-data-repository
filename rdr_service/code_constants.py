@@ -35,6 +35,7 @@ DVEHR_SHARING_QUESTION_CODE = "DVEHRSharing_AreYouInterested"
 CABOR_SIGNATURE_QUESTION_CODE = "ExtraConsent_CABoRSignature"
 GROR_CONSENT_QUESTION_CODE = "ResultsConsent_CheckDNA"
 COPE_CONSENT_QUESTION_CODE = "section_participation"
+PRIMARY_CONSENT_UPDATE_QUESTION_CODE = "Reconsent_ReviewConsentAgree"
 
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 
