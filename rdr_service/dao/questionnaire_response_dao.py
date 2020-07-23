@@ -549,15 +549,16 @@ class QuestionnaireResponseDao(BaseDao):
             resource=json.dumps(resource_json),
         )
 
-        # Extract a code map and answers from the questionnaire response.
-        code_map, answers = self._extract_codes_and_answers(fhir_qr.group, questionnaire)
-        if not answers:
-            logging.error("No answers from QuestionnaireResponse JSON. This is harmless but probably an error.")
-        # Get or insert codes, and retrieve their database IDs.
-        code_id_map = CodeDao().get_or_add_codes(code_map, add_codes_if_missing=_add_codes_if_missing(client_id))
+        if fhir_qr.group is not None:
+            # Extract a code map and answers from the questionnaire response.
+            code_map, answers = self._extract_codes_and_answers(fhir_qr.group, questionnaire)
+            if not answers:
+                logging.error("No answers from QuestionnaireResponse JSON. This is harmless but probably an error.")
+            # Get or insert codes, and retrieve their database IDs.
+            code_id_map = CodeDao().get_or_add_codes(code_map, add_codes_if_missing=_add_codes_if_missing(client_id))
 
-        # Now add the child answers, using the IDs in code_id_map
-        self._add_answers(qr, code_id_map, answers)
+            # Now add the child answers, using the IDs in code_id_map
+            self._add_answers(qr, code_id_map, answers)
 
         return qr
 
