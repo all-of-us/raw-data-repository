@@ -10,7 +10,7 @@ from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGener
 from rdr_service.dao.bq_pdr_participant_summary_dao import BQPDRParticipantSummaryGenerator
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
-    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRConsentUpdate
+    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay
 from rdr_service.resource.generators import ParticipantSummaryGenerator
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
 
@@ -52,8 +52,7 @@ def batch_rebuild_participants_task(payload):
             BQPDROverallHealth,
             BQPDREHRConsentPII,
             BQPDRDVEHRSharing,
-            BQPDRCOPEMay,
-            BQPDRConsentUpdate
+            BQPDRCOPEMay
         )
         for module in modules:
             mod = module()

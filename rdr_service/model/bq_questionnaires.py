@@ -196,32 +196,6 @@ class BQPDRConsentPIIView(BQView):
 
 
 #
-# PrimaryConsentUpdate
-#
-class BQPDRConsentUpdateSchema(_BQModuleSchema):
-    """ Consent Update Module """
-    _module = 'PrimaryConsentUpdate'
-
-
-class BQPDRConsentUpdate(BQTable):
-    """ PDR Consent Update BigQuery Table """
-    __tablename__ = 'pdr_mod_consentupdate'
-    __schema__ = BQPDRConsentUpdateSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
-
-
-class BQPDRConsentUpdatePIIView(BQView):
-    """ PDR Consent Update BigQuery View """
-    __viewname__ = 'v_pdr_mod_consentupdate'
-    __viewdescr__ = 'PDR PrimaryConsentUpdate Module View'
-    __table__ = BQPDRConsentUpdate
-    __pk_id__ = 'participant_id'
-    _show_created = True
-
-
-#
 # TheBasics
 #
 class BQPDRTheBasicsSchema(_BQModuleSchema):
