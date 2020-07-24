@@ -39,7 +39,8 @@ _consent_expired_question_map = {
     'ConsentPII': None,
     'DVEHRSharing': None,
     'EHRConsentPII': 'EHRConsentPII_ConsentExpired',
-    'GROR': None
+    'GROR': None,
+    'PrimaryConsentUpdate': None
 }
 
 class BQParticipantSummaryGenerator(BigQueryGenerator):
