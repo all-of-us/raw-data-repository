@@ -41,7 +41,9 @@ class _BQModuleSchema(BQSchema):
         if len(name) > 128:
             return False, f'Field {name} must be less than 128 characters, skipping.'
         if name[:1] not in string.ascii_letters and name[:1] != '_':
-            return False, f'Field {name} must start with a character or underscore, skipping.'
+            # Disabled message, too many log entries.
+            # return False, f'Field {name} must start with a character or underscore, skipping.'
+            return False, None
         return True, ''
 
     def get_fields(self):
@@ -77,7 +79,7 @@ class _BQModuleSchema(BQSchema):
                 # Verify field name meets BigQuery requirements.
                 name = row['value']
                 is_valid, msg = self.field_name_is_valid(name)
-                if not is_valid:
+                if not is_valid and msg:
                     logging.warning(msg)
                     continue
 

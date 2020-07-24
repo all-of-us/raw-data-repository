@@ -22,8 +22,9 @@ from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import get_biobank_id_prefix, to_client_biobank_id
 from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.offline import biobank_samples_pipeline
-from rdr_service.participant_enums import SampleStatus, get_sample_status_enum_value
+from rdr_service.participant_enums import EnrollmentStatus, SampleStatus, get_sample_status_enum_value
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -119,6 +120,24 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         ps = self.summary_dao.get(participant.participantId)
         self.assertEqual(ps.sampleStatus1SAL2, SampleStatus.RECEIVED)
         self.assertEqual(ps.sampleStatus1SAL2Time, confirmed_ts)
+
+    def test_core_participants_stay_core(self):
+        self.clear_default_storage()
+        self.create_mock_buckets(self.mock_bucket_paths)
+        participant = self.participant_dao.insert(Participant())
+        self.summary_dao.insert(self.participant_summary(participant))
+
+        with self.summary_dao.session() as session:
+            participant_summary = session.query(ParticipantSummary).filter(
+                ParticipantSummary.participantId == participant.participantId
+            ).one()
+            participant_summary.enrollmentStatus = EnrollmentStatus.FULL_PARTICIPANT
+
+        # This updates all participants, regardless of whether they have samples imported or not
+        self.summary_dao.update_from_biobank_stored_samples()
+
+        ps = self.summary_dao.get(participant.participantId)
+        self.assertEqual(EnrollmentStatus.FULL_PARTICIPANT, ps.enrollmentStatus)
 
     def test_end_to_end(self):
         config.override_setting(BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN, 'cloud')

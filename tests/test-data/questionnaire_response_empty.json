@@ -1,0 +1,14 @@
+{
+  "resourceType": "QuestionnaireResponse",
+  "status": "completed",
+  "subject": {
+    "reference": "Patient/{participant_id}"
+  },
+  "questionnaire": {
+    "reference": "Questionnaire/{questionnaire_id}"
+  },
+  "author": {
+    "reference": "http://hl7.org/fhir/Practitioner/example"
+  },
+  "authored": "2013-02-19T14:15:00+10:00"
+}
