@@ -746,10 +746,12 @@ class GenomicReconciler:
         self.file_mover = file_mover
 
         # Data files and names will be different
-        self.genotyping_file_types = (('idatRedReceived', ".red.idat.gz"),
-                                      ('idatGreenReceived', ".grn.idat.md5"),
+        self.genotyping_file_types = (('idatRedReceived', "_red.idat"),
+                                      ('idatGreenReceived', "_grn.idat"),
+                                      ('idatRedMd5Received', "_red.idat.md5sum"),
+                                      ('idatGreenMd5Received', "_grn.idat.md5sum"),
                                       ('vcfReceived', ".vcf.gz"),
-                                      ('tbiReceived', ".vcf.gz.tbi"))
+                                      ('vcfMd5Received', ".vcf.gz.md5sum"))
 
         self.sequencing_file_types = (("hfVcfReceived", ".hard-filtered.vcf.gz"),
                                       ("hfVcfTbiReceived", ".hard-filtered.vcf.gz.tbi"),
@@ -759,8 +761,7 @@ class GenomicReconciler:
                                       ("rawVcfMd5Received", ".vcf.md5sum"),
                                       ("cramReceived", ".cram"),
                                       ("cramMd5Received", ".cram.md5sum"),
-                                      ("craiReceived", ".crai"),
-                                      ("craiMd5Received", ".crai.md5sum"))
+                                      ("craiReceived", ".crai"))
 
     def reconcile_metrics_to_manifest(self):
         """ The main method for the metrics vs. manifest reconciliation """
