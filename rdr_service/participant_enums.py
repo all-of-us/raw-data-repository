@@ -562,6 +562,8 @@ class GenomicJob(messages.Enum):
     C2_PARTICIPANT_WORKFLOW = 17
     AW1F_ALERTS = 18
     C1_PARTICIPANT_WORKFLOW = 19
+    AW3_ARRAY_WORKFLOW = 20
+    AW3_WGS_WORKFLOW = 21
 
 
 class GenomicWorkflowState(messages.Enum):
@@ -635,6 +637,8 @@ class GenomicManifestTypes(messages.Enum):
     GEM_A1 = 5
     GEM_A3 = 6
     CVL_W3 = 7
+    AW3_ARRAY = 8
+    AW3_WGS = 9
 
 
 class WorkbenchWorkspaceStatus(messages.Enum):
