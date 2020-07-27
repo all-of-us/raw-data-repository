@@ -30,7 +30,8 @@ _consent_module_question_map = {
     'ConsentPII': None,
     'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
     'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
-    'GROR': 'ResultsConsent_CheckDNA'
+    'GROR': 'ResultsConsent_CheckDNA',
+    'PrimaryConsentUpdate': 'Reconsent_ReviewConsentAgree'
 }
 
 # _consent_expired_question_map must contain every module ID from _consent_module_question_map.
@@ -38,7 +39,8 @@ _consent_expired_question_map = {
     'ConsentPII': None,
     'DVEHRSharing': None,
     'EHRConsentPII': 'EHRConsentPII_ConsentExpired',
-    'GROR': None
+    'GROR': None,
+    'PrimaryConsentUpdate': None
 }
 
 class BQParticipantSummaryGenerator(BigQueryGenerator):
