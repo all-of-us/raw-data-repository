@@ -1,8 +1,8 @@
 """create tables for antibody data
 
-Revision ID: bc2ab9826a6c
-Revises: 4331eeb400da
-Create Date: 2020-07-26 19:22:53.015647
+Revision ID: 4507ede4f552
+Revises: 8302d4762b9a
+Create Date: 2020-07-27 13:35:36.510308
 
 """
 from alembic import op
@@ -20,8 +20,8 @@ from rdr_service.model.code import CodeType
 from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 
 # revision identifiers, used by Alembic.
-revision = 'bc2ab9826a6c'
-down_revision = '4331eeb400da'
+revision = '4507ede4f552'
+down_revision = '8302d4762b9a'
 branch_labels = None
 depends_on = None
 
