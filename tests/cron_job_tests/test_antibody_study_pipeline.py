@@ -38,21 +38,24 @@ class AntibodyStudyPipelineTest(BaseTestCase):
         antibody_study_pipeline.import_biobank_covid_manifest_files()
 
         biobank_antibody_sample_dao = BiobankCovidAntibodySampleDao()
-        record_1 = biobank_antibody_sample_dao.get(1)
-        self.assertEqual(record_1.aouBiobankId, 646545564)
-        self.assertEqual(record_1.noAouBiobankId, None)
-        self.assertEqual(record_1.sampleId, '20191000938')
-        self.assertEqual(record_1.matrixTubeId, 357251991)
-        self.assertEqual(record_1.sampleType, 'Serum')
-        self.assertEqual(record_1.quantityUl, 350)
-        self.assertEqual(record_1.storageLocation, 'BX-00219787/A1')
-        self.assertEqual(record_1.ingestFileName, 'Quest_AoU_Serology_test_1.csv')
-        record_2 = biobank_antibody_sample_dao.get(2)
-        self.assertEqual(record_2.aouBiobankId, 272524862)
-        self.assertEqual(record_2.noAouBiobankId, None)
-        record_3 = biobank_antibody_sample_dao.get(3)
-        self.assertEqual(record_3.aouBiobankId, None)
-        self.assertEqual(record_3.noAouBiobankId, 'PIO 1106')
+        records = biobank_antibody_sample_dao.get_all()
+        self.assertEqual(len(records), 3)
+        for record in records:
+            if record.aouBiobankId == 646545564:
+                self.assertEqual(record.aouBiobankId, 646545564)
+                self.assertEqual(record.noAouBiobankId, None)
+                self.assertEqual(record.sampleId, '20191000938')
+                self.assertEqual(record.matrixTubeId, 357251991)
+                self.assertEqual(record.sampleType, 'Serum')
+                self.assertEqual(record.quantityUl, 350)
+                self.assertEqual(record.storageLocation, 'BX-00219787/A1')
+                self.assertEqual(record.ingestFileName, 'Quest_AoU_Serology_test_1.csv')
+            elif record.aouBiobankId == 272524862:
+                self.assertEqual(record.aouBiobankId, 272524862)
+                self.assertEqual(record.noAouBiobankId, None)
+            elif record.aouBiobankId is None:
+                self.assertEqual(record.aouBiobankId, None)
+                self.assertEqual(record.noAouBiobankId, 'PIO 1106')
 
         # import duplicate records will not add new records
         antibody_study_pipeline.import_biobank_covid_manifest_files()
