@@ -59,3 +59,9 @@ cron:
   timezone: America/New_York
   schedule: 1 of jan 12:00
   target: offline
+- description: Covid Antibody Study Data Import
+  url: /offline/CovidAntibodyStudyImport
+  schedule: every day 02:00
+  timezone: America/New_York
+  target: offline
+

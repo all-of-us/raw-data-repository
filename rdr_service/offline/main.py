@@ -11,7 +11,8 @@ from werkzeug.exceptions import BadRequest
 from rdr_service import app_util, config
 from rdr_service.api_util import EXPORTER
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
-from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status
+from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status, \
+    antibody_study_pipeline
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
     daily_rebuild_bigquery_handler, rebuild_bigquery_handler
@@ -134,6 +135,18 @@ def biobank_monthly_reconciliation_report():
     biobank_samples_pipeline.write_reconciliation_report(timestamp, "monthly")
     logging.info("Generated monthly reconciliation report.")
     return json.dumps({"monthly-reconciliation-report": "generated"})
+
+@app_util.auth_required_cron
+#@_alert_on_exceptions
+def import_covid_antibody_study_data():
+    logging.info("Starting biobank covid antibody study manifest file import.")
+    antibody_study_pipeline.import_biobank_covid_manifest_files()
+    logging.info("Import biobank covid antibody study manifest files complete.")
+
+    logging.info("Starting quest covid antibody study files import.")
+    antibody_study_pipeline.import_quest_antibody_files()
+    logging.info("Import quest covid antibody study files complete.")
+    return '{"success": "true"}'
 
 
 @app_util.auth_required(EXPORTER)
@@ -317,6 +330,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "MonthlyReconciliationReport",
         endpoint="monthlyReconciliationReport",
         view_func=biobank_monthly_reconciliation_report,
+        methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "CovidAntibodyStudyImport",
+        endpoint="covidAntibodyStudyImport",
+        view_func=import_covid_antibody_study_data,
         methods=["GET"],
     )
 
