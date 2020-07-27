@@ -18,6 +18,7 @@ GCP_PROJECTS = [
     "all-of-us-rdr-ptsc-1-test",
     "all-of-us-rdr-ptsc-2-test",
     "all-of-us-rdr-ptsc-3-test",
+    "aou-pdr-data-prod"
 ]
 
 GCP_INSTANCES = {
