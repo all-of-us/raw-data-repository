@@ -52,7 +52,7 @@ def gcp_validate_project(project):
     if project in ["localhost", "127.0.0.1"]:
         return project
     # check for full length project name
-    if "pmi-drc-api" in project or "all-of-us-rdr" in project:
+    if "pmi-drc-api" in project or "all-of-us-rdr" in project or "aou-pdr-data" in project:
         if project not in GCP_PROJECTS:
             _logger.error("invalid project name [{0}].".format(project))
             return None
