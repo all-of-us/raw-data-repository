@@ -95,9 +95,9 @@ def _create_biobank_covid_antibody_obj_from_row(row, csv_filename):
         ingestFileName=csv_filename
     )
 
-    ojb = BiobankCovidAntibodySample(**kwargs)
+    obj = BiobankCovidAntibodySample(**kwargs)
 
-    return ojb
+    return obj
 
 
 def _save_quest_covid_antibody_test_from_csv(csv_reader, csv_filename):
@@ -133,9 +133,9 @@ def _create_quest_covid_antibody_test_obj_from_row(row, csv_filename):
         ingestFileName=csv_filename
     )
 
-    ojb = QuestCovidAntibodyTest(**kwargs)
+    obj = QuestCovidAntibodyTest(**kwargs)
 
-    return ojb
+    return obj
 
 
 def _save_quest_covid_antibody_test_result_from_csv(csv_reader, csv_filename):
@@ -167,9 +167,9 @@ def _create_quest_covid_antibody_test_result_obj_from_row(row, csv_filename):
         ingestFileName=csv_filename
     )
 
-    ojb = QuestCovidAntibodyTestResult(**kwargs)
+    obj = QuestCovidAntibodyTestResult(**kwargs)
 
-    return ojb
+    return obj
 
 
 def _find_csv_file_list(cloud_bucket_name, file_name_prefix=None, sub_folder_name=None):
