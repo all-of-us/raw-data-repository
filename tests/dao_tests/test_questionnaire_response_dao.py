@@ -8,7 +8,8 @@ from rdr_service import config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import GENDER_IDENTITY_QUESTION_CODE, PMI_SKIP_CODE, PPI_SYSTEM, THE_BASICS_PPI_MODULE,\
-    CONSENT_COPE_YES_CODE, CONSENT_COPE_NO_CODE, CONSENT_COPE_DEFERRED_CODE
+    CONSENT_COPE_YES_CODE, CONSENT_COPE_NO_CODE, CONSENT_COPE_DEFERRED_CODE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE,\
+    COHORT_1_REVIEW_CONSENT_YES_CODE, COHORT_1_REVIEW_CONSENT_NO_CODE
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -101,6 +102,10 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         config.override_setting(config.DNA_PROGRAM_CONSENT_UPDATE_CODE, DNA_PROGRAM_CONSENT_UPDATE_CODE_VALUE)
         self.dna_program_consent_update_code = Code(system=PPI_SYSTEM, mapped=True, codeType=CodeType.MODULE,
                                                     value=DNA_PROGRAM_CONSENT_UPDATE_CODE_VALUE)
+        self.consent_update_question_code = self.data_generator.create_database_code(
+            codeId=25,
+            value=PRIMARY_CONSENT_UPDATE_QUESTION_CODE
+        )
 
     def _setup_questionnaire(self):
         q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
@@ -132,6 +137,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self.email_code_id = self.code_dao.insert(email_code()).codeId
         self.cope_consent_id = self.code_dao.insert(cope_consent_code()).codeId
         self.dna_program_consent_update_code_id = self.code_dao.insert(self.dna_program_consent_update_code).codeId
+        self.consent_update_yes = self.data_generator.create_database_code(value=COHORT_1_REVIEW_CONSENT_YES_CODE)
+        self.consent_update_no = self.data_generator.create_database_code(value=COHORT_1_REVIEW_CONSENT_NO_CODE)
         self.login_phone_number_code_id = self.code_dao.insert(login_phone_number_code()).codeId
         self.FN_QUESTION = QuestionnaireQuestion(linkId="fn", codeId=self.first_name_code_id, repeats=False)
         self.LN_QUESTION = QuestionnaireQuestion(linkId="ln", codeId=self.last_name_code_id, repeats=False)
@@ -730,8 +737,11 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
     def _create_dna_program_questionnaire(self, created_date=datetime.datetime(2020, 5, 5)):
         self._create_questionnaire(created_date)
-        self.data_generator.create_database_questionnaire_concept(questionnaireId=2, questionnaireVersion=1,
-                                                   codeId=self.dna_program_consent_update_code_id)
+        self.data_generator.create_database_questionnaire_concept(
+            questionnaireId=2,
+            questionnaireVersion=1,
+            codeId=self.dna_program_consent_update_code_id
+        )
 
     def test_dna_program_consent_update_questionnaire(self):
         self.insert_codes()
@@ -745,6 +755,41 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
         participant_summary = self.participant_summary_dao.get(1)
         self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnDnaProgram)
+
+    def _create_consent_update_questionnaire(self, created_date=datetime.datetime(2020, 5, 5)):
+        self._create_questionnaire(created_date, question_code_id=self.consent_update_question_code.codeId)
+
+    def test_primary_consent_update_changes_study_authored(self):
+        self.insert_codes()
+        p = Participant(participantId=1, biobankId=2)
+        self.participant_dao.insert(p)
+        self._setup_participant()
+
+        self._create_consent_update_questionnaire()
+        consent_update_authored_date = datetime.datetime(2020, 7, 27)
+        with FakeClock(consent_update_authored_date):
+            self._submit_questionnaire_response(response_consent_code=self.consent_update_yes)
+
+        participant_summary = self.participant_summary_dao.get(1)
+        self.assertEqual(consent_update_authored_date, participant_summary.consentForStudyEnrollmentAuthored)
+
+    def test_consent_update_refusal_does_not_change_authored_time(self):
+        self.insert_codes()
+        p = Participant(participantId=1, biobankId=2)
+        self.participant_dao.insert(p)
+        self._setup_participant()
+
+        participant_summary = self.participant_summary_dao.get(1)
+        original_consent_authored_time = participant_summary.consentForStudyEnrollmentAuthored
+
+        self._create_consent_update_questionnaire()
+        consent_update_authored_date = datetime.datetime(2020, 7, 27)
+        with FakeClock(consent_update_authored_date):
+            self._submit_questionnaire_response(response_consent_code=self.consent_update_no)
+
+        new_participant_summary = self.participant_summary_dao.get(1)
+        self.assertEqual(original_consent_authored_time, new_participant_summary.consentForStudyEnrollmentAuthored)
+        self.assertNotEqual(consent_update_authored_date, new_participant_summary.consentForStudyEnrollmentAuthored)
 
     def test_from_client_json_raises_BadRequest_for_excessively_long_value_string(self):
         self.insert_codes()
