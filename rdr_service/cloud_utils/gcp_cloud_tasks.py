@@ -16,7 +16,7 @@ class GCPCloudTask(object):
     Use the GCP Cloud Tasks API to run a task later.
     """
     # Create a client.
-    _client = tasks_v2.CloudTasksClient()
+    _client = None
 
     def execute(self, endpoint: str, payload: (dict, list)=None, in_seconds: int = 0, project_id: str = GAE_PROJECT,
                location: str = 'us-central1', queue: str = 'default', quiet=False):
@@ -30,6 +30,11 @@ class GCPCloudTask(object):
         :param queue: target cloud task queue.
         :param quiet: suppress logging.
         """
+        if not project_id or project_id == 'localhost':
+            raise ValueError('Invalid GCP project id')
+        if not self._client:
+            self._client = tasks_v2.CloudTasksClient()
+
         if not endpoint:
             raise ValueError('endpoint value must be provided.')
         if payload and not isinstance(payload, dict):
