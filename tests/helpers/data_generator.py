@@ -1,7 +1,6 @@
 from datetime import datetime
 from rdr_service.code_constants import PPI_SYSTEM
-from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderHistory, BiobankOrderedSample,\
-    BiobankOrderedSampleHistory, BiobankOrderIdentifier
+from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.log_position import LogPosition
