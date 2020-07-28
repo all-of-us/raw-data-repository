@@ -71,8 +71,8 @@ def import_codebook():
     if GAE_PROJECT == 'localhost':
         rebuild_bq_codebook_task()
     else:
-        task = GCPCloudTask('rebuild_codebook_task', queue='resource-tasks')
-        task.execute()
+        task = GCPCloudTask()
+        task.execute('rebuild_codebook_task', queue='resource-tasks')
 
     return _log_and_return_json(response)
 
