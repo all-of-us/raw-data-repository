@@ -80,6 +80,10 @@ CONSENT_GROR_YES_CODE = "CheckDNA_Yes"
 CONSENT_GROR_NO_CODE = "CheckDNA_No"
 CONSENT_GROR_NOT_SURE = "CheckDNA_NotSure"
 
+# Reconsent Answer Codes
+COHORT_1_REVIEW_CONSENT_YES_CODE = "ReviewConsentAgree_Yes"
+COHORT_1_REVIEW_CONSENT_NO_CODE = "ReviewConsentAgree_No"
+
 # Consent COPE Answer Codes.  (Deferred = expressed interest in taking the survey later)
 CONSENT_COPE_YES_CODE = "COPE_A_44"
 CONSENT_COPE_NO_CODE = "COPE_A_13"
