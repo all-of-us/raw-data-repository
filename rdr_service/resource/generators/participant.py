@@ -556,7 +556,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 if pm['status_id'] == int(PhysicalMeasurementsStatus.COMPLETED) or \
                         (pm['finalized'] and pm['status_id'] != int(PhysicalMeasurementsStatus.CANCELLED)):
                     pm_complete = True
-                    physical_measurements_date = min(physical_measurements_date, pm['finalized'])
+                    physical_measurements_date = \
+                        min(physical_measurements_date, pm['finalized'] or datetime.datetime.max)
 
         baseline_module_count = 0
         latest_baseline_module_completion = datetime.datetime.min
