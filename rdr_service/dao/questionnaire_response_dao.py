@@ -39,7 +39,9 @@ from rdr_service.code_constants import (
     COPE_CONSENT_QUESTION_CODE,
     STREET_ADDRESS_QUESTION_CODE,
     STREET_ADDRESS2_QUESTION_CODE,
-    EHR_CONSENT_EXPIRED_YES)
+    EHR_CONSENT_EXPIRED_YES,
+    PRIMARY_CONSENT_UPDATE_QUESTION_CODE,
+    COHORT_1_REVIEW_CONSENT_YES_CODE)
 from rdr_service.config_api import is_config_admin
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -377,6 +379,10 @@ class QuestionnaireResponseDao(BaseDao):
 
                             # COPE Survey changes need to update number of modules complete in summary
                             module_changed = True
+                    elif code.value == PRIMARY_CONSENT_UPDATE_QUESTION_CODE:
+                        answer_value = code_dao.get(answer.valueCodeId).value
+                        if answer_value == COHORT_1_REVIEW_CONSENT_YES_CODE:
+                            participant_summary.consentForStudyEnrollmentAuthored = authored
 
         # If the answer for line 2 of the street address was left out then it needs to be clear on summary.
         # So when it hasn't been submitted and there is something set for streetAddress2 we want to clear it out.

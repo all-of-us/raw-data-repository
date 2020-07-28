@@ -1,4 +1,5 @@
 from datetime import datetime
+from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
@@ -259,7 +260,7 @@ class DataGenerator:
         return code
 
     def _code(self, **kwargs):
-        for field, default in [('system', 'test'),
+        for field, default in [('system', PPI_SYSTEM),
                                ('codeType', 1),
                                ('mapped', False),
                                ('created', datetime.now())]:

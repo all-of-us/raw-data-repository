@@ -35,6 +35,7 @@ DVEHR_SHARING_QUESTION_CODE = "DVEHRSharing_AreYouInterested"
 CABOR_SIGNATURE_QUESTION_CODE = "ExtraConsent_CABoRSignature"
 GROR_CONSENT_QUESTION_CODE = "ResultsConsent_CheckDNA"
 COPE_CONSENT_QUESTION_CODE = "section_participation"
+PRIMARY_CONSENT_UPDATE_QUESTION_CODE = "Reconsent_ReviewConsentAgree"
 
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 
@@ -78,6 +79,10 @@ EHR_CONSENT_EXPIRED_YES = "EHRConsentPII_ConsentExpired_Yes"
 CONSENT_GROR_YES_CODE = "CheckDNA_Yes"
 CONSENT_GROR_NO_CODE = "CheckDNA_No"
 CONSENT_GROR_NOT_SURE = "CheckDNA_NotSure"
+
+# Reconsent Answer Codes
+COHORT_1_REVIEW_CONSENT_YES_CODE = "ReviewConsentAgree_Yes"
+COHORT_1_REVIEW_CONSENT_NO_CODE = "ReviewConsentAgree_No"
 
 # Consent COPE Answer Codes.  (Deferred = expressed interest in taking the survey later)
 CONSENT_COPE_YES_CODE = "COPE_A_44"
