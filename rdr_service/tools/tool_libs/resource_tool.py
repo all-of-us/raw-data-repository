@@ -182,7 +182,7 @@ class ResourceClass(object):
                 return 1
 
             # read pids from file.
-            pids = open(os.path.expanduser('~/rebuild_pids.txt')).readlines()
+            pids = open(os.path.expanduser(self.args.from_file)).readlines()
             # convert pids from a list of strings to a list of integers.
             pids = [int(i) for i in pids]
             _logger.info('  PIDs File             : {0}'.format(clr.fmt(self.args.from_file)))
