@@ -165,6 +165,23 @@ class QuestionnaireResponseApiTest(BaseTestCase):
                                  "&ehrConsentExpireStatus=EXPIRED&_includeTotal=true")
         self.assertEqual(len(summary2.get('entry')), 1)
 
+        # test re-sign ehr consent
+        with FakeClock(datetime.datetime(2020, 4, 12)):
+            self.submit_ehr_questionnaire(participant_id, CONSENT_PERMISSION_YES_CODE, None,
+                                          datetime.datetime(2020, 4, 11))
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2020-04-11T00:00:00')
+        self.assertEqual(summary.get('enrollmentStatusMemberTime'), '2020-04-12T00:00:00')
+        self.assertEqual(summary.get('enrollmentStatus'), 'MEMBER')
+        self.assertEqual(summary.get('ehrConsentExpireStatus'), 'UNSET')
+        self.assertEqual(summary.get('ehrConsentExpireTime'), None)
+        self.assertEqual(summary.get('ehrConsentExpireAuthored'), None)
+
+        summary2 = self.send_get("ParticipantSummary?_count=25&_offset=0&_sort%3Adesc=consentForStudyEnrollmentAuthored"
+                                 "&consentForElectronicHealthRecords=SUBMITTED&ehrConsentExpireStatus=UNSET"
+                                 "&_includeTotal=true")
+        self.assertEqual(len(summary2.get('entry')), 1)
+
     def submit_ehr_questionnaire(self, participant_id, ehr_response_code, string_answers, authored):
         if not self._ehr_questionnaire_id:
             self._ehr_questionnaire_id = self.create_questionnaire("ehr_consent_questionnaire.json")

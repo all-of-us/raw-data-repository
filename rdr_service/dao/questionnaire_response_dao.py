@@ -337,6 +337,10 @@ class QuestionnaireResponseDao(BaseDao):
                             ehr_consent = True
                             if participant_summary.consentForElectronicHealthRecordsFirstYesAuthored is None:
                                 participant_summary.consentForElectronicHealthRecordsFirstYesAuthored = authored
+                            if participant_summary.ehrConsentExpireStatus == ConsentExpireStatus.EXPIRED:
+                                participant_summary.ehrConsentExpireStatus = ConsentExpireStatus.UNSET
+                                participant_summary.ehrConsentExpireAuthored = None
+                                participant_summary.ehrConsentExpireTime = None
                     elif code.value == EHR_CONSENT_EXPIRED_QUESTION_CODE:
                         if answer.valueString and answer.valueString == EHR_CONSENT_EXPIRED_YES:
                             participant_summary.ehrConsentExpireStatus = ConsentExpireStatus.EXPIRED
