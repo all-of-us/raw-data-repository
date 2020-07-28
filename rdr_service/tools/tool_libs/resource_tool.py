@@ -72,6 +72,7 @@ class ResourceClass(object):
         count = 0
         batch_count = 0
         batch = list()
+        task = None if config.GAE_PROJECT == 'localhost' else GCPCloudTask()
 
         # queue up a batch of participant ids and send them to be rebuilt.
         for pid in pids:
@@ -85,9 +86,8 @@ class ResourceClass(object):
                 if self.gcp_env.project == 'localhost':
                     batch_rebuild_participants_task(payload)
                 else:
-                    task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
-                                        queue='resource-rebuild', project_id=self.gcp_env.project)
-                    task.execute(quiet=True)
+                    task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                                        queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
                 batch_count += 1
                 # reset for next batch
                 batch = list()
@@ -108,9 +108,8 @@ class ResourceClass(object):
             if self.gcp_env.project == 'localhost':
                 batch_rebuild_participants_task(payload)
             else:
-                task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
-                                    queue='resource-rebuild', project_id=self.gcp_env.project)
-                task.execute(quiet=True)
+                task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                                    queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             if not self.args.debug:
                 print_progress_bar(
