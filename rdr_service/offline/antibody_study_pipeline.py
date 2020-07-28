@@ -45,8 +45,7 @@ def _import_file(bucket_name, sub_folder_name, file_name_prefix, func):
         return None
     for (csv_file_cloud_path, csv_filename) in file_list:
         with open_cloud_file(csv_file_cloud_path) as csv_file:
-            logging.info("Opening  CSV in {}: {}.", bucket_name,
-                         csv_file_cloud_path)
+            logging.info("Opening  CSV in {}: {}.".format(bucket_name, csv_file_cloud_path))
             csv_reader = csv.DictReader(csv_file, delimiter=",")
             func(csv_reader, csv_filename)
             logging.info("import completed, file name: {}".format(csv_filename))

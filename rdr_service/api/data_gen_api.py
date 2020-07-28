@@ -140,6 +140,7 @@ def generate_samples_task(fraction_missing):
 class DataGenApi(Resource):
 
     method_decorators = [_auth_required_healthpro_or_config_admin]
+    _task = GCPCloudTask()
 
     @nonprod
     def post(self):
@@ -163,8 +164,7 @@ class DataGenApi(Resource):
                 generate_samples_task(fraction)
             else:
                 params = {'fraction': fraction}
-                task = GCPCloudTask('generate_bio_samples_task', payload=params)
-                task.execute()
+                self._task.execute('generate_bio_samples_task', payload=params)
 
 
     @nonprod
