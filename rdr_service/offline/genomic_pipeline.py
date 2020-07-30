@@ -95,7 +95,7 @@ def genomic_centers_aw1f_manifest_workflow():
 
 def genomic_centers_accessioning_failures_workflow():
     """
-        Entrypoint for Ingestion:
+        Entrypoint for Accessioning Alerts:
             Failure Manifest (AW1F)
         """
     with GenomicJobController(GenomicJob.AW1F_MANIFEST,

@@ -34,11 +34,6 @@ cron:
   schedule: every day 00:10
   timezone: America/New_York
   target: offline
-- description: Genomic Pipeline AW0 (Cohort 2) Workflow
-  url: /offline/GenomicC2AW0Workflow
-  schedule: every monday 07:00
-  timezone: America/New_York
-  target: offline
 - description: Rebuild BigQuery Data (Manual)
   url: /offline/BigQueryRebuild
   timezone: America/New_York
@@ -56,6 +51,51 @@ cron:
   target: offline
 - description: Backfill Patient Status (Manual)
   url: /offline/PatientStatusBackfill
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
+- description: Genomic Pipeline AW0 (Cohort 2) Workflow
+  url: /offline/GenomicC2AW0Workflow
+  schedule: every monday 07:00
+  timezone: America/New_York
+  target: offline
+- description: Genomic Pipeline AW0 (Cohort 1) Workflow (Manual)
+  url: /offline/GenomicC1AW0Workflow
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
+- description: Genomic AW1 Workflow (Manual)
+  url: /offline/GenomicGCManifestWorkflow
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
+- description: Genomic AW2 Workflow (Manual)
+  url: /offline/GenomicDataManifestWorkflow
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
+- description: Genomic GEM A1-A2 Workflow (Manual)
+  url: /offline/GenomicGemA1A2Workflow
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
+- description: Genomic GEM A3 Workflow (Manual)
+  url: /offline/GenomicGemA3Workflow
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
+- description: Genomic CVL W1 Workflow (Manual)
+  url: /offline/GenomicCvlW1Workflow
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
+- description: Genomic CVL W2 Workflow (Manual)
+  url: /offline/GenomicCvlW2Workflow
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
+- description: Genomic CVL W3 Workflow (Manual)
+  url: /offline/GenomicCvlW3Workflow
   timezone: America/New_York
   schedule: 1 of jan 12:00
   target: offline
