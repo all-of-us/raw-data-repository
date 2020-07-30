@@ -686,16 +686,31 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 not summary.get('enrollment_member', None):
             return {}
 
-        # Calculate the earliest ordered sample and stored sample times.
+        # Calculate the min ordered sample and max stored sample times.
         ordered_time = stored_time = datetime.datetime.max
-        for bbo in summary['biobank_orders']:
+        # pylint: disable=unused-variable
+        stored_sample_times = dict(zip(self._dna_sample_test_codes, [datetime.datetime.min for i in range(0, 5)]))
+
+        for x in range(len(summary['biobank_orders']), 0, -1):
+            bbo = summary['biobank_orders'][x - 1]
+            if not bbo['samples']:
+                continue
+
             for bboi in bbo['samples']:
                 if bboi['dna_test'] == 1:
                     ordered_time = min(ordered_time, bboi['finalized'] or datetime.datetime.max)
                     # See: participant_summary_dao.py:calculate_max_core_sample_time() and
                     #       _participant_summary_dao.py:126
-                    stored_time = min(stored_time, bboi['disposed'] or bboi['confirmed'] or
-                                      datetime.datetime.max)
+                    # Only catch the most recent test.
+                    if stored_sample_times[bboi['test']] == datetime.datetime.min:
+                        stored_sample_times[bboi['test']] = \
+                            max(bboi['disposed'] or bboi['confirmed'] or datetime.datetime.min,
+                                datetime.datetime.min)
+
+        # Find the min timestamp of any found test timestamps.
+        for k, v in stored_sample_times.items():
+            if v != datetime.datetime.min:
+                stored_time = min(stored_time, v)
 
         data = {
             'enrollment_core_ordered': ordered_time if ordered_time != datetime.datetime.max else None,

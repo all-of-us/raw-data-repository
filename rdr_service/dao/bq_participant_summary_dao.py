@@ -678,14 +678,28 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         # Calculate the earliest ordered sample and stored sample times.
         ordered_time = stored_time = datetime.datetime.max
-        for bbo in summary['biobank_orders']:
+        # pylint: disable=unused-variable
+        stored_sample_times = dict(zip(self._dna_sample_test_codes, [datetime.datetime.min for i in range(0, 5)]))
+
+        for x in range(len(summary['biobank_orders']), 0, -1):
+            bbo = summary['biobank_orders'][x-1]
+            if not bbo['bbo_samples']:
+                continue
+
             for bboi in bbo['bbo_samples']:
                 if bboi['bbs_dna_test'] == 1:
                     ordered_time = min(ordered_time, bboi['bbs_finalized'] or datetime.datetime.max)
                     # See: participant_summary_dao.py:calculate_max_core_sample_time() and
                     #       _participant_summary_dao.py:126
-                    stored_time = min(stored_time, bboi['bbs_disposed'] or bboi['bbs_confirmed'] or
-                                      datetime.datetime.max)
+                    # Only catch the most recent test.
+                    if stored_sample_times[bboi['bbs_test']] == datetime.datetime.min:
+                        stored_sample_times[bboi['bbs_test']] = \
+                            max(bboi['bbs_disposed'] or bboi['bbs_confirmed'] or datetime.datetime.min,
+                                datetime.datetime.min)
+
+        for k, v in stored_sample_times.items():
+            if v != datetime.datetime.min:
+                stored_time = min(stored_time, v)
 
         data = {
             'enrollment_core_ordered': ordered_time if ordered_time != datetime.datetime.max else None,
