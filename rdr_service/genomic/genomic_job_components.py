@@ -853,7 +853,8 @@ class GenomicReconciler:
 
                     if file_exists != 0:
                         setattr(metric.GenomicGCValidationMetrics, file_type[0], 1)
-                        setattr(metric.GenomicGCValidationMetrics, file_type[2], f'gs://{file.bucketName}/{file_exists}')
+                        setattr(metric.GenomicGCValidationMetrics, file_type[2],
+                                f'gs://{file.bucketName}/{file_exists}')
 
                     if not file_exists:
                         setattr(metric.GenomicGCValidationMetrics, file_type[0], file_exists)
