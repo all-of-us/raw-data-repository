@@ -29,8 +29,8 @@ class JiraTicketHandler:
             'change_manager': ['asmita.gauchan@vumc.org', 'bhinnata.piya@vumc.org', 'katherine.j.worley@vumc.org']
         }
         self.developer_tags = {
-            'developers': ['yu.wang.3@vumc.org', 'robert.m.abram.1@vumc.org', 'michael.mead@vumc.org',
-                           'joshua.d.kanuch@vumc.org']
+            'developers': ['yu.wang.3@vumc.org', 'robert.m.abram.1@vumc.org', 'kenneth.d.skaggs@vumc.org',
+                           'joshua.d.kanuch@vumc.org', 'margaret.m.bertsch@vumc.org']
         }
 
         self._connect_to_jira()
