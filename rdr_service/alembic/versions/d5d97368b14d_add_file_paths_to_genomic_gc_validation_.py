@@ -2,7 +2,7 @@
 
 
 Revision ID: d5d97368b14d
-Revises: 8302d4762b9a
+Revises: 4507ede4f552
 Create Date: 2020-07-24 14:14:21.478839
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'd5d97368b14d'
-down_revision = '8302d4762b9a'
+down_revision = '4507ede4f552'
 branch_labels = None
 depends_on = None
 
@@ -22,7 +22,6 @@ def upgrade(engine_name):
 
 def downgrade(engine_name):
     globals()["downgrade_%s" % engine_name]()
-
 
 
 def upgrade_rdr():

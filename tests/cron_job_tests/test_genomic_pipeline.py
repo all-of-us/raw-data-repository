@@ -2039,14 +2039,15 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_aw3_array_manifest_generation(self):
+        # Todo: Manifest and Tests to be created in subsequent PR
         # self._create_fake_datasets_for_gc_tests(3, arr_override=True,
         #                                         recon_gc_man_id=1,
         #                                         genomic_workflow_state=GenomicWorkflowState.AW1)
         #
         # self._update_test_sample_ids()
-
         # Todo: set fields for file paths
         pass
 
     def test_aw3_wgs_manifest_generation(self):
+        # Todo: Manifest and Tests to be created in subsequent PR
         pass
