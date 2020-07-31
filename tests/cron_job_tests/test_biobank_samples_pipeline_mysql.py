@@ -58,6 +58,7 @@ _CSV_COLUMN_NAMES = (
     "edited_cancelled_restored_site_time",
     "edited_cancelled_restored_site_reason",
     "biobank_order_origin",
+    "participant_origin"
 )
 
 
@@ -836,6 +837,14 @@ class MySqlReconciliationTest(BaseTestCase):
                 "biobank_id": to_client_biobank_id(p_present_salivary.biobankId)
             }
         )
+
+        # Check that the reports have the participant_origin column
+        participant_origin_data = {"participant_origin": "example"}
+        exporter.assertHasRow(received, participant_origin_data)
+        exporter.assertHasRow(missing, participant_origin_data)
+        exporter.assertHasRow(modified, participant_origin_data)
+        exporter.assertHasRow(withdrawals, participant_origin_data)
+        exporter.assertHasRow(missing_salivary, participant_origin_data)
 
     def test_monthly_reconciliation_report(self):
         self.setup_codes([RACE_QUESTION_CODE], CodeType.QUESTION)
