@@ -106,6 +106,7 @@ def update_bigquery_sync_participants(ts, dao):
         count = 0
         batch_count = 0
         batch = list()
+        task = None if config.GAE_PROJECT == 'localhost' else GCPCloudTask()
 
         # queue up a batch of participant ids and send them to be rebuilt.
         for p in participants:
@@ -119,9 +120,8 @@ def update_bigquery_sync_participants(ts, dao):
                 if config.GAE_PROJECT == 'localhost':
                     batch_rebuild_participants_task(payload)
                 else:
-                    task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
-                                        queue='resource-rebuild')
-                    task.execute(quiet=True)
+                    task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                                        queue='resource-rebuild', quiet=True)
                 batch_count += 1
                 # reset for next batch
                 batch = list()
@@ -134,9 +134,8 @@ def update_bigquery_sync_participants(ts, dao):
             if config.GAE_PROJECT == 'localhost':
                 batch_rebuild_participants_task(payload)
             else:
-                task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
-                                    queue='resource-rebuild')
-                task.execute(quiet=True)
+                task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                                    queue='resource-rebuild', quiet=True)
 
         logging.info(f'Biobank: submitted {batch_count} tasks.')
 

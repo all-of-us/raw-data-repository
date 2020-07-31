@@ -55,6 +55,7 @@ def rebuild_bigquery_handler():
         count = 0
         batch_count = 0
         batch = list()
+        task = None if config.GAE_PROJECT == 'localhost' else GCPCloudTask()
 
         # queue up a batch of participant ids and send them to be rebuilt.
         for p in participants:
@@ -68,9 +69,8 @@ def rebuild_bigquery_handler():
                 if config.GAE_PROJECT == 'localhost':
                     batch_rebuild_participants_task(payload)
                 else:
-                    task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
-                                        queue='resource-rebuild')
-                    task.execute(quiet=True)
+                    task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                                        queue='resource-rebuild', quiet=True)
                 batch_count += 1
                 # reset for next batch
                 batch = list()
@@ -83,9 +83,8 @@ def rebuild_bigquery_handler():
             if config.GAE_PROJECT == 'localhost':
                 batch_rebuild_participants_task(payload)
             else:
-                task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
-                                    queue='resource-rebuild')
-                task.execute(quiet=True)
+                task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                                    queue='resource-rebuild', quiet=True)
 
         logging.info(f'Submitted {batch_count} tasks.')
 
@@ -133,6 +132,7 @@ def daily_rebuild_bigquery_handler():
         count = 0
         batch_count = 0
         batch = list()
+        task = None if config.GAE_PROJECT == 'localhost' else GCPCloudTask()
 
         # queue up a batch of participant ids and send them to be rebuilt.
         for p in participants:
@@ -146,9 +146,8 @@ def daily_rebuild_bigquery_handler():
                 if config.GAE_PROJECT == 'localhost':
                     batch_rebuild_participants_task(payload)
                 else:
-                    task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
-                                        queue='resource-rebuild')
-                    task.execute(quiet=True)
+                    task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                                        queue='resource-rebuild', quiet=True)
                 batch_count += 1
                 # reset for next batch
                 batch = list()
@@ -161,9 +160,8 @@ def daily_rebuild_bigquery_handler():
             if config.GAE_PROJECT == 'localhost':
                 batch_rebuild_participants_task(payload)
             else:
-                task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
-                                    queue='resource-rebuild')
-                task.execute(quiet=True)
+                task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                                    queue='resource-rebuild', quiet=True)
 
         logging.info(f'Submitted {batch_count} tasks.')
 

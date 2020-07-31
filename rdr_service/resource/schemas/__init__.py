@@ -9,6 +9,8 @@ from .organization import OrganizationSchema
 from .site import SiteSchema
 from .workbench_researcher import WorkbenchResearcherSchema, WorkbenchInstitutionalAffiliationsSchema
 from .workbench_workspace import WorkbenchWorkspaceSchema, WorkbenchWorkspaceUsersSchema
+from .covid_antibody_study import BiobankCovidAntibodySampleSchema, QuestCovidAntibodyTestResultSchema, \
+    QuestCovidAntibodyTestSchema
 
 
 __all__ = [
@@ -20,7 +22,10 @@ __all__ = [
     'WorkbenchResearcherSchema',
     'WorkbenchInstitutionalAffiliationsSchema',
     'WorkbenchWorkspaceSchema',
-    'WorkbenchWorkspaceUsersSchema'
+    'WorkbenchWorkspaceUsersSchema',
+    'BiobankCovidAntibodySampleSchema',
+    'QuestCovidAntibodyTestSchema',
+    'QuestCovidAntibodyTestResultSchema'
 ]
 
 

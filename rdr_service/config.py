@@ -45,6 +45,9 @@ PARTICIPANT_SUMMARY_SHARDS = "participant_summary_shards"
 AGE_RANGE_SHARDS = "age_range_shards"
 BIOBANK_SAMPLES_SHARDS = "biobank_samples_shards"
 BIOBANK_SAMPLES_BUCKET_NAME = "biobank_samples_bucket_name"
+QUEST_ANTIBODY_STUDY_BUCKET_NAME = "quest_antibody_study_bucket_name"
+# how many days' data do we want to import, default is 1 day
+ANTIBODY_DATA_IMPORT_DAYS = "antibody_data_import_days"
 GENOMIC_CENTER_BUCKET_NAME = 'genomic_center_bucket_name'
 GENOMIC_CENTER_DATA_BUCKET_NAME = 'genomic_center_data_bucket_name'
 GENOMIC_SET_BUCKET_NAME = "genomic_set_bucket_name"
@@ -84,6 +87,7 @@ DNA_SAMPLE_TEST_CODES = "dna_sample_test_codes"
 GHOST_ID_BUCKET = "ghost_id_bucket"
 MAYOLINK_CREDS = "mayolink_creds"
 JIRA_CREDS = "jira_creds"
+READTHEDOCS_CREDS = "readthedocs_creds"
 SENDGRID_KEY = "sendgrid_key"
 SENDGRID_FROM_EMAIL = "no-reply@pmi-ops.org"
 MAYOLINK_ENDPOINT = "mayolink_endpoint"

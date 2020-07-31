@@ -52,7 +52,7 @@ def batch_rebuild_participants_task(payload):
             BQPDROverallHealth,
             BQPDREHRConsentPII,
             BQPDRDVEHRSharing,
-            BQPDRCOPEMay,
+            BQPDRCOPEMay
         )
         for module in modules:
             mod = module()
