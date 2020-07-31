@@ -435,6 +435,64 @@ class IgnoreStateClass(object):
             session.merge(member)
 
 
+class ControlSampleClass(GenomicManifestBase):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(ControlSampleClass, self).__init__(args, gcp_env)
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+
+        # Validate Aruguments
+        if self.args.csv is None:
+            _logger.error('Argument --csv must be provided.')
+            return 1
+
+        if not os.path.exists(self.args.csv):
+            _logger.error(f'File {self.args.csv} was not found.')
+            return 1
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicSetMemberDao()
+
+        # Update gsm IDs from file
+        with open(self.args.csv, encoding='utf-8-sig') as f:
+            lines = f.readlines()
+
+            if not self.args.dryrun:
+                new_genomic_set = GenomicSet(
+                    genomicSetName=f"New Control Sample List-{self.nowf}",
+                    genomicSetCriteria=".",
+                    genomicSetVersion=1,
+                )
+
+                with self.dao.session() as session:
+                    inserted_set = session.merge(new_genomic_set)
+                    session.flush()
+
+                    for _sample_id in lines:
+                        _logger.warning(f'Inserting {_sample_id}')
+
+                        member_to_insert = GenomicSetMember(
+                            genomicSetId=inserted_set.id,
+                            sampleId=_sample_id,
+                            genomicWorkflowState=GenomicWorkflowState.CONTROL_SAMPLE,
+                            participantId=0,
+                        )
+
+                        session.merge(member_to_insert)
+                        session.commit()
+
+            else:
+                for _sample_id in lines:
+                    _logger.warning(f'Would Insert {_sample_id}')
+
+        return 0
+
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -472,6 +530,11 @@ def run():
     ignore_state_parser = subparser.add_parser("ignore-state")
     ignore_state_parser.add_argument("--csv", help="csv file with genomic_set_member ids", default=None)  # noqa
 
+    # Create GenomicSetMembers for provided control sample IDs (provided by Biobank)
+    control_sample_parser = subparser.add_parser("control-sample")
+    control_sample_parser.add_argument("--csv", help="csv file with control sample ids", default=None)  # noqa
+    control_sample_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -485,6 +548,10 @@ def run():
 
         elif args.util == 'ignore-state':
             process = IgnoreStateClass(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.util == 'control-sample':
+            process = ControlSampleClass(args, gcp_env)
             exit_code = process.run()
 
         else:

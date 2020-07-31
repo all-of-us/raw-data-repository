@@ -23,6 +23,7 @@ from rdr_service.resource.generators.participant import rebuild_participant_summ
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.participant import Participant
 
+
 _logger = logging.getLogger("rdr_logger")
 
 # Tool_cmd and tool_desc name are required.
@@ -72,6 +73,7 @@ class ResourceClass(object):
         count = 0
         batch_count = 0
         batch = list()
+        task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
 
         # queue up a batch of participant ids and send them to be rebuilt.
         for pid in pids:
@@ -85,9 +87,8 @@ class ResourceClass(object):
                 if self.gcp_env.project == 'localhost':
                     batch_rebuild_participants_task(payload)
                 else:
-                    task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
-                                        queue='resource-rebuild', project_id=self.gcp_env.project)
-                    task.execute(quiet=True)
+                    task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                                        queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
                 batch_count += 1
                 # reset for next batch
                 batch = list()
@@ -108,9 +109,8 @@ class ResourceClass(object):
             if self.gcp_env.project == 'localhost':
                 batch_rebuild_participants_task(payload)
             else:
-                task = GCPCloudTask('rebuild_participants_task', payload=payload, in_seconds=15,
-                                    queue='resource-rebuild', project_id=self.gcp_env.project)
-                task.execute(quiet=True)
+                task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                                    queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             if not self.args.debug:
                 print_progress_bar(
@@ -182,7 +182,7 @@ class ResourceClass(object):
                 return 1
 
             # read pids from file.
-            pids = open(os.path.expanduser('~/rebuild_pids.txt')).readlines()
+            pids = open(os.path.expanduser(self.args.from_file)).readlines()
             # convert pids from a list of strings to a list of integers.
             pids = [int(i) for i in pids]
             _logger.info('  PIDs File             : {0}'.format(clr.fmt(self.args.from_file)))

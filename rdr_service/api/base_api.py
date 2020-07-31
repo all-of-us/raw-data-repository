@@ -104,6 +104,7 @@ class BaseApi(Resource):
   for uniform authentication, e.g.:
     method_decorators = [app_util.auth_required_cron]
   """
+    _task = GCPCloudTask()
 
     def __init__(self, dao, get_returns_children=False):
         self.dao = dao
@@ -177,9 +178,8 @@ class BaseApi(Resource):
                 rebuild_participant_summary_resource(participant_id)
             else:
                 params = {'p_id': participant_id}
-                task = GCPCloudTask('rebuild_one_participant_task',
+                self._task.execute('rebuild_one_participant_task',
                                     queue='resource-tasks', payload=params, in_seconds=5)
-                task.execute()
 
         log_api_request(log=request.log_record, model_obj=result)
         return self._make_response(result)
@@ -335,9 +335,8 @@ class UpdatableApi(BaseApi):
                 rebuild_participant_summary_resource(participant_id)
             else:
                 params = {'p_id': participant_id}
-                task = GCPCloudTask('rebuild_one_participant_task',
+                self._task.execute('rebuild_one_participant_task',
                                     queue='resource-tasks', payload=params, in_seconds=5)
-                task.execute()
 
         log_api_request(log=request.log_record, model_obj=m)
         return self._make_response(m)

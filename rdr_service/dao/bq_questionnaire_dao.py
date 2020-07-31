@@ -28,27 +28,20 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         if not self.ro_dao:
             self.ro_dao = BigQuerySyncDao(backup=True)
 
-        if module_id == 'TheBasics':
-            table = BQPDRTheBasics
-        elif module_id == 'ConsentPII':
-            table = BQPDRConsentPII
-        elif module_id == 'Lifestyle':
-            table = BQPDRLifestyle
-        elif module_id == 'OverallHealth':
-            table = BQPDROverallHealth
-        elif module_id == 'DVEHRSharing':
-            table = BQPDRDVEHRSharing
-        elif module_id == 'EHRConsentPII':
-            table = BQPDREHRConsentPII
-        elif module_id == 'FamilyHistory':
-            table = BQPDRFamilyHistory
-        elif module_id == 'HealthcareAccess':
-            table = BQPDRHealthcareAccess
-        elif module_id == 'PersonalMedicalHistory':
-            table = BQPDRPersonalMedicalHistory
-        elif module_id == 'COPE':
-            table = BQPDRCOPEMay
-        else:
+        table_map = {
+            'TheBasics': BQPDRTheBasics,
+            'ConsentPII': BQPDRConsentPII,
+            'Lifestyle': BQPDRLifestyle,
+            'OverallHealth': BQPDROverallHealth,
+            'DVEHRSharing': BQPDRDVEHRSharing,
+            'EHRConsentPII': BQPDREHRConsentPII,
+            'FamilyHistory': BQPDRFamilyHistory,
+            'HealthcareAccess': BQPDRHealthcareAccess,
+            'PersonalMedicalHistory': BQPDRPersonalMedicalHistory,
+            'COPE': BQPDRCOPEMay
+        }
+        table = table_map.get(module_id, None)
+        if table is None:
             logging.info('Generator: ignoring questionnaire module id [{0}].'.format(module_id))
             return None, list()
 

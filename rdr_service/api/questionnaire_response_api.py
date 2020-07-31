@@ -16,6 +16,9 @@ from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 
 
 class QuestionnaireResponseApi(BaseApi):
+
+    _task = GCPCloudTask()
+
     def __init__(self):
         super(QuestionnaireResponseApi, self).__init__(QuestionnaireResponseDao())
 
@@ -34,9 +37,8 @@ class QuestionnaireResponseApi(BaseApi):
                 bq_questionnaire_update_task(p_id, qr_id)
             else:
                 params = {'p_id': p_id, 'qr_id': qr_id}
-                task = GCPCloudTask('rebuild_questionnaire_task',
+                self._task.execute('rebuild_questionnaire_task',
                                     queue='resource-tasks', payload=params, in_seconds=5)
-                task.execute()
 
         return resp
 

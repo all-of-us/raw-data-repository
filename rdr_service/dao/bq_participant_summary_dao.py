@@ -30,7 +30,8 @@ _consent_module_question_map = {
     'ConsentPII': None,
     'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
     'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
-    'GROR': 'ResultsConsent_CheckDNA'
+    'GROR': 'ResultsConsent_CheckDNA',
+    'PrimaryConsentUpdate': 'Reconsent_ReviewConsentAgree'
 }
 
 # _consent_expired_question_map must contain every module ID from _consent_module_question_map.
@@ -38,7 +39,8 @@ _consent_expired_question_map = {
     'ConsentPII': None,
     'DVEHRSharing': None,
     'EHRConsentPII': 'EHRConsentPII_ConsentExpired',
-    'GROR': None
+    'GROR': None,
+    'PrimaryConsentUpdate': None
 }
 
 class BQParticipantSummaryGenerator(BigQueryGenerator):
@@ -504,7 +506,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         # iterate over consents
         for consent in ro_summary['consents']:
             response_value = consent['consent_value']
-            response_date = consent['consent_date']
+            response_date = consent['consent_date'] or datetime.datetime.max
             if consent['consent'] == 'ConsentPII':
                 study_consent = True
                 study_consent_date = min(study_consent_date, response_date)
@@ -513,11 +515,13 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 had_ehr_consent = had_ehr_consent or response_value == CONSENT_PERMISSION_YES_CODE
                 consents['EHRConsentExpired'] = (consent.get('consent_expired'), response_date)
                 ehr_consent_expired = consent.get('consent_expired') == EHR_CONSENT_EXPIRED_YES
-                enrollment_member_time = min(enrollment_member_time, consent['consent_module_created'])
+                enrollment_member_time = min(enrollment_member_time,
+                                             consent['consent_module_created'] or datetime.datetime.max)
             elif consent['consent'] == DVEHR_SHARING_QUESTION_CODE:
                 consents['DVEHRConsent'] = (response_value, response_date)
                 had_ehr_consent = had_ehr_consent or response_value == DVEHRSHARING_CONSENT_CODE_YES
-                enrollment_member_time = min(enrollment_member_time, consent['consent_module_created'])
+                enrollment_member_time = min(enrollment_member_time,
+                                             consent['consent_module_created'] or datetime.datetime.max)
             elif consent['consent'] == GROR_CONSENT_QUESTION_CODE:
                 consents['GRORConsent'] = (response_value, response_date)
                 had_gror_consent = had_gror_consent or response_value == CONSENT_GROR_YES_CODE
@@ -546,7 +550,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 if pm['pm_status_id'] == int(PhysicalMeasurementsStatus.COMPLETED) or \
                         (pm['pm_finalized'] and pm['pm_status_id'] != int(PhysicalMeasurementsStatus.CANCELLED)):
                     pm_complete = True
-                    physical_measurements_date = min(physical_measurements_date, pm['pm_finalized'])
+                    physical_measurements_date = \
+                        min(physical_measurements_date, pm['pm_finalized'] or datetime.datetime.max)
 
         baseline_module_count = 0
         latest_baseline_module_completion = datetime.datetime.min
@@ -555,7 +560,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             for module in ro_summary['modules']:
                 if module['mod_baseline_module'] == 1:
                     baseline_module_count += 1
-                    latest_baseline_module_completion = max(latest_baseline_module_completion, module['mod_created'])
+                    latest_baseline_module_completion = \
+                        max(latest_baseline_module_completion, module['mod_created'] or datetime.datetime.min)
             completed_all_baseline_modules = baseline_module_count >= len(self._baseline_modules)
 
         # It seems we have around 100 participants that BioBank has received and processed samples for
@@ -574,7 +580,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         for test, created in results:
             if test in self._dna_sample_test_codes:
                 dna_sample_count += 1
-                first_dna_sample_date = min(first_dna_sample_date, created)
+                first_dna_sample_date = min(first_dna_sample_date, created or datetime.datetime.max)
 
         if study_consent is True:
             status = EnrollmentStatusV2.PARTICIPANT
@@ -690,9 +696,10 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         # If we have ordered or stored sample times, ensure that it is not before the alt_time value.
         alt_time = max(
             summary.get('enrollment_member', datetime.datetime.min),
-            max(mod['mod_created'] for mod in summary['modules'] if mod['mod_baseline_module'] == 1),
-            max(pm['pm_finalized'] or datetime.datetime.min for pm in summary['pm']) if 'pm' in summary
-                    else datetime.datetime.min
+            max(mod['mod_created'] or datetime.datetime.min for mod in summary['modules']
+                    if mod['mod_baseline_module'] == 1),
+            max(pm['pm_finalized'] or datetime.datetime.min for pm in summary['pm'])
+                    if 'pm' in summary else datetime.datetime.min
         )
 
         if data['enrollment_core_ordered']:
