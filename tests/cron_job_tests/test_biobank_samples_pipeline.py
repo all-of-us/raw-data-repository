@@ -411,5 +411,6 @@ class BiobankSamplesPipelineTest(BaseTestCase):
                 'N',  # is Native American
                 None, None, None,  # notes info: collected, processed, finalized
                 None, None, None, None, None,  # cancelled_restored info: status_flag, name, name, time, reason
-                None  # order origin
+                None,  # order origin
+                'example'  # Participant origin
             )])
