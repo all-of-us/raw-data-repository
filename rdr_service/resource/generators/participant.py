@@ -688,11 +688,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         # Calculate the min ordered sample and max stored sample times.
         ordered_time = stored_time = datetime.datetime.max
-        # pylint: disable=unused-variable
-        stored_sample_times = dict(zip(self._dna_sample_test_codes, [datetime.datetime.min for i in range(0, 5)]))
+        stored_sample_times = dict(zip(self._dna_sample_test_codes, [
+            {
+                'confirmed': datetime.datetime.min, 'confirmed_count': 0,
+                'disposed': datetime.datetime.min, 'disposed_count': 0
+            } for i in range(0, 5)]))  # pylint: disable=unused-variable
 
-        for x in range(len(summary['biobank_orders']), 0, -1):
-            bbo = summary['biobank_orders'][x - 1]
+        for bbo in summary['biobank_orders']:
             if not bbo['samples']:
                 continue
 
@@ -701,16 +703,25 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     ordered_time = min(ordered_time, bboi['finalized'] or datetime.datetime.max)
                     # See: participant_summary_dao.py:calculate_max_core_sample_time() and
                     #       _participant_summary_dao.py:126
-                    # Only catch the most recent test.
-                    if stored_sample_times[bboi['test']] == datetime.datetime.min:
-                        stored_sample_times[bboi['test']] = \
-                            max(bboi['disposed'] or bboi['confirmed'] or datetime.datetime.min,
-                                datetime.datetime.min)
+                    sst = stored_sample_times[bboi['test']]
+                    if bboi['confirmed']:
+                        sst['confirmed'] = max(sst['confirmed'], bboi['confirmed'])
+                        sst['confirmed_count'] += 1
+                    if bboi['disposed']:
+                        sst['disposed'] = max(sst['disposed'], bboi['disposed'])
+                        sst['disposed_count'] += 1
 
-        # Find the min timestamp of any found test timestamps.
-        for k, v in stored_sample_times.items():
-            if v != datetime.datetime.min:
-                stored_time = min(stored_time, v)
+        sstl = list()
+        for k, v in stored_sample_times.items():  # pylint: disable=unused-variable
+            if v['confirmed_count'] != v['disposed_count']:
+                ts = v['confirmed']
+            else:
+                ts = v['disposed']
+            if ts != datetime.datetime.min:
+                sstl.append(ts)
+
+        if sstl:
+            stored_time = min(sstl)
 
         data = {
             'enrollment_core_ordered': ordered_time if ordered_time != datetime.datetime.max else None,
