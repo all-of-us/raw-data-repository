@@ -671,6 +671,12 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(1, gc_record.idatRedMd5Received)
         self.assertEqual(0, gc_record.idatGreenMd5Received)
 
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[0]}", gc_record.vcfPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[1]}", gc_record.vcfMd5Path)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[2]}", gc_record.idatRedPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[3]}", gc_record.idatGreenPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[4]}", gc_record.idatRedMd5Path)
+
         gc_record = self.metrics_dao.get(2)
 
         # Test the gc_metrics were updated with reconciliation data
@@ -750,6 +756,15 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(1, gc_record.cramReceived)
         self.assertEqual(1, gc_record.cramMd5Received)
         self.assertEqual(0, gc_record.craiReceived)
+
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[0]}", gc_record.hfVcfPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[1]}", gc_record.hfVcfTbiPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[2]}", gc_record.hfVcfMd5Path)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[3]}", gc_record.rawVcfPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[4]}", gc_record.rawVcfTbiPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[5]}", gc_record.rawVcfMd5Path)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[6]}", gc_record.cramPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[7]}", gc_record.cramMd5Path)
 
         # Test member updated with job ID and state
         member = self.member_dao.get(2)
@@ -2022,3 +2037,17 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the job result
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_aw3_array_manifest_generation(self):
+        # Todo: Manifest and Tests to be created in subsequent PR
+        # self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+        #                                         recon_gc_man_id=1,
+        #                                         genomic_workflow_state=GenomicWorkflowState.AW1)
+        #
+        # self._update_test_sample_ids()
+        # Todo: set fields for file paths
+        pass
+
+    def test_aw3_wgs_manifest_generation(self):
+        # Todo: Manifest and Tests to be created in subsequent PR
+        pass

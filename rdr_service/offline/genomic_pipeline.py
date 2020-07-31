@@ -144,6 +144,24 @@ def reconcile_metrics_vs_sequencing_data():
         controller.run_reconciliation_to_sequencing_data()
 
 
+def aw3_array_manifest_workflow():
+    """
+    Entrypoint for AW3 Array Workflow
+    """
+    with GenomicJobController(GenomicJob.AW3_ARRAY_WORKFLOW,
+                              bucket_name=config.DRC_BROAD_BUCKET_NAME) as controller:
+        controller.generate_manifest(GenomicManifestTypes.AW3_ARRAY, _genome_type=config.GENOME_TYPE_ARRAY)
+
+
+def aw3_wgs_manifest_workflow():
+    """
+    Entrypoint for AW3 WGS Workflow
+    """
+    with GenomicJobController(GenomicJob.AW3_WGS_WORKFLOW,
+                              bucket_name=config.DRC_BROAD_BUCKET_NAME) as controller:
+        controller.generate_manifest(GenomicManifestTypes.AW3_WGS, _genome_type=config.GENOME_TYPE_WGS)
+
+
 def gem_a1_manifest_workflow():
     """
     Entrypoint for GEM A1 Workflow
