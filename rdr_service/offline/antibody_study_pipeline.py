@@ -3,11 +3,9 @@ import datetime
 import os
 import csv
 import pytz
-import shlex
-import subprocess
 
 from rdr_service import clock, config
-from rdr_service.api_util import open_cloud_file, list_blobs
+from rdr_service.api_util import open_cloud_file, list_blobs, copy_cloud_file
 from rdr_service.model.covid_antibody_study import BiobankCovidAntibodySample, QuestCovidAntibodyTest, \
     QuestCovidAntibodyTestResult
 from rdr_service.dao.antibody_study_dao import BiobankCovidAntibodySampleDao, QuestCovidAntibodyTestDao, \
@@ -52,25 +50,20 @@ def sync_clia_compliance_pdf_files():
                 logging.info("Invalid CLIA compliance pdf file name: {}.".format(filename))
                 continue
             biobank_id = biobank_covid_antibody_dao.get_biobank_id_by_sample_id_with_session(session, specimen_id)
+            if biobank_id is None:
+                logging.info("Skip file {}, no biobank ID found for specimen ID {}".format(filename, specimen_id))
+                continue
+
             target_file_name = '{}.pdf'.format(biobank_id)
 
             # cp to ptc bucket
-            gsutil = (
-                "gsutil cp gs://{} gs://{}/{}".format(file_cloud_path, ptc_target_bucket, target_file_name)
-            )
-            logging.info('running command: {}'.format(gsutil))
-            _run_gsutil(gsutil)
+            target_path = ptc_target_bucket + '/' + target_file_name
+            logging.info('copy {}, from {} to {}'.format(filename, file_cloud_path, target_path))
+            copy_cloud_file(file_cloud_path, target_path)
             # cp to ce bucket
-            gsutil = (
-                "gsutil cp gs://{} gs://{}/{}".format(file_cloud_path, ce_target_bucket, target_file_name)
-            )
-            logging.info('running command: {}'.format(gsutil))
-            _run_gsutil(gsutil)
-
-
-def _run_gsutil(gsutil):
-    system_call = subprocess.Popen(shlex.split(gsutil))
-    system_call.communicate()[0]
+            target_path = ce_target_bucket + '/' + target_file_name
+            logging.info('copy {}, from {} to {}'.format(filename, file_cloud_path, target_path))
+            copy_cloud_file(file_cloud_path, target_path)
 
 
 def _import_file(bucket_name, sub_folder_name, file_name_prefix, func):
