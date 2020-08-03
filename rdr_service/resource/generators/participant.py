@@ -687,13 +687,42 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 not summary.get('enrollment_member', None):
             return {}
 
-        # Calculate the earliest ordered sample and stored sample times.
+        # Calculate the min ordered sample and max stored sample times.
         ordered_time = stored_time = datetime.datetime.max
+        stored_sample_times = dict(zip(self._dna_sample_test_codes, [
+            {
+                'confirmed': datetime.datetime.min, 'confirmed_count': 0,
+                'disposed': datetime.datetime.min, 'disposed_count': 0
+            } for i in range(0, 5)]))  # pylint: disable=unused-variable
+
         for bbo in summary['biobank_orders']:
+            if not bbo['samples']:
+                continue
+
             for bboi in bbo['samples']:
-                if bboi['baseline_test'] == 1:
+                if bboi['dna_test'] == 1:
                     ordered_time = min(ordered_time, bboi['finalized'] or datetime.datetime.max)
-                    stored_time = min(stored_time, bboi['confirmed'] or datetime.datetime.max)
+                    # See: participant_summary_dao.py:calculate_max_core_sample_time() and
+                    #       _participant_summary_dao.py:126
+                    sst = stored_sample_times[bboi['test']]
+                    if bboi['confirmed']:
+                        sst['confirmed'] = max(sst['confirmed'], bboi['confirmed'])
+                        sst['confirmed_count'] += 1
+                    if bboi['disposed']:
+                        sst['disposed'] = max(sst['disposed'], bboi['disposed'])
+                        sst['disposed_count'] += 1
+
+        sstl = list()
+        for k, v in stored_sample_times.items():  # pylint: disable=unused-variable
+            if v['confirmed_count'] != v['disposed_count']:
+                ts = v['confirmed']
+            else:
+                ts = v['disposed']
+            if ts != datetime.datetime.min:
+                sstl.append(ts)
+
+        if sstl:
+            stored_time = min(sstl)
 
         data = {
             'enrollment_core_ordered': ordered_time if ordered_time != datetime.datetime.max else None,
