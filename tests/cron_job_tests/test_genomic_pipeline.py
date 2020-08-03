@@ -2048,6 +2048,7 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
                                                 array_participants=range(1, 4),
                                                 recon_gc_man_id=1,
+                                                genome_center='JH',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
@@ -2093,6 +2094,7 @@ class GenomicPipelineTest(BaseTestCase):
         member = self.member_dao.get(2)
 
         self.assertEqual(5, member.arrAW3ManifestJobRunID)
+        self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
 
         # Test the manifest file contents
         expected_aw3_columns = (
@@ -2106,7 +2108,7 @@ class GenomicPipelineTest(BaseTestCase):
             "green_idat_path",
             "green_idat_index_path",
             "vcf_path",
-            "vcf_index_path ",
+            "vcf_index_path",
             "research_id"
         )
 
@@ -2120,13 +2122,20 @@ class GenomicPipelineTest(BaseTestCase):
 
             rows = list(csv_reader)
 
-            self.assertEqual(1, len(rows))
-            self.assertEqual(member.biobankId, rows[0]['biobank_id'])
-            self.assertEqual(member.sampleId, rows[0]['sample_id'])
-            self.assertEqual(member.sexAtBirth, rows[0]['sex_at_birth'])
-            self.assertEqual(member.gcSiteId, rows[0]['site_id'])
+            self.assertEqual(2, len(rows))
+            self.assertEqual(member.biobankId, rows[1]['biobank_id'])
+            self.assertEqual(member.sampleId, rows[1]['sample_id'])
+            self.assertEqual(member.sexAtBirth, rows[1]['sex_at_birth'])
+            self.assertEqual(member.gcSiteId, rows[1]['site_id'])
 
             # Test File Paths
+            metric = self.metrics_dao.get(2)
+            self.assertEqual(metric.idatRedPath, rows[1]['red_idat_path'])
+            self.assertEqual(metric.idatRedMd5Path, rows[1]['red_idat_index_path'])
+            self.assertEqual(metric.idatGreenPath, rows[1]['green_idat_path'])
+            self.assertEqual(metric.idatGreenMd5Path, rows[1]['green_idat_index_path'])
+            self.assertEqual(metric.vcfPath, rows[1]['vcf_path'])
+            self.assertEqual(metric.vcfMd5Path, rows[1]['vcf_index_path'])
 
             # Test run record is success
             run_obj = self.job_run_dao.get(5)

@@ -1648,9 +1648,11 @@ class ManifestDefinitionProvider:
                                              "source_data",
                                              "destination_bucket",
                                              "output_filename",
-                                             "columns"])
+                                             "columns",
+                                             "signal"])
 
     PROCESSING_STATUS_PASS = 'pass'
+    DEFAULT_SIGNAL = 'manifest-generated'
 
     def __init__(self, job_run_id=None, bucket_name=None,):
         # Attributes
@@ -1674,6 +1676,7 @@ class ManifestDefinitionProvider:
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{CVL_W1_MANIFEST_SUBFOLDER}/AoU_CVL_Manifest_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.CVL_W1),
+            signal=self.DEFAULT_SIGNAL,
         )
 
         # Color Array A1 Manifest
@@ -1683,6 +1686,7 @@ class ManifestDefinitionProvider:
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{GENOMIC_GEM_A1_MANIFEST_SUBFOLDER}/AoU_GEM_A1_manifest_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A1),
+            signal=self.DEFAULT_SIGNAL,
         )
 
         # Color A3 Manifest
@@ -1692,6 +1696,7 @@ class ManifestDefinitionProvider:
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_WD_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A3),
+            signal=self.DEFAULT_SIGNAL,
         )
 
         # DRC to CVL W3 Manifest
@@ -1701,6 +1706,7 @@ class ManifestDefinitionProvider:
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{CVL_W3_MANIFEST_SUBFOLDER}/AoU_CVL_W1_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.CVL_W3),
+            signal=self.DEFAULT_SIGNAL,
         )
 
         # DRC to Broad AW3 Array Manifest
@@ -1710,6 +1716,7 @@ class ManifestDefinitionProvider:
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{GENOMIC_AW3_ARRAY_SUBFOLDER}/AoU_DRCV_GEN_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.AW3_ARRAY),
+            signal="bypass",
         )
 
         # DRC to Broad AW3 WGS Manifest
@@ -1719,6 +1726,7 @@ class ManifestDefinitionProvider:
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.AW3_WGS),
+            signal="bypass",
         )
 
     def _get_source_data_query(self, manifest_type):
@@ -1766,8 +1774,8 @@ class ManifestDefinitionProvider:
                     (GenomicGCValidationMetrics.idatRedMd5Received == 1) &
                     (GenomicGCValidationMetrics.idatGreenMd5Received == 1) &
                     (GenomicGCValidationMetrics.vcfReceived == 1) &
-                    (GenomicGCValidationMetrics.vcfMd5Received == 1)
-                    # (GenomicSetMember.arrAW3ManifestJobRunID == None)
+                    (GenomicGCValidationMetrics.vcfMd5Received == 1) &
+                    (GenomicSetMember.arrAW3ManifestJobRunID == None)
                 )
             )
 
@@ -2069,11 +2077,12 @@ class ManifestCompiler:
                 )
 
                 # Handle Genomic States for manifests
-                new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
-                                                              signal='manifest-generated')
+                if self.manifest_def.signal != "bypass":
+                    new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
+                                                                  signal=self.manifest_def.signal)
 
-                if new_state is not None or new_state != member.genomicWorkflowState:
-                    self.member_dao.update_member_state(member, new_state)
+                    if new_state is not None or new_state != member.genomicWorkflowState:
+                        self.member_dao.update_member_state(member, new_state)
 
             return GenomicSubProcessResult.SUCCESS \
                 if GenomicSubProcessResult.ERROR not in results \
