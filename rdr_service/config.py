@@ -46,6 +46,8 @@ AGE_RANGE_SHARDS = "age_range_shards"
 BIOBANK_SAMPLES_SHARDS = "biobank_samples_shards"
 BIOBANK_SAMPLES_BUCKET_NAME = "biobank_samples_bucket_name"
 QUEST_ANTIBODY_STUDY_BUCKET_NAME = "quest_antibody_study_bucket_name"
+PTC_CLIA_COMPLIANT_REPORT_BUCKET_NAME = "ptc_clia_compliant_report_bucket_name"
+CE_CLIA_COMPLIANT_REPORT_BUCKET_NAME = "ce_clia_compliant_report_bucket_name"
 # how many days' data do we want to import, default is 1 day
 ANTIBODY_DATA_IMPORT_DAYS = "antibody_data_import_days"
 GENOMIC_CENTER_BUCKET_NAME = 'genomic_center_bucket_name'

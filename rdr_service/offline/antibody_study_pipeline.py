@@ -3,6 +3,8 @@ import datetime
 import os
 import csv
 import pytz
+import shlex
+import subprocess
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file, list_blobs
@@ -16,6 +18,7 @@ _MANIFEST_FILE_SUB_FOLDER_NAME = 'antibody_manifests'
 _MANIFEST_FILE_NAME_PREFIX = 'Quest_AoU_Serology'
 _QUEST_AOU_RESULTS_FILE_NAME_PREFIX = 'Quest_AoU_Results'
 _QUEST_AOU_TESTS_FILE_NAME_PREFIX = 'Quest_AoU_Tests'
+_CLIA_COMPLIANCE_SUB_FOLDER_NAME = 'clia-compliant-reports'
 _BATCH_SIZE = 100
 BIOBANK_ID_PREFIX = get_biobank_id_prefix()
 
@@ -33,10 +36,47 @@ def import_quest_antibody_files():
                  _save_quest_covid_antibody_test_result_from_csv)
 
 
+def sync_clia_compliance_pdf_files():
+    antibody_study_bucket_name = config.getSetting(config.QUEST_ANTIBODY_STUDY_BUCKET_NAME)
+    ptc_target_bucket = config.getSetting(config.PTC_CLIA_COMPLIANT_REPORT_BUCKET_NAME)
+    ce_target_bucket = config.getSetting(config.CE_CLIA_COMPLIANT_REPORT_BUCKET_NAME)
+
+    file_list = _find_file_list(antibody_study_bucket_name, sub_folder_name=_CLIA_COMPLIANCE_SUB_FOLDER_NAME,
+                                file_suffix_name='.pdf')
+    biobank_covid_antibody_dao = BiobankCovidAntibodySampleDao()
+    with biobank_covid_antibody_dao.session() as session:
+        for (file_cloud_path, filename) in file_list:
+            try:
+                specimen_id = filename[filename.rindex('-')+1: filename.rindex('.')]
+            except ValueError:
+                logging.info("Invalid CLIA compliance pdf file name: {}.".format(filename))
+                continue
+            biobank_id = biobank_covid_antibody_dao.get_biobank_id_by_sample_id_with_session(session, specimen_id)
+            target_file_name = '{}.pdf'.format(biobank_id)
+
+            # cp to ptc bucket
+            gsutil = (
+                "gsutil cp gs://{} gs://{}/{}".format(file_cloud_path, ptc_target_bucket, target_file_name)
+            )
+            logging.info('running command: {}'.format(gsutil))
+            _run_gsutil(gsutil)
+            # cp to ce bucket
+            gsutil = (
+                "gsutil cp gs://{} gs://{}/{}".format(file_cloud_path, ce_target_bucket, target_file_name)
+            )
+            logging.info('running command: {}'.format(gsutil))
+            _run_gsutil(gsutil)
+
+
+def _run_gsutil(gsutil):
+    system_call = subprocess.Popen(shlex.split(gsutil))
+    system_call.communicate()[0]
+
+
 def _import_file(bucket_name, sub_folder_name, file_name_prefix, func):
     logging.info("Starting antibody study data import from {}.".format(bucket_name))
     try:
-        file_list = _find_csv_file_list(bucket_name, file_name_prefix, sub_folder_name)
+        file_list = _find_file_list(bucket_name, file_name_prefix, sub_folder_name, file_suffix_name='.csv')
     except FileNotFoundError:
         logging.info("File not found")
         return None
@@ -171,11 +211,11 @@ def _create_quest_covid_antibody_test_result_obj_from_row(row, csv_filename):
     return obj
 
 
-def _find_csv_file_list(cloud_bucket_name, file_name_prefix=None, sub_folder_name=None):
+def _find_file_list(cloud_bucket_name, file_name_prefix=None, sub_folder_name=None, file_suffix_name='.csv'):
     """
-    Returns the path and name list of the CSV which will be imported in the bucket.
+    Returns the path and name list of the files meet the specified criteria.
     Raises:
-        RuntimeError: if no CSVs are found in the cloud storage bucket.
+        RuntimeError: if no files are found in the cloud storage bucket.
     """
     bucket_stat_list = list_blobs("/" + cloud_bucket_name)
     if not bucket_stat_list:
@@ -186,12 +226,13 @@ def _find_csv_file_list(cloud_bucket_name, file_name_prefix=None, sub_folder_nam
     bucket_stat_list = [
         s
         for s in bucket_stat_list
-        if s.name.lower().endswith(".csv") and (sub_folder_name is None or sub_folder_name in s.name)
+        if s.name.lower().endswith(file_suffix_name) and (sub_folder_name is None or sub_folder_name in s.name)
     ]
     if not bucket_stat_list:
-        raise FileNotFoundError("No CSVs in cloud bucket {} (sub-folder: {}).".format(cloud_bucket_name,
-                                                                                      sub_folder_name))
-    import_file_list = []
+        raise FileNotFoundError("No {} files in cloud bucket {} (sub-folder: {}).".format(file_suffix_name,
+                                                                                          cloud_bucket_name,
+                                                                                          sub_folder_name))
+    file_list = []
     bucket_stat_list.sort(key=lambda s: s.updated)
     for s in bucket_stat_list:
         if _is_fresh_file(s.updated):
@@ -199,11 +240,11 @@ def _find_csv_file_list(cloud_bucket_name, file_name_prefix=None, sub_folder_nam
             file_name = os.path.basename(blob_name)
             cloud_path = os.path.normpath(cloud_bucket_name + '/' + blob_name)
             if file_name_prefix and file_name_prefix in blob_name:
-                import_file_list.append((cloud_path, file_name))
+                file_list.append((cloud_path, file_name))
             elif file_name_prefix is None:
-                import_file_list.append((cloud_path, file_name))
+                file_list.append((cloud_path, file_name))
 
-    return import_file_list
+    return file_list
 
 
 def _is_fresh_file(file_last_modified_time):
