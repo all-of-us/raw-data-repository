@@ -1650,6 +1650,8 @@ class ManifestDefinitionProvider:
                                              "output_filename",
                                              "columns"])
 
+    PROCESSING_STATUS_PASS = 'pass'
+
     def __init__(self, job_run_id=None, bucket_name=None,):
         # Attributes
         self.job_run_id = job_run_id
@@ -1737,15 +1739,13 @@ class ManifestDefinitionProvider:
                         GenomicSetMember.sampleId,
                         GenomicSetMember.sexAtBirth,
                         GenomicSetMember.gcSiteId,
-                        # TODO: After migration, add these fields
-                        # GenomicGCValidationMetrics.idatRedPath
-                        # GenomicGCValidationMetrics.idatRedMd5Path
-                        # GenomicGCValidationMetrics.idatGreenPath
-                        # GenomicGCValidationMetrics.idatGreenMd5Path
-                        # GenomicGCValidationMetrics.vcfPath
-                        # GenomicGCValidationMetrics.vcfIndexPath
-
-                        # TODO: Get Research ID
+                        GenomicGCValidationMetrics.idatRedPath,
+                        GenomicGCValidationMetrics.idatRedMd5Path,
+                        GenomicGCValidationMetrics.idatGreenPath,
+                        GenomicGCValidationMetrics.idatGreenMd5Path,
+                        GenomicGCValidationMetrics.vcfPath,
+                        GenomicGCValidationMetrics.vcfMd5Path,
+                        sqlalchemy.bindparam('research_id', None),
                     ]
                 ).select_from(
                     sqlalchemy.join(
@@ -1756,14 +1756,18 @@ class ManifestDefinitionProvider:
                         GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
                     )
                 ).where(
-                    (GenomicGCValidationMetrics.processingStatus == 'pass') &
+                    (GenomicGCValidationMetrics.processingStatus == self.PROCESSING_STATUS_PASS) &
                     (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                    (GenomicSetMember.genomeType == "aou_array") &
+                    (GenomicSetMember.genomeType == GENOME_TYPE_ARRAY) &
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
-                    (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED)
-                    # TODO: Add state filter
-                    # TODO: Add filters for all array files
-                    # (GenomicGCValidationMetrics.idatRedReceived == 1) &
+                    (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
+                    (GenomicGCValidationMetrics.idatRedReceived == 1) &
+                    (GenomicGCValidationMetrics.idatGreenReceived == 1) &
+                    (GenomicGCValidationMetrics.idatRedMd5Received == 1) &
+                    (GenomicGCValidationMetrics.idatGreenMd5Received == 1) &
+                    (GenomicGCValidationMetrics.vcfReceived == 1) &
+                    (GenomicGCValidationMetrics.vcfMd5Received == 1)
+                    # (GenomicSetMember.arrAW3ManifestJobRunID == None)
                 )
             )
 

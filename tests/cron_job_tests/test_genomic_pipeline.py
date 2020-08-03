@@ -2039,14 +2039,99 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_aw3_array_manifest_generation(self):
-        # Todo: Manifest and Tests to be created in subsequent PR
-        # self._create_fake_datasets_for_gc_tests(3, arr_override=True,
-        #                                         recon_gc_man_id=1,
-        #                                         genomic_workflow_state=GenomicWorkflowState.AW1)
-        #
-        # self._update_test_sample_ids()
-        # Todo: set fields for file paths
-        pass
+        # Need GC Manifest for source query : run_id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+                                                array_participants=range(1, 4),
+                                                recon_gc_man_id=1,
+                                                genomic_workflow_state=GenomicWorkflowState.AW1)
+
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+
+        self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
+                                         bucket_name,
+                                         folder=config.GENOMIC_AW2_SUBFOLDERS[1])
+
+        self._update_test_sample_ids()
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        # Test sequencing file (required for GEM)
+        sequencing_test_files = (
+            f'test_data_folder/10001_R01C01.vcf.gz',
+            f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
+            f'test_data_folder/10001_R01C01_red.idat',
+            f'test_data_folder/10001_R01C01_grn.idat',
+            f'test_data_folder/10001_R01C01_red.idat.md5sum',
+            f'test_data_folder/10001_R01C01_grn.idat.md5sum',
+            f'test_data_folder/10002_R01C02.vcf.gz',
+            f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
+            f'test_data_folder/10002_R01C02_red.idat',
+            f'test_data_folder/10002_R01C02_grn.idat',
+            f'test_data_folder/10002_R01C02_red.idat.md5sum',
+            f'test_data_folder/10002_R01C02_grn.idat.md5sum',
+        )
+        for f in sequencing_test_files:
+            self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
+
+        genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 3
+        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 4
+
+        # finally run the AW3 manifest workflow
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_array_manifest_workflow()  # run_id = 5
+
+        aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
+
+        # Test member was updated
+        member = self.member_dao.get(2)
+
+        self.assertEqual(5, member.arrAW3ManifestJobRunID)
+
+        # Test the manifest file contents
+        expected_aw3_columns = (
+            "chipwellbarcode",
+            "biobank_id",
+            "sample_id",
+            "sex_at_birth",
+            "site_id",
+            "red_idat_path",
+            "red_idat_index_path",
+            "green_idat_path",
+            "green_idat_index_path",
+            "vcf_path",
+            "vcf_index_path ",
+            "research_id"
+        )
+
+        bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
+        sub_folder = config.GENOMIC_AW3_ARRAY_SUBFOLDER
+
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_GEN_{aw3_dtf}.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            missing_cols = set(expected_aw3_columns) - set(csv_reader.fieldnames)
+            self.assertEqual(0, len(missing_cols))
+
+            rows = list(csv_reader)
+
+            self.assertEqual(1, len(rows))
+            self.assertEqual(member.biobankId, rows[0]['biobank_id'])
+            self.assertEqual(member.sampleId, rows[0]['sample_id'])
+            self.assertEqual(member.sexAtBirth, rows[0]['sex_at_birth'])
+            self.assertEqual(member.gcSiteId, rows[0]['site_id'])
+
+            # Test File Paths
+
+            # Test run record is success
+            run_obj = self.job_run_dao.get(5)
+
+            self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_aw3_wgs_manifest_generation(self):
         # Todo: Manifest and Tests to be created in subsequent PR
