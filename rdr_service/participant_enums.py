@@ -384,6 +384,34 @@ class DeceasedStatus(messages.Enum):
     PENDING = 1
     APPROVED = 2
 
+
+class DeceasedNotification(messages.Enum):
+    """How the program was notified of the participant's deceased status"""
+
+    EHR = 1
+    ATTEMPTED_CONTACT = 2
+    NEXT_KIN_HPO = 3
+    NEXT_KIN_SUPPORT = 4
+    OTHER = 5
+
+
+class DeceasedReportStatus(messages.Enum):
+    """The approval state of the deceased report"""
+
+    PENDING = 1
+    APPROVED = 2
+    DENIED = 3
+
+
+class DeceasedReportDenialReason(messages.Enum):
+    """The approval state of the deceased report"""
+
+    INCORRECT_PARTICIPANT = 1
+    MARKED_IN_ERROR = 2
+    INSUFFICIENT_INFORMATION = 3
+    OTHER = 4
+
+
 class MetricsCacheType(messages.Enum):
     """Types of metrics cache"""
 
