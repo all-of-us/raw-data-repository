@@ -871,6 +871,7 @@ class GenomicPiiDao(BaseDao):
                     "biobank_id": result['data'].biobankId,
                     "first_name": result['data'].firstName,
                     "last_name": result['data'].lastName,
+                    "sex_at_birth": result['data'].sexAtBirth,
                 }
 
             elif result['mode'] == 'RHP':
@@ -879,6 +880,7 @@ class GenomicPiiDao(BaseDao):
                     "first_name": result['data'].firstName,
                     "last_name": result['data'].lastName,
                     "date_of_birth": result['data'].dateOfBirth,
+                    "sex_at_birth": result['data'].sexAtBirth,
                 }
             else:
                 return {"message": "Only GEM and RHP modes supported."}
@@ -898,7 +900,8 @@ class GenomicPiiDao(BaseDao):
                               ParticipantSummary.firstName,
                               ParticipantSummary.lastName,
                               ParticipantSummary.consentForGenomicsROR,
-                              ParticipantSummary.dateOfBirth,)
+                              ParticipantSummary.dateOfBirth,
+                              GenomicSetMember.sexAtBirth,)
                 .join(
                     ParticipantSummary,
                     GenomicSetMember.participantId == ParticipantSummary.participantId,
