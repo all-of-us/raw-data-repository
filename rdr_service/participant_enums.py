@@ -404,7 +404,7 @@ class DeceasedReportStatus(messages.Enum):
 
 
 class DeceasedReportDenialReason(messages.Enum):
-    """The approval state of the deceased report"""
+    """The reason that the deceased report was denied"""
 
     INCORRECT_PARTICIPANT = 1
     MARKED_IN_ERROR = 2
