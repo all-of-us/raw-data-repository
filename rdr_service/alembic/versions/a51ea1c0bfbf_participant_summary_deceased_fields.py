@@ -14,7 +14,7 @@ from rdr_service.participant_enums import DeceasedStatus
 
 # revision identifiers, used by Alembic.
 revision = 'a51ea1c0bfbf'
-down_revision = 'd5d97368b14d'
+down_revision = '7029234abc61'
 branch_labels = None
 depends_on = None
 
