@@ -1648,7 +1648,11 @@ class ManifestDefinitionProvider:
                                              "source_data",
                                              "destination_bucket",
                                              "output_filename",
-                                             "columns"])
+                                             "columns",
+                                             "signal"])
+
+    PROCESSING_STATUS_PASS = 'pass'
+    DEFAULT_SIGNAL = 'manifest-generated'
 
     def __init__(self, job_run_id=None, bucket_name=None,):
         # Attributes
@@ -1672,6 +1676,7 @@ class ManifestDefinitionProvider:
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{CVL_W1_MANIFEST_SUBFOLDER}/AoU_CVL_Manifest_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.CVL_W1),
+            signal=self.DEFAULT_SIGNAL,
         )
 
         # Color Array A1 Manifest
@@ -1681,6 +1686,7 @@ class ManifestDefinitionProvider:
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{GENOMIC_GEM_A1_MANIFEST_SUBFOLDER}/AoU_GEM_A1_manifest_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A1),
+            signal=self.DEFAULT_SIGNAL,
         )
 
         # Color A3 Manifest
@@ -1690,6 +1696,7 @@ class ManifestDefinitionProvider:
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_WD_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A3),
+            signal=self.DEFAULT_SIGNAL,
         )
 
         # DRC to CVL W3 Manifest
@@ -1699,6 +1706,7 @@ class ManifestDefinitionProvider:
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{CVL_W3_MANIFEST_SUBFOLDER}/AoU_CVL_W1_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.CVL_W3),
+            signal=self.DEFAULT_SIGNAL,
         )
 
         # DRC to Broad AW3 Array Manifest
@@ -1708,6 +1716,7 @@ class ManifestDefinitionProvider:
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{GENOMIC_AW3_ARRAY_SUBFOLDER}/AoU_DRCV_GEN_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.AW3_ARRAY),
+            signal="bypass",
         )
 
         # DRC to Broad AW3 WGS Manifest
@@ -1717,6 +1726,7 @@ class ManifestDefinitionProvider:
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.AW3_WGS),
+            signal="bypass",
         )
 
     def _get_source_data_query(self, manifest_type):
@@ -1737,15 +1747,13 @@ class ManifestDefinitionProvider:
                         GenomicSetMember.sampleId,
                         GenomicSetMember.sexAtBirth,
                         GenomicSetMember.gcSiteId,
-                        # TODO: After migration, add these fields
-                        # GenomicGCValidationMetrics.idatRedPath
-                        # GenomicGCValidationMetrics.idatRedMd5Path
-                        # GenomicGCValidationMetrics.idatGreenPath
-                        # GenomicGCValidationMetrics.idatGreenMd5Path
-                        # GenomicGCValidationMetrics.vcfPath
-                        # GenomicGCValidationMetrics.vcfIndexPath
-
-                        # TODO: Get Research ID
+                        GenomicGCValidationMetrics.idatRedPath,
+                        GenomicGCValidationMetrics.idatRedMd5Path,
+                        GenomicGCValidationMetrics.idatGreenPath,
+                        GenomicGCValidationMetrics.idatGreenMd5Path,
+                        GenomicGCValidationMetrics.vcfPath,
+                        GenomicGCValidationMetrics.vcfMd5Path,
+                        sqlalchemy.bindparam('research_id', None),
                     ]
                 ).select_from(
                     sqlalchemy.join(
@@ -1756,59 +1764,67 @@ class ManifestDefinitionProvider:
                         GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
                     )
                 ).where(
-                    (GenomicGCValidationMetrics.processingStatus == 'pass') &
+                    (GenomicGCValidationMetrics.processingStatus == self.PROCESSING_STATUS_PASS) &
                     (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                    (GenomicSetMember.genomeType == "aou_array") &
+                    (GenomicSetMember.genomeType == GENOME_TYPE_ARRAY) &
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
-                    (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED)
-                    # TODO: Add state filter
-                    # TODO: Add filters for all array files
-                    # (GenomicGCValidationMetrics.idatRedReceived == 1) &
+                    (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
+                    (GenomicGCValidationMetrics.idatRedReceived == 1) &
+                    (GenomicGCValidationMetrics.idatGreenReceived == 1) &
+                    (GenomicGCValidationMetrics.idatRedMd5Received == 1) &
+                    (GenomicGCValidationMetrics.idatGreenMd5Received == 1) &
+                    (GenomicGCValidationMetrics.vcfReceived == 1) &
+                    (GenomicGCValidationMetrics.vcfMd5Received == 1) &
+                    (GenomicSetMember.arrAW3ManifestJobRunID == None)
                 )
             )
 
-            # AW3 WGS Manifest
-            if manifest_type == GenomicManifestTypes.AW3_WGS:
-                query_sql = (
-                    sqlalchemy.select(
-                        [
-                            GenomicGCValidationMetrics.chipwellbarcode,
-                            GenomicSetMember.biobankId,
-                            GenomicSetMember.sampleId,
-                            GenomicSetMember.sexAtBirth,
-                            GenomicSetMember.gcSiteId,
-                            # TODO: After migration, add these fields
-                            # GenomicGCValidationMetrics.gvcf_hf_path
-                            # # gvcf_hf_tbi_path
-                            # # gvcf_hf_index_path
-                            # # gvcf_raw_path
-                            # # gvcf_raw_tbi_path
-                            # # gvcf_raw_index_path
-                            # # cram_path
-                            # # cram_index_path
-                            # # crai_path
-
-                            # TODO: Get Research ID
-                        ]
-                    ).select_from(
-                        sqlalchemy.join(
-                            sqlalchemy.join(ParticipantSummary,
-                                            GenomicSetMember,
-                                            GenomicSetMember.participantId == ParticipantSummary.participantId),
-                            GenomicGCValidationMetrics,
-                            GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
-                        )
-                    ).where(
-                        (GenomicGCValidationMetrics.processingStatus == 'pass') &
-                        (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                        (GenomicSetMember.genomeType == "aou_wgs") &
-                        (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
-                        (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED)
-                        # TODO: Add state filter
-                        # TODO: Add filters for all wgs files
-                        # (GenomicGCValidationMetrics.idatRedReceived == 1) &
+        # AW3 WGS Manifest
+        if manifest_type == GenomicManifestTypes.AW3_WGS:
+            query_sql = (
+                sqlalchemy.select(
+                    [
+                        (GenomicSetMember.biobankId + '_' + GenomicSetMember.sampleId),
+                        GenomicSetMember.sexAtBirth,
+                        GenomicSetMember.gcSiteId,
+                        GenomicGCValidationMetrics.hfVcfPath,
+                        GenomicGCValidationMetrics.hfVcfTbiPath,
+                        GenomicGCValidationMetrics.hfVcfMd5Path,
+                        GenomicGCValidationMetrics.rawVcfPath,
+                        GenomicGCValidationMetrics.rawVcfTbiPath,
+                        GenomicGCValidationMetrics.rawVcfMd5Path,
+                        GenomicGCValidationMetrics.cramPath,
+                        GenomicGCValidationMetrics.cramMd5Path,
+                        GenomicGCValidationMetrics.craiPath,
+                        sqlalchemy.bindparam('research_id', None),
+                        GenomicSetMember.sampleId,
+                    ]
+                ).select_from(
+                    sqlalchemy.join(
+                        sqlalchemy.join(ParticipantSummary,
+                                        GenomicSetMember,
+                                        GenomicSetMember.participantId == ParticipantSummary.participantId),
+                        GenomicGCValidationMetrics,
+                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
                     )
+                ).where(
+                    (GenomicGCValidationMetrics.processingStatus == self.PROCESSING_STATUS_PASS) &
+                    (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
+                    (GenomicSetMember.genomeType == GENOME_TYPE_WGS) &
+                    (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
+                    (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
+                    (GenomicSetMember.arrAW3ManifestJobRunID == None) &
+                    (GenomicGCValidationMetrics.hfVcfReceived == 1) &
+                    (GenomicGCValidationMetrics.hfVcfTbiReceived == 1) &
+                    (GenomicGCValidationMetrics.hfVcfMd5Received == 1) &
+                    (GenomicGCValidationMetrics.rawVcfReceived == 1) &
+                    (GenomicGCValidationMetrics.rawVcfTbiReceived == 1) &
+                    (GenomicGCValidationMetrics.rawVcfMd5Received == 1) &
+                    (GenomicGCValidationMetrics.cramReceived == 1) &
+                    (GenomicGCValidationMetrics.cramMd5Received == 1) &
+                    (GenomicGCValidationMetrics.craiReceived == 1)
                 )
+            )
 
         # CVL W1 Manifest
         if manifest_type == GenomicManifestTypes.CVL_W1:
@@ -2065,11 +2081,12 @@ class ManifestCompiler:
                 )
 
                 # Handle Genomic States for manifests
-                new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
-                                                              signal='manifest-generated')
+                if self.manifest_def.signal != "bypass":
+                    new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
+                                                                  signal=self.manifest_def.signal)
 
-                if new_state is not None or new_state != member.genomicWorkflowState:
-                    self.member_dao.update_member_state(member, new_state)
+                    if new_state is not None or new_state != member.genomicWorkflowState:
+                        self.member_dao.update_member_state(member, new_state)
 
             return GenomicSubProcessResult.SUCCESS \
                 if GenomicSubProcessResult.ERROR not in results \
