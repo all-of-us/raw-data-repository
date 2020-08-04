@@ -62,6 +62,9 @@
    "dev-genomics-raw-northwest",
    "dev-genomics-raw-color"
   ],
+  "drc_broad_bucket_name": [
+    "dev-drc-broad"
+  ],
   "aw1f_alert_recipients": [
     "test-genomic@vumc.org"
   ],
