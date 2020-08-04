@@ -135,8 +135,9 @@ def biobank_monthly_reconciliation_report():
     logging.info("Generated monthly reconciliation report.")
     return json.dumps({"monthly-reconciliation-report": "generated"})
 
+
 @app_util.auth_required_cron
-#@_alert_on_exceptions
+@_alert_on_exceptions
 def import_covid_antibody_study_data():
     logging.info("Starting biobank covid antibody study manifest file import.")
     antibody_study_pipeline.import_biobank_covid_manifest_files()
@@ -145,6 +146,17 @@ def import_covid_antibody_study_data():
     logging.info("Starting quest covid antibody study files import.")
     antibody_study_pipeline.import_quest_antibody_files()
     logging.info("Import quest covid antibody study files complete.")
+
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def sync_covid_antibody_study_compliant_reports():
+    logging.info("Starting CLIA compliant reports sync.")
+    antibody_study_pipeline.sync_clia_compliance_pdf_files()
+    logging.info("CLIA compliant reports sync complete.")
+
     return '{"success": "true"}'
 
 
@@ -413,6 +425,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "CovidAntibodyStudyImport",
         endpoint="covidAntibodyStudyImport",
         view_func=import_covid_antibody_study_data,
+        methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "CovidAntibodyStudyCompliantReportSync",
+        endpoint="covidAntibodyStudyCompliantReportSync",
+        view_func=sync_covid_antibody_study_compliant_reports,
         methods=["GET"],
     )
 
