@@ -377,6 +377,13 @@ class SuspensionStatus(messages.Enum):
     NO_CONTACT = 2
 
 
+class DeceasedStatus(messages.Enum):
+    """Whether the participant has an approved or pending deceased report"""
+
+    UNSET = 0
+    PENDING = 1
+    APPROVED = 2
+
 class MetricsCacheType(messages.Enum):
     """Types of metrics cache"""
 
