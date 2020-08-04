@@ -2143,5 +2143,105 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_aw3_wgs_manifest_generation(self):
-        # Todo: Manifest and Tests to be created in subsequent PR
-        pass
+        # Need GC Manifest for source query : run_id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(3, arr_override=False,
+                                                recon_gc_man_id=1,
+                                                genome_center='JH',
+                                                genomic_workflow_state=GenomicWorkflowState.AW1)
+
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+
+        self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
+                                         bucket_name,
+                                         folder=config.GENOMIC_AW2_SUBFOLDERS[0])
+
+        self._update_test_sample_ids()
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        # Test sequencing file (required for GEM)
+        sequencing_test_files = (
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.hard-filtered.vcf.gz.tbi',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.hard-filtered.vcf.md5sum',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.vcf.gz',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.vcf.gz.tbi',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.vcf.md5sum',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.cram',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.cram.md5sum',
+            f'test_data_folder/RDR_2_1002_LocalID_InternalRevisionNumber.crai',
+
+        )
+        for f in sequencing_test_files:
+            self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
+
+        genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 3
+        genomic_pipeline.reconcile_metrics_vs_sequencing_data()  # run_id = 4
+
+        # finally run the AW3 manifest workflow
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 5
+
+        aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
+
+        # Test member was updated
+        member = self.member_dao.get(2)
+
+        self.assertEqual(5, member.wgsAW3ManifestJobRunID)
+        self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
+
+        # Test the manifest file contents
+        expected_aw3_columns = (
+            "biobankidsampleid",
+            "sex_at_birth",
+            "site_id",
+            "gvcf_hf_path",
+            "gvcf_hf_tbi_path",
+            "gvcf_hf_index_path",
+            "gvcf_raw_path",
+            "gvcf_raw_tbi_path",
+            "gvcf_raw_index_path",
+            "cram_path",
+            "cram_index_path",
+            "crai_path",
+            "research_id"
+        )
+
+        bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
+        sub_folder = config.GENOMIC_AW3_WGS_SUBFOLDER
+
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            missing_cols = set(expected_aw3_columns) - set(csv_reader.fieldnames)
+            self.assertEqual(0, len(missing_cols))
+
+            rows = list(csv_reader)
+
+            self.assertEqual(1, len(rows))
+            self.assertEqual(f'{member.biobankId}_{member.sampleId}', rows[0]['biobankidsampleid'])
+            self.assertEqual(member.sexAtBirth, rows[0]['sex_at_birth'])
+            self.assertEqual(member.gcSiteId, rows[0]['site_id'])
+
+            # Test File Paths
+            metric = self.metrics_dao.get(1)
+            self.assertEqual(metric.hfVcfPath, rows[0]["gvcf_hf_path"])
+            self.assertEqual(metric.hfVcfTbiPath, rows[0]["gvcf_hf_tbi_path"])
+            self.assertEqual(metric.hfVcfMd5Path, rows[0]["gvcf_hf_index_path"])
+            self.assertEqual(metric.rawVcfPath, rows[0]["gvcf_raw_path"])
+            self.assertEqual(metric.rawVcfTbiPath, rows[0]["gvcf_raw_tbi_path"])
+            self.assertEqual(metric.rawVcfMd5Path, rows[0]["gvcf_raw_index_path"])
+            self.assertEqual(metric.cramPath, rows[0]["cram_path"])
+            self.assertEqual(metric.cramMd5Path, rows[0]["cram_index_path"])
+            self.assertEqual(metric.craiPath, rows[0]["crai_path"])
+
+            # Test run record is success
+            run_obj = self.job_run_dao.get(5)
+
+            self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)

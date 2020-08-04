@@ -1779,48 +1779,52 @@ class ManifestDefinitionProvider:
                 )
             )
 
-            # AW3 WGS Manifest
-            if manifest_type == GenomicManifestTypes.AW3_WGS:
-                query_sql = (
-                    sqlalchemy.select(
-                        [
-                            GenomicGCValidationMetrics.chipwellbarcode,
-                            GenomicSetMember.biobankId,
-                            GenomicSetMember.sampleId,
-                            GenomicSetMember.sexAtBirth,
-                            GenomicSetMember.gcSiteId,
-                            # TODO: After migration, add these fields
-                            # GenomicGCValidationMetrics.gvcf_hf_path
-                            # # gvcf_hf_tbi_path
-                            # # gvcf_hf_index_path
-                            # # gvcf_raw_path
-                            # # gvcf_raw_tbi_path
-                            # # gvcf_raw_index_path
-                            # # cram_path
-                            # # cram_index_path
-                            # # crai_path
-
-                            # TODO: Get Research ID
-                        ]
-                    ).select_from(
-                        sqlalchemy.join(
-                            sqlalchemy.join(ParticipantSummary,
-                                            GenomicSetMember,
-                                            GenomicSetMember.participantId == ParticipantSummary.participantId),
-                            GenomicGCValidationMetrics,
-                            GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
-                        )
-                    ).where(
-                        (GenomicGCValidationMetrics.processingStatus == 'pass') &
-                        (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                        (GenomicSetMember.genomeType == "aou_wgs") &
-                        (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
-                        (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED)
-                        # TODO: Add state filter
-                        # TODO: Add filters for all wgs files
-                        # (GenomicGCValidationMetrics.idatRedReceived == 1) &
+        # AW3 WGS Manifest
+        if manifest_type == GenomicManifestTypes.AW3_WGS:
+            query_sql = (
+                sqlalchemy.select(
+                    [
+                        (GenomicSetMember.biobankId + '_' + GenomicSetMember.sampleId),
+                        GenomicSetMember.sexAtBirth,
+                        GenomicSetMember.gcSiteId,
+                        GenomicGCValidationMetrics.hfVcfPath,
+                        GenomicGCValidationMetrics.hfVcfTbiPath,
+                        GenomicGCValidationMetrics.hfVcfMd5Path,
+                        GenomicGCValidationMetrics.rawVcfPath,
+                        GenomicGCValidationMetrics.rawVcfTbiPath,
+                        GenomicGCValidationMetrics.rawVcfMd5Path,
+                        GenomicGCValidationMetrics.cramPath,
+                        GenomicGCValidationMetrics.cramMd5Path,
+                        GenomicGCValidationMetrics.craiPath,
+                        sqlalchemy.bindparam('research_id', None),
+                        GenomicSetMember.sampleId,
+                    ]
+                ).select_from(
+                    sqlalchemy.join(
+                        sqlalchemy.join(ParticipantSummary,
+                                        GenomicSetMember,
+                                        GenomicSetMember.participantId == ParticipantSummary.participantId),
+                        GenomicGCValidationMetrics,
+                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
                     )
+                ).where(
+                    (GenomicGCValidationMetrics.processingStatus == self.PROCESSING_STATUS_PASS) &
+                    (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
+                    (GenomicSetMember.genomeType == GENOME_TYPE_WGS) &
+                    (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
+                    (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
+                    (GenomicSetMember.arrAW3ManifestJobRunID == None) &
+                    (GenomicGCValidationMetrics.hfVcfReceived == 1) &
+                    (GenomicGCValidationMetrics.hfVcfTbiReceived == 1) &
+                    (GenomicGCValidationMetrics.hfVcfMd5Received == 1) &
+                    (GenomicGCValidationMetrics.rawVcfReceived == 1) &
+                    (GenomicGCValidationMetrics.rawVcfTbiReceived == 1) &
+                    (GenomicGCValidationMetrics.rawVcfMd5Received == 1) &
+                    (GenomicGCValidationMetrics.cramReceived == 1) &
+                    (GenomicGCValidationMetrics.cramMd5Received == 1) &
+                    (GenomicGCValidationMetrics.craiReceived == 1)
                 )
+            )
 
         # CVL W1 Manifest
         if manifest_type == GenomicManifestTypes.CVL_W1:
