@@ -11,6 +11,7 @@ cron:
 - description: Genomic CVL W1 Workflow (Manual)
 - description: Genomic CVL W2 Workflow (Manual)
 - description: Genomic CVL W3 Workflow (Manual)
+- description: Genomic AW3 Workflow (Manual)
 - description: Daily Biobank sample import and order reconciliation
   url: /offline/BiobankSamplesImport
   schedule: every day 03:00
