@@ -515,7 +515,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # iterate over consents
         for consent in ro_summary['consents']:
             response_value = consent['consent_value']
-            response_date = consent['consent_date'] or datetime.datetime.max
+            response_date = consent['consent_date'] or datetime.date.max
             if consent['consent'] == 'ConsentPII':
                 study_consent = True
                 study_consent_date = min(study_consent_date, response_date)
