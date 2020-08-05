@@ -412,6 +412,14 @@ class DeceasedReportDenialReason(messages.Enum):
     OTHER = 4
 
 
+# DA-1576:  Retention Eligibility Metrics
+class RetentionStatus(messages.Enum):
+    """Whether a participant meets retention-eligible criteria"""
+
+    NOT_ELIGIBLE = 1
+    ELIGIBLE = 2
+
+
 class MetricsCacheType(messages.Enum):
     """Types of metrics cache"""
 
@@ -861,4 +869,5 @@ class WorkbenchAuditWorkspaceAccessDecision(messages.Enum):
     UNSET = 0
     DISABLE_WORKSPACE = 1
     DISABLE_WORKSPACE_AND_REVIEW_RESEARCHERS = 2
+
 
