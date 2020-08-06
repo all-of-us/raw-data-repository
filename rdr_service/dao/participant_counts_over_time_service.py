@@ -64,10 +64,13 @@ class ParticipantCountsOverTimeService(BaseDao):
                     if index_name != 'PRIMARY':
                         session.execute('ALTER TABLE {} DROP INDEX  {}'.format(temp_table_name, index_name))
 
+                # The ParticipantSummary table requires these, but there may not be a participant_summary for
+                # all participants that we insert
                 session.execute('ALTER TABLE {} MODIFY first_name VARCHAR(255)'.format(temp_table_name))
                 session.execute('ALTER TABLE {} MODIFY last_name VARCHAR(255)'.format(temp_table_name))
                 session.execute('ALTER TABLE {} MODIFY suspension_status SMALLINT'.format(temp_table_name))
                 session.execute('ALTER TABLE {} MODIFY participant_origin VARCHAR(80)'.format(temp_table_name))
+                session.execute('ALTER TABLE {} MODIFY deceased_status SMALLINT'.format(temp_table_name))
 
                 columns_cursor = session.execute('SELECT * FROM {} LIMIT 0'.format(temp_table_name))
 
