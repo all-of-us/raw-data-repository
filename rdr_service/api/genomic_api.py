@@ -5,7 +5,7 @@ from werkzeug.exceptions import NotFound, BadRequest
 
 from rdr_service import clock
 from rdr_service.api.base_api import BaseApi
-from rdr_service.api_util import GEM, RDR_AND_PTC
+from rdr_service.api_util import GEM, RDR_AND_PTC, RDR
 from rdr_service.app_util import auth_required
 from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicOutreachDao
 
@@ -14,7 +14,7 @@ class GenomicPiiApi(BaseApi):
     def __init__(self):
         super(GenomicPiiApi, self).__init__(GenomicPiiDao())
 
-    @auth_required(GEM)
+    @auth_required([GEM, RDR])
     def get(self, mode=None, p_id=None):
         if mode not in ('GEM', 'RHP'):
             raise BadRequest("GenomicPII Mode required to be \"GEM\" or \"RHP\".")
