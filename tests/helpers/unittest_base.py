@@ -263,7 +263,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             content_type="application/json",
             headers=headers,
         )
-        self.assertEqual(response.status_code, expected_status, response.data)
+        self.assertEqual(expected_status, response.status_code, response.data)
         if expected_response_headers:
             self.assertTrue(
                 set(expected_response_headers.items()).issubset(set(response.headers.items())),
