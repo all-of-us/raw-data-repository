@@ -19,6 +19,7 @@ from rdr_service.code_constants import (
     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
     CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
     CONSENT_PERMISSION_YES_CODE,
+    CONSENT_PERMISSION_NO_CODE,
     DVEHRSHARING_CONSENT_CODE_NOT_SURE,
     DVEHRSHARING_CONSENT_CODE_YES,
     DVEHR_SHARING_QUESTION_CODE,
@@ -333,10 +334,18 @@ class QuestionnaireResponseDao(BaseDao):
                             dvehr_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
                     elif code.value == EHR_CONSENT_QUESTION_CODE:
                         code = code_dao.get(answer.valueCodeId)
+                        if participant_summary.ehrConsentExpireStatus == ConsentExpireStatus.EXPIRED and \
+                            authored > participant_summary.ehrConsentExpireAuthored:
+                            participant_summary.ehrConsentExpireStatus = ConsentExpireStatus.UNSET
+                            participant_summary.ehrConsentExpireAuthored = None
+                            participant_summary.ehrConsentExpireTime = None
                         if code and code.value == CONSENT_PERMISSION_YES_CODE:
                             ehr_consent = True
                             if participant_summary.consentForElectronicHealthRecordsFirstYesAuthored is None:
                                 participant_summary.consentForElectronicHealthRecordsFirstYesAuthored = authored
+                            if participant_summary.ehrConsentExpireStatus == ConsentExpireStatus.EXPIRED and \
+                                authored < participant_summary.ehrConsentExpireAuthored:
+                                ehr_consent = False
                     elif code.value == EHR_CONSENT_EXPIRED_QUESTION_CODE:
                         if answer.valueString and answer.valueString == EHR_CONSENT_EXPIRED_YES:
                             participant_summary.ehrConsentExpireStatus = ConsentExpireStatus.EXPIRED
