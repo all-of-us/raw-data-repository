@@ -775,7 +775,9 @@ class ParticipantSummaryDao(UpdatableDao):
             format_json_enum(result, fieldname)
         for fieldname in _SITE_FIELDS:
             format_json_site(result, self.site_dao, fieldname)
-        if model.withdrawalStatus == WithdrawalStatus.NO_USE or model.suspensionStatus == SuspensionStatus.NO_CONTACT:
+        if model.withdrawalStatus == WithdrawalStatus.NO_USE\
+                or model.suspensionStatus == SuspensionStatus.NO_CONTACT\
+                or model.deceasedStatus == DeceasedStatus.APPROVED:
             result["recontactMethod"] = "NO_CONTACT"
         # Strip None values.
         result = {k: v for k, v in list(result.items()) if v is not None}

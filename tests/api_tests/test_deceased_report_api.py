@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from rdr_service import config
 from rdr_service.api_util import HEALTHPRO, PTC
@@ -538,3 +538,26 @@ class DeceasedReportApiTest(BaseTestCase):
         summary_response = self.send_get(f'Participant/P{participant_id}/Summary')
         for field in ['phoneNumber', 'loginPhoneNumber', 'email', 'streetAddress', 'streetAddress2', 'city', 'zipCode']:
             self.assertEqual('UNSET', summary_response[field])
+        self.assertEqual('NO_CONTACT', summary_response['recontactMethod'])
+
+    def test_participant_summary_redact_time_window(self):
+        # Fields should still be available for a short time window
+        participant = self.data_generator.create_database_participant()
+        self.data_generator.create_database_participant_summary(
+            participant=participant,
+            phoneNumber='123-456-7890'
+        )
+
+        participant_id = participant.participantId
+        yesterday = datetime.now() - timedelta(days=1)
+        report_json = self.build_deceased_report_json(authored=yesterday.isoformat())
+        response = self.post_report(report_json, participant_id=participant_id)
+
+        report_id = response['identifier']['value']
+        created_report = self.get_report_from_db(report_id)
+        self.assertEqual(DeceasedReportStatus.APPROVED, created_report.status,
+                         "Test is built assuming an APPROVED report would be created")
+
+        summary_response = self.send_get(f'Participant/P{participant_id}/Summary')
+        self.assertEqual('123-456-7890', summary_response['phoneNumber'])
+        self.assertEqual('NO_CONTACT', summary_response['recontactMethod'])
