@@ -33,7 +33,7 @@ from rdr_service.model.participant_summary import (
     ParticipantGenderAnswers,
     ParticipantRaceAnswers,
     ParticipantSummary,
-    SUSPENDED_PARTICIPANT_FIELDS,
+    SUSPENDED_OR_DECEASED_PARTICIPANT_FIELDS,
     WITHDRAWN_PARTICIPANT_FIELDS,
     WITHDRAWN_PARTICIPANT_VISIBILITY_TIME,
 )
@@ -43,6 +43,7 @@ from rdr_service.participant_enums import (
     BiobankOrderStatus,
     EhrStatus,
     EnrollmentStatus,
+    DeceasedStatus,
     ConsentExpireStatus,
     ParticipantCohort,
     PatientStatusFlag,
@@ -723,10 +724,13 @@ class ParticipantSummaryDao(UpdatableDao):
             result = {k: result.get(k) for k in WITHDRAWN_PARTICIPANT_FIELDS}
 
         elif (
-            model.withdrawalStatus != WithdrawalStatus.NO_USE and model.suspensionStatus == SuspensionStatus.NO_CONTACT
-            and model.suspensionTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
+            (model.withdrawalStatus != WithdrawalStatus.NO_USE and model.suspensionStatus == SuspensionStatus.NO_CONTACT
+             and model.suspensionTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME)
+            or
+            (model.deceasedStatus == DeceasedStatus.APPROVED and
+             model.deceasedAuthored < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME)
         ):
-            for i in SUSPENDED_PARTICIPANT_FIELDS:
+            for i in SUSPENDED_OR_DECEASED_PARTICIPANT_FIELDS:
                 result[i] = UNSET
 
         result["participantId"] = to_client_participant_id(model.participantId)
