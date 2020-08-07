@@ -77,17 +77,18 @@ _COMPUTE_RETENTION_ELIGIBLE_SQL = """
       AND questionnaire_on_the_basics = 1
       AND questionnaire_on_overall_health = 1
       AND questionnaire_on_lifestyle = 1
+      AND samples_to_isolate_dna = 1
       AND withdrawal_status = 1
       AND suspension_status = 1
-      AND samples_to_isolate_dna = 1
+      AND deceased_status = 0
     THEN 2 ELSE 1
     END
 """
 
 # SQL for calculating the date when a participant gained retention eligibility
-# Null unless the participant meets the retention-eligible requirements (above) and a qualifying test sample time is present
-# Otherwise, find the last of the consent / module authored dates and the earliest of the qualifying DNA test samples
-# The retention eligibility date is the later of those two
+# Null unless the participant meets the retention-eligible requirements (above) and a qualifying test sample time
+# is present.  Otherwise, find the last of the consent / module authored dates and the earliest of the qualifying
+# DNA test samples.  The retention eligibility date is the later of those two
 _COMPUTE_RETENTION_ELIGIBLE_TIME_SQL = """
      CASE WHEN retention_eligible_status = 2 AND
           COALESCE(sample_status_1ed10_time, sample_status_2ed10_time, sample_status_1ed04_time,
