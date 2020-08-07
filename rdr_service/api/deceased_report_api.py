@@ -30,4 +30,6 @@ class DeceasedReportReviewApi(DeceasedReportApiMixin, UpdatableApi):
     @auth_required(HEALTHPRO)
     def post(self, participant_id, report_id):
         participant_id = from_client_participant_id(participant_id)
+
+        # Using super's PUT to make use of update functionality in DAO while it looks like they're POSTing a review
         return super(DeceasedReportReviewApi, self).put(report_id, participant_id=participant_id, skip_etag=True)

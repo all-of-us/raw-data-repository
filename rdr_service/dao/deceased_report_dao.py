@@ -37,7 +37,7 @@ class DeceasedReportDao(UpdatableDao):
     @staticmethod
     def _read_api_request_author(resource):
         if 'performer' not in resource:
-            raise BadRequest('Performer user information is required for submitting a report')
+            raise BadRequest('Performer user information is required')
         api_user_dao = ApiUserDao()
         return api_user_dao.load_or_init_from_client_json(resource['performer'])
 
@@ -265,7 +265,7 @@ class DeceasedReportDao(UpdatableDao):
     def insert_with_session(self, session, obj: DeceasedReport):
         existing_reports = session.query(DeceasedReport).filter(DeceasedReport.participantId == obj.participantId)
         if any([report.status != DeceasedReportStatus.DENIED for report in existing_reports]):
-            raise Conflict(f'Participant P{obj.participantId} already has a preliminary or approved deceased report')
+            raise Conflict(f'Participant P{obj.participantId} already has a preliminary or final deceased report')
 
         self._update_participant_summary(session, obj)
         return super(DeceasedReportDao, self).insert_with_session(session, obj)

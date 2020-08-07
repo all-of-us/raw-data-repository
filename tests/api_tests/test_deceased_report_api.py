@@ -51,7 +51,7 @@ class DeceasedReportApiTest(BaseTestCase):
     def get_participant_summary_from_db(self, participant_id):
         # The participant summary exists in the session, so we need to reset the session to query the database for
         # new values
-        self.session.rollback()
+        self.session.commit()
         self.session.close()
         return self.session.query(ParticipantSummary).filter(
             ParticipantSummary.participantId == participant_id
