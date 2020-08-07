@@ -152,6 +152,13 @@ class GenomicSetMember(Base):
                                    Integer, ForeignKey("genomic_job_run.id"),
                                    nullable=True)
 
+    arrAW3ManifestJobRunID = Column('arr_aw3_manifest_job_run_id',
+                                   Integer, ForeignKey("genomic_job_run.id"),
+                                   nullable=True)
+
+    wgsAW3ManifestJobRunID = Column('wgs_aw3_manifest_job_run_id',
+                                   Integer, ForeignKey("genomic_job_run.id"),
+                                   nullable=True)
 
     # CVL WGS Fields
     cvlW1ManifestJobRunId = Column('cvl_w1_manifest_job_run_id',
@@ -277,27 +284,53 @@ class GenomicGCValidationMetrics(Base):
 
     # Genotyping Data (Array) reconciliation
     idatRedReceived = Column('idat_red_received', SmallInteger, nullable=False, default=0)
+    idatRedPath = Column('idat_red_path', String(255), nullable=True)
+
     idatGreenReceived = Column('idat_green_received', SmallInteger, nullable=False, default=0)
+    idatGreenPath = Column('idat_green_path', String(255), nullable=True)
+
     idatRedMd5Received = Column('idat_red_md5_received', SmallInteger, nullable=False, default=0)
+    idatRedMd5Path = Column('idat_red_md5_path', String(255), nullable=True)
+
     idatGreenMd5Received = Column('idat_green_md5_received', SmallInteger, nullable=False, default=0)
+    idatGreenMd5Path = Column('idat_green_md5_path', String(255), nullable=True)
+
     vcfReceived = Column('vcf_received', SmallInteger, nullable=False, default=0)
+    vcfPath = Column('vcf_path', String(255), nullable=True)
+
     vcfMd5Received = Column('vcf_md5_received', SmallInteger, nullable=False, default=0)
+    vcfMd5Path = Column('vcf_md5_path', String(255), nullable=True)
 
     # Sequencing Data (WGS) reconciliation
     # Single sample VCF: Hard - filtered for clinical purpose
     hfVcfReceived = Column('hf_vcf_received', SmallInteger, nullable=False, default=0)
+    hfVcfPath = Column('hf_vcf_path', String(255), nullable=True)
+
     hfVcfTbiReceived = Column('hf_vcf_tbi_received', SmallInteger, nullable=False, default=0)
+    hfVcfTbiPath = Column('hf_vcf_tbi_path', String(255), nullable=True)
+
     hfVcfMd5Received = Column('hf_vcf_md5_received', SmallInteger, nullable=False, default=0)
+    hfVcfMd5Path = Column('hf_vcf_md5_path', String(255), nullable=True)
 
     # Single sample VCF: Raw for research purpose
     rawVcfReceived = Column('raw_vcf_received', SmallInteger, nullable=False, default=0)
+    rawVcfPath = Column('raw_vcf_path', String(255), nullable=True)
+
     rawVcfTbiReceived = Column('raw_vcf_tbi_received', SmallInteger, nullable=False, default=0)
+    rawVcfTbiPath = Column('raw_vcf_tbi_path', String(255), nullable=True)
+
     rawVcfMd5Received = Column('raw_vcf_md5_received', SmallInteger, nullable=False, default=0)
+    rawVcfMd5Path = Column('raw_vcf_md5_path', String(255), nullable=True)
 
     # CRAMs and CRAIs
     cramReceived = Column('cram_received', SmallInteger, nullable=False, default=0)
+    cramPath = Column('cram_path', String(255), nullable=True)
+
     cramMd5Received = Column('cram_md5_received', SmallInteger, nullable=False, default=0)
+    cramMd5Path = Column('cram_md5_path', String(255), nullable=True)
+
     craiReceived = Column('crai_received', SmallInteger, nullable=False, default=0)
+    craiPath = Column('crai_path', String(255), nullable=True)
 
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)

@@ -657,7 +657,7 @@ def git_checkout_branch(branch):
 
 def is_git_branch_clean():
     """
-    Does the current branch have any un-commited changes.
+    Does the current branch have any un-committed changes.
     :return: True if successful otherwise False
     """
     args = ['git', 'status', '--porcelain']
@@ -666,5 +666,30 @@ def is_git_branch_clean():
 
     if code == 0 and not so:
         return True
+
+    return False
+
+def is_valid_release_git_tag(git_tag):
+    """
+    Does the git tag exist in RDR github repository and does it
+    conform to RDR release semantic version (X.Y.Z)
+    :return:  True if tag is validated otherwise False
+    """
+    if not git_tag:
+        return False
+
+    # Semantic version validation (X.Y.Z, all positive integers, no leading zeroes)
+    if not re.match(r"[1-9]+[0-9]*\.[1-9]+[0-9]*\.[1-9]+[0-9]*$", git_tag):
+        _logger.error(f'Nonconforming release tag: {git_tag}')
+        return False
+
+    # Check for 'git ls-remote' output confirming tag exists
+    args = ['git', 'ls-remote', '--tags', 'origin', git_tag]
+    code, so, se = run_external_program(args=args)
+
+    if code == 0 and len(so):
+        return True
+    else:
+        _logger.error(se if se else f'Git tag {git_tag} not found on remote origin')
 
     return False

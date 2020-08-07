@@ -602,7 +602,8 @@ _RECONCILIATION_REPORT_SQL = (
     GROUP_CONCAT(edited_cancelled_restored_site_name) edited_cancelled_restored_site_name,
     GROUP_CONCAT(edited_cancelled_restored_site_time) edited_cancelled_restored_site_time,
     GROUP_CONCAT(edited_cancelled_restored_site_reason) edited_cancelled_restored_site_reason,
-    GROUP_CONCAT(DISTINCT order_origin) biobank_order_origin
+    GROUP_CONCAT(DISTINCT order_origin) biobank_order_origin,
+    participant_origin
   FROM
    (SELECT
       participant.biobank_id raw_biobank_id,
@@ -638,7 +639,8 @@ _RECONCILIATION_REPORT_SQL = (
       biobank_order.order_origin,
       """
     + _get_status_flag_sql()
-    + """
+    + """,
+    participant.participant_origin
     FROM """
     + _ORDER_JOINS
     + """
@@ -702,7 +704,8 @@ _RECONCILIATION_REPORT_SQL = (
       NULL edited_cancelled_restored_site_name,
       NULL edited_cancelled_restored_site_time,
       NULL edited_cancelled_restored_site_reason,
-      NULL order_origin
+      NULL order_origin,
+      participant.participant_origin
     FROM
       biobank_stored_sample
       LEFT OUTER JOIN
@@ -733,7 +736,7 @@ _RECONCILIATION_REPORT_SQL = (
     AND confirmed IS NOT NULL AND confirmed >= :n_days_ago
   ) reconciled
   GROUP BY
-    biobank_id, sent_order_id, order_test, test
+    biobank_id, participant_origin, sent_order_id, order_test, test
   ORDER BY
     ISODATE[MAX(collected)], ISODATE[MAX(confirmed)], GROUP_CONCAT(DISTINCT biobank_order_id),
     GROUP_CONCAT(DISTINCT biobank_stored_sample_id)
@@ -750,7 +753,8 @@ _WITHDRAWAL_REPORT_SQL = (
     CONCAT(:biobank_id_prefix, participant.biobank_id) biobank_id,
     ISODATE[participant.withdrawal_time] withdrawal_time,"""
     + _NATIVE_AMERICAN_SQL
-    + """
+    + """,
+    participant.participant_origin
   FROM participant
   WHERE participant.withdrawal_time >= :n_days_ago
   AND
@@ -765,6 +769,7 @@ _SALIVARY_MISSING_REPORT_SQL = (
     , dvo.tracking_id AS usps_tracking_id
     , dvo.biobank_order_id AS order_id
     , bo.created AS collection_date
+    , p.participant_origin
 FROM
     biobank_dv_order dvo
     JOIN participant p ON p.participant_id = dvo.participant_id

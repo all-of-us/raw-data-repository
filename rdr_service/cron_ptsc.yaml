@@ -2,11 +2,15 @@ cron:
 - description: Monthly reconciliation report
 - description: Participant count metrics (Do not manually start)
 - description: Flag ghost participants
-- description: Genomic new participant workflow (Cohort 3) from Biobank Samples
-- description: Genomic GC Manifest Workflow
-- description: Genomic Data Manifest Workflow (ingestion and reconciliation of data)
-- description: Genomic GEM A1 and A2 Workflow
-- description: Genomic GEM A3 (Delete Report) Manifest Workflow
+- description: Genomic Pipeline AW0 (Cohort 2) Workflow
+- description: Genomic Pipeline AW0 (Cohort 1) Workflow (Manual)
+- description: Genomic AW1 Workflow (Manual)
+- description: Genomic AW2 Workflow (Manual)
+- description: Genomic GEM A1-A2 Workflow (Manual)
+- description: Genomic GEM A2 Workflow (Manual)
+- description: Genomic CVL W1 Workflow (Manual)
+- description: Genomic CVL W2 Workflow (Manual)
+- description: Genomic CVL W3 Workflow (Manual)
 - description: Daily Biobank sample import and order reconciliation
   url: /offline/BiobankSamplesImport
   schedule: every day 03:00

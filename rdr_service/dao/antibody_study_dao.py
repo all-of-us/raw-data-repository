@@ -28,6 +28,16 @@ class BiobankCovidAntibodySampleDao(UpdatableDao):
                 record.id = dup_id
             session.merge(record)
 
+    def get_biobank_id_by_sample_id_with_session(self, session, sample_id):
+        query = (session.query(BiobankCovidAntibodySample)
+                 .filter(BiobankCovidAntibodySample.sampleId == sample_id))
+
+        record = query.first()
+        if record:
+            return record.aouBiobankId if record.aouBiobankId else record.noAouBiobankId
+        else:
+            return None
+
 
 class QuestCovidAntibodyTestDao(UpdatableDao):
 

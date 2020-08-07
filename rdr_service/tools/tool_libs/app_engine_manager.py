@@ -22,6 +22,8 @@ from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app,
     gcp_application_default_creds_exist, gcp_restart_instances
 from rdr_service.tools.tool_libs.alembic import AlembicManagerClass
 from rdr_service.services.jira_utils import JiraTicketHandler
+from rdr_service.services.documentation_utils import ReadTheDocsHandler
+from rdr_service.config import READTHEDOCS_CREDS
 
 
 _logger = logging.getLogger("rdr_logger")
@@ -41,6 +43,7 @@ class DeployAppClass(object):
     deploy_version = None
     deploy_root = None
 
+
     _current_git_branch = None
 
     _jira_handler = None
@@ -56,6 +59,7 @@ class DeployAppClass(object):
         self.deploy_root = args.git_project
         self._current_git_branch = git_current_branch()
         self.jira_board = 'PD'
+        self.docs_version = 'stable'  # Use as default version slug for readthedocs
 
     def write_config_file(self, key: str, config: list, filename: str = None):
         """
@@ -154,6 +158,10 @@ class DeployAppClass(object):
                 self.deploy_sub_type = 'ptsc'
             elif 'sandbox' in self.gcp_env.project:
                 self.deploy_sub_type = 'sandbox'
+            elif 'stable' in self.gcp_env.project:
+                self.deploy_sub_type = 'stable'
+        else:
+            self.docs_version = 'latest'  # readthedocs version slug for production releases
 
         return True
 
@@ -264,6 +272,26 @@ class DeployAppClass(object):
         if tickets:
             self._jira_handler.link_tickets(tickets[0], ticket, 'Relates')
 
+    def trigger_doc_build(self, config):
+        """
+        Trigger a documentation build in readthedocs.org
+        """
+        api_token = None
+        rtd_creds = config.get_config_item(READTHEDOCS_CREDS)
+        if rtd_creds:
+            api_token = rtd_creds['readthedocs_rdr_api_token']
+        docs = ReadTheDocsHandler(api_token)
+
+        try:
+            if self.deploy_type == 'prod':
+                docs.update_project_to_release(self.args.git_target)
+                _logger.info(f'ReadTheDocs latest version default branch/tag updated to {self.args.git_target}')
+
+            build_id = docs.build_the_docs(self.docs_version)
+            _logger.info(f'Started documentation build for version {self.docs_version} (build ID: {build_id})')
+        except (ValueError, RuntimeError) as e:
+            _logger.error(f'Failed to trigger readthedocs documentation build for version {self.docs_version}.  {e}')
+
     def deploy_app(self):
         """
         Deploy the app
@@ -294,7 +322,7 @@ class DeployAppClass(object):
         # Install app config
         _logger.info(self.add_jira_comment(f"Updating config for '{self.gcp_env.project}'"))
         app_config = AppConfigClass(self.args, self.gcp_env, restart=False)
-        app_config.update_app_config()
+        app_config.update_app_config(store_config=True)
         _logger.info(self.add_jira_comment(f"Config for '{self.gcp_env.project}' updated."))
 
         _logger.info(self.add_jira_comment(f"Deploying app to '{self.gcp_env.project}'."))
@@ -304,6 +332,12 @@ class DeployAppClass(object):
         if self.gcp_env.project == 'all-of-us-rdr-stable':
             self.tag_people()
             self.create_jira_roc_ticket()
+
+        # Automatic doc build limited to stable or prod deploy (unless overridden)
+        if self.args.no_docs:
+            _logger.debug('Skipping documentation build...')
+        elif self.deploy_type == 'prod' or self.deploy_sub_type == 'stable':
+            self.trigger_doc_build(app_config)
 
         _logger.info('Cleaning up...')
         self.clean_up_config_files(config_files)
@@ -516,11 +550,11 @@ class SplitTrafficClass(object):
 
         return 0
 
-
 class AppConfigClass(object):
 
     _config_dir = None
     _provider = None
+    _config_items = {}
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject, restart=True):
         """
@@ -579,9 +613,19 @@ class AppConfigClass(object):
         config = json.loads(data)
         return config
 
-    def update_app_config(self):
+    def get_config_item(self, key=None):
+        """
+        Extract a config item from the stored config data
+        """
+        if key and key in self._config_items:
+            return self._config_items[key]
+
+        return None
+
+    def update_app_config(self, store_config=False):
         """
         Put the local config into the cloud datastore.
+        :param store_config:  Keep a copy of the config data in the instance
         """
         if not hasattr(self.args, 'from_file') or not self.args.from_file:
             config = self.get_bucket_app_config()
@@ -599,6 +643,9 @@ class AppConfigClass(object):
         if self.restart:
             _logger.info('Restarting instances...')
             gcp_restart_instances(self.gcp_env.project)
+
+        if store_config:
+            self._config_items = config
 
         return 0
 
@@ -758,6 +805,8 @@ def run():
                                default=None)  # noqa
 
     deploy_parser.add_argument("--no-promote", help="do not promote version to serving state.",
+                               default=False, action="store_true")  # noqa
+    deploy_parser.add_argument("--no-docs", help="Skip triggering a documentation build on readthedocs.org",
                                default=False, action="store_true")  # noqa
 
     # List app engine services

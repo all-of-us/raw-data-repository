@@ -104,6 +104,7 @@ class GenomicApiTestBase(BaseTestCase):
             participantId=participant.participantId,
             gemPass='Y',
             biobankId=participant.biobankId,
+            sexAtBirth='F',
             genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY)
 
         kwargs = dict(valid_kwargs, **override_kwargs)
@@ -121,6 +122,7 @@ class GemApiTest(GenomicApiTestBase):
         self.assertEqual(p1_pii['biobank_id'], '1')
         self.assertEqual(p1_pii['first_name'], 'TestFN')
         self.assertEqual(p1_pii['last_name'], 'TestLN')
+        self.assertEqual(p1_pii['sex_at_birth'], 'F')
 
     def test_get_pii_invalid_pid(self):
         p = self._make_participant()

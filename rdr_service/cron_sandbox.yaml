@@ -4,6 +4,15 @@ cron:
 - description: Monthly reconciliation report
 - description: Participant count metrics (Do not manually start)
 - description: Flag ghost participants
+- description: Genomic Pipeline AW0 (Cohort 2) Workflow
+- description: Genomic Pipeline AW0 (Cohort 1) Workflow (Manual)
+- description: Genomic AW1 Workflow (Manual)
+- description: Genomic AW2 Workflow (Manual)
+- description: Genomic GEM A1-A2 Workflow (Manual)
+- description: Genomic GEM A2 Workflow (Manual)
+- description: Genomic CVL W1 Workflow (Manual)
+- description: Genomic CVL W2 Workflow (Manual)
+- description: Genomic CVL W3 Workflow (Manual)
 - description: Rotate service account keys older than 3 days
   url: /offline/DeleteOldKeys
   schedule: every day 01:00

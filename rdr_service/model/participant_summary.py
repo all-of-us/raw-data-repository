@@ -33,7 +33,8 @@ from rdr_service.participant_enums import (
     ParticipantCohort,
     ParticipantCohortPilotFlag,
     ConsentExpireStatus,
-    RetentionStatus)
+    RetentionStatus,
+    DeceasedStatus)
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
 # participants.
@@ -391,6 +392,10 @@ class ParticipantSummary(Base):
     #   uselist=True
     # )
     patientStatus = Column("patient_status", JSON, nullable=True, default=list())
+
+    deceasedStatus = Column("deceased_status", Enum(DeceasedStatus), nullable=False, default=DeceasedStatus.UNSET)
+    deceasedAuthored = Column("deceased_authored", UTCDateTime)
+    dateOfDeath = Column("date_of_death", Date)
 
     @declared_attr
     def hpoId(cls):
