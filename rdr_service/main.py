@@ -22,6 +22,7 @@ from rdr_service.api.biobank_specimen_api import BiobankSpecimenApi, BiobankSpec
     BiobankAliquotDisposalApi, BiobankAliquotDatasetApi
 from rdr_service.api.check_ppi_data_api import check_ppi_data
 from rdr_service.api.data_gen_api import DataGenApi, SpecDataGenApi
+from rdr_service.api.deceased_report_api import DeceasedReportApi, DeceasedReportReviewApi
 from rdr_service.api.dv_order_api import DvOrderApi
 from rdr_service.api.genomic_api import GenomicPiiApi, GenomicOutreachApi
 from rdr_service.api.import_codebook_api import import_codebook
@@ -298,6 +299,20 @@ api.add_resource(GenomicOutreachApi,
                  API_PREFIX + "GenomicOutreach/<string:mode>",
                  endpoint='genomic.outreach',
                  methods=['GET'])
+
+api.add_resource(
+    DeceasedReportApi,
+    API_PREFIX + 'Participant/<string:participant_id>/Observation',
+    endpoint='observation',
+    methods=['POST']
+)
+
+api.add_resource(
+    DeceasedReportReviewApi,
+    API_PREFIX + "Participant/<string:participant_id>/Observation/<string:report_id>/Review",
+    endpoint='observation.review',
+    methods=['POST']
+)
 
 # Configuration API for admin use.  # note: temporarily disabled until decided
 api.add_resource(

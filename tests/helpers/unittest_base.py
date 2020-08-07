@@ -306,23 +306,24 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         )
         self.send_post(self.questionnaire_response_url(participant_id), qr_json)
 
-    def assertJsonResponseMatches(self, obj_a, obj_b):
-        self.assertMultiLineEqual(self._clean_and_format_response_json(obj_a),
-                                  self._clean_and_format_response_json(obj_b))
+    def assertJsonResponseMatches(self, obj_a, obj_b, strip_tz=True):
+        self.assertMultiLineEqual(self._clean_and_format_response_json(obj_a, strip_tz=strip_tz),
+                                  self._clean_and_format_response_json(obj_b, strip_tz=strip_tz))
 
     @staticmethod
     def pretty(obj):
         return json.dumps(obj, sort_keys=True, indent=4, separators=(",", ": "))
 
-    def _clean_and_format_response_json(self, input_obj):
+    def _clean_and_format_response_json(self, input_obj, strip_tz=True):
         obj = self.sort_lists(copy.deepcopy(input_obj))
         for ephemeral_key in ("meta", "lastModified", "origin"):
             if ephemeral_key in obj:
                 del obj[ephemeral_key]
         s = self.pretty(obj)
-        # TODO(DA-226) Make sure times are not skewed on round trip to CloudSQL. For now, strip tzinfo.
-        s = s.replace("+00:00", "")
-        s = s.replace('Z",', '",')
+        if strip_tz:
+            # TODO(DA-226) Make sure times are not skewed on round trip to CloudSQL. For now, strip tzinfo.
+            s = s.replace("+00:00", "")
+            s = s.replace('Z",', '",')
         return s
 
     @staticmethod
