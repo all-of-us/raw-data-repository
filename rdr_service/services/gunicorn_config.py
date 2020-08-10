@@ -1,5 +1,7 @@
 import multiprocessing
 import os
+import resource
+import sys
 
 _port = 8080 # local dev/testing.
 workers = 1
@@ -23,3 +25,17 @@ raw_env = [
     "RDR_CONFIG_PROVIDER={0}".format(os.environ.get('RDR_CONFIG_PROVIDER', None)),
     "RDR_STORAGE_PROVIDER={0}".format(os.environ.get('RDR_STORAGE_PROVIDER', None)),
 ]
+
+
+# GAE F4 instances allow for up to 1G of memory to be used.
+# If we're getting too close to the limit we should close the instance.
+# That way we can gracefully limit our memory rather than have Google killing us forcefully
+# (and potentially in the middle of handling a request).
+def post_request(worker, request, environment):
+    # Get memory used for this process and any forked children
+    self_mem_bytes = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    children_mem_bytes = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
+    memory_threshold_bytes = 950000000  # Reset after 950 megabytes have been consumed
+
+    if self_mem_bytes + children_mem_bytes > memory_threshold_bytes:
+        sys.exit(0)
