@@ -2245,3 +2245,26 @@ class GenomicPipelineTest(BaseTestCase):
             run_obj = self.job_run_dao.get(5)
 
             self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_aw1c_manifest_ingestion(self):
+        self._create_fake_datasets_for_gc_tests(3, arr_override=False,
+                                                genomic_workflow_state=GenomicWorkflowState.W3)
+
+        # Setup Test file
+        cvl_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-1.csv")
+
+        cvl_manifest_filename = "RDR_AoU_CVL_PKG-1908-218051.csv"
+
+        self._write_cloud_csv(
+            cvl_manifest_filename,
+            cvl_manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=config.GENOMIC_GEM_AW1C_MANIFEST_SUBFOLDER,
+        )
+
+        genomic_pipeline.ingest_aw1c_manifest()
+
+        # Test run record is success
+        run_obj = self.job_run_dao.get(1)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)

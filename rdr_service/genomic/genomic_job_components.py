@@ -647,6 +647,18 @@ class GenomicFileValidator:
                 filename_components[2] == 'a2'
             )
 
+        def cvl_aw1c_manifest_name_rule(fn):
+            """AW1C Biobank to CVLs manifest name rule"""
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
+            return (
+                len(filename_components) == 4 and
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'cvl' and
+                re.search(r"pkg-[0-9]{4}-[0-9]{5,}\.csv$",
+                          filename_components[3]) is not None
+            )
+
         name_rules = {
             GenomicJob.BB_RETURN_MANIFEST: bb_result_name_rule,
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
@@ -654,6 +666,7 @@ class GenomicFileValidator:
             GenomicJob.AW1F_MANIFEST: aw1f_manifest_name_rule,
             GenomicJob.GEM_A2_MANIFEST: gem_a2_manifest_name_rule,
             GenomicJob.W2_INGEST: cvl_w2_manifest_name_rule,
+            GenomicJob.AW1C_INGEST: cvl_aw1c_manifest_name_rule,
         }
 
         return name_rules[self.job_id](filename)

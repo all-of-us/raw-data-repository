@@ -230,3 +230,14 @@ def create_cvl_w3_manifest():
     with GenomicJobController(GenomicJob.W3_MANIFEST,
                               bucket_name=config.GENOMIC_CVL_BUCKET_NAME,) as controller:
         controller.generate_manifest(GenomicManifestTypes.CVL_W3, _genome_type=config.GENOME_TYPE_CVL)
+
+
+def ingest_aw1c_manifest():
+    """
+    Entrypoint for CVL AW1C Manifest Ingestion workflow
+    """
+    with GenomicJobController(GenomicJob.AW1C_INGEST,
+                              bucket_name=None,
+                              bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME,
+                              sub_folder_name=config.GENOMIC_GEM_AW1C_MANIFEST_SUBFOLDER) as controller:
+        controller.run_aw1c_workflow()
