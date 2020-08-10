@@ -347,6 +347,19 @@ def genomic_cvl_w3_workflow():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
+def genomic_aw3_workflow():
+    """Temporarily running this manually for E2E Testing"""
+    now = datetime.utcnow()
+    if now.day == 0o1 and now.month == 0o1:
+        logging.info("skipping the scheduled run.")
+        return '{"success": "true"}'
+    genomic_pipeline.aw3_array_manifest_workflow()
+    genomic_pipeline.aw3_wgs_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
 def bigquery_rebuild_cron():
     """ this should always be a manually run job, but we have to schedule it at least once a year. """
     now = datetime.utcnow()
@@ -536,6 +549,11 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicCvlW3Workflow",
         endpoint="genomic_cvl_w3_workflow",
         view_func=genomic_cvl_w3_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicAW3Workflow",
+        endpoint="genomic_aw3_workflow",
+        view_func=genomic_aw3_workflow, methods=["GET"]
     )
     # END Genomic Pipeline Jobs
 

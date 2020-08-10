@@ -109,3 +109,8 @@ cron:
   timezone: America/New_York
   schedule: 1 of jan 12:00
   target: offline
+- description: Genomic AW3 Workflow (Manual)
+  url: /offline/GenomicAW3Workflow
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
