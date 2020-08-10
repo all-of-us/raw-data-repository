@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Date, ForeignKey, event, Integer, String
+from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, UTCDateTime
@@ -9,11 +10,11 @@ class DeceasedReport(Base):
     __tablename__ = "deceased_report"
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
     created = Column("created", UTCDateTime, nullable=False)
-    lastModified = Column("last_modified", UTCDateTime, nullable=False)
+    modified = Column("modified", UTCDateTime, nullable=False)
     participantId = Column("participant_id", Integer, ForeignKey("participant.participant_id"), nullable=False)
     dateOfDeath = Column("date_of_death", Date)
     notification = Column("notification", Enum(DeceasedNotification), nullable=False)
-    notification_other = Column("notification_other", String(1024))
+    notificationOther = Column("notification_other", String(1024))
     reporterName = Column('reporter_name', String(255))
     reporterRelationship = Column('reporter_relationship', String(8))
     reporterEmail = Column('reporter_email', String(255))
@@ -25,6 +26,9 @@ class DeceasedReport(Base):
     status = Column("status", Enum(DeceasedReportStatus), nullable=False)
     denialReason = Column("denial_reason", Enum(DeceasedReportDenialReason))
     denialReasonOther = Column("denial_reason_other", String(1024))
+
+    author = relationship("ApiUser", foreign_keys='DeceasedReport.authorId', lazy='joined')
+    reviewer = relationship("ApiUser", foreign_keys='DeceasedReport.reviewerId', lazy='joined')
 
 
 event.listen(DeceasedReport, "before_insert", model_insert_listener)

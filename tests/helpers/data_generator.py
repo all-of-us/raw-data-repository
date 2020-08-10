@@ -14,6 +14,7 @@ from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept,
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.model.site import Site
 from rdr_service.participant_enums import (
+    DeceasedStatus,
     EnrollmentStatus,
     SuspensionStatus,
     UNSET_HPO_ID,
@@ -230,7 +231,8 @@ class DataGenerator:
             "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
             "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
             "enrollmentStatus": EnrollmentStatus.INTERESTED,
-            "participantOrigin": participant.participantOrigin
+            "participantOrigin": participant.participantOrigin,
+            "deceasedStatus": DeceasedStatus.UNSET
         }
 
         defaults.update(kwargs)

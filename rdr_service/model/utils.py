@@ -15,6 +15,7 @@ _PROPERTY_TYPE_MAP = {
     "UTCDateTime": PropertyType.DATETIME,
     "UTCDateTime6": PropertyType.DATETIME,
     "Enum": PropertyType.ENUM,
+    "EnumZeroBased": PropertyType.ENUM,
     "Integer": PropertyType.INTEGER,
     "SmallInteger": PropertyType.INTEGER,
 }
@@ -37,6 +38,17 @@ class Enum(TypeDecorator):
 
     def process_result_value(self, value, dialect):  # pylint: disable=unused-argument
         return self.enum_type(value) if value else None
+
+
+class EnumZeroBased(Enum):
+    """A type for a SQLAlchemy column based on a protomsg Enum provided in the constructor.
+       This implementation allows for 0's as a value."""
+
+    def process_bind_param(self, value, dialect):  # pylint: disable=unused-argument
+        return int(value) if value is not None else None
+
+    def process_result_value(self, value, dialect):  # pylint: disable=unused-argument
+        return self.enum_type(value) if value is not None else None
 
 
 class MultiEnum(TypeDecorator):

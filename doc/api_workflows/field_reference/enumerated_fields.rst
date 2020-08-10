@@ -190,3 +190,30 @@ ehrConsentExpireStatus
   * UNSET
   * NOT_EXPIRED
   * EXPIRED
+
+DeceasedStatus
+------------------------------------------------------------
+  * UNSET
+  * PENDING
+  * APPROVED
+
+DeceasedNotification
+------------------------------------------------------------
+  * EHR
+  * ATTEMPTED_CONTACT
+  * NEXT_KIN_HPO
+  * NEXT_KIN_SUPPORT
+  * OTHER
+
+DeceasedReportStatus
+------------------------------------------------------------
+  * PENDING
+  * APPROVED
+  * DENIED
+
+DeceasedReportDenialReason
+------------------------------------------------------------
+  * INCORRECT_PARTICIPANT
+  * MARKED_IN_ERROR
+  * INSUFFICIENT_INFORMATION
+  * OTHER
