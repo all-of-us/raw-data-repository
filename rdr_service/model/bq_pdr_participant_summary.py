@@ -121,6 +121,8 @@ class BQPDRParticipantSummarySchema(BQSchema):
 
     patient_status = BQRecordField('patient_statuses', schema=BQPatientStatusSchema)
 
+    test_participant = BQField('test_participant', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
 
 class BQPDRParticipantSummary(BQTable):
     """ PDR Participant Summary BigQuery Table """

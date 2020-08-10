@@ -1,5 +1,6 @@
 import datetime
 import logging
+import re
 
 from dateutil import parser, tz
 from sqlalchemy import func, desc, exc
@@ -85,6 +86,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             summary = self._merge_schema_dicts(summary, self._calculate_enrollment_timestamps(summary))
             # calculate distinct visits
             summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
+            # calculate test participant status
+            summary = self._merge_schema_dicts(summary, self._calculate_test_participant(summary))
 
             return BQRecord(schema=BQParticipantSummarySchema, data=summary, convert_to_enum=convert_to_enum)
 
@@ -773,6 +776,31 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         data['distinct_visits'] = len(dates)
         return data
 
+    def _calculate_test_participant(self, summary):
+        """
+        Calculate if this participant is a test participant or not.
+        :param summary: summary data
+        :return: dict
+        """
+        test_participant = summary['is_ghost_id']
+
+        # Check for @example.com in email address
+        if not test_participant:
+            # Check to see if the participant is in the Test HPO.
+            if (summary.get('hpo') or 'None').lower() == 'test':
+                test_participant = 1
+            # Test if @example.com is in email address.
+            elif '@example.com' in (summary.get('email') or ''):
+                test_participant = 1
+            # Check for SMS phone number for test participants.
+            elif '4442' in re.sub('[\(|\)|\-|\s]', '', (summary.get('login_phone_number') or 'None')):
+                test_participant = 1
+            elif '4442' in re.sub('[\(|\)|\-|\s]', '', (summary.get('phone_number') or 'None')):
+                test_participant = 1
+
+        data = {'test_participant': test_participant}
+        return data
+
     @staticmethod
     def get_module_answers(ro_dao, module, p_id, qr_id=None):
         """
@@ -855,17 +883,7 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None)
         from rdr_service.dao.bq_pdr_participant_summary_dao import BQPDRParticipantSummaryGenerator
         pdr_bqgen = BQPDRParticipantSummaryGenerator()
 
-    try:
-        app_id = config.GAE_PROJECT
-    except AttributeError:
-        app_id = 'localhost'
-
     ps_bqr = ps_bqgen.make_bqrecord(p_id)
-
-    # filter test or ghost participants if production
-    if app_id == 'all-of-us-rdr-prod':  # or app_id == 'localhost':
-        if ps_bqr.is_ghost_id == 1 or ps_bqr.hpo == 'TEST' or (ps_bqr.email and '@example.com' in ps_bqr.email):
-            return None
 
     # Since the PDR participant summary is primarily a subset of the Participant Summary, call the full
     # Participant Summary generator and take what we need from it.

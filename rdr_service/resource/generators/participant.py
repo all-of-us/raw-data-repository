@@ -1,5 +1,6 @@
 import datetime
 import logging
+import re
 
 from dateutil import parser, tz
 from sqlalchemy import func, desc, exc
@@ -86,6 +87,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             summary = self._merge_schema_dicts(summary, self._calculate_enrollment_timestamps(summary))
             # calculate distinct visits
             summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
+            # calculate test participant status
+            summary = self._merge_schema_dicts(summary, self._calculate_test_participant(summary))
 
             # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
 
@@ -781,6 +784,31 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         dates = list(set(dates))  # de-dup list
         data['distinct_visits'] = len(dates)
+        return data
+
+    def _calculate_test_participant(self, summary):
+        """
+        Calculate if this participant is a test participant or not.
+        :param summary: summary data
+        :return: dict
+        """
+        test_participant = summary['is_ghost_id']
+
+        # Check for @example.com in email address
+        if not test_participant:
+            # Check to see if the participant is in the Test HPO.
+            if (summary.get('hpo') or 'None').lower() == 'test':
+                test_participant = 1
+            # Test if @example.com is in email address.
+            elif '@example.com' in (summary.get('email') or ''):
+                test_participant = 1
+            # Check for SMS phone number for test participants.
+            elif '4442' in re.sub('[\(|\)|\-|\s]', '', (summary.get('login_phone_number') or 'None')):
+                test_participant = 1
+            elif '4442' in re.sub('[\(|\)|\-|\s]', '', (summary.get('phone_number') or 'None')):
+                test_participant = 1
+
+        data = {'test_participant': test_participant}
         return data
 
     @staticmethod
