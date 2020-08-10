@@ -473,7 +473,7 @@ class GenomicFileValidator:
                 "contamination",
                 "sexconcordance",
                 "sexploidy",
-                "alignedq20bases",
+                "alignedq30bases",
                 "processingstatus",
                 "notes",
             ),
