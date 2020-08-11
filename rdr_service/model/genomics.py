@@ -274,7 +274,7 @@ class GenomicGCValidationMetrics(Base):
     callRate = Column('call_rate', String(10), nullable=True)
     meanCoverage = Column('mean_coverage', String(10), nullable=True)
     genomeCoverage = Column('genome_coverage', String(10), nullable=True)
-    aouUhdrCoverage = Column('aou_uhdr_coverage', String(10), nullable=True)
+    aouHdrCoverage = Column('aou_hdr_coverage', String(10), nullable=True)
     contamination = Column('contamination', String(10), nullable=True)
     sexConcordance = Column('sex_concordance', String(10), nullable=True)
     sexPloidy = Column('sex_ploidy', String(10), nullable=True)
