@@ -9,6 +9,7 @@ from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.utils import to_client_participant_id
 from rdr_service.participant_enums import DeceasedNotification, DeceasedReportDenialReason, DeceasedReportStatus,\
     DeceasedStatus
 
@@ -201,6 +202,9 @@ class DeceasedReportDao(UpdatableDao):
             'identifier': {
                 'value': model.id
             },
+            'subject': {
+                'reference': to_client_participant_id(model.participantId)
+            },
             'status': status_map[model.status],
             'performer': api_user_dao.to_client_json(model.author),
             'issued': authored_timestamp.isoformat()
@@ -292,7 +296,7 @@ class DeceasedReportDao(UpdatableDao):
                         query = query.join(Participant).filter(Participant.organizationId.is_(None))
                     else:
                         query = query.join(Participant).join(Organization).filter(Organization.externalId == org_id)
-                elif status is not None:
+                if status is not None:
                     if status not in self.status_map:
                         raise BadRequest(f'Invalid status "{status}"')
                     query = query.filter(DeceasedReport.status == self.status_map[status])

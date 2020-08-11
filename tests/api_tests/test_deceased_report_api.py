@@ -10,10 +10,31 @@ from rdr_service.participant_enums import DeceasedNotification, DeceasedReportDe
 from tests.helpers.unittest_base import BaseTestCase
 
 
-class DeceasedReportApiTest(BaseTestCase):
+class DeceasedReportTestBase(BaseTestCase):
+    def setUp(self):
+        super(DeceasedReportTestBase, self).setUp()
+        self.original_user_roles = None
+
+    def tearDown(self):
+        if self.original_user_roles is not None:
+            self.overwrite_test_user_roles(self.original_user_roles, save_current=False)
+
+        super(DeceasedReportTestBase, self).tearDown()
+
+    def overwrite_test_user_roles(self, roles, save_current=True):
+        user_info = config.getSettingJson(config.USER_INFO)
+
+        if save_current:
+            # Save what was there so we can set it back in the tearDown
+            self.original_user_roles = user_info['example@example.com']['roles']
+
+        user_info['example@example.com']['roles'] = roles
+        config.override_setting(config.USER_INFO, user_info)
+
+
+class DeceasedReportApiTest(DeceasedReportTestBase):
     def setUp(self):
         super(DeceasedReportApiTest, self).setUp()
-        self.original_user_roles = None
 
         hpo = self.data_generator.create_database_hpo()
         self.paired_participant_without_summary = self.data_generator.create_database_participant(hpoId=hpo.hpoId)
@@ -23,12 +44,6 @@ class DeceasedReportApiTest(BaseTestCase):
 
         self.unpaired_participant_with_summary = self.data_generator.create_database_participant()
         self.data_generator.create_database_participant_summary(participant=self.unpaired_participant_with_summary)
-
-    def tearDown(self):
-        if self.original_user_roles is not None:
-            self.overwrite_test_user_roles(self.original_user_roles, save_current=False)
-
-        super(DeceasedReportApiTest, self).tearDown()
 
     def post_report(self, report_json, participant_id=None, expected_status=200):
         if participant_id is None:
@@ -56,16 +71,6 @@ class DeceasedReportApiTest(BaseTestCase):
         return self.session.query(ParticipantSummary).filter(
             ParticipantSummary.participantId == participant_id
         ).one()
-
-    def overwrite_test_user_roles(self, roles, save_current=True):
-        user_info = config.getSettingJson(config.USER_INFO)
-
-        if save_current:
-            # Save what was there so we can set it back in the tearDown
-            self.original_user_roles = user_info['example@example.com']['roles']
-
-        user_info['example@example.com']['roles'] = roles
-        config.override_setting(config.USER_INFO, user_info)
 
     @staticmethod
     def build_deceased_report_json(status='preliminary', date_of_death='2020-01-01',
@@ -152,6 +157,7 @@ class DeceasedReportApiTest(BaseTestCase):
 
     def assertReportResponseMatches(self, expected, actual):
         del actual['identifier']
+        del actual['subject']
         self.assertJsonResponseMatches(expected, actual, strip_tz=False)
 
     def test_creating_minimal_deceased_report(self):
@@ -345,31 +351,21 @@ class DeceasedReportApiTest(BaseTestCase):
         self.assertEqual(DeceasedStatus.APPROVED, participant_summary.deceasedStatus)
         self.assertEqual(datetime(2020, 1, 1), participant_summary.deceasedAuthored)
 
-    def test_multiple_pending_reports_not_allowed(self):
-        participant_id = self.paired_participant_without_summary.participantId
-        report_json = self.build_deceased_report_json()
-        response = self.post_report(report_json, participant_id=participant_id)
-
-        report_id = response['identifier']['value']
-        created_report = self.get_report_from_db(report_id)
-        self.assertEqual(DeceasedReportStatus.PENDING, created_report.status,
-                         "Test is built assuming a PENDING report would be created")
-
-        # Try creating another deceased report and check for Conflict status code
-        self.post_report(report_json, participant_id=participant_id, expected_status=409)
-
-    def create_pending_deceased_report(self, participant_id=None, set_date_of_death=True):
-        report_json = self.build_deceased_report_json()
-        if not set_date_of_death:
-            del report_json['effectiveDateTime']
-
+    def create_pending_deceased_report(self, participant_id=None, **kwargs):
         if participant_id is None:
             participant_id = self.paired_participant_without_summary.participantId
-        response = self.post_report(report_json, participant_id=participant_id)
-        return response['identifier']['value'], participant_id
+
+        return self.data_generator.create_database_deceased_report(participantId=participant_id, **kwargs)
+
+    def test_multiple_pending_reports_not_allowed(self):
+        report = self.create_pending_deceased_report()
+
+        # Try creating another deceased report and check for Conflict status code
+        report_json = self.build_deceased_report_json()
+        self.post_report(report_json, participant_id=report.participantId, expected_status=409)
 
     def test_approving_report(self):
-        report_id, participant_id = self.create_pending_deceased_report(
+        report = self.create_pending_deceased_report(
             participant_id=self.paired_participant_with_summary.participantId
         )
 
@@ -379,9 +375,9 @@ class DeceasedReportApiTest(BaseTestCase):
             user_system='https://example.com',
             user_name='reviewer@test.com'
         )
-        review_response = self.post_report_review(review_json, report_id, participant_id)
+        review_response = self.post_report_review(review_json, report.id, report.participantId)
 
-        created_report = self.get_report_from_db(report_id)
+        created_report = self.get_report_from_db(report.id)
         self.assertEqual(DeceasedReportStatus.APPROVED, created_report.status)
         self.assertEqual(datetime(2020, 7, 1), created_report.reviewed)
         self.assertEqual('https://example.com', created_report.reviewer.system)
@@ -389,14 +385,15 @@ class DeceasedReportApiTest(BaseTestCase):
 
         self.assertEqual('final', review_response['status'])
 
-        participant_summary = self.get_participant_summary_from_db(participant_id=participant_id)
+        participant_summary = self.get_participant_summary_from_db(participant_id=report.participantId)
         self.assertEqual(DeceasedStatus.APPROVED, participant_summary.deceasedStatus)
         self.assertEqual(datetime(2020, 7, 1), participant_summary.deceasedAuthored)
 
     def test_approving_can_overwrite_date_of_death(self):
-        report_id, participant_id = self.create_pending_deceased_report(
-            participant_id=self.paired_participant_with_summary.participantId
-        )
+        participant_id = self.paired_participant_with_summary.participantId
+        report_json = self.build_deceased_report_json(date_of_death='2020-01-01')
+        response = self.post_report(report_json, participant_id=participant_id)
+        report_id = response['identifier']['value']
 
         participant_summary = self.get_participant_summary_from_db(participant_id=participant_id)
         self.assertEqual(date(2020, 1, 1), participant_summary.dateOfDeath)
@@ -413,17 +410,20 @@ class DeceasedReportApiTest(BaseTestCase):
         self.assertEqual(date(2022, 6, 1), participant_summary.dateOfDeath)
 
     def test_only_healthpro_can_review(self):
-        report_id, participant_id = self.create_pending_deceased_report()
+        report = self.create_pending_deceased_report()
         review_json = self.build_report_review_json()
 
         self.overwrite_test_user_roles(['testing'])
-        self.post_report_review(review_json, report_id, participant_id, expected_status=403)
+        self.post_report_review(review_json, report.id, report.participantId, expected_status=403)
 
         self.overwrite_test_user_roles([PTC], save_current=False)
-        self.post_report_review(review_json, report_id, participant_id, expected_status=403)
+        self.post_report_review(review_json, report.id, report.participantId, expected_status=403)
+
+        self.overwrite_test_user_roles([HEALTHPRO], save_current=False)
+        self.post_report_review(review_json, report.id, report.participantId, expected_status=200)
 
     def test_report_denial(self):
-        report_id, participant_id = self.create_pending_deceased_report(
+        report = self.create_pending_deceased_report(
             participant_id=self.paired_participant_with_summary.participantId
         )
 
@@ -432,14 +432,14 @@ class DeceasedReportApiTest(BaseTestCase):
             denial_reason=DeceasedReportDenialReason.OTHER,
             denial_reason_other='Another reason'
         )
-        review_response = self.post_report_review(review_json, report_id, participant_id)
+        review_response = self.post_report_review(review_json, report.id, report.participantId)
 
-        created_report = self.get_report_from_db(report_id)
+        created_report = self.get_report_from_db(report.id)
         self.assertEqual(DeceasedReportStatus.DENIED, created_report.status)
         self.assertEqual(DeceasedReportDenialReason.OTHER, created_report.denialReason)
         self.assertEqual('Another reason', created_report.denialReasonOther)
 
-        participant_summary = self.get_participant_summary_from_db(participant_id=participant_id)
+        participant_summary = self.get_participant_summary_from_db(participant_id=report.participantId)
         self.assertEqual(DeceasedStatus.UNSET, participant_summary.deceasedStatus)
         self.assertIsNone(participant_summary.deceasedAuthored)
         self.assertIsNone(participant_summary.dateOfDeath)
@@ -452,64 +452,61 @@ class DeceasedReportApiTest(BaseTestCase):
         self.assertEqual('Another reason', denial_extension['display'])
 
     def test_pending_report_not_allowed_when_approved_report_exists(self):
-        report_id, participant_id = self.create_pending_deceased_report()
+        report = self.create_pending_deceased_report()
         review_json = self.build_report_review_json()
-        self.post_report_review(review_json, report_id, participant_id)
+        self.post_report_review(review_json, report.id, report.participantId)
 
-        created_report = self.get_report_from_db(report_id)
+        created_report = self.get_report_from_db(report.id)
         self.assertEqual(DeceasedReportStatus.APPROVED, created_report.status,
                          "Test is built assuming an APPROVED report would be created")
 
         # Try creating another deceased report and check for Conflict status code
         report_json = self.build_deceased_report_json()
-        self.post_report(report_json, participant_id=participant_id, expected_status=409)
+        self.post_report(report_json, participant_id=report.participantId, expected_status=409)
 
     def test_multiple_denied_reports(self):
-        report_id, participant_id = self.create_pending_deceased_report()
+        report = self.create_pending_deceased_report()
         review_json = self.build_report_review_json(status='cancelled')
-        self.post_report_review(review_json, report_id, participant_id)
+        self.post_report_review(review_json, report.id, report.participantId)
 
         # Build another report and deny it too
-        report_json = self.build_deceased_report_json()
-        response = self.post_report(report_json, participant_id=participant_id)
-        report_id = response['identifier']['value']
-        self.post_report_review(review_json, report_id, participant_id)
+        report = self.create_pending_deceased_report(participant_id=report.participantId)
+        self.post_report_review(review_json, report.id, report.participantId)
 
         # Try creating another deceased report, expecting it to work
-        response = self.post_report(report_json, participant_id=participant_id)
+        report = self.create_pending_deceased_report(participant_id=report.participantId)
 
-        report_id = response['identifier']['value']
-        created_report = self.get_report_from_db(report_id)
+        created_report = self.get_report_from_db(report.id)
         self.assertEqual(DeceasedReportStatus.PENDING, created_report.status)
 
     def test_approving_denied_report_not_allowed(self):
-        report_id, participant_id = self.create_pending_deceased_report()
+        report = self.create_pending_deceased_report()
         review_json = self.build_report_review_json(status='cancelled')
-        self.post_report_review(review_json, report_id, participant_id)
+        self.post_report_review(review_json, report.id, report.participantId)
 
         # Try approving the denied report
         review_json = self.build_report_review_json(status='final')
-        self.post_report_review(review_json, report_id, participant_id, expected_status=400)
+        self.post_report_review(review_json, report.id, report.participantId, expected_status=400)
 
     def test_denying_approved_report_not_allowed(self):
-        report_id, participant_id = self.create_pending_deceased_report()
+        report = self.create_pending_deceased_report()
         review_json = self.build_report_review_json(status='final')
-        self.post_report_review(review_json, report_id, participant_id)
+        self.post_report_review(review_json, report.id, report.participantId)
 
         # Try approving the denied report
         review_json = self.build_report_review_json(status='cancelled')
-        self.post_report_review(review_json, report_id, participant_id, expected_status=400)
+        self.post_report_review(review_json, report.id, report.participantId, expected_status=400)
 
     def test_api_users_not_duplicated(self):
-        report_id, participant_id = self.create_pending_deceased_report()
+        report = self.create_pending_deceased_report()
 
-        created_report = self.get_report_from_db(report_id)
+        created_report = self.get_report_from_db(report.id)
 
         review_json = self.build_report_review_json(
             user_system=created_report.author.system,
             user_name=created_report.author.username
         )
-        self.post_report_review(review_json, report_id, participant_id)
+        self.post_report_review(review_json, report.id, report.participantId)
 
         self.assertEqual(1, self.session.query(ApiUser).count())
 
@@ -561,3 +558,151 @@ class DeceasedReportApiTest(BaseTestCase):
         summary_response = self.send_get(f'Participant/P{participant_id}/Summary')
         self.assertEqual('123-456-7890', summary_response['phoneNumber'])
         self.assertEqual('NO_CONTACT', summary_response['recontactMethod'])
+
+
+class ParticipantDeceasedReportApiTest(DeceasedReportTestBase):
+    def test_report_list_for_participant(self):
+        participant = self.data_generator.create_database_participant()
+        self.data_generator.create_database_deceased_report(
+            participantId=participant.participantId,
+            status=DeceasedReportStatus.DENIED,
+            authored=datetime(2020, 3, 18)
+        )
+        self.data_generator.create_database_deceased_report(
+            participantId=participant.participantId,
+            status=DeceasedReportStatus.DENIED,
+            authored=datetime(2020, 2, 27)
+        )
+        self.data_generator.create_database_deceased_report(
+            participantId=participant.participantId,
+            status=DeceasedReportStatus.DENIED,
+            authored=datetime(2020, 4, 1)
+        )
+
+        report_list_response = self.send_get(f'Participant/{participant.participantId}/DeceasedReport')
+
+        first_report = report_list_response[0]  # Most recent report
+        self.assertEqual('cancelled', first_report['status'])
+        self.assertEqual('2020-04-01T00:00:00+00:00', first_report['issued'])
+
+        second_report = report_list_response[1]
+        self.assertEqual('cancelled', second_report['status'])
+        self.assertEqual('2020-03-18T00:00:00+00:00', second_report['issued'])
+
+        third_report = report_list_response[2]
+        self.assertEqual('cancelled', third_report['status'])
+        self.assertEqual('2020-02-27T00:00:00+00:00', third_report['issued'])
+
+
+class SearchDeceasedReportApiTest(DeceasedReportTestBase):
+    def setUp(self):
+        super(SearchDeceasedReportApiTest, self).setUp()
+
+        # Shortening the following lines
+        create_participant_func = self.data_generator.create_database_participant
+        create_deceased_report_func = self.data_generator.create_database_deceased_report
+
+        unpaired_participant_id_1 = create_participant_func().participantId
+        self.unpaired_1_report_id = create_deceased_report_func(
+            participantId=unpaired_participant_id_1,
+            status=DeceasedReportStatus.PENDING,
+            authored=datetime(2020, 4, 1)
+        ).id
+        unpaired_participant_id_2 = create_participant_func().participantId
+        self.unpaired_2_report_id = create_deceased_report_func(
+            participantId=unpaired_participant_id_2,
+            status=DeceasedReportStatus.DENIED,
+            authored=datetime(2020, 1, 5)
+        ).id
+        unpaired_participant_id_3 = create_participant_func().participantId
+        self.unpaired_3_report_id = create_deceased_report_func(
+            participantId=unpaired_participant_id_3,
+            status=DeceasedReportStatus.PENDING,
+            authored=datetime(2020, 2, 18)
+        ).id
+
+        test_org = self.data_generator.create_database_organization(externalId='TEST')
+        test_participant_1_id = create_participant_func(organizationId=test_org.organizationId).participantId
+        self.test_1_report_id = create_deceased_report_func(
+            participantId=test_participant_1_id,
+            status=DeceasedReportStatus.PENDING,
+            authored=datetime(2020, 12, 5)
+        ).id
+        test_participant_2_id = create_participant_func(organizationId=test_org.organizationId).participantId
+        self.test_2_report_id = create_deceased_report_func(
+            participantId=test_participant_2_id,
+            status=DeceasedReportStatus.DENIED,
+            authored=datetime(2020, 8, 9)
+        ).id
+        test_participant_3_id = create_participant_func(organizationId=test_org.organizationId).participantId
+        self.test_3_report_id = create_deceased_report_func(
+            participantId=test_participant_3_id,
+            status=DeceasedReportStatus.APPROVED,
+            authored=datetime(2020, 2, 3)
+        ).id
+
+        other_org = self.data_generator.create_database_organization(externalId='')
+        other_participant_1_id = create_participant_func(organizationId=other_org.organizationId).participantId
+        self.other_1_report_id = create_deceased_report_func(
+            participantId=other_participant_1_id,
+            status=DeceasedReportStatus.DENIED,
+            authored=datetime(2020, 5, 19)
+        ).id
+        other_participant_2_id = create_participant_func(organizationId=other_org.organizationId).participantId
+        self.other_2_report_id = create_deceased_report_func(
+            participantId=other_participant_2_id,
+            status=DeceasedReportStatus.DENIED,
+            authored=datetime(2020, 9, 5)
+        ).id
+        other_participant_3_id = create_participant_func(organizationId=other_org.organizationId).participantId
+        self.other_3_report_id = create_deceased_report_func(
+            participantId=other_participant_3_id,
+            status=DeceasedReportStatus.APPROVED,
+            authored=datetime(2020, 9, 7)
+        ).id
+
+    def assertListResponseMatches(self, expected_report_ids, actual_json):
+        self.assertEqual(len(expected_report_ids), len(actual_json), "Unexpected number of reports returned")
+
+        for index in range(len(expected_report_ids)):
+            expected_id = expected_report_ids[index]
+            report_json = actual_json[index]
+
+            self.assertEqual(expected_id, report_json['identifier']['value'], 'Report id mismatch')
+
+    def test_searching_api_by_status(self):
+        self.assertListResponseMatches([
+            self.other_2_report_id,     # Authored 09/05
+            self.test_2_report_id,      # Authored 08/09
+            self.other_1_report_id,     # Authored 05/19
+            self.unpaired_2_report_id   # Authored 01/05
+        ], self.send_get(f'DeceasedReports?status=cancelled'))
+
+        self.assertListResponseMatches([
+            self.test_1_report_id,      # Authored 12/05
+            self.unpaired_1_report_id,  # Authored 04/01
+            self.unpaired_3_report_id   # Authored 02/18
+        ], self.send_get(f'DeceasedReports?status=preliminary'))
+
+    def test_searching_api_by_organization(self):
+        self.assertListResponseMatches([
+            self.test_1_report_id,      # Authored 12/05
+            self.test_2_report_id,      # Authored 08/09
+            self.test_3_report_id       # Authored 02/03
+        ], self.send_get(f'DeceasedReports?org_id=TEST'))
+
+        self.assertListResponseMatches([
+            self.unpaired_1_report_id,  # Authored 04/01
+            self.unpaired_3_report_id,  # Authored 02/18
+            self.unpaired_2_report_id   # Authored 01/05
+        ], self.send_get(f'DeceasedReports?org_id=UNSET'))
+
+    def test_searching_api_by_org_and_status(self):
+        self.assertListResponseMatches(
+            [],
+            self.send_get(f'DeceasedReports?org_id=OTHER&status=preliminary'))
+
+        self.assertListResponseMatches([
+            self.unpaired_1_report_id,  # Authored 04/01
+            self.unpaired_3_report_id  # Authored 02/18
+        ], self.send_get(f'DeceasedReports?org_id=UNSET&status=preliminary'))

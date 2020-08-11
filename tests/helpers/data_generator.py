@@ -1,9 +1,11 @@
 from datetime import datetime
 from rdr_service.code_constants import PPI_SYSTEM
+from rdr_service.model.api_user import ApiUser
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderHistory, BiobankOrderedSample,\
     BiobankOrderedSampleHistory, BiobankOrderIdentifier
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
+from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
@@ -14,6 +16,8 @@ from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept,
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.model.site import Site
 from rdr_service.participant_enums import (
+    DeceasedNotification,
+    DeceasedReportStatus,
     DeceasedStatus,
     EnrollmentStatus,
     SuspensionStatus,
@@ -343,3 +347,34 @@ class DataGenerator:
 
     def _log_position(self, **kwargs):
         return LogPosition(**kwargs)
+
+    def create_database_api_user(self, **kwargs):
+        api_user = self._api_user(**kwargs)
+        self._commit_to_database(api_user)
+        return api_user
+
+    def _api_user(self, **kwargs):
+        if 'system' not in kwargs:
+            kwargs['system'] = 'unit_test'
+        if 'username' not in kwargs:
+            kwargs['username'] = 'me@test.com'
+        return ApiUser(**kwargs)
+
+    def create_database_deceased_report(self, **kwargs):
+        deceased_report = self._deceased_report(**kwargs)
+        self._commit_to_database(deceased_report)
+        return deceased_report
+
+    def _deceased_report(self, **kwargs):
+        if 'participantId' not in kwargs:
+            participant = self.create_database_participant()
+            kwargs['participantId'] = participant.participantId
+        if 'notification' not in kwargs:
+            kwargs['notification'] = DeceasedNotification.EHR
+        if 'author' not in kwargs:
+            kwargs['author'] = self.create_database_api_user()
+        if 'authored' not in kwargs:
+            kwargs['authored'] = datetime.now()
+        if 'status' not in kwargs:
+            kwargs['status'] = DeceasedReportStatus.PENDING
+        return DeceasedReport(**kwargs)
