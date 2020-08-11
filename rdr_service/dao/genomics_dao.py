@@ -734,7 +734,7 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
             'contamination': 'contamination',
             'sexConcordance': 'sexconcordance',
             'sexPloidy': 'sexploidy',
-            'alignedQ20Bases': 'alignedq20bases',
+            'alignedQ30Bases': 'alignedq30bases',
             'processingStatus': 'processingstatus',
             'notes': 'notes',
             'siteId': 'siteid',

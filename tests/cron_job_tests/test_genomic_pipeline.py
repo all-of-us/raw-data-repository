@@ -367,7 +367,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(gc_metrics[0].contamination, '3')
         self.assertEqual(gc_metrics[0].sexConcordance, 'True')
         self.assertEqual(gc_metrics[0].sexPloidy, 'XY')
-        self.assertEqual(gc_metrics[0].alignedQ20Bases, 4)
+        self.assertEqual(gc_metrics[0].alignedQ30Bases, 4)
         self.assertEqual(gc_metrics[0].processingStatus, 'Pass')
         self.assertEqual(gc_metrics[0].notes, 'This sample passed')
 
