@@ -687,8 +687,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param summary: summary data
         :return: dict
         """
-        if 'biobank_orders' not in summary or not summary.get('enrollment_status', None) or \
-                not summary.get('enrollment_member', None):
+        if summary['enrollment_status_id'] != int(EnrollmentStatusV2.CORE_PARTICIPANT):
             return {}
 
         # Calculate the min ordered sample and max stored sample times.
