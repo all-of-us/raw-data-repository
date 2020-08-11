@@ -708,7 +708,7 @@ class SearchDeceasedReportApiTest(DeceasedReportTestBase):
         ], self.send_get(f'DeceasedReports?org_id=UNSET&status=preliminary'))
 
     def test_searching_api_by_org_and_status(self):
-        self.overwrite_test_user_roles(['TEST'], save_current=False)
+        self.overwrite_test_user_roles(['TEST'])
         self.send_get(f'DeceasedReports', expected_status=403)
 
         self.overwrite_test_user_roles([PTC], save_current=False)
