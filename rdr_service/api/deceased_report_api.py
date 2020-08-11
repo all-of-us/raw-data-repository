@@ -8,12 +8,20 @@ from rdr_service.dao.deceased_report_dao import DeceasedReportDao
 from rdr_service.model.utils import from_client_participant_id
 
 
-class DeceasedReportApiMixin():
+class DeceasedReportApiMixin:
     def __init__(self):
         super().__init__(DeceasedReportDao())
 
 
 class DeceasedReportApi(DeceasedReportApiMixin, BaseApi):
+    def list(self, participant_id=None):
+        search_kwargs = {key: value for key, value in request.args.items()}
+        reports = []
+        for report in self.dao.load_reports(participant_id=participant_id, **search_kwargs):
+            reports.append(self.dao.to_client_json(report))
+
+        return reports
+
     @auth_required(PTC_AND_HEALTHPRO)
     def post(self, participant_id=None):
         resource = request.get_json(force=True)

@@ -88,6 +88,8 @@ class Participant(ParticipantBase, Base):
     )
     __table_args__ = (UniqueConstraint("external_id"),)
 
+    organization = relationship("Organization", foreign_keys='Participant.organizationId')
+
 
 Index("participant_biobank_id", Participant.biobankId, unique=True)
 Index("participant_hpo_id", Participant.hpoId)

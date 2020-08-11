@@ -29,6 +29,7 @@ class DeceasedReport(Base):
 
     author = relationship("ApiUser", foreign_keys='DeceasedReport.authorId', lazy='joined')
     reviewer = relationship("ApiUser", foreign_keys='DeceasedReport.reviewerId', lazy='joined')
+    participant = relationship("Participant", foreign_keys='DeceasedReport.participantId')
 
 
 event.listen(DeceasedReport, "before_insert", model_insert_listener)
