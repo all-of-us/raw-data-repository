@@ -3,7 +3,7 @@ from werkzeug.exceptions import BadRequest
 
 from rdr_service.api.base_api import BaseApi, UpdatableApi
 from rdr_service.api_util import HEALTHPRO, PTC_AND_HEALTHPRO
-from rdr_service.app_util import auth_required
+from rdr_service.app_util import auth_required, check_auth
 from rdr_service.dao.deceased_report_dao import DeceasedReportDao
 from rdr_service.model.utils import from_client_participant_id
 
@@ -14,13 +14,22 @@ class DeceasedReportApiMixin:
 
 
 class DeceasedReportApi(DeceasedReportApiMixin, BaseApi):
+    @auth_required(PTC_AND_HEALTHPRO)
     def list(self, participant_id=None):
         search_kwargs = {key: value for key, value in request.args.items()}
-        reports = []
-        for report in self.dao.load_reports(participant_id=participant_id, **search_kwargs):
-            reports.append(self.dao.to_client_json(report))
 
-        return reports
+        if participant_id is not None:
+            found_reports = self.dao.load_reports(participant_id=participant_id, **search_kwargs)
+        else:
+            # Only HEALTHPRO should be able to pull reports for multiple participants
+            check_auth([HEALTHPRO])
+            found_reports = self.dao.load_reports(**search_kwargs)
+
+        response = []
+        for report in found_reports:
+            response.append(self.dao.to_client_json(report))
+
+        return response
 
     @auth_required(PTC_AND_HEALTHPRO)
     def post(self, participant_id=None):

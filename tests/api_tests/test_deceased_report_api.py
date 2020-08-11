@@ -706,3 +706,13 @@ class SearchDeceasedReportApiTest(DeceasedReportTestBase):
             self.unpaired_1_report_id,  # Authored 04/01
             self.unpaired_3_report_id  # Authored 02/18
         ], self.send_get(f'DeceasedReports?org_id=UNSET&status=preliminary'))
+
+    def test_searching_api_by_org_and_status(self):
+        self.overwrite_test_user_roles(['TEST'], save_current=False)
+        self.send_get(f'DeceasedReports', expected_status=403)
+
+        self.overwrite_test_user_roles([PTC], save_current=False)
+        self.send_get(f'DeceasedReports', expected_status=403)
+
+        self.overwrite_test_user_roles([HEALTHPRO], save_current=False)
+        self.send_get(f'DeceasedReports', expected_status=200)
