@@ -7,7 +7,7 @@ from rdr_service.participant_enums import SampleStatus
 
 
 class BiobankStoredSample(Base):
-    """Physical sampels which have been reported as received at Biobank.
+    """Physical samples which have been reported as received at Biobank.
 
   Each participant has an associated list of samples. Biobank uploads a list of all received
   samples periodically, and we update our list of stored samples to match. The output is a
