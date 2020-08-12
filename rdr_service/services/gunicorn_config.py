@@ -1,7 +1,6 @@
 import multiprocessing
 import os
 import resource
-import sys
 
 _port = 8080 # local dev/testing.
 workers = 1
@@ -31,13 +30,23 @@ raw_env = [
 # If we're getting too close to the limit we should close the instance.
 # That way we can gracefully limit our memory rather than have Google killing us forcefully
 # (and potentially in the middle of handling a request).
-def post_request(worker, request, environment, response):
+def post_request(worker, *_):
     # Sum up memory used for this process and any children (resulting in memory used by this instance)
     self_mem_bytes = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     children_mem_bytes = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
     memory_threshold_bytes = 950000000  # 950 megabytes
 
-    if self_mem_bytes + children_mem_bytes > memory_threshold_bytes:
-        # Gracefully kill the worker.
+    # Gracefully kill the worker that just completed a request if the instance is holding on to too much memory.
+    # This unfortunate worker may not be the one using the most memory on the instance but it will help,
+    # and hopefully we'll eventually get the one that is.
+    # In the future this can be tuned to use the process id of the worker to find how much memory that worker
+    # has allocated.
+    memory_used_bytes = self_mem_bytes + children_mem_bytes
+    if memory_used_bytes > memory_threshold_bytes:
+
         # This is copied from Gunicorn's code for closing out a sync worker after reaching the max_requests limit
         worker.alive = False
+
+        # Logs from the worker seem to appear beside the normal app logs, but without log levels attached to them.
+        worker.log.info(f"Auto-restarting worker after gunicorn instance {os.getpid()} was"
+                        f"found to be using {memory_used_bytes} bytes.")
