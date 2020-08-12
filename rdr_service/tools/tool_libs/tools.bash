@@ -225,6 +225,12 @@ _python()
             fi
             return 0
             ;;
+        resurrect)
+            # These are options specific to this tool.
+            local toolopts="--help --pid --reason --reason-desc"
+            COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
+            return 0
+            ;;
         *)
         ;;
     esac
