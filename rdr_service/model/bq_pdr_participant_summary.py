@@ -119,7 +119,7 @@ class BQPDRParticipantSummarySchema(BQSchema):
 
     ubr_disability = BQField('ubr_disability', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
-    patient_status = BQRecordField('patient_statuses', schema=BQPatientStatusSchema)
+    patient_statuses = BQRecordField('patient_statuses', schema=BQPatientStatusSchema)
 
     test_participant = BQField('test_participant', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
@@ -141,7 +141,7 @@ class BQPDRParticipantSummaryView(BQView):
     __pk_id__ = 'participant_id'
     # We need to build a SQL statement with all fields except sub-tables and remove duplicates.
     __sql__ = """
-        SELECT 
+        SELECT
           %%FIELD_NAMES%%
         FROM (
             SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp,

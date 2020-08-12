@@ -123,7 +123,8 @@ def _create_biobank_covid_antibody_obj_from_row(row, csv_filename):
         sampleType=row[BiobankAntibodyManifestCsvColumns.SAMPLE_TYPE],
         quantityUl=row[BiobankAntibodyManifestCsvColumns.QUANTITY],
         storageLocation=row[BiobankAntibodyManifestCsvColumns.STORAGE_LOCATION],
-        collectionDate=row[BiobankAntibodyManifestCsvColumns.COLLECTION_DATE],
+        collectionDate=row[BiobankAntibodyManifestCsvColumns.COLLECTION_DATE]
+        if row[BiobankAntibodyManifestCsvColumns.COLLECTION_DATE] else None,
         ingestFileName=csv_filename
     )
 
@@ -158,7 +159,8 @@ def _create_quest_covid_antibody_test_obj_from_row(row, csv_filename):
         specimenId=row[QuestCovidAntibodyTestCsvColumns.SPECIMEN_ID],
         testCode=row[QuestCovidAntibodyTestCsvColumns.TEST_CODE],
         testName=row[QuestCovidAntibodyTestCsvColumns.TEST_NAME],
-        runDateTime=row[QuestCovidAntibodyTestCsvColumns.RUN_DATE_TIME],
+        runDateTime=row[QuestCovidAntibodyTestCsvColumns.RUN_DATE_TIME]
+        if row[QuestCovidAntibodyTestCsvColumns.RUN_DATE_TIME] else None,
         accession=row[QuestCovidAntibodyTestCsvColumns.ACCESSION],
         instrumentName=row[QuestCovidAntibodyTestCsvColumns.INSTRUMENT_NAME],
         position=row[QuestCovidAntibodyTestCsvColumns.POSITION],

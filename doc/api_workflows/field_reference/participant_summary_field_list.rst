@@ -84,6 +84,17 @@ Participant IDs / Personal Information
   income
       The participants income. Income is defined as a persons salary in a given year.
 
+  deceasedStatus
+      Indicates whether the participant has a PENDING or APPROVED deceased reports.
+
+      Will be UNSET for participants that have no deceased reports or only DENIED reports.
+
+  deceasedAuthored
+      The UTC timestamp of when the report was entered into an external system, or when it was approved externally if it has been approved.
+
+  dateOfDeath
+      Date of death if provided on the deceased report or when it was reviewed.
+
 
 Participant Enrollment Information
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
