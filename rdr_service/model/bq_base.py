@@ -165,7 +165,7 @@ class BQSchema(object):
                 #       what fields the remote BQ server has.
                 schema = self._add_fields(BQSchema(), field['fields'])
                 rec_obj = BQRecordField(fld_name, schema, fld_descr=fld_descr)
-                self.__dict__[fld_name] = rec_obj
+                obj.__dict__[fld_name] = rec_obj
             else:
                 obj.__dict__[fld_name] = BQField(fld_name, fld_type, fld_mode, fld_enum, fld_descr)
 

@@ -333,6 +333,7 @@ class ParticipantSchema(Schema):
     last_name = fields.String(validate=validate.Length(max=255))
 
     is_ghost_id = fields.Boolean()
+    test_participant = fields.Boolean()
 
     sign_up_time = fields.DateTime()
     enrollment_status = fields.EnumString(enum=EnrollmentStatusV2)

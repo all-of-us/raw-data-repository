@@ -255,6 +255,8 @@ class BQParticipantSummarySchema(BQSchema):
 
     patient_statuses = BQRecordField('patient_statuses', schema=BQPatientStatusSchema)
 
+    test_participant = BQField('test_participant', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
 
 class BQParticipantSummary(BQTable):
     """ Participant Summary BigQuery Table """
