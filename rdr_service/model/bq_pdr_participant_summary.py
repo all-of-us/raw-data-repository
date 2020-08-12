@@ -119,7 +119,7 @@ class BQPDRParticipantSummarySchema(BQSchema):
 
     ubr_disability = BQField('ubr_disability', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
-    patient_status = BQRecordField('patient_statuses', schema=BQPatientStatusSchema)
+    patient_statuses = BQRecordField('patient_statuses', schema=BQPatientStatusSchema)
 
 
 class BQPDRParticipantSummary(BQTable):
@@ -139,11 +139,11 @@ class BQPDRParticipantSummaryView(BQView):
     __pk_id__ = 'participant_id'
     # We need to build a SQL statement with all fields except sub-tables and remove duplicates.
     __sql__ = """
-        SELECT 
+        SELECT
           %%FIELD_NAMES%%
         FROM (
             SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
-              FROM `{project}`.{dataset}.pdr_participant 
+              FROM `{project}`.{dataset}.pdr_participant
           ) ps
           WHERE ps.modified = ps.max_timestamp and ps.withdrawal_status_id = 1
       """.replace('%%FIELD_NAMES%%', BQPDRParticipantSummarySchema.get_sql_field_names(
@@ -175,7 +175,7 @@ class BQPDRPMView(BQView):
     SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
         SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
-          FROM `{project}`.{dataset}.pdr_participant 
+          FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(pm) as nt
       WHERE ps.modified = ps.max_timestamp
   """
@@ -190,9 +190,9 @@ class BQPDRGenderView(BQView):
     SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
         SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
-          FROM `{project}`.{dataset}.pdr_participant 
+          FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(genders) as nt
-      WHERE ps.modified = ps.max_timestamp  
+      WHERE ps.modified = ps.max_timestamp
   """
 
 
@@ -204,7 +204,7 @@ class BQPDRRaceView(BQView):
     SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
         SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
-          FROM `{project}`.{dataset}.pdr_participant 
+          FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(races) as nt
       WHERE ps.modified = ps.max_timestamp
   """
@@ -218,9 +218,9 @@ class BQPDRModuleView(BQView):
     SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
         SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
-          FROM `{project}`.{dataset}.pdr_participant 
+          FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(modules) as nt
-      WHERE ps.modified = ps.max_timestamp 
+      WHERE ps.modified = ps.max_timestamp
   """
 
 
@@ -232,9 +232,9 @@ class BQPDRConsentView(BQView):
     SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
         SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
-          FROM `{project}`.{dataset}.pdr_participant 
+          FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(consents) as nt
-      WHERE ps.modified = ps.max_timestamp 
+      WHERE ps.modified = ps.max_timestamp
   """
 
 
@@ -246,9 +246,9 @@ class BQPDRBioSpecView(BQView):
     SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
         SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
-          FROM `{project}`.{dataset}.pdr_participant 
+          FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(biospec) as nt
-      WHERE ps.modified = ps.max_timestamp 
+      WHERE ps.modified = ps.max_timestamp
   """
 
 class BQPDRPatientStatuesView(BQView):
@@ -259,7 +259,7 @@ class BQPDRPatientStatuesView(BQView):
     SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
         SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp
-          FROM `{project}`.{dataset}.pdr_participant 
+          FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(patient_statuses) as nt
-      WHERE ps.modified = ps.max_timestamp 
+      WHERE ps.modified = ps.max_timestamp
   """

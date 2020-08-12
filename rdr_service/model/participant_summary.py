@@ -6,7 +6,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
-from rdr_service.model.utils import Enum, UTCDateTime, UTCDateTime6
+from rdr_service.model.utils import Enum, EnumZeroBased, UTCDateTime, UTCDateTime6
 from rdr_service.participant_enums import (
     EhrStatus,
     EnrollmentStatus,
@@ -51,10 +51,10 @@ WITHDRAWN_PARTICIPANT_FIELDS = [
 # queries that don't ask for withdrawn participants.
 WITHDRAWN_PARTICIPANT_VISIBILITY_TIME = datetime.timedelta(days=2)
 
-# suspended participants don't allow contact but can still use samples. These fields
+# suspended or deceased participants don't allow contact but can still use samples. These fields
 # will not be returned when queried on suspended participant.
-SUSPENDED_PARTICIPANT_FIELDS = ["zipCode", "city", "streetAddress", "streetAddress2", "phoneNumber",
-                                "loginPhoneNumber", "email"]
+SUSPENDED_OR_DECEASED_PARTICIPANT_FIELDS = ["zipCode", "city", "streetAddress", "streetAddress2", "phoneNumber",
+                                            "loginPhoneNumber", "email"]
 
 
 class ParticipantSummary(Base):
@@ -338,7 +338,12 @@ class ParticipantSummary(Base):
     # )
     patientStatus = Column("patient_status", JSON, nullable=True, default=list())
 
-    deceasedStatus = Column("deceased_status", Enum(DeceasedStatus), nullable=False, default=DeceasedStatus.UNSET)
+    deceasedStatus = Column(
+        "deceased_status",
+        EnumZeroBased(DeceasedStatus),
+        nullable=False,
+        default=DeceasedStatus.UNSET
+    )
     deceasedAuthored = Column("deceased_authored", UTCDateTime)
     dateOfDeath = Column("date_of_death", Date)
 

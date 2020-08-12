@@ -65,12 +65,12 @@ _FAKE_BUCKET_RESULT_FOLDER = "rdr_fake_sub_result_folder"
 _FAKE_GENOMIC_CENTER_BUCKET_A = 'rdr_fake_genomic_center_a_bucket'
 _FAKE_GENOMIC_CENTER_BUCKET_B = 'rdr_fake_genomic_center_b_bucket'
 _FAKE_GENOMIC_CENTER_DATA_BUCKET_A = 'rdr_fake_genomic_center_a_data_bucket'
-_FAKE_GENOTYPING_FOLDER = 'genotyping_sample_manifests'
-_FAKE_SEQUENCING_FOLDER = 'sequencing_sample_manifests'
+_FAKE_GENOTYPING_FOLDER = 'AW1_genotyping_sample_manifests'
+_FAKE_SEQUENCING_FOLDER = 'AW1_wgs_sample_manifests'
 _FAKE_CVL_REPORT_FOLDER = 'fake_cvl_reconciliation_reports'
 _FAKE_CVL_MANIFEST_FOLDER = 'fake_cvl_manifest_folder'
 _FAKE_GEM_BUCKET = 'fake_gem_bucket'
-_FAKE_FAILURE_FOLDER = 'post_accessioning_results'
+_FAKE_FAILURE_FOLDER = 'AW1F_genotyping_accessioning_results'
 _OUTPUT_CSV_TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
 _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
@@ -364,10 +364,12 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(gc_metrics[0].limsId, '10002')
         self.assertEqual(gc_metrics[0].meanCoverage, '2')
         self.assertEqual(gc_metrics[0].genomeCoverage, '2')
+        self.assertEqual(gc_metrics[0].aouHdrCoverage, '2')
         self.assertEqual(gc_metrics[0].contamination, '3')
         self.assertEqual(gc_metrics[0].sexConcordance, 'True')
+        self.assertEqual(gc_metrics[0].arrayConcordance, 'True')
         self.assertEqual(gc_metrics[0].sexPloidy, 'XY')
-        self.assertEqual(gc_metrics[0].alignedQ20Bases, 4)
+        self.assertEqual(gc_metrics[0].alignedQ30Bases, 4)
         self.assertEqual(gc_metrics[0].processingStatus, 'Pass')
         self.assertEqual(gc_metrics[0].notes, 'This sample passed')
 
@@ -1520,7 +1522,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Setup Test AW1F file
         gc_manifest_file = test_data.open_genomic_set_file("Genomic-AW1F-Workflow-Test-1.csv")
-        gc_manifest_filename = "RDR_AoU_SEQ_PKG-1908-218051_FAILURE.csv"
+        gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051_FAILURE.csv"
         self._write_cloud_csv(
             gc_manifest_filename,
             gc_manifest_file,

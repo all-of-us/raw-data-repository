@@ -1591,6 +1591,8 @@ WHERE
 ;
 
 ALTER TABLE cdm.observation ADD KEY (meas_id);
+-- remove special character
+update cdm.observation set value_as_string = replace(value_as_string, '\0', '') where value_as_string like '%\0%';
 
 -- -------------------------------------------------------------------
 -- source_file: src/measurement.sql
@@ -2159,22 +2161,22 @@ DROP TABLE IF EXISTS cdm.tmp_fact_rel_sd;
 -- Drop columns only used for ETL purposes
 -- -------------------------------------------------------------------
 
-ALTER TABLE cdm.care_site DROP COLUMN unit_id;
-ALTER TABLE cdm.condition_era DROP COLUMN unit_id;
-ALTER TABLE cdm.condition_occurrence DROP COLUMN unit_id;
-ALTER TABLE cdm.cost DROP COLUMN unit_id;
-ALTER TABLE cdm.death DROP COLUMN unit_id;
-ALTER TABLE cdm.device_exposure DROP COLUMN unit_id;
-ALTER TABLE cdm.dose_era DROP COLUMN unit_id;
-ALTER TABLE cdm.drug_era DROP COLUMN unit_id;
-ALTER TABLE cdm.drug_exposure DROP COLUMN unit_id;
-ALTER TABLE cdm.fact_relationship DROP COLUMN unit_id;
-ALTER TABLE cdm.location DROP COLUMN unit_id;
-ALTER TABLE cdm.measurement DROP COLUMN unit_id, DROP COLUMN parent_id;
-ALTER TABLE cdm.observation DROP COLUMN unit_id, DROP COLUMN meas_id;
-ALTER TABLE cdm.observation_period DROP COLUMN unit_id;
-ALTER TABLE cdm.payer_plan_period DROP COLUMN unit_id;
-ALTER TABLE cdm.person DROP COLUMN unit_id;
-ALTER TABLE cdm.procedure_occurrence DROP COLUMN unit_id;
-ALTER TABLE cdm.provider DROP COLUMN unit_id;
-ALTER TABLE cdm.visit_occurrence DROP COLUMN unit_id;
+ALTER TABLE cdm.care_site DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.condition_era DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.condition_occurrence DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.cost DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.death DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.device_exposure DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.dose_era DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.drug_era DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.drug_exposure DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.fact_relationship DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.location DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.measurement DROP COLUMN unit_id, DROP COLUMN parent_id, DROP COLUMN id;
+ALTER TABLE cdm.observation DROP COLUMN unit_id, DROP COLUMN meas_id, DROP COLUMN id;
+ALTER TABLE cdm.observation_period DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.payer_plan_period DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.person DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.procedure_occurrence DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.provider DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.visit_occurrence DROP COLUMN unit_id, DROP COLUMN id;

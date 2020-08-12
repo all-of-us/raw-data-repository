@@ -300,9 +300,12 @@ class UpdatableApi(BaseApi):
 
     def _make_response(self, obj):
         result = super(UpdatableApi, self)._make_response(obj)
-        etag = self.make_etag(obj.version)
-        result["meta"] = {"versionId": etag}
-        return result, 200, {"ETag": etag}
+        if hasattr(obj, 'version'):
+            etag = self.make_etag(obj.version)
+            result["meta"] = {"versionId": etag}
+            return result, 200, {"ETag": etag}
+        else:
+            return result, 200
 
     def _do_update(self, m):
         self.dao.update(m)
