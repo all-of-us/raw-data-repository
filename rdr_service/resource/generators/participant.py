@@ -9,7 +9,7 @@ from rdr_service import config
 from rdr_service.resource.helpers import DateCollection
 from rdr_service.code_constants import CONSENT_GROR_YES_CODE, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE,\
     DVEHR_SHARING_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES, GROR_CONSENT_QUESTION_CODE,\
-    EHR_CONSENT_EXPIRED_YES
+    EHR_CONSENT_EXPIRED_YES, UNKNOWN_BIOBANK_ORDER_ID
 from rdr_service.dao.resource_dao import ResourceDataDao
 # TODO: Replace BQRecord here with a Resource alternative.
 from rdr_service.model.bq_base import BQRecord
@@ -76,11 +76,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # prep race and gender
             summary = self._merge_schema_dicts(summary, self._prep_the_basics(p_id, ro_session))
             # prep biobank orders and samples
-            summary = self._merge_schema_dicts(summary, self._prep_biobank_info(p_id, ro_session))
+            summary = self._merge_schema_dicts(summary, self._prep_biobank_info(p_id, summary['biobank_id'],
+                                                                                ro_session))
             # prep patient status history
             summary = self._merge_schema_dicts(summary, self._prep_patient_status_info(p_id, ro_session))
             # calculate enrollment status for participant
-            summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(p_id, ro_session, summary))
+            summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary))
             # calculate enrollment status times
             summary = self._merge_schema_dicts(summary, self._calculate_enrollment_timestamps(summary))
             # calculate distinct visits
@@ -359,17 +360,43 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             data['pm'] = pm_list
         return data
 
-    def _prep_biobank_info(self, p_id, ro_session):
+    def _prep_biobank_info(self, p_id, p_bb_id, ro_session):
         """
         Look up biobank orders
         :param p_id: participant id
+        :param p_bb_id: Participant's biobank id
         :param ro_session: Readonly DAO session object
         :return:
         """
-        data = {}
-        orders = list()
 
-        sql = """
+        def _make_stored_sample_dict_from_row(bss_row, has_order=True):
+            """
+            Internal helper routine to populate a stored sample dict entry from a biobank_stored_sample
+            table query result row
+            """
+            return {
+                'test': bss_row.test,
+                'baseline_test': 1 if bss_row.test in self._baseline_sample_test_codes else 0,  # Boolean field
+                'dna_test': 1 if bss_row.test in self._dna_sample_test_codes else 0,  # Boolean field
+                'collected': bss_row.collected if has_order else None,
+                'processed': bss_row.processed if has_order else None,
+                'finalized': bss_row.finalized if has_order else None,
+                'confirmed': bss_row.bb_confirmed,
+                'status': str(SampleStatus.RECEIVED) if bss_row.bb_confirmed else None,
+                'status_id': int(SampleStatus.RECEIVED) if bss_row.bb_confirmed else None,
+                'created': bss_row.bb_created,
+                'disposed': bss_row.bb_disposed,
+                'disposed_reason': str(SampleStatus(bss_row.bb_status)) if bss_row.bb_status else None,
+                'disposed_reason_id': int(SampleStatus(bss_row.bb_status)) if bss_row.bb_status else None,
+            }
+
+        # SQL to find total number of biobank stored samples associated with the participant
+        _stored_samples_count_sql = """
+             select count(*) from biobank_stored_sample where biobank_id = :bb_id;
+          """
+
+        # SQL to generate a list of biobank orders and related samples associated with the participant
+        _biobank_orders_sql = """
           select bo.biobank_order_id, bo.created, bo.collected_site_id, bo.processed_site_id, bo.finalized_site_id,
                   bos.test, bos.collected, bos.processed, bos.finalized, bo.order_status,
                   bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed,
@@ -384,7 +411,23 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             order by bo.biobank_order_id, bos.test;
         """
 
-        cursor = ro_session.execute(sql, {'pid': p_id})
+        # SQL to find stored samples for the participant that are not associated with a biobank order
+        # See: https://precisionmedicineinitiative.atlassian.net/browse/PDR-89 .  This will only be executed in
+        # a small number of cases where a participant has "unknown order" samples
+        _samples_without_biobank_order_sql = """
+                     select bss.test, bss.confirmed as bb_confirmed, bss.created as bb_created,
+                            bss.disposed as bb_disposed, bss.status as bb_status, bo.biobank_order_id as bbo_id
+                       from biobank_stored_sample bss
+                       left outer join biobank_order_identifier boi on bss.biobank_order_identifier = boi.`value`
+                       left outer join biobank_order bo on boi.biobank_order_id = bo.biobank_order_id
+                     where bss.biobank_id = :bb_id and bo.biobank_order_id is null;
+             """
+
+        data = {}
+        orders = list()
+        stored_samples_added = 0
+
+        cursor = ro_session.execute(_biobank_orders_sql, {'pid': p_id})
         results = [r for r in cursor]
         # loop through results and create one order record for each biobank_order_id value.
         for row in results:
@@ -416,21 +459,20 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             if 'samples' not in orders[idx]:
                 orders[idx]['samples'] = list()
             # append the sample to the order
-            orders[idx]['samples'].append({
-                'test': row.test,
-                'baseline_test': 1 if row.test in self._baseline_sample_test_codes else 0,  # Boolean field
-                'dna_test': 1 if row.test in self._dna_sample_test_codes else 0,  # Boolean field
-                'collected': row.collected,
-                'processed': row.processed,
-                'finalized': row.finalized,
-                'confirmed': row.bb_confirmed,
-                'status': str(SampleStatus.RECEIVED) if row.bb_confirmed else None,
-                'status_id': int(SampleStatus.RECEIVED) if row.bb_confirmed else None,
-                'created': row.bb_created,
-                'disposed': row.bb_disposed,
-                'disposed_reason': str(SampleStatus(row.bb_status)) if row.bb_status else None,
-                'disposed_reason_id': int(SampleStatus(row.bb_status)) if row.bb_status else None,
-            })
+            orders[idx]['samples'].append(_make_stored_sample_dict_from_row(row))
+            stored_samples_added += 1
+
+        # Check if this participant has additional stored samples that were not added to the data dict above
+        # Occurs when the results for the biobank orders query (above) misses samples without an associated order
+        # See https://precisionmedicineinitiative.atlassian.net/browse/PDR-89
+        if stored_samples_added < ro_session.execute(_stored_samples_count_sql, {'bb_id': p_bb_id}).scalar():
+            # Include any "unknown order" samples associated with this participant
+            cursor = ro_session.execute(_samples_without_biobank_order_sql, {'bb_id': p_bb_id})
+            samples = [s for s in cursor]
+            if len(samples):
+                orders.append({'biobank_order_id': UNKNOWN_BIOBANK_ORDER_ID, 'samples': list()})
+                for row in samples:
+                    orders[-1]['samples'].append(_make_stored_sample_dict_from_row(row, has_order=False))
 
         if len(orders) > 0:
             data['biobank_orders'] = orders
@@ -491,7 +533,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         return data
 
-    def _calculate_enrollment_status(self, p_id, ro_session, ro_summary):
+    def _calculate_enrollment_status(self, ro_summary):
         """
         Calculate the participant's enrollment status
         :param p_id: participant id
@@ -573,23 +615,14 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         max(latest_baseline_module_completion, module['module_created'] or datetime.datetime.min)
             completed_all_baseline_modules = baseline_module_count >= len(self._baseline_modules)
 
-        # It seems we have around 100 participants that BioBank has received and processed samples for
-        # and RDR knows about them, but RDR has no record of the orders or which tests were ordered.
-        # These participants can still count as Full/Core Participants, so we need to look at only what
-        # is in the `biobank_stored_sample` table to calculate the enrollment status.
-        # https://precisionmedicineinitiative.atlassian.net/browse/DA-812
-        sql = """select bss.test, bss.created from biobank_stored_sample bss
-                    inner join participant p on bss.biobank_id = p.biobank_id
-                    where p.participant_id = :pid"""
-
-        cursor = ro_session.execute(sql, {'pid': p_id})
-        results = [r for r in cursor]
-        first_dna_sample_date = datetime.datetime.max
         dna_sample_count = 0
-        for test, created in results:
-            if test in self._dna_sample_test_codes:
-                dna_sample_count += 1
-                first_dna_sample_date = min(first_dna_sample_date, created or datetime.datetime.max)
+        first_dna_sample_date = datetime.datetime.max
+        bb_orders = ro_summary.get('biobank_orders', list())
+        for order in bb_orders:
+            for sample in order.get('samples', list()):
+                if sample['dna_test']:
+                    dna_sample_count += 1
+                    first_dna_sample_date = min(first_dna_sample_date, sample['created'] or datetime.datetime.max)
 
         if study_consent is True:
             status = EnrollmentStatusV2.PARTICIPANT
@@ -772,7 +805,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         if 'biobank_orders' in summary:
             for order in summary['biobank_orders']:
-                if order['status_id'] != int(BiobankOrderStatus.CANCELLED) and 'samples' in order:
+                if order['biobank_order_id'] != UNKNOWN_BIOBANK_ORDER_ID \
+                   and ['status_id'] != int(BiobankOrderStatus.CANCELLED) and 'samples' in order:
                     for sample in order['samples']:
                         if 'finalized' in sample and sample['finalized'] and \
                             isinstance(sample['finalized'], datetime.datetime):

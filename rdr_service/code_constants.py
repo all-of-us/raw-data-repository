@@ -142,3 +142,8 @@ GENOME_TYPE = ["aou_array", "aou_wgs"]
 
 # Source of a created participant
 ORIGINATING_SOURCES = ['vibrent', 'careevolution', 'example']
+
+# For handling biobank stored samples without a corresponding biobank order id during RDR to PDR rebuilds
+# See: https://precisionmedicineinitiative.atlassian.net/browse/DA-812 and
+# https://precisionmedicineinitiative.atlassian.net/browse/PDR-89
+UNKNOWN_BIOBANK_ORDER_ID = 'unknown_biobank_order_id'

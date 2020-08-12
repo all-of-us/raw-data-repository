@@ -6,9 +6,9 @@ from sqlalchemy import func, desc, exc
 from werkzeug.exceptions import NotFound
 
 from rdr_service import config
-from rdr_service.code_constants import CONSENT_GROR_YES_CODE, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE,\
-    DVEHR_SHARING_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES, GROR_CONSENT_QUESTION_CODE,\
-    EHR_CONSENT_EXPIRED_YES
+from rdr_service.code_constants import CONSENT_GROR_YES_CODE, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, \
+    DVEHR_SHARING_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES, GROR_CONSENT_QUESTION_CODE, \
+    EHR_CONSENT_EXPIRED_YES, UNKNOWN_BIOBANK_ORDER_ID
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummary
@@ -23,7 +23,6 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag
 from rdr_service.resource.helpers import DateCollection
-
 
 _consent_module_question_map = {
     # module: question code string
@@ -42,6 +41,7 @@ _consent_expired_question_map = {
     'GROR': None,
     'PrimaryConsentUpdate': None
 }
+
 
 class BQParticipantSummaryGenerator(BigQueryGenerator):
     """
@@ -76,11 +76,12 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             # prep race and gender
             summary = self._merge_schema_dicts(summary, self._prep_the_basics(p_id, ro_session))
             # prep biobank orders and samples
-            summary = self._merge_schema_dicts(summary, self._prep_biobank_info(p_id, ro_session))
+            summary = self._merge_schema_dicts(summary, self._prep_biobank_info(p_id, summary['biobank_id'],
+                                                                                ro_session))
             # prep patient status history
             summary = self._merge_schema_dicts(summary, self._prep_patient_status_info(p_id, ro_session))
             # calculate enrollment status for participant
-            summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(p_id, ro_session, summary))
+            summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary))
             # calculate enrollment status times
             summary = self._merge_schema_dicts(summary, self._calculate_enrollment_timestamps(summary))
             # calculate distinct visits
@@ -355,32 +356,75 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             data['pm'] = pm_list
         return data
 
-    def _prep_biobank_info(self, p_id, ro_session):
+    def _prep_biobank_info(self, p_id, p_bb_id, ro_session):
         """
-        Look up biobank orders
+        Look up biobank orders / stored samples
         :param p_id: participant id
+        :param p_bb_id:  participant's biobank id
         :param ro_session: Readonly DAO session object
         :return:
         """
+
+        def _make_stored_sample_dict_from_row(bss_row, has_order=True):
+            """
+            Internal helper routine to populate a stored sample dict entry from a biobank_stored_sample
+            table query result row
+            """
+            return {
+                'bbs_test': bss_row.test,
+                'bbs_baseline_test': 1 if bss_row.test in self._baseline_sample_test_codes else 0,  # Boolean field
+                'bbs_dna_test': 1 if bss_row.test in self._dna_sample_test_codes else 0,  # Boolean field
+                'bbs_collected': bss_row.collected if has_order else None,
+                'bbs_processed': bss_row.processed if has_order else None,
+                'bbs_finalized': bss_row.finalized if has_order else None,
+                'bbs_confirmed': bss_row.bb_confirmed,
+                'bbs_status': str(SampleStatus.RECEIVED) if bss_row.bb_confirmed else None,
+                'bbs_status_id': int(SampleStatus.RECEIVED) if bss_row.bb_confirmed else None,
+                'bbs_created': bss_row.bb_created,
+                'bbs_disposed': bss_row.bb_disposed,
+                'bbs_disposed_reason': str(SampleStatus(bss_row.bb_status)) if bss_row.bb_status else None,
+                'bbs_disposed_reason_id': int(SampleStatus(bss_row.bb_status)) if bss_row.bb_status else None,
+            }
+
+        # SQL to find total number of biobank stored samples associated with the participant
+        _stored_samples_count_sql = """
+             select count(*) from biobank_stored_sample where biobank_id = :bb_id;
+          """
+
+        # SQL to generate a list of biobank orders and related samples associated with the participant
+        _biobank_orders_sql = """
+           select bo.biobank_order_id, bo.created, bo.collected_site_id, bo.processed_site_id, bo.finalized_site_id,
+                   bos.test, bos.collected, bos.processed, bos.finalized, bo.order_status,
+                   bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed,
+                   bss.status as bb_status, (
+                     select count(1) from biobank_dv_order bdo where bdo.biobank_order_id = bo.biobank_order_id
+                   ) as dv_order
+             from biobank_order bo inner join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
+                     inner join biobank_order_identifier boi on bo.biobank_order_id = boi.biobank_order_id
+                     left outer join
+                       biobank_stored_sample bss on boi.`value` = bss.biobank_order_identifier and bos.test = bss.test
+             where boi.`system` = 'https://www.pmi-ops.org' and bo.participant_id = :pid
+             order by bo.biobank_order_id, bos.test;
+         """
+
+        # SQL to find stored samples for the participant that are not associated with a biobank order
+        # See: https://precisionmedicineinitiative.atlassian.net/browse/PDR-89 .  This will only be executed in
+        # a small number of cases where a participant has "unknown order" samples
+        _samples_without_biobank_order_sql = """
+                select bss.test, bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed,
+                       bss.status as bb_status, bo.biobank_order_id as bbo_id
+                  from biobank_stored_sample bss
+                  left outer join biobank_order_identifier boi on bss.biobank_order_identifier = boi.`value`
+                  left outer join biobank_order bo on boi.biobank_order_id = bo.biobank_order_id
+                where bss.biobank_id = :bb_id and bo.biobank_order_id is null;
+             """
+
         data = {}
         orders = list()
+        stored_samples_added = 0
 
-        sql = """
-          select bo.biobank_order_id, bo.created, bo.collected_site_id, bo.processed_site_id, bo.finalized_site_id,
-                  bos.test, bos.collected, bos.processed, bos.finalized, bo.order_status,
-                  bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed,
-                  bss.status as bb_status, (
-                    select count(1) from biobank_dv_order bdo where bdo.biobank_order_id = bo.biobank_order_id
-                  ) as dv_order
-            from biobank_order bo inner join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
-                    inner join biobank_order_identifier boi on bo.biobank_order_id = boi.biobank_order_id
-                    left outer join
-                      biobank_stored_sample bss on boi.`value` = bss.biobank_order_identifier and bos.test = bss.test
-            where boi.`system` = 'https://www.pmi-ops.org' and bo.participant_id = :pid
-            order by bo.biobank_order_id, bos.test;
-        """
-
-        cursor = ro_session.execute(sql, {'pid': p_id})
+        # Find known biobank orders associated with this participant
+        cursor = ro_session.execute(_biobank_orders_sql, {'pid': p_id})
         results = [r for r in cursor]
         # loop through results and create one order record for each biobank_order_id value.
         for row in results:
@@ -400,38 +444,37 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                     'bbo_finalized_site': self._lookup_site_name(row.finalized_site_id, ro_session),
                     'bbo_finalized_site_id': row.finalized_site_id,
                 })
-        # loop through results again and add each sample to it's order.
+
+        # loop through results again and add each sample to its order.
         for row in results:
             # get the order list index for this sample record
             try:
                 idx = orders.index(
-                        list(filter(lambda order: order['bbo_biobank_order_id'] == row.biobank_order_id, orders))[0])
+                    list(filter(lambda order: order['bbo_biobank_order_id'] == row.biobank_order_id, orders))[0])
             except IndexError:
                 continue
             # if we haven't added any samples to this order, create an empty list.
             if 'bbo_samples' not in orders[idx]:
                 orders[idx]['bbo_samples'] = list()
             # append the sample to the order
-            orders[idx]['bbo_samples'].append({
-                'bbs_test': row.test,
-                'bbs_baseline_test': 1 if row.test in self._baseline_sample_test_codes else 0,  # Boolean field
-                'bbs_dna_test': 1 if row.test in self._dna_sample_test_codes else 0,  # Boolean field
-                'bbs_collected': row.collected,
-                'bbs_processed': row.processed,
-                'bbs_finalized': row.finalized,
-                'bbs_confirmed': row.bb_confirmed,
-                'bbs_status': str(SampleStatus.RECEIVED) if row.bb_confirmed else None,
-                'bbs_status_id': int(SampleStatus.RECEIVED) if row.bb_confirmed else None,
-                'bbs_created': row.bb_created,
-                'bbs_disposed': row.bb_disposed,
-                'bbs_disposed_reason': str(SampleStatus(row.bb_status)) if row.bb_status else None,
-                'bbs_disposed_reason_id': int(SampleStatus(row.bb_status)) if row.bb_status else None,
-            })
+            orders[idx]['bbo_samples'].append(_make_stored_sample_dict_from_row(row))
+            stored_samples_added += 1
+
+        # Check if this participant has additional stored samples that were not added to the data dict above
+        # Occurs when the results for the biobank orders query (above) misses samples without an associated order
+        # See https://precisionmedicineinitiative.atlassian.net/browse/PDR-89
+        if stored_samples_added < ro_session.execute(_stored_samples_count_sql, {'bb_id': p_bb_id}).scalar():
+            # Include any "unknown order" samples associated with this participant
+            cursor = ro_session.execute(_samples_without_biobank_order_sql, {'bb_id': p_bb_id})
+            samples = [s for s in cursor]
+            if len(samples):
+                orders.append({'bbo_biobank_order_id': UNKNOWN_BIOBANK_ORDER_ID, 'bbo_samples': list()})
+                for row in samples:
+                    orders[-1]['bbo_samples'].append(_make_stored_sample_dict_from_row(row, has_order=False))
 
         if len(orders) > 0:
             data['biobank_orders'] = orders
         return data
-
 
     def _prep_patient_status_info(self, p_id, ro_session):
         """
@@ -482,7 +525,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         return data
 
-    def _calculate_enrollment_status(self, p_id, ro_session, ro_summary):
+    def _calculate_enrollment_status(self, ro_summary):
         """
         Calculate the participant's enrollment status
         :param p_id: participant id
@@ -527,8 +570,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 had_gror_consent = had_gror_consent or response_value == CONSENT_GROR_YES_CODE
 
         if 'EHRConsent' in consents and 'DVEHRConsent' in consents:
-            if consents['DVEHRConsent'][0] == DVEHRSHARING_CONSENT_CODE_YES\
-                    and consents['EHRConsent'][0] != CONSENT_PERMISSION_NO_CODE:
+            if consents['DVEHRConsent'][0] == DVEHRSHARING_CONSENT_CODE_YES \
+                and consents['EHRConsent'][0] != CONSENT_PERMISSION_NO_CODE:
                 ehr_consent = True
             if consents['EHRConsent'][0] == CONSENT_PERMISSION_YES_CODE:
                 ehr_consent = True
@@ -548,7 +591,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         if 'pm' in ro_summary:
             for pm in ro_summary['pm']:
                 if pm['pm_status_id'] == int(PhysicalMeasurementsStatus.COMPLETED) or \
-                        (pm['pm_finalized'] and pm['pm_status_id'] != int(PhysicalMeasurementsStatus.CANCELLED)):
+                    (pm['pm_finalized'] and pm['pm_status_id'] != int(PhysicalMeasurementsStatus.CANCELLED)):
                     pm_complete = True
                     physical_measurements_date = \
                         min(physical_measurements_date, pm['pm_finalized'] or datetime.datetime.max)
@@ -564,43 +607,34 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                         max(latest_baseline_module_completion, module['mod_created'] or datetime.datetime.min)
             completed_all_baseline_modules = baseline_module_count >= len(self._baseline_modules)
 
-        # It seems we have around 100 participants that BioBank has received and processed samples for
-        # and RDR knows about them, but RDR has no record of the orders or which tests were ordered.
-        # These participants can still count as Full/Core Participants, so we need to look at only what
-        # is in the `biobank_stored_sample` table to calculate the enrollment status.
-        # https://precisionmedicineinitiative.atlassian.net/browse/DA-812
-        sql = """select bss.test, bss.created from biobank_stored_sample bss
-                    inner join participant p on bss.biobank_id = p.biobank_id
-                    where p.participant_id = :pid"""
-
-        cursor = ro_session.execute(sql, {'pid': p_id})
-        results = [r for r in cursor]
-        first_dna_sample_date = datetime.datetime.max
         dna_sample_count = 0
-        for test, created in results:
-            if test in self._dna_sample_test_codes:
-                dna_sample_count += 1
-                first_dna_sample_date = min(first_dna_sample_date, created or datetime.datetime.max)
+        first_dna_sample_date = datetime.datetime.max
+        bb_orders = ro_summary.get('biobank_orders', list())
+        for order in bb_orders:
+            for sample in order.get('bbo_samples', list()):
+                if sample['bbs_dna_test']:
+                    dna_sample_count += 1
+                    first_dna_sample_date = min(first_dna_sample_date, sample['bbs_created'] or datetime.datetime.max)
 
         if study_consent is True:
             status = EnrollmentStatusV2.PARTICIPANT
         if status == EnrollmentStatusV2.PARTICIPANT and ehr_consent is True:
             status = EnrollmentStatusV2.FULLY_CONSENTED
-        if (status == EnrollmentStatusV2.FULLY_CONSENTED or (ehr_consent_expired and not ehr_consent)) and\
-                pm_complete and\
-                (ro_summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or gror_consent) and\
-                'modules' in ro_summary and\
-                completed_all_baseline_modules and \
-                dna_sample_count > 0:
+        if (status == EnrollmentStatusV2.FULLY_CONSENTED or (ehr_consent_expired and not ehr_consent)) and \
+            pm_complete and \
+            (ro_summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or gror_consent) and \
+            'modules' in ro_summary and \
+            completed_all_baseline_modules and \
+            dna_sample_count > 0:
             status = EnrollmentStatusV2.CORE_PARTICIPANT
 
         if status == EnrollmentStatusV2.PARTICIPANT or status == EnrollmentStatusV2.FULLY_CONSENTED:
             # Check to see if the participant might have had all the right ingredients to be Core at some point
             # This assumes consent for study, completion of baseline modules, stored dna sample,
             # and physical measurements can't be reversed
-            if study_consent and completed_all_baseline_modules and dna_sample_count > 0 and pm_complete and\
-                    had_ehr_consent and\
-                    (ro_summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or had_gror_consent):
+            if study_consent and completed_all_baseline_modules and dna_sample_count > 0 and pm_complete and \
+                had_ehr_consent and \
+                (ro_summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or had_gror_consent):
                 # If they've had everything right at some point, go through and see if there was any time that they
                 # had them all at once
                 study_consent_date_range = DateCollection()
@@ -629,16 +663,16 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                         if current_ehr_response == CONSENT_PERMISSION_YES_CODE:
                             ehr_date_range.add_start(response_date)
                         elif current_ehr_response == CONSENT_PERMISSION_NO_CODE or \
-                                current_dv_ehr_response != CONSENT_PERMISSION_YES_CODE:
+                            current_dv_ehr_response != CONSENT_PERMISSION_YES_CODE:
                             # dv_ehr should be honored if ehr value is UNSURE
                             ehr_date_range.add_stop(response_date)
                     elif consent_question == DVEHR_SHARING_QUESTION_CODE:
                         current_dv_ehr_response = consent_response
-                        if current_dv_ehr_response == DVEHRSHARING_CONSENT_CODE_YES and\
-                                current_ehr_response != CONSENT_PERMISSION_NO_CODE:
+                        if current_dv_ehr_response == DVEHRSHARING_CONSENT_CODE_YES and \
+                            current_ehr_response != CONSENT_PERMISSION_NO_CODE:
                             ehr_date_range.add_start(response_date)
-                        elif current_dv_ehr_response != DVEHRSHARING_CONSENT_CODE_YES and\
-                                current_ehr_response != CONSENT_PERMISSION_YES_CODE:
+                        elif current_dv_ehr_response != DVEHRSHARING_CONSENT_CODE_YES and \
+                            current_ehr_response != CONSENT_PERMISSION_YES_CODE:
                             ehr_date_range.add_stop(response_date)
                     elif consent_question == GROR_CONSENT_QUESTION_CODE:
                         if consent_response == CONSENT_GROR_YES_CODE:
@@ -646,10 +680,10 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                         else:
                             gror_date_range.add_stop(response_date)
 
-                date_overlap = study_consent_date_range\
-                    .get_intersection(pm_date_range)\
-                    .get_intersection(baseline_modules_date_range)\
-                    .get_intersection(dna_date_range)\
+                date_overlap = study_consent_date_range \
+                    .get_intersection(pm_date_range) \
+                    .get_intersection(baseline_modules_date_range) \
+                    .get_intersection(dna_date_range) \
                     .get_intersection(ehr_date_range)
 
                 if ro_summary['consent_cohort'] == BQConsentCohort.COHORT_3.name:
@@ -675,7 +709,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :return: dict
         """
         if 'biobank_orders' not in summary or not summary.get('enrollment_status', None) or \
-                not summary.get('enrollment_member', None):
+            not summary.get('enrollment_member', None):
             return {}
 
         # Calculate the earliest ordered sample and stored sample times.
@@ -726,9 +760,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         alt_time = max(
             summary.get('enrollment_member', datetime.datetime.min),
             max(mod['mod_created'] or datetime.datetime.min for mod in summary['modules']
-                    if mod['mod_baseline_module'] == 1),
+                if mod['mod_baseline_module'] == 1),
             max(pm['pm_finalized'] or datetime.datetime.min for pm in summary['pm'])
-                    if 'pm' in summary else datetime.datetime.min
+            if 'pm' in summary else datetime.datetime.min
         )
 
         if data['enrollment_core_ordered']:
@@ -763,10 +797,11 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         if 'biobank_orders' in summary:
             for order in summary['biobank_orders']:
-                if order['bbo_status_id'] != int(BiobankOrderStatus.CANCELLED) and 'bbo_samples' in order:
+                if order['bbo_biobank_order_id'] != UNKNOWN_BIOBANK_ORDER_ID and \
+                   order['bbo_status_id'] != int(BiobankOrderStatus.CANCELLED) and 'bbo_samples' in order:
                     for sample in order['bbo_samples']:
                         if 'bbs_finalized' in sample and sample['bbs_finalized'] and \
-                            isinstance(sample['bbs_finalized'], datetime.datetime):
+                           isinstance(sample['bbs_finalized'], datetime.datetime):
                             dates.append(datetime_to_date(sample['bbs_finalized']))
 
         dates = list(set(dates))  # de-dup list
@@ -872,7 +907,9 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None)
     pdr_bqr = pdr_bqgen.make_bqrecord(p_id, ps_bqr=ps_bqr)
 
     w_dao = BigQuerySyncDao()
+
     with w_dao.session() as w_session:
+
         # save the participant summary record.
         ps_bqgen.save_bqrecord(p_id, ps_bqr, bqtable=BQParticipantSummary, w_dao=w_dao, w_session=w_session,
                                project_id=project_id)
