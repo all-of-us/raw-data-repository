@@ -31,11 +31,13 @@ raw_env = [
 # If we're getting too close to the limit we should close the instance.
 # That way we can gracefully limit our memory rather than have Google killing us forcefully
 # (and potentially in the middle of handling a request).
-def post_request(worker, request, environment):
-    # Get memory used for this process and any forked children
+def post_request(worker, request, environment, response):
+    # Sum up memory used for this process and any children (resulting in memory used by this instance)
     self_mem_bytes = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     children_mem_bytes = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
-    memory_threshold_bytes = 950000000  # Reset after 950 megabytes have been consumed
+    memory_threshold_bytes = 950000000  # 950 megabytes
 
     if self_mem_bytes + children_mem_bytes > memory_threshold_bytes:
-        sys.exit(0)
+        # Gracefully kill the worker.
+        # This is copied from Gunicorn's code for closing out a sync worker after reaching the max_requests limit
+        worker.alive = False
