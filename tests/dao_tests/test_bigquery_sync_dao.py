@@ -190,7 +190,7 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
             ('processedUsername', 'sue@pmi-ops.org'),
             ('finalizedSiteId', 2),
             ('finalizedUsername', 'bob@pmi-ops.org'),
-            ('identifiers', [BiobankOrderIdentifier(system='https://www.pmi-ops.org', value=self.biobank_id)]),
+            ('identifiers', [BiobankOrderIdentifier(system='https://www.pmi-ops.org', value='123456789')]),
             ('samples', [BiobankOrderedSample(
                 biobankOrderId='1',
                 test='1ED04',
