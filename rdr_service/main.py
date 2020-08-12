@@ -308,6 +308,14 @@ api.add_resource(
 )
 
 api.add_resource(
+    DeceasedReportApi,
+    API_PREFIX + 'DeceasedReports',
+    API_PREFIX + 'Participant/<string:participant_id>/DeceasedReport',
+    endpoint='deceased_report.list',
+    methods=['GET']
+)
+
+api.add_resource(
     DeceasedReportReviewApi,
     API_PREFIX + "Participant/<string:participant_id>/Observation/<string:report_id>/Review",
     endpoint='observation.review',

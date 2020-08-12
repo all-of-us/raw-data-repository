@@ -1,12 +1,15 @@
 import pytz
+from sqlalchemy import desc
 from werkzeug.exceptions import BadRequest, NotFound, Conflict
 
 from rdr_service.api_util import parse_date
 from rdr_service.dao.api_user_dao import ApiUserDao
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.model.deceased_report import DeceasedReport
+from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.utils import to_client_participant_id
 from rdr_service.participant_enums import DeceasedNotification, DeceasedReportDenialReason, DeceasedReportStatus,\
     DeceasedStatus
 
@@ -14,25 +17,24 @@ from rdr_service.participant_enums import DeceasedNotification, DeceasedReportDe
 class DeceasedReportDao(UpdatableDao):
 
     validate_version_match = False
+    status_map = {
+        'preliminary': DeceasedReportStatus.PENDING,
+        'final': DeceasedReportStatus.APPROVED,
+        'cancelled': DeceasedReportStatus.DENIED
+    }
 
     def __init__(self):
         super().__init__(DeceasedReport)
 
-    @staticmethod
-    def _read_report_status(resource):
+    def _read_report_status(self, resource):
         if 'status' not in resource:
             raise BadRequest('Missing required field: status')
 
-        status_map = {
-            'preliminary': DeceasedReportStatus.PENDING,
-            'final': DeceasedReportStatus.APPROVED,
-            'cancelled': DeceasedReportStatus.DENIED
-        }
         status_string = resource['status']
-        if status_string not in status_map:
+        if status_string not in self.status_map:
             raise BadRequest(f'Invalid status "{status_string}"')
 
-        return status_map[status_string]
+        return self.status_map[status_string]
 
     @staticmethod
     def _read_api_request_author(resource):
@@ -200,6 +202,9 @@ class DeceasedReportDao(UpdatableDao):
             'identifier': {
                 'value': model.id
             },
+            'subject': {
+                'reference': to_client_participant_id(model.participantId)
+            },
             'status': status_map[model.status],
             'performer': api_user_dao.to_client_json(model.author),
             'issued': authored_timestamp.isoformat()
@@ -279,3 +284,20 @@ class DeceasedReportDao(UpdatableDao):
 
     def get_etag(self, id_, participant_id):  # pylint: disable=unused-argument
         return None
+
+    def load_reports(self, participant_id=None, org_id=None, status=None):
+        with self.session() as session:
+            query = session.query(DeceasedReport).order_by(desc(DeceasedReport.authored))
+            if participant_id is not None:
+                query = query.filter(DeceasedReport.participantId == participant_id)
+            else:
+                if org_id is not None:
+                    if org_id == 'UNSET':
+                        query = query.join(Participant).filter(Participant.organizationId.is_(None))
+                    else:
+                        query = query.join(Participant).join(Organization).filter(Organization.externalId == org_id)
+                if status is not None:
+                    if status not in self.status_map:
+                        raise BadRequest(f'Invalid status "{status}"')
+                    query = query.filter(DeceasedReport.status == self.status_map[status])
+            return query.all()
