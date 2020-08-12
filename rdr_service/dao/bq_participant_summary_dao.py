@@ -792,9 +792,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             elif '@example.com' in (summary.get('email') or ''):
                 test_participant = 1
             # Check for SMS phone number for test participants.
-            elif '4442' in re.sub('[\(|\)|\-|\s]', '', (summary.get('login_phone_number') or 'None')):
+            elif re.sub('[\(|\)|\-|\s]', '', (summary.get('login_phone_number') or 'None')).startswith('4442'):
                 test_participant = 1
-            elif '4442' in re.sub('[\(|\)|\-|\s]', '', (summary.get('phone_number') or 'None')):
+            elif re.sub('[\(|\)|\-|\s]', '', (summary.get('phone_number') or 'None')).startswith('4442'):
                 test_participant = 1
 
         data = {'test_participant': test_participant}
