@@ -7,7 +7,8 @@ import argparse
 import logging
 import sys
 
-from rdr_service.dao.deceased_report_dao import DeceasedReportDao
+from rdr_service.dao.api_user_dao import ApiUserDao
+from rdr_service.model.api_user import ApiUser
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import DeceasedReportDenialReason, DeceasedReportStatus, DeceasedStatus
@@ -21,37 +22,43 @@ _logger = logging.getLogger("rdr_logger")
 tool_cmd = "resurrect"
 tool_desc = "remove an approved deceased report from a given participant"
 
+PMI_OPS_URL = "https://www.pmi-ops.org/"
+
 
 class ResurrectClass(object):
     def __init__(self, args, gcp_env):
         self.args = args
         self.gcp_env = gcp_env
-        self.dao = DeceasedReportDao()
+        self.dao = ApiUserDao()
 
-    def update_approved_deceased_report(self, participant_id):
-        with self.dao.session() as session:
-            report = session.query(DeceasedReport).filter(
-                DeceasedReport.participantId == participant_id,
-                DeceasedReport.status == DeceasedReportStatus.APPROVED
-            ).one_or_none()
+    def update_approved_deceased_report(self, session, participant_id):
+        report = session.query(DeceasedReport).filter(
+            DeceasedReport.participantId == participant_id,
+            DeceasedReport.status == DeceasedReportStatus.APPROVED
+        ).one_or_none()
         if report is None:
-            print('ERROR: no approved deceased report found')
+            raise Exception('no approved deceased report found')
 
         report.status = DeceasedReportStatus.DENIED
-        # todo: set the reviewer to the current account setting
+        report.reviewer = self.dao.load_from_database(PMI_OPS_URL, self.gcp_env.account)
+        if report.reviewer is None:
+            report.reviewer = ApiUser(
+                system=PMI_OPS_URL,
+                username=self.gcp_env.account
+            )
 
         report.denialReason = DeceasedReportDenialReason(self.args.reason)
         if report.denialReason == DeceasedReportDenialReason.OTHER:
             if self.args.reason_desc is None:
-                print('ERROR: reason description required when denial reason is OTHER')
-                sys.exit(1)
+                raise Exception('reason description required when denial reason is OTHER')
             report.denialReasonOther = self.args.reason_desc
 
-    def update_participant_summary(self, participant_id):
-        with self.dao.session() as session:
-            participant_summary = session.query(ParticipantSummary).filter(
-                ParticipantSummary.participantId == participant_id
-            ).one_or_none()
+    @staticmethod
+    def update_participant_summary(session, participant_id):
+        participant_summary = session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == participant_id
+        ).one_or_none()
+
         if participant_summary is None:
             print('WARNING: participant summary not found')
         else:
@@ -66,8 +73,9 @@ class ResurrectClass(object):
             return 1
 
         participant_id = self.args.pid
-        self.update_approved_deceased_report(participant_id)
-        self.update_participant_summary(participant_id)
+        with self.dao.session() as session:
+            self.update_approved_deceased_report(session, participant_id)
+            self.update_participant_summary(session, participant_id)
 
         return 0
 
