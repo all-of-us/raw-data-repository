@@ -303,6 +303,9 @@ class GenomicGCValidationMetrics(Base):
     vcfMd5Received = Column('vcf_md5_received', SmallInteger, nullable=False, default=0)
     vcfMd5Path = Column('vcf_md5_path', String(255), nullable=True)
 
+    vcfTbiReceived = Column('vcf_tbi_received', SmallInteger, nullable=False, default=0)
+    vcfTbiPath = Column('vcf_tbi_path', String(255), nullable=True)
+
     # Sequencing Data (WGS) reconciliation
     # Single sample VCF: Hard - filtered for clinical purpose
     hfVcfReceived = Column('hf_vcf_received', SmallInteger, nullable=False, default=0)

@@ -647,11 +647,13 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the reconciliation process
         sequencing_test_files = (
             f'test_data_folder/10001_R01C01.vcf.gz',
+            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
             f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
             f'test_data_folder/10001_R01C01_red.idat',
             f'test_data_folder/10001_R01C01_grn.idat',
             f'test_data_folder/10001_R01C01_red.idat.md5sum',
             f'test_data_folder/10002_R01C02.vcf.gz',
+            f'test_data_folder/10002_R01C02.vcf.gz.tbi',
             f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
             f'test_data_folder/10002_R01C02_red.idat',
             f'test_data_folder/10002_R01C02_grn.idat',
@@ -667,6 +669,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the gc_metrics were updated with reconciliation data
         self.assertEqual(1, gc_record.vcfReceived)
+        self.assertEqual(1, gc_record.vcfTbiReceived)
         self.assertEqual(1, gc_record.vcfMd5Received)
         self.assertEqual(1, gc_record.idatRedReceived)
         self.assertEqual(1, gc_record.idatGreenReceived)
@@ -674,15 +677,17 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(0, gc_record.idatGreenMd5Received)
 
         self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[0]}", gc_record.vcfPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[1]}", gc_record.vcfMd5Path)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[2]}", gc_record.idatRedPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[3]}", gc_record.idatGreenPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[4]}", gc_record.idatRedMd5Path)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[1]}", gc_record.vcfTbiPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[2]}", gc_record.vcfMd5Path)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[3]}", gc_record.idatRedPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[4]}", gc_record.idatGreenPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[5]}", gc_record.idatRedMd5Path)
 
         gc_record = self.metrics_dao.get(2)
 
         # Test the gc_metrics were updated with reconciliation data
         self.assertEqual(1, gc_record.vcfReceived)
+        self.assertEqual(1, gc_record.vcfTbiReceived)
         self.assertEqual(1, gc_record.vcfMd5Received)
         self.assertEqual(1, gc_record.idatRedReceived)
         self.assertEqual(1, gc_record.idatGreenReceived)
@@ -1623,12 +1628,14 @@ class GenomicPipelineTest(BaseTestCase):
         # Test sequencing file (required for GEM)
         sequencing_test_files = (
             f'test_data_folder/10001_R01C01.vcf.gz',
+            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
             f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
             f'test_data_folder/10001_R01C01_red.idat',
             f'test_data_folder/10001_R01C01_grn.idat',
             f'test_data_folder/10001_R01C01_red.idat.md5sum',
             f'test_data_folder/10001_R01C01_grn.idat.md5sum',
             f'test_data_folder/10002_R01C02.vcf.gz',
+            f'test_data_folder/10002_R01C02.vcf.gz.tbi',
             f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
             f'test_data_folder/10002_R01C02_red.idat',
             f'test_data_folder/10002_R01C02_grn.idat',
@@ -2066,12 +2073,14 @@ class GenomicPipelineTest(BaseTestCase):
         # Test sequencing file (required for GEM)
         sequencing_test_files = (
             f'test_data_folder/10001_R01C01.vcf.gz',
+            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
             f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
             f'test_data_folder/10001_R01C01_red.idat',
             f'test_data_folder/10001_R01C01_grn.idat',
             f'test_data_folder/10001_R01C01_red.idat.md5sum',
             f'test_data_folder/10001_R01C01_grn.idat.md5sum',
             f'test_data_folder/10002_R01C02.vcf.gz',
+            f'test_data_folder/10002_R01C02.vcf.gz.tbi',
             f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
             f'test_data_folder/10002_R01C02_red.idat',
             f'test_data_folder/10002_R01C02_grn.idat',
