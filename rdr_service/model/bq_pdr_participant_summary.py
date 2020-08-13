@@ -144,11 +144,11 @@ class BQPDRParticipantSummaryView(BQView):
         SELECT
           %%FIELD_NAMES%%
         FROM (
-            SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp,
-                MAX(test_participant) OVER (PARTITION BY participant_id) AS max_test_participant
+            SELECT *, 
+                ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
               FROM `{project}`.{dataset}.pdr_participant 
           ) ps
-          WHERE ps.modified = ps.max_timestamp and ps.withdrawal_status_id = 1 and ps.max_test_participant != 1
+          WHERE ps.rn = 1 and ps.withdrawal_status_id = 1 and ps.test_participant != 1
       """.replace('%%FIELD_NAMES%%', BQPDRParticipantSummarySchema.get_sql_field_names(
         exclude_fields=[
             'pm',
@@ -177,11 +177,11 @@ class BQPDRPMView(BQView):
     __sql__ = """
     SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
-        SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp,
-            MAX(test_participant) OVER (PARTITION BY participant_id) AS max_test_participant
+        SELECT *, 
+            ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
           FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(pm) as nt
-      WHERE ps.modified = ps.max_timestamp and ps.max_test_participant != 1
+      WHERE ps.rn = 1 and ps.test_participant != 1
   """
 
 
@@ -193,11 +193,11 @@ class BQPDRGenderView(BQView):
     __sql__ = """
     SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
-        SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp,
-            MAX(test_participant) OVER (PARTITION BY participant_id) AS max_test_participant
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
           FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(genders) as nt
-      WHERE ps.modified = ps.max_timestamp and ps.max_test_participant != 1
+      WHERE ps.rn = 1 and ps.test_participant != 1
   """
 
 
@@ -208,11 +208,11 @@ class BQPDRRaceView(BQView):
     __sql__ = """
     SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
-        SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp,
-            MAX(test_participant) OVER (PARTITION BY participant_id) AS max_test_participant
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
           FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(races) as nt
-      WHERE ps.modified = ps.max_timestamp and ps.max_test_participant != 1
+      WHERE ps.rn = 1 and ps.test_participant != 1
   """
 
 
@@ -223,12 +223,11 @@ class BQPDRModuleView(BQView):
     __sql__ = """
     SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
-        SELECT *, 
-            MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp,
-            MAX(test_participant) OVER (PARTITION BY participant_id) AS max_test_participant
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
           FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(modules) as nt
-      WHERE ps.modified = ps.max_timestamp and ps.max_test_participant != 1
+      WHERE ps.rn = 1 and ps.test_participant != 1
   """
 
 
@@ -239,11 +238,11 @@ class BQPDRConsentView(BQView):
     __sql__ = """
     SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
-        SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp,
-            MAX(test_participant) OVER (PARTITION BY participant_id) AS max_test_participant
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
           FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(consents) as nt
-      WHERE ps.modified = ps.max_timestamp and ps.max_test_participant != 1
+      WHERE ps.rn = 1 and ps.test_participant != 1
   """
 
 
@@ -254,11 +253,11 @@ class BQPDRBioSpecView(BQView):
     __sql__ = """
     SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
-        SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp,
-            MAX(test_participant) OVER (PARTITION BY participant_id) AS max_test_participant
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
           FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(biospec) as nt
-      WHERE ps.modified = ps.max_timestamp and ps.max_test_participant != 1
+      WHERE ps.rn = 1 and ps.test_participant != 1
   """
 
 class BQPDRPatientStatuesView(BQView):
@@ -268,9 +267,9 @@ class BQPDRPatientStatuesView(BQView):
     __sql__ = """
     SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
-        SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp,
-            MAX(test_participant) OVER (PARTITION BY participant_id) AS max_test_participant
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
           FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(patient_statuses) as nt
-      WHERE ps.modified = ps.max_timestamp and ps.max_test_participant != 1
+      WHERE ps.rn = 1 and ps.test_participant != 1
   """

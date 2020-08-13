@@ -63,10 +63,11 @@ class BQRWBResearcherView(BQView):
             SELECT
                 %%FIELD_LIST%%
             FROM (
-                SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+                SELECT *, 
+                    ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
                   FROM `{project}`.{dataset}.rwb_researcher 
               ) t
-              WHERE t.modified = t.max_timestamp
+              WHERE t.rn = 1
         """.replace('%%FIELD_LIST%%', BQRWBResearcherSchema.get_sql_field_names(
         exclude_fields=[
             'genders',
@@ -85,10 +86,11 @@ class BQRWBResearcherGenderView(BQView):
     __sql__ = """
         SELECT t.id, t.created, t.modified, nt.*
           FROM (
-            SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+            SELECT *, 
+                ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
               FROM `{project}`.{dataset}.rwb_researcher 
           ) t cross join unnest(genders) as nt
-          WHERE t.modified = t.max_timestamp
+          WHERE t.rn = 1
     """
 
 
@@ -100,10 +102,11 @@ class BQRWBResearcherRaceView(BQView):
     __sql__ = """
         SELECT t.id, t.created, t.modified, nt.*
           FROM (
-            SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+            SELECT *, 
+                ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
               FROM `{project}`.{dataset}.rwb_researcher 
           ) t cross join unnest(races) as nt
-          WHERE t.modified = t.max_timestamp
+          WHERE t.rn = 1
     """
 
 
@@ -115,10 +118,11 @@ class BQRWBResearcherSexAtBirthView(BQView):
     __sql__ = """
         SELECT t.id, t.created, t.modified, nt.*
           FROM (
-            SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+            SELECT *, 
+                ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
               FROM `{project}`.{dataset}.rwb_researcher 
           ) t cross join unnest(sex_at_birth) as nt
-          WHERE t.modified = t.max_timestamp
+          WHERE t.rn = 1
     """
 
 
@@ -130,10 +134,11 @@ class BQRWBResearcherDegreeView(BQView):
     __sql__ = """
         SELECT t.id, t.created, t.modified, nt.*
           FROM (
-            SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+            SELECT *, 
+                ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
               FROM `{project}`.{dataset}.rwb_researcher 
           ) t cross join unnest(degrees) as nt
-          WHERE t.modified = t.max_timestamp
+          WHERE t.rn = 1
     """
 
 
