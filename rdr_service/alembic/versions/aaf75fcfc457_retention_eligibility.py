@@ -1,8 +1,8 @@
-"""retention eligibility
+"""retention_eligibility
 
-Revision ID: 3beac300a04f
-Revises: e489f3329dd0
-Create Date: 2020-08-05 11:55:14.750675
+Revision ID: aaf75fcfc457
+Revises: c68d427d67b3
+Create Date: 2020-08-13 18:47:32.067171
 
 """
 from alembic import op
@@ -20,8 +20,8 @@ from rdr_service.model.code import CodeType
 from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 
 # revision identifiers, used by Alembic.
-revision = '3beac300a04f'
-down_revision = 'e489f3329dd0'
+revision = 'aaf75fcfc457'
+down_revision = 'c68d427d67b3'
 branch_labels = None
 depends_on = None
 
@@ -32,7 +32,6 @@ def upgrade(engine_name):
 
 def downgrade(engine_name):
     globals()["downgrade_%s" % engine_name]()
-
 
 
 def upgrade_rdr():
