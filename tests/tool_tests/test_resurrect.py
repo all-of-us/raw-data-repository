@@ -1,4 +1,3 @@
-from collections import namedtuple
 from datetime import  date, datetime
 import mock
 
@@ -8,8 +7,6 @@ from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.tools.tool_libs.resurrect import ResurrectClass, PMI_OPS_URL
 from tests.helpers.unittest_base import BaseTestCase
-
-FakeFile = namedtuple('FakeFile', ['name', 'updated'])
 
 
 class ResurrectTest(BaseTestCase):
