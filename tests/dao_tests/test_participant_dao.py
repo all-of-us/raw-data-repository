@@ -17,6 +17,7 @@ from rdr_service.participant_enums import (
     WithdrawalStatus,
     make_primary_provider_link_for_id,
     make_primary_provider_link_for_name,
+    RetentionStatus
 )
 from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.mysql_helper_data import PITT_HPO_ID, PITT_ORG_ID, PITT_SITE_ID, random_ids
@@ -206,6 +207,7 @@ class ParticipantDaoTest(BaseTestCase):
             lastName=summary.lastName,
             email=summary.email,
             patientStatus=[],
+            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE
         )
         self.assertEqual(expected_ps.asdict(), ps.asdict())
 
