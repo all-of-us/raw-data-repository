@@ -19,7 +19,8 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
 from rdr_service.model.hpo import HPO
 from rdr_service.participant_enums import (ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType, TEST_HPO_ID,
-                                           TEST_HPO_NAME)
+                                           TEST_HPO_NAME, EnrollmentStatus, WithdrawalStatus, SuspensionStatus,
+                                           SampleStatus, DeceasedStatus, QuestionnaireStatus)
 from tests.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -217,7 +218,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "participantOrigin": "example",
                 "consentCohort": "COHORT_1",
                 "cohort2PilotFlag": "UNSET",
-                "deceasedStatus": "UNSET"
+                "deceasedStatus": "UNSET",
+                "retentionEligibleStatus": "NOT_ELIGIBLE",
             }
         )
 
@@ -3037,6 +3039,62 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertEqual(ps['phoneNumber'], 'UNSET')
             self.assertEqual(ps['loginPhoneNumber'], 'UNSET')
             self.assertEqual(ps['email'], 'UNSET')
+
+    def test_retention(self):
+        participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
+        participant_id = participant["participantId"]
+        with FakeClock(TIME_1):
+            self.send_consent(participant_id)
+        ps = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(ps['retentionEligibleStatus'], 'NOT_ELIGIBLE')
+
+        ps = self.send_get("ParticipantSummary?retentionEligibleStatus=NOT_ELIGIBLE&_includeTotal=TRUE")
+        self.assertEqual(ps['entry'][0]['resource']['retentionEligibleStatus'], 'NOT_ELIGIBLE')
+
+        self._make_participant_retention_eligible(participant_id[1:])
+        ps = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(ps['retentionEligibleStatus'], 'ELIGIBLE')
+        self.assertEqual(ps['retentionEligibleTime'], TIME_4.isoformat())
+
+        self._remove_participant_retention_eligible(participant_id[1:])
+        ps = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(ps['retentionEligibleStatus'], 'NOT_ELIGIBLE')
+        self.assertEqual(ps.get('retentionEligibleTime'), None)
+
+    def _remove_participant_retention_eligible(self, participant_id):
+        ps_dao = ParticipantSummaryDao()
+        summary = ps_dao.get(participant_id)
+        summary.samplesToIsolateDNA = SampleStatus.UNSET
+        ps_dao.update(summary)
+
+    def _make_participant_retention_eligible(self, participant_id):
+        ps_dao = ParticipantSummaryDao()
+        summary = ps_dao.get(participant_id)
+        summary.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
+        summary.suspensionStatus = SuspensionStatus.NOT_SUSPENDED
+        summary.enrollmentStatus = EnrollmentStatus.FULL_PARTICIPANT
+        summary.consentForStudyEnrollment = 1
+        summary.consentForStudyEnrollmentAuthored = TIME_1
+        summary.consentForElectronicHealthRecords = 1
+        summary.consentForElectronicHealthRecordsAuthored = TIME_2
+        summary.questionnaireOnTheBasics = QuestionnaireStatus.SUBMITTED
+        summary.questionnaireOnOverallHealth = QuestionnaireStatus.SUBMITTED
+        summary.questionnaireOnLifestyle = QuestionnaireStatus.SUBMITTED
+        summary.questionnaireOnTheBasicsTime = TIME_3
+        summary.questionnaireOnLifestyleTime = TIME_3
+        summary.questionnaireOnOverallHealthTime = TIME_3
+        summary.sampleOrderStatus1ED04Time = TIME_4
+        summary.sampleOrderStatus1SALTime = TIME_4
+        summary.sampleStatus1ED04Time = TIME_4
+        summary.sampleStatus1SALTime = TIME_4
+        summary.questionnaireOnLifestyleAuthored = TIME_3
+        summary.questionnaireOnTheBasicsAuthored = TIME_3
+        summary.questionnaireOnOverallHealthAuthored = TIME_3
+        summary.samplesToIsolateDNA = SampleStatus.RECEIVED
+        summary.deceasedStatus = DeceasedStatus.UNSET
+        ps_dao.update(summary)
+
+        return summary
 
 
 def _add_code_answer(code_answers, link_id, code):

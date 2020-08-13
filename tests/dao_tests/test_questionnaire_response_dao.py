@@ -23,7 +23,8 @@ from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort
+from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort, \
+    RetentionStatus
 from tests import test_data
 from tests.test_data import (
     consent_code,
@@ -598,7 +599,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             lastModified=TIME_2,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_1
+            consentCohort=ParticipantCohort.COHORT_1,
+            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -907,7 +909,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             email=self.email,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_1
+            consentCohort=ParticipantCohort.COHORT_1,
+            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -981,7 +984,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             email=self.email,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_1
+            consentCohort=ParticipantCohort.COHORT_1,
+            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -1060,7 +1064,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             email=self.email,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_1
+            consentCohort=ParticipantCohort.COHORT_1,
+            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.
@@ -1130,7 +1135,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             email=self.email,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_1
+            consentCohort=ParticipantCohort.COHORT_1,
+            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.
