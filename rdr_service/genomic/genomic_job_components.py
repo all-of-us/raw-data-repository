@@ -750,11 +750,14 @@ class GenomicReconciler:
         self.file_mover = file_mover
 
         # Data files and names will be different
+        # file types are defined as
+        # (field_for_received_flag, filename suffix, field_for_gcs_path)
         self.genotyping_file_types = (('idatRedReceived', "_red.idat", "idatRedPath"),
                                       ('idatGreenReceived', "_grn.idat", "idatGreenPath"),
                                       ('idatRedMd5Received', "_red.idat.md5sum", "idatRedMd5Path"),
                                       ('idatGreenMd5Received', "_grn.idat.md5sum", "idatGreenMd5Path"),
                                       ('vcfReceived', ".vcf.gz", "vcfPath"),
+                                      ('vcfTbiReceived', ".vcf.gz.tbi", "vcfTbiPath"),
                                       ('vcfMd5Received', ".vcf.gz.md5sum", "vcfMd5Path"))
 
         self.sequencing_file_types = (("hfVcfReceived", ".hard-filtered.vcf.gz", "hfVcfPath"),

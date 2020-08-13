@@ -796,6 +796,7 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                     (GenomicGCValidationMetrics.idatRedMd5Received == 0) |
                     (GenomicGCValidationMetrics.idatGreenMd5Received == 0) |
                     (GenomicGCValidationMetrics.vcfReceived == 0) |
+                    (GenomicGCValidationMetrics.vcfTbiReceived == 0) |
                     (GenomicGCValidationMetrics.vcfMd5Received == 0)
                 )
                 .all()
