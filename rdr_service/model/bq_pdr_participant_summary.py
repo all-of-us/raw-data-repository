@@ -146,7 +146,7 @@ class BQPDRParticipantSummaryView(BQView):
         FROM (
             SELECT *, MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp,
                 MAX(test_participant) OVER (PARTITION BY participant_id) AS max_test_participant
-              FROM `{project}`.{dataset}.pdr_participant 
+              FROM `{project}`.{dataset}.pdr_participant
           ) ps
           WHERE ps.modified = ps.max_timestamp and ps.withdrawal_status_id = 1 and ps.max_test_participant != 1
       """.replace('%%FIELD_NAMES%%', BQPDRParticipantSummarySchema.get_sql_field_names(
@@ -221,9 +221,12 @@ class BQPDRModuleView(BQView):
     __viewdescr__ = 'PDR Participant Survey Module View'
     __table__ = BQPDRParticipantSummary
     __sql__ = """
-    SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
+    SELECT ps.id, ps.created, ps.modified, ps.participant_id,
+           nt.mod_module, nt.mod_baseline_module,
+           CAST(nt.mod_authored AS DATETIME) as mod_authored, CAST(nt.mod_created AS DATETIME) as mod_created,
+           nt.mod_language, nt.mod_status, nt.mod_status_id
       FROM (
-        SELECT *, 
+        SELECT *,
             MAX(modified) OVER (PARTITION BY participant_id) AS max_timestamp,
             MAX(test_participant) OVER (PARTITION BY participant_id) AS max_test_participant
           FROM `{project}`.{dataset}.pdr_participant
