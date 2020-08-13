@@ -34,7 +34,7 @@ def post_request(worker, *_):
     # Sum up memory used for this process and any children (resulting in memory used by this instance)
     self_mem_bytes = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     children_mem_bytes = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
-    memory_threshold_bytes = 950000000  # 950 megabytes
+    memory_threshold_bytes = 996147200  # 950 megabytes (950 x 1024 x 1024)
 
     # Gracefully kill the worker that just completed a request if the instance is holding on to too much memory.
     # This unfortunate worker may not be the one using the most memory on the instance but it will help,
@@ -47,6 +47,7 @@ def post_request(worker, *_):
         # This is copied from Gunicorn's code for closing out a sync worker after reaching the max_requests limit
         worker.alive = False
 
+        memory_used_megabytes = round(memory_used_bytes / 1048576, 2)
         # Logs from the worker seem to appear beside the normal app logs, but without log levels attached to them.
         worker.log.info(f"Auto-restarting worker after gunicorn instance {os.getpid()} was"
-                        f"found to be using {memory_used_bytes} bytes.")
+                        f"found to be using {memory_used_megabytes} megabytes.")
