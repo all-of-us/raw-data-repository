@@ -413,15 +413,16 @@ class BQView(object):
             fields = tbl.get_schema().get_fields()
 
             self.__sql__ = """
-        SELECT {fields} 
-      """.format(fields=', '.join([f['name'] for f in fields]))
+                SELECT {fields} 
+              """.format(fields=', '.join([f['name'] for f in fields]))
 
             self.__sql__ += """
                 FROM (
-                  SELECT *, MAX(modified) OVER (PARTITION BY %%pk_id%%) AS max_timestamp
+                  SELECT *,                        
+                      ROW_NUMBER() OVER (PARTITION BY %%pk_id%% ORDER BY modified desc) AS rn
                     FROM `{project}`.{dataset}.%%table%% 
                 ) t
-                WHERE t.modified = t.max_timestamp 
+                WHERE t.rn = 1
               """.replace('%%table%%', tbl.get_name()).replace('%%pk_id%%', self.__pk_id__)
 
     def get_table(self):
