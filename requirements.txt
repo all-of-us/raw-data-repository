@@ -121,7 +121,7 @@ zope.event==4.4           # via gevent
 zope.interface==5.1.0     # via gevent
 
 # Fix PIP version temporarily. App Engine deployment errors out on newer version of PIP.
-pip==20.2.2
+pip==19.2.3
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip
