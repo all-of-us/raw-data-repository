@@ -38,7 +38,7 @@ def post_request(worker, request, environment, response):  # pylint: disable=unu
     # Our instance is killed if it is using more than 1024 megabytes.
     # To leave enough room to handle memory intensive requests, let's restart each instance if
     # they're using more than 250 megabytes
-    memory_threshold_kilobytes = 256000  # 250 megabytes (220 x 1024)
+    memory_threshold_kilobytes = 256000  # 250 megabytes (250 x 1024)
     if memory_used_kilobytes > memory_threshold_kilobytes:
         # This is copied from Gunicorn's code for closing out a sync worker after reaching the max_requests limit
         worker.alive = False
