@@ -77,6 +77,12 @@
   "aw1f_wgs_subfolder_name": [
     "AW1F_wgs_accessioning_results"
   ],
+  "aw2_wgs_data_manifest_subfolder_name": [
+    "AW2_wgs_data_manifests"
+  ],
+  "aw2_genotyping_data_manifest_subfolder_name": [
+    "AW2_genotyping_data_manifests"
+  ],
   "aw1f_alert_recipients": [
     "test-genomic@vumc.org"
   ],

@@ -83,7 +83,7 @@ class GenomicJobController:
 
             for gc_bucket_name in self.bucket_name_list:
                 for folder in self.sub_folder_tuple:
-                    self.sub_folder_name = folder
+                    self.sub_folder_name = config.getSetting(folder)
                     self.ingester = GenomicFileIngester(job_id=self.job_id,
                                                         job_run_id=self.job_run.id,
                                                         bucket=gc_bucket_name,

@@ -222,7 +222,7 @@ class GenomicPipelineTest(BaseTestCase):
         )
         for test_file in end_to_end_test_files:
             self._create_ingestion_test_file(test_file, bucket_name,
-                                             folder=config.GENOMIC_AW2_SUBFOLDERS[1])
+                                             folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
 
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
                                                 array_participants=(1, 2),
@@ -282,7 +282,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(
                     f.filePath,
                     f'/{_FAKE_GENOMIC_CENTER_BUCKET_A}/'
-                    f'{config.GENOMIC_AW2_SUBFOLDERS[1]}/'
+                    f'{config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])}/'
                     f'RDR_AoU_GEN_TestDataManifest_11192019.csv'
                 )
 
@@ -315,7 +315,7 @@ class GenomicPipelineTest(BaseTestCase):
         )
         for test_file in end_to_end_test_files:
             self._create_ingestion_test_file(test_file, bucket_name,
-                                             folder=config.GENOMIC_AW2_SUBFOLDERS[0])
+                                             folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
 
         # run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()
@@ -349,7 +349,7 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name,
-                                         folder=config.GENOMIC_AW2_SUBFOLDERS[0])
+                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
 
         self._update_test_sample_ids()
 
@@ -605,7 +605,7 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name,
-                                         folder=config.GENOMIC_AW2_SUBFOLDERS[1])
+                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
 
         self._update_test_sample_ids()
 
@@ -637,7 +637,7 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name,
-                                         folder=config.GENOMIC_AW2_SUBFOLDERS[1])
+                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
 
         self._update_test_sample_ids()
 
@@ -728,7 +728,7 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name,
-                                         folder=config.GENOMIC_AW2_SUBFOLDERS[0])
+                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
 
         self._update_test_sample_ids()
 
@@ -1619,7 +1619,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name,
-                                         folder=config.GENOMIC_AW2_SUBFOLDERS[1])
+                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
 
         self._update_test_sample_ids()
 
@@ -1852,7 +1852,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv', bucket_name,
-                                         folder=config.GENOMIC_AW2_SUBFOLDERS[0])
+                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
 
         self._update_test_sample_ids()
 
@@ -2064,7 +2064,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name,
-                                         folder=config.GENOMIC_AW2_SUBFOLDERS[1])
+                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
 
         self._update_test_sample_ids()
 
@@ -2169,7 +2169,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
                                          bucket_name,
-                                         folder=config.GENOMIC_AW2_SUBFOLDERS[0])
+                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
 
         self._update_test_sample_ids()
 
