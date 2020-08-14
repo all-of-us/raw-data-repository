@@ -51,10 +51,14 @@ class ParticipantCountsOverTimeService(BaseDao):
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore')
                     session.execute('DROP TABLE IF EXISTS {};'.format(temp_table_name))
-
+                # generated columns can not be inserted any value, need to drop them
+                exclude_columns = ['retention_eligible_time', 'retention_eligible_status']
                 session.execute('CREATE TABLE {} LIKE participant_summary'.format(temp_table_name))
 
                 indexes_cursor = session.execute('SHOW INDEX FROM {}'.format(temp_table_name))
+                for exclude_column_name in exclude_columns:
+                    session.execute('ALTER TABLE {} DROP COLUMN  {}'.format(temp_table_name, exclude_column_name))
+
                 index_name_list = []
                 for index in indexes_cursor:
                     index_name_list.append(index[2])

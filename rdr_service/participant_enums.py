@@ -377,6 +377,15 @@ class SuspensionStatus(messages.Enum):
     NO_CONTACT = 2
 
 
+
+# DA-1576:  Retention Eligibility Metrics
+class RetentionStatus(messages.Enum):
+    """Whether a participant meets retention-eligible criteria"""
+
+    NOT_ELIGIBLE = 1
+    ELIGIBLE = 2
+
+
 class DeceasedStatus(messages.Enum):
     """Whether the participant has an approved or pending deceased report"""
 
@@ -410,6 +419,14 @@ class DeceasedReportDenialReason(messages.Enum):
     MARKED_IN_ERROR = 2
     INSUFFICIENT_INFORMATION = 3
     OTHER = 4
+
+
+# DA-1576:  Retention Eligibility Metrics
+class RetentionStatus(messages.Enum):
+    """Whether a participant meets retention-eligible criteria"""
+
+    NOT_ELIGIBLE = 1
+    ELIGIBLE = 2
 
 
 class MetricsCacheType(messages.Enum):
@@ -861,4 +878,5 @@ class WorkbenchAuditWorkspaceAccessDecision(messages.Enum):
     UNSET = 0
     DISABLE_WORKSPACE = 1
     DISABLE_WORKSPACE_AND_REVIEW_RESEARCHERS = 2
+
 
