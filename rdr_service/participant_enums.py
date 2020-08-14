@@ -377,15 +377,6 @@ class SuspensionStatus(messages.Enum):
     NO_CONTACT = 2
 
 
-
-# DA-1576:  Retention Eligibility Metrics
-class RetentionStatus(messages.Enum):
-    """Whether a participant meets retention-eligible criteria"""
-
-    NOT_ELIGIBLE = 1
-    ELIGIBLE = 2
-
-
 class DeceasedStatus(messages.Enum):
     """Whether the participant has an approved or pending deceased report"""
 
