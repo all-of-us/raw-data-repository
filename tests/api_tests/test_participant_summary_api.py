@@ -3056,6 +3056,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(ps['retentionEligibleStatus'], 'ELIGIBLE')
         self.assertEqual(ps['retentionEligibleTime'], TIME_4.isoformat())
 
+        ps = self.send_get("ParticipantSummary?retentionEligibleStatus=ELIGIBLE&_includeTotal=TRUE")
+        self.assertEqual(ps['entry'][0]['resource']['retentionEligibleStatus'], 'ELIGIBLE')
+
         self._remove_participant_retention_eligible(participant_id[1:])
         ps = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(ps['retentionEligibleStatus'], 'NOT_ELIGIBLE')
