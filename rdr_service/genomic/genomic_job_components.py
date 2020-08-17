@@ -487,11 +487,7 @@ class GenomicFileValidator:
                 "chipwellbarcode",
                 "callrate",
                 "sexconcordance",
-                "contamination",
                 "processingstatus",
-                "consentforror",
-                "withdrawnstatus",
-                "siteid",
                 "notes",
             ),
         }
