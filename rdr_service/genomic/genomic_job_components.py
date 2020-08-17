@@ -381,6 +381,13 @@ class GenomicFileIngester:
                                 row.values()))
             row_copy['file_id'] = self.file_obj.id
             sample_id = row_copy['sampleid']
+
+            # TODO: limit call rate to 10 characters for now until clarification from GCs
+            try:
+                row_copy['callrate'] = row_copy['callrate'][:10]
+            except KeyError:
+                pass
+            
             genome_type = self.file_validator.genome_type
             member = self.member_dao.get_member_from_sample_id_with_state(int(sample_id),
                                                                           genome_type,
