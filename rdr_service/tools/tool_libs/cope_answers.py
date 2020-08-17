@@ -3,21 +3,15 @@
 # Find COPE survey response counts and breakdowns for each question
 #
 
-import argparse
 import json
-import logging
-import sys
 
 from rdr_service.dao import database_factory
-from rdr_service.services.system_utils import setup_logging, setup_i18n
-from rdr_service.tools.tool_libs import GCPProcessContext
-
-_logger = logging.getLogger("rdr_logger")
+from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
 tool_cmd = "cope-answers"
-tool_desc = "create a json text file that gives total answer counts for "
+tool_desc = "create a json text file that gives total answer counts for the COPE survey of the given month"
 
 ANSWER_COUNT_SQL = """
     SELECT qc.value question_code, ac.value answer_code, COUNT(DISTINCT qr.participant_id) answer_count
@@ -36,11 +30,7 @@ ANSWER_COUNT_SQL = """
 """
 
 
-class CopeAnswersClass(object):
-    def __init__(self, args, gcp_env):
-        self.args = args
-        self.gcp_env = gcp_env
-
+class CopeAnswersClass(ToolBase):
     @staticmethod
     def _new_answer_tracker():
         return {
@@ -55,10 +45,7 @@ class CopeAnswersClass(object):
         }
 
     def run(self):
-        proxy_pid = self.gcp_env.activate_sql_proxy()
-        if not proxy_pid:
-            _logger.error("activating google sql proxy failed.")
-            return 1
+        super(CopeAnswersClass, self).run()
 
         question_totals = {}
         with database_factory.make_server_cursor_database().session() as session:
@@ -84,28 +71,9 @@ class CopeAnswersClass(object):
         return 0
 
 
-def run():
-    # Set global debug value and setup application logging.
-    setup_logging(
-        _logger, tool_cmd, "--debug" in sys.argv, "{0}.log".format(tool_cmd) if "--log-file" in sys.argv else None
-    )
-    setup_i18n()
-
-    # Setup program arguments.
-    parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
-    parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
-    parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
-    parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
+def add_additional_arguments(parser):
     parser.add_argument('--cope-month', required=True, help='month of the cope survey (ex. "2020-06" for June COPE)')
 
-    args = parser.parse_args()
 
-    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-        process = CopeAnswersClass(args, gcp_env)
-        exit_code = process.run()
-        return exit_code
-
-
-# --- Main Program Call ---
-if __name__ == "__main__":
-    sys.exit(run())
+def run():
+    cli_run(tool_cmd, tool_desc, CopeAnswersClass, add_additional_arguments)
