@@ -387,7 +387,7 @@ class GenomicFileIngester:
                 row_copy['callrate'] = row_copy['callrate'][:10]
             except KeyError:
                 pass
-            
+
             genome_type = self.file_validator.genome_type
             member = self.member_dao.get_member_from_sample_id_with_state(int(sample_id),
                                                                           genome_type,
