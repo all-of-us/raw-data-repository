@@ -957,7 +957,7 @@ class GenomicReconciler:
 
     def _get_full_filename(self, bucket_name, filename):
         files = list_blobs('/' + bucket_name)
-        filenames = [f.name for f in files if f.name.endswith(filename)]
+        filenames = [f.name for f in files if f.name.lower().endswith(filename.lower())]
         return filenames[0] if len(filenames) > 0 else 0
 
     def _get_sequence_files(self, bucket_name):
