@@ -1757,6 +1757,7 @@ class ManifestDefinitionProvider:
                         GenomicGCValidationMetrics.idatGreenPath,
                         GenomicGCValidationMetrics.idatGreenMd5Path,
                         GenomicGCValidationMetrics.vcfPath,
+                        GenomicGCValidationMetrics.vcfTbiPath,
                         GenomicGCValidationMetrics.vcfMd5Path,
                         sqlalchemy.bindparam('research_id', None),
                     ]
@@ -2005,11 +2006,12 @@ class ManifestDefinitionProvider:
                 "sex_at_birth",
                 "site_id",
                 "red_idat_path",
-                "red_idat_index_path",
+                "red_idat_md5_path",
                 "green_idat_path",
-                "green_idat_index_path",
+                "green_idat_md5_path",
                 "vcf_path",
                 "vcf_index_path",
+                "vcf_md5_path",
                 "research_id",
             )
 

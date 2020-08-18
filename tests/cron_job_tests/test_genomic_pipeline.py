@@ -2115,9 +2115,9 @@ class GenomicPipelineTest(BaseTestCase):
             "sex_at_birth",
             "site_id",
             "red_idat_path",
-            "red_idat_index_path",
+            "red_idat_md5_path",
             "green_idat_path",
-            "green_idat_index_path",
+            "green_idat_md5_path",
             "vcf_path",
             "vcf_index_path",
             "research_id"
@@ -2142,11 +2142,12 @@ class GenomicPipelineTest(BaseTestCase):
             # Test File Paths
             metric = self.metrics_dao.get(2)
             self.assertEqual(metric.idatRedPath, rows[1]['red_idat_path'])
-            self.assertEqual(metric.idatRedMd5Path, rows[1]['red_idat_index_path'])
+            self.assertEqual(metric.idatRedMd5Path, rows[1]['red_idat_md5_path'])
             self.assertEqual(metric.idatGreenPath, rows[1]['green_idat_path'])
-            self.assertEqual(metric.idatGreenMd5Path, rows[1]['green_idat_index_path'])
+            self.assertEqual(metric.idatGreenMd5Path, rows[1]['green_idat_md5_path'])
             self.assertEqual(metric.vcfPath, rows[1]['vcf_path'])
-            self.assertEqual(metric.vcfMd5Path, rows[1]['vcf_index_path'])
+            self.assertEqual(metric.vcfTbiPath, rows[1]['vcf_index_path'])
+            self.assertEqual(metric.vcfMd5Path, rows[1]['vcf_md5_path'])
 
             # Test run record is success
             run_obj = self.job_run_dao.get(5)
