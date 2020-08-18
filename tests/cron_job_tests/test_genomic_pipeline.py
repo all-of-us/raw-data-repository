@@ -2211,17 +2211,19 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the manifest file contents
         expected_aw3_columns = (
+            "biobank_id",
+            "sample_id",
             "biobankidsampleid",
             "sex_at_birth",
             "site_id",
-            "gvcf_hf_path",
-            "gvcf_hf_tbi_path",
-            "gvcf_hf_index_path",
-            "gvcf_raw_path",
-            "gvcf_raw_tbi_path",
-            "gvcf_raw_index_path",
+            "vcf_hf_path",
+            "vcf_hf_index_path",
+            # "vcf_hf_md5_path",
+            "vcf_raw_path",
+            "vcf_raw_index_path",
+            # "vcf_raw_md5_path",
             "cram_path",
-            "cram_index_path",
+            "cram_md5_path",
             "crai_path",
             "research_id"
         )
@@ -2243,14 +2245,14 @@ class GenomicPipelineTest(BaseTestCase):
 
             # Test File Paths
             metric = self.metrics_dao.get(1)
-            self.assertEqual(metric.hfVcfPath, rows[0]["gvcf_hf_path"])
-            self.assertEqual(metric.hfVcfTbiPath, rows[0]["gvcf_hf_tbi_path"])
-            self.assertEqual(metric.hfVcfMd5Path, rows[0]["gvcf_hf_index_path"])
-            self.assertEqual(metric.rawVcfPath, rows[0]["gvcf_raw_path"])
-            self.assertEqual(metric.rawVcfTbiPath, rows[0]["gvcf_raw_tbi_path"])
-            self.assertEqual(metric.rawVcfMd5Path, rows[0]["gvcf_raw_index_path"])
+            self.assertEqual(metric.hfVcfPath, rows[0]["vcf_hf_path"])
+            self.assertEqual(metric.hfVcfTbiPath, rows[0]["vcf_hf_index_path"])
+            # self.assertEqual(metric.hfVcfTbiPath, rows[0]["vcf_hf_md5_path"])
+            self.assertEqual(metric.rawVcfPath, rows[0]["vcf_raw_path"])
+            self.assertEqual(metric.rawVcfTbiPath, rows[0]["vcf_raw_index_path"])
+            # self.assertEqual(metric.rawVcfTbiPath, rows[0]["vcf_raw_md5_path"])
             self.assertEqual(metric.cramPath, rows[0]["cram_path"])
-            self.assertEqual(metric.cramMd5Path, rows[0]["cram_index_path"])
+            self.assertEqual(metric.cramMd5Path, rows[0]["cram_md5_path"])
             self.assertEqual(metric.craiPath, rows[0]["crai_path"])
 
             # Test run record is success
