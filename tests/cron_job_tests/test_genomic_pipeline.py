@@ -298,11 +298,9 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(1, record.genomicSetMemberId)
             self.assertEqual('10001', record.limsId)
             self.assertEqual('10001_R01C01', record.chipwellbarcode)
-            self.assertEqual('0.996', record.callRate)
+            self.assertEqual('0.34567890', record.callRate)
             self.assertEqual('True', record.sexConcordance)
-            self.assertEqual('0.00654', record.contamination)
             self.assertEqual('Pass', record.processingStatus)
-            self.assertEqual('JH', record.siteId)
             self.assertEqual('This sample passed', record.notes)
 
     def test_gc_metrics_ingestion_bad_files(self):
@@ -649,16 +647,16 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/10001_R01C01.vcf.gz',
             f'test_data_folder/10001_R01C01.vcf.gz.tbi',
             f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
-            f'test_data_folder/10001_R01C01_red.idat',
-            f'test_data_folder/10001_R01C01_grn.idat',
-            f'test_data_folder/10001_R01C01_red.idat.md5sum',
+            f'test_data_folder/10001_R01C01_Red.idat',
+            f'test_data_folder/10001_R01C01_Grn.idat',
+            f'test_data_folder/10001_R01C01_Red.idat.md5sum',
             f'test_data_folder/10002_R01C02.vcf.gz',
             f'test_data_folder/10002_R01C02.vcf.gz.tbi',
             f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
-            f'test_data_folder/10002_R01C02_red.idat',
-            f'test_data_folder/10002_R01C02_grn.idat',
-            f'test_data_folder/10002_R01C02_red.idat.md5sum',
-            f'test_data_folder/10002_R01C02_grn.idat.md5sum',
+            f'test_data_folder/10002_R01C02_Red.idat',
+            f'test_data_folder/10002_R01C02_Grn.idat',
+            f'test_data_folder/10002_R01C02_Red.idat.md5sum',
+            f'test_data_folder/10002_R01C02_Grn.idat.md5sum',
         )
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
@@ -706,10 +704,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Fake alert
         summary = '[Genomic System Alert] Missing AW2 Array Manifest Files'
-        description = "The following AW2 manifest file listed missing data."
-        description += f"\nManifest File: {manifest_file.fileName}"
+        description = "The following AW2 manifests are missing data files."
         description += "\nGenomic Job Run ID: 2"
-        description += "\nMissing Genotype Data: ['10001_R01C01_grn.idat.md5sum']"
+        description += f"\n\tManifest File: {manifest_file.fileName}"
+        description += "\n\tMissing Genotype Data: ['10001_R01C01_grn.idat.md5sum']"
 
         mock_alert_handler.make_genomic_alert.assert_called_with(summary, description)
 
@@ -780,10 +778,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Fake alert
         summary = '[Genomic System Alert] Missing AW2 WGS Manifest Files'
-        description = "The following AW2 manifest file listed missing data."
-        description += f"\nManifest File: {manifest_file.fileName}"
+        description = "The following AW2 manifests are missing data files."
         description += "\nGenomic Job Run ID: 2"
-        description += "\nMissing Genotype Data: ['RDR_2_1002_LocalID_InternalRevisionNumber.crai']"
+        description += f"\n\tManifest File: {manifest_file.fileName}"
+        description += "\n\tMissing Genotype Data: ['RDR_2_1002_LocalID_InternalRevisionNumber.crai']"
 
         mock_alert_handler.make_genomic_alert.assert_called_with(summary, description)
 

@@ -381,6 +381,13 @@ class GenomicFileIngester:
                                 row.values()))
             row_copy['file_id'] = self.file_obj.id
             sample_id = row_copy['sampleid']
+
+            # TODO: limit call rate to 10 characters for now until clarification from GCs
+            try:
+                row_copy['callrate'] = row_copy['callrate'][:10]
+            except KeyError:
+                pass
+
             genome_type = self.file_validator.genome_type
             member = self.member_dao.get_member_from_sample_id_with_state(int(sample_id),
                                                                           genome_type,
@@ -487,11 +494,7 @@ class GenomicFileValidator:
                 "chipwellbarcode",
                 "callrate",
                 "sexconcordance",
-                "contamination",
                 "processingstatus",
-                "consentforror",
-                "withdrawnstatus",
-                "siteid",
                 "notes",
             ),
         }
@@ -793,6 +796,8 @@ class GenomicReconciler:
         """
         metrics = self.metrics_dao.get_with_missing_gen_files()
 
+        total_missing_data = []
+
         # Iterate over metrics, searching the bucket for filenames
         for metric in metrics:
             member = self.member_dao.get(metric.genomicSetMemberId)
@@ -817,19 +822,28 @@ class GenomicReconciler:
 
             next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='gem-ready')
 
-            # Make a roc ticket for missing data files
+            # Update state for missing files
             if len(missing_data_files) > 0:
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
 
-                alert = GenomicAlertHandler()
-
-                summary = '[Genomic System Alert] Missing AW2 Array Manifest Files'
-                description = self._compile_missing_data_alert(file.fileName, missing_data_files)
-                alert.make_genomic_alert(summary, description)
+                total_missing_data.append((file.fileName, missing_data_files))
 
             # Update Job Run ID on member
             self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId')
             self.member_dao.update_member_state(member, next_state)
+
+        # Make a roc ticket for missing data files
+        if len(total_missing_data) > 0:
+            alert = GenomicAlertHandler()
+
+            summary = '[Genomic System Alert] Missing AW2 Array Manifest Files'
+            description = "The following AW2 manifests are missing data files."
+            description += f"\nGenomic Job Run ID: {self.run_id}"
+
+            for f in total_missing_data:
+
+                description += self._compile_missing_data_alert(f[0], f[1])
+            alert.make_genomic_alert(summary, description)
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -841,6 +855,8 @@ class GenomicReconciler:
 
         # TODO: Update filnames when clarified
         external_ids = "LocalID_InternalRevisionNumber"
+
+        total_missing_data = []
 
         # Iterate over metrics, searching the bucket for filenames
         for metric in metrics:
@@ -873,16 +889,23 @@ class GenomicReconciler:
             if len(missing_data_files) > 0:
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
 
-                # Make a roc ticket
-                alert = GenomicAlertHandler()
-
-                summary = '[Genomic System Alert] Missing AW2 WGS Manifest Files'
-                description = self._compile_missing_data_alert(file.fileName, missing_data_files)
-                alert.make_genomic_alert(summary, description)
+                total_missing_data.append((file.fileName, missing_data_files))
 
             # Update Member
             self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId')
             self.member_dao.update_member_state(member, next_state)
+
+        # Make a roc ticket for missing data files
+        if len(total_missing_data) > 0:
+            alert = GenomicAlertHandler()
+
+            summary = '[Genomic System Alert] Missing AW2 WGS Manifest Files'
+            description = "The following AW2 manifests are missing data files."
+            description += f"\nGenomic Job Run ID: {self.run_id}"
+
+            for f in total_missing_data:
+                description += self._compile_missing_data_alert(f[0], f[1])
+            alert.make_genomic_alert(summary, description)
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -893,10 +916,9 @@ class GenomicReconciler:
         :param _missing_data: list of files
         :return: summary, description
         """
-        description = "The following AW2 manifest file listed missing data."
-        description += f"\nManifest File: {_filename}"
-        description += f"\nGenomic Job Run ID: {self.run_id}"
-        description += f"\nMissing Genotype Data: {_missing_data}"
+
+        description = f"\n\tManifest File: {_filename}"
+        description += f"\n\tMissing Genotype Data: {_missing_data}"
 
         return description
 
@@ -961,7 +983,7 @@ class GenomicReconciler:
 
     def _get_full_filename(self, bucket_name, filename):
         files = list_blobs('/' + bucket_name)
-        filenames = [f.name for f in files if f.name.endswith(filename)]
+        filenames = [f.name for f in files if f.name.lower().endswith(filename.lower())]
         return filenames[0] if len(filenames) > 0 else 0
 
     def _get_sequence_files(self, bucket_name):
