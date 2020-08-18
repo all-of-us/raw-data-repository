@@ -39,8 +39,13 @@ def sync_clia_compliance_pdf_files():
     ptc_target_bucket = config.getSetting(config.PTC_CLIA_COMPLIANT_REPORT_BUCKET_NAME)
     ce_target_bucket = config.getSetting(config.CE_CLIA_COMPLIANT_REPORT_BUCKET_NAME)
 
-    file_list = _find_file_list(antibody_study_bucket_name, sub_folder_name=_CLIA_COMPLIANCE_SUB_FOLDER_NAME,
-                                file_suffix_name='.pdf')
+    try:
+        file_list = _find_file_list(antibody_study_bucket_name, sub_folder_name=_CLIA_COMPLIANCE_SUB_FOLDER_NAME,
+                                    file_suffix_name='.pdf')
+    except FileNotFoundError:
+        logging.info("File not found")
+        return None
+
     biobank_covid_antibody_dao = BiobankCovidAntibodySampleDao()
     with biobank_covid_antibody_dao.session() as session:
         for (file_cloud_path, filename) in file_list:

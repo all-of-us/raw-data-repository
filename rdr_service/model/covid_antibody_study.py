@@ -58,7 +58,7 @@ class QuestCovidAntibodyTestResult(Base):
 
     accession = Column("accession", String(80), nullable=False)
     resultName = Column("result_name", String(200))
-    resultValue = Column("result_value", String(200))
+    resultValue = Column("result_value", String(2000))
     ingestFileName = Column("ingest_file_name", String(80))
     __table_args__ = (UniqueConstraint("accession", "result_name"),)
 
