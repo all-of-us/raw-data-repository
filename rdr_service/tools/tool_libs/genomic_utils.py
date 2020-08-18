@@ -609,7 +609,8 @@ def run():
 
     # Create Arbitrary GenomicSetMembers for manually provided PID and sample IDs
     control_sample_parser = subparser.add_parser("manual-sample")
-    control_sample_parser.add_argument("--csv", help="csv file with manual sample ids", default=None, required=True)  # noqa
+    control_sample_parser.add_argument("--csv", help="csv file with manual sample ids",
+                                       default=None, required=True)  # noqa
     control_sample_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
     args = parser.parse_args()
