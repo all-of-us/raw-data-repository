@@ -60,7 +60,7 @@ class ResurrectClass(object):
         ).one_or_none()
 
         if participant_summary is None:
-            print('WARNING: participant summary not found')
+            _logger.warning('WARNING: participant summary not found')
         else:
             participant_summary.deceasedStatus = DeceasedStatus.UNSET
             participant_summary.deceasedAuthored = None
