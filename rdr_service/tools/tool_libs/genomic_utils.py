@@ -11,7 +11,7 @@ import datetime
 import logging
 import sys
 import os
-
+import csv
 import pytz
 
 from rdr_service import clock, config
@@ -507,10 +507,6 @@ class ManualSampleClass(GenomicManifestBase):
         """
 
         # Validate Aruguments
-        if self.args.csv is None:
-            _logger.error('Argument --csv must be provided.')
-            return 1
-
         if not os.path.exists(self.args.csv):
             _logger.error(f'File {self.args.csv} was not found.')
             return 1
@@ -521,7 +517,7 @@ class ManualSampleClass(GenomicManifestBase):
 
         # Update gsm IDs from file
         with open(self.args.csv, encoding='utf-8-sig') as f:
-            lines = f.readlines()
+            csvreader = csv.reader(f, delimiter=",")
 
             if not self.args.dryrun:
                 new_genomic_set = GenomicSet(
@@ -534,40 +530,36 @@ class ManualSampleClass(GenomicManifestBase):
                     inserted_set = session.merge(new_genomic_set)
                     session.flush()
 
-                    for line in lines:
-                        if len(line.split(',')) > 0:
-                            _pid = line.split(',')[0].strip()
-                            _bid = line.split(',')[1].strip()
-                            _sample_id = line.split(',')[2].strip()
-                            _sab = line.split(',')[3].strip()
-                            _siteId = line.split(',')[4].strip()
-                            _state = line.split(',')[5].strip()
-                            _logger.warning(f'Inserting {_pid}, {_bid}, {_sample_id}, {_sab}, {_siteId}, {_state}')
+                    for line in csvreader:
+                        _pid = line[0]
+                        _bid = line[1]
+                        _sample_id = line[2]
+                        _sab = line[3]
+                        _siteId = line[4]
+                        _state = line[5]
+                        _logger.warning(f'Inserting {_pid}, {_bid}, {_sample_id}, {_sab}, {_siteId}, {_state}')
 
-                            for _genome_type in (config.GENOME_TYPE_WGS, config.GENOME_TYPE_ARRAY):
-                                member_to_insert = GenomicSetMember(
-                                    genomicSetId=inserted_set.id,
-                                    biobankId=_bid,
-                                    sampleId=_sample_id,
-                                    collectionTubeId=_sample_id,
-                                    genomicWorkflowState=_state,
-                                    participantId=int(_pid),
-                                    genomeType=_genome_type,
-                                    sexAtBirth=_sab,
-                                    nyFlag=0,
-                                    validationStatus=GenomicSetMemberStatus.VALID,
-                                    gcSiteId=_siteId,
-                                )
+                        for _genome_type in (config.GENOME_TYPE_WGS, config.GENOME_TYPE_ARRAY):
+                            member_to_insert = GenomicSetMember(
+                                genomicSetId=inserted_set.id,
+                                biobankId=_bid,
+                                sampleId=_sample_id,
+                                collectionTubeId=_sample_id,
+                                genomicWorkflowState=_state,
+                                participantId=int(_pid),
+                                genomeType=_genome_type,
+                                sexAtBirth=_sab,
+                                nyFlag=0,
+                                validationStatus=GenomicSetMemberStatus.VALID,
+                                gcSiteId=_siteId,
+                            )
 
-                                session.merge(member_to_insert)
-
-                        else:
-                            continue
+                            session.merge(member_to_insert)
 
                     session.commit()
 
             else:
-                for line in lines:
+                for line in csvreader:
                     _logger.warning(f'Would Insert {line}')
 
         return 0
@@ -617,7 +609,7 @@ def run():
 
     # Create Arbitrary GenomicSetMembers for manually provided PID and sample IDs
     control_sample_parser = subparser.add_parser("manual-sample")
-    control_sample_parser.add_argument("--csv", help="csv file with manual sample ids", default=None)  # noqa
+    control_sample_parser.add_argument("--csv", help="csv file with manual sample ids", default=None, required=True)  # noqa
     control_sample_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
     args = parser.parse_args()
