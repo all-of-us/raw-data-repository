@@ -19,10 +19,11 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.measurements import PhysicalMeasurements, PhysicalMeasurementsStatus
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
+from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
 from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
-    SampleStatus, BiobankOrderStatus, PatientStatusFlag
+    SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag
 from rdr_service.resource.helpers import DateCollection
 
 _consent_module_question_map = {
@@ -115,6 +116,20 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         withdrawal_reason = WithdrawalReason(p.withdrawalReason if p.withdrawalReason else 0)
         suspension_status = SuspensionStatus(p.suspensionStatus)
 
+        # The cohort_2_pilot_flag field values in participant_summary were set via a one-time backfill based on a
+        # list of participant IDs provided by PTSC and archived in the participant_cohort_pilot table.  See:
+        # https://precisionmedicineinitiative.atlassian.net/browse/DA-1622
+        # TO DO:  A participant_profile table may be implemented as part of the effort to eliminate dependencies on
+        # participant_summary.  The cohort_2_pilot_flag could be queried from that new table in the future
+        #
+        # Note this query assumes participant_cohort_pilot only contains entries for the cohort 2 pilot
+        # participants for genomics and has not been used for identifying participants in more recent pilots
+        cohort_2_pilot = ro_session.query(ParticipantCohortPilot.participantCohortPilot). \
+            filter(ParticipantCohortPilot.participantId == p_id).first()
+
+        cohort_2_pilot_flag = \
+            ParticipantCohortPilotFlag.COHORT_2_PILOT if cohort_2_pilot else ParticipantCohortPilotFlag.UNSET
+
         data = {
             'participant_id': p_id,
             'biobank_id': p.biobankId,
@@ -140,7 +155,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
             'site': self._lookup_site_name(p.siteId, ro_session),
             'site_id': p.siteId,
-            'is_ghost_id': 1 if p.isGhostId is True else 0
+            'is_ghost_id': 1 if p.isGhostId is True else 0,
+            'cohort_2_pilot_flag': str(cohort_2_pilot_flag),
+            'cohort_2_pilot_flag_id': int(cohort_2_pilot_flag)
         }
 
         return data
