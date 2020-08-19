@@ -403,7 +403,7 @@ class BQView(object):
     __viewname__ = None  # type: str
     __viewdescr__ = None  # type: str
     __table__ = None  # type: BQTable
-    __pk_id__ = 'id'  # type: str
+    __pk_id__ = 'id'  # type: (str, list)
     __sql__ = None  # type: str
 
     def __init__(self):
@@ -411,6 +411,7 @@ class BQView(object):
         if not self.__sql__ and self.__table__:
             tbl = self.__table__()
             fields = tbl.get_schema().get_fields()
+            pk = ', '.join(self.__pk_id__) if isinstance(self.__pk_id__, list) else str(self.__pk_id__)
 
             self.__sql__ = """
                 SELECT {fields} 
@@ -423,7 +424,7 @@ class BQView(object):
                     FROM `{project}`.{dataset}.%%table%% 
                 ) t
                 WHERE t.rn = 1
-              """.replace('%%table%%', tbl.get_name()).replace('%%pk_id%%', self.__pk_id__)
+              """.replace('%%table%%', tbl.get_name()).replace('%%pk_id%%', pk)
 
     def get_table(self):
         return self.__table__
