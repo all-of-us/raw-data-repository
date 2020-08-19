@@ -15,7 +15,7 @@ class Site(Base):
     organizationId = Column("organization_id", Integer, ForeignKey("organization.organization_id"))
     # Deprecated; this is being replaced by organizationId.
     hpoId = Column("hpo_id", Integer, ForeignKey("hpo.hpo_id"))
-
+    siteType = Column("site_type", String(255))
     siteStatus = Column("site_status", Enum(SiteStatus))
     enrollingStatus = Column("enrolling_status", Enum(EnrollingStatus))
     digitalSchedulingStatus = Column("digital_scheduling_status", Enum(DigitalSchedulingStatus))

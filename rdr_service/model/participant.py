@@ -80,6 +80,10 @@ class ParticipantBase(object):
     def siteId(cls):
         return Column("site_id", Integer, ForeignKey("site.site_id"))
 
+    @declared_attr
+    def enrollmentSiteId(cls):
+        return Column("enrollment_site_id", Integer, ForeignKey("site.site_id"))
+
 
 class Participant(ParticipantBase, Base):
     __tablename__ = "participant"
