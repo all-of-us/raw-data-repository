@@ -827,6 +827,7 @@ def gcp_restart_instances(project, service='default'):
     :return: True if successful, else False.
     """
 
+    _logger.debug(f'Restarting instances for project {project}, service {service}')
     # First get instance ID's
     args = "instances list --format json --project {}".format(project)
     pcode, so, se = gcp_gcloud_command("app", args)
