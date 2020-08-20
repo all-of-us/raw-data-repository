@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+import pytz
 
 from rdr_service import config
 from rdr_service.api_util import HEALTHPRO, PTC
@@ -30,6 +31,10 @@ class DeceasedReportTestBase(BaseTestCase):
 
         user_info['example@example.com']['roles'] = roles
         config.override_setting(config.USER_INFO, user_info)
+
+    @staticmethod
+    def get_deceased_report_id(response):
+        return int(response['identifier'][0]['value'])
 
 
 class DeceasedReportApiTest(DeceasedReportTestBase):
@@ -75,7 +80,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
     @staticmethod
     def build_deceased_report_json(status='preliminary', date_of_death='2020-01-01',
                                    notification=DeceasedNotification.EHR, notification_other=None, user_system='system',
-                                   user_name='name', authored='2020-01-01T00:00:00+00:00', reporter_name='Jane Doe',
+                                   user_name='name', authored='2020-01-01T00:00:00Z', reporter_name='Jane Doe',
                                    reporter_relation='SPOUSE', reporter_phone=None,
                                    reporter_email=None):
         report_json = {
@@ -84,10 +89,10 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
             },
             'status': status,
             'effectiveDateTime': date_of_death,
-            'performer': {
+            'performer': [{
                 'type': user_system,
                 'reference': user_name
-            },
+            }],
             'issued': authored
         }
 
@@ -100,18 +105,18 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
 
         if not (notification == DeceasedNotification.EHR or notification == DeceasedNotification.OTHER):
             extensions = [{
-                'url': 'https://www.pmi-ops.org/association',
+                'url': 'http://hl7.org/fhir/ValueSet/relatedperson-relationshiptype',
                 'valueCode': reporter_relation
             }]
-            if reporter_phone:
-                extensions.append({
-                    'url': 'https://www.pmi-ops.org/phone-number',
-                    'valueString': reporter_phone
-                })
             if reporter_email:
                 extensions.append({
                     'url': 'https://www.pmi-ops.org/email-address',
                     'valueString': reporter_email
+                })
+            if reporter_phone:
+                extensions.append({
+                    'url': 'https://www.pmi-ops.org/phone-number',
+                    'valueString': reporter_phone
                 })
 
             report_json['extension'] = [{
@@ -125,7 +130,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         return report_json
 
     @staticmethod
-    def build_report_review_json(user_system='system', user_name='name', authored='2020-01-01T00:00:00+00:00',
+    def build_report_review_json(user_system='system', user_name='name', authored='2020-01-01T00:00:00Z',
                                  status='final', denial_reason=DeceasedReportDenialReason.MARKED_IN_ERROR,
                                  denial_reason_other='Another reason', date_of_death='2020-01-01'):
         report_json = {
@@ -134,10 +139,10 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
             },
             'status': status,
             'effectiveDateTime': date_of_death,
-            'performer': {
+            'performer': [{
                 'type': user_system,
                 'reference': user_name
-            },
+            }],
             'issued': authored
         }
 
@@ -158,6 +163,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
     def assertReportResponseMatches(self, expected, actual):
         del actual['identifier']
         del actual['subject']
+        del actual['resourceType']
         self.assertJsonResponseMatches(expected, actual, strip_tz=False)
 
     def test_creating_minimal_deceased_report(self):
@@ -167,7 +173,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
             notification=DeceasedNotification.EHR,
             user_system='https://example.com',
             user_name='me@test.com',
-            authored='2020-01-05T13:43:21+00:00'
+            authored='2020-01-05T13:43:21Z'
         )
         response = self.post_report(report_json, participant_id=self.paired_participant_with_summary.participantId)
 
@@ -175,7 +181,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
             participant_id=self.paired_participant_with_summary.participantId
         )
 
-        report_id = response['identifier']['value']
+        report_id = self.get_deceased_report_id(response)
         created_report = self.get_report_from_db(report_id)
         self.assertEqual(DeceasedReportStatus.PENDING, created_report.status)
         self.assertEqual(date(2020, 1, 2), created_report.dateOfDeath)
@@ -197,7 +203,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         )
         response = self.post_report(report_json)
 
-        report_id = response['identifier']['value']
+        report_id = self.get_deceased_report_id(response)
         created_report = self.get_report_from_db(report_id)
         self.assertEqual(DeceasedNotification.OTHER, created_report.notification)
         self.assertEqual('Another reason', created_report.notificationOther)
@@ -214,7 +220,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         )
         response = self.post_report(report_json)
 
-        report_id = response['identifier']['value']
+        report_id = self.get_deceased_report_id(response)
         created_report = self.get_report_from_db(report_id)
         self.assertEqual(DeceasedNotification.NEXT_KIN_SUPPORT, created_report.notification)
         self.assertEqual('Jane Doe', created_report.reporterName)
@@ -230,11 +236,11 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         )
         response = self.post_report(report_json)
 
-        report_id = response['identifier']['value']
+        report_id = self.get_deceased_report_id(response)
         created_report = self.get_report_from_db(report_id)
         self.assertEqual(datetime(2020, 1, 5, 13, 43, 21), created_report.authored)
 
-        self.assertEqual('2020-01-05T13:43:21+00:00', response['issued'])
+        self.assertEqual('2020-01-05T13:43:21Z', response['issued'])
 
     def test_cst_issued_timestamp(self):
         report_json = self.build_deceased_report_json(
@@ -242,11 +248,11 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         )
         response = self.post_report(report_json)
 
-        report_id = response['identifier']['value']
+        report_id = self.get_deceased_report_id(response)
         created_report = self.get_report_from_db(report_id)
         self.assertEqual(datetime(2020, 1, 5, 19, 43, 21), created_report.authored)
 
-        self.assertEqual('2020-01-05T19:43:21+00:00', response['issued'])
+        self.assertEqual('2020-01-05T19:43:21Z', response['issued'])
 
     def test_post_with_invalid_fields(self):
         # Check missing status response
@@ -278,10 +284,10 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         del report_json['performer']
         self.post_report(report_json, expected_status=400)
         report_json = self.build_deceased_report_json()
-        del report_json['performer']['type']
+        del report_json['performer'][0]['type']
         self.post_report(report_json, expected_status=400)
         report_json = self.build_deceased_report_json()
-        del report_json['performer']['reference']
+        del report_json['performer'][0]['reference']
         self.post_report(report_json, expected_status=400)
 
         # Check for missing authored date (referred to as 'issued' for FHIR compliance)
@@ -311,6 +317,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         del report_json['effectiveDateTime']
 
         response = self.post_report(report_json, participant_id=self.paired_participant_with_summary.participantId)
+        del response['effectiveDateTime']
         self.assertReportResponseMatches(report_json, response)
 
         participant_summary = self.get_participant_summary_from_db(
@@ -341,7 +348,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         report_json = self.build_deceased_report_json()
         response = self.post_report(report_json, participant_id=unpaired_participant_id)
 
-        report_id = response['identifier']['value']
+        report_id = self.get_deceased_report_id(response)
         created_report = self.get_report_from_db(report_id)
         self.assertEqual(DeceasedReportStatus.APPROVED, created_report.status)
 
@@ -371,7 +378,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
 
         review_json = self.build_report_review_json(
             status='final',
-            authored='2020-07-01T00:00:00+00:00',
+            authored='2020-07-01T00:00:00Z',
             user_system='https://example.com',
             user_name='reviewer@test.com'
         )
@@ -393,7 +400,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         participant_id = self.paired_participant_with_summary.participantId
         report_json = self.build_deceased_report_json(date_of_death='2020-01-01')
         response = self.post_report(report_json, participant_id=participant_id)
-        report_id = response['identifier']['value']
+        report_id = self.get_deceased_report_id(response)
 
         participant_summary = self.get_participant_summary_from_db(participant_id=participant_id)
         self.assertEqual(date(2020, 1, 1), participant_summary.dateOfDeath)
@@ -524,10 +531,10 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         )
 
         participant_id = participant.participantId
-        report_json = self.build_deceased_report_json(authored="2020-01-01T00:00:00+00:00")
+        report_json = self.build_deceased_report_json(authored="2020-01-01T00:00:00Z")
         response = self.post_report(report_json, participant_id=participant_id)
 
-        report_id = response['identifier']['value']
+        report_id = self.get_deceased_report_id(response)
         created_report = self.get_report_from_db(report_id)
         self.assertEqual(DeceasedReportStatus.APPROVED, created_report.status,
                          "Test is built assuming an APPROVED report would be created")
@@ -550,7 +557,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         report_json = self.build_deceased_report_json(authored=yesterday.isoformat())
         response = self.post_report(report_json, participant_id=participant_id)
 
-        report_id = response['identifier']['value']
+        report_id = self.get_deceased_report_id(response)
         created_report = self.get_report_from_db(report_id)
         self.assertEqual(DeceasedReportStatus.APPROVED, created_report.status,
                          "Test is built assuming an APPROVED report would be created")
@@ -566,32 +573,32 @@ class ParticipantDeceasedReportApiTest(DeceasedReportTestBase):
         self.data_generator.create_database_deceased_report(
             participantId=participant.participantId,
             status=DeceasedReportStatus.DENIED,
-            authored=datetime(2020, 3, 18)
+            authored=datetime(2020, 3, 18, tzinfo=pytz.utc)
         )
         self.data_generator.create_database_deceased_report(
             participantId=participant.participantId,
             status=DeceasedReportStatus.DENIED,
-            authored=datetime(2020, 2, 27)
+            authored=datetime(2020, 2, 27, tzinfo=pytz.utc)
         )
         self.data_generator.create_database_deceased_report(
             participantId=participant.participantId,
             status=DeceasedReportStatus.DENIED,
-            authored=datetime(2020, 4, 1)
+            authored=datetime(2020, 4, 1, tzinfo=pytz.utc)
         )
 
         report_list_response = self.send_get(f'Participant/{participant.participantId}/DeceasedReport')
 
         first_report = report_list_response[0]  # Most recent report
         self.assertEqual('cancelled', first_report['status'])
-        self.assertEqual('2020-04-01T00:00:00+00:00', first_report['issued'])
+        self.assertEqual('2020-04-01T00:00:00Z', first_report['issued'])
 
         second_report = report_list_response[1]
         self.assertEqual('cancelled', second_report['status'])
-        self.assertEqual('2020-03-18T00:00:00+00:00', second_report['issued'])
+        self.assertEqual('2020-03-18T00:00:00Z', second_report['issued'])
 
         third_report = report_list_response[2]
         self.assertEqual('cancelled', third_report['status'])
-        self.assertEqual('2020-02-27T00:00:00+00:00', third_report['issued'])
+        self.assertEqual('2020-02-27T00:00:00Z', third_report['issued'])
 
 
 class SearchDeceasedReportApiTest(DeceasedReportTestBase):
@@ -668,7 +675,7 @@ class SearchDeceasedReportApiTest(DeceasedReportTestBase):
             expected_id = expected_report_ids[index]
             report_json = actual_json[index]
 
-            self.assertEqual(expected_id, report_json['identifier']['value'], 'Report id mismatch')
+            self.assertEqual(int(expected_id), self.get_deceased_report_id(report_json), 'Report id mismatch')
 
     def test_searching_api_by_status(self):
         self.assertListResponseMatches([
