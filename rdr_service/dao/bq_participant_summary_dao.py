@@ -285,8 +285,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             data['modules'] = [dict(t) for t in {tuple(d.items()) for d in modules}]
             if len(consents) > 0:
                 data['consents'] = [dict(t) for t in {tuple(d.items()) for d in consents}]
-                # keep consents in order if dates need to be checked
-                data['consents'].sort(key=lambda consent_data: consent_data['consent_date'])
+                # keep consents in order if dates need to be checked, sort by 'consent_module_authored' desc.
+                data['consents'].sort(key=lambda consent_data: consent_data['consent_module_authored'], reverse=True)
 
         return data
 
@@ -545,20 +545,18 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         return data
 
-    def _calculate_enrollment_status(self, ro_summary):
+    def _calculate_enrollment_status(self, summary):
         """
         Calculate the participant's enrollment status
-        :param p_id: participant id
-        :param ro_session: Readonly DAO session object
-        :param ro_summary: summary data
-        :return: dict
+        :param summary: summary data
+        :return: dict:q
         """
         status = EnrollmentStatusV2.REGISTERED
         data = {
             'enrollment_status': str(status),
             'enrollment_status_id': int(status)
         }
-        if 'consents' not in ro_summary:
+        if 'consents' not in summary:
             return data
 
         consents = {}
@@ -566,27 +564,30 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             ehr_consent_expired = False
         study_consent_date = datetime.date.max
         enrollment_member_time = datetime.datetime.max
-        # iterate over consents
-        for consent in ro_summary['consents']:
+        # iterate over consents, sorted by 'consent_module_authored' descending.
+        for consent in summary['consents']:
             response_value = consent['consent_value']
             response_date = consent['consent_date'] or datetime.date.max
             if consent['consent'] == 'ConsentPII':
                 study_consent = True
                 study_consent_date = min(study_consent_date, response_date)
             elif consent['consent'] == EHR_CONSENT_QUESTION_CODE:
-                consents['EHRConsent'] = (response_value, response_date)
+                if not 'EHRConsent' in consents:  # We only want the most recent consent answer.
+                    consents['EHRConsent'] = (response_value, response_date)
                 had_ehr_consent = had_ehr_consent or response_value == CONSENT_PERMISSION_YES_CODE
                 consents['EHRConsentExpired'] = (consent.get('consent_expired'), response_date)
                 ehr_consent_expired = consent.get('consent_expired') == EHR_CONSENT_EXPIRED_YES
                 enrollment_member_time = min(enrollment_member_time,
                                              consent['consent_module_created'] or datetime.datetime.max)
             elif consent['consent'] == DVEHR_SHARING_QUESTION_CODE:
-                consents['DVEHRConsent'] = (response_value, response_date)
+                if not 'DVEHRConsent' in consents:  # We only want the most recent consent answer.
+                    consents['DVEHRConsent'] = (response_value, response_date)
                 had_ehr_consent = had_ehr_consent or response_value == DVEHRSHARING_CONSENT_CODE_YES
                 enrollment_member_time = min(enrollment_member_time,
                                              consent['consent_module_created'] or datetime.datetime.max)
             elif consent['consent'] == GROR_CONSENT_QUESTION_CODE:
-                consents['GRORConsent'] = (response_value, response_date)
+                if not 'GRORConsent' in consents:  # We only want the most recent consent answer.
+                    consents['GRORConsent'] = (response_value, response_date)
                 had_gror_consent = had_gror_consent or response_value == CONSENT_GROR_YES_CODE
 
         if 'EHRConsent' in consents and 'DVEHRConsent' in consents:
@@ -608,8 +609,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         # check physical measurements
         physical_measurements_date = datetime.datetime.max
-        if 'pm' in ro_summary:
-            for pm in ro_summary['pm']:
+        if 'pm' in summary:
+            for pm in summary['pm']:
                 if pm['pm_status_id'] == int(PhysicalMeasurementsStatus.COMPLETED) or \
                     (pm['pm_finalized'] and pm['pm_status_id'] != int(PhysicalMeasurementsStatus.CANCELLED)):
                     pm_complete = True
@@ -619,8 +620,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         baseline_module_count = 0
         latest_baseline_module_completion = datetime.datetime.min
         completed_all_baseline_modules = False
-        if 'modules' in ro_summary:
-            for module in ro_summary['modules']:
+        if 'modules' in summary:
+            for module in summary['modules']:
                 if module['mod_baseline_module'] == 1:
                     baseline_module_count += 1
                     latest_baseline_module_completion = \
@@ -629,10 +630,10 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         dna_sample_count = 0
         first_dna_sample_date = datetime.datetime.max
-        bb_orders = ro_summary.get('biobank_orders', list())
+        bb_orders = summary.get('biobank_orders', list())
         for order in bb_orders:
             for sample in order.get('bbo_samples', list()):
-                if sample['bbs_dna_test']:
+                if sample['bbs_dna_test'] and sample['bbs_confirmed']:
                     dna_sample_count += 1
                     first_dna_sample_date = min(first_dna_sample_date, sample['bbs_created'] or datetime.datetime.max)
 
@@ -642,8 +643,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             status = EnrollmentStatusV2.FULLY_CONSENTED
         if (status == EnrollmentStatusV2.FULLY_CONSENTED or (ehr_consent_expired and not ehr_consent)) and \
             pm_complete and \
-            (ro_summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or gror_consent) and \
-            'modules' in ro_summary and \
+            (summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or gror_consent) and \
+            'modules' in summary and \
             completed_all_baseline_modules and \
             dna_sample_count > 0:
             status = EnrollmentStatusV2.CORE_PARTICIPANT
@@ -654,7 +655,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             # and physical measurements can't be reversed
             if study_consent and completed_all_baseline_modules and dna_sample_count > 0 and pm_complete and \
                 had_ehr_consent and \
-                (ro_summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or had_gror_consent):
+                (summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or had_gror_consent):
                 # If they've had everything right at some point, go through and see if there was any time that they
                 # had them all at once
                 study_consent_date_range = DateCollection()
@@ -674,7 +675,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
                 current_ehr_response = current_dv_ehr_response = None
                 # These consent responses are expected to be in order by their authored date
-                for consent in ro_summary['consents']:
+                for consent in summary['consents']:
                     consent_question = consent['consent']
                     consent_response = consent['consent_value']
                     response_date = consent['consent_date']
@@ -706,7 +707,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                     .get_intersection(dna_date_range) \
                     .get_intersection(ehr_date_range)
 
-                if ro_summary['consent_cohort'] == BQConsentCohort.COHORT_3.name:
+                if summary['consent_cohort'] == BQConsentCohort.COHORT_3.name:
                     date_overlap = date_overlap.get_intersection(gror_date_range)
 
                 # If there's any time that they had everything at once, then they should be a Core participant

@@ -553,12 +553,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         return data
 
-    def _calculate_enrollment_status(self, ro_summary):
+    def _calculate_enrollment_status(self, summary):
         """
         Calculate the participant's enrollment status
-        :param p_id: participant id
-        :param ro_session: Readonly DAO session object
-        :param ro_summary: summary data
+        :param summary: summary data
         :return: dict
         """
         status = EnrollmentStatusV2.REGISTERED
@@ -566,7 +564,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             'enrollment_status': str(status),
             'enrollment_status_id': int(status)
         }
-        if 'consents' not in ro_summary:
+        if 'consents' not in summary:
             return data
 
         consents = {}
@@ -575,7 +573,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         study_consent_date = datetime.date.max
         enrollment_member_time = datetime.datetime.max
         # iterate over consents
-        for consent in ro_summary['consents']:
+        for consent in summary['consents']:
             response_value = consent['consent_value']
             response_date = consent['consent_date'] or datetime.date.max
             if consent['consent'] == 'ConsentPII':
@@ -616,8 +614,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         # check physical measurements
         physical_measurements_date = datetime.datetime.max
-        if 'pm' in ro_summary:
-            for pm in ro_summary['pm']:
+        if 'pm' in summary:
+            for pm in summary['pm']:
                 if pm['status_id'] == int(PhysicalMeasurementsStatus.COMPLETED) or \
                         (pm['finalized'] and pm['status_id'] != int(PhysicalMeasurementsStatus.CANCELLED)):
                     pm_complete = True
@@ -627,8 +625,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         baseline_module_count = 0
         latest_baseline_module_completion = datetime.datetime.min
         completed_all_baseline_modules = False
-        if 'modules' in ro_summary:
-            for module in ro_summary['modules']:
+        if 'modules' in summary:
+            for module in summary['modules']:
                 if module['baseline_module'] == 1:
                     baseline_module_count += 1
                     latest_baseline_module_completion = \
@@ -637,10 +635,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         dna_sample_count = 0
         first_dna_sample_date = datetime.datetime.max
-        bb_orders = ro_summary.get('biobank_orders', list())
+        bb_orders = summary.get('biobank_orders', list())
         for order in bb_orders:
             for sample in order.get('samples', list()):
-                if sample['dna_test']:
+                if sample['dna_test'] and sample['confirmed']:
                     dna_sample_count += 1
                     first_dna_sample_date = min(first_dna_sample_date, sample['created'] or datetime.datetime.max)
 
@@ -650,8 +648,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             status = EnrollmentStatusV2.FULLY_CONSENTED
         if (status == EnrollmentStatusV2.FULLY_CONSENTED or (ehr_consent_expired and not ehr_consent)) and\
                 pm_complete and\
-                (ro_summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or gror_consent) and\
-                'modules' in ro_summary and\
+                (summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or gror_consent) and\
+                'modules' in summary and\
                 completed_all_baseline_modules and \
                 dna_sample_count > 0:
             status = EnrollmentStatusV2.CORE_PARTICIPANT
@@ -662,7 +660,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # and physical measurements can't be reversed
             if study_consent and completed_all_baseline_modules and dna_sample_count > 0 and pm_complete and\
                     had_ehr_consent and\
-                    (ro_summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or had_gror_consent):
+                    (summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or had_gror_consent):
                 # If they've had everything right at some point, go through and see if there was any time that they
                 # had them all at once
                 study_consent_date_range = DateCollection()
@@ -682,7 +680,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
                 current_ehr_response = current_dv_ehr_response = None
                 # These consent responses are expected to be in order by their authored date
-                for consent in ro_summary['consents']:
+                for consent in summary['consents']:
                     consent_question = consent['consent']
                     consent_response = consent['consent_value']
                     response_date = consent['consent_date']
@@ -714,7 +712,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     .get_intersection(dna_date_range)\
                     .get_intersection(ehr_date_range)
 
-                if ro_summary['consent_cohort'] == BQConsentCohort.COHORT_3.name:
+                if summary['consent_cohort'] == BQConsentCohort.COHORT_3.name:
                     date_overlap = date_overlap.get_intersection(gror_date_range)
 
                 # If there's any time that they had everything at once, then they should be a Core participant
