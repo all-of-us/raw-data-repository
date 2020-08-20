@@ -257,6 +257,9 @@ class BQParticipantSummarySchema(BQSchema):
 
     test_participant = BQField('test_participant', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
+    cohort_2_pilot_flag = BQField('cohort_2_pilot_flag', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    cohort_2_pilot_flag_id = BQField('cohort_2_pilot_flag_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
 
 class BQParticipantSummary(BQTable):
     """ Participant Summary BigQuery Table """

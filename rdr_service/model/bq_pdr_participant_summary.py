@@ -123,6 +123,13 @@ class BQPDRParticipantSummarySchema(BQSchema):
 
     test_participant = BQField('test_participant', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
+    suspension_status = BQField('suspension_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    suspension_status_id = BQField('suspension_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    suspension_time = BQField('suspension_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+
+    cohort_2_pilot_flag = BQField('cohort_2_pilot_flag', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    cohort_2_pilot_flag_id = BQField('cohort_2_pilot_flag_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
 
 class BQPDRParticipantSummary(BQTable):
     """ PDR Participant Summary BigQuery Table """
@@ -144,9 +151,9 @@ class BQPDRParticipantSummaryView(BQView):
         SELECT
           %%FIELD_NAMES%%
         FROM (
-            SELECT *, 
+            SELECT *,
                 ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
-              FROM `{project}`.{dataset}.pdr_participant 
+              FROM `{project}`.{dataset}.pdr_participant
           ) ps
           WHERE ps.rn = 1 and ps.withdrawal_status_id = 1 and ps.test_participant != 1
       """.replace('%%FIELD_NAMES%%', BQPDRParticipantSummarySchema.get_sql_field_names(
@@ -177,7 +184,7 @@ class BQPDRPMView(BQView):
     __sql__ = """
     SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
       FROM (
-        SELECT *, 
+        SELECT *,
             ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
           FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(pm) as nt
