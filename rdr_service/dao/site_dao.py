@@ -40,6 +40,7 @@ class _FhirSite(FhirMixin, BackboneElement):
         FhirProperty("phone_number", str),
         FhirProperty("admin_emails", str, is_list=True),
         FhirProperty("link", str),
+        FhirProperty("siteType", str),
     ]
 
 
@@ -95,6 +96,7 @@ class SiteDao(CacheAllDao):
         resource.phone_number = model.phoneNumber
         resource.admin_emails = [email.strip() for email in model.adminEmails.split(",")] if model.adminEmails else []
         resource.link = model.link
+        resource.siteType = model.siteType
         return resource
 
     def _do_update(self, session, obj, existing_obj):

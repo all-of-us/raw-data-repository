@@ -65,6 +65,7 @@ class ParticipantApiTest(BaseTestCase):
             "participantId",
             "externalId",
             "site",
+            "enrollmentSite",
             "organization",
             "awardee",
             "hpoId",
@@ -214,6 +215,26 @@ class ParticipantApiTest(BaseTestCase):
         self.assertEqual(update_4["site"], "hpo-site-clinic-phoenix")
         self.assertEqual(update_4["organization"], "AZ_TUCSON_BANNER_HEALTH")
         self.assertEqual(update_4["awardee"], "AZ_TUCSON")
+
+    def test_enrollment_site(self):
+        participant = self.send_post("Participant", self.participant)
+        participant["providerLink"] = [self.provider_link_2]
+        participant_id = participant["participantId"]
+        path = "Participant/%s" % participant_id
+
+        update_1 = self.send_put(path, participant, headers={"If-Match": 'W/"1"'})
+        participant["site"] = "hpo-site-bannerphoenix"
+        update_2 = self.send_put(path, participant, headers={"If-Match": 'W/"2"'})
+        self.assertEqual(update_1["site"], "UNSET")
+        self.assertEqual(update_1["enrollmentSite"], "UNSET")
+        self.assertEqual(update_2["site"], "hpo-site-bannerphoenix")
+        self.assertEqual(update_2["enrollmentSite"], "hpo-site-bannerphoenix")
+
+        participant["site"] = "hpo-site-clinic-phoenix"
+        update_3 = self.send_put(path, participant, headers={"If-Match": 'W/"3"'})
+        self.assertEqual(update_3["site"], "hpo-site-clinic-phoenix")
+        # enrollmentSite will not change
+        self.assertEqual(update_2["enrollmentSite"], "hpo-site-bannerphoenix")
 
     def test_repairing_after_biobank_order(self):
         participant = self.send_post("Participant", self.participant)
