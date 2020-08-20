@@ -265,7 +265,7 @@ def run_external_program(args, cwd=None, env=None, shell=False, debug=False):
     if debug is True and "--debug" in sys.argv and "--debug" not in args:
         args.append("--debug")
 
-    _logger.debug("external: {0}".format(os.path.basename(args[0])))
+    _logger.debug("external: {0} {1}".format(os.path.basename(args[0]), ' '.join(args[1:])))
 
     p = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, shell=shell)
     stdoutdata, stderrdata = p.communicate()
