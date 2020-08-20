@@ -4,25 +4,27 @@
 #
 
 import argparse
-import math
-import os
-
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
 import logging
+import math
+import os
 import sys
 
 from werkzeug.exceptions import NotFound
 
-from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
+from rdr_service.dao.bq_participant_summary_dao import rebuild_bq_participant
+from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
+from rdr_service.dao.resource_dao import ResourceDataDao
+from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
+    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay
+from rdr_service.model.participant import Participant
+from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
+from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
 from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
-from rdr_service.dao.bq_participant_summary_dao import rebuild_bq_participant
-from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
-from rdr_service.dao.resource_dao import ResourceDataDao
-from rdr_service.model.participant import Participant
-
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -51,6 +53,30 @@ class ResourceClass(object):
         try:
             rebuild_bq_participant(pid, project_id=self.gcp_env.project)
             rebuild_participant_summary_resource(pid)
+
+            mod_bqgen = BQPDRQuestionnaireResponseGenerator()
+
+            # Generate participant questionnaire module response data
+            modules = (
+                BQPDRConsentPII,
+                BQPDRTheBasics,
+                BQPDRLifestyle,
+                BQPDROverallHealth,
+                BQPDREHRConsentPII,
+                BQPDRDVEHRSharing,
+                BQPDRCOPEMay
+            )
+            for module in modules:
+                mod = module()
+                table, mod_bqrs = mod_bqgen.make_bqrecord(pid, mod.get_schema().get_module_name())
+                if not table:
+                    continue
+
+                w_dao = BigQuerySyncDao()
+                with w_dao.session() as w_session:
+                    for mod_bqr in mod_bqrs:
+                        mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
+                                                w_dao=w_dao, w_session=w_session)
         except NotFound:
             return 1
         return 0

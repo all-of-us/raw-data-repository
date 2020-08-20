@@ -7,7 +7,6 @@ from sqlalchemy.sql import text
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.model.bq_base import BQTable, BQSchema, BQView, BQFieldModeEnum, BQFieldTypeEnum
 
-
 class _BQModuleSchema(BQSchema):
     """
     Helper for dynamically generating a BQSchema for a specific questionnaire
@@ -196,7 +195,7 @@ class BQPDRConsentPIIView(BQView):
     __viewname__ = 'v_pdr_mod_consentpii'
     __viewdescr__ = 'PDR ConsentPII Module View'
     __table__ = BQPDRConsentPII
-    __pk_id__ = 'participant_id'
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
 
@@ -265,7 +264,7 @@ class BQPDRTheBasicsView(BQView):
     __viewname__ = 'v_pdr_mod_thebasics'
     __viewdescr__ = 'PDR TheBasics Module View'
     __table__ = BQPDRTheBasics
-    __pk_id__ = 'participant_id'
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
 
@@ -294,7 +293,7 @@ class BQPDRLifestyleView(BQView):
     __viewname__ = 'v_pdr_mod_lifestyle'
     __viewdescr__ = 'PDR Lifestyle Module View'
     __table__ = BQPDRLifestyle
-    __pk_id__ = 'participant_id'
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
 
@@ -325,7 +324,7 @@ class BQPDROverallHealthView(BQView):
     __viewname__ = 'v_pdr_mod_overallhealth'
     __viewdescr__ = 'PDR OverallHealth Module View'
     __table__ = BQPDROverallHealth
-    __pk_id__ = 'participant_id'
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
 
@@ -358,7 +357,7 @@ class BQPDREHRConsentPIIView(BQView):
     __viewname__ = 'v_pdr_mod_ehrconsentpii'
     __viewdescr__ = 'PDR EHRConsentPII Module View'
     __table__ = BQPDREHRConsentPII
-    __pk_id__ = 'participant_id'
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
 
@@ -387,7 +386,7 @@ class BQPDRDVEHRSharingView(BQView):
     __viewname__ = 'v_pdr_mod_dvehrsharing'
     __viewdescr__ = 'PDR DVEHRSharing Module View'
     __table__ = BQPDRDVEHRSharing
-    __pk_id__ = 'participant_id'
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
 
@@ -432,7 +431,7 @@ class BQPDRFamilyHistoryView(BQView):
     __viewname__ = 'v_pdr_mod_familyhistory'
     __viewdescr__ = 'PDR FamilyHistory Module View'
     __table__ = BQPDRFamilyHistory
-    __pk_id__ = 'participant_id'
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
 
@@ -462,7 +461,7 @@ class BQPDRHealthcareAccessView(BQView):
     __viewname__ = 'v_pdr_mod_healthcareaccess'
     __viewdescr__ = 'PDR HealthcareAccess Module View'
     __table__ = BQPDRHealthcareAccess
-    __pk_id__ = 'participant_id'
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
 
@@ -505,7 +504,7 @@ class BQPDRPersonalMedicalHistoryView(BQView):
     __viewname__ = 'v_pdr_mod_personalmedicalhistory'
     __viewdescr__ = 'PDR PersonalMedicalHistory Module View'
     __table__ = BQPDRPersonalMedicalHistory
-    __pk_id__ = 'participant_id'
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
 
@@ -532,5 +531,5 @@ class BQPDRCOPEMayView(BQView):
     __viewname__ = 'v_pdr_mod_cope_may'
     __viewdescr__ = 'PDR COPE May Module View'
     __table__ = BQPDRCOPEMay
-    __pk_id__ = 'participant_id'
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
