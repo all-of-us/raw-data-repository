@@ -124,7 +124,7 @@ def get_oauth_id():
                 return data.get('email')
             else:
                 message = str(data.get("error_description", response.content))
-                logging.info(f"Oauth failure: {message}")
+                logging.info(f"Oauth failure: {message} (status: {response.status_code})")
 
         sleep(0.25)
         logging.info('Retrying authentication call to Google after failure.')
