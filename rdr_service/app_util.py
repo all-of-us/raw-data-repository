@@ -119,6 +119,8 @@ def get_oauth_id():
             response = get_token_info_response(token)
             data = response.json()
             if response.status_code == 200:
+                token_expiry_seconds = data.get('expires_in')
+                logging.info(f'Token expiring in {token_expiry_seconds} seconds')
                 return data.get('email')
             else:
                 message = str(data.get("error_description", response.content))
