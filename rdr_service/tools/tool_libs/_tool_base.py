@@ -2,6 +2,7 @@ import argparse
 import logging
 import sys
 
+from rdr_service.dao import database_factory
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
 
@@ -18,6 +19,10 @@ class ToolBase(object):
         if not proxy_pid:
             logger.error("activating google sql proxy failed.")
             return 1
+
+    @staticmethod
+    def get_session():
+        return database_factory.make_server_cursor_database().session()
 
 
 def cli_run(tool_cmd, tool_desc, tool_class, parser_hook=None):
@@ -40,4 +45,5 @@ def cli_run(tool_cmd, tool_desc, tool_class, parser_hook=None):
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
         process = tool_class(args, gcp_env)
         exit_code = process.run()
+
         return exit_code

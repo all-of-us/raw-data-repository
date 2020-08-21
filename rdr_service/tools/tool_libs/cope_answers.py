@@ -5,7 +5,6 @@
 
 import json
 
-from rdr_service.dao import database_factory
 from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
 
 # Tool_cmd and tool_desc name are required.
@@ -48,7 +47,7 @@ class CopeAnswersClass(ToolBase):
         super(CopeAnswersClass, self).run()
 
         question_totals = {}
-        with database_factory.make_server_cursor_database().session() as session:
+        with self.get_session() as session:
             answer_counts = session.execute(ANSWER_COUNT_SQL, params={'cope_month': self.args.cope_month})
             for count in answer_counts:
                 # Get the running totals for the question and answer
