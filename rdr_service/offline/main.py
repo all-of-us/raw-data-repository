@@ -265,6 +265,17 @@ def genomic_gc_manifest_workflow():
         logging.info("skipping the scheduled run.")
         return '{"success": "true"}'
     genomic_pipeline.genomic_centers_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_aw1f_failures_workflow():
+    """Temporarily running this manually for E2E Testing"""
+    now = datetime.utcnow()
+    if now.day == 0o1 and now.month == 0o1:
+        logging.info("skipping the scheduled run.")
+        return '{"success": "true"}'
     genomic_pipeline.genomic_centers_aw1f_manifest_workflow()
     genomic_pipeline.genomic_centers_accessioning_failures_workflow()
     return '{"success": "true"}'
@@ -519,6 +530,11 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicGCManifestWorkflow",
         endpoint="genomic_gc_manifest_workflow",
         view_func=genomic_gc_manifest_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicFailuresWorkflow",
+        endpoint="genomic_aw1f_failures_workflow",
+        view_func=genomic_aw1f_failures_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicDataManifestWorkflow",
