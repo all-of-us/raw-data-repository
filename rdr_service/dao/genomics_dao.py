@@ -1,4 +1,6 @@
 import collections
+
+import pytz
 import sqlalchemy
 import logging
 
@@ -956,7 +958,7 @@ class GenomicOutreachDao(BaseDao):
 
         client_json = {
             "participant_report_statuses": report_statuses,
-            "timestamp": result['date']
+            "timestamp": result['date'].replace(tzinfo=pytz.UTC)
         }
         return client_json
 

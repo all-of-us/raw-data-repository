@@ -1,4 +1,6 @@
 import datetime
+
+import pytz
 from dateutil import parser
 
 from tests.helpers.unittest_base import BaseTestCase
@@ -207,7 +209,7 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
                     "report_status": "pending_delete"
                 }
             ],
-            "timestamp": fake_now.replace(microsecond=0).isoformat()
+            "timestamp": fake_now.replace(microsecond=0, tzinfo=pytz.UTC).isoformat()
         }
 
         self.assertEqual(expected_response, resp)
@@ -240,7 +242,7 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
                     "report_status": "ready"
                 }
             ],
-            "timestamp": fake_now.replace(microsecond=0).isoformat()
+            "timestamp": fake_now.replace(microsecond=0, tzinfo=pytz.UTC).isoformat()
         }
 
         self.assertEqual(expected_response, resp)
@@ -266,7 +268,7 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
                     "report_status": "ready"
                 }
             ],
-            "timestamp": fake_now.replace(microsecond=0).isoformat()
+            "timestamp": fake_now.replace(microsecond=0, tzinfo=pytz.UTC).isoformat()
         }
 
         self.assertEqual(expected_response, resp)
