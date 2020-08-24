@@ -622,6 +622,7 @@ LEFT JOIN rdr.code co_b
 WHERE
     pa.withdrawal_status != 2
     AND pa.is_ghost_id IS NOT TRUE
+    AND pa.participant_origin <> 'careevolution'
     AND hp.name != 'TEST'
     AND
     (
