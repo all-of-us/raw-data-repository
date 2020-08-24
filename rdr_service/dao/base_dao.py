@@ -298,7 +298,12 @@ class BaseDao(object):
             elif property_type == PropertyType.DATETIME:
                 return api_util.parse_date(value)
             elif property_type == PropertyType.ENUM:
-                return prop.property.columns[0].type.enum_type(value)
+                enum_cls = prop.property.columns[0].type.enum_type
+                try:
+                    return enum_cls(value)
+                except (KeyError, TypeError):
+                    raise BadRequest(f'Invalid {prop} parameter: "{value}". '
+                                     f'must be one of {list(enum_cls.to_dict().keys())}')
             elif property_type == PropertyType.INTEGER:
                 return int(value)
             else:

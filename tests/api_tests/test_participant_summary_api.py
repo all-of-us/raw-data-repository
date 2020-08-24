@@ -3064,6 +3064,12 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(ps['retentionEligibleStatus'], 'NOT_ELIGIBLE')
         self.assertEqual(ps.get('retentionEligibleTime'), None)
 
+    def test_enum_status_parameters(self):
+        # Unrecognized enum values should give descriptive error messages rather than 500s
+        self.send_get("ParticipantSummary?enrollmentStatus=MEMBER|FULL_PARTICIPANT", expected_status=400)
+        self.send_get("ParticipantSummary?withdrawalStatus=test", expected_status=400)
+        self.send_get("ParticipantSummary?suspensionStatus=test", expected_status=400)
+
     def _remove_participant_retention_eligible(self, participant_id):
         ps_dao = ParticipantSummaryDao()
         summary = ps_dao.get(participant_id)
