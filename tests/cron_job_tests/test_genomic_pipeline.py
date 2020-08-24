@@ -2113,9 +2113,9 @@ class GenomicPipelineTest(BaseTestCase):
             "sex_at_birth",
             "site_id",
             "red_idat_path",
-            "red_idat_index_path",
+            "red_idat_md5_path",
             "green_idat_path",
-            "green_idat_index_path",
+            "green_idat_md5_path",
             "vcf_path",
             "vcf_index_path",
             "research_id"
@@ -2140,11 +2140,12 @@ class GenomicPipelineTest(BaseTestCase):
             # Test File Paths
             metric = self.metrics_dao.get(2)
             self.assertEqual(metric.idatRedPath, rows[1]['red_idat_path'])
-            self.assertEqual(metric.idatRedMd5Path, rows[1]['red_idat_index_path'])
+            self.assertEqual(metric.idatRedMd5Path, rows[1]['red_idat_md5_path'])
             self.assertEqual(metric.idatGreenPath, rows[1]['green_idat_path'])
-            self.assertEqual(metric.idatGreenMd5Path, rows[1]['green_idat_index_path'])
+            self.assertEqual(metric.idatGreenMd5Path, rows[1]['green_idat_md5_path'])
             self.assertEqual(metric.vcfPath, rows[1]['vcf_path'])
-            self.assertEqual(metric.vcfMd5Path, rows[1]['vcf_index_path'])
+            self.assertEqual(metric.vcfTbiPath, rows[1]['vcf_index_path'])
+            self.assertEqual(metric.vcfMd5Path, rows[1]['vcf_md5_path'])
 
             # Test run record is success
             run_obj = self.job_run_dao.get(5)
@@ -2208,17 +2209,19 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the manifest file contents
         expected_aw3_columns = (
+            "biobank_id",
+            "sample_id",
             "biobankidsampleid",
             "sex_at_birth",
             "site_id",
-            "gvcf_hf_path",
-            "gvcf_hf_tbi_path",
-            "gvcf_hf_index_path",
-            "gvcf_raw_path",
-            "gvcf_raw_tbi_path",
-            "gvcf_raw_index_path",
+            "vcf_hf_path",
+            "vcf_hf_index_path",
+            # "vcf_hf_md5_path",
+            "vcf_raw_path",
+            "vcf_raw_index_path",
+            # "vcf_raw_md5_path",
             "cram_path",
-            "cram_index_path",
+            "cram_md5_path",
             "crai_path",
             "research_id"
         )
@@ -2240,14 +2243,14 @@ class GenomicPipelineTest(BaseTestCase):
 
             # Test File Paths
             metric = self.metrics_dao.get(1)
-            self.assertEqual(metric.hfVcfPath, rows[0]["gvcf_hf_path"])
-            self.assertEqual(metric.hfVcfTbiPath, rows[0]["gvcf_hf_tbi_path"])
-            self.assertEqual(metric.hfVcfMd5Path, rows[0]["gvcf_hf_index_path"])
-            self.assertEqual(metric.rawVcfPath, rows[0]["gvcf_raw_path"])
-            self.assertEqual(metric.rawVcfTbiPath, rows[0]["gvcf_raw_tbi_path"])
-            self.assertEqual(metric.rawVcfMd5Path, rows[0]["gvcf_raw_index_path"])
+            self.assertEqual(metric.hfVcfPath, rows[0]["vcf_hf_path"])
+            self.assertEqual(metric.hfVcfTbiPath, rows[0]["vcf_hf_index_path"])
+            # self.assertEqual(metric.hfVcfTbiPath, rows[0]["vcf_hf_md5_path"])
+            self.assertEqual(metric.rawVcfPath, rows[0]["vcf_raw_path"])
+            self.assertEqual(metric.rawVcfTbiPath, rows[0]["vcf_raw_index_path"])
+            # self.assertEqual(metric.rawVcfTbiPath, rows[0]["vcf_raw_md5_path"])
             self.assertEqual(metric.cramPath, rows[0]["cram_path"])
-            self.assertEqual(metric.cramMd5Path, rows[0]["cram_index_path"])
+            self.assertEqual(metric.cramMd5Path, rows[0]["cram_md5_path"])
             self.assertEqual(metric.craiPath, rows[0]["crai_path"])
 
             # Test run record is success

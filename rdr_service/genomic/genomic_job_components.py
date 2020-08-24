@@ -1779,6 +1779,7 @@ class ManifestDefinitionProvider:
                         GenomicGCValidationMetrics.idatGreenPath,
                         GenomicGCValidationMetrics.idatGreenMd5Path,
                         GenomicGCValidationMetrics.vcfPath,
+                        GenomicGCValidationMetrics.vcfTbiPath,
                         GenomicGCValidationMetrics.vcfMd5Path,
                         sqlalchemy.bindparam('research_id', None),
                     ]
@@ -1811,15 +1812,17 @@ class ManifestDefinitionProvider:
             query_sql = (
                 sqlalchemy.select(
                     [
+                        GenomicSetMember.biobankId,
+                        GenomicSetMember.sampleId,
                         (GenomicSetMember.biobankId + '_' + GenomicSetMember.sampleId),
                         GenomicSetMember.sexAtBirth,
                         GenomicSetMember.gcSiteId,
                         GenomicGCValidationMetrics.hfVcfPath,
                         GenomicGCValidationMetrics.hfVcfTbiPath,
-                        GenomicGCValidationMetrics.hfVcfMd5Path,
+                        #GenomicGCValidationMetrics.hfVcfMd5Path,
                         GenomicGCValidationMetrics.rawVcfPath,
                         GenomicGCValidationMetrics.rawVcfTbiPath,
-                        GenomicGCValidationMetrics.rawVcfMd5Path,
+                        #GenomicGCValidationMetrics.rawVcfMd5Path,
                         GenomicGCValidationMetrics.cramPath,
                         GenomicGCValidationMetrics.cramMd5Path,
                         GenomicGCValidationMetrics.craiPath,
@@ -2027,27 +2030,28 @@ class ManifestDefinitionProvider:
                 "sex_at_birth",
                 "site_id",
                 "red_idat_path",
-                "red_idat_index_path",
+                "red_idat_md5_path",
                 "green_idat_path",
-                "green_idat_index_path",
+                "green_idat_md5_path",
                 "vcf_path",
                 "vcf_index_path",
+                "vcf_md5_path",
                 "research_id",
             )
 
         elif manifest_type == GenomicManifestTypes.AW3_WGS:
             columns = (
+                "biobank_id",
+                "sample_id",
                 "biobankidsampleid",
                 "sex_at_birth",
                 "site_id",
-                "gvcf_hf_path",
-                "gvcf_hf_tbi_path",
-                "gvcf_hf_index_path",
-                "gvcf_raw_path",
-                "gvcf_raw_tbi_path",
-                "gvcf_raw_index_path",
+                "vcf_hf_path",
+                "vcf_hf_index_path",
+                "vcf_raw_path",
+                "vcf_raw_index_path",
                 "cram_path",
-                "cram_index_path",
+                "cram_md5_path",
                 "crai_path",
                 "research_id"
             )
