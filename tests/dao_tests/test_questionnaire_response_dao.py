@@ -723,6 +723,23 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         participant_summary = self.participant_summary_dao.get(1)
         self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeJune)
 
+    def test_july_cope_survey_updated_in_august(self):
+        # The July survey didn't close with July,
+        # any questionnaires that have been updated after the start of August should still count for July
+
+        self.insert_codes()
+        p = Participant(participantId=1, biobankId=2)
+        self.participant_dao.insert(p)
+
+        self._setup_participant()
+        self._create_cope_questionnaire()
+        self._bump_questionnaire_version(2, updated_time=datetime.datetime(2020, 8, 28))  # update for July survey
+
+        self._submit_questionnaire_response(self.cope_consent_yes, questionnaire_version=2, consent_question_id=8)
+
+        participant_summary = self.participant_summary_dao.get(1)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeJuly)
+
     def test_cope_june_survey_consent_deferred(self):
         self.insert_codes()
         p = Participant(participantId=1, biobankId=2)
