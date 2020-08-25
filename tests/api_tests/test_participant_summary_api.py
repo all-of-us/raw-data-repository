@@ -3081,6 +3081,12 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertIn('Authored=lt2020', next_url)
         self.assertIn('Authored=gt2019', next_url)
 
+    def test_enum_status_parameters(self):
+        # Unrecognized enum values should give descriptive error messages rather than 500s
+        self.send_get("ParticipantSummary?enrollmentStatus=MEMBER|FULL_PARTICIPANT", expected_status=400)
+        self.send_get("ParticipantSummary?withdrawalStatus=test", expected_status=400)
+        self.send_get("ParticipantSummary?suspensionStatus=test", expected_status=400)
+
     def _remove_participant_retention_eligible(self, participant_id):
         ps_dao = ParticipantSummaryDao()
         summary = ps_dao.get(participant_id)
