@@ -2102,7 +2102,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test member was updated
         member = self.member_dao.get(2)
 
-        self.assertEqual(5, member.arrAW3ManifestJobRunID)
+        self.assertEqual(5, member.aw3ManifestJobRunID)
         self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
 
         # Test the manifest file contents
@@ -2203,7 +2203,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test member was updated
         member = self.member_dao.get(2)
 
-        self.assertEqual(5, member.wgsAW3ManifestJobRunID)
+        self.assertEqual(5, member.aw3ManifestJobRunID)
         self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
 
         # Test the manifest file contents
@@ -2254,3 +2254,9 @@ class GenomicPipelineTest(BaseTestCase):
             run_obj = self.job_run_dao.get(5)
 
             self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_aw4_array_manifest_ingest(self):
+        pass
+
+    def test_aw4_wgs_manifest_ingest(self):
+        pass

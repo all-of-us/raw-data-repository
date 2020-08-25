@@ -216,6 +216,9 @@ class GenomicFileIngester:
             if self.job_id == GenomicJob.W2_INGEST:
                 return self._ingest_cvl_w2_manifest(data_to_ingest)
 
+            if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
+                return self._ingest_aw4_manifest(data_to_ingest)
+
         else:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
@@ -331,6 +334,29 @@ class GenomicFileIngester:
                     logging.warning(f'Invalid sample ID: {sample_id}')
                     continue
                 member.gemPass = row['success']
+
+                member.gemA2ManifestJobRunId = self.job_run_id
+
+                self.member_dao.update(member)
+
+            return GenomicSubProcessResult.SUCCESS
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
+    def _ingest_aw4_manifest(self, file_data):
+        """
+        Processes the AW4 manifest file data
+        :param file_data:
+        :return:
+        """
+        try:
+            for row in file_data['rows']:
+                sample_id = row['sample_id']
+                member = self.member_dao.get_member_from_aw3_sample(sample_id,
+                                                                    GENOME_TYPE_ARRAY)
+                if member is None:
+                    logging.warning(f'Invalid sample ID: {sample_id}')
+                    continue
 
                 member.gemA2ManifestJobRunId = self.job_run_id
 
@@ -1738,7 +1764,7 @@ class ManifestDefinitionProvider:
 
         # DRC to Broad AW3 Array Manifest
         self.MANIFEST_DEFINITIONS[GenomicManifestTypes.AW3_ARRAY] = self.ManifestDef(
-            job_run_field='arrAW3ManifestJobRunID',
+            job_run_field='aw3ManifestJobRunID',
             source_data=self._get_source_data_query(GenomicManifestTypes.AW3_ARRAY),
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{GENOMIC_AW3_ARRAY_SUBFOLDER}/AoU_DRCV_GEN_{now_formatted}.csv',
@@ -1748,7 +1774,7 @@ class ManifestDefinitionProvider:
 
         # DRC to Broad AW3 WGS Manifest
         self.MANIFEST_DEFINITIONS[GenomicManifestTypes.AW3_WGS] = self.ManifestDef(
-            job_run_field='wgsAW3ManifestJobRunID',
+            job_run_field='aw3ManifestJobRunID',
             source_data=self._get_source_data_query(GenomicManifestTypes.AW3_WGS),
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
@@ -1802,7 +1828,7 @@ class ManifestDefinitionProvider:
                     (GenomicGCValidationMetrics.idatGreenMd5Received == 1) &
                     (GenomicGCValidationMetrics.vcfReceived == 1) &
                     (GenomicGCValidationMetrics.vcfMd5Received == 1) &
-                    (GenomicSetMember.arrAW3ManifestJobRunID == None)
+                    (GenomicSetMember.aw3ManifestJobRunID == None)
                 )
             )
 
@@ -1840,7 +1866,7 @@ class ManifestDefinitionProvider:
                     (GenomicSetMember.genomeType == GENOME_TYPE_WGS) &
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                     (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
-                    (GenomicSetMember.arrAW3ManifestJobRunID == None) &
+                    (GenomicSetMember.aw3ManifestJobRunID == None) &
                     (GenomicGCValidationMetrics.hfVcfReceived == 1) &
                     (GenomicGCValidationMetrics.hfVcfTbiReceived == 1) &
                     (GenomicGCValidationMetrics.hfVcfMd5Received == 1) &

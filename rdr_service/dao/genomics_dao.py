@@ -150,8 +150,8 @@ class GenomicSetMemberDao(UpdatableDao):
                                     'reconcileGCManifestJobRunId',
                                     'gemA3ManifestJobRunId',
                                     'cvlW3ManifestJobRunID',
-                                    'arrAW3ManifestJobRunID',
-                                    'wgsAW3ManifestJobRunID',)
+                                    'aw3ManifestJobRunID',
+                                    'aw4ManifestJobRunID',)
 
     def get_id(self, obj):
         return obj.id
@@ -363,6 +363,24 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                 GenomicSetMember.genomicWorkflowState == state,
             ).first()
+        return member
+
+    def get_member_from_aw3_sample(self, sample_id, genome_type):
+        """
+        Retrieves a genomic set member record matching the sample_id
+        The sample_id is supplied in AW1 manifest, not biobank_stored_sample_id
+        Needs a genome type and ResearchQCState
+        :param genome_type: aou_wgs, aou_array, aou_cvl
+        :param sample_id:
+        :return: a GenomicSetMember object
+        """
+        with self.session() as session:
+            member = session.query(GenomicSetMember).filter(
+                GenomicSetMember.sampleId == sample_id,
+                GenomicSetMember.genomeType == genome_type,
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                #GenomicSetMember.genomicWorkflowState == state,
+            ).one_or_none()
         return member
 
     def get_member_from_collection_tube(self, tube_id, genome_type):
