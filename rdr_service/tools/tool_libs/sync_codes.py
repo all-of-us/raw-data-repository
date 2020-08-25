@@ -1,6 +1,7 @@
 import requests
 from sqlalchemy.orm.session import Session
 
+from rdr_service.clock import CLOCK
 from rdr_service.model.code import Code, CodeType
 from rdr_service.tools.tool_libs._tool_base import cli_run, logger, ToolBase
 from rdr_service.tools.tool_libs.app_engine_manager import AppConfigClass
@@ -44,7 +45,8 @@ class SyncCodesClass(ToolBase):
             shortValue=value[:50],
             display=display,
             system=CODE_SYSTEM,
-            mapped=True
+            mapped=True,
+            created=CLOCK.now()
         )
         session.add(new_code)
         return new_code
@@ -69,12 +71,12 @@ class SyncCodesClass(ToolBase):
 
     @staticmethod
     def retrieve_data_dictionary(api_key):
-        response = requests.post('https://redcap.pmi-ops.org/api/', json={
+        response = requests.post('https://redcap.pmi-ops.org/api/', data={
             'token': api_key,
             'content': 'metadata',
             'format': 'json',
             'returnFormat': 'json'
-        }, headers={'User-Agent': 'bot'})
+        })
         if response.status_code != 200:
             logger.error(f'ERROR: Received status code {response.status_code} from API')
 
