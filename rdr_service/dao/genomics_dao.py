@@ -958,7 +958,7 @@ class GenomicOutreachDao(BaseDao):
 
         client_json = {
             "participant_report_statuses": report_statuses,
-            "timestamp": result['date'].replace(tzinfo=pytz.UTC)
+            "timestamp": pytz.utc.localize(result['date'])
         }
         return client_json
 
