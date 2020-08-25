@@ -1,5 +1,6 @@
 import datetime
 import http.client
+from mock import patch
 import threading
 import unittest
 from urllib.parse import urlencode
@@ -3063,6 +3064,22 @@ class ParticipantSummaryApiTest(BaseTestCase):
         ps = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(ps['retentionEligibleStatus'], 'NOT_ELIGIBLE')
         self.assertEqual(ps.get('retentionEligibleTime'), None)
+
+    @patch('rdr_service.api.base_api.DEFAULT_MAX_RESULTS', 1)
+    def test_parameter_pagination(self):
+        # Duplicated parameters should appear in the next link when paging results
+
+        # Force a paged response
+        self.data_generator.create_database_participant_summary(consentForStudyEnrollmentAuthored='2019-04-01')
+        self.data_generator.create_database_participant_summary(consentForStudyEnrollmentAuthored='2019-04-01')
+
+        response = self.send_get("ParticipantSummary?"
+                                 "consentForStudyEnrollmentAuthored=lt2020-01-01T00:00:00"
+                                 "&consentForStudyEnrollmentAuthored=gt2019-01-01T00:00:00")
+
+        next_url = response['link'][0]['url']
+        self.assertIn('Authored=lt2020', next_url)
+        self.assertIn('Authored=gt2019', next_url)
 
     def test_enum_status_parameters(self):
         # Unrecognized enum values should give descriptive error messages rather than 500s
