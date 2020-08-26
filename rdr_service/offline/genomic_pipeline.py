@@ -162,6 +162,24 @@ def aw3_wgs_manifest_workflow():
         controller.generate_manifest(GenomicManifestTypes.AW3_WGS, _genome_type=config.GENOME_TYPE_WGS)
 
 
+def aw4_array_manifest_workflow():
+    """
+    Entrypoint for AW4 Array Workflow
+    """
+    with GenomicJobController(GenomicJob.AW4_ARRAY_WORKFLOW,
+                              bucket_name=config.DRC_BROAD_BUCKET_NAME) as controller:
+        controller.run_aw4_workflow()
+
+
+def aw4_wgs_manifest_workflow():
+    """
+    Entrypoint for AW4 WGS Workflow
+    """
+    with GenomicJobController(GenomicJob.AW4_WGS_WORKFLOW,
+                              bucket_name=config.DRC_BROAD_BUCKET_NAME) as controller:
+        controller.run_aw4_workflow()
+
+
 def gem_a1_manifest_workflow():
     """
     Entrypoint for GEM A1 Workflow

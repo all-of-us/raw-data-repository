@@ -216,6 +216,9 @@ class GenomicFileIngester:
             if self.job_id == GenomicJob.W2_INGEST:
                 return self._ingest_cvl_w2_manifest(data_to_ingest)
 
+            if self.job_id in (GenomicJob.AW4_ARRAY_WORKFLOW, GenomicJob.AW4_WGS_WORKFLOW):
+                return self._ingest_aw4_manifest(data_to_ingest)
+
         else:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
@@ -347,6 +350,32 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
+    def _ingest_aw4_manifest(self, file_data):
+        """
+        Processes the AW4 manifest file data
+        :param file_data:
+        :return:
+        """
+        try:
+            for row in file_data['rows']:
+                sample_id = row['sample_id']
+                genome_type = GENOME_TYPE_ARRAY if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW else GENOME_TYPE_WGS
+
+                member = self.member_dao.get_member_from_aw3_sample(sample_id,
+                                                                    genome_type)
+                if member is None:
+                    logging.warning(f'Invalid sample ID: {sample_id}')
+                    continue
+
+                member.aw4ManifestJobRunID = self.job_run_id
+
+                self.member_dao.update(member)
+
+            return GenomicSubProcessResult.SUCCESS
+
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
     def _retrieve_data_from_path(self, path):
         """
         Retrieves the last genomic data file from a bucket
@@ -459,7 +488,6 @@ class GenomicFileIngester:
         return self.member_dao.get_control_sample(sample_id)
 
 
-
 class GenomicFileValidator:
     """
     This class validates the Genomic Centers files
@@ -556,6 +584,37 @@ class GenomicFileValidator:
             "secondaryvalidation",
             "datesubmitted",
             "testname",
+        )
+
+        self.AW4_ARRAY_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "sexatbirth",
+            "siteid",
+            "redidatpath",
+            "redidatmd5path",
+            "greenidatpath",
+            "greenidatmd5path",
+            "vcfpath",
+            "vcfindexpath",
+            "researchid"
+        )
+
+        self.AW4_WGS_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "sexatbirth",
+            "siteid",
+            "vcfhfpath",
+            "vcfhfmd5path",
+            "vcfhfindexpath",
+            "vcfrawpath",
+            "vcfrawmd5path",
+            "vcfrawindexpath",
+            "crampath",
+            "crammd5path",
+            "craipath",
+            "researchid"
         )
 
     def validate_ingestion_file(self, filename, data_to_validate):
@@ -658,6 +717,24 @@ class GenomicFileValidator:
                 filename_components[2] == 'a2'
             )
 
+        def aw4_arr_manifest_name_rule(fn):
+            """DRC Broad AW4 Array manifest name rule: i.e. AoU_DRCB_GEN_2020-07-11-00-00-00.csv"""
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
+            return (
+                filename_components[0] == 'aou' and
+                filename_components[1] == 'drcb' and
+                filename_components[2] == 'gen'
+            )
+
+        def aw4_wgs_manifest_name_rule(fn):
+            """DRC Broad AW4 WGS manifest name rule: i.e. AoU_DRCB_SEQ_2020-07-11-00-00-00.csv"""
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
+            return (
+                filename_components[0] == 'aou' and
+                filename_components[1] == 'drcb' and
+                filename_components[2] == 'seq'
+            )
+
         name_rules = {
             GenomicJob.BB_RETURN_MANIFEST: bb_result_name_rule,
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
@@ -665,6 +742,8 @@ class GenomicFileValidator:
             GenomicJob.AW1F_MANIFEST: aw1f_manifest_name_rule,
             GenomicJob.GEM_A2_MANIFEST: gem_a2_manifest_name_rule,
             GenomicJob.W2_INGEST: cvl_w2_manifest_name_rule,
+            GenomicJob.AW4_ARRAY_WORKFLOW: aw4_arr_manifest_name_rule,
+            GenomicJob.AW4_WGS_WORKFLOW: aw4_wgs_manifest_name_rule,
         }
 
         return name_rules[self.job_id](filename)
@@ -707,6 +786,12 @@ class GenomicFileValidator:
 
             if self.job_id == GenomicJob.W2_INGEST:
                 return self.CVL_W2_SCHEMA
+
+            if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
+                return self.AW4_ARRAY_SCHEMA
+
+            if self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
+                return self.AW4_WGS_SCHEMA
 
         except (IndexError, KeyError):
             return GenomicSubProcessResult.INVALID_FILE_NAME
@@ -1744,7 +1829,7 @@ class ManifestDefinitionProvider:
 
         # DRC to Broad AW3 Array Manifest
         self.MANIFEST_DEFINITIONS[GenomicManifestTypes.AW3_ARRAY] = self.ManifestDef(
-            job_run_field='arrAW3ManifestJobRunID',
+            job_run_field='aw3ManifestJobRunID',
             source_data=self._get_source_data_query(GenomicManifestTypes.AW3_ARRAY),
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{GENOMIC_AW3_ARRAY_SUBFOLDER}/AoU_DRCV_GEN_{now_formatted}.csv',
@@ -1754,7 +1839,7 @@ class ManifestDefinitionProvider:
 
         # DRC to Broad AW3 WGS Manifest
         self.MANIFEST_DEFINITIONS[GenomicManifestTypes.AW3_WGS] = self.ManifestDef(
-            job_run_field='wgsAW3ManifestJobRunID',
+            job_run_field='aw3ManifestJobRunID',
             source_data=self._get_source_data_query(GenomicManifestTypes.AW3_WGS),
             destination_bucket=f'{self.bucket_name}',
             output_filename=f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
@@ -1809,7 +1894,7 @@ class ManifestDefinitionProvider:
                     (GenomicGCValidationMetrics.idatGreenMd5Received == 1) &
                     (GenomicGCValidationMetrics.vcfReceived == 1) &
                     (GenomicGCValidationMetrics.vcfMd5Received == 1) &
-                    (GenomicSetMember.arrAW3ManifestJobRunID == None)
+                    (GenomicSetMember.aw3ManifestJobRunID == None)
                 )
             )
 
@@ -1849,7 +1934,7 @@ class ManifestDefinitionProvider:
                     (GenomicSetMember.genomeType == GENOME_TYPE_WGS) &
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                     (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
-                    (GenomicSetMember.arrAW3ManifestJobRunID == None) &
+                    (GenomicSetMember.aw3ManifestJobRunID == None) &
                     (GenomicGCValidationMetrics.hfVcfReceived == 1) &
                     (GenomicGCValidationMetrics.hfVcfTbiReceived == 1) &
                     (GenomicGCValidationMetrics.hfVcfMd5Received == 1) &

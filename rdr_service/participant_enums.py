@@ -607,6 +607,8 @@ class GenomicJob(messages.Enum):
     C1_PARTICIPANT_WORKFLOW = 19
     AW3_ARRAY_WORKFLOW = 20
     AW3_WGS_WORKFLOW = 21
+    AW4_ARRAY_WORKFLOW = 22
+    AW4_WGS_WORKFLOW = 23
 
 
 class GenomicWorkflowState(messages.Enum):

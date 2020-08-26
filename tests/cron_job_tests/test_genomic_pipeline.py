@@ -439,6 +439,7 @@ class GenomicPipelineTest(BaseTestCase):
         cvl_w1_manifest_job_id=None,
         genomic_workflow_state=None,
         genome_center=None,
+        aw3_job_id=None,
     ):
         genomic_set_member = GenomicSetMember()
         genomic_set_member.genomicSetId = genomic_set_id
@@ -461,6 +462,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.cvlW1ManifestJobRunId = cvl_w1_manifest_job_id
         genomic_set_member.genomicWorkflowState = genomic_workflow_state
         genomic_set_member.gcSiteId = genome_center
+        genomic_set_member.aw3ManifestJobRunID = aw3_job_id
 
         member_dao = GenomicSetMemberDao()
         member_dao.insert(genomic_set_member)
@@ -545,6 +547,7 @@ class GenomicPipelineTest(BaseTestCase):
                 cvl_w1_manifest_job_id=kwargs.get('cvl_w1_run_id'),
                 genomic_workflow_state=kwargs.get('genomic_workflow_state'),
                 genome_center=kwargs.get('genome_center'),
+                aw3_job_id=kwargs.get('aw3_job_id'),
             )
 
     def _update_site_states(self):
@@ -2105,7 +2108,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test member was updated
         member = self.member_dao.get(2)
 
-        self.assertEqual(5, member.arrAW3ManifestJobRunID)
+        self.assertEqual(5, member.aw3ManifestJobRunID)
         self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
 
         # Test the manifest file contents
@@ -2207,7 +2210,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test member was updated
         member = self.member_dao.get(2)
 
-        self.assertEqual(5, member.wgsAW3ManifestJobRunID)
+        self.assertEqual(5, member.aw3ManifestJobRunID)
         self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
 
         # Test the manifest file contents
@@ -2260,3 +2263,86 @@ class GenomicPipelineTest(BaseTestCase):
             run_obj = self.job_run_dao.get(5)
 
             self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_aw4_array_manifest_ingest(self):
+        # Create AW3 array manifest job run: id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW3_ARRAY_WORKFLOW,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+        # Create genomic set members
+        self._create_fake_datasets_for_gc_tests(2, arr_override=True,
+                                                array_participants=range(1, 3),
+                                                aw3_job_id=1,
+                                                genomic_workflow_state=GenomicWorkflowState.A1)
+
+        # simulates the AW1 (sample_ids come from Biobank)
+        self._update_test_sample_ids()
+
+        # Set up test A2 manifest
+        bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
+        sub_folder = config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[0])
+
+        self._create_ingestion_test_file('AoU_DRCB_GEN_2020-07-11-00-00-00.csv',
+                                         bucket_name, folder=sub_folder,
+                                         include_timestamp=False)
+        # Run Workflow
+        genomic_pipeline.aw4_array_manifest_workflow()  # run_id 2
+
+        # Test AW4 manifest ID updated field
+        members = self.member_dao.get_all()
+        for member in members:
+            if member.id in (1, 2):
+                self.assertEqual(2, member.aw4ManifestJobRunID)
+
+        # Test Files Processed
+        file_record = self.file_processed_dao.get(1)
+        self.assertEqual(2, file_record.runId)
+        self.assertEqual(f'/{bucket_name}/{sub_folder}/AoU_DRCB_GEN_2020-07-11-00-00-00.csv',
+                         file_record.filePath)
+        self.assertEqual('AoU_DRCB_GEN_2020-07-11-00-00-00.csv', file_record.fileName)
+
+        # Test the job result
+        run_obj = self.job_run_dao.get(2)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_aw4_wgs_manifest_ingest(self):
+        # Create AW3 WGS manifest job run: id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW3_WGS_WORKFLOW,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+        # Create genomic set members
+        self._create_fake_datasets_for_gc_tests(2, arr_override=False,
+                                                aw3_job_id=1,
+                                                genomic_workflow_state=GenomicWorkflowState.A1)
+
+        # simulates the AW1 (sample_ids come from Biobank)
+        self._update_test_sample_ids()
+
+        # Set up test A2 manifest
+        bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
+        sub_folder = config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[1])
+
+        self._create_ingestion_test_file('AoU_DRCB_SEQ_2020-07-11-00-00-00.csv',
+                                         bucket_name, folder=sub_folder,
+                                         include_timestamp=False)
+        # Run Workflow
+        genomic_pipeline.aw4_wgs_manifest_workflow()  # run_id 2
+
+        # Test AW4 manifest ID updated field
+        members = self.member_dao.get_all()
+        for member in members:
+            if member.id in (1, 2):
+                self.assertEqual(2, member.aw4ManifestJobRunID)
+
+        # Test Files Processed
+        file_record = self.file_processed_dao.get(1)
+        self.assertEqual(2, file_record.runId)
+        self.assertEqual(f'/{bucket_name}/{sub_folder}/AoU_DRCB_SEQ_2020-07-11-00-00-00.csv',
+                         file_record.filePath)
+        self.assertEqual('AoU_DRCB_SEQ_2020-07-11-00-00-00.csv', file_record.fileName)
+
+        # Test the job result
+        run_obj = self.job_run_dao.get(2)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
