@@ -19,6 +19,7 @@ class DeceasedReportApi(DeceasedReportApiMixin, BaseApi):
         search_kwargs = {key: value for key, value in request.args.items()}
 
         if participant_id is not None:
+            participant_id = from_client_participant_id(participant_id)
             found_reports = self.dao.load_reports(participant_id=participant_id, **search_kwargs)
         else:
             # Only HEALTHPRO should be able to pull reports for multiple participants
