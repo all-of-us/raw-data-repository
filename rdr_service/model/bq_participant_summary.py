@@ -148,8 +148,8 @@ class BQBiobankOrderSchema(BQSchema):
     bbo_finalized_site = BQField('bbo_finalized_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     bbo_finalized_site_id = BQField('bbo_finalized_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     bbo_samples = BQRecordField('bbo_samples', schema=BQBiobankSampleSchema)
-    bbo_tests_ordered = BQRecordField('bbo_tests_ordered', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-    bbo_tests_stored = BQRecordField('bbo_tests_stored', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    bbo_tests_ordered = BQField('bbo_tests_ordered', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    bbo_tests_stored = BQField('bbo_tests_stored', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQPatientStatusSchema(BQSchema):
