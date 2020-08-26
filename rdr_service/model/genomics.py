@@ -153,8 +153,8 @@ class GenomicSetMember(Base):
                                    nullable=True)
 
     aw3ManifestJobRunID = Column('aw3_manifest_job_run_id',
-                                   Integer, ForeignKey("genomic_job_run.id"),
-                                   nullable=True)
+                                 Integer, ForeignKey("genomic_job_run.id"),
+                                 nullable=True)
 
     aw4ManifestJobRunID = Column('aw4_manifest_job_run_id',
                                  Integer, ForeignKey("genomic_job_run.id"),

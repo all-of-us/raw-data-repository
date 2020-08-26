@@ -83,6 +83,12 @@
   "aw2_genotyping_data_manifest_subfolder_name": [
     "AW2_genotyping_data_manifests"
   ],
+  "aw4_wgs_subfolder_name": [
+    "AW4_wgs_manifest"
+  ],
+  "aw4_array_subfolder_name": [
+    "AW4_array_manifest"
+  ],
   "aw1f_alert_recipients": [
     "test-genomic@vumc.org"
   ],

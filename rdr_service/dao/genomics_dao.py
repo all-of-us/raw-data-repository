@@ -379,7 +379,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember.sampleId == sample_id,
                 GenomicSetMember.genomeType == genome_type,
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-                #GenomicSetMember.genomicWorkflowState == state,
+                GenomicSetMember.aw3ManifestJobRunID != None,
             ).one_or_none()
         return member
 
