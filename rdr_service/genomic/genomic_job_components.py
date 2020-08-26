@@ -275,9 +275,16 @@ class GenomicFileIngester:
                 member = self.member_dao.get_member_from_collection_tube(collection_tube_id, genome_type)
 
                 if member is None:
+                    # Fix for invalid values
+                    try:
+                        parent_sample_id = int(row_copy['parentsampleid'])
+
+                    except ValueError:
+                        parent_sample_id = 0
+
                     # Check if Programmatic control
-                    if self._check_if_control_sample(row_copy['parentsampleid']) is not None:
-                        logging.warning(f'Control sample found: {row_copy["parentsampleid"]}')
+                    if self._check_if_control_sample(parent_sample_id) is not None:
+                        logging.warning(f'Control sample found: {parent_sample_id}')
                         # TODO: Ignoring control samples for now
                         # RDR may need to do something with them in the future
 
