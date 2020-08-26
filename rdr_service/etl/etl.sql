@@ -608,7 +608,7 @@ JOIN rdr.hpo hp
 JOIN rdr.questionnaire_response qr
     ON  qr.participant_id = pa.participant_id
 JOIN rdr.questionnaire_concept qc
-    ON qr.questionnaire_id = qc.questionnaire_id
+    ON qr.questionnaire_id = qc.questionnaire_id AND qr.questionnaire_version = qc.questionnaire_version
 JOIN rdr.questionnaire_response_answer qra
     ON  qra.questionnaire_response_id = qr.questionnaire_response_id
 JOIN rdr.questionnaire_question qq
@@ -622,6 +622,7 @@ LEFT JOIN rdr.code co_b
 WHERE
     pa.withdrawal_status != 2
     AND pa.is_ghost_id IS NOT TRUE
+    AND pa.participant_origin <> 'careevolution'
     AND hp.name != 'TEST'
     AND
     (

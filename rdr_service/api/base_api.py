@@ -44,7 +44,11 @@ def log_api_request(log: RequestsLog = None, model_obj=None):
             # We don't want to use request.json or request.get_json here.
             log.resource = json.loads(request.data)
         except ValueError:
-            log.resource = request.data
+            # Serialization failed
+            # so to store the request body in our JSON column we need to make it valid JSON
+            request_contents_string = request.data.decode('utf-8')
+            log.resource = json.dumps(request_contents_string)  # JSON escape the string
+
     parts = request.url.split('/')
     try:
         log.version = int(parts[4][1:]) if len(parts) > 4 else 0
@@ -253,7 +257,7 @@ class BaseApi(Resource):
             query_params = request.args.copy()
             query_params["_token"] = results.pagination_token
 
-            next_url = main.api.url_for(self.__class__, _external=True, **query_params)
+            next_url = main.api.url_for(self.__class__, _external=True, **query_params.to_dict(flat=False))
             bundle_dict["link"] = [{"relation": "next", "url": next_url}]
         entries = []
         for item in results.items:

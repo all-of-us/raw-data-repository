@@ -200,7 +200,8 @@ class ParticipantDao(UpdatableDao):
             obj.suspensionTime = obj.lastModified if obj.suspensionStatus == SuspensionStatus.NO_CONTACT else None
             need_new_summary = True
         update_pairing = True
-
+        if existing_obj.enrollmentSiteId:
+            obj.enrollmentSiteId = existing_obj.enrollmentSiteId
         if obj.siteId is None and obj.organizationId is None and obj.hpoId is None and obj.providerLink == "null":
             # Prevent unpairing if /PUT is sent with no pairing levels.
             update_pairing = False
@@ -353,6 +354,7 @@ class ParticipantDao(UpdatableDao):
             "awardee": model.hpoId,
             "organization": model.organizationId,
             "siteId": model.siteId,
+            "enrollmentSiteId": model.enrollmentSiteId,
             "biobankId": to_client_biobank_id(model.biobankId),
             "lastModified": model.lastModified.isoformat(),
             "signUpTime": model.signUpTime.isoformat(),
@@ -368,6 +370,7 @@ class ParticipantDao(UpdatableDao):
         format_json_hpo(client_json, self.hpo_dao, "hpoId"),
         format_json_org(client_json, self.organization_dao, "organization"),
         format_json_site(client_json, self.site_dao, "site"),
+        format_json_site(client_json, self.site_dao, "enrollmentSite"),
         format_json_enum(client_json, "withdrawalStatus")
         format_json_enum(client_json, "withdrawalReason")
         format_json_enum(client_json, "suspensionStatus")
@@ -376,6 +379,8 @@ class ParticipantDao(UpdatableDao):
         client_json["awardee"] = client_json["hpoId"]
         if "siteId" in client_json:
             del client_json["siteId"]
+        if "enrollmentSiteId" in client_json:
+            del client_json["enrollmentSiteId"]
         return client_json
 
     def from_client_json(self, resource_json, id_=None, expected_version=None, client_id=None):
@@ -404,6 +409,7 @@ class ParticipantDao(UpdatableDao):
             organizationId=get_organization_id_from_external_id(resource_json, self.organization_dao),
             hpoId=get_awardee_id_from_name(resource_json, self.hpo_dao),
             siteId=get_site_id_from_google_group(resource_json, self.site_dao),
+            enrollmentSiteId=get_site_id_from_google_group(resource_json, self.site_dao),
         )
 
     def add_missing_hpo_from_site(self, session, participant_id, site_id):
