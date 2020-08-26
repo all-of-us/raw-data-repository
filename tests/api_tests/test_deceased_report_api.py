@@ -586,7 +586,7 @@ class ParticipantDeceasedReportApiTest(DeceasedReportTestBase):
             authored=datetime(2020, 4, 1, tzinfo=pytz.utc)
         )
 
-        report_list_response = self.send_get(f'Participant/{participant.participantId}/DeceasedReport')
+        report_list_response = self.send_get(f'Participant/P{participant.participantId}/DeceasedReport')
 
         first_report = report_list_response[0]  # Most recent report
         self.assertEqual('cancelled', first_report['status'])
