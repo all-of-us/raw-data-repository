@@ -1,7 +1,7 @@
 """add_genomic_set_member columns_for_aw3_aw4
 
 Revision ID: 2c3a71f9fc04
-Revises: df7c40b6a209
+Revises: c069abb92cc0
 Create Date: 2020-08-25 08:57:17.987756
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import mysql
 
 # revision identifiers, used by Alembic.
 revision = '2c3a71f9fc04'
-down_revision = 'df7c40b6a209'
+down_revision = 'c069abb92cc0'
 branch_labels = None
 depends_on = None
 
