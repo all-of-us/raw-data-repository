@@ -526,7 +526,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             if order['bbo_tests_stored'] == 0 or order['bbo_tests_ordered'] == order['bbo_tests_stored']:
                 continue
             # Fill in any missing ordered sample test records.
-            if order['bbo_tests_ordered'] > order['bbo_tests_stored'] and len(order['bbo_samples']) < order['bbo_tests_ordered']:
+            if order['bbo_tests_ordered'] > order['bbo_tests_stored'] and \
+                        len(order['bbo_samples']) < order['bbo_tests_ordered']:
                 cursor = ro_session.execute(_biobank_ordered_samples_sql, {'order_id': order['bbo_biobank_order_id']})
                 results = [r for r in cursor]
                 existing_tests = [sample['bbs_test'] for sample in order['bbo_samples']]
