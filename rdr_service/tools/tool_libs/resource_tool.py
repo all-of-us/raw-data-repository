@@ -76,7 +76,7 @@ class ResourceClass(object):
                 with w_dao.session() as w_session:
                     for mod_bqr in mod_bqrs:
                         mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
-                                                w_dao=w_dao, w_session=w_session)
+                                                w_dao=w_dao, w_session=w_session, project_id=self.gcp_env.project)
         except NotFound:
             return 1
         return 0
