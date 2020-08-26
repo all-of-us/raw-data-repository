@@ -173,7 +173,7 @@ def aw4_array_manifest_workflow():
 
 def aw4_wgs_manifest_workflow():
     """
-    Entrypoint for AW4 Array Workflow
+    Entrypoint for AW4 WGS Workflow
     """
     with GenomicJobController(GenomicJob.AW4_WGS_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME) as controller:

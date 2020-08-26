@@ -721,7 +721,7 @@ class GenomicFileValidator:
             )
 
         def aw4_wgs_manifest_name_rule(fn):
-            """DRC Broad AW4 Array manifest name rule: i.e. AoU_DRCB_GEN_2020-07-11-00-00-00.csv"""
+            """DRC Broad AW4 WGS manifest name rule: i.e. AoU_DRCB_SEQ_2020-07-11-00-00-00.csv"""
             filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
                 filename_components[0] == 'aou' and

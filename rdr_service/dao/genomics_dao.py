@@ -369,7 +369,7 @@ class GenomicSetMemberDao(UpdatableDao):
         """
         Retrieves a genomic set member record matching the sample_id
         The sample_id is supplied in AW1 manifest, not biobank_stored_sample_id
-        Needs a genome type and ResearchQCState
+        Needs a genome type.
         :param genome_type: aou_wgs, aou_array, aou_cvl
         :param sample_id:
         :return: a GenomicSetMember object

@@ -2301,7 +2301,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_aw4_wgs_manifest_ingest(self):
-        # Create AW3 array manifest job run: id = 1
+        # Create AW3 WGS manifest job run: id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW3_WGS_WORKFLOW,
                                               startTime=clock.CLOCK.now(),
                                               runStatus=GenomicSubProcessStatus.COMPLETED,
