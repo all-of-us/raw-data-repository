@@ -222,7 +222,8 @@ class GenomicPipelineTest(BaseTestCase):
         )
         for test_file in end_to_end_test_files:
             self._create_ingestion_test_file(test_file, bucket_name,
-                                             folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
+                                             folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]),
+                                             include_sub_num=True)
 
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
                                                 array_participants=(1, 2),
@@ -277,13 +278,13 @@ class GenomicPipelineTest(BaseTestCase):
             else:
                 self.assertEqual(
                     f.fileName,
-                    'RDR_AoU_GEN_TestDataManifest_11192019.csv'
+                    'RDR_AoU_GEN_TestDataManifest_11192019_1.csv'
                 )
                 self.assertEqual(
                     f.filePath,
                     f'/{_FAKE_GENOMIC_CENTER_BUCKET_A}/'
                     f'{config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])}/'
-                    f'RDR_AoU_GEN_TestDataManifest_11192019.csv'
+                    f'RDR_AoU_GEN_TestDataManifest_11192019_1.csv'
                 )
 
             self.assertEqual(f.fileStatus,
@@ -382,12 +383,14 @@ class GenomicPipelineTest(BaseTestCase):
                                     test_data_filename,
                                     bucket_name,
                                     folder=None,
-                                    include_timestamp=True):
+                                    include_timestamp=True,
+                                    include_sub_num=False,):
         test_data_file = test_data.open_genomic_set_file(test_data_filename)
 
-        input_filename = '{}{}.csv'.format(
+        input_filename = '{}{}{}.csv'.format(
             test_data_filename.replace('.csv', ''),
-            '_11192019' if include_timestamp else ''
+            '_11192019' if include_timestamp else '',
+            '_1' if include_sub_num else ''
         )
 
         self._write_cloud_csv(input_filename,

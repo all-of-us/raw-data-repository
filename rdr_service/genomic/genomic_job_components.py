@@ -597,7 +597,6 @@ class GenomicFileValidator:
             """GC metrics file name rule"""
             filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
-                len(filename_components) == 5 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] in self.GC_METRICS_SCHEMAS.keys()
