@@ -20,6 +20,8 @@ from tests.helpers.unittest_base import BaseTestCase, QuestionnaireTestMixin
 class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
     TIME_1 = datetime(2018, 9, 20, 5, 49, 11)
     TIME_2 = datetime(2018, 9, 24, 14, 21, 1)
+    TIME_3 = datetime(2018, 9, 25, 12, 25, 30)
+
 
     site = None
     hpo = None
@@ -251,7 +253,7 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
 
     def _set_up_participant_data(self, fake_time=None, skip_ehr=False):
         # set up questionnaires to hit the calculate_max_core_sample_time in participant summary
-        with clock.FakeClock(fake_time or self.TIME_2):
+        with clock.FakeClock(fake_time or self.TIME_1):
             self.send_consent(self.participant_id)
             if not skip_ehr:
                 self._submit_ehrconsent(self.participant_id)
@@ -259,7 +261,7 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
             self._submit_thebasics(self.participant_id)
             self._submit_overall_health(self.participant_id)
 
-            self.pm_json = json.dumps(load_measurement_json(self.participant_id, self.TIME_1.isoformat()))
+            self.pm_json = json.dumps(load_measurement_json(self.participant_id, self.TIME_2.isoformat()))
             self.pm = PhysicalMeasurementsDao().insert(self._make_physical_measurements())
 
             self.dao = BiobankOrderDao()
@@ -299,7 +301,7 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
         self.assertEqual(ps_json['enrollment_status'], 'PARTICIPANT')
 
     def test_ehr_consent_expired_for_core_participant(self):
-        self._set_up_participant_data()
+        self._set_up_participant_data(fake_time=self.TIME_1)
         gen = BQParticipantSummaryGenerator()
         ps_json = gen.make_bqrecord(self.participant_id)
 
@@ -310,7 +312,7 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
         self.assertEqual(ps_json['enrollment_status'], 'CORE_PARTICIPANT')
 
         # send ehr consent expired response
-        self._submit_ehrconsent_expired(self.participant_id, response_time=self.TIME_2)
+        self._submit_ehrconsent_expired(self.participant_id, response_time=self.TIME_3)
         gen = BQParticipantSummaryGenerator()
         ps_json = gen.make_bqrecord(self.participant_id)
         self.assertIsNotNone(ps_json)
