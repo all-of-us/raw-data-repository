@@ -176,7 +176,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             return {'email': None, 'is_ghost_id': 0}
         qnan = BQRecord(schema=None, data=qnans)  # use only most recent response.
 
-        consent_dt = parser.parse(qnan.get('authored')) if qnan.get('authored') else None
         dob = qnan.get('PIIBirthInformation_BirthDate')
 
         data = {
@@ -202,21 +201,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             ]
         }
 
-        # Calculate consent cohort
-        if consent_dt:
-            if consent_dt < COHORT_1_CUTOFF:
-                cohort = BQConsentCohort.COHORT_1
-            elif COHORT_1_CUTOFF <= consent_dt <= COHORT_2_CUTOFF:
-                cohort = BQConsentCohort.COHORT_2
-            else:
-                cohort = BQConsentCohort.COHORT_3
-
-            data['consent_cohort'] = cohort.name
-            data['consent_cohort_id'] = cohort.value
-        else:
-            data['consent_cohort'] = BQConsentCohort.UNSET.name
-            data['consent_cohort_id'] = BQConsentCohort.UNSET.value
-
         return data
 
     def _prep_modules(self, p_id, ro_session):
@@ -237,9 +221,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # sql = self.ro_dao.query_to_text(query)
         results = query.all()
 
-        data = dict()
+        data = {
+            'consent_cohort': BQConsentCohort.UNSET.name,
+            'consent_cohort_id': BQConsentCohort.UNSET.value
+        }
         modules = list()
         consents = list()
+        consent_dt = None
 
         if results:
             for row in results:
@@ -257,6 +245,18 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 # check if this is a module with consents.
                 if module_name not in _consent_module_question_map:
                     continue
+
+                # Calculate Consent Cohort from ConsentPII authored
+                if consent_dt is None and module_name == 'ConsentPII' and row.authored:
+                    consent_dt = row.authored
+                    if consent_dt < COHORT_1_CUTOFF:
+                        cohort = BQConsentCohort.COHORT_1
+                    elif COHORT_1_CUTOFF <= consent_dt <= COHORT_2_CUTOFF:
+                        cohort = BQConsentCohort.COHORT_2
+                    else:
+                        cohort = BQConsentCohort.COHORT_3
+                    data['consent_cohort'] = cohort.name
+                    data['consent_cohort_id'] = cohort.value
 
                 qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
                 if qnans:
@@ -415,24 +415,52 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
              select count(*) from biobank_stored_sample where biobank_id = :bb_id;
           """
 
-        # SQL to generate a list of biobank orders and related samples associated with the participant
+        # SQL to generate a list of biobank orders and related samples associated with the participant.
+        # We don't outer join the biobank_stored_sample table here on purpose. When there are count
+        # discrepancies between the biobank_ordered_sample and biobank_stored_sample counts, we run
+        # distinct queries to pull them into our data.
         _biobank_orders_sql = """
           select bo.biobank_order_id, bo.created, bo.collected_site_id, bo.processed_site_id, bo.finalized_site_id,
                   bos.test, bos.collected, bos.processed, bos.finalized, bo.order_status,
                   bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed,
-                  bss.status as bb_status, (
-                    select count(1) from biobank_dv_order bdo where bdo.biobank_order_id = bo.biobank_order_id
-                  ) as dv_order
+                  bss.status as bb_status, case when exists (
+                     select bdo.participant_id
+                        from biobank_dv_order bdo
+                        where bdo.biobank_order_id = bo.biobank_order_id) then 1 else 0 end as dv_order,
+                   (select count(1)
+                        from biobank_ordered_sample bos2
+                        where bos2.order_id = bo.biobank_order_id) as tests_ordered,
+                   (select count(1)
+                        from biobank_stored_sample bss2
+                        where bss2.biobank_order_identifier = boi.`value`) as tests_stored
             from biobank_order bo inner join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
                     inner join biobank_order_identifier boi on bo.biobank_order_id = boi.biobank_order_id
-                    left outer join
+                    inner join
                       biobank_stored_sample bss on boi.`value` = bss.biobank_order_identifier and bos.test = bss.test
             where boi.`system` = 'https://www.pmi-ops.org' and bo.participant_id = :pid
             order by bo.biobank_order_id, bos.test;
         """
 
+        # Used when there are more ordered tests than stored tests.
+        _biobank_ordered_samples_sql = """
+                  select bos.test, bos.collected, bos.processed, bos.finalized, bo.order_status,
+                           null as bb_confirmed, null as bb_created, null as bb_disposed, null as bb_status
+                    from biobank_order bo left join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
+                     where bo.biobank_order_id = :order_id;
+                """
+
+        # Used when there are less ordered tests than stored tests.
+        _biobank_stored_samples_sql = """
+            select
+                bss.test, bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed,
+                   bss.status as bb_status
+            from biobank_order bo inner join biobank_order_identifier boi on bo.biobank_order_id = boi.biobank_order_id
+                 left join biobank_stored_sample bss on boi.`value` = bss.biobank_order_identifier
+             where boi.`system` = 'https://www.pmi-ops.org' and bo.biobank_order_id = :order_id;
+        """
+
         # SQL to find stored samples for the participant that are not associated with a biobank order
-        # See: https://precisionmedicineinitiative.atlassian.net/browse/PDR-89 .  This will only be executed in
+        # See: https://precisionmedicineinitiative.atlassian.net/browse/PDR-89. This will only be executed in
         # a small number of cases where a participant has "unknown order" samples
         _samples_without_biobank_order_sql = """
                      select bss.test, bss.confirmed as bb_confirmed, bss.created as bb_created,
@@ -440,7 +468,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                        from biobank_stored_sample bss
                        left outer join biobank_order_identifier boi on bss.biobank_order_identifier = boi.`value`
                        left outer join biobank_order bo on boi.biobank_order_id = bo.biobank_order_id
-                     where bss.biobank_id = :bb_id and bo.biobank_order_id is null;
+                     where boi.`system` = 'https://www.pmi-ops.org' and
+                        bss.biobank_id = :bb_id and bo.biobank_order_id is null;
              """
 
         data = {}
@@ -466,6 +495,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'processed_site_id': row.processed_site_id,
                     'finalized_site': self._lookup_site_name(row.finalized_site_id, ro_session),
                     'finalized_site_id': row.finalized_site_id,
+                    'tests_ordered': row.tests_ordered,
+                    'tests_stored': row.tests_stored,
                 })
         # loop through results again and add each sample to it's order.
         for row in results:
@@ -493,6 +524,30 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 orders.append({'biobank_order_id': UNKNOWN_BIOBANK_ORDER_ID, 'samples': list()})
                 for row in samples:
                     orders[-1]['samples'].append(_make_stored_sample_dict_from_row(row, has_order=False))
+
+        # Check to see that we have captured all of the stored samples for the orders.
+        for order in orders:
+            if order['tests_stored'] == 0 or order['tests_ordered'] == order['tests_stored']:
+                continue
+            # Fill in any ordered test records missing.
+            if order['tests_ordered'] > order['tests_stored']:
+                cursor = ro_session.execute(_biobank_ordered_samples_sql, {'order_id': order['biobank_order_id']})
+                results = [r for r in cursor]
+                existing_tests = [sample['test'] for sample in order['samples']]
+                for row in results:
+                    if row.test in existing_tests:
+                        continue
+                    order['samples'].append(_make_stored_sample_dict_from_row(row, has_order=True))
+            # Fill in any stored test records missing.
+            if order['tests_ordered'] < order['tests_stored']:
+                cursor = ro_session.execute(_biobank_stored_samples_sql,
+                                            {'order_id': order['biobank_order_id']})
+                results = [r for r in cursor]
+                existing_tests = [sample['test'] for sample in order['samples']]
+                for row in results:
+                    if row.test in existing_tests:
+                        continue
+                    order['samples'].append(_make_stored_sample_dict_from_row(row, has_order=False))
 
         if len(orders) > 0:
             data['biobank_orders'] = orders
@@ -679,11 +734,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 gror_date_range = DateCollection()
 
                 current_ehr_response = current_dv_ehr_response = None
-                # These consent responses are expected to be in order by their authored date
-                for consent in summary['consents']:
+                # These consent responses are expected to be in order by their authored date ascending.
+                for consent in sorted(summary['consents'], key=lambda k: k['consent_module_authored']):
                     consent_question = consent['consent']
                     consent_response = consent['consent_value']
-                    response_date = consent['consent_date']
+                    response_date = consent['consent_module_authored']
                     if consent_question == EHR_CONSENT_QUESTION_CODE:
                         current_ehr_response = consent_response
                         if current_ehr_response == CONSENT_PERMISSION_YES_CODE:
