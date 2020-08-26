@@ -307,6 +307,8 @@ class BQPDROverallHealthSchema(_BQModuleSchema):
         'OrganTransplantDescription_OtherOrgan',
         'OrganTransplantDescription_OtherTissue',
         'OutsideTravel6Month_OutsideTravel6MonthWhereTraveled',
+        'OtherOrgan_FreeTextBox',
+        'OtherTissue_FreeTextBox'
     )
 
 
