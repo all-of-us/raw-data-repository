@@ -367,26 +367,28 @@ class QuestionnaireResponseDao(BaseDao):
                         elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NOT_SURE:
                             gror_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
                     elif code.value == COPE_CONSENT_QUESTION_CODE:
+                        answer_value = code_dao.get(answer.valueCodeId).value
+                        if answer_value == CONSENT_COPE_YES_CODE:
+                            submission_status = QuestionnaireStatus.SUBMITTED
+                        elif answer_value in [CONSENT_COPE_NO_CODE, CONSENT_COPE_DEFERRED_CODE]:
+                            submission_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+                        else:
+                            submission_status = QuestionnaireStatus.SUBMITTED_INVALID
+
                         # COPE survey updates can occur at the end of the previous month
                         adjusted_last_modified = questionnaire_history.lastModified + timedelta(days=5)
-                        month_name = adjusted_last_modified.strftime('%B')
                         # Currently only have fields in participant summary for May, Jun and July
-                        if month_name in ['May', 'June', 'July']:
-                            answer_value = code_dao.get(answer.valueCodeId).value
-                            if answer_value == CONSENT_COPE_YES_CODE:
-                                submission_status = QuestionnaireStatus.SUBMITTED
-                            elif answer_value in [CONSENT_COPE_NO_CODE, CONSENT_COPE_DEFERRED_CODE]:
-                                submission_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
-                            else:
-                                submission_status = QuestionnaireStatus.SUBMITTED_INVALID
-                            setattr(participant_summary, f'questionnaireOnCope{month_name}', submission_status)
+                        month_name = {
+                            5: 'May',
+                            6: 'June'
+                        }.get(adjusted_last_modified.month, 'July')
+                        setattr(participant_summary, f'questionnaireOnCope{month_name}', submission_status)
+                        setattr(participant_summary, f'questionnaireOnCope{month_name}Time',
+                                questionnaire_response.created)
+                        setattr(participant_summary, f'questionnaireOnCope{month_name}Authored', authored)
 
-                            setattr(participant_summary, f'questionnaireOnCope{month_name}Time',
-                                    questionnaire_response.created)
-                            setattr(participant_summary, f'questionnaireOnCope{month_name}Authored', authored)
-
-                            # COPE Survey changes need to update number of modules complete in summary
-                            module_changed = True
+                        # COPE Survey changes need to update number of modules complete in summary
+                        module_changed = True
                     elif code.value == PRIMARY_CONSENT_UPDATE_QUESTION_CODE:
                         answer_value = code_dao.get(answer.valueCodeId).value
                         if answer_value == COHORT_1_REVIEW_CONSENT_YES_CODE:
