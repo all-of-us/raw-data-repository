@@ -537,7 +537,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember
             ).filter(
                 GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CONTROL_SAMPLE,
-                GenomicSetMember.sampleId == int(sample_id)
+                GenomicSetMember.sampleId == sample_id
             ).first()
 
 

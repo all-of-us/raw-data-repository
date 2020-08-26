@@ -1501,7 +1501,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertNotEqual(1, member.reconcileGCManifestJobRunId)
 
         # test control samples
-        control_check_mock.assert_called_with('1234')
+        control_check_mock.assert_called_with(1234)
 
         # Test file processing queue
         files_processed = self.file_processed_dao.get_all()
