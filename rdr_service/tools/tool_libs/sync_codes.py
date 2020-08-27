@@ -17,6 +17,8 @@ META_DATA_FIELD_TYPE = ['text', 'radio', 'dropdown', 'checkbox', 'yesno', 'truef
 
 
 class SyncCodesClass(ToolBase):
+    module_code = None
+
     def get_api_key(self, redcap_project_name):
         # The AppConfig class uses the git_project field from args when initializing,
         # looks like it uses it as a root directory for other purposes.
@@ -38,7 +40,7 @@ class SyncCodesClass(ToolBase):
         return server_config[REDCAP_PROJECT_KEYS][redcap_project_name]
 
     @staticmethod
-    def initialize_code(session: Session, value, display, code_type=None):
+    def initialize_code(value, display, code_type=None):
         new_code = Code(
             codeType=code_type,
             value=value,
@@ -48,22 +50,31 @@ class SyncCodesClass(ToolBase):
             mapped=True,
             created=CLOCK.now()
         )
-        session.add(new_code)
         return new_code
 
-    def import_answer_code(self, session: Session, answer_text, question_code):
+    def import_answer_code(self, answer_text, question_code):
         # There may be multiple commas in the display string, we want to split on the first to get the code
         code, display = (part.strip() for part in answer_text.split(',', 1))
-        answer_code = self.initialize_code(session, code, display, CodeType.ANSWER)
+        answer_code = self.initialize_code(code, display, CodeType.ANSWER)
         answer_code.parent = question_code
+        self.module_code = answer_code
 
     def import_data_dictionary_item(self, session: Session, code_json):
-        new_code = self.initialize_code(session, code_json['field_name'], code_json['field_label'])
+        new_code = self.initialize_code(code_json['field_name'], code_json['field_label'])
 
         if code_json['field_type'] == 'descriptive':
-            new_code.codeType = CodeType.MODULE
+            if not self.module_code:  # Descriptive fields other than the first considered to be readonly, display text
+                new_code.codeType = CodeType.MODULE
+                session.add(new_code)
+
+                self.module_code = new_code
         else:
             new_code.codeType = CodeType.QUESTION
+            session.add(new_code)
+
+            if self.module_code:
+                new_code.parent = self.module_code
+
             answers_string = code_json['select_choices_or_calculations']
             if answers_string:
                 for answer_text in answers_string.split('|'):

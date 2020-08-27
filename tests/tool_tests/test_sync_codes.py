@@ -101,3 +101,26 @@ class CopeAnswerTest(BaseTestCase):
         self.assertCodeExists('A3', 'Choice Three', CodeType.ANSWER, radio_code)
         self.assertCodeExists('A4', 'Etc.', CodeType.ANSWER, radio_code)
 
+    def test_detection_of_module_code(self):
+        self.run_tool([
+            self._get_mock_dictionary_item(
+                'TestQuestionnaire',
+                'Test Questionnaire Module',
+                'descriptive'
+            ),
+            self._get_mock_dictionary_item(
+                'participant_id',
+                'Participant ID',
+                'text'
+            ),
+            self._get_mock_dictionary_item(
+                'another_descriptive',
+                'This is another readonly section of the questionnaire',
+                'descriptive'
+            )
+        ])
+        self.assertEqual(2, self.session.query(Code).count(), "Only 2 codes should have been created")
+
+        module_code = self.assertCodeExists('TestQuestionnaire', 'Test Questionnaire Module', CodeType.MODULE)
+        self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION, module_code)
+
