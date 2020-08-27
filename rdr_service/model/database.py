@@ -3,7 +3,7 @@ from contextlib import contextmanager
 import backoff
 from sqlalchemy import create_engine
 from sqlalchemy.exc import DBAPIError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from rdr_service.model.base import Base, MetricsBase
 
@@ -85,7 +85,7 @@ class Database(object):
     def create_metrics_schema(self):
         MetricsBase.metadata.create_all(self._engine)
 
-    def make_session(self):
+    def make_session(self) -> Session:
         return self._Session()
 
     @contextmanager

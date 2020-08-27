@@ -71,12 +71,19 @@ class SyncCodesClass(ToolBase):
 
     @staticmethod
     def retrieve_data_dictionary(api_key):
+        # https://precisionmedicineinitiative.atlassian.net/browse/PD-5404
+        headers = {
+            'User-Agent': 'RDR code sync tool',
+            'Accept': None,
+            'Connection': None,
+        }
+
         response = requests.post('https://redcap.pmi-ops.org/api/', data={
             'token': api_key,
             'content': 'metadata',
             'format': 'json',
             'returnFormat': 'json'
-        })
+        }, headers=headers)
         if response.status_code != 200:
             logger.error(f'ERROR: Received status code {response.status_code} from API')
 

@@ -3,7 +3,7 @@ import mock
 import os
 
 import rdr_service
-from rdr_service.model.code import Code
+from rdr_service.model.code import Code, CodeType
 from rdr_service.tools.tool_libs.sync_codes import SyncCodesClass, REDCAP_PROJECT_KEYS
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -11,9 +11,6 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(rdr_service.__file__))
 
 
 class CopeAnswerTest(BaseTestCase):
-    def setUp(self):
-        super().setUp()
-
     @staticmethod
     def _get_mock_dictionary_item(code_value, description, field_type, answers=''):
         return {
@@ -62,7 +59,15 @@ class CopeAnswerTest(BaseTestCase):
             sync_codes_tool = SyncCodesClass(args, gcp_env)
             sync_codes_tool.run()
 
-    def test_code_sync(self):
+    def _load_code_with_value(self, code_value) -> Code:
+        return self.session.query(Code).filter(Code.value == code_value).one()
+
+    def assertCodeExists(self, code_value, display_text, code_type):
+        code = self._load_code_with_value(code_value)
+        self.assertEqual(display_text, code.display)
+        self.assertEqual(code_type, code.codeType)
+
+    def test_question_and_answer_codes(self):
         self.run_tool([
             self._get_mock_dictionary_item(
                 'participant_id',
@@ -71,11 +76,17 @@ class CopeAnswerTest(BaseTestCase):
             ),
             self._get_mock_dictionary_item(
                 'radio',
-                'This is a single select question',
+                'This is a single-select, multiple choice question',
                 'radio',
-                answers='1, Choice One | 2, Choice Two | 3, Choice Three | 4, Etc.'
+                answers='A1, Choice One | A2, Choice Two | A3, Choice Three | A4, Etc.'
             )
         ])
+        self.assertEqual(6, self.session.query(Code).count(), "Only 6 codes should have been created")
 
-        codes = self.session.query(Code).all()
-        print(codes)
+        self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION)
+        self.assertCodeExists('radio', 'This is a single-select, multiple choice question', CodeType.QUESTION)
+        self.assertCodeExists('A1', 'Choice One', CodeType.ANSWER)
+        self.assertCodeExists('A2', 'Choice Two', CodeType.ANSWER)
+        self.assertCodeExists('A3', 'Choice Three', CodeType.ANSWER)
+        self.assertCodeExists('A4', 'Etc.', CodeType.ANSWER)
+
