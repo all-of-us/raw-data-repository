@@ -289,7 +289,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             if len(consents) > 0:
                 data['consents'] = [dict(t) for t in {tuple(d.items()) for d in consents}]
                 # keep consents in order if dates need to be checked
-                data['consents'].sort(key=lambda consent_data: consent_data['consent_date'])
+                data['consents'].sort(key=lambda consent_data: consent_data['consent_module_authored'], reverse=True)
 
         return data
 
