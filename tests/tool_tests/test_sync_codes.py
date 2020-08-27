@@ -46,7 +46,7 @@ class SyncCodesTest(BaseTestCase):
             return json.dumps(config), 'test-file-name'
 
         gcp_env = mock.MagicMock()
-        gcp_env.project = 'unit_test'
+        gcp_env.project = 'localhost'
         gcp_env.git_project = PROJECT_ROOT
         gcp_env.get_latest_config_from_bucket = get_server_config
 
@@ -92,7 +92,7 @@ class SyncCodesTest(BaseTestCase):
                 answers='A1, Choice One | A2, Choice Two | A3, Choice Three | A4, Etc.'
             )
         ])
-        self.assertEqual(6, self.session.query(Code).count(), "Only 6 codes should have been created")
+        self.assertEqual(6, self.session.query(Code).count(), "6 codes should have been created")
 
         self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION)
         radio_code = self.assertCodeExists(
@@ -123,7 +123,7 @@ class SyncCodesTest(BaseTestCase):
                 'descriptive'
             )
         ])
-        self.assertEqual(2, self.session.query(Code).count(), "Only 2 codes should have been created")
+        self.assertEqual(2, self.session.query(Code).count(), "2 codes should have been created")
 
         module_code = self.assertCodeExists('TestQuestionnaire', 'Test Questionnaire Module', CodeType.MODULE)
         self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION, module_code)
