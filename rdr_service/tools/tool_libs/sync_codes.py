@@ -18,7 +18,7 @@ META_DATA_FIELD_TYPE = ['text', 'radio', 'dropdown', 'checkbox', 'yesno', 'truef
 
 class SyncCodesClass(ToolBase):
     module_code = None
-    previously_in_use_codes = []
+    codes_allowed_for_reuse = []
     is_saving_codes = True
 
     def get_api_key(self, redcap_project_name):
@@ -53,10 +53,16 @@ class SyncCodesClass(ToolBase):
         )
         existing_code_with_value = session.query(Code).filter(Code.value == value).one_or_none()
         if existing_code_with_value:
-            if code_type != CodeType.ANSWER:  # Answer codes should automatically be allowed to be reused
+            # Answer codes should automatically be allowed to be reused, anything else needs to be explicitly stated
+            if code_type != CodeType.ANSWER and value not in self.codes_allowed_for_reuse:
+                # At this point, it's not an answer code and it wasn't explicitly allowed for reuse
+                # so set up the tool to stop saving and print out the code.
+                # Let the script continue so that any other duplications can be caught.
                 self.is_saving_codes = False
-                self.previously_in_use_codes.append(value)
                 logger.error(f'Code "{value}" is already in use')
+            else:
+                # Allows for reused codes to be a child (or parent) of other codes being imported
+                return existing_code_with_value
         elif self.is_saving_codes:
             # Associating a code with a parent adds it to the session too,
             # so it should only happen when we intend to save it.
@@ -69,8 +75,7 @@ class SyncCodesClass(ToolBase):
     def import_answer_code(self, session, answer_text, question_code):
         # There may be multiple commas in the display string, we want to split on the first to get the code
         code, display = (part.strip() for part in answer_text.split(',', 1))
-        answer_code = self.initialize_code(session, code, display, question_code, CodeType.ANSWER)
-        self.module_code = answer_code
+        self.initialize_code(session, code, display, question_code, CodeType.ANSWER)
 
     def import_data_dictionary_item(self, session: Session, code_json):
         new_code = self.initialize_code(session, code_json['field_name'], code_json['field_label'], self.module_code)
@@ -114,13 +119,17 @@ class SyncCodesClass(ToolBase):
     def run(self):
         super(SyncCodesClass, self).run()
 
+        if hasattr(self.args, 'reuse_codes'):
+            self.codes_allowed_for_reuse = [code_val.strip() for code_val in self.args.reuse_codes.split(',')]
+
         # Get the server config to read Redcap API keys
         project_api_key = self.get_api_key(self.args.redcap_project)
         if project_api_key is None:
             logger.error('Unable to find project API key')
             return 1
-        dictionary_json = self.retrieve_data_dictionary(project_api_key)
 
+        # Get the data-dictionary and process codes
+        dictionary_json = self.retrieve_data_dictionary(project_api_key)
         with self.get_session() as session:
             for item_json in dictionary_json:
                 self.import_data_dictionary_item(session, item_json)
@@ -135,7 +144,8 @@ class SyncCodesClass(ToolBase):
 
 def add_additional_arguments(parser):
     parser.add_argument('--redcap-project', required=True, help='Name of Redcap project to sync')
+    parser.add_argument('--reuse-codes', help='Codes that have intentionally been reused from another project')
 
 
 def run():
-    cli_run(tool_cmd, tool_desc, SyncCodesClass)
+    cli_run(tool_cmd, tool_desc, SyncCodesClass, add_additional_arguments)

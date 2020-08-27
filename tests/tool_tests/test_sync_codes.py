@@ -11,6 +11,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(rdr_service.__file__))
 
 
 class SyncCodesTest(BaseTestCase):
+
     @staticmethod
     def _get_mock_dictionary_item(code_value, description, field_type, answers=''):
         return {
@@ -34,7 +35,8 @@ class SyncCodesTest(BaseTestCase):
             "field_annotation": ""
         }
 
-    def run_tool(self, redcap_data_dictionary):
+    @staticmethod
+    def run_tool(redcap_data_dictionary, reuse_codes=None):
         def get_server_config(*_):
             config = {
                 REDCAP_PROJECT_KEYS: {
@@ -50,6 +52,8 @@ class SyncCodesTest(BaseTestCase):
 
         args = mock.MagicMock()
         args.redcap_project = 'project_one'
+        if reuse_codes:
+            args.reuse_codes = ','.join(reuse_codes)
 
         with mock.patch('rdr_service.tools.tool_libs.sync_codes.requests') as mock_requests:
             mock_response = mock_requests.post.return_value
@@ -167,4 +171,35 @@ class SyncCodesTest(BaseTestCase):
         ])
         self.assertEqual(5, self.session.query(Code).count(), 'Should be 5 codes after test')
         self.assertEqual(0, return_val, 'Script should successfully exit, ignoring that the answer code was reused')
+
+    def test_allowing_for_explicit_question_code_reuse(self):
+        self.data_generator.create_database_code(value='TestQuestionnaire')
+        self.data_generator.create_database_code(value='old_code')
+
+        return_val = self.run_tool([
+            self._get_mock_dictionary_item(
+                'TestQuestionnaire',
+                'Test Questionnaire Module',
+                'descriptive'
+            ),
+            self._get_mock_dictionary_item(
+                'participant_id',
+                'Participant ID',
+                'text'
+            ),
+            self._get_mock_dictionary_item(
+                'old_code',
+                'This is unintentional re-use',
+                'text'
+            ),
+            self._get_mock_dictionary_item(
+                'another_code',
+                'Just making sure other codes do not get saved',
+                'text'
+            )
+        ], reuse_codes=['old_code', 'TestQuestionnaire'])
+        self.assertEqual(4, self.session.query(Code).count(),
+                         'Only 2 new codes should be created (with 2 previously existing)')
+        self.assertEqual(0, return_val,
+                         'Script should successfully exit, allowing for intentional reuse of the question code')
 
