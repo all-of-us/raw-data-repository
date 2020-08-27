@@ -62,10 +62,17 @@ class CopeAnswerTest(BaseTestCase):
     def _load_code_with_value(self, code_value) -> Code:
         return self.session.query(Code).filter(Code.value == code_value).one()
 
-    def assertCodeExists(self, code_value, display_text, code_type):
+    def assertCodeExists(self, code_value, display_text, code_type, parent_code: Code = None):
         code = self._load_code_with_value(code_value)
         self.assertEqual(display_text, code.display)
         self.assertEqual(code_type, code.codeType)
+
+        if parent_code:
+            self.assertEqual(parent_code.codeId, code.parentId)
+        else:
+            self.assertIsNone(code.parentId)
+
+        return code
 
     def test_question_and_answer_codes(self):
         self.run_tool([
@@ -84,9 +91,13 @@ class CopeAnswerTest(BaseTestCase):
         self.assertEqual(6, self.session.query(Code).count(), "Only 6 codes should have been created")
 
         self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION)
-        self.assertCodeExists('radio', 'This is a single-select, multiple choice question', CodeType.QUESTION)
-        self.assertCodeExists('A1', 'Choice One', CodeType.ANSWER)
-        self.assertCodeExists('A2', 'Choice Two', CodeType.ANSWER)
-        self.assertCodeExists('A3', 'Choice Three', CodeType.ANSWER)
-        self.assertCodeExists('A4', 'Etc.', CodeType.ANSWER)
+        radio_code = self.assertCodeExists(
+            'radio',
+            'This is a single-select, multiple choice question',
+            CodeType.QUESTION
+        )
+        self.assertCodeExists('A1', 'Choice One', CodeType.ANSWER, radio_code)
+        self.assertCodeExists('A2', 'Choice Two', CodeType.ANSWER, radio_code)
+        self.assertCodeExists('A3', 'Choice Three', CodeType.ANSWER, radio_code)
+        self.assertCodeExists('A4', 'Etc.', CodeType.ANSWER, radio_code)
 
