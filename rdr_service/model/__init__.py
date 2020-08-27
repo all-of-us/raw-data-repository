@@ -36,6 +36,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_code', 'BQCodeView'),
     # PDR Views
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryView'),
+    ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryAllView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryWithdrawnView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRPMView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRGenderView'),

@@ -168,6 +168,29 @@ class BQPDRParticipantSummaryView(BQView):
         ])
     )
 
+class BQPDRParticipantSummaryAllView(BQPDRParticipantSummaryView):
+    __viewname__ = 'v_pdr_participant_all'
+    __viewdescr__ = 'PDR Participant Summary All View'
+    __sql__ = """
+            SELECT
+              %%FIELD_NAMES%%
+            FROM (
+                SELECT *,
+                    ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
+                  FROM `{project}`.{dataset}.pdr_participant
+              ) ps
+              WHERE ps.rn = 1 
+    """.replace('%%FIELD_NAMES%%', BQPDRParticipantSummarySchema.get_sql_field_names(
+        exclude_fields=[
+            'pm',
+            'genders',
+            'races',
+            'modules',
+            'consents',
+            'biospec',
+            'patent_statuses'
+        ])
+    )
 
 class BQPDRParticipantSummaryWithdrawnView(BQView):
     __viewname__ = 'v_pdr_participant_withdrawn'

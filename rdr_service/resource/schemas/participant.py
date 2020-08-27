@@ -256,6 +256,8 @@ class BiobankOrderSchema(MarshmallowSchema):
     finalized_site = fields.String(validate=validate.Length(max=255))
     finalized_site_id = fields.Int32()
     samples = fields.Nested(BiobankSampleSchema, many=True)
+    tests_ordered = fields.Int32()
+    tests_stored = fields.Int32()
 
     class Meta:
         ordered = True
