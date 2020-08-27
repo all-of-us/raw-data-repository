@@ -10,7 +10,7 @@ from tests.helpers.unittest_base import BaseTestCase
 PROJECT_ROOT = os.path.dirname(os.path.dirname(rdr_service.__file__))
 
 
-class CopeAnswerTest(BaseTestCase):
+class SyncCodesTest(BaseTestCase):
     @staticmethod
     def _get_mock_dictionary_item(code_value, description, field_type, answers=''):
         return {
@@ -57,7 +57,7 @@ class CopeAnswerTest(BaseTestCase):
             mock_response.content = redcap_data_dictionary
 
             sync_codes_tool = SyncCodesClass(args, gcp_env)
-            sync_codes_tool.run()
+            return sync_codes_tool.run()
 
     def _load_code_with_value(self, code_value) -> Code:
         return self.session.query(Code).filter(Code.value == code_value).one()
@@ -123,4 +123,48 @@ class CopeAnswerTest(BaseTestCase):
 
         module_code = self.assertCodeExists('TestQuestionnaire', 'Test Questionnaire Module', CodeType.MODULE)
         self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION, module_code)
+
+    @mock.patch('rdr_service.tools.tool_libs.sync_codes.logger')
+    def test_failure_on_question_code_reuse(self, mock_logger):
+        self.data_generator.create_database_code(value='old_code')
+
+        return_val = self.run_tool([
+            self._get_mock_dictionary_item(
+                'TestQuestionnaire',
+                'Test Questionnaire Module',
+                'descriptive'
+            ),
+            self._get_mock_dictionary_item(
+                'participant_id',
+                'Participant ID',
+                'text'
+            ),
+            self._get_mock_dictionary_item(
+                'old_code',
+                'This is unintentional re-use',
+                'text'
+            ),
+            self._get_mock_dictionary_item(
+                'another_code',
+                'Just making sure other codes do not get saved',
+                'text'
+            )
+        ])
+        self.assertEqual(1, self.session.query(Code).count(), 'No codes should be created when running the tool')
+        mock_logger.error.assert_any_call('Code "old_code" is already in use')
+        self.assertEqual(1, return_val, 'Script should exit with an error code')
+
+    def test_auto_ignore_answer_code_reuse(self):
+        self.data_generator.create_database_code(value='A1')
+
+        return_val = self.run_tool([
+            self._get_mock_dictionary_item(
+                'radio',
+                'This is a single-select, multiple choice question',
+                'radio',
+                answers='A1, Choice One | A2, Choice Two | A3, Choice Three | A4, Etc.'
+            )
+        ])
+        self.assertEqual(5, self.session.query(Code).count(), 'Should be 5 codes after test')
+        self.assertEqual(0, return_val, 'Script should successfully exit, ignoring that the answer code was reused')
 

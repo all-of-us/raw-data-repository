@@ -18,6 +18,8 @@ META_DATA_FIELD_TYPE = ['text', 'radio', 'dropdown', 'checkbox', 'yesno', 'truef
 
 class SyncCodesClass(ToolBase):
     module_code = None
+    previously_in_use_codes = []
+    is_saving_codes = True
 
     def get_api_key(self, redcap_project_name):
         # The AppConfig class uses the git_project field from args when initializing,
@@ -39,8 +41,7 @@ class SyncCodesClass(ToolBase):
 
         return server_config[REDCAP_PROJECT_KEYS][redcap_project_name]
 
-    @staticmethod
-    def initialize_code(value, display, code_type=None):
+    def initialize_code(self, session: Session, value, display, parent=None, code_type=None):
         new_code = Code(
             codeType=code_type,
             value=value,
@@ -50,30 +51,40 @@ class SyncCodesClass(ToolBase):
             mapped=True,
             created=CLOCK.now()
         )
+        existing_code_with_value = session.query(Code).filter(Code.value == value).one_or_none()
+        if existing_code_with_value:
+            if code_type != CodeType.ANSWER:  # Answer codes should automatically be allowed to be reused
+                self.is_saving_codes = False
+                self.previously_in_use_codes.append(value)
+                logger.error(f'Code "{value}" is already in use')
+        elif self.is_saving_codes:
+            # Associating a code with a parent adds it to the session too,
+            # so it should only happen when we intend to save it.
+            # (But the parent here could be empty, so we make sure the code gets to the session)
+            new_code.parent = parent
+            session.add(new_code)
+
         return new_code
 
-    def import_answer_code(self, answer_text, question_code):
+    def import_answer_code(self, session, answer_text, question_code):
         # There may be multiple commas in the display string, we want to split on the first to get the code
         code, display = (part.strip() for part in answer_text.split(',', 1))
-        answer_code = self.initialize_code(code, display, CodeType.ANSWER)
-        answer_code.parent = question_code
+        answer_code = self.initialize_code(session, code, display, question_code, CodeType.ANSWER)
         self.module_code = answer_code
 
     def import_data_dictionary_item(self, session: Session, code_json):
-        new_code = self.initialize_code(code_json['field_name'], code_json['field_label'])
+        new_code = self.initialize_code(session, code_json['field_name'], code_json['field_label'], self.module_code)
 
         if code_json['field_type'] == 'descriptive':
-            if not self.module_code:  # Descriptive fields other than the first considered to be readonly, display text
+            if not self.module_code:
                 new_code.codeType = CodeType.MODULE
-                session.add(new_code)
-
                 self.module_code = new_code
+            else:
+                # Descriptive fields other than the first are considered to be readonly, display text.
+                # So we don't want to save codes for them
+                session.expunge(new_code)
         else:
             new_code.codeType = CodeType.QUESTION
-            session.add(new_code)
-
-            if self.module_code:
-                new_code.parent = self.module_code
 
             answers_string = code_json['select_choices_or_calculations']
             if answers_string:
@@ -113,6 +124,11 @@ class SyncCodesClass(ToolBase):
         with self.get_session() as session:
             for item_json in dictionary_json:
                 self.import_data_dictionary_item(session, item_json)
+
+            # Don't save anything if codes were unintentionally reused
+            if not self.is_saving_codes:
+                session.rollback()
+                return 1
 
         return 0
 
