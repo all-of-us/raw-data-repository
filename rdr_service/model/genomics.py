@@ -148,6 +148,9 @@ class GenomicSetMember(Base):
                                     Integer, ForeignKey("genomic_job_run.id"),
                                     nullable=True)
     gemPass = Column('gem_pass', String(10), nullable=True)
+
+    gemDateOfImport = Column("gem_date_of_import", DateTime, nullable=True)
+
     gemA3ManifestJobRunId = Column('gem_a3_manifest_job_run_id',
                                    Integer, ForeignKey("genomic_job_run.id"),
                                    nullable=True)

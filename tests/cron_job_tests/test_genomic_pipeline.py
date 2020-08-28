@@ -1765,15 +1765,14 @@ class GenomicPipelineTest(BaseTestCase):
         # Run Workflow
         genomic_pipeline.gem_a2_manifest_workflow()  # run_id 2
 
-        # Test gem_pass field
+        # Test A2 fields and genomic state
         members = self.member_dao.get_all()
         for member in members:
+            self.assertEqual(datetime.datetime(2020, 4, 29, 0, 0, 0), member.gemDateOfImport)
             if member.id in (1, 2):
                 self.assertEqual("Y", member.gemPass)
                 self.assertEqual(2, member.gemA2ManifestJobRunId)
                 self.assertEqual(GenomicWorkflowState.GEM_RPT_READY, member.genomicWorkflowState)
-                # TODO: add this field in genomic_set_member in separate PR
-                # self.assertEqual("2020-04-29 00:00:00", member.gemDateOfImport)
             if member.id == 3:
                 self.assertEqual("N", member.gemPass)
                 self.assertEqual(GenomicWorkflowState.A2F, member.genomicWorkflowState)
