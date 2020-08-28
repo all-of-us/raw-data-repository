@@ -285,7 +285,13 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             if len(consents) > 0:
                 data['consents'] = [dict(t) for t in {tuple(d.items()) for d in consents}]
                 # keep consents in order if dates need to be checked, sort by 'consent_module_authored' desc.
-                data['consents'].sort(key=lambda consent_data: consent_data['consent_module_authored'], reverse=True)
+                # Fall back to 'created' if there are None values in 'authored'.
+                try:
+                    data['consents'].sort(key=lambda consent_data: consent_data['consent_module_authored'],
+                                          reverse=True)
+                except TypeError:
+                    data['consents'].sort(key=lambda consent_data: consent_data['consent_module_created'],
+                                          reverse=True)
 
         return data
 
@@ -728,7 +734,12 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
                 current_ehr_response = current_dv_ehr_response = None
                 # These consent responses are expected to be in order by their authored date ascending.
-                for consent in sorted(summary['consents'], key=lambda k: k['consent_module_authored']):
+                # Fall back to created if there are None values in authored
+                try:
+                    _consents = sorted(summary['consents'], key=lambda k: k['consent_module_authored'])
+                except TypeError:
+                    _consents = sorted(summary['consents'], key=lambda k: k['consent_module_created'])
+                for consent in _consents:
                     consent_question = consent['consent']
                     consent_response = consent['consent_value']
                     response_date = consent['consent_module_authored']
