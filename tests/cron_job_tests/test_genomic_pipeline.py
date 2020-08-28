@@ -1771,10 +1771,12 @@ class GenomicPipelineTest(BaseTestCase):
             if member.id in (1, 2):
                 self.assertEqual("Y", member.gemPass)
                 self.assertEqual(2, member.gemA2ManifestJobRunId)
+                self.assertEqual(GenomicWorkflowState.GEM_RPT_READY, member.genomicWorkflowState)
                 # TODO: add this field in genomic_set_member in separate PR
                 # self.assertEqual("2020-04-29 00:00:00", member.gemDateOfImport)
             if member.id == 3:
                 self.assertEqual("N", member.gemPass)
+                self.assertEqual(GenomicWorkflowState.A2F, member.genomicWorkflowState)
 
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)

@@ -82,7 +82,7 @@ class A1State(GenomicStateBase):
     """State representing the A1 manifest state"""
     def transition_function(self, signal):
         if signal == 'a2-gem-pass':
-            return GenomicWorkflowState.A2
+            return GenomicWorkflowState.GEM_RPT_READY
 
         if signal == 'a2-gem-fail':
             return GenomicWorkflowState.A2F
