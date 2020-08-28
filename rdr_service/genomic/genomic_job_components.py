@@ -343,6 +343,13 @@ class GenomicFileIngester:
                 member.gemPass = row['success']
 
                 member.gemA2ManifestJobRunId = self.job_run_id
+                member.gemDateOfImport = row['date_of_import']
+
+                _signal = 'a2-gem-pass' if member.gemPass.lower() == 'y' else 'a2-gem-fail'
+
+                member.genomicWorkflowState = GenomicStateHandler.get_new_state(
+                    member.genomicWorkflowState,
+                    signal=_signal)
 
                 self.member_dao.update(member)
 
