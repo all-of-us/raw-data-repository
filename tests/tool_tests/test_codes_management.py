@@ -4,13 +4,13 @@ import os
 
 import rdr_service
 from rdr_service.model.code import Code, CodeType
-from rdr_service.tools.tool_libs.sync_codes import SyncCodesClass, REDCAP_PROJECT_KEYS
+from rdr_service.tools.tool_libs.codes_management import CodesManagementClass, REDCAP_PROJECT_KEYS
 from tests.helpers.unittest_base import BaseTestCase
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(rdr_service.__file__))
 
 
-class SyncCodesTest(BaseTestCase):
+class CodesManagementTest(BaseTestCase):
 
     @staticmethod
     def _get_mock_dictionary_item(code_value, description, field_type, answers=''):
@@ -55,12 +55,12 @@ class SyncCodesTest(BaseTestCase):
         if reuse_codes:
             args.reuse_codes = ','.join(reuse_codes)
 
-        with mock.patch('rdr_service.tools.tool_libs.sync_codes.requests') as mock_requests:
+        with mock.patch('rdr_service.tools.tool_libs.codes_management.requests') as mock_requests:
             mock_response = mock_requests.post.return_value
             mock_response.status_code = 200
             mock_response.content = redcap_data_dictionary
 
-            sync_codes_tool = SyncCodesClass(args, gcp_env)
+            sync_codes_tool = CodesManagementClass(args, gcp_env)
             return sync_codes_tool.run()
 
     def _load_code_with_value(self, code_value) -> Code:
@@ -128,7 +128,7 @@ class SyncCodesTest(BaseTestCase):
         module_code = self.assertCodeExists('TestQuestionnaire', 'Test Questionnaire Module', CodeType.MODULE)
         self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION, module_code)
 
-    @mock.patch('rdr_service.tools.tool_libs.sync_codes.logger')
+    @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
     def test_failure_on_question_code_reuse(self, mock_logger):
         self.data_generator.create_database_code(value='old_code')
 

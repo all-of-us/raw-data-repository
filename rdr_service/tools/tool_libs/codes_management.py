@@ -8,15 +8,15 @@ from rdr_service.tools.tool_libs.app_engine_manager import AppConfigClass
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
-tool_cmd = "sync-codes"
-tool_desc = "Syncs codes from the provided Redcap project"
+tool_cmd = "codes"
+tool_desc = "Manage code import/export process. Syncing codes from the provided Redcap project and/or exporting " \
+            "codes that the RDR is aware of to the Ops team's Drive folder."
 
 REDCAP_PROJECT_KEYS = 'project_api_keys'
 CODE_SYSTEM = 'http://terminology.pmi-ops.org/CodeSystem/ppi'
-META_DATA_FIELD_TYPE = ['text', 'radio', 'dropdown', 'checkbox', 'yesno', 'truefalse']
 
 
-class SyncCodesClass(ToolBase):
+class CodesManagementClass(ToolBase):
     module_code = None
     codes_allowed_for_reuse = []
     is_saving_codes = True
@@ -117,7 +117,7 @@ class SyncCodesClass(ToolBase):
         return response.content
 
     def run(self):
-        super(SyncCodesClass, self).run()
+        super(CodesManagementClass, self).run()
 
         if hasattr(self.args, 'reuse_codes'):
             self.codes_allowed_for_reuse = [code_val.strip() for code_val in self.args.reuse_codes.split(',')]
@@ -147,9 +147,9 @@ class SyncCodesClass(ToolBase):
 
 
 def add_additional_arguments(parser):
-    parser.add_argument('--redcap-project', required=True, help='Name of Redcap project to sync')
+    parser.add_argument('--redcap-project', required=False, help='Name of Redcap project to sync')
     parser.add_argument('--reuse-codes', help='Codes that have intentionally been reused from another project')
 
 
 def run():
-    cli_run(tool_cmd, tool_desc, SyncCodesClass, add_additional_arguments)
+    cli_run(tool_cmd, tool_desc, CodesManagementClass, add_additional_arguments)
