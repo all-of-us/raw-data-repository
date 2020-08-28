@@ -54,8 +54,6 @@ from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file,
-    update_package_id_from_manifest_result_file,
-    _get_genomic_set_id_from_filename
 )
 from rdr_service.genomic.validation import (
     GENOMIC_VALID_AGE,
