@@ -137,6 +137,10 @@ class SyncCodesClass(ToolBase):
             # Don't save anything if codes were unintentionally reused
             if not self.is_saving_codes:
                 session.rollback()
+                logger.error('The above codes were already in the RDR database. '
+                             'Please verify with the team creating questionnaires in Redcap that this was intentional, '
+                             'and then re-run the tool with the "--reuse-codes" arguement to specify that they should '
+                             'be allowed.')
                 return 1
 
         return 0
