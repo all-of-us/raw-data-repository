@@ -2347,3 +2347,39 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the job result
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_gem_metrics_ingest(self):
+        # create fake genomic set members
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+                                                array_participants=(1, 2, 3),
+                                                genome_center='JH',
+                                                genomic_workflow_state=GenomicWorkflowState.GEM_RPT_READY)
+        self._update_test_sample_ids()
+
+        # Create fake file
+        # Set up test A2 manifest
+        bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
+
+        self._create_ingestion_test_file('AoU_GEM_metrics_aggregate_2020-08-28-10-43-21.csv',
+                                         bucket_name, include_timestamp=False)
+        # Run Workflow
+        genomic_pipeline.gem_metrics_ingest()  # run_id 1
+
+        # Test metrics were ingested
+        members = self.member_dao.get_all()
+        for member in members:
+            self.assertEqual(1, member.colorMetricsJobRunID)
+            self.assertEqual("['ancestry','cilantro','lactose','earwax','bittertaste']",
+                             member.gemMetricsAvailableResults)
+
+            if member.id in (1, 2):
+                self.assertEqual('yes', member.gemMetricsAncestryLoopResponse)
+                self.assertEqual(datetime.datetime(2020, 8, 21, 10, 10, 10), member.gemMetricsResultsReleasedAt)
+
+            else:
+                self.assertEqual('later', member.gemMetricsAncestryLoopResponse)
+                self.assertEqual(datetime.datetime(2020, 8, 21, 10, 12, 10), member.gemMetricsResultsReleasedAt)
+
+        # Test the job result
+        run_obj = self.job_run_dao.get(1)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)

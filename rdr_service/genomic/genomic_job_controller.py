@@ -172,21 +172,6 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def run_biobank_return_manifest_workflow(self):
-        """
-        Uses ingester to ingest manifest result files.
-        Moves file to archive when done.
-        """
-        self.ingester = GenomicFileIngester(job_id=self.job_id,
-                                            job_run_id=self.job_run.id,
-                                            bucket=self.bucket_name,
-                                            sub_folder=self.sub_folder_name,
-                                            _controller=self)
-        try:
-            self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
-        except RuntimeError:
-            self.job_result = GenomicSubProcessResult.ERROR
-
     def run_genomic_centers_manifest_workflow(self):
         """
         Uses GenomicFileIngester to ingest Genomic Manifest files (AW1).
@@ -328,37 +313,10 @@ class GenomicJobController:
         if _genome_type == GENOME_TYPE_ARRAY:
             self.reconciler.reconcile_gem_report_states(_last_run_time=self.last_run_time)
 
-    def run_gem_a2_workflow(self):
+    def run_general_ingestion_workflow(self):
         """
-        Ingests GEM A2 Manifest
-        """
-        self.ingester = GenomicFileIngester(job_id=self.job_id,
-                                            job_run_id=self.job_run.id,
-                                            bucket=self.bucket_name,
-                                            sub_folder=self.sub_folder_name,
-                                            _controller=self)
-        try:
-            self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
-        except RuntimeError:
-            self.job_result = GenomicSubProcessResult.ERROR
-
-    def run_cvl_w2_workflow(self):
-        """
-        Ingests CVL W2 Manifest
-        """
-        self.ingester = GenomicFileIngester(job_id=self.job_id,
-                                            job_run_id=self.job_run.id,
-                                            bucket=self.bucket_name,
-                                            sub_folder=self.sub_folder_name,
-                                            _controller=self)
-        try:
-            self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
-        except RuntimeError:
-            self.job_result = GenomicSubProcessResult.ERROR
-
-    def run_aw4_workflow(self):
-        """
-        Ingests AW4 Array & WGS Manifests
+        Ingests A single genomic file
+        Depending on job_id, bucket_name, etc.
         """
         self.ingester = GenomicFileIngester(job_id=self.job_id,
                                             job_run_id=self.job_run.id,

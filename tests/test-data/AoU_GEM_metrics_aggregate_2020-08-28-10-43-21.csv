@@ -1,0 +1,4 @@
+biobank_id,sample_id,ancestry_loop_response,available_results,results_released_at
+1,1001,yes,"['ancestry','cilantro','lactose','earwax','bittertaste']",2020-08-21 10:10:10
+2,1002,yes,"['ancestry','cilantro','lactose','earwax','bittertaste']",2020-08-21 10:10:10
+3,1003,later,"['ancestry','cilantro','lactose','earwax','bittertaste']",2020-08-21 10:12:10

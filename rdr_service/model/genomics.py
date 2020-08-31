@@ -192,6 +192,19 @@ class GenomicSetMember(Base):
                                       Integer, ForeignKey("genomic_job_run.id"),
                                       nullable=True)
 
+    colorMetricsJobRunID = Column('color_metrics_job_run_id',
+                                  Integer, ForeignKey("genomic_job_run.id"),
+                                  nullable=True)
+
+    gemMetricsAncestryLoopResponse = Column('gem_metrics_ancestry_loop_response',
+                                            String(10), nullable=True)
+
+    gemMetricsAvailableResults = Column('gem_metrics_available_results',
+                                        String(255), nullable=True)
+
+    gemMetricsResultsReleasedAt = Column('gem_metrics_results_released_at',
+                                         DateTime, nullable=True)
+
     # Genomic State Fields
     genomicWorkflowState = Column('genomic_workflow_state',
                                   Enum(GenomicWorkflowState),

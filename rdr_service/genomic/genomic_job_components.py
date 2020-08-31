@@ -54,8 +54,6 @@ from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file,
-    update_package_id_from_manifest_result_file,
-    _get_genomic_set_id_from_filename
 )
 from rdr_service.genomic.validation import (
     GENOMIC_VALID_AGE,
@@ -213,6 +211,9 @@ class GenomicFileIngester:
             if self.job_id == GenomicJob.GEM_A2_MANIFEST:
                 return self._ingest_gem_a2_manifest(data_to_ingest)
 
+            if self.job_id == GenomicJob.GEM_METRICS_INGEST:
+                return self._ingest_gem_metrics_manifest(data_to_ingest)
+
             if self.job_id == GenomicJob.W2_INGEST:
                 return self._ingest_cvl_w2_manifest(data_to_ingest)
 
@@ -223,20 +224,6 @@ class GenomicFileIngester:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
         return GenomicSubProcessResult.ERROR
-
-    def _ingest_bb_return_manifest(self):
-        """
-        Processes the Biobank return manifest file data
-        Uses genomic_biobank_manifest_handler functions.
-        :return: Result Code
-        """
-        try:
-            genomic_set_id = _get_genomic_set_id_from_filename(self.file_obj.fileName)
-            with open_cloud_file(self.file_obj.filePath) as csv_file:
-                update_package_id_from_manifest_result_file(genomic_set_id, csv_file)
-            return GenomicSubProcessResult.SUCCESS
-        except RuntimeError:
-            return GenomicSubProcessResult.ERROR
 
     def _ingest_gc_manifest(self, data, _site):
         """
@@ -350,6 +337,35 @@ class GenomicFileIngester:
                 member.genomicWorkflowState = GenomicStateHandler.get_new_state(
                     member.genomicWorkflowState,
                     signal=_signal)
+
+                self.member_dao.update(member)
+
+            return GenomicSubProcessResult.SUCCESS
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
+    def _ingest_gem_metrics_manifest(self, file_data):
+        """
+        Processes the GEM Metrics manifest file data
+        Updates GenomicSetMember object with metrics fields.
+        :return: Result Code
+        """
+
+        try:
+            for row in file_data['rows']:
+                sample_id = row['sample_id']
+                member = self.member_dao.get_member_from_sample_id_with_state(sample_id,
+                                                                              GENOME_TYPE_ARRAY,
+                                                                              GenomicWorkflowState.GEM_RPT_READY)
+                if member is None:
+                    logging.warning(f'Invalid sample ID: {sample_id}')
+                    continue
+
+                member.gemMetricsAncestryLoopResponse = row['ancestry_loop_response']
+                member.gemMetricsAvailableResults = row['available_results']
+                member.gemMetricsResultsReleasedAt = row['results_released_at']
+
+                member.colorMetricsJobRunID = self.job_run_id
 
                 self.member_dao.update(member)
 
@@ -582,6 +598,14 @@ class GenomicFileValidator:
             "dateofimport",
         )
 
+        self.GEM_METRICS_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "ancestryloopresponse",
+            "availableresults",
+            "resultsreleasedat",
+        )
+
         self.CVL_W2_SCHEMA = (
             "genomicsetname",
             "biobankid",
@@ -724,6 +748,15 @@ class GenomicFileValidator:
                 filename_components[2] == 'a2'
             )
 
+        def gem_metrics_name_rule(fn):
+            """GEM Metrics name rule: i.e. AoU_GEM_metrics_aggregate_2020-07-11-00-00-00.csv"""
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
+            return (
+                filename_components[0] == 'aou' and
+                filename_components[1] == 'gem' and
+                filename_components[2] == 'metrics'
+            )
+
         def aw4_arr_manifest_name_rule(fn):
             """DRC Broad AW4 Array manifest name rule: i.e. AoU_DRCB_GEN_2020-07-11-00-00-00.csv"""
             filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
@@ -751,6 +784,7 @@ class GenomicFileValidator:
             GenomicJob.W2_INGEST: cvl_w2_manifest_name_rule,
             GenomicJob.AW4_ARRAY_WORKFLOW: aw4_arr_manifest_name_rule,
             GenomicJob.AW4_WGS_WORKFLOW: aw4_wgs_manifest_name_rule,
+            GenomicJob.GEM_METRICS_INGEST: gem_metrics_name_rule,
         }
 
         return name_rules[self.job_id](filename)
@@ -790,6 +824,9 @@ class GenomicFileValidator:
                 return self.GEM_A2_SCHEMA
             if self.job_id == GenomicJob.AW1F_MANIFEST:
                 return self.GC_MANIFEST_SCHEMA  # AW1F and AW1 use same schema
+
+            if self.job_id == GenomicJob.GEM_METRICS_INGEST:
+                return self.GEM_METRICS_SCHEMA
 
             if self.job_id == GenomicJob.W2_INGEST:
                 return self.CVL_W2_SCHEMA
