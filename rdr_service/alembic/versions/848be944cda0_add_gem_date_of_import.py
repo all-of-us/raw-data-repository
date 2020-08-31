@@ -1,7 +1,7 @@
 """Add gem date of import.
 
 Revision ID: 848be944cda0
-Revises: 2c3a71f9fc04
+Revises: 0190195e45e0
 Create Date: 2020-08-28 09:01:29.442539
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '848be944cda0'
-down_revision = '2c3a71f9fc04'
+down_revision = '0190195e45e0'
 branch_labels = None
 depends_on = None
 
