@@ -573,17 +573,17 @@ class ParticipantDeceasedReportApiTest(DeceasedReportTestBase):
         self.data_generator.create_database_deceased_report(
             participantId=participant.participantId,
             status=DeceasedReportStatus.DENIED,
-            authored=datetime(2020, 3, 18, tzinfo=pytz.utc)
+            reviewed=datetime(2020, 3, 18, tzinfo=pytz.utc)
         )
         self.data_generator.create_database_deceased_report(
             participantId=participant.participantId,
             status=DeceasedReportStatus.DENIED,
-            authored=datetime(2020, 2, 27, tzinfo=pytz.utc)
+            reviewed=datetime(2020, 2, 27, tzinfo=pytz.utc)
         )
         self.data_generator.create_database_deceased_report(
             participantId=participant.participantId,
             status=DeceasedReportStatus.DENIED,
-            authored=datetime(2020, 4, 1, tzinfo=pytz.utc)
+            reviewed=datetime(2020, 4, 1, tzinfo=pytz.utc)
         )
 
         report_list_response = self.send_get(f'Participant/P{participant.participantId}/DeceasedReport')
@@ -619,7 +619,7 @@ class SearchDeceasedReportApiTest(DeceasedReportTestBase):
         self.unpaired_2_report_id = create_deceased_report_func(
             participantId=unpaired_participant_id_2,
             status=DeceasedReportStatus.DENIED,
-            authored=datetime(2020, 1, 5)
+            reviewed=datetime(2020, 1, 5)
         ).id
         unpaired_participant_id_3 = create_participant_func().participantId
         self.unpaired_3_report_id = create_deceased_report_func(
@@ -639,13 +639,14 @@ class SearchDeceasedReportApiTest(DeceasedReportTestBase):
         self.test_2_report_id = create_deceased_report_func(
             participantId=test_participant_2_id,
             status=DeceasedReportStatus.DENIED,
-            authored=datetime(2020, 8, 9)
+            authored=datetime(2018, 1, 1),  # Setting authored date in the past to check reviewed is used when ordering
+            reviewed=datetime(2020, 8, 9)
         ).id
         test_participant_3_id = create_participant_func(organizationId=test_org.organizationId).participantId
         self.test_3_report_id = create_deceased_report_func(
             participantId=test_participant_3_id,
             status=DeceasedReportStatus.APPROVED,
-            authored=datetime(2020, 2, 3)
+            reviewed=datetime(2020, 2, 3)
         ).id
 
         other_org = self.data_generator.create_database_organization(externalId='')
@@ -653,19 +654,19 @@ class SearchDeceasedReportApiTest(DeceasedReportTestBase):
         self.other_1_report_id = create_deceased_report_func(
             participantId=other_participant_1_id,
             status=DeceasedReportStatus.DENIED,
-            authored=datetime(2020, 5, 19)
+            reviewed=datetime(2020, 5, 19)
         ).id
         other_participant_2_id = create_participant_func(organizationId=other_org.organizationId).participantId
         self.other_2_report_id = create_deceased_report_func(
             participantId=other_participant_2_id,
             status=DeceasedReportStatus.DENIED,
-            authored=datetime(2020, 9, 5)
+            reviewed=datetime(2020, 9, 5)
         ).id
         other_participant_3_id = create_participant_func(organizationId=other_org.organizationId).participantId
         self.other_3_report_id = create_deceased_report_func(
             participantId=other_participant_3_id,
             status=DeceasedReportStatus.APPROVED,
-            authored=datetime(2020, 9, 7)
+            reviewed=datetime(2020, 9, 7)
         ).id
 
     def assertListResponseMatches(self, expected_report_ids, actual_json):

@@ -1,5 +1,5 @@
 import pytz
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from werkzeug.exceptions import BadRequest, NotFound, Conflict
 
 from rdr_service.dao.api_user_dao import ApiUserDao
@@ -271,12 +271,16 @@ class DeceasedReportDao(UpdatableDao):
 
             observation.extension = [reporter_extension]
 
-        if model.authored.tzinfo is None:
-            authored_timestamp = pytz.utc.localize(model.authored)
+        if model.status == DeceasedReportStatus.PENDING:
+            authored_timestamp = model.authored
         else:
-            authored_timestamp = model.authored.astimezone(pytz.utc)
+            authored_timestamp = model.reviewed
+        if authored_timestamp.tzinfo is None:
+            authored_timestamp_with_zone = pytz.utc.localize(authored_timestamp)
+        else:
+            authored_timestamp_with_zone = authored_timestamp.astimezone(pytz.utc)
         issued = FHIRDate()
-        issued.date = authored_timestamp
+        issued.date = authored_timestamp_with_zone
         observation.issued = issued
 
         date_of_death = FHIRDate()
@@ -318,7 +322,10 @@ class DeceasedReportDao(UpdatableDao):
 
     def load_reports(self, participant_id=None, org_id=None, status=None):
         with self.session() as session:
-            query = session.query(DeceasedReport).order_by(desc(DeceasedReport.authored))
+            # Order reports by newest to oldest based on last date a user modified it
+            query = session.query(DeceasedReport).order_by(
+                desc(func.coalesce(DeceasedReport.reviewed, DeceasedReport.authored))
+            )
             if participant_id is not None:
                 query = query.filter(DeceasedReport.participantId == participant_id)
             else:
