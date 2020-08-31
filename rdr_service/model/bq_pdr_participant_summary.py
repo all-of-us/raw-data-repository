@@ -29,7 +29,12 @@ class BQPDRBiospecimenSchema(BQSchema):
     biosp_status_id = BQField('biosp_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     biosp_order_time = BQField('biosp_order_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     biosp_isolate_dna = BQField('biosp_isolate_dna', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-    biosp_baseline_arrived = BQField('biosp_baseline_arrived', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    biosp_isolate_dna_confirmed = BQField('biosp_isolate_dna_confirmed',
+                                          BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    biosp_baseline_tests = BQField('biosp_baseline_tests', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    biosp_baseline_tests_confirmed = BQField('biosp_baseline_tests_confirmed',
+                                             BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
 
 
 class BQPDRParticipantSummarySchema(BQSchema):

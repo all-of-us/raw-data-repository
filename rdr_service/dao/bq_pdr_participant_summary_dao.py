@@ -44,21 +44,28 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
             for order in ps_bqr.biobank_orders:
                 # Count the number of DNA and Baseline tests in this order.
                 dna_tests = 0
+                dna_tests_confirmed = 0
                 baseline_tests = 0
+                baseline_tests_confirmed = 0
                 for test in order.get('bbo_samples', list()):
                     if test['bbs_dna_test'] == 1:
                         dna_tests += 1
-                    # PDR-134:  This is the same logic (confirmed only) used for RDR ParticipantSummary
-                    # numBaselineSamplesArrived, at the individual order level
-                    if test['bbs_baseline_test'] == 1 and test['bbs_confirmed']:
+                        if test['bbs_confirmed']:
+                            dna_tests_confirmed += 1
+                    # PDR-134:  Add baseline tests counts
+                    if test['bbs_baseline_test'] == 1:
                         baseline_tests += 1
+                        if test['confirmed']:
+                            baseline_tests_confirmed += 1
 
                 data['biospec'].append({
                     'biosp_status': order.get('bbo_status', None),
                     'biosp_status_id': order.get('bbo_status_id', None),
                     'biosp_order_time': order.get('bbo_created', None),
                     'biosp_isolate_dna': dna_tests,
-                    'biosp_baseline_arrived': baseline_tests
+                    'biosp_isolate_dna_confirmed': dna_tests_confirmed,
+                    'biosp_baseline_tests': baseline_tests,
+                    'biosp_baseline_tests_confirmed': baseline_tests_confirmed
                 })
 
             summary = self._merge_schema_dicts(summary, data)
