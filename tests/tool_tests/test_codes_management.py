@@ -36,7 +36,7 @@ class CodesManagementTest(BaseTestCase):
         }
 
     @staticmethod
-    def run_tool(redcap_data_dictionary, reuse_codes=None):
+    def run_tool(redcap_data_dictionary, reuse_codes=None, dry_run=False):
         def get_server_config(*_):
             config = {
                 REDCAP_PROJECT_KEYS: {
@@ -52,6 +52,7 @@ class CodesManagementTest(BaseTestCase):
 
         args = mock.MagicMock()
         args.redcap_project = 'project_one'
+        args.dry_run = dry_run
         if reuse_codes:
             args.reuse_codes = ','.join(reuse_codes)
 
@@ -202,4 +203,76 @@ class CodesManagementTest(BaseTestCase):
                          'Only 2 new codes should be created (with 2 previously existing)')
         self.assertEqual(0, return_val,
                          'Script should successfully exit, allowing for intentional reuse of the question code')
+
+    @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
+    def test_dry_run(self, mock_logger):
+        self.run_tool([
+            self._get_mock_dictionary_item(
+                'TestQuestionnaire',
+                'Test Questionnaire Module',
+                'descriptive'
+            ),
+            self._get_mock_dictionary_item(
+                'participant_id',
+                'Participant ID',
+                'text'
+            ),
+            self._get_mock_dictionary_item(
+                'radio',
+                'This is a single-select, multiple choice question',
+                'radio',
+                answers='A1, Choice One | A2, Choice Two | A3, Choice Three | A4, Etc.'
+            )
+        ], dry_run=True)
+        self.assertEqual(0, self.session.query(Code).count(), "No codes should be created during a dry run")
+
+        mock_logger.info.assert_any_call('Found new "MODULE" type code, value: TestQuestionnaire')
+        mock_logger.info.assert_any_call('Found new "QUESTION" type code, value: participant_id')
+        mock_logger.info.assert_any_call('Found new "QUESTION" type code, value: radio')
+        mock_logger.info.assert_any_call('Found new "ANSWER" type code, value: A1')
+        mock_logger.info.assert_any_call('Found new "ANSWER" type code, value: A2')
+        mock_logger.info.assert_any_call('Found new "ANSWER" type code, value: A3')
+        mock_logger.info.assert_any_call('Found new "ANSWER" type code, value: A4')
+
+    @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
+    def test_dry_run_with_reuse_and_errors(self, mock_logger):
+        self.data_generator.create_database_code(value='old_code')
+        self.data_generator.create_database_code(value='accidental_reuse')
+        self.data_generator.create_database_code(value='A2')  # Reuse should go through, but no logs should print
+
+        self.run_tool([
+            self._get_mock_dictionary_item(
+                'TestQuestionnaire',
+                'Test Questionnaire Module',
+                'descriptive'
+            ),
+            self._get_mock_dictionary_item(
+                'old_code',
+                'Question reused',
+                'text'
+            ),
+            self._get_mock_dictionary_item(
+                'accidental_reuse',
+                'Question reused',
+                'text'
+            ),
+            self._get_mock_dictionary_item(
+                'radio',
+                'This is a single-select, multiple choice question',
+                'radio',
+                answers='A1, Choice One | A2, Choice Two | A3, Choice Three | A4, Etc.'
+            )
+        ], dry_run=True, reuse_codes=['old_code'])
+        self.assertEqual(3, self.session.query(Code).count(), "No codes should be created during a dry run")
+
+        mock_logger.info.assert_any_call('Found new "MODULE" type code, value: TestQuestionnaire')
+        mock_logger.info.assert_any_call('Found new "QUESTION" type code, value: radio')
+        mock_logger.info.assert_any_call('Found new "ANSWER" type code, value: A1')
+        mock_logger.info.assert_any_call('Found new "ANSWER" type code, value: A3')
+        mock_logger.info.assert_any_call('Found new "ANSWER" type code, value: A4')
+        self.assertEqual(5, mock_logger.info.call_count, 'Logs were made for codes that would not have been created')
+
+        mock_logger.error.assert_any_call('Code "accidental_reuse" is already in use')
+
+        # todo: assert that export doesn't happen
 

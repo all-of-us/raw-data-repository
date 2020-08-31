@@ -19,7 +19,7 @@ CODE_SYSTEM = 'http://terminology.pmi-ops.org/CodeSystem/ppi'
 class CodesManagementClass(ToolBase):
     module_code = None
     codes_allowed_for_reuse = []
-    is_saving_codes = True
+    code_reuse_found = False
 
     def get_api_key(self, redcap_project_name):
         # The AppConfig class uses the git_project field from args when initializing,
@@ -58,12 +58,14 @@ class CodesManagementClass(ToolBase):
                 # At this point, it's not an answer code and it wasn't explicitly allowed for reuse
                 # so set up the tool to stop saving and print out the code.
                 # Let the script continue so that any other duplications can be caught.
-                self.is_saving_codes = False
+                self.code_reuse_found = True
                 logger.error(f'Code "{value}" is already in use')
             else:
                 # Allows for reused codes to be a child (or parent) of other codes being imported
                 return existing_code_with_value
-        elif self.is_saving_codes:
+        elif self.args.dry_run:
+            logger.info(f'Found new "{code_type}" type code, value: {value}')
+        elif not self.code_reuse_found and not self.args.dry_run:
             # Associating a code with a parent adds it to the session too,
             # so it should only happen when we intend to save it.
             # (But the parent here could be empty, so we make sure the code gets to the session)
@@ -78,18 +80,20 @@ class CodesManagementClass(ToolBase):
         self.initialize_code(session, code, display, question_code, CodeType.ANSWER)
 
     def import_data_dictionary_item(self, session: Session, code_json):
-        new_code = self.initialize_code(session, code_json['field_name'], code_json['field_label'], self.module_code)
+        code_value = code_json['field_name']
+        code_description = code_json['field_label']
 
         if code_json['field_type'] == 'descriptive':
+            # Only catch the first 'descriptive' field we see. That's the module code.
+            # Descriptive fields other than the first are considered to be readonly, display text.
+            # So we don't want to save codes for them
             if not self.module_code:
-                new_code.codeType = CodeType.MODULE
+                new_code = self.initialize_code(session, code_value, code_description,
+                                                self.module_code, CodeType.MODULE)
                 self.module_code = new_code
-            else:
-                # Descriptive fields other than the first are considered to be readonly, display text.
-                # So we don't want to save codes for them
-                session.expunge(new_code)
         else:
-            new_code.codeType = CodeType.QUESTION
+            new_code = self.initialize_code(session, code_value, code_description,
+                                            self.module_code, CodeType.QUESTION)
 
             answers_string = code_json['select_choices_or_calculations']
             if answers_string:
@@ -135,7 +139,7 @@ class CodesManagementClass(ToolBase):
                 self.import_data_dictionary_item(session, item_json)
 
             # Don't save anything if codes were unintentionally reused
-            if not self.is_saving_codes:
+            if self.code_reuse_found and not self.args.dry_run:
                 session.rollback()
                 logger.error('The above codes were already in the RDR database. '
                              'Please verify with the team creating questionnaires in Redcap that this was intentional, '
@@ -147,8 +151,9 @@ class CodesManagementClass(ToolBase):
 
 
 def add_additional_arguments(parser):
-    parser.add_argument('--redcap-project', required=False, help='Name of Redcap project to sync')
+    parser.add_argument('--redcap-project', help='Name of Redcap project to sync')
     parser.add_argument('--reuse-codes', help='Codes that have intentionally been reused from another project')
+    parser.add_argument('--dry-run', help='Only print information, do not save or export codes')
 
 
 def run():
