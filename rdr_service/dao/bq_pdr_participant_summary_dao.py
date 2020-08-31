@@ -55,7 +55,7 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                     # PDR-134:  Add baseline tests counts
                     if test['bbs_baseline_test'] == 1:
                         baseline_tests += 1
-                        if test['confirmed']:
+                        if test['bbs_confirmed']:
                             baseline_tests_confirmed += 1
 
                 data['biospec'].append({
