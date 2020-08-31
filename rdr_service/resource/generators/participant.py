@@ -789,7 +789,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     if date_overlap.any():
                         status = EnrollmentStatusV2.CORE_PARTICIPANT
                 except TypeError:
-                    pass
+                    pid = summary["participant_id"]
+                    logging.warning(
+                        f'Enrollment Status Re-Calc: P{pid} is missing a date value, please investigate.')
 
         data['enrollment_status'] = str(status)
         data['enrollment_status_id'] = int(status)
