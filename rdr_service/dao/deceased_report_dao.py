@@ -207,6 +207,19 @@ class DeceasedReportDao(UpdatableDao):
 
         return report
 
+    @staticmethod
+    def _convert_to_utc_datetime(datetime):
+        if datetime.tzinfo is None:
+            return pytz.utc.localize(datetime)
+        else:
+            return datetime.astimezone(pytz.utc)
+
+    def _to_fhir_date(self, datetime):
+        utc_datetime = self._convert_to_utc_datetime(datetime)
+        fhir_date = FHIRDate()
+        fhir_date.date = utc_datetime
+        return fhir_date
+
     def to_client_json(self, model: DeceasedReport):
         status_map = {
             DeceasedReportStatus.PENDING: 'preliminary',
@@ -272,16 +285,9 @@ class DeceasedReportDao(UpdatableDao):
             observation.extension = [reporter_extension]
 
         if model.status == DeceasedReportStatus.PENDING:
-            authored_timestamp = model.authored
+            observation.issued = self._to_fhir_date(model.authored)
         else:
-            authored_timestamp = model.reviewed
-        if authored_timestamp.tzinfo is None:
-            authored_timestamp_with_zone = pytz.utc.localize(authored_timestamp)
-        else:
-            authored_timestamp_with_zone = authored_timestamp.astimezone(pytz.utc)
-        issued = FHIRDate()
-        issued.date = authored_timestamp_with_zone
-        observation.issued = issued
+            observation.issued = self._to_fhir_date(model.reviewed)
 
         date_of_death = FHIRDate()
         date_of_death.date = model.dateOfDeath
