@@ -210,6 +210,8 @@ class GenomicSetMember(Base):
                                   Enum(GenomicWorkflowState),
                                   default=GenomicWorkflowState.UNSET)
 
+    genomicWorkflowStateModifiedTime = Column("genomic_workflow_state_modified_time", DateTime, nullable=True)
+
     genomicWorkflowStateHistory = Column("genomic_workflow_state_history", JSON, nullable=True)
 
 
