@@ -1762,13 +1762,18 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_ingestion_test_file('AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv',
                                          bucket_name, folder=sub_folder,
                                          include_timestamp=False)
-        # Run Workflow
-        genomic_pipeline.gem_a2_manifest_workflow()  # run_id 2
+
+        # Run Workflow at fake time
+        fake_now = datetime.datetime(2020, 7, 11, 0, 0, 0, 0)
+        with clock.FakeClock(fake_now):
+            genomic_pipeline.gem_a2_manifest_workflow()  # run_id 2
 
         # Test A2 fields and genomic state
         members = self.member_dao.get_all()
         for member in members:
             self.assertEqual(datetime.datetime(2020, 4, 29, 0, 0, 0), member.gemDateOfImport)
+            self.assertEqual(fake_now, member.genomicWorkflowStateModifiedTime)
+
             if member.id in (1, 2):
                 self.assertEqual("Y", member.gemPass)
                 self.assertEqual(2, member.gemA2ManifestJobRunId)
@@ -1955,7 +1960,9 @@ class GenomicPipelineTest(BaseTestCase):
             self.member_dao.update_member_state(m, GenomicWorkflowState.W1)
 
         # Run Workflow
-        genomic_pipeline.ingest_cvl_w2_manifest()  # run_id 2
+        fake_now = datetime.datetime(2020, 7, 11, 0, 0, 0, 0)
+        with clock.FakeClock(fake_now):
+            genomic_pipeline.ingest_cvl_w2_manifest()  # run_id 2
 
         # Test Member
         # Test gem_pass field
@@ -1964,6 +1971,7 @@ class GenomicPipelineTest(BaseTestCase):
         for member in members:
             self.assertEqual(2, member.cvlW2ManifestJobRunID)
             self.assertEqual(GenomicWorkflowState.W2, member.genomicWorkflowState)
+            self.assertEqual(fake_now, member.genomicWorkflowStateModifiedTime)
 
             if member.id in (1, 2):
                 self.assertEqual("aou_cvl", member.genomeType)
