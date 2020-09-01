@@ -164,6 +164,9 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         del actual['identifier']
         del actual['subject']
         del actual['resourceType']
+        if 'performer' in actual:
+            for performer_json in actual['performer']:
+                del performer_json['extension']
         self.assertJsonResponseMatches(expected, actual, strip_tz=False)
 
     def test_creating_minimal_deceased_report(self):
@@ -177,10 +180,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         )
         response = self.post_report(report_json, participant_id=self.paired_participant_with_summary.participantId)
 
-        participant_summary = self.get_participant_summary_from_db(
-            participant_id=self.paired_participant_with_summary.participantId
-        )
-
+        # Check data saved to the database
         report_id = self.get_deceased_report_id(response)
         created_report = self.get_report_from_db(report_id)
         self.assertEqual(DeceasedReportStatus.PENDING, created_report.status)
@@ -190,10 +190,20 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         self.assertEqual('me@test.com', created_report.author.username)
         self.assertEqual(datetime(2020, 1, 5, 13, 43, 21), created_report.authored)
 
+        # Check participant summary data
+        participant_summary = self.get_participant_summary_from_db(
+            participant_id=self.paired_participant_with_summary.participantId
+        )
         self.assertEqual(DeceasedStatus.PENDING, participant_summary.deceasedStatus)
         self.assertEqual(datetime(2020, 1, 5, 13, 43, 21), participant_summary.deceasedAuthored)
         self.assertEqual(date(2020, 1, 2), participant_summary.dateOfDeath)
 
+        # Check response for extra performer extension
+        performer_extension = response['performer'][0]['extension'][0]
+        self.assertEqual('https://www.pmi-ops.org/observation/authored', performer_extension['url'])
+        self.assertEqual('2020-01-05T13:43:21Z', performer_extension['valueDateTime'])
+
+        # Check that the rest of the response matches what was sent
         self.assertReportResponseMatches(report_json, response)
 
     def test_other_notification_method(self):
@@ -373,7 +383,8 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
 
     def test_approving_report(self):
         report = self.create_pending_deceased_report(
-            participant_id=self.paired_participant_with_summary.participantId
+            participant_id=self.paired_participant_with_summary.participantId,
+            authored='2020-06-01T00:00:00Z',
         )
 
         review_json = self.build_report_review_json(
@@ -395,6 +406,14 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         participant_summary = self.get_participant_summary_from_db(participant_id=report.participantId)
         self.assertEqual(DeceasedStatus.APPROVED, participant_summary.deceasedStatus)
         self.assertEqual(datetime(2020, 7, 1), participant_summary.deceasedAuthored)
+
+        # Check create/approve performer dates in response
+        author_extension_json = review_response['performer'][0]['extension'][0]
+        self.assertEqual('https://www.pmi-ops.org/observation/authored', author_extension_json['url'])
+        self.assertEqual('2020-06-01T00:00:00Z', author_extension_json['valueDateTime'])
+        reviewer_extension_json = review_response['performer'][1]['extension'][0]
+        self.assertEqual('https://www.pmi-ops.org/observation/reviewed', reviewer_extension_json['url'])
+        self.assertEqual('2020-07-01T00:00:00Z', reviewer_extension_json['valueDateTime'])
 
     def test_approving_can_overwrite_date_of_death(self):
         participant_id = self.paired_participant_with_summary.participantId

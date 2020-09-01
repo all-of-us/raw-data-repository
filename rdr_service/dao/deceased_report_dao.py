@@ -1,5 +1,6 @@
 import pytz
 from sqlalchemy import desc, func
+from sqlalchemy.orm.exc import DetachedInstanceError
 from werkzeug.exceptions import BadRequest, NotFound, Conflict
 
 from rdr_service.dao.api_user_dao import ApiUserDao
@@ -13,6 +14,7 @@ from rdr_service.lib_fhir.fhirclient_4_0_0.models.humanname import HumanName
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.identifier import Identifier
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.observation import Observation
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.reference import Reference
+from rdr_service.model.api_user import ApiUser
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
@@ -220,6 +222,19 @@ class DeceasedReportDao(UpdatableDao):
         fhir_date.date = utc_datetime
         return fhir_date
 
+    def _add_performer_data(self, observation: Observation, user: ApiUser, datetime, is_author):
+        performer = FHIRReference()
+        performer.type = user.system
+        performer.reference = user.username
+
+        # Add extension for details on the user's action
+        extension = Extension()
+        extension.url = 'https://www.pmi-ops.org/observation/' + ('authored' if is_author else 'reviewed')
+        extension.valueDateTime = self._to_fhir_date(datetime)
+        performer.extension = [extension]
+
+        observation.performer.append(performer)
+
     def to_client_json(self, model: DeceasedReport):
         status_map = {
             DeceasedReportStatus.PENDING: 'preliminary',
@@ -243,10 +258,18 @@ class DeceasedReportDao(UpdatableDao):
 
         observation.status = status_map[model.status]
 
-        author = FHIRReference()
-        author.type = model.author.system
-        author.reference = model.author.username
-        observation.performer = [author]
+        observation.performer = []
+        self._add_performer_data(observation, model.author, model.authored, is_author=True)
+        try:
+            # Automatically approved reports don't currently have a reviewer user set
+            if model.reviewer:
+                self._add_performer_data(observation, model.reviewer, model.reviewed, is_author=False)
+        except DetachedInstanceError:
+            # With the current structure the reviewer will have been eager-loaded or set on the model,
+            # but the model is detached and the reviewer is expected to be None on pending reports.
+            # If the reviewer is None, sqlalchemy will try to check the database to see if it shouldn't be
+            # and this exception type will result.
+            pass
 
         encounter = FHIRReference()
         encounter.reference = str(model.notification)
