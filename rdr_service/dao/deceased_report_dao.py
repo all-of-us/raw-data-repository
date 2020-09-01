@@ -261,7 +261,6 @@ class DeceasedReportDao(UpdatableDao):
         observation.performer = []
         self._add_performer_data(observation, model.author, model.authored, is_author=True)
         try:
-            # Automatically approved reports don't currently have a reviewer user set
             if model.reviewer:
                 self._add_performer_data(observation, model.reviewer, model.reviewed, is_author=False)
         except DetachedInstanceError:
