@@ -62,6 +62,9 @@ class SchemaUniqueIds(IntEnum):
     patient_statuses = 2090
     # Genomic schemas
     genomic_set = 3000
+    genomic_set_member = 3010
+    genomic_job_run = 3020
+    genomic_gc_validation_metrics = 3030
 
     # Workbench
     workbench_researcher = 4000
