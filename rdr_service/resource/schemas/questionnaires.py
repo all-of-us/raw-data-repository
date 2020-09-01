@@ -9,6 +9,7 @@ from marshmallow import validate
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.resource import fields
 
+# TODO: Rework these from BigQuery schemas to resource schemas...
 
 class _QuestionnaireSchema:
     """
