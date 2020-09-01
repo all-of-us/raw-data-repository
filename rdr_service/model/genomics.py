@@ -77,13 +77,13 @@ class GenomicSetMember(Base):
     # American Indian or Alaskan Native
     ai_an = Column('ai_an', String(2), nullable=True)
 
-    biobankOrderId = Column(
-        "biobank_order_id", String(80), ForeignKey("biobank_order.biobank_order_id"), unique=False, nullable=True
-    )
+    # biobankOrderId = Column(
+    #      "biobank_order_id", String(80), ForeignKey("biobank_order.biobank_order_id"), unique=False, nullable=True
+    # )
 
     biobankId = Column("biobank_id", String(80), nullable=True)
 
-    biobankOrderClientId = Column("biobank_order_client_Id", String(80), nullable=True)
+    # biobankOrderClientId = Column("biobank_order_client_Id", String(80), nullable=True)
 
     packageId = Column("package_id", String(250), nullable=True)
 
