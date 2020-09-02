@@ -440,6 +440,7 @@ class GenomicSetMemberDao(UpdatableDao):
         """
 
         member.genomicWorkflowState = new_state
+        member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
         return self.update(member)
 
     def update_member_sequencing_file(self, member, job_run_id, filename):
@@ -1031,7 +1032,7 @@ class GenomicOutreachDao(BaseDao):
                     GenomicSetMember.genomicWorkflowState.in_((GenomicWorkflowState.GEM_RPT_READY,
                                                                GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
                                                                GenomicWorkflowState.GEM_RPT_DELETED)),
-                    ParticipantSummary.consentForGenomicsRORAuthored > start_date,
-                    ParticipantSummary.consentForGenomicsRORAuthored < end_date,
+                    GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
+                    GenomicSetMember.genomicWorkflowStateModifiedTime < end_date,
                 ).all()
             )

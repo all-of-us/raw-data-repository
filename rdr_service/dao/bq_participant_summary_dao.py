@@ -3,6 +3,7 @@ import logging
 import re
 
 from dateutil import parser, tz
+from dateutil.parser import ParserError
 from sqlalchemy import func, desc, exc
 from werkzeug.exceptions import NotFound
 
@@ -174,11 +175,17 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             return {'email': None, 'is_ghost_id': 0}
         qnan = BQRecord(schema=None, data=qnans)  # use only most recent response.
 
+        try:
+            # Value can be None, 'PMISkip' or date string.
+            dob = parser.parse(qnan.get('PIIBirthInformation_BirthDate')).date()
+        except (ParserError, TypeError):
+            dob = None
+
         data = {
             'first_name': qnan.get('PIIName_First'),
             'middle_name': qnan.get('PIIName_Middle'),
             'last_name': qnan.get('PIIName_Last'),
-            'date_of_birth': qnan.get('PIIBirthInformation_BirthDate'),
+            'date_of_birth': dob,
             'primary_language': qnan.get('language'),
             'email': qnan.get('ConsentPII_EmailAddress'),
             'phone_number': qnan.get('PIIContactInformation_Phone'),
@@ -765,18 +772,23 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                         else:
                             gror_date_range.add_stop(response_date)
 
-                date_overlap = study_consent_date_range \
-                    .get_intersection(pm_date_range) \
-                    .get_intersection(baseline_modules_date_range) \
-                    .get_intersection(dna_date_range) \
-                    .get_intersection(ehr_date_range)
+                try:
+                    date_overlap = study_consent_date_range \
+                        .get_intersection(pm_date_range) \
+                        .get_intersection(baseline_modules_date_range) \
+                        .get_intersection(dna_date_range) \
+                        .get_intersection(ehr_date_range)
 
-                if summary['consent_cohort'] == BQConsentCohort.COHORT_3.name:
-                    date_overlap = date_overlap.get_intersection(gror_date_range)
+                    if summary['consent_cohort'] == BQConsentCohort.COHORT_3.name:
+                        date_overlap = date_overlap.get_intersection(gror_date_range)
 
-                # If there's any time that they had everything at once, then they should be a Core participant
-                if date_overlap.any():
-                    status = EnrollmentStatusV2.CORE_PARTICIPANT
+                    # If there's any time that they had everything at once, then they should be a Core participant
+                    if date_overlap.any():
+                        status = EnrollmentStatusV2.CORE_PARTICIPANT
+                except TypeError:
+                    pid = summary["participant_id"]
+                    logging.warning(
+                        f'Enrollment Status Re-Calc: P{pid} is missing a date value, please investigate.')
 
         data['enrollment_status'] = str(status)
         data['enrollment_status_id'] = int(status)

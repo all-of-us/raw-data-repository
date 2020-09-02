@@ -29,6 +29,12 @@ class BQPDRBiospecimenSchema(BQSchema):
     biosp_status_id = BQField('biosp_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     biosp_order_time = BQField('biosp_order_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     biosp_isolate_dna = BQField('biosp_isolate_dna', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    biosp_isolate_dna_confirmed = BQField('biosp_isolate_dna_confirmed',
+                                          BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    biosp_baseline_tests = BQField('biosp_baseline_tests', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    biosp_baseline_tests_confirmed = BQField('biosp_baseline_tests_confirmed',
+                                             BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
 
 
 class BQPDRParticipantSummarySchema(BQSchema):
@@ -179,7 +185,7 @@ class BQPDRParticipantSummaryAllView(BQPDRParticipantSummaryView):
                     ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
                   FROM `{project}`.{dataset}.pdr_participant
               ) ps
-              WHERE ps.rn = 1 
+              WHERE ps.rn = 1
     """.replace('%%FIELD_NAMES%%', BQPDRParticipantSummarySchema.get_sql_field_names(
         exclude_fields=[
             'pm',

@@ -303,9 +303,14 @@ class GenomicFileIngester:
                     member.gcManifestFailureMode != '':
                     _signal = 'aw1-failed'
 
-                member.genomicWorkflowState = GenomicStateHandler.get_new_state(
-                    member.genomicWorkflowState,
-                    signal=_signal)
+                # update state and state modifed time only if changed
+                if member.genomicWorkflowState != GenomicStateHandler.get_new_state(
+                    member.genomicWorkflowState, signal=_signal):
+                    member.genomicWorkflowState = GenomicStateHandler.get_new_state(
+                        member.genomicWorkflowState,
+                        signal=_signal)
+
+                    member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
             return GenomicSubProcessResult.SUCCESS
@@ -334,9 +339,15 @@ class GenomicFileIngester:
 
                 _signal = 'a2-gem-pass' if member.gemPass.lower() == 'y' else 'a2-gem-fail'
 
-                member.genomicWorkflowState = GenomicStateHandler.get_new_state(
-                    member.genomicWorkflowState,
-                    signal=_signal)
+                # update state and state modifed time only if changed
+                if member.genomicWorkflowState != GenomicStateHandler.get_new_state(
+                    member.genomicWorkflowState, signal=_signal):
+
+                    member.genomicWorkflowState = GenomicStateHandler.get_new_state(
+                        member.genomicWorkflowState,
+                        signal=_signal)
+
+                    member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
 
@@ -482,9 +493,15 @@ class GenomicFileIngester:
                 member.genomeType = row_copy['testname']
                 member.cvlW2ManifestJobRunID = self.job_run_id
 
-                member.genomicWorkflowState = GenomicStateHandler.get_new_state(
-                    member.genomicWorkflowState,
-                    signal='w2-ingestion-success')
+                # update state and state modifed time only if changed
+                if member.genomicWorkflowState != GenomicStateHandler.get_new_state(
+                    member.genomicWorkflowState, signal='w2-ingestion-success'):
+
+                    member.genomicWorkflowState = GenomicStateHandler.get_new_state(
+                        member.genomicWorkflowState,
+                        signal='w2-ingestion-success')
+
+                    member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
 
