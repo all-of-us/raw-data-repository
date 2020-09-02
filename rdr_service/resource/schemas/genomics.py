@@ -2,12 +2,20 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
-from enum import Enum
-
 from marshmallow import validate
 
 from rdr_service.resource import Schema, SchemaMeta, fields
 from rdr_service.resource.schemas import SchemaUniqueIds
+
+from rdr_service.participant_enums import (
+    GenomicSetStatus,
+    GenomicSetMemberStatus,
+#    GenomicValidationFlag,
+    GenomicSubProcessStatus,
+    GenomicSubProcessResult,
+    GenomicJob,
+    GenomicWorkflowState
+)
 
 
 class GenomicSetSchema(Schema):
@@ -20,7 +28,8 @@ class GenomicSetSchema(Schema):
     genomic_set_version = fields.Int32()
     genomic_set_file = fields.String(validate=validate.Length(max=250))
     genomic_set_file_time = fields.DateTime()
-    genomic_set_status = fields.Int16()
+    genomic_set_status = fields.EnumString(enum=GenomicSetStatus)
+    genomic_set_status_id = fields.EnumInteger(enum=GenomicSetStatus)
     validated_time = fields.DateTime()
 
     class Meta:
@@ -47,13 +56,15 @@ class GenomicSetMemberSchema(Schema):
     ny_flag = fields.Int32()
     sex_at_birth = fields.String(validate=validate.Length(max=20))
     genome_type = fields.String(validate=validate.Length(max=80))
-    biobank_order_id = fields.String(validate=validate.Length(max=80))
     biobank_id = fields.String(validate=validate.Length(max=80))
-    biobank_order_client_Id = fields.String(validate=validate.Length(max=80))
+#    biobank_order_id = fields.String(validate=validate.Length(max=80))
+#    biobank_order_client_Id = fields.String(validate=validate.Length(max=80))
     package_id = fields.String(validate=validate.Length(max=80))
-    validation_status = fields.Int16()
-    validated_time = fields.DateTime()
+    validation_status = fields.EnumString(enum=GenomicSetMemberStatus)
+    validation_status_id = fields.EnumInteger(enum=GenomicSetMemberStatus)
+    # validation_flags is an array of GenomicValidationFlag Enum values.
     validation_flags = fields.String(validate=validate.Length(max=80))
+    validated_time = fields.DateTime()
     sample_id = fields.String(validate=validate.Length(max=80))
     sample_type = fields.String(validate=validate.Length(max=50))
     reconcile_cvl_job_run_id = fields.Int32()
@@ -92,12 +103,15 @@ class GenomicSetMemberSchema(Schema):
     cvl_w3_manifest_job_run_id = fields.Int32()
     cvl_w4_manifest_job_run_id = fields.Int32()
     cvl_w4f_manifest_job_run_id  = fields.Int32()
-    genomic_workflow_state = fields.Int16()
+    genomic_workflow_state = fields.EnumString(enum=GenomicWorkflowState)
+    genomic_workflow_state_id = fields.EnumInteger(enum=GenomicWorkflowState)
+
     genomic_workflow_state_history = fields.JSON()
     collection_tube_id = fields.String(validate=validate.Length(max=80))
     gc_site_id = fields.String(validate=validate.Length(max=11))
     arr_aw3_manifest_job_run_id = fields.Int32()
     wgs_aw3_manifest_job_run_id = fields.Int32()
+    genomic_workflow_state_modified_time = fields.DateTime()
 
     class Meta:
         """
@@ -117,11 +131,14 @@ class GenomicSetMemberSchema(Schema):
 class GenomicJobRunSchema(Schema):
 
     id = fields.Int32()
-    job_id = fields.Int32()
+    job = fields.EnumString(enum=GenomicJob)
+    job_id = fields.EnumInteger(enum=GenomicJob)
     start_time = fields.DateTime()
     end_time = fields.DateTime()
-    run_status = fields.Int16()
-    run_result = fields.Int16()
+    run_status = fields.EnumString(enum=GenomicSubProcessStatus)
+    run_status_id = fields.EnumInteger(enum=GenomicSubProcessStatus)
+    run_result = fields.EnumString(enum=GenomicSubProcessResult)
+    run_result_id = fields.EnumInteger(enum=GenomicSubProcessResult)
     result_message = fields.String(validate=validate.Length(max=150))
 
     class Meta:
@@ -138,7 +155,7 @@ class GenomicJobRunSchema(Schema):
             resource_pk_field='id'
         )
 
-class GenomicGCValidationMetrics(Schema):
+class GenomicGCValidationMetricsSchema(Schema):
 
     id = fields.Int32()
     genomic_set_member_id = fields.Int32()
@@ -202,6 +219,6 @@ class GenomicGCValidationMetrics(Schema):
         schema_meta = SchemaMeta(
             type_uid=SchemaUniqueIds.genomic_gc_validation_metrics.value,
             type_name=SchemaUniqueIds.genomic_gc_validation_metrics.name,
-            resource_uri='GenomicJobRun',
+            resource_uri='GenomicGCValidationMetrics',
             resource_pk_field='id'
         )
