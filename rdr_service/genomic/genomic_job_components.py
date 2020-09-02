@@ -1966,7 +1966,7 @@ class ManifestDefinitionProvider:
                     [
                         GenomicSetMember.biobankId,
                         GenomicSetMember.sampleId,
-                        (GenomicSetMember.biobankId + '_' + GenomicSetMember.sampleId),
+                        sqlalchemy.func.concat(GenomicSetMember.biobankId, '_', GenomicSetMember.sampleId),
                         GenomicSetMember.sexAtBirth,
                         GenomicSetMember.gcSiteId,
                         GenomicGCValidationMetrics.hfVcfPath,

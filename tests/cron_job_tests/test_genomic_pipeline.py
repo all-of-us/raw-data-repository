@@ -248,7 +248,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test Genomic State updated
         member = self.member_dao.get(1)
         self.assertEqual(GenomicWorkflowState.AW2, member.genomicWorkflowState)
-        self.assertEqual('1001', member.sampleId)
+        self.assertEqual(1001, member.sampleId)
 
         # Test successful run result
         run_obj = self.job_run_dao.get(1)
@@ -1698,8 +1698,8 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(0, len(missing_cols))
             rows = list(csv_reader)
             self.assertEqual(2, len(rows))
-            self.assertEqual(test_member_1.biobankId, rows[0]['biobank_id'])
-            self.assertEqual(test_member_1.sampleId, rows[0]['sample_id'])
+            self.assertEqual(test_member_1.biobankId, int(rows[0]['biobank_id']))
+            self.assertEqual(test_member_1.sampleId, int(rows[0]['sample_id']))
             self.assertEqual(test_member_1.sexAtBirth, rows[0]['sex_at_birth'])
             self.assertEqual("yes", rows[0]['consent_for_ror'])
             self.assertEqual(test_member_1.consentForGenomicsRORAuthored, parse(rows[0]['date_of_consent_for_ror']))
@@ -1740,7 +1740,7 @@ class GenomicPipelineTest(BaseTestCase):
             csv_reader = csv.DictReader(csv_file)
             rows = list(csv_reader)
             self.assertEqual(1, len(rows))
-            self.assertEqual(test_member_1.biobankId, rows[0]['biobank_id'])
+            self.assertEqual(test_member_1.biobankId, int(rows[0]['biobank_id']))
 
     def test_gem_a2_manifest_workflow(self):
         # Create A1 manifest job run: id = 1
@@ -1837,8 +1837,8 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(0, len(missing_cols))
             rows = list(csv_reader)
             self.assertEqual(1, len(rows))
-            self.assertEqual(test_member.biobankId, rows[0]['biobank_id'])
-            self.assertEqual(test_member.sampleId, rows[0]['sample_id'])
+            self.assertEqual(test_member.biobankId, int(rows[0]['biobank_id']))
+            self.assertEqual(test_member.sampleId, int(rows[0]['sample_id']))
 
         # Array
         file_record = self.file_processed_dao.get(1)  # remember, GC Metrics is #1
@@ -1925,8 +1925,8 @@ class GenomicPipelineTest(BaseTestCase):
             rows = list(csv_reader)
 
             self.assertEqual(1, len(rows))
-            self.assertEqual(member.biobankId, rows[0]['biobank_id'])
-            self.assertEqual(member.sampleId, rows[0]['sample_id'])
+            self.assertEqual(member.biobankId, int(rows[0]['biobank_id']))
+            self.assertEqual(member.sampleId, int(rows[0]['sample_id']))
             self.assertEqual("", rows[0]['secondary_validation'])
 
         # Test file processed is recorded
@@ -2046,9 +2046,9 @@ class GenomicPipelineTest(BaseTestCase):
             rows = list(csv_reader)
 
             self.assertEqual(3, len(rows))
-            self.assertEqual(member.biobankId, rows[0]['biobank_id'])
-            self.assertEqual(member.collectionTubeId, rows[0]['collection_tubeid'])
-            self.assertEqual(member.sampleId, rows[0]['sample_id'])
+            self.assertEqual(member.biobankId, int(rows[0]['biobank_id']))
+            self.assertEqual(member.collectionTubeId, int(rows[0]['collection_tubeid']))
+            self.assertEqual(member.sampleId, int(rows[0]['sample_id']))
             self.assertEqual(member.gcSiteId, rows[0]['site_id'])
 
         # Test Manifest File Record Created
@@ -2147,8 +2147,8 @@ class GenomicPipelineTest(BaseTestCase):
             rows = list(csv_reader)
 
             self.assertEqual(2, len(rows))
-            self.assertEqual(member.biobankId, rows[1]['biobank_id'])
-            self.assertEqual(member.sampleId, rows[1]['sample_id'])
+            self.assertEqual(member.biobankId, int(rows[1]['biobank_id']))
+            self.assertEqual(member.sampleId, int(rows[1]['sample_id']))
             self.assertEqual(member.sexAtBirth, rows[1]['sex_at_birth'])
             self.assertEqual(member.gcSiteId, rows[1]['site_id'])
 

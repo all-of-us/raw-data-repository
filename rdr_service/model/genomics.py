@@ -77,26 +77,20 @@ class GenomicSetMember(Base):
     # American Indian or Alaskan Native
     ai_an = Column('ai_an', String(2), nullable=True)
 
-    # biobankOrderId = Column(
-    #      "biobank_order_id", String(80), ForeignKey("biobank_order.biobank_order_id"), unique=False, nullable=True
-    # )
-
-    biobankId = Column("biobank_id", String(80), nullable=True)
-
-    # biobankOrderClientId = Column("biobank_order_client_Id", String(80), nullable=True)
+    biobankId = Column("biobank_id", Integer, nullable=True, index=True)
 
     packageId = Column("package_id", String(250), nullable=True)
 
-    validationStatus = Column("validation_status", Enum(GenomicSetMemberStatus), default=GenomicSetStatus.UNSET)
+    validationStatus = Column("validation_status", Enum(GenomicSetMemberStatus), default=GenomicSetMemberStatus.UNSET)
     validationFlags = Column("validation_flags", MultiEnum(GenomicValidationFlag), nullable=True)
 
     validatedTime = Column("validated_time", DateTime, nullable=True)
 
     # collectionTubeId corresponds to biobank_stored_sample_id
-    collectionTubeId = Column('collection_tube_id', String(80), nullable=True)
+    collectionTubeId = Column('collection_tube_id', Integer, nullable=True, index=True)
 
     # sampleId is the great-grandchild aliquot of collectionTubeID
-    sampleId = Column('sample_id', String(80), nullable=True)
+    sampleId = Column('sample_id', Integer, nullable=True, index=True)
     sampleType = Column('sample_type', String(50), nullable=True)
 
     sequencingFileName = Column('sequencing_file_name',
