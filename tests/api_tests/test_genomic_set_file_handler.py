@@ -21,7 +21,7 @@ from rdr_service.model.genomics import (
 from rdr_service.participant_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, \
     GenomicWorkflowState
 from rdr_service.model.participant import Participant
-from tests import test_data
+# from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)

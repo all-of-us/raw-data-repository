@@ -498,6 +498,7 @@ class GenomicPipelineTest(BaseTestCase):
     def _create_fake_datasets_for_gc_tests(self, count,
                                            arr_override=False,
                                            **kwargs):
+        # pylint: disable=unused-variable
         # fake genomic_set
         genomic_test_set = self._create_fake_genomic_set(
             genomic_set_name="genomic-test-set-cell-line",
