@@ -386,7 +386,7 @@ class GenomicJobController:
         for bucket in alert_files.keys():
             email_message += f"\t{bucket}:\n"
             for file in alert_files[bucket]:
-                email_message += f"\t\t{file}:\n"
+                email_message += f"\t\t{file}\n"
 
         data = {
             "personalizations": [
