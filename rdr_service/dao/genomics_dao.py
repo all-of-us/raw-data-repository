@@ -831,15 +831,11 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
         with self.session() as session:
             return (
                 session.query(GenomicGCValidationMetrics,
-                              Participant.biobankId,
+                              GenomicSetMember.biobankId,
                               GenomicSetMember.sampleId,)
                 .join(
                     (GenomicSetMember,
                      GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId)
-                )
-                .join(
-                    (Participant,
-                     Participant.participantId == GenomicSetMember.participantId)
                 )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,

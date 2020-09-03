@@ -422,7 +422,6 @@ class GenomicPipelineTest(BaseTestCase):
         self,
         genomic_set_id,
         participant_id,
-        # biobank_order_id,
         validation_status=GenomicSetMemberStatus.VALID,
         validation_flags=None,
         sex_at_birth="F",
@@ -451,7 +450,6 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.collectionTubeId = participant_id
         genomic_set_member.genomeType = genome_type
         genomic_set_member.nyFlag = 1 if ny_flag == "Y" else 0
-        # genomic_set_member.biobankOrderId = biobank_order_id
         genomic_set_member.sequencingFileName = sequencing_filename
         genomic_set_member.reconcileMetricsBBManifestJobRunId = recon_bb_manifest_job_id
         genomic_set_member.reconcileGCManifestJobRunId = recon_gc_manifest_job_id
@@ -535,7 +533,6 @@ class GenomicPipelineTest(BaseTestCase):
             self._create_fake_genomic_member(
                 genomic_set_id=genomic_test_set.id,
                 participant_id=participant.participantId,
-                # biobank_order_id=biobank_order.biobankOrderId,
                 validation_status=GenomicSetMemberStatus.VALID,
                 validation_flags=None,
                 biobankId=p,
