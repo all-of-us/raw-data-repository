@@ -98,7 +98,7 @@ def genomic_centers_accessioning_failures_workflow():
         Entrypoint for Accessioning Alerts:
             Failure Manifest (AW1F)
         """
-    with GenomicJobController(GenomicJob.AW1F_MANIFEST,
+    with GenomicJobController(GenomicJob.AW1F_ALERTS,
                               bucket_name=None,
                               bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
                               sub_folder_tuple=config.GENOMIC_AW1F_SUBFOLDERS

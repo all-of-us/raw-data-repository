@@ -1599,6 +1599,11 @@ class GenomicPipelineTest(BaseTestCase):
 
         send_email_mock.assert_called_with(expected_email_req)
 
+        # Test the end-to-end result code
+        job_run = self.job_run_dao.get(1)
+        self.assertEqual(GenomicJob.AW1F_ALERTS, job_run.jobId)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, job_run.runResult)
+
     def test_gem_a1_manifest_end_to_end(self):
         # Need GC Manifest for source query : run_id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
