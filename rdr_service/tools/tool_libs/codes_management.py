@@ -1,7 +1,14 @@
+import csv
+from datetime import datetime
+# from googleapiclient.discovery import build
+# from oauth2client.service_account import ServiceAccountCredentials
+import os
 import requests
 from sqlalchemy.orm.session import Session
+# import sys
 
 from rdr_service.clock import CLOCK
+# from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
 from rdr_service.model.code import Code, CodeType
 from rdr_service.tools.tool_libs._tool_base import cli_run, logger, ToolBase
 from rdr_service.tools.tool_libs.app_engine_manager import AppConfigClass
@@ -16,12 +23,17 @@ REDCAP_PROJECT_KEYS = 'project_api_keys'
 CODE_SYSTEM = 'http://terminology.pmi-ops.org/CodeSystem/ppi'
 
 
+# class CodesExportClass(ToolBase):
+#     def run(self):
+#         # Intentionally not calling super's run because the SA with
+
+
 class CodesManagementClass(ToolBase):
     module_code = None
     codes_allowed_for_reuse = []
     code_reuse_found = False
 
-    def get_api_key(self, redcap_project_name):
+    def get_redcap_api_key(self, redcap_project_name):
         # The AppConfig class uses the git_project field from args when initializing,
         # looks like it uses it as a root directory for other purposes.
         self.args.git_project = self.gcp_env.git_project
@@ -120,40 +132,91 @@ class CodesManagementClass(ToolBase):
 
         return response.content
 
+    @staticmethod
+    def write_export_file(session):
+        now_string = datetime.now().strftime('%Y-%m-%d_%H%M')
+        export_file_name = f'codes_{now_string}.csv'
+        with open(export_file_name, 'w') as output_file:
+            code_csv_writer = csv.writer(output_file)
+            code_csv_writer.writerow([
+                'Code Value',
+                'Display',
+                'Parent Value',
+                'Module Value'
+            ])
+            codes = session.query(Code).order_by(Code.value).all()
+            for code in codes:
+                row_data = [code.value, code.display]
+                if code.parent:
+                    row_data.append(code.parent.value)
+
+                    possible_module_code = code.parent
+                    while possible_module_code and possible_module_code.codeType != CodeType.MODULE:
+                        possible_module_code = possible_module_code.parent
+
+                    if possible_module_code:
+                        row_data.append(possible_module_code.value)
+                code_csv_writer.writerow(row_data)
+
+        return export_file_name
+
     def run(self):
         super(CodesManagementClass, self).run()
 
-        if hasattr(self.args, 'reuse_codes'):
+        if self.args.reuse_codes:
             self.codes_allowed_for_reuse = [code_val.strip() for code_val in self.args.reuse_codes.split(',')]
 
-        # Get the server config to read Redcap API keys
-        project_api_key = self.get_api_key(self.args.redcap_project)
-        if project_api_key is None:
-            logger.error('Unable to find project API key')
-            return 1
-
-        # Get the data-dictionary and process codes
-        dictionary_json = self.retrieve_data_dictionary(project_api_key)
         with self.get_session() as session:
-            for item_json in dictionary_json:
-                self.import_data_dictionary_item(session, item_json)
+            if not self.args.export_only:
+                # Get the server config to read Redcap API keys
+                project_api_key = self.get_redcap_api_key(self.args.redcap_project)
+                if project_api_key is None:
+                    logger.error('Unable to find project API key')
+                    return 1
 
-            # Don't save anything if codes were unintentionally reused
-            if self.code_reuse_found and not self.args.dry_run:
-                session.rollback()
-                logger.error('The above codes were already in the RDR database. '
-                             'Please verify with the team creating questionnaires in Redcap that this was intentional, '
-                             'and then re-run the tool with the "--reuse-codes" arguement to specify that they should '
-                             'be allowed.')
-                return 1
+                # Get the data-dictionary and process codes
+                dictionary_json = self.retrieve_data_dictionary(project_api_key)
+                for item_json in dictionary_json:
+                    self.import_data_dictionary_item(session, item_json)
+
+                # Don't save anything if codes were unintentionally reused
+                if self.code_reuse_found and not self.args.dry_run:
+                    session.rollback()
+                    logger.error('The above codes were already in the RDR database. '
+                                 'Please verify with the team creating questionnaires in Redcap that this '
+                                 'was intentional, and then re-run the tool with the "--reuse-codes" argument '
+                                 'to specify that they should be allowed.')
+                    return 1
+
+            if not self.args.dry_run:
+                export_file_name = self.write_export_file(session)
+
+                # TODO:  get this to upload the file just written
+                # service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
+                # credentials = ServiceAccountCredentials.from_json_keyfile_name(service_key_info['key_path'])
+                #
+                # service = build('drive', 'v3', credentials=credentials)
+                #
+                # folder_id = '1PdtB30wbKWaoktgZtw5gwTpmL6U4mYDB'
+                # file_metadata = {
+                #     'name': 'text.txt',
+                #     'parents': [folder_id]
+                # }
+                #
+                # service.files().create(body=file_metadata).execute()
+
+                os.remove(export_file_name)
 
         return 0
 
 
 def add_additional_arguments(parser):
     parser.add_argument('--redcap-project', help='Name of Redcap project to sync')
-    parser.add_argument('--reuse-codes', help='Codes that have intentionally been reused from another project')
-    parser.add_argument('--dry-run', help='Only print information, do not save or export codes')
+    parser.add_argument('--reuse-codes', default='',
+                        help='Codes that have intentionally been reused from another project')
+    parser.add_argument('--dry-run', action='store_true', help='Only print information, do not save or export codes')
+    parser.add_argument('--export-only', action='store_true',
+                        help='Only export codes, do not import anything new from Redcap')
 
 
 def run():

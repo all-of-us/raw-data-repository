@@ -36,7 +36,7 @@ class CodesManagementTest(BaseTestCase):
         }
 
     @staticmethod
-    def run_tool(redcap_data_dictionary, reuse_codes=None, dry_run=False):
+    def run_tool(redcap_data_dictionary, reuse_codes=[], dry_run=False, export_only=False):
         def get_server_config(*_):
             config = {
                 REDCAP_PROJECT_KEYS: {
@@ -53,16 +53,19 @@ class CodesManagementTest(BaseTestCase):
         args = mock.MagicMock()
         args.redcap_project = 'project_one'
         args.dry_run = dry_run
-        if reuse_codes:
-            args.reuse_codes = ','.join(reuse_codes)
+        args.reuse_codes = ','.join(reuse_codes)
+        args.export_only = export_only
 
-        with mock.patch('rdr_service.tools.tool_libs.codes_management.requests') as mock_requests:
+        with mock.patch('rdr_service.tools.tool_libs.codes_management.requests') as mock_requests,\
+                mock.patch('rdr_service.tools.tool_libs.codes_management.csv') as mock_csv:
             mock_response = mock_requests.post.return_value
             mock_response.status_code = 200
             mock_response.content = redcap_data_dictionary
 
+            mock_csv_writerow = mock_csv.writer.return_value.writerow
+
             sync_codes_tool = CodesManagementClass(args, gcp_env)
-            return sync_codes_tool.run()
+            return sync_codes_tool.run(), mock_requests, mock_csv_writerow
 
     def _load_code_with_value(self, code_value) -> Code:
         return self.session.query(Code).filter(Code.value == code_value).one()
@@ -93,7 +96,7 @@ class CodesManagementTest(BaseTestCase):
                 answers='A1, Choice One | A2, Choice Two | A3, Choice Three | A4, Etc.'
             )
         ])
-        self.assertEqual(6, self.session.query(Code).count(), "6 codes should have been created")
+        self.assertEqual(6, self.session.query(Code).count(), '6 codes should have been created')
 
         self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION)
         radio_code = self.assertCodeExists(
@@ -124,7 +127,7 @@ class CodesManagementTest(BaseTestCase):
                 'descriptive'
             )
         ])
-        self.assertEqual(2, self.session.query(Code).count(), "2 codes should have been created")
+        self.assertEqual(2, self.session.query(Code).count(), '2 codes should have been created')
 
         module_code = self.assertCodeExists('TestQuestionnaire', 'Test Questionnaire Module', CodeType.MODULE)
         self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION, module_code)
@@ -133,7 +136,7 @@ class CodesManagementTest(BaseTestCase):
     def test_failure_on_question_code_reuse(self, mock_logger):
         self.data_generator.create_database_code(value='old_code')
 
-        return_val = self.run_tool([
+        return_val, _, _ = self.run_tool([
             self._get_mock_dictionary_item(
                 'TestQuestionnaire',
                 'Test Questionnaire Module',
@@ -162,7 +165,7 @@ class CodesManagementTest(BaseTestCase):
     def test_auto_ignore_answer_code_reuse(self):
         self.data_generator.create_database_code(value='A1')
 
-        return_val = self.run_tool([
+        return_val, _, _ = self.run_tool([
             self._get_mock_dictionary_item(
                 'radio',
                 'This is a single-select, multiple choice question',
@@ -177,7 +180,7 @@ class CodesManagementTest(BaseTestCase):
         self.data_generator.create_database_code(value='TestQuestionnaire')
         self.data_generator.create_database_code(value='old_code')
 
-        return_val = self.run_tool([
+        return_val, _, _ = self.run_tool([
             self._get_mock_dictionary_item(
                 'TestQuestionnaire',
                 'Test Questionnaire Module',
@@ -224,7 +227,7 @@ class CodesManagementTest(BaseTestCase):
                 answers='A1, Choice One | A2, Choice Two | A3, Choice Three | A4, Etc.'
             )
         ], dry_run=True)
-        self.assertEqual(0, self.session.query(Code).count(), "No codes should be created during a dry run")
+        self.assertEqual(0, self.session.query(Code).count(), 'No codes should be created during a dry run')
 
         mock_logger.info.assert_any_call('Found new "MODULE" type code, value: TestQuestionnaire')
         mock_logger.info.assert_any_call('Found new "QUESTION" type code, value: participant_id')
@@ -240,7 +243,7 @@ class CodesManagementTest(BaseTestCase):
         self.data_generator.create_database_code(value='accidental_reuse')
         self.data_generator.create_database_code(value='A2')  # Reuse should go through, but no logs should print
 
-        self.run_tool([
+        _, _, mock_csv_writerow = self.run_tool([
             self._get_mock_dictionary_item(
                 'TestQuestionnaire',
                 'Test Questionnaire Module',
@@ -263,7 +266,7 @@ class CodesManagementTest(BaseTestCase):
                 answers='A1, Choice One | A2, Choice Two | A3, Choice Three | A4, Etc.'
             )
         ], dry_run=True, reuse_codes=['old_code'])
-        self.assertEqual(3, self.session.query(Code).count(), "No codes should be created during a dry run")
+        self.assertEqual(3, self.session.query(Code).count(), 'No codes should be created during a dry run')
 
         mock_logger.info.assert_any_call('Found new "MODULE" type code, value: TestQuestionnaire')
         mock_logger.info.assert_any_call('Found new "QUESTION" type code, value: radio')
@@ -274,5 +277,36 @@ class CodesManagementTest(BaseTestCase):
 
         mock_logger.error.assert_any_call('Code "accidental_reuse" is already in use')
 
-        # todo: assert that export doesn't happen
+        # Make sure the export code doesn't run
+        mock_csv_writerow.assert_not_called()
 
+    def test_no_import_on_export_only(self):
+        _, mock_requests, _ = self.run_tool([
+            self._get_mock_dictionary_item('participant_id', 'Participant ID', 'text')
+        ], export_only=True)
+
+        mock_requests.post.assert_not_called()  # Redcap should not be called when only exporting codes
+        self.assertEqual(0, self.session.query(Code).count(), 'No codes should be created when only exporting')
+
+    def test_export_file_creation(self):
+        self.data_generator.create_database_code(value='old_code', display='Code we already had')
+        self.data_generator.create_database_code(value='another', display='Code we already had')
+        _, _, mock_csv_writerow = self.run_tool([
+            self._get_mock_dictionary_item('TestQuestionnaire', 'Test Questionnaire Module', 'descriptive'),
+            self._get_mock_dictionary_item('participant_id', 'Participant ID', 'text'),
+            self._get_mock_dictionary_item('radio', 'multi-select', 'radio',
+                                           answers='A1, One | A2, Two | A3, Three | A4, Etc.')
+        ])
+
+        mock_csv_writerow.assert_has_calls([
+            mock.call(['Code Value', 'Display', 'Parent Value', 'Module Value']),
+            mock.call(['A1', 'One', 'radio', 'TestQuestionnaire']),
+            mock.call(['A2', 'Two', 'radio', 'TestQuestionnaire']),
+            mock.call(['A3', 'Three', 'radio', 'TestQuestionnaire']),
+            mock.call(['A4', 'Etc.', 'radio', 'TestQuestionnaire']),
+            mock.call(['another', 'Code we already had']),
+            mock.call(['old_code', 'Code we already had']),
+            mock.call(['participant_id', 'Participant ID', 'TestQuestionnaire', 'TestQuestionnaire']),
+            mock.call(['radio', 'multi-select', 'TestQuestionnaire', 'TestQuestionnaire']),
+            mock.call(['TestQuestionnaire', 'Test Questionnaire Module']),
+        ])
