@@ -1,5 +1,4 @@
 import os
-import dateutil
 
 from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum
 from rdr_service.dao.bigquery_sync_dao import BigQueryGenerator, BigQuerySyncDao
@@ -214,8 +213,7 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                         break
 
             if consent_date:
-                age = int((dateutil.parser.parse(consent_date.isoformat()) -
-                                dateutil.parser.parse(ps_bqr.date_of_birth)).days / 365)
+                age = int((consent_date - ps_bqr.date_of_birth).days / 365)
                 if not 18 <= age <= 65:
                     data['ubr_age_at_consent'] = 1
 
