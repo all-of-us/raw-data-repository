@@ -537,7 +537,8 @@ DROP TABLE IF EXISTS cdm.questionnaire_vibrent_forms;
 CREATE TABLE cdm.questionnaire_vibrent_forms (
     questionnaire_id            bigint,
     version                     bigint,
-    vibrent_form_id             varchar(1024)
+    vibrent_form_id             varchar(1024),
+    INDEX vibrent_form_index    (questionnaire_id, version)
 );
 
 INSERT INTO cdm.questionnaire_vibrent_forms
@@ -557,7 +558,8 @@ CREATE TABLE cdm.questionnaire_latest_answers (
     participant_id              bigint,
     question_code_id            bigint,
     authored                    datetime,
-    survey                      varchar(1024)
+    survey                      varchar(1024),
+    INDEX latest_asnswers_index (participant_id, question_code_id, authored, survey)
 );
 
 -- -------------------------------------------------------------------
