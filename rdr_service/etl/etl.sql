@@ -634,11 +634,11 @@ JOIN ( -- Filter question answers down to the latest we have from each participa
             WHEN c_inner.value = 'COPE' THEN qvf_inner.vibrent_form_id
             ELSE c_inner.value
         END survey
-	FROM rdr.questionnaire_response qr_inner
-	JOIN rdr.questionnaire_response_answer qra_inner
-	    ON qra_inner.questionnaire_response_id = qr_inner.questionnaire_response_id
-	JOIN rdr.questionnaire_question qq_inner
-	    ON qq_inner.questionnaire_question_id = qra_inner.question_id
+    FROM rdr.questionnaire_response qr_inner
+    JOIN rdr.questionnaire_response_answer qra_inner
+        ON qra_inner.questionnaire_response_id = qr_inner.questionnaire_response_id
+    JOIN rdr.questionnaire_question qq_inner
+        ON qq_inner.questionnaire_question_id = qra_inner.question_id
     JOIN rdr.questionnaire_concept qc_inner
         ON qr_inner.questionnaire_id = qc_inner.questionnaire_id
             AND qr_inner.questionnaire_version = qc_inner.questionnaire_version
@@ -649,10 +649,10 @@ JOIN ( -- Filter question answers down to the latest we have from each participa
         FROM questionnaire_history qh
     ) qvf_inner -- Need to distinguish by vibrent_form_id for the COPE surveys
         ON qvf_inner.questionnaire_id = qr_inner.questionnaire_id AND qvf_inner.version = qr_inner.questionnaire_version
-	GROUP BY qr_inner.participant_id, qq_inner.code_id, CASE
-	    WHEN c_inner.value = 'COPE' THEN qvf_inner.vibrent_form_id
-	    ELSE c_inner.value
-	END
+    GROUP BY qr_inner.participant_id, qq_inner.code_id, CASE
+        WHEN c_inner.value = 'COPE' THEN qvf_inner.vibrent_form_id
+        ELSE c_inner.value
+    END
 ) latest
     ON latest.participant_id = qr.participant_id
         AND latest.authored = qr.authored
