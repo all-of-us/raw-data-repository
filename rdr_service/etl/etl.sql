@@ -572,7 +572,9 @@ SELECT
     pa.participant_id               AS participant_id,
     pa.research_id                  AS research_id,
     co_b.value                      AS survey_name,
-    qr.created                      AS date_of_survey,
+    COALESCE(
+        qr.authored,
+        qr.created)                 AS date_of_survey,
     co_q.short_value                AS question_ppi_code,
     qq.code_id                      AS question_code_id,
     co_a.short_value                AS value_ppi_code,
