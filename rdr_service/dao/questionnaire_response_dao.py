@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pytz
 from sqlalchemy.orm import subqueryload
@@ -243,6 +243,26 @@ class QuestionnaireResponseDao(BaseDao):
             return True
         return False
 
+    def _find_cope_month(self, questionnaire_history, response_authored_date):
+        resource_json = json.loads(questionnaire_history.resource)
+        if 'identifier' in resource_json:
+            identifier_json = resource_json['identifier']
+            if isinstance(identifier_json, list) and len(identifier_json) > 0:
+                first_identifier = identifier_json[0]
+                if 'value' in first_identifier:
+                    form_id = first_identifier['value']
+                    cope_form_id_map = config.getSettingJson(config.COPE_FORM_ID_MAP)
+
+                    for form_ids_str, month_name in cope_form_id_map.items():
+                        if form_id in form_ids_str.split(','):
+                            return month_name
+
+        # Currently only have fields in participant summary for May, Jun and July
+        return {
+            5: 'May',
+            6: 'June'
+        }.get(response_authored_date.month, 'July')
+
     def _update_participant_summary(
         self, session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
     ):
@@ -375,13 +395,7 @@ class QuestionnaireResponseDao(BaseDao):
                         else:
                             submission_status = QuestionnaireStatus.SUBMITTED_INVALID
 
-                        # COPE survey updates can occur at the end of the previous month
-                        adjusted_last_modified = questionnaire_history.lastModified + timedelta(days=5)
-                        # Currently only have fields in participant summary for May, Jun and July
-                        month_name = {
-                            5: 'May',
-                            6: 'June'
-                        }.get(adjusted_last_modified.month, 'July')
+                        month_name = self._find_cope_month(questionnaire_history, authored)
                         setattr(participant_summary, f'questionnaireOnCope{month_name}', submission_status)
                         setattr(participant_summary, f'questionnaireOnCope{month_name}Time',
                                 questionnaire_response.created)
