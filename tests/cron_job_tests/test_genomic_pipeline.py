@@ -140,7 +140,7 @@ class GenomicPipelineTest(BaseTestCase):
         i = self._participant_i
         self._participant_i += 1
         bid = kwargs.pop('biobankId', i)
-        participant = Participant(participantId=i, biobankId=bid, **kwargs)
+        participant = Participant(participantId=i, biobankId=bid, researchId=1000000+i, **kwargs)
         self.participant_dao.insert(participant)
         return participant
 
@@ -2154,6 +2154,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(member.sampleId, int(rows[1]['sample_id']))
             self.assertEqual(member.sexAtBirth, rows[1]['sex_at_birth'])
             self.assertEqual(member.gcSiteId, rows[1]['site_id'])
+            self.assertEqual(1000002, int(rows[1]['research_id']))
 
             # Test File Paths
             metric = self.metrics_dao.get(2)
@@ -2258,6 +2259,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(f'{member.biobankId}_{member.sampleId}', rows[0]['biobankidsampleid'])
             self.assertEqual(member.sexAtBirth, rows[0]['sex_at_birth'])
             self.assertEqual(member.gcSiteId, rows[0]['site_id'])
+            self.assertEqual(1000002, int(rows[0]['research_id']))
 
             # Test File Paths
             metric = self.metrics_dao.get(1)

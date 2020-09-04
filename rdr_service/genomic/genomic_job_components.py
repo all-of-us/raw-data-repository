@@ -15,6 +15,7 @@ from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 
 from rdr_service import clock
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.participant import Participant
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
     open_cloud_file,
@@ -1932,15 +1933,19 @@ class ManifestDefinitionProvider:
                         GenomicGCValidationMetrics.vcfPath,
                         GenomicGCValidationMetrics.vcfTbiPath,
                         GenomicGCValidationMetrics.vcfMd5Path,
-                        sqlalchemy.bindparam('research_id', None),
+                        Participant.researchId,
                     ]
                 ).select_from(
                     sqlalchemy.join(
-                        sqlalchemy.join(ParticipantSummary,
-                                        GenomicSetMember,
-                                        GenomicSetMember.participantId == ParticipantSummary.participantId),
-                        GenomicGCValidationMetrics,
-                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                        sqlalchemy.join(
+                            sqlalchemy.join(ParticipantSummary,
+                                            GenomicSetMember,
+                                            GenomicSetMember.participantId == ParticipantSummary.participantId),
+                            GenomicGCValidationMetrics,
+                            GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                        ),
+                        Participant,
+                        Participant.participantId == ParticipantSummary.participantId
                     )
                 ).where(
                     (GenomicGCValidationMetrics.processingStatus == self.PROCESSING_STATUS_PASS) &
@@ -1977,16 +1982,20 @@ class ManifestDefinitionProvider:
                         GenomicGCValidationMetrics.cramPath,
                         GenomicGCValidationMetrics.cramMd5Path,
                         GenomicGCValidationMetrics.craiPath,
-                        sqlalchemy.bindparam('research_id', None),
+                        Participant.researchId,
                         GenomicSetMember.sampleId,
                     ]
                 ).select_from(
                     sqlalchemy.join(
-                        sqlalchemy.join(ParticipantSummary,
-                                        GenomicSetMember,
-                                        GenomicSetMember.participantId == ParticipantSummary.participantId),
-                        GenomicGCValidationMetrics,
-                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                        sqlalchemy.join(
+                            sqlalchemy.join(ParticipantSummary,
+                                            GenomicSetMember,
+                                            GenomicSetMember.participantId == ParticipantSummary.participantId),
+                            GenomicGCValidationMetrics,
+                            GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                        ),
+                        Participant,
+                        Participant.participantId == ParticipantSummary.participantId
                     )
                 ).where(
                     (GenomicGCValidationMetrics.processingStatus == self.PROCESSING_STATUS_PASS) &
