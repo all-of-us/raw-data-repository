@@ -38,11 +38,11 @@ class ParticipantDaoTest(BaseTestCase):
     def test_insert(self):
         p = Participant()
         time = datetime.datetime(2016, 1, 1)
-        with random_ids([1, 2]):
+        with random_ids([1, 2, 3]):
             with FakeClock(time):
                 self.dao.insert(p)
         expected_participant = self.data_generator._participant_with_defaults(
-            participantId=1, version=1, biobankId=2, lastModified=time, signUpTime=time
+            participantId=1, researchId=3, version=1, biobankId=2, lastModified=time, signUpTime=time
         )
         self.assertEqual(expected_participant.asdict(), p.asdict())
 
@@ -54,18 +54,18 @@ class ParticipantDaoTest(BaseTestCase):
         self.assertIsNone(ps)
         ph = self.participant_history_dao.get([1, 1])
         expected_ph = self.data_generator._participant_history_with_defaults(
-            participantId=1, biobankId=2, lastModified=time, signUpTime=time
+            participantId=1, biobankId=2, researchId=3, lastModified=time, signUpTime=time
         )
         self.assertEqual(expected_ph.asdict(), ph.asdict())
 
     def test_insert_with_external_id(self):
         p = Participant(externalId=3)
         time = datetime.datetime(2016, 1, 1)
-        with random_ids([1, 2]):
+        with random_ids([1, 2, 3]):
             with FakeClock(time):
                 self.dao.insert(p)
         expected_participant = self.data_generator._participant_with_defaults(
-            participantId=1, externalId=3, version=1, biobankId=2, lastModified=time, signUpTime=time
+            participantId=1, externalId=3, researchId=3, version=1, biobankId=2, lastModified=time, signUpTime=time
         )
         self.assertEqual(expected_participant.asdict(), p.asdict())
 
@@ -77,32 +77,33 @@ class ParticipantDaoTest(BaseTestCase):
         self.assertIsNone(ps)
         ph = self.participant_history_dao.get([1, 1])
         expected_ph = self.data_generator._participant_history_with_defaults(
-            participantId=1, externalId=3, biobankId=2, lastModified=time, signUpTime=time
+            participantId=1, externalId=3, biobankId=2, researchId=3, lastModified=time, signUpTime=time
         )
         self.assertEqual(expected_ph.asdict(), ph.asdict())
 
     def test_insert_duplicate_participant_id_retry(self):
         p = Participant()
-        with random_ids([1, 2]):
+        with random_ids([1, 2, 3]):
             self.dao.insert(p)
         p2 = Participant()
         time = datetime.datetime(2016, 1, 1)
-        with random_ids([1, 3, 2, 3]):
+        with random_ids([1, 4, 5, 2, 4, 5]):
             with FakeClock(time):
                 p2 = self.dao.insert(p2)
         expected_participant = self.data_generator._participant_with_defaults(
-            participantId=2, version=1, biobankId=3, lastModified=time, signUpTime=time
+            participantId=2, version=1, biobankId=4, researchId=5, lastModified=time, signUpTime=time
         )
         self.assertEqual(expected_participant.asdict(), p2.asdict())
 
     def test_insert_duplicate_participant_id_give_up(self):
         p = Participant()
-        with random_ids([1, 2]):
+        with random_ids([1, 2, 3]):
             self.dao.insert(p)
         rand_ints = []
         for i in range(0, MAX_INSERT_ATTEMPTS):
             rand_ints.append(1)
             rand_ints.append(i)
+            rand_ints.append(3)
         p2 = Participant()
         with random_ids(rand_ints):
             with self.assertRaises(ServiceUnavailable):
@@ -110,12 +111,13 @@ class ParticipantDaoTest(BaseTestCase):
 
     def test_insert_duplicate_biobank_id_give_up(self):
         p = Participant()
-        with random_ids([1, 2]):
+        with random_ids([1, 2, 3]):
             self.dao.insert(p)
         rand_ints = []
         for i in range(0, MAX_INSERT_ATTEMPTS):
             rand_ints.append(i + 2)
             rand_ints.append(2)
+            rand_ints.append(3)
         p2 = Participant()
         with random_ids(rand_ints):
             with self.assertRaises(ServiceUnavailable):
@@ -124,7 +126,7 @@ class ParticipantDaoTest(BaseTestCase):
     def test_update_no_expected_version_no_ps(self):
         p = Participant()
         time = datetime.datetime(2016, 1, 1)
-        with random_ids([1, 2]):
+        with random_ids([1, 2, 3]):
             with FakeClock(time):
                 self.dao.insert(p)
 
@@ -136,6 +138,7 @@ class ParticipantDaoTest(BaseTestCase):
         p2 = self.dao.get(1)
         expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
+            researchId=3,
             version=2,
             biobankId=2,
             lastModified=time2,
@@ -150,7 +153,7 @@ class ParticipantDaoTest(BaseTestCase):
         self.assertIsNone(ps)
 
         expected_ph = self.data_generator._participant_history_with_defaults(
-            participantId=1, biobankId=2, lastModified=time, signUpTime=time
+            participantId=1, biobankId=2, researchId=3, lastModified=time, signUpTime=time
         )
         # Updating the participant adds a new ParticipantHistory row.
         ph = self.participant_history_dao.get([1, 1])
@@ -158,6 +161,7 @@ class ParticipantDaoTest(BaseTestCase):
         ph2 = self.participant_history_dao.get([1, 2])
         expected_ph2 = self.data_generator._participant_history_with_defaults(
             participantId=1,
+            researchId=3,
             version=2,
             biobankId=2,
             lastModified=time2,
@@ -170,7 +174,7 @@ class ParticipantDaoTest(BaseTestCase):
     def test_update_no_expected_version_with_ps(self):
         p = Participant()
         time = datetime.datetime(2016, 1, 1)
-        with random_ids([1, 2]):
+        with random_ids([1, 2, 3]):
             with FakeClock(time):
                 self.dao.insert(p)
         p.providerLink = make_primary_provider_link_for_name("PITT")
@@ -185,6 +189,7 @@ class ParticipantDaoTest(BaseTestCase):
         p2 = self.dao.get(1)
         expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
+            researchId=3,
             version=2,
             biobankId=2,
             lastModified=time2,
@@ -219,7 +224,7 @@ class ParticipantDaoTest(BaseTestCase):
         self.assertEqual(p2_update.lastModified, p2.lastModified)
 
         expected_ph = self.data_generator._participant_history_with_defaults(
-            participantId=1, biobankId=2, lastModified=time, signUpTime=time
+            participantId=1, biobankId=2, researchId=3, lastModified=time, signUpTime=time
         )
         # And updating the participant adds a new ParticipantHistory row.
         ph = self.participant_history_dao.get([1, 1])
@@ -227,6 +232,7 @@ class ParticipantDaoTest(BaseTestCase):
         ph2 = self.participant_history_dao.get([1, 2])
         expected_ph2 = self.data_generator._participant_history_with_defaults(
             participantId=1,
+            researchId=3,
             version=2,
             biobankId=2,
             lastModified=time2,
@@ -239,7 +245,7 @@ class ParticipantDaoTest(BaseTestCase):
     def test_update_right_expected_version(self):
         p = Participant()
         time = datetime.datetime(2016, 1, 1)
-        with random_ids([1, 2]):
+        with random_ids([1, 2, 3]):
             with FakeClock(time):
                 self.dao.insert(p)
         p.version = 1
@@ -251,6 +257,7 @@ class ParticipantDaoTest(BaseTestCase):
         p2 = self.dao.get(1)
         expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
+            researchId=3,
             version=2,
             biobankId=2,
             lastModified=time2,
@@ -263,7 +270,7 @@ class ParticipantDaoTest(BaseTestCase):
     def test_update_withdraw(self):
         p = Participant()
         time = datetime.datetime(2016, 1, 1)
-        with random_ids([1, 2]):
+        with random_ids([1, 2, 3]):
             with FakeClock(time):
                 self.dao.insert(p)
         p.version = 1
@@ -275,6 +282,7 @@ class ParticipantDaoTest(BaseTestCase):
         p2 = self.dao.get(1)
         expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
+            researchId=3,
             version=2,
             biobankId=2,
             lastModified=time2,
@@ -295,6 +303,7 @@ class ParticipantDaoTest(BaseTestCase):
         p2 = self.dao.get(1)
         expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
+            researchId=3,
             version=3,
             biobankId=2,
             lastModified=time3,
@@ -309,7 +318,7 @@ class ParticipantDaoTest(BaseTestCase):
     def test_update_suspend(self):
         p = Participant()
         time = datetime.datetime(2016, 1, 1)
-        with random_ids([1, 2]):
+        with random_ids([1, 2, 3]):
             with FakeClock(time):
                 self.dao.insert(p)
         p.version = 1
@@ -321,6 +330,7 @@ class ParticipantDaoTest(BaseTestCase):
         p2 = self.dao.get(1)
         expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
+            researchId=3,
             version=2,
             biobankId=2,
             lastModified=time2,
@@ -341,6 +351,7 @@ class ParticipantDaoTest(BaseTestCase):
         p2 = self.dao.get(1)
         expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
+            researchId=3,
             version=3,
             biobankId=2,
             lastModified=time3,
@@ -355,7 +366,7 @@ class ParticipantDaoTest(BaseTestCase):
     def test_update_multiple_suspend(self):
         p = Participant()
         time = datetime.datetime(2016, 1, 1)
-        with random_ids([1, 2]):
+        with random_ids([1, 2, 3]):
             with FakeClock(time):
                 self.dao.insert(p)
         p.version = 1
@@ -376,6 +387,7 @@ class ParticipantDaoTest(BaseTestCase):
         p2 = self.dao.get(p.participantId)
         expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
+            researchId=3,
             version=3,
             biobankId=2,
             lastModified=time3,
@@ -396,6 +408,7 @@ class ParticipantDaoTest(BaseTestCase):
         p2 = self.dao.get(p.participantId)
         expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
+            researchId=3,
             version=4,
             biobankId=2,
             lastModified=time4,
@@ -412,7 +425,7 @@ class ParticipantDaoTest(BaseTestCase):
     def test_update_wrong_expected_version(self):
         p = Participant()
         time = datetime.datetime(2016, 1, 1)
-        with random_ids([1, 2]):
+        with random_ids([1, 2, 3]):
             with FakeClock(time):
                 self.dao.insert(p)
 
@@ -426,12 +439,13 @@ class ParticipantDaoTest(BaseTestCase):
     def test_update_withdrawn_hpo_succeeds(self):
         p = Participant(withdrawalStatus=WithdrawalStatus.NO_USE)
         time = datetime.datetime(2016, 1, 1)
-        with random_ids([1, 2]):
+        with random_ids([1, 2, 3]):
             with FakeClock(time):
                 self.dao.insert(p)
 
         expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
+            researchId=3,
             version=1,
             biobankId=2,
             lastModified=time,
@@ -450,12 +464,13 @@ class ParticipantDaoTest(BaseTestCase):
     def test_update_withdrawn_status_fails(self):
         p = Participant(withdrawalStatus=WithdrawalStatus.NO_USE)
         time = datetime.datetime(2016, 1, 1)
-        with random_ids([1, 2]):
+        with random_ids([1, 2, 3]):
             with FakeClock(time):
                 self.dao.insert(p)
 
         expected_participant = self.data_generator._participant_with_defaults(
             participantId=1,
+            researchId=3,
             version=1,
             biobankId=2,
             lastModified=time,
@@ -542,7 +557,7 @@ class ParticipantDaoTest(BaseTestCase):
     def test_pairing_at_different_levels(self):
         p = Participant()
         time = datetime.datetime(2016, 1, 1)
-        with random_ids([1, 2]):
+        with random_ids([1, 2, 3]):
             with FakeClock(time):
                 self.dao.insert(p)
 

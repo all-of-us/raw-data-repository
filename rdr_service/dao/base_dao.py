@@ -28,11 +28,14 @@ from rdr_service.query import FieldFilter, Operator, PropertyType, Results
 # Maximum number of times we will attempt to insert an entity with a random ID before
 # giving up.
 
-MAX_INSERT_ATTEMPTS = 20
+MAX_INSERT_ATTEMPTS = 50
 
 # Range of possible values for random IDs.
 _MIN_ID = 100000000
 _MAX_ID = 999999999
+
+_MIN_RESEARCH_ID = 1000000
+_MAX_RESEARCH_ID = 9999999
 
 _COMPARABLE_PROPERTY_TYPES = [PropertyType.DATE, PropertyType.DATETIME, PropertyType.INTEGER]
 
@@ -468,6 +471,9 @@ class BaseDao(object):
     def _get_random_id(self):
         return random.randint(_MIN_ID, _MAX_ID)
 
+    def _get_random_research_id(self):
+        return random.randint(_MIN_RESEARCH_ID, _MAX_RESEARCH_ID)
+
     def _insert_with_random_id(self, obj, fields):
         """Attempts to insert an entity with randomly assigned ID(s) repeatedly until success
     or a maximum number of attempts are performed."""
@@ -475,7 +481,10 @@ class BaseDao(object):
         for _ in range(0, MAX_INSERT_ATTEMPTS):
             tried_ids = {}
             for field in fields:
-                rand_id = self._get_random_id()
+                if field == 'researchId':
+                    rand_id = self._get_random_research_id()
+                else:
+                    rand_id = self._get_random_id()
                 tried_ids[field] = rand_id
                 setattr(obj, field, rand_id)
             all_tried_ids.append(tried_ids)

@@ -28,7 +28,7 @@ class CurationExportClass(object):
     """
     Export the data from the Curation ETL process.
     """
-    tables = ['care_site', 'condition_era', 'condition_occurrence', 'cost', 'death',
+    tables = ['pid_rid_mapping', 'care_site', 'condition_era', 'condition_occurrence', 'cost', 'death',
               'device_exposure', 'dose_era', 'drug_era', 'drug_exposure', 'fact_relationship',
               'location', 'measurement', 'observation', 'observation_period', 'payer_plan_period',
               'person', 'procedure_occurrence', 'provider', 'visit_occurrence']
