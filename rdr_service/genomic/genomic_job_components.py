@@ -1347,7 +1347,6 @@ class GenomicBiobankSamplesCoupler:
                 participantId=samples_meta.pids[i],
                 nyFlag=self._get_new_york_flag(samples_meta.site_ids[i]),
                 sexAtBirth=samples_meta.sabs[i],
-                biobankOrderId=samples_meta.order_ids[i],
                 collectionTubeId=samples_meta.sample_ids[i],
                 validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
                                   else GenomicSetMemberStatus.VALID),
@@ -1966,7 +1965,7 @@ class ManifestDefinitionProvider:
                     [
                         GenomicSetMember.biobankId,
                         GenomicSetMember.sampleId,
-                        (GenomicSetMember.biobankId + '_' + GenomicSetMember.sampleId),
+                        sqlalchemy.func.concat(GenomicSetMember.biobankId, '_', GenomicSetMember.sampleId),
                         GenomicSetMember.sexAtBirth,
                         GenomicSetMember.gcSiteId,
                         GenomicGCValidationMetrics.hfVcfPath,
