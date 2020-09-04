@@ -615,12 +615,50 @@ JOIN rdr.questionnaire_response_answer qra
     ON  qra.questionnaire_response_id = qr.questionnaire_response_id
 JOIN rdr.questionnaire_question qq
     ON qra.question_id = qq.questionnaire_question_id
+JOIN (
+    SELECT qh.questionnaire_id, qh.version,
+        json_unquote(json_extract(convert(qh.resource using utf8), '$.identifier[0].value')) vibrent_form_id
+    FROM questionnaire_history qh
+) qvf
+    ON qvf.questionnaire_id = qr.questionnaire_id AND qvf.version = qr.questionnaire_version
 JOIN rdr.code co_q
     ON  qq.code_id = co_q.code_id
 LEFT JOIN rdr.code co_a
     ON  qra.value_code_id = co_a.code_id
 LEFT JOIN rdr.code co_b
     ON qc.code_id = co_b.code_id
+JOIN ( -- Filter question answers down to the latest we have from each participant for each question
+    SELECT qr_inner.participant_id, qq_inner.code_id question_code_id, MAX(qr_inner.authored) as authored, CASE
+            WHEN c_inner.value = 'COPE' THEN qvf_inner.vibrent_form_id
+            ELSE c_inner.value
+        END survey
+	FROM rdr.questionnaire_response qr_inner
+	JOIN rdr.questionnaire_response_answer qra_inner
+	    ON qra_inner.questionnaire_response_id = qr_inner.questionnaire_response_id
+	JOIN rdr.questionnaire_question qq_inner
+	    ON qq_inner.questionnaire_question_id = qra_inner.question_id
+    JOIN rdr.questionnaire_concept qc_inner
+        ON qr_inner.questionnaire_id = qc_inner.questionnaire_id
+            AND qr_inner.questionnaire_version = qc_inner.questionnaire_version
+    JOIN rdr.code c_inner on c_inner.code_id = qc_inner.code_id
+	JOIN (
+        SELECT qh.questionnaire_id, qh.version,
+            json_unquote(json_extract(convert(qh.resource using utf8), '$.identifier[0].value')) vibrent_form_id
+        FROM questionnaire_history qh
+	) qvf_inner -- Need to distinguish by vibrent_form_id for the COPE surveys
+	    ON qvf_inner.questionnaire_id = qr_inner.questionnaire_id AND qvf_inner.version = qr_inner.questionnaire_version
+	GROUP BY qr_inner.participant_id, qq_inner.code_id, CASE
+	    WHEN c_inner.value = 'COPE' THEN qvf_inner.vibrent_form_id
+	    ELSE c_inner.value
+	END
+) latest
+    ON latest.participant_id = qr.participant_id
+	    AND latest.authored = qr.authored
+	    AND latest.question_code_id = qq.code_id
+	    AND latest.survey = CASE
+            WHEN co_b.value = 'COPE' THEN qvf.vibrent_form_id
+            ELSE co_b.value
+        END
 WHERE
     pa.withdrawal_status != 2
     AND pa.is_ghost_id IS NOT TRUE
