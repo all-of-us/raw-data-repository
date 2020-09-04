@@ -1577,7 +1577,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Set up expected SendGrid request
         email_message = "New AW1 Failure manifests have been found:\n"
         email_message += f"\t{_FAKE_GENOMIC_CENTER_BUCKET_A}:\n"
-        email_message += f"\t\t{_FAKE_FAILURE_FOLDER}/{gc_manifest_filename}:\n"
+        email_message += f"\t\t{_FAKE_FAILURE_FOLDER}/{gc_manifest_filename}\n"
 
         expected_email_req = {
             "personalizations": [
