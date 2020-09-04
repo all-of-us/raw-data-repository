@@ -20,7 +20,7 @@ tool_cmd = "curation"
 tool_desc = "Support tool for Curation ETL process"
 
 
-EXPORT_BATCH_SIZE = 1000
+EXPORT_BATCH_SIZE = 10000
 
 # TODO: Rewrite the Curation ETL bash scripts into multiple Classes here.
 
@@ -105,11 +105,10 @@ class CurationExportClass(object):
         total = self.get_table_count(table)
         fields = self.get_field_names(table, ['id'])
         field_list = ', '.join(fields)
-        off = 1
         count = 0
         storage_provider = GoogleCloudStorageProvider()
 
-        sql = f'SELECT {field_list} FROM {table} WHERE id BETWEEN %S% and %E% ORDER BY id'
+        sql = f'SELECT {field_list} FROM {table}'
 
         with storage_provider.open(cloud_file, 'wt') as h:
 
@@ -121,8 +120,10 @@ class CurationExportClass(object):
                 _logger.info(f' {table:20} : 0/0 100.0% complete')
                 return
 
-            results = self.run_query(sql.replace('%S%', str(off)).
-                                     replace('%E%', str(off + (EXPORT_BATCH_SIZE-1))))
+            _logger.info(f'executing sql for table {table}')
+            cursor = self.db_conn.cursor()
+            cursor.execute(sql)
+            results = cursor.fetchmany(size=EXPORT_BATCH_SIZE)
             while results:
                 for row in results:
                     # merge field names and data into dict.
@@ -130,11 +131,13 @@ class CurationExportClass(object):
                     writer.writerow(data_dict)
                     count += 1
 
-                off += EXPORT_BATCH_SIZE
-                results = self.run_query(sql.replace('%S%', str(off)).
-                                         replace('%E%', str(off + (EXPORT_BATCH_SIZE-1))))
+                results = cursor.fetchmany(size=EXPORT_BATCH_SIZE)
+
                 print_progress_bar(
                     count, total, prefix=f" {table:20} : {count}/{total}:", suffix="complete", bar_length=60)
+
+            cursor.close()
+            _logger.info(f'uploading {table} export to GCS bucket')
 
     def run(self):
         """
