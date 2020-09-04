@@ -226,6 +226,7 @@ class GenomicJobController:
         new_failure_files = dict()
 
         # Get files in each gc bucket and folder where updated date > last run date
+        logging.info("Searching buckets for accessioning FAILURE files.")
         for gc_bucket_name in self.bucket_name_list:
             failures_in_bucket = list()
 
@@ -240,16 +241,29 @@ class GenomicJobController:
 
                 if len(files_filtered) > 0:
                     for f in files_filtered:
+                        logging.info(f'Found failure file: {f}')
                         failures_in_bucket.append(f)
 
             if len(failures_in_bucket) > 0:
                 new_failure_files[gc_bucket_name] = failures_in_bucket
 
-        # Compile email message
-        email_req = self._compile_accesioning_failure_alert_email(new_failure_files)
+        self.job_result = GenomicSubProcessResult.NO_FILES
 
-        # send email
-        self._send_email_with_sendgrid(email_req)
+        if len(new_failure_files) > 0:
+            # Compile email message
+            logging.info('Compiling email...')
+            email_req = self._compile_accesioning_failure_alert_email(new_failure_files)
+
+            # send email
+            try:
+                logging.info('Sending Email to SendGrid...')
+                self._send_email_with_sendgrid(email_req)
+
+                logging.info('Email Sent.')
+                self.job_result = GenomicSubProcessResult.SUCCESS
+
+            except RuntimeError:
+                self.job_result = GenomicSubProcessResult.ERROR
 
     def run_cvl_reconciliation_report(self):
         """
@@ -372,7 +386,7 @@ class GenomicJobController:
         for bucket in alert_files.keys():
             email_message += f"\t{bucket}:\n"
             for file in alert_files[bucket]:
-                email_message += f"\t\t{file}:\n"
+                email_message += f"\t\t{file}\n"
 
         data = {
             "personalizations": [
