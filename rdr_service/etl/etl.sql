@@ -541,6 +541,7 @@ DROP TABLE IF EXISTS cdm.src_clean;
 
 CREATE TABLE cdm.src_clean (
     participant_id              bigint,
+    research_id                 bigint,
     survey_name                 varchar(200),
     date_of_survey              datetime,
     question_ppi_code           varchar(200),
@@ -569,6 +570,7 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 INSERT INTO cdm.src_clean
 SELECT
     pa.participant_id               AS participant_id,
+    pa.research_id                  AS research_id,
     co_b.value                      AS survey_name,
     qr.created                      AS date_of_survey,
     co_q.short_value                AS question_ppi_code,
@@ -2148,6 +2150,13 @@ SELECT
 FROM cdm.measurement cdm_meas
 WHERE cdm_meas.parent_id IS NOT NULL;
 
+
+DROP TABLE IF EXISTS cdm.pid_rid_mapping;
+CREATE TABLE cdm.pid_rid_mapping (
+    participant_id              bigint,
+    research_id                 bigint
+);
+INSERT INTO cdm.pid_rid_mapping SELECT DISTINCT participant_id, research_id FROM cdm.src_clean;
 
 -- -------------------------------------------------------------------
 -- Drop Temporary Tables
