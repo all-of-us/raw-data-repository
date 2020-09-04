@@ -102,7 +102,7 @@ class ParticipantDao(UpdatableDao):
             assert obj.biobankId
             return super(ParticipantDao, self).insert(obj)
         assert not obj.biobankId
-        return self._insert_with_random_id(obj, ("participantId", "biobankId"))
+        return self._insert_with_random_id(obj, ("participantId", "biobankId", "researchId"))
 
     def update_ghost_participant(self, session, pid):
         if not pid:
