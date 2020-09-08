@@ -537,17 +537,9 @@ DROP TABLE IF EXISTS cdm.questionnaire_vibrent_forms;
 CREATE TABLE cdm.questionnaire_vibrent_forms (
     questionnaire_id            bigint,
     version                     bigint,
-    vibrent_form_id             varchar(1024),
+    vibrent_form_id             varchar(200),
     INDEX vibrent_form_index    (questionnaire_id, version)
 );
-
-INSERT INTO cdm.questionnaire_vibrent_forms
-SELECT
-    qh.questionnaire_id,
-    qh.version,
-    json_unquote(json_extract(convert(qh.resource using utf8), '$.identifier[0].value')) vibrent_form_id
-FROM questionnaire_history qh
-;
 
 -- -----------------------------------------------
 -- questionnaire_latest_answers
@@ -558,7 +550,7 @@ CREATE TABLE cdm.questionnaire_latest_answers (
     participant_id              bigint,
     question_code_id            bigint,
     authored                    datetime,
-    survey                      varchar(1024),
+    survey                      varchar(200),
     INDEX latest_asnswers_index (participant_id, question_code_id, authored, survey)
 );
 
@@ -598,7 +590,15 @@ CREATE TABLE cdm.src_clean (
 -- -------------------------------------------------------------------
 
 -- Do not set locks, allow dirty reads.
-SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+
+INSERT INTO cdm.questionnaire_vibrent_forms
+SELECT
+    qh.questionnaire_id,
+    qh.version,
+    json_unquote(json_extract(convert(qh.resource using utf8), '$.identifier[0].value')) vibrent_form_id
+FROM rdr.questionnaire_history qh
+;
 
 -- Setup for being able to filter question answers down to the latest we have from each participant for each question
 INSERT INTO cdm.questionnaire_latest_answers
@@ -706,8 +706,8 @@ WHERE
     )
 ;
 
--- Reset ISOLATION level to previous setting
-COMMIT;
+-- Reset ISOLATION level to previous setting (assuming here that it was MySql's default)
+SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 
 
 ALTER TABLE cdm.src_clean ADD KEY (participant_id);
