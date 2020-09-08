@@ -82,7 +82,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
                                    notification=DeceasedNotification.EHR, notification_other=None, user_system='system',
                                    user_name='name', authored='2020-01-01T00:00:00Z', reporter_name='Jane Doe',
                                    reporter_relation='SPOUSE', reporter_phone=None,
-                                   reporter_email=None):
+                                   reporter_email=None, cause_of_death='Heart disease'):
         report_json = {
             'code': {
                 'text': 'DeceasedReport'
@@ -93,6 +93,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
                 'type': user_system,
                 'reference': user_name
             }],
+            'valueString': cause_of_death,
             'issued': authored
         }
 
@@ -176,7 +177,8 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
             notification=DeceasedNotification.EHR,
             user_system='https://example.com',
             user_name='me@test.com',
-            authored='2020-01-05T13:43:21Z'
+            authored='2020-01-05T13:43:21Z',
+            cause_of_death='Heart disease'
         )
         response = self.post_report(report_json, participant_id=self.paired_participant_with_summary.participantId)
 
@@ -189,6 +191,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         self.assertEqual('https://example.com', created_report.author.system)
         self.assertEqual('me@test.com', created_report.author.username)
         self.assertEqual(datetime(2020, 1, 5, 13, 43, 21), created_report.authored)
+        self.assertEqual('Heart disease', created_report.causeOfDeath)
 
         # Check participant summary data
         participant_summary = self.get_participant_summary_from_db(
@@ -325,6 +328,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
     def test_post_with_only_required_fields(self):
         report_json = self.build_deceased_report_json()
         del report_json['effectiveDateTime']
+        del report_json['valueString']
 
         response = self.post_report(report_json, participant_id=self.paired_participant_with_summary.participantId)
         del response['effectiveDateTime']

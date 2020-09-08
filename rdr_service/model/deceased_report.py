@@ -13,6 +13,7 @@ class DeceasedReport(Base):
     modified = Column("modified", UTCDateTime, nullable=False)
     participantId = Column("participant_id", Integer, ForeignKey("participant.participant_id"), nullable=False)
     dateOfDeath = Column("date_of_death", Date)
+    causeOfDeath = Column("cause_of_death", String(1024))
     notification = Column("notification", Enum(DeceasedNotification), nullable=False)
     notificationOther = Column("notification_other", String(1024))
     reporterName = Column('reporter_name', String(255))
