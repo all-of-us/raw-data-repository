@@ -31,6 +31,7 @@ Table of Contents
    api_wf
    issues
    ops-data
+   test
 
 
 General Concepts
