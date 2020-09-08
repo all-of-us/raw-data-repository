@@ -2,32 +2,44 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
+from enum import Enum
 from rdr_service.model.bq_base import BQTable, BQSchema, BQView, BQField, BQFieldTypeEnum, BQFieldModeEnum
 
 from rdr_service.participant_enums import (
-    GenomicSetStatus,
-    GenomicSetMemberStatus,
-#    GenomicValidationFlag,
-    GenomicSubProcessStatus,
-    GenomicSubProcessResult,
-    GenomicJob,
-    GenomicWorkflowState
+    GenomicSetStatus as _GenomicSetStatus,
+    GenomicSetMemberStatus as _GenomicSetMemberStatus,
+    GenomicValidationFlag as _GenomicValidationFlag,
+    GenomicSubProcessStatus as _GenomicSubProcessStatus,
+    GenomicSubProcessResult as _GenomicSubProcessResult,
+    GenomicJob as _GenomicJob,
+    GenomicWorkflowState as _GenomicWorkflowState
 )
+
+# Convert weird participant_enums to standard python enums.
+GenomicSetStatusEnum = Enum('GenomicSetStatusEnum', _GenomicSetStatus.to_dict())
+GenomicSetMemberStatusEnum = Enum('GenomicSetMemberStatusEnum', _GenomicSetMemberStatus.to_dict())
+GenomicValidationFlag = Enum('GenomicValidationFlag', _GenomicValidationFlag.to_dict())
+GenomicSubProcessStatusEnum = Enum('GenomicSubProcessStatusEnum', _GenomicSubProcessStatus.to_dict())
+GenomicSubProcessResultEnum = Enum('GenomicSubProcessResultEnum', _GenomicSubProcessResult.to_dict())
+GenomicJobEnum = Enum('GenomicJobEnum', _GenomicJob.to_dict())
+GenomicWorkflowStateEnum = Enum('GenomicWorkflowStateEnum', _GenomicWorkflowState.to_dict())
 
 
 class BQGenomicSetSchema(BQSchema):
     id = BQField('id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    orig_created = BQField('orig_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    orig_modified = BQField('orig_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     genomic_set_name = BQField('genomic_set_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     genomic_set_criteria = BQField('genomic_set_criteria', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     genomic_set_version = BQField('genomic_set_version', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     genomic_set_file = BQField('genomic_set_file', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     genomic_set_file_time = BQField('genomic_set_file_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     genomic_set_status = BQField('genomic_set_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
-                                 fld_enum=GenomicSetStatus)
+                                 fld_enum=GenomicSetStatusEnum)
     genomic_set_status_id = BQField('genomic_set_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
-                                 fld_enum=GenomicSetStatus)
+                                 fld_enum=GenomicSetStatusEnum)
     validated_time = BQField('validated_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
 
 
@@ -53,19 +65,19 @@ class BQGenomicSetMemberSchema(BQSchema):
     id = BQField('id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    orig_created = BQField('orig_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    orig_modified = BQField('orig_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     genomic_set_id = BQField('genomic_set_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     participant_id = BQField('participant_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     ny_flag = BQField('ny_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     sex_at_birth = BQField('sex_at_birth', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     genome_type = BQField('genome_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     biobank_id = BQField('biobank_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-#    biobank_order_id = BQField('biobank_order_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-#    biobank_order_client_Id = BQField('biobank_order_client_Id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     package_id = BQField('package_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     validation_status = BQField('validation_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
-                                fld_enum=GenomicSetMemberStatus)
+                                fld_enum=GenomicSetMemberStatusEnum)
     validation_status_id = BQField('validation_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
-                                fld_enum=GenomicSetMemberStatus)
+                                fld_enum=GenomicSetMemberStatusEnum)
     # validation_flags is an array of GenomicValidationFlag Enum values.
     validation_flags = BQField('validation_flags', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     validated_time = BQField('validated_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
@@ -126,10 +138,10 @@ class BQGenomicSetMemberSchema(BQSchema):
                                          BQFieldModeEnum.NULLABLE)
     cvl_w4f_manifest_job_run_id = BQField('cvl_w4f_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
                                           BQFieldModeEnum.NULLABLE)
-    genomic_workflow_state = BQField('genomic_workflow_state', BQFieldTypeEnum.String, BQFieldModeEnum.NULLABLE,
-                                     fld_enum=GenomicWorkflowState)
+    genomic_workflow_state = BQField('genomic_workflow_state', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
+                                     fld_enum=GenomicWorkflowStateEnum)
     genomic_workflow_state_id = BQField('genomic_workflow_state_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
-                                     fld_enum=GenomicWorkflowState)
+                                     fld_enum=GenomicWorkflowStateEnum)
     genomic_workflow_state_modified_time = BQField('genomic_workflow_state_modified_time', BQFieldTypeEnum.DATETIME,
                                                    BQFieldModeEnum.NULLABLE)
     genomic_workflow_state_history = BQField('genomic_workflow_state_history', BQFieldTypeEnum.STRING,
@@ -163,18 +175,20 @@ class BQGenomicSetMemberView(BQView):
 
 class BQGenomicJobRunSchema(BQSchema):
     id = BQField('id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
-    job = BQField('job', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE, fld_enum=GenomicJob)
-    job_id = BQField('job_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE, fld_enum=GenomicJob)
+    created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    job = BQField('job', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE, fld_enum=GenomicJobEnum)
+    job_id = BQField('job_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE, fld_enum=GenomicJobEnum)
     start_time = BQField('start_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     end_time = BQField('end_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     run_status = BQField('run_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
-                         fld_enum=GenomicSubProcessStatus)
+                         fld_enum=GenomicSubProcessStatusEnum)
     run_status_id = BQField('run_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
-                         fld_enum=GenomicSubProcessStatus)
+                         fld_enum=GenomicSubProcessStatusEnum)
     run_result = BQField('run_result', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
-                         fld_enum=GenomicSubProcessResult)
+                         fld_enum=GenomicSubProcessResultEnum)
     run_result_id = BQField('run_result_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
-                         fld_enum=GenomicSubProcessResult)
+                         fld_enum=GenomicSubProcessResultEnum)
     result_message = BQField('result_message', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
@@ -198,10 +212,12 @@ class BQGenomicJobRunView(BQView):
 
 class BQGenomicGCValidationMetricsSchema(BQSchema):
     id = BQField('id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
-    genomic_set_member_id = BQField('genomic_set_member_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-    genomic_file_processed_id = BQField('genomic_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    orig_created = BQField('orig_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    orig_modified = BQField('orig_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    genomic_set_member_id = BQField('genomic_set_member_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    genomic_file_processed_id = BQField('genomic_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     lims_id = BQField('lims_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     call_rate = BQField('call_rate', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     mean_coverage = BQField('mean_coverage', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)

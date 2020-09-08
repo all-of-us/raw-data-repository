@@ -5,7 +5,7 @@
 from marshmallow import validate
 
 from rdr_service.resource import Schema, SchemaMeta, fields
-from rdr_service.resource.schemas import SchemaUniqueIds
+from rdr_service.resource.constants import SchemaID
 
 from rdr_service.participant_enums import (
     GenomicSetStatus,
@@ -40,8 +40,8 @@ class GenomicSetSchema(Schema):
         resource_pk_field = 'id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            type_uid=SchemaUniqueIds.genomic_set.value,
-            type_name=SchemaUniqueIds.genomic_set.name,
+            type_uid=SchemaID.genomic_set.value,
+            type_name=SchemaID.genomic_set.name,
             resource_uri='GenomicSet',
             resource_pk_field='id'
         )
@@ -57,8 +57,6 @@ class GenomicSetMemberSchema(Schema):
     sex_at_birth = fields.String(validate=validate.Length(max=20))
     genome_type = fields.String(validate=validate.Length(max=80))
     biobank_id = fields.String(validate=validate.Length(max=80))
-#    biobank_order_id = fields.String(validate=validate.Length(max=80))
-#    biobank_order_client_Id = fields.String(validate=validate.Length(max=80))
     package_id = fields.String(validate=validate.Length(max=80))
     validation_status = fields.EnumString(enum=GenomicSetMemberStatus)
     validation_status_id = fields.EnumInteger(enum=GenomicSetMemberStatus)
@@ -102,7 +100,7 @@ class GenomicSetMemberSchema(Schema):
     cvl_w2_manifest_job_run_id = fields.Int32()
     cvl_w3_manifest_job_run_id = fields.Int32()
     cvl_w4_manifest_job_run_id = fields.Int32()
-    cvl_w4f_manifest_job_run_id  = fields.Int32()
+    cvl_w4f_manifest_job_run_id = fields.Int32()
     genomic_workflow_state = fields.EnumString(enum=GenomicWorkflowState)
     genomic_workflow_state_id = fields.EnumInteger(enum=GenomicWorkflowState)
 
@@ -121,8 +119,8 @@ class GenomicSetMemberSchema(Schema):
         resource_pk_field = 'id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            type_uid=SchemaUniqueIds.genomic_set_member.value,
-            type_name=SchemaUniqueIds.genomic_set_member.name,
+            type_uid=SchemaID.genomic_set_member.value,
+            type_name=SchemaID.genomic_set_member.name,
             resource_uri='GenomicSetMember',
             resource_pk_field='id'
         )
@@ -149,8 +147,8 @@ class GenomicJobRunSchema(Schema):
         resource_pk_field = 'id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            type_uid=SchemaUniqueIds.genomic_job_run.value,
-            type_name=SchemaUniqueIds.genomic_job_run.name,
+            type_uid=SchemaID.genomic_job_run.value,
+            type_name=SchemaID.genomic_job_run.name,
             resource_uri='GenomicJobRun',
             resource_pk_field='id'
         )
@@ -217,8 +215,8 @@ class GenomicGCValidationMetricsSchema(Schema):
         resource_pk_field = 'id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            type_uid=SchemaUniqueIds.genomic_gc_validation_metrics.value,
-            type_name=SchemaUniqueIds.genomic_gc_validation_metrics.name,
+            type_uid=SchemaID.genomic_gc_validation_metrics.value,
+            type_name=SchemaID.genomic_gc_validation_metrics.name,
             resource_uri='GenomicGCValidationMetrics',
             resource_pk_field='id'
         )
