@@ -63,12 +63,14 @@ class ResearchIdGeneratorClass(object):
                 random_id = random.randint(_MIN_RESEARCH_ID, _MAX_RESEARCH_ID)
                 participant.researchId = random_id
                 session.commit()
-                return
+                return True
             except IntegrityError as e:
+                session.rollback()
                 if "UNIQUE constraint failed" in str(e) or "Duplicate entry" in str(e):
                     logging.warning("Failed updated with {}: {}".format(random_id, str(e)))
         _logger.error("Giving up after {} insert attempts for participant {}".format(MAX_INSERT_ATTEMPTS,
                                                                                      participant.participantId))
+        return False
 
     def run(self):
         proxy_pid = self.gcp_env.activate_sql_proxy()
@@ -83,8 +85,13 @@ class ResearchIdGeneratorClass(object):
                         print('no more participant found, generate research ID done')
                         break
                     else:
-                        self.update_participant_with_random_research_id(session, participant)
-                        print('updated random research ID for participant: {}'.format(participant.participantId))
+                        result = self.update_participant_with_random_research_id(session, participant)
+                        if result:
+                            print('updated random research ID for participant: {}'.format(participant.participantId))
+                        else:
+                            print('err: generate research id for participant {} failed'
+                                  .format(participant.participantId))
+                            return 1
 
         elif self.args.type == 'import':
             with open(self.args.input_file) as csv_file:
@@ -102,11 +109,11 @@ class ResearchIdGeneratorClass(object):
                         if count % 1000 == 0:
                             participants = self.load_participants(session, participant_id_list)
                             updated_count = self.update_participants(participants, pid_rid_mapping)
-                            participant_id_list.clear()
-                            pid_rid_mapping.clear()
                             session.commit()
                             print('processed {} records, updated {} records'.format(len(participant_id_list),
                                                                                     updated_count))
+                            participant_id_list.clear()
+                            pid_rid_mapping.clear()
 
                     if len(participant_id_list) > 0:
                         participants = self.load_participants(session, participant_id_list)

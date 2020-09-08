@@ -13,12 +13,12 @@ class FinalizeOrdersTest(BaseTestCase):
         self.dao = ParticipantDao()
 
     @staticmethod
-    def run_tool(input_data, type):
+    def run_tool(input_data, generate_type):
         environment = mock.MagicMock()
         environment.project = 'unit_test'
 
         args = mock.MagicMock()
-        args.type = type
+        args.type = generate_type
 
         # Patching to bypass opening file and provide input data
         with mock.patch('rdr_service.tools.tool_libs.research_id_generator.open'),\
@@ -33,16 +33,23 @@ class FinalizeOrdersTest(BaseTestCase):
         self.dao.insert(p1)
         p2 = Participant(participantId=11, researchId=33, biobankId=44)
         self.dao.insert(p2)
+        p3 = Participant(participantId=111, biobankId=444)
+        self.dao.insert(p3)
         input_data = [{
             'participant_id': 1,
             'research_id': 2
         }, {
             'participant_id': 11,
             'research_id': 22
+        }, {
+            'participant_id': 111,
+            'research_id': 222
         }]
         self.run_tool(input_data, 'import')
         result = self.dao.get(1)
         self.assertEqual(result.researchId, 2)
+        result = self.dao.get(111)
+        self.assertEqual(result.researchId, 222)
         # no change for existing record
         result = self.dao.get(11)
         self.assertEqual(result.researchId, 33)
