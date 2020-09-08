@@ -94,7 +94,7 @@ class GenomicSetMemberSchemaGenerator(generators.BaseGenerator):
 def genomic_set_member_update(_pk):
     """
     Generate GenomicSetMember Resource record.
-    :param _pk: Primary Key    
+    :param _pk: Primary Key
     """
     gen = GenomicSetMemberSchemaGenerator()
     res = gen.make_resource(_pk)
@@ -109,7 +109,7 @@ class GenomicJobRunSchemaGenerator(generators.BaseGenerator):
     def make_resource(self, _pk, backup=False):
         """
         Build a resource object from the given primary key id.
-        :param _pk: Primary key value from rdr table.        
+        :param _pk: Primary key value from rdr table.
         :param backup: if True, get from backup database instead of Primary.
         :return: resource object
         """
@@ -139,7 +139,7 @@ class GenomicJobRunSchemaGenerator(generators.BaseGenerator):
 def genomic_job_run_update(_pk):
     """
     Generate GenomicJobRun record.
-    :param _pk: Primary Key    
+    :param _pk: Primary Key
     """
     gen = GenomicJobRunSchemaGenerator()
     res = gen.make_resource(_pk)
@@ -154,7 +154,7 @@ class GenomicGCValidationMetricsSchemaGenerator(generators.BaseGenerator):
     def make_resource(self, _pk, backup=False):
         """
         Build a resource object from the given primary key id.
-        :param _pk: Primary key value from rdr table.        
+        :param _pk: Primary key value from rdr table.
         :param backup: if True, get from backup database instead of Primary.
         :return: resource object
         """
@@ -170,7 +170,7 @@ class GenomicGCValidationMetricsSchemaGenerator(generators.BaseGenerator):
 def genomic_gc_validation_metrics_update(_pk):
     """
     Generate GenomicGCValidationMetrics resource record.
-    :param _pk: Primary Key    
+    :param _pk: Primary Key
     """
     gen = GenomicGCValidationMetricsSchemaGenerator()
     res = gen.make_resource(_pk)
