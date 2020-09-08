@@ -7,7 +7,7 @@ from enum import Enum
 from marshmallow import validate
 
 from rdr_service.resource import Schema, SchemaMeta, fields
-from rdr_service.resource.schemas import SchemaUniqueIds
+from rdr_service.resource.constants import SchemaID
 
 # TODO: Use the Enums in participant_enums.py
 class SiteStatusEnum(Enum):
@@ -83,8 +83,8 @@ class SiteSchema(Schema):
         resource_pk_field = 'site_id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            type_uid=SchemaUniqueIds.site.value,
-            type_name=SchemaUniqueIds.site.name,
+            type_uid=SchemaID.site.value,
+            type_name=SchemaID.site.name,
             resource_uri='Site',
             resource_pk_field='site_id'
         )

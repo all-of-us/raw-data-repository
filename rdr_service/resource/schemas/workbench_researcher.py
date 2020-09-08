@@ -3,7 +3,7 @@
 # file 'LICENSE', which is part of this source code package.
 #
 from marshmallow import validate
-from rdr_service.resource.schemas import SchemaUniqueIds
+from rdr_service.resource.constants import SchemaID
 
 from rdr_service.participant_enums import WorkbenchResearcherEthnicity, WorkbenchResearcherDisability, \
     WorkbenchResearcherEducation, WorkbenchInstitutionNonAcademic, WorkbenchResearcherDegree, \
@@ -70,8 +70,8 @@ class WorkbenchResearcherSchema(Schema):
         resource_pk_field = 'user_source_id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            type_uid=SchemaUniqueIds.workbench_researcher.value,
-            type_name=SchemaUniqueIds.workbench_researcher.name,
+            type_uid=SchemaID.workbench_researcher.value,
+            type_name=SchemaID.workbench_researcher.name,
             resource_uri='WorkbenchResearcher',
             resource_pk_field='user_source_id'
         )
@@ -94,8 +94,8 @@ class WorkbenchInstitutionalAffiliationsSchema(Schema):
         resource_pk_field = 'user_id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            type_uid=SchemaUniqueIds.workbench_institutional_affiliation.value,
-            type_name=SchemaUniqueIds.workbench_institutional_affiliation.name,
+            type_uid=SchemaID.workbench_institutional_affiliation.value,
+            type_name=SchemaID.workbench_institutional_affiliation.name,
             resource_uri='WorkbenchInstitutionalAffiliation',
             resource_pk_field='user_id'
         )

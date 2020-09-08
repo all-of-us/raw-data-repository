@@ -7,7 +7,7 @@ from enum import Enum
 from marshmallow import validate
 
 from rdr_service.resource import Schema, SchemaMeta, fields
-from rdr_service.resource.schemas import SchemaUniqueIds
+from rdr_service.resource.constants import SchemaID
 from rdr_service.resource.schemas.site import ObsoleteStatusEnum
 
 
@@ -37,8 +37,8 @@ class HPOSchema(Schema):
         resource_pk_field = 'hpo_id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            type_uid=SchemaUniqueIds.hpo.value,
-            type_name=SchemaUniqueIds.hpo.name,
+            type_uid=SchemaID.hpo.value,
+            type_name=SchemaID.hpo.name,
             resource_uri='HPO',
             resource_pk_field='hpo_id'
         )
