@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from datetime import datetime, timedelta
 
 import pytz
@@ -502,11 +503,14 @@ class QuestionnaireResponseDao(BaseDao):
             participant_summary.lastModified = clock.CLOCK.now()
             session.merge(participant_summary)
 
-            # switch account to test account if the phone number is start with 444
+            # switch account to test account if the phone number starts with 4442
             # this is a requirement from PTSC
-            if participant_summary.loginPhoneNumber is not None and participant_summary.loginPhoneNumber.startswith(
-                TEST_LOGIN_PHONE_NUMBER_PREFIX
-            ):
+            ph = getattr(participant_summary, 'loginPhoneNumber') or \
+                 getattr(participant_summary, 'phoneNumber') or 'None'
+
+            ph_clean = re.sub('[\(|\)|\-|\s]', '', ph)
+
+            if ph_clean.startswith(TEST_LOGIN_PHONE_NUMBER_PREFIX):
                 ParticipantDao().switch_to_test_account(session, participant)
 
             # update participant gender/race answers table
