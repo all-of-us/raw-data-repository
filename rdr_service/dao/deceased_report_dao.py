@@ -191,6 +191,8 @@ class DeceasedReportDao(UpdatableDao):
 
             report.author = self._read_api_request_author(observation)
             report.authored = self._read_authored_timestamp(observation)
+
+            report.causeOfDeath = observation.valueString
         else:
             report = self.load_model(id_)
             if report.status != DeceasedReportStatus.PENDING:
@@ -314,6 +316,8 @@ class DeceasedReportDao(UpdatableDao):
         date_of_death = FHIRDate()
         date_of_death.date = model.dateOfDeath
         observation.effectiveDateTime = date_of_death
+
+        observation.valueString = model.causeOfDeath
 
         # Add denial reason extension
         if model.status == DeceasedReportStatus.DENIED:
