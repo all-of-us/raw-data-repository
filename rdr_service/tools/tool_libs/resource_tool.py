@@ -17,12 +17,16 @@ from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import rebuild_bq_participant
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
+from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_set_member_update, \
+    bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
     BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay
 from rdr_service.model.participant import Participant
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
+from rdr_service.resource.generators.genomics import genomic_set_update, genomic_set_member_update, \
+    genomic_job_run_update, genomic_gc_validation_metrics_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 
@@ -34,7 +38,9 @@ tool_cmd = "resource"
 tool_desc = "Tools for updating resource records in RDR"
 
 
-class ResourceClass(object):
+GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'genomic_gc_validation_metrics')
+
+class ParticipantResourceClass(object):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
@@ -241,6 +247,114 @@ class ResourceClass(object):
         return 1
 
 
+class GenomicResourceClass(object):
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        """
+        :param args: command line arguments.
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        """
+        self.args = args
+        self.gcp_env = gcp_env
+
+    def update_single_id(self, table, _id):
+
+        try:
+            if table == 'genomic_set':
+                bq_genomic_set_update(_id, project_id=self.gcp_env.project)
+                genomic_set_update(_id)
+            elif table == 'genomic_set_member':
+                bq_genomic_set_member_update(_id, project_id=self.gcp_env.project)
+                genomic_set_member_update(_id)
+            elif table == 'genomic_job_run':
+                bq_genomic_job_run_update(_id, project_id=self.gcp_env.project)
+                genomic_job_run_update(_id)
+            elif table == 'genomic_gc_validation_metrics':
+                bq_genomic_gc_validation_metrics_update(_id, project_id=self.gcp_env.project)
+                genomic_gc_validation_metrics_update(_id)
+        except NotFound:
+            return 1
+        return 0
+
+    def update_batch(self, table, _ids):
+
+        # TODO: For future if needed: Create Cloud Task API call handler and then fill this code block out.
+        pass
+
+    def update_many_ids(self, table, _ids):
+        if not _ids:
+            return 1
+
+        if self.args.batch:
+            return self.update_batch(table, _ids)
+
+        total_ids = len(_ids)
+        count = 0
+        errors = 0
+        _logger.info(f'Processing {table}:')
+
+        for _id in _ids:
+            count += 1
+
+            if self.update_single_id(table, _id) != 0:
+                errors += 1
+                if self.args.debug:
+                    _logger.error(f'{table} ID {_id} not found.')
+
+            if not self.args.debug:
+                print_progress_bar(
+                    count, total_ids, prefix="{0}/{1}:".format(count, total_ids), suffix="complete"
+                )
+
+        if errors > 0:
+            _logger.warning(f'\n\nThere were {errors} IDs not found during processing.')
+
+        return 0
+
+
+
+    def run(self):
+        clr = self.gcp_env.terminal_colors
+
+        if not self.args.id and not self.args.all_ids and not self.args.all_tables:
+            _logger.error('Nothing to do')
+            return 1
+
+        self.gcp_env.activate_sql_proxy()
+        _logger.info('')
+
+        _logger.info(clr.fmt('\nRebuild Genomic Records for PDR:', clr.custom_fg_color(156)))
+        _logger.info('')
+        _logger.info('=' * 90)
+        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+        _logger.info('  Genomic Table         : {0}'.format(clr.fmt(self.args.genomic_table)))
+
+        if self.args.all_ids or self.args.all_tables:
+            dao = ResourceDataDao()
+            _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
+            if self.args.all_tables:
+                tables = [{'name': t, 'ids': list()} for t in  GENOMIC_DB_TABLES]
+            else:
+                tables = list({'name': self.args.genomic_table, 'ids': list()}, )
+            _logger.info('  Rebuild Table(s)      : {0}'.format(
+                clr.fmt(', '.join([t['name'] for t in tables]))))
+
+            for table in tables:
+                with dao.session() as session:
+                    results = session.execute(f'select id from {table["name"]}')
+                    table['ids'] = [r.id for r in results]
+                    _logger.info('  Total Records         : {0} = {1}'.
+                                 format(clr.fmt(table["name"]), clr.fmt(len(table['ids']))))
+
+            for table in tables:
+                self.update_many_ids(table['name'], table['ids'])
+
+        else:
+            _logger.info('  Record ID             : {0}'.format(clr.fmt(self.args.id)))
+            self.update_single_id(self.args.genomic_table, self.args.id)
+
+        return 1
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -268,12 +382,33 @@ def run():
     rebuild_parser.add_argument("--batch", help="Submit pids in batch to Cloud Tasks", default=False,
                                 action="store_true")  # noqa
 
+
+    genomic_parser = subparser.add_parser("genomic")
+    genomic_parser.add_argument("--id", help="rebuild single genomic table id", type=int, default=None)  # noqa
+    genomic_parser.add_argument("--all-ids", help="rebuild all records from table", default=False,
+                         action="store_true")  # noqa
+    genomic_parser.add_argument("--genomic-table", help="genomic table name to rebuild from.",
+                                choices=GENOMIC_DB_TABLES)
+    genomic_parser.add_argument("--all-tables", help="rebuild all records from all tables", default=False,
+                                action="store_true")  # noqa
+    genomic_parser.add_argument("--batch", help="Submit ids in batch to Cloud Tasks", default=False,
+                                action="store_true")  # noqa
+
     args = parser.parse_args()
+
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
 
         if hasattr(args, 'pid') and hasattr(args, 'from_file'):
-            process = ResourceClass(args, gcp_env)
+            process = ParticipantResourceClass(args, gcp_env)
+            exit_code = process.run()
+        elif hasattr(args, 'genomic_table'):
+
+            if args.genomic_table and args.all_tables:
+                _logger.error("Arguments 'genomic-table' and 'all-tables' conflict.")
+                return 1
+
+            process = GenomicResourceClass(args, gcp_env)
             exit_code = process.run()
         else:
             _logger.info('Please select an option to run. For help use "pdr-tool --help".')

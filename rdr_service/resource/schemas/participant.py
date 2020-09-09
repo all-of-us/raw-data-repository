@@ -10,6 +10,7 @@ from rdr_service.participant_enums import QuestionnaireStatus, ParticipantCohort
     PhysicalMeasurementsStatus, OrderStatus, EnrollmentStatusV2, EhrStatus, WithdrawalStatus, WithdrawalReason, \
     SuspensionStatus
 from rdr_service.resource import Schema, fields, SchemaMeta
+from rdr_service.resource.constants import SchemaID
 
 
 class StreetAddressTypeEnum(Enum):
@@ -47,10 +48,10 @@ class StandaloneAddressSchema(Schema, AddressSchema):
     class Meta:
         ordered = True
         schema_meta = SchemaMeta(
-            2080,
-            'participant_address',
-            'Participant/{participant_id}/Addresses',
-            'addr_type_id'
+            type_uid=SchemaID.participant_address.value,
+            type_name=SchemaID.participant_address.name,
+            resource_uri='Participant/{participant_id}/Addresses',
+            resource_pk_field='addr_type_id'
         )
 
 
@@ -78,10 +79,10 @@ class StandaloneModuleStatusSchema(Schema, ModuleStatusSchema):
     class Meta:
         ordered = True
         schema_meta = SchemaMeta(
-            2070,
-            'participant_modules',
-            'Participant/{participant_id}/Modules',
-            'module'
+            type_uid=SchemaID.participant_modules.value,
+            type_name=SchemaID.participant_modules.name,
+            resource_uri='Participant/{participant_id}/Modules',
+            resource_pk_field='module'
         )
 
 
@@ -111,10 +112,10 @@ class StandaloneConsentSchema(Schema, ConsentSchema):
     class Meta:
         ordered = True
         schema_meta = SchemaMeta(
-            2060,
-            'participant_consents',
-            'Participant/{participant_id}/Consents',
-            'consent_id'
+            type_uid=SchemaID.participant_consents.value,
+            type_name=SchemaID.participant_consents.name,
+            resource_uri='Participant/{participant_id}/Consents',
+            resource_pk_field='consent_id'
         )
 
 
@@ -137,10 +138,10 @@ class StandaloneRaceSchema(Schema, RaceSchema):
     class Meta:
         ordered = True
         schema_meta = SchemaMeta(
-            2050,
-            'participant_race',
-            'Participant/{participant_id}/Races',
-            'race_id'
+            type_uid=SchemaID.participant_race.value,
+            type_name=SchemaID.participant_race.name,
+            resource_uri='Participant/{participant_id}/Races',
+            resource_pk_field='race_id'
         )
 
 
@@ -163,10 +164,10 @@ class StandaloneGenderSchema(Schema, GenderSchema):
     class Meta:
         ordered = True
         schema_meta = SchemaMeta(
-            2040,
-            'participant_gender',
-            'Participant/{participant_id}/Genders',
-            'gender_id'
+            type_uid=SchemaID.participant_gender.value,
+            type_name=SchemaID.participant_gender.name,
+            resource_uri='Participant/{participant_id}/Genders',
+            resource_pk_field='gender_id'
         )
 
 
@@ -196,10 +197,10 @@ class StandalonePhysicalMeasurementsSchema(Schema, PhysicalMeasurementsSchema):
     class Meta:
         ordered = True
         schema_meta = SchemaMeta(
-            2030,
-            'physical_measurements',
-            'Participant/{participant_id}/PhysicalMeasurements',
-            'physical_measurements_id'
+            type_uid=SchemaID.participant_physical_measurements.value,
+            type_name=SchemaID.participant_physical_measurements.name,
+            resource_uri='Participant/{participant_id}/PhysicalMeasurements',
+            resource_pk_field='physical_measurements_id'
         )
 
 
@@ -233,10 +234,10 @@ class StandaloneBiobankSampleSchema(Schema, BiobankSampleSchema):
     class Meta:
         ordered = True
         schema_meta = SchemaMeta(
-            2020,
-            'biobank_order_samples',
-            'Participant/{participant_id}/BiobankOrders/{biobank_order_id}/Samples',
-            'test'
+            type_uid=SchemaID.participant_biobank_order_samples.value,
+            type_name=SchemaID.participant_biobank_order_samples.name,
+            resource_uri='Participant/{participant_id}/BiobankOrders/{biobank_order_id}/Samples',
+            resource_pk_field='test'
         )
 
 
@@ -274,10 +275,10 @@ class StandaloneBiobankOrderSchema(Schema, BiobankOrderSchema):
         ordered = True
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            2010,
-            'biobank_orders',
-            'Participant/{participant_id}/BiobankOrders',
-            'biobank_order_id',
+            type_uid=SchemaID.participant_biobank_orders.value,
+            type_name=SchemaID.participant_biobank_orders.name,
+            resource_uri='Participant/{participant_id}/BiobankOrders',
+            resource_pk_field='biobank_order_id',
             nested_schemas=[
                 ('samples', StandaloneBiobankSampleSchema)
             ]
@@ -315,10 +316,10 @@ class StandalonePatientStatusSchema(Schema, PatientStatusSchema):
         ordered = True
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            2090,
-            'patient_statuses',
-            'Participant/{participant_id}/PatientStatuses',
-            'patent_status_history_id',
+            type_uid=SchemaID.patient_statuses.value,
+            type_name=SchemaID.patient_statuses.name,
+            resource_uri='Participant/{participant_id}/PatientStatuses',
+            resource_pk_field='patent_status_history_id',
         )
 
 
@@ -407,8 +408,8 @@ class ParticipantSchema(Schema):
         ordered = True
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            type_uid=2001,
-            type_name='participant',
+            type_uid=SchemaID.participant.value,
+            type_name=SchemaID.participant.name,
             resource_uri='Participant',
             resource_pk_field='participant_id',
             nested_schemas=[

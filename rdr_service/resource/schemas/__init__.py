@@ -11,7 +11,8 @@ from .workbench_researcher import WorkbenchResearcherSchema, WorkbenchInstitutio
 from .workbench_workspace import WorkbenchWorkspaceSchema, WorkbenchWorkspaceUsersSchema
 from .covid_antibody_study import BiobankCovidAntibodySampleSchema, QuestCovidAntibodyTestResultSchema, \
     QuestCovidAntibodyTestSchema
-
+from .genomics import GenomicSetSchema, GenomicSetMemberSchema, GenomicJobRunSchema, \
+    GenomicGCValidationMetricsSchema
 
 __all__ = [
     'ParticipantSchema',
@@ -25,7 +26,9 @@ __all__ = [
     'WorkbenchWorkspaceUsersSchema',
     'BiobankCovidAntibodySampleSchema',
     'QuestCovidAntibodyTestSchema',
-    'QuestCovidAntibodyTestResultSchema'
+    'QuestCovidAntibodyTestResultSchema',
+    'GenomicSetSchema',
+    'GenomicSetMemberSchema',
+    'GenomicJobRunSchema',
+    'GenomicGCValidationMetricsSchema',
 ]
-
-

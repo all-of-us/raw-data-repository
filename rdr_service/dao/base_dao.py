@@ -9,6 +9,8 @@ from contextlib import closing
 
 import sqlparse
 
+from sqlalchemy.exc import OperationalError
+
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainResource
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirabstractbase import FHIRValidationError
 from protorpc import messages
@@ -741,7 +743,15 @@ def save_raw_request_record(log: RequestsLog):
     _dao = BaseDao(RequestsLog)
     with _dao.session() as session:
         session.add(log)
-        session.flush()
+        try:
+            session.flush()
+        except OperationalError:
+            logging.error('Failed to save requests_log record, trying again without resource column data. ')
+            session.rollback()
+            log.resource = None
+            session.add(log)
+            session.flush()
+
         # for a small window each sunday, check for old records and delete them.
         now = datetime.datetime.utcnow()
         if now.weekday() == 6 and now.hour == 0:

@@ -5,7 +5,7 @@
 from marshmallow import validate
 
 from rdr_service.resource import Schema, SchemaMeta, fields
-
+from rdr_service.resource.constants import SchemaID
 
 class BiobankCovidAntibodySampleSchema(Schema):
     id = fields.Int32(required=True)
@@ -27,8 +27,8 @@ class BiobankCovidAntibodySampleSchema(Schema):
         resource_pk_field = 'id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            type_uid=5000,
-            type_name='biobank_covid_antibody_sample',
+            type_uid=SchemaID.biobank_covid_antibody_sample.value,
+            type_name=SchemaID.biobank_covid_antibody_sample.name,
             resource_uri='BiobankCovidAntibodySample',
             resource_pk_field='id'
         )
@@ -53,8 +53,8 @@ class QuestCovidAntibodyTestSchema(Schema):
         resource_pk_field = 'id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            type_uid=5010,
-            type_name='quest_covid_antibody_test',
+            type_uid=SchemaID.quest_covid_antibody_test.value,
+            type_name=SchemaID.quest_covid_antibody_test.name,
             resource_uri='QuestCovidAntibodyTest',
             resource_pk_field='id'
         )
@@ -75,8 +75,8 @@ class QuestCovidAntibodyTestResultSchema(Schema):
         resource_pk_field = 'id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            type_uid=5020,
-            type_name='quest_covid_antibody_test_result',
+            type_uid=SchemaID.quest_covid_antibody_test_result.value,
+            type_name=SchemaID.quest_covid_antibody_test_result.name,
             resource_uri='QuestCovidAntibodyTestResult',
             resource_pk_field='id'
         )

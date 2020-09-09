@@ -5,6 +5,7 @@
 from marshmallow import validate
 
 from rdr_service.resource import Schema, SchemaMeta, fields
+from rdr_service.resource.constants import SchemaID
 
 
 class OrganizationSchema(Schema):
@@ -26,8 +27,8 @@ class OrganizationSchema(Schema):
         resource_pk_field = 'organization_id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            1020,
-            'organization',
-            'Organization',
-            'organization_id'
+            type_uid=SchemaID.organization.value,
+            type_name=SchemaID.organization.name,
+            resource_uri='Organization',
+            resource_pk_field='organization_id'
         )
