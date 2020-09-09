@@ -72,7 +72,7 @@ class BQGenomicSetMemberSchema(BQSchema):
     ny_flag = BQField('ny_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     sex_at_birth = BQField('sex_at_birth', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     genome_type = BQField('genome_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-    biobank_id = BQField('biobank_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    biobank_id = BQField('biobank_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     package_id = BQField('package_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     validation_status = BQField('validation_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
                                 fld_enum=GenomicSetMemberStatusEnum)
@@ -81,7 +81,7 @@ class BQGenomicSetMemberSchema(BQSchema):
     # validation_flags is an array of GenomicValidationFlag Enum values.
     validation_flags = BQField('validation_flags', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     validated_time = BQField('validated_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
-    sample_id = BQField('sample_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    sample_id = BQField('sample_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     sample_type = BQField('sample_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     reconcile_cvl_job_run_id = BQField('reconcile_cvl_job_run_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     sequencing_file_name = BQField('sequencing_file_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
@@ -147,7 +147,7 @@ class BQGenomicSetMemberSchema(BQSchema):
     genomic_workflow_state_history = BQField('genomic_workflow_state_history', BQFieldTypeEnum.STRING,
                                              BQFieldModeEnum.NULLABLE)
 
-    collection_tube_id = BQField('collection_tube_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    collection_tube_id = BQField('collection_tube_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     gc_site_id = BQField('gc_site_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     arr_aw3_manifest_job_run_id = BQField('arr_aw3_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
                                           BQFieldModeEnum.NULLABLE)

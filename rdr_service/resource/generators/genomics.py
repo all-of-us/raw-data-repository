@@ -49,7 +49,7 @@ class GenomicSetSchemaGenerator(generators.BaseGenerator):
 
 def genomic_set_update(_pk):
     """
-    Generate GenomicSetMember resource record.
+    Generate GenomicSet resource record.
     :param _pk: Primary Key
     """
     gen = GenomicSetSchemaGenerator()

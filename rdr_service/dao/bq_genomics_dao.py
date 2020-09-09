@@ -49,7 +49,7 @@ class BQGenomicSetGenerator(BigQueryGenerator):
 
 def bq_genomic_set_update(_id, project_id=None):
     """
-    Generate GenomicSetMember record for BQ.
+    Generate GenomicSet record for BQ.
     :param _id: Primary Key
     :param project_id: Override the project_id
     """
