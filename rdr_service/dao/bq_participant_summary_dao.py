@@ -134,6 +134,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         data = {
             'participant_id': p_id,
             'biobank_id': p.biobankId,
+            'research_id': p.researchId,
             'participant_origin': p.participantOrigin,
             'last_modified': p.lastModified,
             'sign_up_time': p.signUpTime,
