@@ -323,7 +323,15 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         report_json = self.build_deceased_report_json(status='unknown')
         self.post_report(report_json, expected_status=400)
 
-        self.create_pending_deceased_report()
+        # Check for response when trying to use future date for authored
+        three_days_from_now = datetime.now() + timedelta(days=3)
+        report_json = self.build_deceased_report_json(authored=three_days_from_now.isoformat())
+        self.post_report(report_json, expected_status=400)
+
+        # Check for response when trying to use future date for date of death
+        three_days_from_now = date.today() + timedelta(days=3)
+        report_json = self.build_deceased_report_json(date_of_death=three_days_from_now.isoformat())
+        self.post_report(report_json, expected_status=400)
 
     def test_post_with_only_required_fields(self):
         report_json = self.build_deceased_report_json()
