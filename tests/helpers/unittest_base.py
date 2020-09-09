@@ -25,7 +25,6 @@ from rdr_service import main
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
 from rdr_service.dao import database_factory, questionnaire_dao, questionnaire_response_dao
-from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrder, BiobankOrderedSample
@@ -133,8 +132,6 @@ class QuestionnaireTestMixin:
 class BiobankTestMixin:
     """ Base class for creating Biobank table records """
 
-    bo_dao = None
-
     # BiobankOrder object defaults.
     bbo_order_id = '1'
     bbo_created = datetime(2018, 9, 20, 10, 0, 0)
@@ -193,10 +190,7 @@ class BiobankTestMixin:
             bbo_defaults.update(kwargs)
         bbo = BiobankOrder(**bbo_defaults)
 
-        if not self.bo_dao:
-            self.bo_dao = BiobankOrderDao()
-        with self.bo_dao.session() as session:
-           #  session.add(LogPosition(logPositionId=1))
+        with self.dao.session() as session:
             session.add(bbo)
 
         return bbo
@@ -232,9 +226,7 @@ class BiobankTestMixin:
             bos_defaults.update(kwargs)
         bos = BiobankOrderedSample(**bos_defaults)
 
-        if not self.bo_dao:
-            self.bo_dao = BiobankOrderDao()
-        with self.bo_dao.session() as session:
+        with self.dao.session() as session:
             session.add(bos)
 
         return bos
@@ -252,7 +244,7 @@ class BiobankTestMixin:
 
         bss_test = self.bos_test
         bss_confirmed = self.bss_confirmed
-        bss_biobank_order_identifier = None
+        bss_biobank_order_identifier = f'MAYO-{self.bbo_order_id}'
 
         if kwargs:
             if 'biobankOrderId' in kwargs:
@@ -282,9 +274,7 @@ class BiobankTestMixin:
             bss_defaults.update(kwargs)
         bss = BiobankStoredSample(**bss_defaults)
 
-        if not self.bo_dao:
-            self.bo_dao = BiobankOrderDao()
-        with self.bo_dao.session() as session:
+        with self.dao.session() as session:
             session.add(bss)
 
         return bss
@@ -300,14 +290,20 @@ class BiobankTestMixin:
         if not participant_id:
             raise ValueError('Participant ID argument not passed.')
 
+        with self.dao.session() as session:
+            rec = session.query(Participant.biobankId).filter(Participant.participantId == participant_id).first()
+            if not rec or not rec.biobankId:
+                raise ValueError('Failed to lookup participant biobank_id')
+            biobank_id = rec.biobankId
+
         bbo_order_id = self.bbo_order_id
         if biobank_order_id:
             bbo_order_id = bbo_order_id
 
-        bbo = self._create_biobank_order(biobankOrderId=bbo_order_id)
-        bos = self._create_biobank_ordered_sample(bbo)
+        bbo = self._create_biobank_order(participant_id, biobankOrderId=bbo_order_id)
+        bos = self._create_biobank_ordered_sample(bbo.biobankOrderId)
         if stored_sample:
-            bss = self._create_biobank_stored_sample(bbo)
+            bss = self._create_biobank_stored_sample(biobank_id=biobank_id)
         else:
             bss = None
         return bbo, bos, bss
@@ -323,10 +319,7 @@ class BiobankTestMixin:
         if not participant_id:
             raise ValueError('Participant ID argument not passed.')
 
-        if not self.bo_dao:
-            self.bo_dao = BiobankOrderDao()
-
-        with self.bo_dao.session() as session:
+        with self.dao.session() as session:
             rec = session.query(Participant.biobankId).filter(Participant.participantId == participant_id).first()
             if not rec or not rec.biobankId:
                 raise ValueError('Failed to lookup participant biobank_id')

@@ -164,7 +164,7 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
             self.pm_json = json.dumps(load_measurement_json(self.participant_id, self.TIME_1.isoformat()))
             self.pm = PhysicalMeasurementsDao().insert(self._make_physical_measurements())
 
-            self._make_biobank_order_with_baseline_tests(self.participant_id)
+            self._make_default_biobank_order(self.participant_id)
 
     def test_full_participant_status(self):
         """ Full Participant Test"""
