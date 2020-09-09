@@ -1,25 +1,19 @@
-import random
-import string
-from datetime import datetime
 import json
+from datetime import datetime
 
 from rdr_service import clock
 from rdr_service.code_constants import *
-from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
-from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
-from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.hpo import HPO
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.site import Site
-from rdr_service.model.log_position import LogPosition
 from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
 from tests.helpers.unittest_base import BaseTestCase, BiobankTestMixin
 from tests.test_data import load_measurement_json
 
 
-class ParticipantGeneratorTest(BaseTestCase, BiobankTestMixin):
+class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
     TIME_1 = datetime(2018, 9, 20, 5, 49, 11)
     TIME_2 = datetime(2018, 9, 24, 14, 21, 1)
 
@@ -39,7 +33,7 @@ class ParticipantGeneratorTest(BaseTestCase, BiobankTestMixin):
     qn_gror_id = None
 
     def setUp(self):
-        super(ParticipantGeneratorTest, self).setUp(with_consent_codes=True)
+        super(ParticipantEnrollmentTest, self).setUp(with_consent_codes=True)
 
         self.dao = ParticipantDao()
 
