@@ -55,11 +55,10 @@ class SyncConsentTest(BaseTestCase):
         args.zip_files = zip_files
         args.dry_run = dry_run
         args.all_va = all_va
+        args.pid_file = None
 
         # Patching things to keep tool from trying to call GAE and to provide test data
-        with mock.patch('rdr_service.tools.tool_libs.sync_consent.make_api_request',
-                        return_value=(200, {'rdr_db_password': 'test'})),\
-                mock.patch.dict('rdr_service.tools.tool_libs.sync_consent.SOURCE_BUCKET', {
+        with mock.patch.dict('rdr_service.tools.tool_libs.sync_consent.SOURCE_BUCKET', {
                     'example': "gs://uploads_bucket/Participant/P{p_id}/*{file_ext}"
                 }),\
                 mock.patch('rdr_service.tools.tool_libs.sync_consent.GoogleCloudStorageProvider.list',
