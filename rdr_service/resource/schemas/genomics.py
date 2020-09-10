@@ -63,7 +63,7 @@ class GenomicSetMemberSchema(Schema):
     # validation_flags is an array of GenomicValidationFlag Enum values.
     validation_flags = fields.String(validate=validate.Length(max=80))
     validated_time = fields.DateTime()
-    sample_id = fields.Int32()
+    sample_id = fields.String(validate=validate.Length(max=80))
     sample_type = fields.String(validate=validate.Length(max=50))
     reconcile_cvl_job_run_id = fields.Int32()
     sequencing_file_name = fields.String(validate=validate.Length(max=128))
@@ -105,7 +105,7 @@ class GenomicSetMemberSchema(Schema):
     genomic_workflow_state_id = fields.EnumInteger(enum=GenomicWorkflowState)
 
     genomic_workflow_state_history = fields.JSON()
-    collection_tube_id = fields.Int32()
+    collection_tube_id = fields.String(validate=validate.Length(max=80))
     gc_site_id = fields.String(validate=validate.Length(max=11))
     arr_aw3_manifest_job_run_id = fields.Int32()
     wgs_aw3_manifest_job_run_id = fields.Int32()

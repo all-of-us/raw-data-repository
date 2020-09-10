@@ -87,10 +87,10 @@ class GenomicSetMember(Base):
     validatedTime = Column("validated_time", DateTime, nullable=True)
 
     # collectionTubeId corresponds to biobank_stored_sample_id
-    collectionTubeId = Column('collection_tube_id', Integer, nullable=True, index=True)
+    collectionTubeId = Column('collection_tube_id', String(80), nullable=True, index=True)
 
     # sampleId is the great-grandchild aliquot of collectionTubeID
-    sampleId = Column('sample_id', Integer, nullable=True, index=True)
+    sampleId = Column('sample_id', String(80), nullable=True, index=True)
     sampleType = Column('sample_type', String(50), nullable=True)
 
     sequencingFileName = Column('sequencing_file_name',
