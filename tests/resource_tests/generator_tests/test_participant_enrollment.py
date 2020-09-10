@@ -1,22 +1,19 @@
-from datetime import datetime
 import json
+from datetime import datetime
 
 from rdr_service import clock
 from rdr_service.code_constants import *
-from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
-from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
-from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.hpo import HPO
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.site import Site
 from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
-from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.unittest_base import BaseTestCase, BiobankTestMixin
 from tests.test_data import load_measurement_json
 
 
-class ParticipantGeneratorTest(BaseTestCase):
+class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
     TIME_1 = datetime(2018, 9, 20, 5, 49, 11)
     TIME_2 = datetime(2018, 9, 24, 14, 21, 1)
 
@@ -36,7 +33,7 @@ class ParticipantGeneratorTest(BaseTestCase):
     qn_gror_id = None
 
     def setUp(self):
-        super(ParticipantGeneratorTest, self).setUp(with_consent_codes=True)
+        super(ParticipantEnrollmentTest, self).setUp(with_consent_codes=True)
 
         self.dao = ParticipantDao()
 
@@ -154,48 +151,6 @@ class ParticipantGeneratorTest(BaseTestCase):
         PhysicalMeasurementsDao.store_record_fhir_doc(record, self.pm_json)
         return record
 
-    def _make_biobank_order(self, **kwargs):
-        """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
-
-        Kwargs pass through to BiobankOrder constructor, overriding defaults.
-        """
-        for k, default_value in (
-            ('biobankOrderId', '1'),
-            ('created', clock.CLOCK.now()),
-            ('participantId', self.participant_id),
-            ('sourceSiteId', 1),
-            ('sourceUsername', 'fred@pmi-ops.org'),
-            ('collectedSiteId', 1),
-            ('collectedUsername', 'joe@pmi-ops.org'),
-            ('processedSiteId', 1),
-            ('processedUsername', 'sue@pmi-ops.org'),
-            ('finalizedSiteId', 2),
-            ('finalizedUsername', 'bob@pmi-ops.org'),
-            ('identifiers', [BiobankOrderIdentifier(system='https://www.pmi-ops.org', value=self.biobank_id)]),
-            ('samples', [BiobankOrderedSample(
-                biobankOrderId='1',
-                test='1ED04',
-                description=u'description',
-                finalized=self.TIME_1,
-                processingRequired=True)])):
-            if k not in kwargs:
-                kwargs[k] = default_value
-        biobank_order = BiobankOrder(**kwargs)
-
-        bss = BiobankStoredSample()
-        bss.biobankId = self.biobank_id
-        bss.test = '1ED04'
-        bss.biobankOrderIdentifier = '123456789'
-        bss.confirmed = self.TIME_2
-        bss.created = self.TIME_2
-        bss.biobankStoredSampleId = 'I11111111'
-        bss.family_id = 'F11111111'
-
-        with self.dao.session() as session:
-            session.add(bss)
-
-        return biobank_order
-
     def _set_up_participant_data(self, fake_time=None, skip_ehr=False):
         # set up questionnaires to hit the calculate_max_core_sample_time in participant summary
         with clock.FakeClock(fake_time or self.TIME_2):
@@ -209,9 +164,7 @@ class ParticipantGeneratorTest(BaseTestCase):
             self.pm_json = json.dumps(load_measurement_json(self.participant_id, self.TIME_1.isoformat()))
             self.pm = PhysicalMeasurementsDao().insert(self._make_physical_measurements())
 
-            self.dao = BiobankOrderDao()
-            self.bio_order = BiobankOrderDao().insert(
-                self._make_biobank_order(participantId=self.participant_id))
+            self._make_default_biobank_order(self.participant_id)
 
     def test_full_participant_status(self):
         """ Full Participant Test"""

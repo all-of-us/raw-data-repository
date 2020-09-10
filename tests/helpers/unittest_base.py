@@ -8,10 +8,13 @@ import io
 import json
 import logging
 import os
+import random
 import shutil
+import string
 import sys
 import tempfile
 import unittest
+from datetime import datetime
 from tempfile import mkdtemp
 
 import faker
@@ -24,7 +27,10 @@ from rdr_service.concepts import Concept
 from rdr_service.dao import database_factory, questionnaire_dao, questionnaire_response_dao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrder, BiobankOrderedSample
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
+from rdr_service.model.participant import Participant
 from rdr_service.offline import sql_exporter
 from rdr_service.storage import LocalFilesystemStorageProvider
 from tests.helpers.data_generator import DataGenerator
@@ -121,6 +127,218 @@ class QuestionnaireTestMixin:
         if authored is not None:
             response_json.update({"authored": authored.isoformat()})
         return response_json
+
+
+class BiobankTestMixin:
+    """ Base class for creating Biobank table records """
+
+    # BiobankOrder object defaults.
+    bbo_order_id = '1'
+    bbo_created = datetime(2018, 9, 20, 10, 0, 0)
+    bbo_finalized = datetime(2018, 9, 20, 10, 10, 0)
+
+    # BiobankStoredSample object defaults.
+    bos_test = '1ED04'
+
+    # BiobankStoredSample object defaults.
+    bss_confirmed = datetime(2018, 9, 22, 14, 0, 0)
+
+    def _create_biobank_order(self, participant_id, **kwargs):
+        """
+        Makes a new BiobankOrder object (same values every time) with valid/complete defaults.
+        Kwargs pass through to BiobankOrder constructor, overriding defaults.
+        :param participant_id: participant id.
+        :param kwargs: Dict of override values for BiobankOrder object.
+        :return: BiobankOrder object
+        """
+        if not participant_id:
+            raise ValueError('Argument "participant_id" not passed.')
+
+        bbo_order_id = self.bbo_order_id
+        bbo_created = self.bbo_created
+        bss_biobank_order_identifier = f'MAYO-{bbo_order_id}'
+
+        if 'biobankOrderId' in kwargs:
+            bbo_order_id = kwargs.pop('biobankOrderId')
+            bss_biobank_order_identifier = f'MAYO-{bbo_order_id}'
+        if 'created' in kwargs:
+            bbo_created = kwargs.pop('created')
+        # allow overriding the mayo clinic biobank_order_identifier value.
+        if 'biobankOrderIdentifier' in kwargs:
+            bss_biobank_order_identifier = kwargs.pop('biobankOrderIdentifier')
+
+        bbo_defaults = {
+            'participantId': participant_id,
+            'biobankOrderId': bbo_order_id,
+            'created': bbo_created,
+            'sourceSiteId': 1,
+            'sourceUsername': 'fred@pmi-ops.org',
+            'collectedSiteId': 1,
+            'collectedUsername': 'joe@pmi-ops.org',
+            'processedSiteId': 1,
+            'processedUsername': 'sue@pmi-ops.org',
+            'finalizedSiteId': 2,
+            'finalizedUsername': 'bob@pmi-ops.org',
+            'finalizedTime': self.bbo_finalized,
+            'version': 1,
+            'logPositionId': 1,
+            'identifiers': [BiobankOrderIdentifier(
+                system='https://www.pmi-ops.org', value=bss_biobank_order_identifier)]
+        }
+        # Override defaults if overrides provided
+        if kwargs:
+            bbo_defaults.update(kwargs)
+        bbo = BiobankOrder(**bbo_defaults)
+
+        with self.dao.session() as session:
+            session.add(bbo)
+
+        return bbo
+
+    def _create_biobank_ordered_sample(self, biobank_order_id, **kwargs):
+        """
+        Makes a new BiobankStoredSample object (same values every time) with valid/complete defaults.
+        Kwargs pass through to BiobankStoredSample constructor, overriding defaults.
+        :param biobank_order_id: Biobank Order ID value.
+        :param kwargs: Dict of override values for BiobankOrder object.
+        :return: BiobankStoredSample object
+        """
+        if not biobank_order_id:
+            raise ValueError('Argument "biobank_order_id" must be a valid biobank_order_id value.')
+
+        bos_test = self.bos_test
+        bos_finalized = self.bbo_finalized
+
+        if kwargs:
+            if 'test' in kwargs:
+                bos_test = kwargs.pop('test')
+            if 'finalized' in kwargs:
+                bos_finalized = kwargs.pop('finalized')
+
+        bos_defaults = {
+            'biobankOrderId': biobank_order_id,
+            'test': bos_test,
+            'description': 'description',
+            'finalized': bos_finalized,
+            'processingRequired': True
+        }
+        if kwargs:
+            bos_defaults.update(kwargs)
+        bos = BiobankOrderedSample(**bos_defaults)
+
+        with self.dao.session() as session:
+            session.add(bos)
+
+        return bos
+
+    def _create_biobank_stored_sample(self, biobank_id, **kwargs):
+        """
+        Makes a new BiobankStoredSample object (same values every time) with valid/complete defaults.
+        Kwargs pass through to BiobankStoredSample constructor, overriding defaults.
+        :param biobank_id: participant's biobank_id.
+        :param kwargs: Dict of override values for BiobankOrder object.
+        :return: BiobankStoredSample object
+        """
+        if not biobank_id:
+            raise ValueError('Argument "biobank_id" not passed.')
+
+        bss_test = self.bos_test
+        bss_confirmed = self.bss_confirmed
+        bss_biobank_order_identifier = f'MAYO-{self.bbo_order_id}'
+
+        if kwargs:
+            if 'biobankOrderId' in kwargs:
+                bbo_order_id = kwargs.pop('biobankOrderId')
+                bss_biobank_order_identifier = f'MAYO-{bbo_order_id}'
+            if 'biobankOrderIdentifier' in kwargs:
+                bss_biobank_order_identifier = kwargs.pop('biobankOrderIdentifier')
+            if 'test' in kwargs:
+                bss_test = kwargs.pop('test')
+            if 'confirmed' in kwargs:
+                bss_confirmed = kwargs.pop('confirmed')
+
+        if not bss_biobank_order_identifier:
+            raise ValueError('biobank_order_identifier has not been set for stored sample insert.')
+
+        bss_defaults = {
+            'biobankId': biobank_id,
+            'biobankOrderIdentifier': bss_biobank_order_identifier,
+            'test': bss_test,
+            'created': bss_confirmed,
+            'confirmed': bss_confirmed,
+            'biobankStoredSampleId': 'I'.join(random.choice(string.digits) for i in range(8)),
+            'family_id': 'F11111111',
+        }
+
+        if kwargs:
+            bss_defaults.update(kwargs)
+        bss = BiobankStoredSample(**bss_defaults)
+
+        with self.dao.session() as session:
+            session.add(bss)
+
+        return bss
+
+    def _make_default_biobank_order(self, participant_id, biobank_order_id=None, stored_sample=True):
+        """
+        Create the basic '1ED04' DNA biobank order.
+        :param participant_id: participant_id
+        :param biobank_order_id: Override the default biobank_order_id string value.
+        :param stored_sample: Create the BiobankStoredSample record.
+        :return: tuple (BiobankOrder object, BiobankOrderedSample object, BiobankStoredSample object)
+        """
+        if not participant_id:
+            raise ValueError('Participant ID argument not passed.')
+
+        with self.dao.session() as session:
+            rec = session.query(Participant.biobankId).filter(Participant.participantId == participant_id).first()
+            if not rec or not rec.biobankId:
+                raise ValueError('Failed to lookup participant biobank_id')
+            biobank_id = rec.biobankId
+
+        bbo_order_id = self.bbo_order_id
+        if biobank_order_id:
+            bbo_order_id = bbo_order_id
+
+        bbo = self._create_biobank_order(participant_id, biobankOrderId=bbo_order_id)
+        bos = self._create_biobank_ordered_sample(bbo.biobankOrderId)
+        if stored_sample:
+            bss = self._create_biobank_stored_sample(biobank_id=biobank_id)
+        else:
+            bss = None
+        return bbo, bos, bss
+
+    def _make_biobank_order_with_baseline_tests(self, participant_id, biobank_order_id=None, stored_sample=True):
+        """
+        Create a biobank order with all of the baseline tests
+        :param participant_id: participant_id
+        :param biobank_order_id: Override the default biobank_order_id string value.
+        :param stored_sample: Create the BiobankStoredSample records.
+        :return: bbo
+        """
+        if not participant_id:
+            raise ValueError('Participant ID argument not passed.')
+
+        with self.dao.session() as session:
+            rec = session.query(Participant.biobankId).filter(Participant.participantId == participant_id).first()
+            if not rec or not rec.biobankId:
+                raise ValueError('Failed to lookup participant biobank_id')
+            biobank_id = rec.biobankId
+
+        tests = config.getSettingList('baseline_sample_test_codes')
+
+        bbo_order_id = self.bbo_order_id
+        if biobank_order_id:
+            bbo_order_id = bbo_order_id
+
+        bbo = self._create_biobank_order(participant_id, biobankOrderId=bbo_order_id)
+        for test in tests:
+            # pylint: disable=unused-variable
+            bos = self._create_biobank_ordered_sample(bbo.biobankOrderId, test=test)
+            if stored_sample:
+                # pylint: disable=unused-variable
+                bss = self._create_biobank_stored_sample(biobank_id=biobank_id, biobankOrderId=bbo_order_id, test=test)
+        return bbo
 
 
 class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin):
@@ -276,7 +494,8 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         return None
 
 
-    def send_consent(self, participant_id, email=None, language=None, code_values=None, authored=None):
+    def send_consent(self, participant_id, email=None, language=None, code_values=None, string_answers=None,
+                     authored=None):
 
         if isinstance(participant_id, int):
             participant_id = f'P{participant_id}'
@@ -290,20 +509,26 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             email = self.email
         self.streetAddress = "1234 Main Street"
         self.streetAddress2 = "APT C"
-        qr_json = self.make_questionnaire_response_json(
-            participant_id,
-            self._consent_questionnaire_id,
-            string_answers=[
+
+        if not string_answers:
+            string_answers = [
                 ("firstName", self.first_name),
                 ("lastName", self.last_name),
                 ("email", email),
                 ("streetAddress", self.streetAddress),
                 ("streetAddress2", self.streetAddress2),
-            ],
+            ]
+
+        qr_json = self.make_questionnaire_response_json(
+            participant_id,
+            self._consent_questionnaire_id,
+            string_answers=string_answers,
             language=language,
             code_answers=code_values,
             authored=authored,
         )
+
+
         self.send_post(self.questionnaire_response_url(participant_id), qr_json)
 
     def assertJsonResponseMatches(self, obj_a, obj_b, strip_tz=True):
