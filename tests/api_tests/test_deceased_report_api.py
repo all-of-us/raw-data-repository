@@ -323,7 +323,15 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         report_json = self.build_deceased_report_json(status='unknown')
         self.post_report(report_json, expected_status=400)
 
-        self.create_pending_deceased_report()
+        # Check for response when trying to use future date for authored
+        three_days_from_now = datetime.now() + timedelta(days=3)
+        report_json = self.build_deceased_report_json(authored=three_days_from_now.isoformat())
+        self.post_report(report_json, expected_status=400)
+
+        # Check for response when trying to use future date for date of death
+        three_days_from_now = date.today() + timedelta(days=3)
+        report_json = self.build_deceased_report_json(date_of_death=three_days_from_now.isoformat())
+        self.post_report(report_json, expected_status=400)
 
     def test_post_with_only_required_fields(self):
         report_json = self.build_deceased_report_json()
@@ -429,15 +437,15 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         self.assertEqual(date(2020, 1, 1), participant_summary.dateOfDeath)
 
         review_json = self.build_report_review_json(
-            date_of_death='2022-06-01'
+            date_of_death='2019-06-01'
         )
         self.post_report_review(review_json, report_id, participant_id)
 
         created_report = self.get_report_from_db(report_id)
-        self.assertEqual(date(2022, 6, 1), created_report.dateOfDeath)
+        self.assertEqual(date(2019, 6, 1), created_report.dateOfDeath)
 
         participant_summary = self.get_participant_summary_from_db(participant_id=participant_id)
-        self.assertEqual(date(2022, 6, 1), participant_summary.dateOfDeath)
+        self.assertEqual(date(2019, 6, 1), participant_summary.dateOfDeath)
 
     def test_only_healthpro_can_review(self):
         report = self.create_pending_deceased_report()
