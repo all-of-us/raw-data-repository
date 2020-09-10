@@ -945,37 +945,37 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :return: dict
         """
         _module_info_sql = """
-                            SELECT qr.questionnaire_id,
-                                   qr.questionnaire_response_id,
-                                   qr.created,
-                                   q.version,
-                                   qr.authored,
-                                   qr.language,
-                                   qr.participant_id
-                            FROM questionnaire_response qr
-                                    INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
-                                    INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
-                            WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
-                            ORDER BY qr.created;
-                        """
+            SELECT DISTINCT qr.questionnaire_id,
+                   qr.questionnaire_response_id,
+                   qr.created,
+                   q.version,
+                   qr.authored,
+                   qr.language,
+                   qr.participant_id
+            FROM questionnaire_response qr
+                    INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
+                    INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
+            WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
+            ORDER BY qr.created;
+        """
 
         _answers_sql = """
-                    SELECT qr.questionnaire_id,
-                           qq.code_id,
-                           (select c.value from code c where c.code_id = qq.code_id) as code_name,
-                           COALESCE((SELECT c.value from code c where c.code_id = qra.value_code_id),
-                                    qra.value_integer, qra.value_decimal,
-                                    qra.value_boolean, qra.value_string, qra.value_system,
-                                    qra.value_uri, qra.value_date, qra.value_datetime) as answer
-                    FROM questionnaire_response qr
-                             INNER JOIN questionnaire_response_answer qra
-                                        ON qra.questionnaire_response_id = qr.questionnaire_response_id
-                             INNER JOIN questionnaire_question qq
-                                        ON qra.question_id = qq.questionnaire_question_id
-                             INNER JOIN questionnaire q
-                                        ON qq.questionnaire_id = q.questionnaire_id
-                    WHERE qr.questionnaire_response_id = :qr_id;
-                """
+            SELECT qr.questionnaire_id,
+                   qq.code_id,
+                   (select c.value from code c where c.code_id = qq.code_id) as code_name,
+                   COALESCE((SELECT c.value from code c where c.code_id = qra.value_code_id),
+                            qra.value_integer, qra.value_decimal,
+                            qra.value_boolean, qra.value_string, qra.value_system,
+                            qra.value_uri, qra.value_date, qra.value_datetime) as answer
+            FROM questionnaire_response qr
+                     INNER JOIN questionnaire_response_answer qra
+                                ON qra.questionnaire_response_id = qr.questionnaire_response_id
+                     INNER JOIN questionnaire_question qq
+                                ON qra.question_id = qq.questionnaire_question_id
+                     INNER JOIN questionnaire q
+                                ON qq.questionnaire_id = q.questionnaire_id
+            WHERE qr.questionnaire_response_id = :qr_id;
+        """
 
         answers = OrderedDict()
 
