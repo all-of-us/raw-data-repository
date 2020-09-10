@@ -329,6 +329,7 @@ class ParticipantSchema(Schema):
 
     participant_id = fields.String(validate=validate.Length(max=10), required=True)
     biobank_id = fields.Int32()
+    research_id = fields.Int32()
     participant_origin = fields.String(validate=validate.Length(max=60))
 
     first_name = fields.String(validate=validate.Length(max=255))
