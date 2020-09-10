@@ -26,7 +26,8 @@ class ParticipantBase(object):
     participantId = Column("participant_id", Integer, primary_key=True, autoincrement=False)
     # Assigned ID from PTSC. Recieved in request to create a new Participant.
     externalId = Column("external_id", BigInteger)
-
+    # 7 digits number unique research id
+    researchId = Column("research_id", Integer)
     # Incrementing version, starts at 1 and is incremented on each update.
     version = Column("version", Integer, nullable=False)
 
@@ -80,13 +81,19 @@ class ParticipantBase(object):
     def siteId(cls):
         return Column("site_id", Integer, ForeignKey("site.site_id"))
 
+    @declared_attr
+    def enrollmentSiteId(cls):
+        return Column("enrollment_site_id", Integer, ForeignKey("site.site_id"))
+
 
 class Participant(ParticipantBase, Base):
     __tablename__ = "participant"
     participantSummary = relationship(
         "ParticipantSummary", uselist=False, back_populates="participant", cascade="all, delete-orphan"
     )
-    __table_args__ = (UniqueConstraint("external_id"),)
+    __table_args__ = (UniqueConstraint("external_id"), UniqueConstraint("research_id"),)
+
+    organization = relationship("Organization", foreign_keys='Participant.organizationId')
 
 
 Index("participant_biobank_id", Participant.biobankId, unique=True)

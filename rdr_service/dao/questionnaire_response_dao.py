@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from datetime import datetime, timedelta
 
 import pytz
@@ -333,10 +334,18 @@ class QuestionnaireResponseDao(BaseDao):
                             dvehr_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
                     elif code.value == EHR_CONSENT_QUESTION_CODE:
                         code = code_dao.get(answer.valueCodeId)
+                        if participant_summary.ehrConsentExpireStatus == ConsentExpireStatus.EXPIRED and \
+                            authored > participant_summary.ehrConsentExpireAuthored:
+                            participant_summary.ehrConsentExpireStatus = ConsentExpireStatus.UNSET
+                            participant_summary.ehrConsentExpireAuthored = None
+                            participant_summary.ehrConsentExpireTime = None
                         if code and code.value == CONSENT_PERMISSION_YES_CODE:
                             ehr_consent = True
                             if participant_summary.consentForElectronicHealthRecordsFirstYesAuthored is None:
                                 participant_summary.consentForElectronicHealthRecordsFirstYesAuthored = authored
+                            if participant_summary.ehrConsentExpireStatus == ConsentExpireStatus.EXPIRED and \
+                                authored < participant_summary.ehrConsentExpireAuthored:
+                                ehr_consent = False
                     elif code.value == EHR_CONSENT_EXPIRED_QUESTION_CODE:
                         if answer.valueString and answer.valueString == EHR_CONSENT_EXPIRED_YES:
                             participant_summary.ehrConsentExpireStatus = ConsentExpireStatus.EXPIRED
@@ -359,26 +368,28 @@ class QuestionnaireResponseDao(BaseDao):
                         elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NOT_SURE:
                             gror_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
                     elif code.value == COPE_CONSENT_QUESTION_CODE:
+                        answer_value = code_dao.get(answer.valueCodeId).value
+                        if answer_value == CONSENT_COPE_YES_CODE:
+                            submission_status = QuestionnaireStatus.SUBMITTED
+                        elif answer_value in [CONSENT_COPE_NO_CODE, CONSENT_COPE_DEFERRED_CODE]:
+                            submission_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+                        else:
+                            submission_status = QuestionnaireStatus.SUBMITTED_INVALID
+
                         # COPE survey updates can occur at the end of the previous month
                         adjusted_last_modified = questionnaire_history.lastModified + timedelta(days=5)
-                        month_name = adjusted_last_modified.strftime('%B')
                         # Currently only have fields in participant summary for May, Jun and July
-                        if month_name in ['May', 'June', 'July']:
-                            answer_value = code_dao.get(answer.valueCodeId).value
-                            if answer_value == CONSENT_COPE_YES_CODE:
-                                submission_status = QuestionnaireStatus.SUBMITTED
-                            elif answer_value in [CONSENT_COPE_NO_CODE, CONSENT_COPE_DEFERRED_CODE]:
-                                submission_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
-                            else:
-                                submission_status = QuestionnaireStatus.SUBMITTED_INVALID
-                            setattr(participant_summary, f'questionnaireOnCope{month_name}', submission_status)
+                        month_name = {
+                            5: 'May',
+                            6: 'June'
+                        }.get(adjusted_last_modified.month, 'July')
+                        setattr(participant_summary, f'questionnaireOnCope{month_name}', submission_status)
+                        setattr(participant_summary, f'questionnaireOnCope{month_name}Time',
+                                questionnaire_response.created)
+                        setattr(participant_summary, f'questionnaireOnCope{month_name}Authored', authored)
 
-                            setattr(participant_summary, f'questionnaireOnCope{month_name}Time',
-                                    questionnaire_response.created)
-                            setattr(participant_summary, f'questionnaireOnCope{month_name}Authored', authored)
-
-                            # COPE Survey changes need to update number of modules complete in summary
-                            module_changed = True
+                        # COPE Survey changes need to update number of modules complete in summary
+                        module_changed = True
                     elif code.value == PRIMARY_CONSENT_UPDATE_QUESTION_CODE:
                         answer_value = code_dao.get(answer.valueCodeId).value
                         if answer_value == COHORT_1_REVIEW_CONSENT_YES_CODE:
@@ -492,11 +503,14 @@ class QuestionnaireResponseDao(BaseDao):
             participant_summary.lastModified = clock.CLOCK.now()
             session.merge(participant_summary)
 
-            # switch account to test account if the phone number is start with 444
+            # switch account to test account if the phone number starts with 4442
             # this is a requirement from PTSC
-            if participant_summary.loginPhoneNumber is not None and participant_summary.loginPhoneNumber.startswith(
-                TEST_LOGIN_PHONE_NUMBER_PREFIX
-            ):
+            ph = getattr(participant_summary, 'loginPhoneNumber') or \
+                 getattr(participant_summary, 'phoneNumber') or 'None'
+
+            ph_clean = re.sub('[\(|\)|\-|\s]', '', ph)
+
+            if ph_clean.startswith(TEST_LOGIN_PHONE_NUMBER_PREFIX):
                 ParticipantDao().switch_to_test_account(session, participant)
 
             # update participant gender/race answers table

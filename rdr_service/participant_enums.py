@@ -37,7 +37,7 @@ TEST_EMAIL_PATTERN = "%@example.com"
 TEST_HPO_NAME = "TEST"
 TEST_HPO_ID = 19
 # Test login phone number prefix
-TEST_LOGIN_PHONE_NUMBER_PREFIX = "444"
+TEST_LOGIN_PHONE_NUMBER_PREFIX = "4442"
 PARTICIPANT_COHORT_2_START_TIME = datetime(2018, 4, 24, 0, 0, 0)
 PARTICIPANT_COHORT_3_START_TIME = datetime(2020, 4, 21, 4, 0, 0)
 
@@ -377,6 +377,49 @@ class SuspensionStatus(messages.Enum):
     NO_CONTACT = 2
 
 
+class DeceasedStatus(messages.Enum):
+    """Whether the participant has an approved or pending deceased report"""
+
+    UNSET = 0
+    PENDING = 1
+    APPROVED = 2
+
+
+class DeceasedNotification(messages.Enum):
+    """How the program was notified of the participant's deceased status"""
+
+    EHR = 1
+    ATTEMPTED_CONTACT = 2
+    NEXT_KIN_HPO = 3
+    NEXT_KIN_SUPPORT = 4
+    OTHER = 5
+
+
+class DeceasedReportStatus(messages.Enum):
+    """The approval state of the deceased report"""
+
+    PENDING = 1
+    APPROVED = 2
+    DENIED = 3
+
+
+class DeceasedReportDenialReason(messages.Enum):
+    """The reason that the deceased report was denied"""
+
+    INCORRECT_PARTICIPANT = 1
+    MARKED_IN_ERROR = 2
+    INSUFFICIENT_INFORMATION = 3
+    OTHER = 4
+
+
+# DA-1576:  Retention Eligibility Metrics
+class RetentionStatus(messages.Enum):
+    """Whether a participant meets retention-eligible criteria"""
+
+    NOT_ELIGIBLE = 1
+    ELIGIBLE = 2
+
+
 class MetricsCacheType(messages.Enum):
     """Types of metrics cache"""
 
@@ -564,7 +607,10 @@ class GenomicJob(messages.Enum):
     C1_PARTICIPANT_WORKFLOW = 19
     AW3_ARRAY_WORKFLOW = 20
     AW3_WGS_WORKFLOW = 21
-    AW1C_INGEST = 22
+    AW4_ARRAY_WORKFLOW = 22
+    AW4_WGS_WORKFLOW = 23
+    GEM_METRICS_INGEST = 24
+    AW1C_INGEST = 25
 
 
 class GenomicWorkflowState(messages.Enum):
@@ -827,4 +873,5 @@ class WorkbenchAuditWorkspaceAccessDecision(messages.Enum):
     UNSET = 0
     DISABLE_WORKSPACE = 1
     DISABLE_WORKSPACE_AND_REVIEW_RESEARCHERS = 2
+
 

@@ -39,8 +39,13 @@ def sync_clia_compliance_pdf_files():
     ptc_target_bucket = config.getSetting(config.PTC_CLIA_COMPLIANT_REPORT_BUCKET_NAME)
     ce_target_bucket = config.getSetting(config.CE_CLIA_COMPLIANT_REPORT_BUCKET_NAME)
 
-    file_list = _find_file_list(antibody_study_bucket_name, sub_folder_name=_CLIA_COMPLIANCE_SUB_FOLDER_NAME,
-                                file_suffix_name='.pdf')
+    try:
+        file_list = _find_file_list(antibody_study_bucket_name, sub_folder_name=_CLIA_COMPLIANCE_SUB_FOLDER_NAME,
+                                    file_suffix_name='.pdf')
+    except FileNotFoundError:
+        logging.info("File not found")
+        return None
+
     biobank_covid_antibody_dao = BiobankCovidAntibodySampleDao()
     with biobank_covid_antibody_dao.session() as session:
         for (file_cloud_path, filename) in file_list:
@@ -123,7 +128,8 @@ def _create_biobank_covid_antibody_obj_from_row(row, csv_filename):
         sampleType=row[BiobankAntibodyManifestCsvColumns.SAMPLE_TYPE],
         quantityUl=row[BiobankAntibodyManifestCsvColumns.QUANTITY],
         storageLocation=row[BiobankAntibodyManifestCsvColumns.STORAGE_LOCATION],
-        collectionDate=row[BiobankAntibodyManifestCsvColumns.COLLECTION_DATE],
+        collectionDate=row[BiobankAntibodyManifestCsvColumns.COLLECTION_DATE]
+        if row[BiobankAntibodyManifestCsvColumns.COLLECTION_DATE] else None,
         ingestFileName=csv_filename
     )
 
@@ -158,7 +164,8 @@ def _create_quest_covid_antibody_test_obj_from_row(row, csv_filename):
         specimenId=row[QuestCovidAntibodyTestCsvColumns.SPECIMEN_ID],
         testCode=row[QuestCovidAntibodyTestCsvColumns.TEST_CODE],
         testName=row[QuestCovidAntibodyTestCsvColumns.TEST_NAME],
-        runDateTime=row[QuestCovidAntibodyTestCsvColumns.RUN_DATE_TIME],
+        runDateTime=row[QuestCovidAntibodyTestCsvColumns.RUN_DATE_TIME]
+        if row[QuestCovidAntibodyTestCsvColumns.RUN_DATE_TIME] else None,
         accession=row[QuestCovidAntibodyTestCsvColumns.ACCESSION],
         instrumentName=row[QuestCovidAntibodyTestCsvColumns.INSTRUMENT_NAME],
         position=row[QuestCovidAntibodyTestCsvColumns.POSITION],

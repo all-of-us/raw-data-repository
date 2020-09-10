@@ -541,6 +541,7 @@ DROP TABLE IF EXISTS cdm.src_clean;
 
 CREATE TABLE cdm.src_clean (
     participant_id              bigint,
+    research_id                 bigint,
     survey_name                 varchar(200),
     date_of_survey              datetime,
     question_ppi_code           varchar(200),
@@ -569,6 +570,7 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 INSERT INTO cdm.src_clean
 SELECT
     pa.participant_id               AS participant_id,
+    pa.research_id                  AS research_id,
     co_b.value                      AS survey_name,
     qr.created                      AS date_of_survey,
     co_q.short_value                AS question_ppi_code,
@@ -608,7 +610,7 @@ JOIN rdr.hpo hp
 JOIN rdr.questionnaire_response qr
     ON  qr.participant_id = pa.participant_id
 JOIN rdr.questionnaire_concept qc
-    ON qr.questionnaire_id = qc.questionnaire_id
+    ON qr.questionnaire_id = qc.questionnaire_id AND qr.questionnaire_version = qc.questionnaire_version
 JOIN rdr.questionnaire_response_answer qra
     ON  qra.questionnaire_response_id = qr.questionnaire_response_id
 JOIN rdr.questionnaire_question qq
@@ -622,6 +624,7 @@ LEFT JOIN rdr.code co_b
 WHERE
     pa.withdrawal_status != 2
     AND pa.is_ghost_id IS NOT TRUE
+    AND pa.participant_origin <> 'careevolution'
     AND hp.name != 'TEST'
     AND
     (
@@ -1591,6 +1594,8 @@ WHERE
 ;
 
 ALTER TABLE cdm.observation ADD KEY (meas_id);
+-- remove special character
+update cdm.observation set value_as_string = replace(value_as_string, '\0', '') where value_as_string like '%\0%';
 
 -- -------------------------------------------------------------------
 -- source_file: src/measurement.sql
@@ -2146,6 +2151,13 @@ FROM cdm.measurement cdm_meas
 WHERE cdm_meas.parent_id IS NOT NULL;
 
 
+DROP TABLE IF EXISTS cdm.pid_rid_mapping;
+CREATE TABLE cdm.pid_rid_mapping (
+    participant_id              bigint,
+    research_id                 bigint
+);
+INSERT INTO cdm.pid_rid_mapping SELECT DISTINCT participant_id, research_id FROM cdm.src_clean;
+
 -- -------------------------------------------------------------------
 -- Drop Temporary Tables
 -- -------------------------------------------------------------------
@@ -2159,22 +2171,22 @@ DROP TABLE IF EXISTS cdm.tmp_fact_rel_sd;
 -- Drop columns only used for ETL purposes
 -- -------------------------------------------------------------------
 
-ALTER TABLE cdm.care_site DROP COLUMN unit_id;
-ALTER TABLE cdm.condition_era DROP COLUMN unit_id;
-ALTER TABLE cdm.condition_occurrence DROP COLUMN unit_id;
-ALTER TABLE cdm.cost DROP COLUMN unit_id;
-ALTER TABLE cdm.death DROP COLUMN unit_id;
-ALTER TABLE cdm.device_exposure DROP COLUMN unit_id;
-ALTER TABLE cdm.dose_era DROP COLUMN unit_id;
-ALTER TABLE cdm.drug_era DROP COLUMN unit_id;
-ALTER TABLE cdm.drug_exposure DROP COLUMN unit_id;
-ALTER TABLE cdm.fact_relationship DROP COLUMN unit_id;
-ALTER TABLE cdm.location DROP COLUMN unit_id;
-ALTER TABLE cdm.measurement DROP COLUMN unit_id, DROP COLUMN parent_id;
-ALTER TABLE cdm.observation DROP COLUMN unit_id, DROP COLUMN meas_id;
-ALTER TABLE cdm.observation_period DROP COLUMN unit_id;
-ALTER TABLE cdm.payer_plan_period DROP COLUMN unit_id;
-ALTER TABLE cdm.person DROP COLUMN unit_id;
-ALTER TABLE cdm.procedure_occurrence DROP COLUMN unit_id;
-ALTER TABLE cdm.provider DROP COLUMN unit_id;
-ALTER TABLE cdm.visit_occurrence DROP COLUMN unit_id;
+ALTER TABLE cdm.care_site DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.condition_era DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.condition_occurrence DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.cost DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.death DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.device_exposure DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.dose_era DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.drug_era DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.drug_exposure DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.fact_relationship DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.location DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.measurement DROP COLUMN unit_id, DROP COLUMN parent_id, DROP COLUMN id;
+ALTER TABLE cdm.observation DROP COLUMN unit_id, DROP COLUMN meas_id, DROP COLUMN id;
+ALTER TABLE cdm.observation_period DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.payer_plan_period DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.person DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.procedure_occurrence DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.provider DROP COLUMN unit_id, DROP COLUMN id;
+ALTER TABLE cdm.visit_occurrence DROP COLUMN unit_id, DROP COLUMN id;

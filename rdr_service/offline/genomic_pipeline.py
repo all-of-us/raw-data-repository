@@ -88,7 +88,7 @@ def genomic_centers_aw1f_manifest_workflow():
     with GenomicJobController(GenomicJob.AW1F_MANIFEST,
                               bucket_name=None,
                               bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
-                              sub_folder_name=config.GENOMIC_AW1F_SUBFOLDER
+                              sub_folder_tuple=config.GENOMIC_AW1F_SUBFOLDERS
                               ) as controller:
         controller.run_aw1f_manifest_workflow()
 
@@ -98,7 +98,7 @@ def genomic_centers_accessioning_failures_workflow():
         Entrypoint for Accessioning Alerts:
             Failure Manifest (AW1F)
         """
-    with GenomicJobController(GenomicJob.AW1F_MANIFEST,
+    with GenomicJobController(GenomicJob.AW1F_ALERTS,
                               bucket_name=None,
                               bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
                               sub_folder_tuple=config.GENOMIC_AW1F_SUBFOLDERS
@@ -162,6 +162,24 @@ def aw3_wgs_manifest_workflow():
         controller.generate_manifest(GenomicManifestTypes.AW3_WGS, _genome_type=config.GENOME_TYPE_WGS)
 
 
+def aw4_array_manifest_workflow():
+    """
+    Entrypoint for AW4 Array Workflow
+    """
+    with GenomicJobController(GenomicJob.AW4_ARRAY_WORKFLOW,
+                              bucket_name=config.DRC_BROAD_BUCKET_NAME) as controller:
+        controller.run_general_ingestion_workflow()
+
+
+def aw4_wgs_manifest_workflow():
+    """
+    Entrypoint for AW4 WGS Workflow
+    """
+    with GenomicJobController(GenomicJob.AW4_WGS_WORKFLOW,
+                              bucket_name=config.DRC_BROAD_BUCKET_NAME) as controller:
+        controller.run_general_ingestion_workflow()
+
+
 def gem_a1_manifest_workflow():
     """
     Entrypoint for GEM A1 Workflow
@@ -180,7 +198,7 @@ def gem_a2_manifest_workflow():
     with GenomicJobController(GenomicJob.GEM_A2_MANIFEST,
                               bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
         controller.reconcile_report_states(_genome_type=config.GENOME_TYPE_ARRAY)
-        controller.run_gem_a2_workflow()
+        controller.run_general_ingestion_workflow()
 
 
 def gem_a3_manifest_workflow():
@@ -191,6 +209,15 @@ def gem_a3_manifest_workflow():
                               bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
         controller.reconcile_report_states(_genome_type=config.GENOME_TYPE_ARRAY)
         controller.generate_manifest(GenomicManifestTypes.GEM_A3, _genome_type=config.GENOME_TYPE_ARRAY)
+
+
+def gem_metrics_ingest():
+    """
+    Entrypoint for the GEM Metrics ingestion from Color
+    """
+    with GenomicJobController(GenomicJob.GEM_METRICS_INGEST,
+                              bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
+        controller.run_general_ingestion_workflow()
 
 
 def create_cvl_reconciliation_report():
@@ -220,7 +247,7 @@ def ingest_cvl_w2_manifest():
     with GenomicJobController(GenomicJob.W2_INGEST,
                               bucket_name=config.GENOMIC_CVL_BUCKET_NAME,
                               sub_folder_name=config.CVL_W2_MANIFEST_SUBFOLDER) as controller:
-        controller.run_cvl_w2_workflow()
+        controller.run_general_ingestion_workflow()
 
 
 def create_cvl_w3_manifest():

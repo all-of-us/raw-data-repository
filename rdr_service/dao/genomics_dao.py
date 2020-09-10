@@ -1,4 +1,6 @@
 import collections
+
+import pytz
 import sqlalchemy
 import logging
 
@@ -7,6 +9,7 @@ from sqlalchemy.sql import functions
 
 from rdr_service import clock
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao
+from rdr_service.dao.bq_genomics_dao import bq_genomic_gc_validation_metrics_update, bq_genomic_set_member_update
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
@@ -26,6 +29,7 @@ from rdr_service.participant_enums import (
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
+from rdr_service.resource.generators.genomics import genomic_gc_validation_metrics_update, genomic_set_member_update
 
 
 class GenomicSetDao(UpdatableDao):
@@ -150,8 +154,8 @@ class GenomicSetMemberDao(UpdatableDao):
                                     'reconcileGCManifestJobRunId',
                                     'gemA3ManifestJobRunId',
                                     'cvlW3ManifestJobRunID',
-                                    'arrAW3ManifestJobRunID',
-                                    'wgsAW3ManifestJobRunID',)
+                                    'aw3ManifestJobRunID',
+                                    'aw4ManifestJobRunID',)
 
     def get_id(self, obj):
         return obj.id
@@ -365,6 +369,24 @@ class GenomicSetMemberDao(UpdatableDao):
             ).first()
         return member
 
+    def get_member_from_aw3_sample(self, sample_id, genome_type):
+        """
+        Retrieves a genomic set member record matching the sample_id
+        The sample_id is supplied in AW1 manifest, not biobank_stored_sample_id
+        Needs a genome type.
+        :param genome_type: aou_wgs, aou_array, aou_cvl
+        :param sample_id:
+        :return: a GenomicSetMember object
+        """
+        with self.session() as session:
+            member = session.query(GenomicSetMember).filter(
+                GenomicSetMember.sampleId == sample_id,
+                GenomicSetMember.genomeType == genome_type,
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.aw3ManifestJobRunID != None,
+            ).one_or_none()
+        return member
+
     def get_member_from_collection_tube(self, tube_id, genome_type):
         """
         Retrieves a genomic set member record matching the collection_tube_id
@@ -407,7 +429,14 @@ class GenomicSetMemberDao(UpdatableDao):
         setattr(member, field, job_run_id)
         try:
             logging.info(f'Updating {field} with run ID.')
-            return self.update(member)
+            updated_member = self.update(member)
+
+            # Update member for PDR
+            bq_genomic_set_member_update(member.id)
+            genomic_set_member_update(member.id)
+
+            return updated_member
+
         except OperationalError:
             logging.error(f'Error updating member id: {member.id}.')
             return GenomicSubProcessResult.ERROR
@@ -420,7 +449,14 @@ class GenomicSetMemberDao(UpdatableDao):
         """
 
         member.genomicWorkflowState = new_state
-        return self.update(member)
+        member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+        updated_member = self.update(member)
+
+        # Update member for PDR
+        bq_genomic_set_member_update(member.id)
+        genomic_set_member_update(member.id)
+
+        return updated_member
 
     def update_member_sequencing_file(self, member, job_run_id, filename):
         """
@@ -535,7 +571,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember
             ).filter(
                 GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CONTROL_SAMPLE,
-                GenomicSetMember.sampleId == int(sample_id)
+                GenomicSetMember.sampleId == sample_id
             ).first()
 
 
@@ -731,10 +767,12 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
             'callRate': 'callrate',
             'meanCoverage': 'meancoverage',
             'genomeCoverage': 'genomecoverage',
+            'aouHdrCoverage': 'aouhdrcoverage',
             'contamination': 'contamination',
             'sexConcordance': 'sexconcordance',
             'sexPloidy': 'sexploidy',
-            'alignedQ20Bases': 'alignedq20bases',
+            'alignedQ30Bases': 'alignedq30bases',
+            'arrayConcordance': 'arrayconcordance',
             'processingStatus': 'processingstatus',
             'notes': 'notes',
             'siteId': 'siteid',
@@ -758,7 +796,12 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                         gc_metrics_obj.__setattr__(key, row[self.data_mappings[key]])
                     except KeyError:
                         gc_metrics_obj.__setattr__(key, None)
-                self.insert(gc_metrics_obj)
+                inserted_metrics_obj = self.insert(gc_metrics_obj)
+
+                # Update GC Metrics for PDR
+                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+                genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
@@ -794,6 +837,7 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                     (GenomicGCValidationMetrics.idatRedMd5Received == 0) |
                     (GenomicGCValidationMetrics.idatGreenMd5Received == 0) |
                     (GenomicGCValidationMetrics.vcfReceived == 0) |
+                    (GenomicGCValidationMetrics.vcfTbiReceived == 0) |
                     (GenomicGCValidationMetrics.vcfMd5Received == 0)
                 )
                 .all()
@@ -873,6 +917,7 @@ class GenomicPiiDao(BaseDao):
                     "biobank_id": result['data'].biobankId,
                     "first_name": result['data'].firstName,
                     "last_name": result['data'].lastName,
+                    "sex_at_birth": result['data'].sexAtBirth,
                 }
 
             elif result['mode'] == 'RHP':
@@ -881,6 +926,7 @@ class GenomicPiiDao(BaseDao):
                     "first_name": result['data'].firstName,
                     "last_name": result['data'].lastName,
                     "date_of_birth": result['data'].dateOfBirth,
+                    "sex_at_birth": result['data'].sexAtBirth,
                 }
             else:
                 return {"message": "Only GEM and RHP modes supported."}
@@ -900,7 +946,8 @@ class GenomicPiiDao(BaseDao):
                               ParticipantSummary.firstName,
                               ParticipantSummary.lastName,
                               ParticipantSummary.consentForGenomicsROR,
-                              ParticipantSummary.dateOfBirth,)
+                              ParticipantSummary.dateOfBirth,
+                              GenomicSetMember.sexAtBirth,)
                 .join(
                     ParticipantSummary,
                     GenomicSetMember.participantId == ParticipantSummary.participantId,
@@ -950,7 +997,7 @@ class GenomicOutreachDao(BaseDao):
 
         client_json = {
             "participant_report_statuses": report_statuses,
-            "timestamp": result['date']
+            "timestamp": pytz.utc.localize(result['date'])
         }
         return client_json
 
@@ -1001,7 +1048,7 @@ class GenomicOutreachDao(BaseDao):
                     GenomicSetMember.genomicWorkflowState.in_((GenomicWorkflowState.GEM_RPT_READY,
                                                                GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
                                                                GenomicWorkflowState.GEM_RPT_DELETED)),
-                    ParticipantSummary.consentForGenomicsRORAuthored > start_date,
-                    ParticipantSummary.consentForGenomicsRORAuthored < end_date,
+                    GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
+                    GenomicSetMember.genomicWorkflowStateModifiedTime < end_date,
                 ).all()
             )

@@ -165,7 +165,7 @@ class BQSchema(object):
                 #       what fields the remote BQ server has.
                 schema = self._add_fields(BQSchema(), field['fields'])
                 rec_obj = BQRecordField(fld_name, schema, fld_descr=fld_descr)
-                self.__dict__[fld_name] = rec_obj
+                obj.__dict__[fld_name] = rec_obj
             else:
                 obj.__dict__[fld_name] = BQField(fld_name, fld_type, fld_mode, fld_enum, fld_descr)
 
@@ -403,7 +403,7 @@ class BQView(object):
     __viewname__ = None  # type: str
     __viewdescr__ = None  # type: str
     __table__ = None  # type: BQTable
-    __pk_id__ = 'id'  # type: str
+    __pk_id__ = 'id'  # type: (str, list)
     __sql__ = None  # type: str
 
     def __init__(self):
@@ -411,18 +411,20 @@ class BQView(object):
         if not self.__sql__ and self.__table__:
             tbl = self.__table__()
             fields = tbl.get_schema().get_fields()
+            pk = ', '.join(self.__pk_id__) if isinstance(self.__pk_id__, list) else str(self.__pk_id__)
 
             self.__sql__ = """
-        SELECT {fields} 
-      """.format(fields=', '.join([f['name'] for f in fields]))
+                SELECT {fields} 
+              """.format(fields=', '.join([f['name'] for f in fields]))
 
             self.__sql__ += """
                 FROM (
-                  SELECT *, MAX(modified) OVER (PARTITION BY %%pk_id%%) AS max_timestamp
+                  SELECT *,                        
+                      ROW_NUMBER() OVER (PARTITION BY %%pk_id%% ORDER BY modified desc) AS rn
                     FROM `{project}`.{dataset}.%%table%% 
                 ) t
-                WHERE t.modified = t.max_timestamp 
-              """.replace('%%table%%', tbl.get_name()).replace('%%pk_id%%', self.__pk_id__)
+                WHERE t.rn = 1
+              """.replace('%%table%%', tbl.get_name()).replace('%%pk_id%%', pk)
 
     def get_table(self):
         return self.__table__

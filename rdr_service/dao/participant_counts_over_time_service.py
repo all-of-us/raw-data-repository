@@ -51,10 +51,14 @@ class ParticipantCountsOverTimeService(BaseDao):
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore')
                     session.execute('DROP TABLE IF EXISTS {};'.format(temp_table_name))
-
+                # generated columns can not be inserted any value, need to drop them
+                exclude_columns = ['retention_eligible_time', 'retention_eligible_status']
                 session.execute('CREATE TABLE {} LIKE participant_summary'.format(temp_table_name))
 
                 indexes_cursor = session.execute('SHOW INDEX FROM {}'.format(temp_table_name))
+                for exclude_column_name in exclude_columns:
+                    session.execute('ALTER TABLE {} DROP COLUMN  {}'.format(temp_table_name, exclude_column_name))
+
                 index_name_list = []
                 for index in indexes_cursor:
                     index_name_list.append(index[2])
@@ -64,10 +68,13 @@ class ParticipantCountsOverTimeService(BaseDao):
                     if index_name != 'PRIMARY':
                         session.execute('ALTER TABLE {} DROP INDEX  {}'.format(temp_table_name, index_name))
 
+                # The ParticipantSummary table requires these, but there may not be a participant_summary for
+                # all participants that we insert
                 session.execute('ALTER TABLE {} MODIFY first_name VARCHAR(255)'.format(temp_table_name))
                 session.execute('ALTER TABLE {} MODIFY last_name VARCHAR(255)'.format(temp_table_name))
                 session.execute('ALTER TABLE {} MODIFY suspension_status SMALLINT'.format(temp_table_name))
                 session.execute('ALTER TABLE {} MODIFY participant_origin VARCHAR(80)'.format(temp_table_name))
+                session.execute('ALTER TABLE {} MODIFY deceased_status SMALLINT'.format(temp_table_name))
 
                 columns_cursor = session.execute('SELECT * FROM {} LIMIT 0'.format(temp_table_name))
 

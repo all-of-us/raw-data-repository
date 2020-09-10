@@ -334,6 +334,10 @@ class HierarchyContentApiTest(BaseTestCase):
                 {
                     "url": "http://all-of-us.org/fhir/sites/digital-scheduling-status",
                     "valueString": "false"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/site-type",
+                    "valueString": "Modified Clinic Site"
                 }
             ],
             "identifier": [
@@ -426,6 +430,7 @@ class HierarchyContentApiTest(BaseTestCase):
                                                 u'postalCode': u'85206', u'city': u'Mesa',
                                                 u'line': ['6644 E. Baywood Ave.'], u'state': u'AZ'
                                     }, 'id': u'hpo-site-bannerbaywood',
+                                            'siteType': 'Modified Clinic Site',
                                             'adminEmails': [u'jennifer.craig-muller@bannerhealth.com'
                                                 , 'mcoury@email.arizona.edu'], 'digitalSchedulingStatus': u'INACTIVE'}]
                                 }]
@@ -481,6 +486,10 @@ class HierarchyContentApiTest(BaseTestCase):
                 {
                     "url": "http://all-of-us.org/fhir/sites/mayolink-client-#",
                     "valueString": "123456"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/site-type",
+                    "valueString": "Modified Clinic Site"
                 }
             ],
             "identifier": [
@@ -616,6 +625,10 @@ class HierarchyContentApiTest(BaseTestCase):
                     "url": "http://all-of-us.org/fhir/sites/mayolink-client-#",
                     "valueString": "123456"
                 },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/site-type",
+                    "valueString": "Modified Clinic Site"
+                }
             ],
             "identifier": [
                 {
@@ -746,6 +759,10 @@ class HierarchyContentApiTest(BaseTestCase):
                 {
                     "url": "http://all-of-us.org/fhir/sites/digital-scheduling-status",
                     "valueString": "false"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/site-type",
+                    "valueString": "Modified Clinic Site"
                 }
             ],
             "identifier": [
@@ -858,6 +875,10 @@ class HierarchyContentApiTest(BaseTestCase):
                 {
                     "url": "http://all-of-us.org/fhir/sites/digital-scheduling-status",
                     "valueString": "false"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/site-type",
+                    "valueString": "Modified Clinic Site"
                 }
             ],
             "identifier": [
@@ -1113,6 +1134,135 @@ class HierarchyContentApiTest(BaseTestCase):
         self.assertEqual(1, len(result_after['organizations']))
         self.assertEqual({'displayName': 'Banner Health', 'id': 'AZ_TUCSON_BANNER_HEALTH'},
                          result_after['organizations'][0])
+
+    @mock.patch('rdr_service.dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao.'
+                '_get_lat_long_for_site')
+    @mock.patch('rdr_service.dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao.'
+                '_get_time_zone')
+    def test_create_new_popup_site_without_pmb(self, time_zone, lat_long):
+        self._setup_data()
+        lat_long.return_value = 100, 110
+        time_zone.return_value = 'America/Los_Angeles'
+        request_json = {
+            "resourceType": "Organization",
+            "id": "a893282c-2717-4a20-b276-d5c9c2c0e51f",
+            'meta': {
+                'versionId': '1'
+            },
+            "extension": [
+                {
+                    "url": "http://all-of-us.org/fhir/sites/enrolling-status",
+                    "valueString": "true"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/digital-scheduling-status",
+                    "valueString": "true"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/ptsc-scheduling-status",
+                    "valueString": "true"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/notes",
+                    "valueString": "This is a note about an organization"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/scheduling-instructions",
+                    "valueString": "Please schedule appointments up to a week before intended date."
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/anticipated-launch-date",
+                    "valueString": "07-22-2019"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/location-name",
+                    "valueString": "Thompson Building 2"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/directions",
+                    "valueString": "Exit 95 N and make a left onto Fake Street"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/site-type",
+                    "valueString": "Pop-up Site without PM/B"
+                }
+            ],
+            "identifier": [
+                {
+                    "system": "http://all-of-us.org/fhir/sites/site-id",
+                    "value": "hpo-site-awesome-testing"
+                }
+            ],
+            "active": True,
+            "type": [
+                {
+                    "coding": [
+                        {
+                            "code": "SITE",
+                            "system": "http://all-of-us.org/fhir/sites/type"
+                        }
+                    ]
+                }
+            ],
+            "name": "Awesome Genomics Testing",
+            "partOf": {
+                "reference": "Organization/o123457"
+            },
+            "address": [{
+                "line": [
+                    "1855 4th Street",
+                    "AAC5/6"
+                ],
+                "city": "San Francisco",
+                "state": "CA",
+                "postalCode": "94158"
+            }],
+            "contact": [
+                {
+                    "telecom": [{
+                        "system": "phone",
+                        "value": "7031234567"
+                    }]
+                },
+                {
+                    "telecom": [{
+                        "system": "url",
+                        "value": "http://awesome-genomic-testing.com"
+                    }]
+                }
+            ]
+        }
+
+        self.send_put('organization/hierarchy', request_data=request_json)
+
+        existing_map = {entity.googleGroup: entity for entity in self.site_dao.get_all()}
+        existing_entity = existing_map.get('hpo-site-awesome-testing')
+
+        self.assertEqual(existing_entity.adminEmails, None)
+        self.assertEqual(existing_entity.siteStatus, SiteStatus('ACTIVE'))
+        self.assertEqual(existing_entity.isObsolete, None)
+        self.assertEqual(existing_entity.city, 'San Francisco')
+        self.assertEqual(existing_entity.googleGroup, 'hpo-site-awesome-testing')
+        self.assertEqual(existing_entity.state, 'CA')
+        self.assertEqual(existing_entity.digitalSchedulingStatus, DigitalSchedulingStatus('ACTIVE'))
+        self.assertEqual(existing_entity.mayolinkClientNumber, None)
+        self.assertEqual(existing_entity.address1, '1855 4th Street')
+        self.assertEqual(existing_entity.address2, 'AAC5/6')
+        self.assertEqual(existing_entity.zipCode, '94158')
+        self.assertEqual(existing_entity.directions, 'Exit 95 N and make a left onto Fake Street')
+        self.assertEqual(existing_entity.notes, 'This is a note about an organization')
+        self.assertEqual(existing_entity.enrollingStatus, EnrollingStatus('ACTIVE'))
+        self.assertEqual(existing_entity.scheduleInstructions,
+                         'Please schedule appointments up to a week before intended date.')
+        self.assertEqual(existing_entity.physicalLocationName, 'Thompson Building 2')
+        self.assertEqual(existing_entity.link, 'http://awesome-genomic-testing.com')
+        self.assertEqual(existing_entity.launchDate, datetime.date(2019, 7, 22))
+        self.assertEqual(existing_entity.phoneNumber, '7031234567')
+        self.assertEqual(existing_entity.siteType, 'Pop-up Site without PM/B')
+
+        # Pop-up Site without PM/B site is filtered out from awardee api
+        result = self.send_get('Awardee')
+        self.assertNotIn('hpo-site-awesome-testing', str(result))
 
     def _setup_data(self):
         organization_dao = OrganizationDao()

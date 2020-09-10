@@ -11,21 +11,23 @@ import datetime
 import logging
 import sys
 import os
-
+import csv
 import pytz
 
 from rdr_service import clock, config
+from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_set_update
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet
+from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob, GenomicSubProcessResult, \
-    GenomicWorkflowState
+    GenomicWorkflowState, GenomicSetMemberStatus
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -434,6 +436,10 @@ class IgnoreStateClass(object):
             _logger.info(f"Updating member id {member.id}")
             session.merge(member)
 
+        # Update state for PDR
+        bq_genomic_set_member_update(member.id, project_id=self.gcp_env.project)
+        genomic_set_member_update(member.id)
+
 
 class ControlSampleClass(GenomicManifestBase):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
@@ -473,6 +479,10 @@ class ControlSampleClass(GenomicManifestBase):
                     inserted_set = session.merge(new_genomic_set)
                     session.flush()
 
+                    # Update state for PDR
+                    bq_genomic_set_update(inserted_set.id, project_id=self.gcp_env.project)
+                    genomic_set_update(inserted_set.id)
+
                     for _sample_id in lines:
                         _logger.warning(f'Inserting {_sample_id}')
 
@@ -483,12 +493,95 @@ class ControlSampleClass(GenomicManifestBase):
                             participantId=0,
                         )
 
-                        session.merge(member_to_insert)
+                        inserted_member = session.merge(member_to_insert)
                         session.commit()
+
+                        bq_genomic_set_member_update(inserted_member.id, project_id=self.gcp_env.project)
+                        genomic_set_member_update(inserted_member.id)
 
             else:
                 for _sample_id in lines:
                     _logger.warning(f'Would Insert {_sample_id}')
+
+        return 0
+
+
+class ManualSampleClass(GenomicManifestBase):
+    """
+    Class for inserting arbitrary genomic samples manually. Used for E2E testing.
+    """
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(ManualSampleClass, self).__init__(args, gcp_env)
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+
+        # Validate Aruguments
+        if not os.path.exists(self.args.csv):
+            _logger.error(f'File {self.args.csv} was not found.')
+            return 1
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicSetMemberDao()
+
+        # Update gsm IDs from file
+        with open(self.args.csv, encoding='utf-8-sig') as f:
+            csvreader = csv.reader(f, delimiter=",")
+
+            if not self.args.dryrun:
+                new_genomic_set = GenomicSet(
+                    genomicSetName=f"New Manual Sample List-{self.nowf}",
+                    genomicSetCriteria=".",
+                    genomicSetVersion=1,
+                )
+
+                with self.dao.session() as session:
+                    inserted_set = session.merge(new_genomic_set)
+                    session.flush()
+
+                    # Update state for PDR
+                    bq_genomic_set_update(inserted_set.id, project_id=self.gcp_env.project)
+                    genomic_set_update(inserted_set.id)
+
+                    for line in csvreader:
+                        _pid = line[0]
+                        _bid = line[1]
+                        _sample_id = line[2]
+                        _sab = line[3]
+                        _siteId = line[4]
+                        _state = line[5]
+                        _logger.warning(f'Inserting {_pid}, {_bid}, {_sample_id}, {_sab}, {_siteId}, {_state}')
+
+                        for _genome_type in (config.GENOME_TYPE_WGS, config.GENOME_TYPE_ARRAY):
+                            member_to_insert = GenomicSetMember(
+                                genomicSetId=inserted_set.id,
+                                biobankId=_bid,
+                                sampleId=_sample_id,
+                                collectionTubeId=_sample_id,
+                                genomicWorkflowState=_state,
+                                participantId=int(_pid),
+                                genomeType=_genome_type,
+                                sexAtBirth=_sab,
+                                nyFlag=0,
+                                validationStatus=GenomicSetMemberStatus.VALID,
+                                gcSiteId=_siteId,
+                            )
+
+                            inserted_member = session.merge(member_to_insert)
+                            session.flush()
+
+                            bq_genomic_set_member_update(inserted_member.id, project_id=self.gcp_env.project)
+                            genomic_set_member_update(inserted_member.id)
+
+                    session.commit()
+
+            else:
+                for line in csvreader:
+                    _logger.warning(f'Would Insert {line}')
 
         return 0
 
@@ -535,6 +628,12 @@ def run():
     control_sample_parser.add_argument("--csv", help="csv file with control sample ids", default=None)  # noqa
     control_sample_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
+    # Create Arbitrary GenomicSetMembers for manually provided PID and sample IDs
+    manual_sample_parser = subparser.add_parser("manual-sample")
+    manual_sample_parser.add_argument("--csv", help="csv file with manual sample ids",
+                                       default=None, required=True)  # noqa
+    manual_sample_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -552,6 +651,10 @@ def run():
 
         elif args.util == 'control-sample':
             process = ControlSampleClass(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.util == 'manual-sample':
+            process = ManualSampleClass(args, gcp_env)
             exit_code = process.run()
 
         else:

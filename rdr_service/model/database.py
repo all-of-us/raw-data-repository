@@ -3,12 +3,13 @@ from contextlib import contextmanager
 import backoff
 from sqlalchemy import create_engine
 from sqlalchemy.exc import DBAPIError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from rdr_service.model.base import Base, MetricsBase
 
 # All tables in the schema should be imported below here.
 # pylint: disable=unused-import
+from rdr_service.model.api_user import ApiUser
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
@@ -19,6 +20,7 @@ from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
 from rdr_service.model.biobank_dv_order import BiobankDVOrder
 from rdr_service.model.code import CodeBook, Code, CodeHistory
 from rdr_service.model.calendar import Calendar
+from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import EhrReceipt
 from rdr_service.model.hpo import HPO
 from rdr_service.model.log_position import LogPosition
@@ -83,7 +85,7 @@ class Database(object):
     def create_metrics_schema(self):
         MetricsBase.metadata.create_all(self._engine)
 
-    def make_session(self):
+    def make_session(self) -> Session:
         return self._Session()
 
     @contextmanager

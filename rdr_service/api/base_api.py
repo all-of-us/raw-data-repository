@@ -44,7 +44,11 @@ def log_api_request(log: RequestsLog = None, model_obj=None):
             # We don't want to use request.json or request.get_json here.
             log.resource = json.loads(request.data)
         except ValueError:
-            log.resource = request.data
+            # Serialization failed
+            # so to store the request body in our JSON column we need to make it valid JSON
+            request_contents_string = request.data.decode('utf-8')
+            log.resource = json.dumps(request_contents_string)  # JSON escape the string
+
     parts = request.url.split('/')
     try:
         log.version = int(parts[4][1:]) if len(parts) > 4 else 0
@@ -253,7 +257,7 @@ class BaseApi(Resource):
             query_params = request.args.copy()
             query_params["_token"] = results.pagination_token
 
-            next_url = main.api.url_for(self.__class__, _external=True, **query_params)
+            next_url = main.api.url_for(self.__class__, _external=True, **query_params.to_dict(flat=False))
             bundle_dict["link"] = [{"relation": "next", "url": next_url}]
         entries = []
         for item in results.items:
@@ -300,9 +304,12 @@ class UpdatableApi(BaseApi):
 
     def _make_response(self, obj):
         result = super(UpdatableApi, self)._make_response(obj)
-        etag = self.make_etag(obj.version)
-        result["meta"] = {"versionId": etag}
-        return result, 200, {"ETag": etag}
+        if hasattr(obj, 'version'):
+            etag = self.make_etag(obj.version)
+            result["meta"] = {"versionId": etag}
+            return result, 200, {"ETag": etag}
+        else:
+            return result, 200
 
     def _do_update(self, m):
         self.dao.update(m)
@@ -328,7 +335,9 @@ class UpdatableApi(BaseApi):
             expected_version = self.parse_etag(etag)
         m = self._get_model_to_update(resource, id_, expected_version, participant_id)
         self._do_update(m)
-        if participant_id:
+        if participant_id or (m and hasattr(m, 'participantId')):
+            if not participant_id:
+                participant_id = getattr(m, 'participantId')
             # Rebuild participant for BigQuery
             if GAE_PROJECT == 'localhost':
                 bq_participant_summary_update_task(participant_id)
@@ -358,9 +367,22 @@ class UpdatableApi(BaseApi):
         if not etag:
             raise BadRequest("If-Match is missing for PATCH request")
         expected_version = _parse_etag(etag)
-        order = self.dao.update_with_patch(id_, resource, expected_version)
-        log_api_request(log=request.log_record, model_obj=order)
-        return self._make_response(order)
+        obj = self.dao.update_with_patch(id_, resource, expected_version)
+
+        # Try to determine if id_ is a participant id
+        participant_id = getattr(obj, 'participantId', None)
+        if participant_id:
+            # Rebuild participant for BigQuery
+            if GAE_PROJECT == 'localhost':
+                bq_participant_summary_update_task(participant_id)
+                rebuild_participant_summary_resource(participant_id)
+            else:
+                params = {'p_id': participant_id}
+                self._task.execute('rebuild_one_participant_task',
+                                   queue='resource-tasks', payload=params, in_seconds=5)
+
+        log_api_request(log=request.log_record, model_obj=obj)
+        return self._make_response(obj)
 
     def update_with_patch(self, id_, resource, expected_version):
         # pylint: disable=unused-argument

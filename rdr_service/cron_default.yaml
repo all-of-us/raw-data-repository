@@ -79,6 +79,11 @@ cron:
   timezone: America/New_York
   schedule: 1 of jan 12:00
   target: offline
+- description: Genomic AW1 Failures Workflow (Manual)
+  url: /offline/GenomicFailuresWorkflow
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
 - description: Genomic AW2 Workflow (Manual)
   url: /offline/GenomicDataManifestWorkflow
   timezone: America/New_York
@@ -106,6 +111,16 @@ cron:
   target: offline
 - description: Genomic CVL W3 Workflow (Manual)
   url: /offline/GenomicCvlW3Workflow
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
+- description: Genomic AW3 Workflow (Manual)
+  url: /offline/GenomicAW3Workflow
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
+- description: Genomic AW4 Workflow (Manual)
+  url: /offline/GenomicAW4Workflow
   timezone: America/New_York
   schedule: 1 of jan 12:00
   target: offline

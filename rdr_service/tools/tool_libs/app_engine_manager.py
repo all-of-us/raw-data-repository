@@ -342,7 +342,10 @@ class DeployAppClass(object):
         _logger.info('Cleaning up...')
         self.clean_up_config_files(config_files)
 
-        gcp_restart_instances(self.gcp_env.project)
+        # Note: self.services will either be a user-provided list from --services arg, or the GCP_SERVICES list from
+        # gcp_config.  Need to iterate through each service to make sure appropriate instances get restarted
+        for service in self.services:
+            gcp_restart_instances(self.gcp_env.project, service=service)
 
         return 0 if result else 1
 
@@ -432,7 +435,6 @@ class DeployAppClass(object):
 
         _logger.info('')
         _logger.info('=' * 90)
-
 
         if not self.args.quiet:
             confirm = input('\nStart deployment (Y/n)? : ')

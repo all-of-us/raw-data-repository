@@ -65,6 +65,30 @@
   "drc_broad_bucket_name": [
     "dev-drc-broad"
   ],
+  "aw1_array_subfolder_name": [
+    "AW1_genotyping_sample_manifests"
+  ],
+  "aw1_wgs_subfolder_name": [
+    "AW1_wgs_sample_manifests"
+  ],
+  "aw1f_array_subfolder_name": [
+    "AW1F_genotyping_accessioning_results"
+  ],
+  "aw1f_wgs_subfolder_name": [
+    "AW1F_wgs_accessioning_results"
+  ],
+  "aw2_wgs_data_manifest_subfolder_name": [
+    "AW2_wgs_data_manifests"
+  ],
+  "aw2_genotyping_data_manifest_subfolder_name": [
+    "AW2_genotyping_data_manifests"
+  ],
+  "aw4_wgs_subfolder_name": [
+    "AW4_wgs_manifest"
+  ],
+  "aw4_array_subfolder_name": [
+    "AW4_array_manifest"
+  ],
   "aw1f_alert_recipients": [
     "test-genomic@vumc.org"
   ],

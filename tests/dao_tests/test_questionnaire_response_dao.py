@@ -23,7 +23,8 @@ from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort
+from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort, \
+    RetentionStatus
 from tests import test_data
 from tests.test_data import (
     consent_code,
@@ -598,7 +599,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             lastModified=TIME_2,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_1
+            consentCohort=ParticipantCohort.COHORT_1,
+            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -720,6 +722,23 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
         participant_summary = self.participant_summary_dao.get(1)
         self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeJune)
+
+    def test_july_cope_survey_updated_in_august(self):
+        # The July survey didn't close with July,
+        # any questionnaires that have been updated after the start of August should still count for July
+
+        self.insert_codes()
+        p = Participant(participantId=1, biobankId=2)
+        self.participant_dao.insert(p)
+
+        self._setup_participant()
+        self._create_cope_questionnaire()
+        self._bump_questionnaire_version(2, updated_time=datetime.datetime(2020, 8, 28))  # update for July survey
+
+        self._submit_questionnaire_response(self.cope_consent_yes, questionnaire_version=2, consent_question_id=8)
+
+        participant_summary = self.participant_summary_dao.get(1)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeJuly)
 
     def test_cope_june_survey_consent_deferred(self):
         self.insert_codes()
@@ -907,7 +926,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             email=self.email,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_1
+            consentCohort=ParticipantCohort.COHORT_1,
+            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -981,7 +1001,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             email=self.email,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_1
+            consentCohort=ParticipantCohort.COHORT_1,
+            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -1060,7 +1081,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             email=self.email,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_1
+            consentCohort=ParticipantCohort.COHORT_1,
+            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.
@@ -1130,7 +1152,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             email=self.email,
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
-            consentCohort=ParticipantCohort.COHORT_1
+            consentCohort=ParticipantCohort.COHORT_1,
+            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE
         )
         # The participant summary should be updated with the new gender identity, but nothing else
         # changes.

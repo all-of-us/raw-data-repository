@@ -2,6 +2,8 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
+from dateutil import parser
+from dateutil.parser import ParserError
 import hashlib
 import json
 import logging
@@ -12,12 +14,14 @@ from marshmallow_jsonschema import JSONSchema
 from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError
 
+
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.code import Code
 from rdr_service.model.resource_data import ResourceData
 from rdr_service.model.resource_schema import ResourceSchema
 from rdr_service.model.resource_type import ResourceType
 from rdr_service.model.site import Site
+from rdr_service.resource import fields
 
 
 class ResourceRecordSet(object):
@@ -41,6 +45,15 @@ class ResourceRecordSet(object):
         self._data = data
 
         if data:
+            # Convert date or datetime fields if necessary.
+            for name, meta in self._schema._declared_fields.items():
+                if name in data and type(meta) in (fields.DateTime, fields.Date) and isinstance(data[name], str):
+                    try:
+                        val = parser.parse(data[name])
+                        data[name] = val if type(meta) == fields.DateTime else val.date()
+                    except (ParserError, TypeError):
+                        pass
+
             self._resource = self._schema.dump(data)
 
     def _get_or_create_type_record(self, dao, schema_meta):

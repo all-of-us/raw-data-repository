@@ -77,26 +77,20 @@ class GenomicSetMember(Base):
     # American Indian or Alaskan Native
     ai_an = Column('ai_an', String(2), nullable=True)
 
-    biobankOrderId = Column(
-        "biobank_order_id", String(80), ForeignKey("biobank_order.biobank_order_id"), unique=False, nullable=True
-    )
-
-    biobankId = Column("biobank_id", String(80), nullable=True)
-
-    biobankOrderClientId = Column("biobank_order_client_Id", String(80), nullable=True)
+    biobankId = Column("biobank_id", Integer, nullable=True, index=True)
 
     packageId = Column("package_id", String(250), nullable=True)
 
-    validationStatus = Column("validation_status", Enum(GenomicSetMemberStatus), default=GenomicSetStatus.UNSET)
+    validationStatus = Column("validation_status", Enum(GenomicSetMemberStatus), default=GenomicSetMemberStatus.UNSET)
     validationFlags = Column("validation_flags", MultiEnum(GenomicValidationFlag), nullable=True)
 
     validatedTime = Column("validated_time", DateTime, nullable=True)
 
     # collectionTubeId corresponds to biobank_stored_sample_id
-    collectionTubeId = Column('collection_tube_id', String(80), nullable=True)
+    collectionTubeId = Column('collection_tube_id', Integer, nullable=True, index=True)
 
     # sampleId is the great-grandchild aliquot of collectionTubeID
-    sampleId = Column('sample_id', String(80), nullable=True)
+    sampleId = Column('sample_id', Integer, nullable=True, index=True)
     sampleType = Column('sample_type', String(50), nullable=True)
 
     sequencingFileName = Column('sequencing_file_name',
@@ -148,17 +142,20 @@ class GenomicSetMember(Base):
                                     Integer, ForeignKey("genomic_job_run.id"),
                                     nullable=True)
     gemPass = Column('gem_pass', String(10), nullable=True)
+
+    gemDateOfImport = Column("gem_date_of_import", DateTime, nullable=True)
+
     gemA3ManifestJobRunId = Column('gem_a3_manifest_job_run_id',
                                    Integer, ForeignKey("genomic_job_run.id"),
                                    nullable=True)
 
-    arrAW3ManifestJobRunID = Column('arr_aw3_manifest_job_run_id',
-                                   Integer, ForeignKey("genomic_job_run.id"),
-                                   nullable=True)
+    aw3ManifestJobRunID = Column('aw3_manifest_job_run_id',
+                                 Integer, ForeignKey("genomic_job_run.id"),
+                                 nullable=True)
 
-    wgsAW3ManifestJobRunID = Column('wgs_aw3_manifest_job_run_id',
-                                   Integer, ForeignKey("genomic_job_run.id"),
-                                   nullable=True)
+    aw4ManifestJobRunID = Column('aw4_manifest_job_run_id',
+                                 Integer, ForeignKey("genomic_job_run.id"),
+                                 nullable=True)
 
     # CVL WGS Fields
     cvlW1ManifestJobRunId = Column('cvl_w1_manifest_job_run_id',
@@ -189,10 +186,25 @@ class GenomicSetMember(Base):
                                       Integer, ForeignKey("genomic_job_run.id"),
                                       nullable=True)
 
+    colorMetricsJobRunID = Column('color_metrics_job_run_id',
+                                  Integer, ForeignKey("genomic_job_run.id"),
+                                  nullable=True)
+
+    gemMetricsAncestryLoopResponse = Column('gem_metrics_ancestry_loop_response',
+                                            String(10), nullable=True)
+
+    gemMetricsAvailableResults = Column('gem_metrics_available_results',
+                                        String(255), nullable=True)
+
+    gemMetricsResultsReleasedAt = Column('gem_metrics_results_released_at',
+                                         DateTime, nullable=True)
+
     # Genomic State Fields
     genomicWorkflowState = Column('genomic_workflow_state',
                                   Enum(GenomicWorkflowState),
                                   default=GenomicWorkflowState.UNSET)
+
+    genomicWorkflowStateModifiedTime = Column("genomic_workflow_state_modified_time", DateTime, nullable=True)
 
     genomicWorkflowStateHistory = Column("genomic_workflow_state_history", JSON, nullable=True)
 
@@ -274,10 +286,12 @@ class GenomicGCValidationMetrics(Base):
     callRate = Column('call_rate', String(10), nullable=True)
     meanCoverage = Column('mean_coverage', String(10), nullable=True)
     genomeCoverage = Column('genome_coverage', String(10), nullable=True)
+    aouHdrCoverage = Column('aou_hdr_coverage', String(10), nullable=True)
     contamination = Column('contamination', String(10), nullable=True)
     sexConcordance = Column('sex_concordance', String(10), nullable=True)
     sexPloidy = Column('sex_ploidy', String(10), nullable=True)
-    alignedQ20Bases = Column('aligned_q20_bases', Integer, nullable=True)
+    alignedQ30Bases = Column('aligned_q30_bases', Integer, nullable=True)
+    arrayConcordance = Column('array_concordance', String(10), nullable=True)
     processingStatus = Column('processing_status', String(15), nullable=True)
     notes = Column('notes', String(128), nullable=True)
     siteId = Column('site_id', String(80), nullable=True)
@@ -300,6 +314,9 @@ class GenomicGCValidationMetrics(Base):
 
     vcfMd5Received = Column('vcf_md5_received', SmallInteger, nullable=False, default=0)
     vcfMd5Path = Column('vcf_md5_path', String(255), nullable=True)
+
+    vcfTbiReceived = Column('vcf_tbi_received', SmallInteger, nullable=False, default=0)
+    vcfTbiPath = Column('vcf_tbi_path', String(255), nullable=True)
 
     # Sequencing Data (WGS) reconciliation
     # Single sample VCF: Hard - filtered for clinical purpose

@@ -32,5 +32,5 @@ fi
 echo "Exporting tables from the cdm database..."
 ./rdr_client/run_client.sh ${PROJECT_AND_ACCOUNT} export_tables.py \
    --directory ${DIRECTORY} --database cdm \
-   --tables care_site,condition_era,condition_occurrence,cost,death,device_exposure,dose_era,drug_era,drug_exposure,fact_relationship,location,measurement,observation,observation_period,payer_plan_period,person,procedure_occurrence,provider,visit_occurrence
+   --tables pid_rid_mapping,care_site,condition_era,condition_occurrence,cost,death,device_exposure,dose_era,drug_era,drug_exposure,fact_relationship,location,measurement,observation,observation_period,payer_plan_period,person,procedure_occurrence,provider,visit_occurrence
 #popd

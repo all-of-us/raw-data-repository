@@ -91,7 +91,6 @@ class GenomicSetValidationBaseTestCase(BaseTestCase):
             participantId=participant.participantId,
             sexAtBirth="F",
             biobankId=participant.biobankId,
-            biobankOrderClientId="12345678",
         )
         kwargs = dict(valid_kwargs, **override_kwargs)
         member = GenomicSetMember(**kwargs)

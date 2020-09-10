@@ -73,7 +73,7 @@ oauthlib[signedtoken]==3.1.0  # via jira, requests-oauthlib
 packaging==20.4           # via sphinx
 parameterized==0.7.4      # via -r requirements.in
 pbr==5.4.5                # via jira
-pip-tools==5.1.2          # via -r requirements.in
+# pip-tools==5.1.2          # via -r requirements.in
 protobuf==3.12.1          # via -r requirements.in, google-api-core, google-cloud-bigquery, googleapis-common-protos
 protorpc==0.12.0          # via -r requirements.in
 psutil==5.7.0             # via locust
@@ -119,9 +119,6 @@ wrapt==1.12.1             # via astroid
 xmltodict==0.12.0         # via -r requirements.in
 zope.event==4.4           # via gevent
 zope.interface==5.1.0     # via gevent
-
-# Fix PIP version temporarily. App Engine deployment errors out on newer version of PIP.
-pip==19.2.3
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip

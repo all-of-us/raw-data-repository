@@ -25,6 +25,11 @@ BQ_TABLES = [
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBInstitutionalAffiliations'),
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspace'),
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceUsers'),
+
+    ('rdr_service.model.bq_genomics', 'BQGenomicSet'),
+    ('rdr_service.model.bq_genomics', 'BQGenomicSetMember'),
+    ('rdr_service.model.bq_genomics', 'BQGenomicJobRun'),
+    ('rdr_service.model.bq_genomics', 'BQGenomicGCValidationMetrics'),
 ]
 
 BQ_VIEWS = [
@@ -36,6 +41,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_code', 'BQCodeView'),
     # PDR Views
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryView'),
+    ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryAllView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryWithdrawnView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRPMView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRGenderView'),
@@ -66,4 +72,9 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceRaceEthnicityView'),
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceAgeView'),
     ('rdr_service.model.bq_workbench_workspace', 'BQRWBWorkspaceUsersView'),
+
+    ('rdr_service.model.bq_genomics', 'BQGenomicSetView'),
+    ('rdr_service.model.bq_genomics', 'BQGenomicSetMemberView'),
+    ('rdr_service.model.bq_genomics', 'BQGenomicJobRunView'),
+    ('rdr_service.model.bq_genomics', 'BQGenomicGCValidationMetricsView'),
 ]

@@ -178,6 +178,8 @@ class OrganizationHierarchySyncDao(BaseDao):
             raise BadRequest('Invalid partOf reference {} importing site {}'
                              .format(resource_id, google_group))
 
+        site_type = self._get_value_from_extention(hierarchy_org_obj, HIERARCHY_CONTENT_SYSTEM_PREFIX + 'site-type',
+                                                   'valueString')
         launch_date = None
         launch_date_str = self._get_value_from_extention(hierarchy_org_obj,
                                                          HIERARCHY_CONTENT_SYSTEM_PREFIX + 'anticipated-launch-date',
@@ -195,8 +197,8 @@ class OrganizationHierarchySyncDao(BaseDao):
         name = hierarchy_org_obj.name
         mayolink_client_number = None
         mayolink_client_number_str = self._get_value_from_extention(hierarchy_org_obj,
-                                                                     HIERARCHY_CONTENT_SYSTEM_PREFIX +
-                                                                     'mayolink-client-#')
+                                                                    HIERARCHY_CONTENT_SYSTEM_PREFIX +
+                                                                    'mayolink-client-#')
         if mayolink_client_number_str:
             try:
                 mayolink_client_number = int(mayolink_client_number_str)
@@ -207,9 +209,9 @@ class OrganizationHierarchySyncDao(BaseDao):
         notes = self._get_value_from_extention(hierarchy_org_obj, HIERARCHY_CONTENT_SYSTEM_PREFIX + 'notes')
 
         site_status_value = self._get_value_from_extention(hierarchy_org_obj,
-                                                          HIERARCHY_CONTENT_SYSTEM_PREFIX +
-                                                          'ptsc-scheduling-status',
-                                                          'valueString')
+                                                           HIERARCHY_CONTENT_SYSTEM_PREFIX +
+                                                           'ptsc-scheduling-status',
+                                                           'valueString')
         # Since the data type was changed without us knowing, we can use this work around to get boolean values.
         site_status_bool = True if site_status_value == "true" else False
         try:
@@ -218,9 +220,9 @@ class OrganizationHierarchySyncDao(BaseDao):
             raise BadRequest('Invalid site status {} for site {}'.format(site_status, google_group))
 
         enrolling_status_value = self._get_value_from_extention(hierarchy_org_obj,
-                                                               HIERARCHY_CONTENT_SYSTEM_PREFIX +
-                                                               'enrolling-status',
-                                                               'valueString')
+                                                                HIERARCHY_CONTENT_SYSTEM_PREFIX +
+                                                                'enrolling-status',
+                                                                'valueString')
         enrolling_status_bool = True if enrolling_status_value == "true" else False
 
         try:
@@ -230,9 +232,9 @@ class OrganizationHierarchySyncDao(BaseDao):
                              .format(enrolling_status_bool, google_group))
 
         digital_scheduling = self._get_value_from_extention(hierarchy_org_obj,
-                                                                 HIERARCHY_CONTENT_SYSTEM_PREFIX +
-                                                                 'digital-scheduling-status',
-                                                                 'valueString')
+                                                            HIERARCHY_CONTENT_SYSTEM_PREFIX +
+                                                            'digital-scheduling-status',
+                                                            'valueString')
         digital_scheduling_bool = True if digital_scheduling == 'true' else False
         try:
             digital_scheduling_status = DigitalSchedulingStatus('ACTIVE' if digital_scheduling_bool
@@ -252,17 +254,18 @@ class OrganizationHierarchySyncDao(BaseDao):
         link = self._get_contact_point(hierarchy_org_obj, 'url')
 
         schedule_instructions = self._get_value_from_extention(hierarchy_org_obj,
-                                                               HIERARCHY_CONTENT_SYSTEM_PREFIX
-                                                               + 'scheduling-instructions')
+                                                               HIERARCHY_CONTENT_SYSTEM_PREFIX +
+                                                               'scheduling-instructions')
         notes_spanish = self._get_value_from_extention(hierarchy_org_obj,
-                                                               HIERARCHY_CONTENT_SYSTEM_PREFIX
-                                                               + 'notes-spanish')
+                                                       HIERARCHY_CONTENT_SYSTEM_PREFIX +
+                                                       'notes-spanish')
 
         entity = Site(siteName=name,
                       googleGroup=google_group,
                       mayolinkClientNumber=mayolink_client_number,
                       organizationId=organization.organizationId,
                       hpoId=organization.hpoId,
+                      siteType=site_type,
                       siteStatus=site_status,
                       enrollingStatus=enrolling_status,
                       digitalSchedulingStatus=digital_scheduling_status,

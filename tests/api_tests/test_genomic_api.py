@@ -1,4 +1,6 @@
 import datetime
+
+import pytz
 from dateutil import parser
 
 from tests.helpers.unittest_base import BaseTestCase
@@ -104,6 +106,7 @@ class GenomicApiTestBase(BaseTestCase):
             participantId=participant.participantId,
             gemPass='Y',
             biobankId=participant.biobankId,
+            sexAtBirth='F',
             genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY)
 
         kwargs = dict(valid_kwargs, **override_kwargs)
@@ -118,9 +121,10 @@ class GemApiTest(GenomicApiTestBase):
 
     def test_get_pii_valid_pid(self):
         p1_pii = self.send_get("GenomicPII/GEM/P1")
-        self.assertEqual(p1_pii['biobank_id'], '1')
+        self.assertEqual(p1_pii['biobank_id'], 1)
         self.assertEqual(p1_pii['first_name'], 'TestFN')
         self.assertEqual(p1_pii['last_name'], 'TestLN')
+        self.assertEqual(p1_pii['sex_at_birth'], 'F')
 
     def test_get_pii_invalid_pid(self):
         p = self._make_participant()
@@ -147,7 +151,7 @@ class RhpApiTest(GenomicApiTestBase):
 
     def test_get_pii_valid_pid(self):
         p1_pii = self.send_get("GenomicPII/RHP/P1")
-        self.assertEqual(p1_pii['biobank_id'], '1')
+        self.assertEqual(p1_pii['biobank_id'], 1)
         self.assertEqual(p1_pii['first_name'], 'TestFN')
         self.assertEqual(p1_pii['last_name'], 'TestLN')
         self.assertEqual(p1_pii['date_of_birth'], '2000-01-01')
@@ -179,20 +183,23 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
         p2 = self._make_participant()
         p3 = self._make_participant()
 
-        fake_date = parser.parse('2020-05-29T08:00:01-05:00')
+        fake_gror_date = parser.parse('2020-05-29T08:00:01-05:00')
+        fake_rpt_update_date = parser.parse('2020-09-01T08:00:01-05:00')
         fake_now = clock.CLOCK.now().replace(microsecond=0)
 
-        self._make_summary(p2, consentForGenomicsRORAuthored=fake_date,
-                           consentForStudyEnrollmentAuthored=fake_date)
+        self._make_summary(p2, consentForGenomicsRORAuthored=fake_gror_date,
+                           consentForStudyEnrollmentAuthored=fake_gror_date)
 
-        self._make_summary(p3, consentForGenomicsRORAuthored=fake_date,
-                           consentForStudyEnrollmentAuthored=fake_date)
+        self._make_summary(p3, consentForGenomicsRORAuthored=fake_gror_date,
+                           consentForStudyEnrollmentAuthored=fake_gror_date)
 
-        self._make_set_member(p2, genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY)
-        self._make_set_member(p3, genomicWorkflowState=GenomicWorkflowState.GEM_RPT_PENDING_DELETE)
+        self._make_set_member(p2, genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+                              genomicWorkflowStateModifiedTime=fake_rpt_update_date)
+        self._make_set_member(p3, genomicWorkflowState=GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
+                              genomicWorkflowStateModifiedTime=fake_rpt_update_date)
 
         with clock.FakeClock(fake_now):
-            resp = self.send_get("GenomicOutreach/GEM?start_date=2020-05-28T08:00:01-05:00")
+            resp = self.send_get("GenomicOutreach/GEM?start_date=2020-08-30T08:00:01-05:00")
 
         expected_response = {
             "participant_report_statuses": [
@@ -205,7 +212,7 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
                     "report_status": "pending_delete"
                 }
             ],
-            "timestamp": fake_now.replace(microsecond=0).isoformat()
+            "timestamp": fake_now.replace(microsecond=0, tzinfo=pytz.UTC).isoformat()
         }
 
         self.assertEqual(expected_response, resp)
@@ -214,18 +221,22 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
         p2 = self._make_participant()
         p3 = self._make_participant()
 
-        fake_date_1 = parser.parse('2020-05-29T08:00:01-05:00')
-        fake_date_2 = parser.parse('2020-06-01T08:00:01-05:00')
+        fake_gror_date_1 = parser.parse('2020-05-01T08:00:01-05:00')
+        fake_gror_date_2 = parser.parse('2020-06-01T08:00:01-05:00')
+        fake_rpt_update_date = parser.parse('2020-05-29T08:00:01-05:00')
         fake_now = clock.CLOCK.now().replace(microsecond=0)
 
-        self._make_summary(p2, consentForGenomicsRORAuthored=fake_date_1,
-                           consentForStudyEnrollmentAuthored=fake_date_1)
+        self._make_summary(p2, consentForGenomicsRORAuthored=fake_gror_date_1,
+                           consentForStudyEnrollmentAuthored=fake_gror_date_1)
 
-        self._make_summary(p3, consentForGenomicsRORAuthored=fake_date_2,
-                           consentForStudyEnrollmentAuthored=fake_date_2)
+        self._make_summary(p3, consentForGenomicsRORAuthored=fake_gror_date_2,
+                           consentForStudyEnrollmentAuthored=fake_gror_date_2)
 
-        self._make_set_member(p2, genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY)
-        self._make_set_member(p3, genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY)
+        self._make_set_member(p2, genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+                              genomicWorkflowStateModifiedTime=fake_rpt_update_date)
+
+        self._make_set_member(p3, genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+                              genomicWorkflowStateModifiedTime=fake_gror_date_2)
 
         with clock.FakeClock(fake_now):
             uri = "GenomicOutreach/GEM?start_date=2020-05-27T08:00:01-05:00&end_date=2020-05-30T08:00:01-05:00"
@@ -238,7 +249,7 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
                     "report_status": "ready"
                 }
             ],
-            "timestamp": fake_now.replace(microsecond=0).isoformat()
+            "timestamp": fake_now.replace(microsecond=0, tzinfo=pytz.UTC).isoformat()
         }
 
         self.assertEqual(expected_response, resp)
@@ -264,7 +275,7 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
                     "report_status": "ready"
                 }
             ],
-            "timestamp": fake_now.replace(microsecond=0).isoformat()
+            "timestamp": fake_now.replace(microsecond=0, tzinfo=pytz.UTC).isoformat()
         }
 
         self.assertEqual(expected_response, resp)

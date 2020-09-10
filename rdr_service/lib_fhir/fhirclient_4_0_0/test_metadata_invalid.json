@@ -1,0 +1,54 @@
+{
+    "date": ["2014-10-29T11:42:32.193-00:00"],
+    "description": "Describes capabilities of this SMART on FHIR server",
+    "fhirVersion": "0.0.82",
+    "format": 66,
+    "formats": [
+        "xml",
+        "json"
+    ],
+    "url": "https://fhir-api.smarthealthit.org/metadata",
+    "name": "SMART on FHIR CapabilityStatement",
+    "kind": "instance",
+    "publisher": "SMART on FHIR",
+    "resourceType": "CapabilityStatement",
+    "rest": [
+        {
+            "documentation": "All the functionality defined in FHIR",
+            "mode": "server",
+            "operation": [
+                {
+                    "name": "transaction",
+                    "definition": "https://fhir.org/OperationDefinition/made-up-1"
+                },
+                {
+                    "name": "history-system",
+                    "definition": {
+                        "key": "#op-hist"
+                    }
+                }
+            ],
+            "resource": [],
+            "security": {
+                "description": "SMART on FHIR uses OAuth2 for authorization",
+                "service": [
+                    {
+                        "coding": [
+                            {
+                                "code": "OAuth2",
+                                "systems": "http://hl7.org/fhir/vs/restful-security-service"
+                            }
+                        ],
+                        "text": "OAuth version 2 (see oauth.net)."
+                    }
+                ]
+            }
+        }
+    ],
+    "status": "draft",
+    "text": {
+        "div": "<div>Generated CapabilityStatement -- see structured representation.</div>",
+        "status": "generated"
+    },
+    "version": "0.0.82.????"
+}

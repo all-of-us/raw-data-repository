@@ -1,5 +1,6 @@
 import datetime
 import http.client
+from mock import patch
 import threading
 import unittest
 from urllib.parse import urlencode
@@ -19,7 +20,8 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
 from rdr_service.model.hpo import HPO
 from rdr_service.participant_enums import (ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType, TEST_HPO_ID,
-                                           TEST_HPO_NAME)
+                                           TEST_HPO_NAME, EnrollmentStatus, WithdrawalStatus, SuspensionStatus,
+                                           SampleStatus, DeceasedStatus, QuestionnaireStatus)
 from tests.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -216,7 +218,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "patientStatus": patient_statuses or [],
                 "participantOrigin": "example",
                 "consentCohort": "COHORT_1",
-                "cohort2PilotFlag": "UNSET"
+                "cohort2PilotFlag": "UNSET",
+                "deceasedStatus": "UNSET",
+                "retentionEligibleStatus": "NOT_ELIGIBLE",
             }
         )
 
@@ -3036,6 +3040,87 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertEqual(ps['phoneNumber'], 'UNSET')
             self.assertEqual(ps['loginPhoneNumber'], 'UNSET')
             self.assertEqual(ps['email'], 'UNSET')
+
+    def test_retention(self):
+        participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
+        participant_id = participant["participantId"]
+        with FakeClock(TIME_1):
+            self.send_consent(participant_id)
+        ps = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(ps['retentionEligibleStatus'], 'NOT_ELIGIBLE')
+
+        ps = self.send_get("ParticipantSummary?retentionEligibleStatus=NOT_ELIGIBLE&_includeTotal=TRUE")
+        self.assertEqual(ps['entry'][0]['resource']['retentionEligibleStatus'], 'NOT_ELIGIBLE')
+
+        self._make_participant_retention_eligible(participant_id[1:])
+        ps = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(ps['retentionEligibleStatus'], 'ELIGIBLE')
+        self.assertEqual(ps['retentionEligibleTime'], TIME_4.isoformat())
+
+        ps = self.send_get("ParticipantSummary?retentionEligibleStatus=ELIGIBLE&_includeTotal=TRUE")
+        self.assertEqual(ps['entry'][0]['resource']['retentionEligibleStatus'], 'ELIGIBLE')
+
+        self._remove_participant_retention_eligible(participant_id[1:])
+        ps = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(ps['retentionEligibleStatus'], 'NOT_ELIGIBLE')
+        self.assertEqual(ps.get('retentionEligibleTime'), None)
+
+    @patch('rdr_service.api.base_api.DEFAULT_MAX_RESULTS', 1)
+    def test_parameter_pagination(self):
+        # Duplicated parameters should appear in the next link when paging results
+
+        # Force a paged response
+        self.data_generator.create_database_participant_summary(consentForStudyEnrollmentAuthored='2019-04-01')
+        self.data_generator.create_database_participant_summary(consentForStudyEnrollmentAuthored='2019-04-01')
+
+        response = self.send_get("ParticipantSummary?"
+                                 "consentForStudyEnrollmentAuthored=lt2020-01-01T00:00:00"
+                                 "&consentForStudyEnrollmentAuthored=gt2019-01-01T00:00:00")
+
+        next_url = response['link'][0]['url']
+        self.assertIn('Authored=lt2020', next_url)
+        self.assertIn('Authored=gt2019', next_url)
+
+    def test_enum_status_parameters(self):
+        # Unrecognized enum values should give descriptive error messages rather than 500s
+        self.send_get("ParticipantSummary?enrollmentStatus=MEMBER|FULL_PARTICIPANT", expected_status=400)
+        self.send_get("ParticipantSummary?withdrawalStatus=test", expected_status=400)
+        self.send_get("ParticipantSummary?suspensionStatus=test", expected_status=400)
+
+    def _remove_participant_retention_eligible(self, participant_id):
+        ps_dao = ParticipantSummaryDao()
+        summary = ps_dao.get(participant_id)
+        summary.samplesToIsolateDNA = SampleStatus.UNSET
+        ps_dao.update(summary)
+
+    def _make_participant_retention_eligible(self, participant_id):
+        ps_dao = ParticipantSummaryDao()
+        summary = ps_dao.get(participant_id)
+        summary.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
+        summary.suspensionStatus = SuspensionStatus.NOT_SUSPENDED
+        summary.enrollmentStatus = EnrollmentStatus.FULL_PARTICIPANT
+        summary.consentForStudyEnrollment = 1
+        summary.consentForStudyEnrollmentAuthored = TIME_1
+        summary.consentForElectronicHealthRecords = 1
+        summary.consentForElectronicHealthRecordsAuthored = TIME_2
+        summary.questionnaireOnTheBasics = QuestionnaireStatus.SUBMITTED
+        summary.questionnaireOnOverallHealth = QuestionnaireStatus.SUBMITTED
+        summary.questionnaireOnLifestyle = QuestionnaireStatus.SUBMITTED
+        summary.questionnaireOnTheBasicsTime = TIME_3
+        summary.questionnaireOnLifestyleTime = TIME_3
+        summary.questionnaireOnOverallHealthTime = TIME_3
+        summary.sampleOrderStatus1ED04Time = TIME_4
+        summary.sampleOrderStatus1SALTime = TIME_4
+        summary.sampleStatus1ED04Time = TIME_4
+        summary.sampleStatus1SALTime = TIME_4
+        summary.questionnaireOnLifestyleAuthored = TIME_3
+        summary.questionnaireOnTheBasicsAuthored = TIME_3
+        summary.questionnaireOnOverallHealthAuthored = TIME_3
+        summary.samplesToIsolateDNA = SampleStatus.RECEIVED
+        summary.deceasedStatus = DeceasedStatus.UNSET
+        ps_dao.update(summary)
+
+        return summary
 
 
 def _add_code_answer(code_answers, link_id, code):
