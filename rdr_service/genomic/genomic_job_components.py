@@ -11,11 +11,15 @@ from collections import deque, namedtuple
 from copy import deepcopy
 import sqlalchemy
 
+from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
+    bq_genomic_set_update
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 
 from rdr_service import clock
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.participant import Participant
+from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_gc_validation_metrics_update, \
+    genomic_set_update
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
     open_cloud_file,
@@ -314,6 +318,11 @@ class GenomicFileIngester:
                     member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
+
+                # Update member for PDR
+                bq_genomic_set_member_update(member.id)
+                genomic_set_member_update(member.id)
+
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
@@ -352,6 +361,10 @@ class GenomicFileIngester:
 
                 self.member_dao.update(member)
 
+                # Update member for PDR
+                bq_genomic_set_member_update(member.id)
+                genomic_set_member_update(member.id)
+
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
@@ -381,6 +394,10 @@ class GenomicFileIngester:
 
                 self.member_dao.update(member)
 
+                # Update member for PDR
+                bq_genomic_set_member_update(member.id)
+                genomic_set_member_update(member.id)
+
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
@@ -405,6 +422,10 @@ class GenomicFileIngester:
                 member.aw4ManifestJobRunID = self.job_run_id
 
                 self.member_dao.update(member)
+
+                # Update member for PDR
+                bq_genomic_set_member_update(member.id)
+                genomic_set_member_update(member.id)
 
             return GenomicSubProcessResult.SUCCESS
 
@@ -505,6 +526,10 @@ class GenomicFileIngester:
                     member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
+
+                # Update member for PDR
+                bq_genomic_set_member_update(member.id)
+                genomic_set_member_update(member.id)
 
             return GenomicSubProcessResult.SUCCESS
 
@@ -971,7 +996,12 @@ class GenomicReconciler:
                         setattr(metric, file_type[0], file_exists)
                         missing_data_files.append(filename)
 
-            self.metrics_dao.update(metric)
+            inserted_metrics_obj = self.metrics_dao.update(metric)
+
+            # Update GC Metrics for PDR
+            if inserted_metrics_obj:
+                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+                genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
 
             next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='gem-ready')
 
@@ -1034,7 +1064,12 @@ class GenomicReconciler:
                         setattr(metric.GenomicGCValidationMetrics, file_type[0], file_exists)
                         missing_data_files.append(filename)
 
-            self.metrics_dao.update(metric.GenomicGCValidationMetrics)
+            inserted_metrics_obj = self.metrics_dao.update(metric.GenomicGCValidationMetrics)
+
+            # Update GC Metrics for PDR
+            if inserted_metrics_obj:
+                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+                genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
 
             next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='cvl-ready')
 
@@ -1360,8 +1395,15 @@ class GenomicBiobankSamplesCoupler:
             new_wgs_member_obj = deepcopy(new_array_member_obj)
             new_wgs_member_obj.genomeType = self._WGS_GENOME_TYPE
 
-            self.member_dao.insert(new_array_member_obj)
-            self.member_dao.insert(new_wgs_member_obj)
+            inserted_array_member = self.member_dao.insert(new_array_member_obj)
+            inserted_wgs_member = self.member_dao.insert(new_wgs_member_obj)
+
+            # Add member to PDR
+            bq_genomic_set_member_update(inserted_array_member.id)
+            genomic_set_member_update(inserted_array_member.id)
+
+            bq_genomic_set_member_update(inserted_wgs_member.id)
+            genomic_set_member_update(inserted_wgs_member.id)
 
         # Create & transfer the Biobank Manifest based on the new genomic set
         try:
@@ -1790,7 +1832,13 @@ class GenomicBiobankSamplesCoupler:
             'genomicSetStatus': GenomicSetStatus.VALID,
         }
         new_set_obj = GenomicSet(**attributes)
-        return self.set_dao.insert(new_set_obj)
+        inserted_set = self.set_dao.insert(new_set_obj)
+
+        # Insert new set for PDR
+        bq_genomic_set_update(inserted_set.id)
+        genomic_set_update(inserted_set.id)
+
+        return inserted_set
 
     def _create_new_set_member(self, **kwargs):
         """Inserts new GenomicSetMember object"""

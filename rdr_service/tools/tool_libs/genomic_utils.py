@@ -15,12 +15,14 @@ import csv
 import pytz
 
 from rdr_service import clock, config
+from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_set_update
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet
+from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -434,6 +436,10 @@ class IgnoreStateClass(object):
             _logger.info(f"Updating member id {member.id}")
             session.merge(member)
 
+        # Update state for PDR
+        bq_genomic_set_member_update(member.id, project_id=self.gcp_env.project)
+        genomic_set_member_update(member.id)
+
 
 class ControlSampleClass(GenomicManifestBase):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
@@ -473,6 +479,10 @@ class ControlSampleClass(GenomicManifestBase):
                     inserted_set = session.merge(new_genomic_set)
                     session.flush()
 
+                    # Update state for PDR
+                    bq_genomic_set_update(inserted_set.id, project_id=self.gcp_env.project)
+                    genomic_set_update(inserted_set.id)
+
                     for _sample_id in lines:
                         _logger.warning(f'Inserting {_sample_id}')
 
@@ -483,8 +493,11 @@ class ControlSampleClass(GenomicManifestBase):
                             participantId=0,
                         )
 
-                        session.merge(member_to_insert)
+                        inserted_member = session.merge(member_to_insert)
                         session.commit()
+
+                        bq_genomic_set_member_update(inserted_member.id, project_id=self.gcp_env.project)
+                        genomic_set_member_update(inserted_member.id)
 
             else:
                 for _sample_id in lines:
@@ -530,6 +543,10 @@ class ManualSampleClass(GenomicManifestBase):
                     inserted_set = session.merge(new_genomic_set)
                     session.flush()
 
+                    # Update state for PDR
+                    bq_genomic_set_update(inserted_set.id, project_id=self.gcp_env.project)
+                    genomic_set_update(inserted_set.id)
+
                     for line in csvreader:
                         _pid = line[0]
                         _bid = line[1]
@@ -554,7 +571,11 @@ class ManualSampleClass(GenomicManifestBase):
                                 gcSiteId=_siteId,
                             )
 
-                            session.merge(member_to_insert)
+                            inserted_member = session.merge(member_to_insert)
+                            session.flush()
+
+                            bq_genomic_set_member_update(inserted_member.id, project_id=self.gcp_env.project)
+                            genomic_set_member_update(inserted_member.id)
 
                     session.commit()
 
