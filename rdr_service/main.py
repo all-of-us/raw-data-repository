@@ -29,7 +29,7 @@ from rdr_service.api.import_codebook_api import import_codebook
 from rdr_service.api.metric_sets_api import MetricSetsApi
 from rdr_service.api.metrics_api import MetricsApi
 from rdr_service.api.metrics_fields_api import MetricsFieldsApi
-from rdr_service.api.participant_api import ParticipantApi
+from rdr_service.api.participant_api import ParticipantApi, ParticipantResearchIdApi
 from rdr_service.api.participant_counts_over_time_api import ParticipantCountsOverTimeApi
 from rdr_service.api.participant_summary_api import ParticipantSummaryApi, ParticipantSummaryModifiedApi
 from rdr_service.api.patient_status import PatientStatusApi, PatientStatusHistoryApi
@@ -76,6 +76,14 @@ api.add_resource(
     endpoint="participant",
     methods=["GET", "POST", "PUT"],
 )
+
+api.add_resource(
+    ParticipantResearchIdApi,
+    API_PREFIX + "ParticipantId/ResearchId/Mapping",
+    endpoint="participant.researchId",
+    methods=["GET"],
+)
+
 
 api.add_resource(
     ParticipantSummaryApi,
