@@ -367,7 +367,7 @@ class ParticipantSummary(Base):
     physicalMeasurementsFinalizedSiteId = Column(
         "physical_measurements_finalized_site_id", Integer, ForeignKey("site.site_id")
     )
-    physicalMeasurementsFinalizedSiteId = None  # placeholder for docs, API sets on model using corresponding ID field
+    physicalMeasurementsFinalizedSite = None  # placeholder for docs, API sets on model using corresponding ID field
     'Indicates the site where physical measurements were finalized for the participant'
 
     numberDistinctVisits = Column("number_distinct_visits", Integer, default=0)
@@ -676,7 +676,8 @@ class ParticipantSummary(Base):
         "questionnaire_on_cope_july", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
     """
-    Indicates the status of a periodic questionnaire on COVID Participant Experience (COPE) that a participant can fill out.
+    Indicates the status of a periodic questionnaire on COVID Participant Experience (COPE)
+    that a participant can fill out.
 
     :ref:`Enumerated values <questionnaire_status>`
     """
