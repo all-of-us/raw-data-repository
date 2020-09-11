@@ -666,6 +666,8 @@ class ParticipantApiTest(BaseTestCase):
         self.send_post("Participant", {"providerLink": [self.provider_link_2]})
         result = self.send_get("ParticipantId/ResearchId/Mapping?signUpAfter=2020-01-01&sort=lastModified")
         self.assertEqual(len(result['data']), 1)
+        self.assertTrue(isinstance(result['data'][0]['research_id'], int))
+        self.assertEqual(len(str(result['data'][0]['research_id'])), 7)
         self.assertEqual(result['sort_by'], 'lastModified')
 
 
