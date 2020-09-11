@@ -3,6 +3,7 @@
 import os
 import sys
 
+sys.path.append(os.path.abspath('./_ext'))
 sys.path.insert(0, os.path.abspath('../'))
 
 # -- Project information -----------------------------------------------------
@@ -30,6 +31,8 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.githubpages',
     'sphinx.ext.autodoc',
+    'readthedocs_ext.readthedocs',
+    'rdrhtml'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -77,6 +80,10 @@ pygments_style = 'sphinx'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+html_css_files = [
+    'css/simplification.css'
+]
+
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
 #
@@ -90,3 +97,5 @@ html_static_path = ['_static']
 #html_theme = "stanford_theme"
 #html_theme_path = [stanford_theme.get_html_theme_path()]
 html_theme = 'sphinx_rtd_theme'
+
+autodoc_member_order = 'bysource'
