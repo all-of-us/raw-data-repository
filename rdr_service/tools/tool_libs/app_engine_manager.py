@@ -283,12 +283,14 @@ class DeployAppClass(object):
         docs = ReadTheDocsHandler(api_token)
 
         try:
+            # If deploying to prod, only need to update readthedocs with the correct git branch,
+            # Readthedocs will automatically build the documentation when that happens.
             if self.deploy_type == 'prod':
                 docs.update_project_to_release(self.args.git_target)
                 _logger.info(f'ReadTheDocs latest version default branch/tag updated to {self.args.git_target}')
-
-            build_id = docs.build_the_docs(self.docs_version)
-            _logger.info(f'Started documentation build for version {self.docs_version} (build ID: {build_id})')
+            else:
+                build_id = docs.build_the_docs(self.docs_version)
+                _logger.info(f'Started documentation build for version {self.docs_version} (build ID: {build_id})')
         except (ValueError, RuntimeError) as e:
             _logger.error(f'Failed to trigger readthedocs documentation build for version {self.docs_version}.  {e}')
 
