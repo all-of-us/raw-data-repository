@@ -1,12 +1,14 @@
 import datetime
 import http.client
 import json
+import mock
 
 import pytz
 from dateutil.parser import parse
 from sqlalchemy.orm.session import make_transient
 
 from rdr_service.clock import FakeClock
+from rdr_service import config
 from rdr_service.code_constants import PPI_EXTRA_SYSTEM, CONSENT_PERMISSION_YES_CODE, PPI_SYSTEM, \
     CONSENT_PERMISSION_NO_CODE
 from rdr_service.dao.code_dao import CodeDao
@@ -946,6 +948,40 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             summary = self.send_get("Participant/%s/Summary" % participant_id)
             # Posting a QR should not change origin.
             self.assertEqual(summary["participantOrigin"], "example")
+
+    def test_cohort_group_from_payload(self):
+        """Test that we use the cohort group if it is provided through the consent questionnaire response"""
+        participant_id = self.create_participant()
+        self.send_consent(participant_id, extra_string_values=[('cohort_group', '2')])
+
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(str(ParticipantCohort.COHORT_2), summary['consentCohort'])
+
+    def test_cohort_group_failure_cases(self):
+        """Test gracefully handling problems with cohort group value"""
+        participant_id = self.create_participant()
+
+        self.send_consent(participant_id, extra_string_values=[('cohort_group', 'A')], expected_status=400)
+        self.send_consent(participant_id, extra_string_values=[('cohort_group', '72')], expected_status=400)
+
+    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
+    def test_warning_logged_for_missing_vibrent_cohort(self, mock_logging):
+        """Test warning that vibrent hasn't sent cohort group information"""
+        # Temporarily change the client that the test is seen as
+        # so that we can submit a response for the participant under test
+        user_info = config.getSettingJson(config.USER_INFO)
+        original_user_client_id = user_info['example@example.com']['clientId']
+        user_info['example@example.com']['clientId'] = 'vibrent'
+        config.override_setting(config.USER_INFO, user_info)
+
+        participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        self.send_consent(participant.participantId)
+
+        mock_logging.warning.assert_called_with(f'Missing expected consent cohort information for participant '
+                                             f'{participant.participantId}')
+
+        user_info['example@example.com']['clientId'] = original_user_client_id
+        config.override_setting(config.USER_INFO, user_info)
 
 
 def _add_code_answer(code_answers, link_id, code):

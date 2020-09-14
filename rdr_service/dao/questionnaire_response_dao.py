@@ -14,6 +14,7 @@ from rdr_service import storage
 from rdr_service import clock, config
 from rdr_service.code_constants import (
     CABOR_SIGNATURE_QUESTION_CODE,
+    CONSENT_COHORT_GROUP_CODE,
     CONSENT_FOR_DVEHR_MODULE,
     CONSENT_FOR_GENOMICS_ROR_MODULE,
     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
@@ -393,6 +394,23 @@ class QuestionnaireResponseDao(BaseDao):
                         answer_value = code_dao.get(answer.valueCodeId).value
                         if answer_value == COHORT_1_REVIEW_CONSENT_YES_CODE:
                             participant_summary.consentForStudyEnrollmentAuthored = authored
+                    elif code.value == CONSENT_COHORT_GROUP_CODE:
+                        try:
+                            cohort_group = int(answer.valueString)
+
+                            # Only checking that we know of the cohort group so we don't crash when
+                            # storing in the Enum column
+                            cohort_numbers = ParticipantCohort.numbers()
+                            if cohort_group not in cohort_numbers:
+                                raise BadRequest(f'Unable to accept {cohort_group} as a cohort, '
+                                                 f'currently only taking {cohort_numbers}')
+                            else:
+                                participant_summary.consentCohort = answer.valueString
+                                something_changed = True
+                        except ValueError:
+                            raise BadRequest(f'Invalid value given for cohort group: received "{answer.valueString}"')
+
+
 
         # If the answer for line 2 of the street address was left out then it needs to be clear on summary.
         # So when it hasn't been submitted and there is something set for streetAddress2 we want to clear it out.
@@ -442,7 +460,12 @@ class QuestionnaireResponseDao(BaseDao):
                         participant_summary.semanticVersionForPrimaryConsent = \
                             questionnaire_response.questionnaireSemanticVersion
                         if participant_summary.consentCohort is None or \
-                            participant_summary.consentCohort == ParticipantCohort.UNSET:
+                                participant_summary.consentCohort == ParticipantCohort.UNSET:
+
+                            if participant_summary.participantOrigin == 'vibrent':
+                                logging.warning(f'Missing expected consent cohort information for participant '
+                                                f'{participant_summary.participantId}')
+
                             if authored >= PARTICIPANT_COHORT_3_START_TIME:
                                 participant_summary.consentCohort = ParticipantCohort.COHORT_3
                             elif PARTICIPANT_COHORT_2_START_TIME <= authored < PARTICIPANT_COHORT_3_START_TIME:
