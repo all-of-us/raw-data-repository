@@ -43,7 +43,7 @@ class ResearchIdGeneratorClass(object):
     def load_participant_without_research_id(session):
         participant = session.query(Participant).filter(
             Participant.researchId == None
-        ).one_or_none()
+        ).first()
 
         return participant
 

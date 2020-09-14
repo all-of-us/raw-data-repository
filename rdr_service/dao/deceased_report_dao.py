@@ -1,8 +1,10 @@
+from datetime import date
 import pytz
 from sqlalchemy import desc, func
 from sqlalchemy.orm.exc import DetachedInstanceError
 from werkzeug.exceptions import BadRequest, NotFound, Conflict
 
+from rdr_service.clock import CLOCK
 from rdr_service.dao.api_user_dao import ApiUserDao
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.codeableconcept import CodeableConcept
@@ -36,6 +38,15 @@ class DeceasedReportDao(UpdatableDao):
     def __init__(self):
         super().__init__(DeceasedReport)
 
+    def _is_future_datetime(self, incoming_datetime):
+        utc_now = self._convert_to_utc_datetime(CLOCK.now())
+        utc_incoming_datetime = self._convert_to_utc_datetime(incoming_datetime)
+        return utc_now < utc_incoming_datetime
+
+    @staticmethod
+    def _is_future_date(incoming_date):
+        return date.today() < incoming_date
+
     def _read_report_status(self, observation: Observation):
         if observation.status is None:
             raise BadRequest('Missing required field: status')
@@ -57,11 +68,15 @@ class DeceasedReportDao(UpdatableDao):
             raise BadRequest('Performer reference for authoring user required')
         return ApiUserDao().load_or_init(user_reference.type, user_reference.reference)
 
-    @staticmethod
-    def _read_authored_timestamp(observation: Observation):
+    def _read_authored_timestamp(self, observation: Observation):
         if observation.issued is None:
             raise BadRequest('Report issued date is required')
-        return observation.issued.date
+
+        authored_date = observation.issued.date
+        if self._is_future_datetime(authored_date):
+            raise BadRequest(f'Report issued date can not be a future date, received {authored_date}')
+        else:
+            return authored_date
 
     @staticmethod
     def _read_encounter(observation: Observation, report):  # Get notification data
@@ -207,7 +222,10 @@ class DeceasedReportDao(UpdatableDao):
         report.status = requested_report_status
 
         if observation.effectiveDateTime is not None:
-            report.dateOfDeath = observation.effectiveDateTime.date
+            date_of_death = observation.effectiveDateTime.date
+            if self._is_future_date(date_of_death):
+                raise BadRequest(f'Report effective datetime can not be a future date, received {date_of_death}')
+            report.dateOfDeath = date_of_death
 
         return report
 

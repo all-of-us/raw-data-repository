@@ -17,6 +17,7 @@ from rdr_service.config import (
     getSettingList,
     GENOME_TYPE_ARRAY,
     MissingConfigException)
+from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     GenomicSubProcessStatus)
@@ -30,6 +31,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicJobRunDao
 )
+from rdr_service.resource.generators.genomics import genomic_job_run_update
 
 
 class GenomicJobController:
@@ -346,6 +348,11 @@ class GenomicJobController:
         """Updates the genomic_job_run table with end result"""
         self.job_run_dao.update_run_record(self.job_run.id, self.job_result, GenomicSubProcessStatus.COMPLETED)
 
+        # Update run for PDR
+        bq_genomic_job_run_update(self.job_run.id)
+        genomic_job_run_update(self.job_run.id)
+
+
     def _aggregate_run_results(self):
         """
         This method aggregates the run results based on a priority of
@@ -363,7 +370,13 @@ class GenomicJobController:
         return last_run_time if last_run_time else self.last_run_time
 
     def _create_run(self, job_id):
-        return self.job_run_dao.insert_run_record(job_id)
+        new_run = self.job_run_dao.insert_run_record(job_id)
+
+        # Insert new run for PDR
+        bq_genomic_job_run_update(new_run.id)
+        genomic_job_run_update(new_run.id)
+
+        return new_run
 
     def _compile_accesioning_failure_alert_email(self, alert_files):
         """

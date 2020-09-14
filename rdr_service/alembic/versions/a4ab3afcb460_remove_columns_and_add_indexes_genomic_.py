@@ -52,11 +52,11 @@ def upgrade_rdr():
     op.execute('ALTER TABLE genomic_set_member MODIFY `biobank_id` INTEGER;')
     op.execute('ALTER TABLE genomic_set_member_history MODIFY `biobank_id` INTEGER;')
 
-    op.execute('ALTER TABLE genomic_set_member MODIFY `collection_tube_id` INTEGER;')
-    op.execute('ALTER TABLE genomic_set_member_history MODIFY `collection_tube_id` INTEGER;')
+    op.execute('ALTER TABLE genomic_set_member MODIFY `collection_tube_id` VARCHAR(80);')
+    op.execute('ALTER TABLE genomic_set_member_history MODIFY `collection_tube_id` VARCHAR(80);')
 
-    op.execute('ALTER TABLE genomic_set_member MODIFY `sample_id` INTEGER;')
-    op.execute('ALTER TABLE genomic_set_member_history MODIFY `sample_id` INTEGER;')
+    op.execute('ALTER TABLE genomic_set_member MODIFY `sample_id` VARCHAR(80);')
+    op.execute('ALTER TABLE genomic_set_member_history MODIFY `sample_id` VARCHAR(80);')
     # ### end Alembic commands ###
 
 

@@ -2,6 +2,7 @@ import datetime
 import logging
 import re
 
+from collections import OrderedDict
 from dateutil import parser, tz
 from dateutil.parser import ParserError
 from sqlalchemy import func, desc, exc
@@ -136,6 +137,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         data = {
             'participant_id': f'P{p_id}',
             'biobank_id': p.biobankId,
+            'research_id': p.researchId,
             'participant_origin': p.participantOrigin,
             'last_modified': p.lastModified,
             'sign_up_time': p.signUpTime,
@@ -935,7 +937,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
     @staticmethod
     def get_module_answers(ro_dao, module, p_id, qr_id=None):
         """
-        Retrieve the most recent questionnaire module answers for the given participant id.
+        Retrieve the questionnaire module answers for the given participant id.  This retrieves all responses to
+        the module and applies/layers the answers from each response to the final data dict returned.
         :param ro_dao: Readonly ro_dao object
         :param module: Module name
         :param p_id: participant id.
@@ -943,19 +946,19 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :return: dict
         """
         _module_info_sql = """
-                    SELECT qr.questionnaire_id,
-                           qr.questionnaire_response_id,
-                           qr.created,
-                           q.version,
-                           qr.authored,
-                           qr.language,
-                           qr.participant_id
-                    FROM questionnaire_response qr
-                            INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
-                            INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
-                    WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
-                    ORDER BY qr.created DESC;
-                """
+            SELECT DISTINCT qr.questionnaire_id,
+                   qr.questionnaire_response_id,
+                   qr.created,
+                   q.version,
+                   qr.authored,
+                   qr.language,
+                   qr.participant_id
+            FROM questionnaire_response qr
+                    INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
+                    INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
+            WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
+            ORDER BY qr.created;
+        """
 
         _answers_sql = """
             SELECT qr.questionnaire_id,
@@ -975,6 +978,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             WHERE qr.questionnaire_response_id = :qr_id;
         """
 
+        answers = OrderedDict()
+
         if not ro_dao:
             ro_dao = ResourceDataDao(backup=True)
 
@@ -983,19 +988,25 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             if not results:
                 return None
 
-            # Match the specific questionnaire response id otherwise return answers for the most recent response.
+            # Query the answers for all responses found.
             for row in results:
-                if qr_id and row.questionnaire_response_id != qr_id:
-                    continue
-
+                # Save parent record field values into data dict.
                 data = ro_dao.to_dict(row, result_proxy=results)
-                answers = session.execute(_answers_sql, {'qr_id': row.questionnaire_response_id})
+                qnans = session.execute(_answers_sql, {'qr_id': row.questionnaire_response_id})
+                # Save answers into data dict.
+                for qnan in qnans:
+                    data[qnan.code_name] = qnan.answer
+                # Insert data dict into answers list.
+                answers[row.questionnaire_response_id] = data
 
-                for answer in answers:
-                    data[answer.code_name] = answer.answer
-                return data
+        # Apply answers to data dict, response by response, until we reach the end or the specific response id.
+        data = dict()
+        for questionnaire_response_id, qnans in answers.items():
+            data.update(qnans)
+            if qr_id and qr_id == questionnaire_response_id:
+                break
 
-        return None
+        return data if data else None
 
 
 def rebuild_participant_summary_resource(p_id, res_gen=None):
