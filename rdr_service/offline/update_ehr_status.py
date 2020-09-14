@@ -16,6 +16,7 @@ def update_ehr_status():
   """
     update_particiant_summaries()
     update_organizations()
+    logging.info('Update EHR complete')
 
 
 def make_update_participant_summaries_job():
