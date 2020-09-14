@@ -5,16 +5,18 @@ import mock
 
 import pytz
 from dateutil.parser import parse
+from sqlalchemy import or_
 from sqlalchemy.orm.session import make_transient
 
 from rdr_service.clock import FakeClock
 from rdr_service import config
 from rdr_service.code_constants import PPI_EXTRA_SYSTEM, CONSENT_PERMISSION_YES_CODE, PPI_SYSTEM, \
-    CONSENT_PERMISSION_NO_CODE
+    CONSENT_PERMISSION_NO_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE, GENDER_TRANSGENDER_CODE
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantRaceAnswersDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
+from rdr_service.model.code import Code
 from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus, ParticipantCohort, ParticipantCohortPilotFlag
@@ -696,6 +698,14 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         expected.update(self.participant_summary_default_values)
         self.assertJsonResponseMatches(expected, summary)
 
+    def _get_expected_gender_code_ids(self, gender_code_values):
+        self.session.commit()  # Commit the session to ensure we're pulling the latest data from the database
+        gender_identity_code_ids = self.session.query(Code.codeId).filter(
+            or_(*[Code.value == code_value for code_value in gender_code_values])
+        ).all()
+        # Need to unpack since sqlalchemy returns named tuples
+        return [value for value, in gender_identity_code_ids]
+
     def test_participant_gender_answers(self):
         with FakeClock(TIME_1):
             participant_id = self.create_participant()
@@ -717,9 +727,10 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         participant_gender_answers_dao = ParticipantGenderAnswersDao()
         answers = participant_gender_answers_dao.get_all()
+        expected_gender_code_ids = self._get_expected_gender_code_ids([GENDER_WOMAN_CODE, GENDER_MAN_CODE])
         self.assertEqual(len(answers), 2)
         for answer in answers:
-            self.assertIn(answer.codeId, [91, 92])
+            self.assertIn(answer.codeId, expected_gender_code_ids)
 
         # resubmit the answers, old value should be removed
         with open(data_path("questionnaire_the_basics_resp_multiple_gender_2.json")) as f:
@@ -735,9 +746,10 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             self.send_post(_questionnaire_response_url(participant_id), resource)
 
         answers = participant_gender_answers_dao.get_all()
+        expected_gender_code_ids = self._get_expected_gender_code_ids([GENDER_TRANSGENDER_CODE, GENDER_MAN_CODE])
         self.assertEqual(len(answers), 2)
         for answer in answers:
-            self.assertIn(answer.codeId, [91, 100])
+            self.assertIn(answer.codeId, expected_gender_code_ids)
 
     def test_participant_race_answers(self):
         with FakeClock(TIME_1):
