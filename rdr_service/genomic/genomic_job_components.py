@@ -564,6 +564,8 @@ class GenomicFileIngester:
                 _signal = "aw1c-reconciled"
 
                 if row_copy['failuremode'] not in (None, ''):
+                    member.gcManifestFailureMode = row_copy['failuremode']
+                    member.gcManifestFailureDescription = row_copy['failuremodedesc']
                     _signal = 'aw1c-failed'
 
                 # update state and state modifed time only if changed
@@ -850,6 +852,16 @@ class GenomicFileValidator:
                 filename_components[2] == 'cvl'
             )
 
+        def cvl_aw1cf_manifest_name_rule(fn):
+            """AW1F Biobank to CVLs manifest name rule"""
+            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
+            return (
+                filename_components[0] in self.VALID_GENOME_CENTERS and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'cvl' and
+                filename_components[4] == 'failure.csv'
+            )
+
         def gem_metrics_name_rule(fn):
             """GEM Metrics name rule: i.e. AoU_GEM_metrics_aggregate_2020-07-11-00-00-00.csv"""
             filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
@@ -885,6 +897,7 @@ class GenomicFileValidator:
             GenomicJob.GEM_A2_MANIFEST: gem_a2_manifest_name_rule,
             GenomicJob.W2_INGEST: cvl_w2_manifest_name_rule,
             GenomicJob.AW1C_INGEST: cvl_aw1c_manifest_name_rule,
+            GenomicJob.AW1CF_INGEST: cvl_aw1cf_manifest_name_rule,
             GenomicJob.AW4_ARRAY_WORKFLOW: aw4_arr_manifest_name_rule,
             GenomicJob.AW4_WGS_WORKFLOW: aw4_wgs_manifest_name_rule,
             GenomicJob.GEM_METRICS_INGEST: gem_metrics_name_rule,
@@ -940,7 +953,7 @@ class GenomicFileValidator:
             if self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
                 return self.AW4_WGS_SCHEMA
 
-            if self.job_id == GenomicJob.AW1C_INGEST:
+            if self.job_id in (GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST):
                 return self.GC_MANIFEST_SCHEMA
 
         except (IndexError, KeyError):

@@ -363,6 +363,24 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
+    def run_aw1cf_manifest_workflow(self):
+        """
+        Uses GenomicFileIngester to ingest CVL Manifest Failure files (AW1CF).
+        """
+        try:
+            for cvl_bucket_name in self.bucket_name_list:
+                self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                                    job_run_id=self.job_run.id,
+                                                    bucket=cvl_bucket_name,
+                                                    sub_folder=self.sub_folder_name,
+                                                    _controller=self)
+                self.subprocess_results.add(
+                    self.ingester.generate_file_queue_and_do_ingestion()
+                )
+            self.job_result = self._aggregate_run_results()
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""
         self.job_run_dao.update_run_record(self.job_run.id, self.job_result, GenomicSubProcessStatus.COMPLETED)
@@ -370,7 +388,6 @@ class GenomicJobController:
         # Update run for PDR
         bq_genomic_job_run_update(self.job_run.id)
         genomic_job_run_update(self.job_run.id)
-
 
     def _aggregate_run_results(self):
         """

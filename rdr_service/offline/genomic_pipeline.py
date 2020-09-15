@@ -80,17 +80,6 @@ def genomic_centers_manifest_workflow():
         controller.run_genomic_centers_manifest_workflow()
 
 
-def ingest_aw1c_manifest():
-    """
-    Entrypoint for CVL AW1C Manifest Ingestion workflow
-    """
-    with GenomicJobController(GenomicJob.AW1C_INGEST,
-                              bucket_name=None,
-                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
-                              sub_folder_name=config.GENOMIC_GEM_AW1C_MANIFEST_SUBFOLDER) as controller:
-        controller.run_aw1c_workflow()
-
-
 def genomic_centers_aw1f_manifest_workflow():
     """
         Entrypoint for Ingestion:
@@ -102,6 +91,29 @@ def genomic_centers_aw1f_manifest_workflow():
                               sub_folder_tuple=config.GENOMIC_AW1F_SUBFOLDERS
                               ) as controller:
         controller.run_aw1f_manifest_workflow()
+
+
+def ingest_aw1c_manifest():
+    """
+    Entrypoint for CVL AW1C Manifest Ingestion workflow
+    """
+    with GenomicJobController(GenomicJob.AW1C_INGEST,
+                              bucket_name=None,
+                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
+                              sub_folder_name=config.GENOMIC_CVL_AW1C_MANIFEST_SUBFOLDER) as controller:
+        controller.run_aw1c_workflow()
+
+
+def ingest_aw1cf_manifest_workflow():
+    """
+    Entrypoint for CVL Failure Manifest (AW1CF) Ingestion
+    """
+    with GenomicJobController(GenomicJob.AW1CF_INGEST,
+                              bucket_name=None,
+                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
+                              sub_folder_tuple=config.GENOMIC_AW1F_SUBFOLDERS
+                              ) as controller:
+        controller.run_aw1cf_manifest_workflow()
 
 
 def genomic_centers_accessioning_failures_workflow():
