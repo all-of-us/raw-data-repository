@@ -197,7 +197,7 @@ class BiobankOrderApiTest(BaseTestCase):
             'cohortID': 'cohort id',
             'sampleType': 'sample',
             'status': {
-                'status': 'good',
+                'status': 'Disposed',
                 'freezeThawCount': 1,
                 'location': 'Greendale',
                 'quantity': '1',
@@ -408,7 +408,7 @@ class BiobankOrderApiTest(BaseTestCase):
                 "rlimsID": "other",
                 "sampleType": "test",
                 "status": {
-                    "status": "frozen",
+                    "status": "Disposed",
                     "freezeThawCount": 3,
                     "location": "biobank",
                     "quantity": "5",
@@ -850,7 +850,7 @@ class BiobankOrderApiTest(BaseTestCase):
         self.put_specimen(payload)
 
         # Set a new status
-        payload['status'] = 'updated'
+        payload['status'] = {'status': 'In Circulation'}
         del payload['disposalStatus']
         self.put_specimen(payload)
 
