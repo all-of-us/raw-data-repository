@@ -788,7 +788,7 @@ class BiobankOrderApiTest(BaseTestCase):
         specimen = self.get_specimen_from_dao(_id=specimen.id)
         self.assertEqual('test', specimen.disposalReason)
 
-    def test_disposal_sets_status(self):
+    def test_disposal_endpoint_sets_status(self):
         # /disposalStatus with any information should set status to "Disposed"
         payload = self.get_minimal_specimen_json()
         payload['status'] = {'status': 'In Circulation'}
@@ -801,7 +801,7 @@ class BiobankOrderApiTest(BaseTestCase):
         specimen = self.get_specimen_from_dao(rlims_id='sabrina')
         self.assertEqual('Disposed', specimen.status)
 
-    def test_status_update_clears_disposal(self):
+    def test_status_endpoint_clears_disposal(self):
         # /status with any information should clear the disposal fields
         payload = self.get_minimal_specimen_json()
         payload['disposalStatus'] = {
@@ -814,6 +814,47 @@ class BiobankOrderApiTest(BaseTestCase):
             'status': 'updated'
         })
 
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+        self.assertEqual('', specimen.disposalReason)
+        self.assertEqual(None, specimen.disposalDate)
+
+    def test_disposal_sets_status(self):
+        """Providing disposed fields on primary endpoint should set status"""
+
+        # Initialize specimen
+        payload = self.get_minimal_specimen_json()
+        payload['status'] = {'status': 'In Circulation'}
+        self.put_specimen(payload)
+
+        # Set it as disposed
+        payload['disposalStatus'] = {
+            'reason': 'mistake',
+            'disposalDate': TIME_2.isoformat()
+        }
+        del payload['status']
+        self.put_specimen(payload)
+
+        # Check that disposing it changes the status
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+        self.assertEqual('Disposed', specimen.status)
+
+    def test_status_update_clears_disposal(self):
+        """Setting status on primary endpoint should clear disposal fields"""
+
+        # Initialize specimen
+        payload = self.get_minimal_specimen_json()
+        payload['disposalStatus'] = {
+            'reason': 'mistake',
+            'disposalDate': TIME_2.isoformat()
+        }
+        self.put_specimen(payload)
+
+        # Set a new status
+        payload['status'] = 'updated'
+        del payload['disposalStatus']
+        self.put_specimen(payload)
+
+        # Check that setting a status clears the disposal fields
         specimen = self.get_specimen_from_dao(rlims_id='sabrina')
         self.assertEqual('', specimen.disposalReason)
         self.assertEqual(None, specimen.disposalDate)
