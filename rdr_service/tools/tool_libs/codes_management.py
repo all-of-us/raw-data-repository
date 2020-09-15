@@ -1,14 +1,14 @@
 import csv
 from datetime import datetime
-# from googleapiclient.discovery import build
-# from oauth2client.service_account import ServiceAccountCredentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from oauth2client.service_account import ServiceAccountCredentials
 import os
 import requests
 from sqlalchemy.orm.session import Session
-# import sys
 
 from rdr_service.clock import CLOCK
-# from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
+from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
 from rdr_service.model.code import Code, CodeType
 from rdr_service.tools.tool_libs._tool_base import cli_run, logger, ToolBase
 from rdr_service.tools.tool_libs.app_engine_manager import AppConfigClass
@@ -20,15 +20,68 @@ tool_desc = "Manage code import/export process. Syncing codes from the provided 
             "codes that the RDR is aware of to the Ops team's Drive folder."
 
 REDCAP_PROJECT_KEYS = 'project_api_keys'
+DRIVE_EXPORT_FOLDER_ID = 'drive_export_folder'
+EXPORT_SERVICE_ACCOUNT_NAME = 'code_export_service_account'
 CODE_SYSTEM = 'http://terminology.pmi-ops.org/CodeSystem/ppi'
 
+CODE_EXPORT_NAME_PREFIX = 'codes_'
 
-# class CodesExportClass(ToolBase):
-#     def run(self):
-#         # Intentionally not calling super's run because the SA with
+# data shared between tool classes
+_now_string = datetime.now().strftime('%Y-%m-%d_%H%M')
+code_export_file_path = f'{CODE_EXPORT_NAME_PREFIX}{_now_string}.csv'
+drive_folder_id = ''
+exporter_service_account_name = ''
 
 
-class CodesManagementClass(ToolBase):
+class CodesExportClass(ToolBase):
+    @staticmethod
+    def trash_previous_exports(credentials, v3_drive_service):
+        # I haven't been able to figure out how to use only version 2 or only version 3 of drive.
+        # We don't have permissions to outright delete files, but V2 allows us to move files to the trash.
+        # However, I can't figure out how to see the files with V2 to be able to delete them. Hence the mix.
+
+        # https://developers.google.com/drive/api/v3/reference/files/list
+        response = v3_drive_service.files().list(
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True,
+            q=f"'{drive_folder_id}' in parents"
+        ).execute()
+        files = response.get('files', [])
+
+        # v2 lets us 'trash' files without further permissions
+        v2_drive_service = build('drive', 'v2', credentials=credentials)
+        for file in files:
+            if file['name'].startswith(CODE_EXPORT_NAME_PREFIX):
+                v2_drive_service.files().trash(
+                    supportsAllDrives=True,
+                    fileId=file['id']
+                ).execute()
+
+    @staticmethod
+    def upload_file(drive_service):
+        # https://developers.google.com/drive/api/v3/reference/files/create
+        file_metadata = {
+            'name': code_export_file_path,
+            'parents': [drive_folder_id]
+        }
+        media = MediaFileUpload(code_export_file_path, mimetype='text/csv')
+        drive_service.files().create(body=file_metadata, media_body=media, supportsAllDrives=True).execute()
+
+    def run(self):
+        # Intentionally not calling super's run
+        # since the SA for exporting probably doesn't have SQL permissions
+        # and super's run would currently tries to activate the sql proxy
+
+        service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(service_key_info['key_path'])
+        drive_service = build('drive', 'v3', credentials=credentials)
+
+        self.trash_previous_exports(credentials, drive_service)
+        self.upload_file(drive_service)
+        os.remove(code_export_file_path)
+
+
+class CodesSyncClass(ToolBase):
     module_code = None
     codes_allowed_for_reuse = []
     code_reuse_found = False
@@ -50,6 +103,20 @@ class CodesManagementClass(ToolBase):
         if redcap_project_name not in keys:
             logger.error(f'ERROR: Project "{redcap_project_name}" not listed with key in server config')
             return None
+
+        # Getting folder ID for export while syncing since export SA might not have permissions to the server config
+        if DRIVE_EXPORT_FOLDER_ID not in server_config:
+            logger.error('ERROR: Server config file does not list drive export folder id')
+            return None
+        global drive_folder_id
+        drive_folder_id = server_config[DRIVE_EXPORT_FOLDER_ID]
+
+        # And since we're here anyway... let's get the service account that should do the export
+        if EXPORT_SERVICE_ACCOUNT_NAME not in server_config:
+            logger.error('ERROR: Server config file does not list the export service account')
+            return None
+        global exporter_service_account_name
+        exporter_service_account_name = server_config[EXPORT_SERVICE_ACCOUNT_NAME]
 
         return server_config[REDCAP_PROJECT_KEYS][redcap_project_name]
 
@@ -134,9 +201,7 @@ class CodesManagementClass(ToolBase):
 
     @staticmethod
     def write_export_file(session):
-        now_string = datetime.now().strftime('%Y-%m-%d_%H%M')
-        export_file_name = f'codes_{now_string}.csv'
-        with open(export_file_name, 'w') as output_file:
+        with open(code_export_file_path, 'w') as output_file:
             code_csv_writer = csv.writer(output_file)
             code_csv_writer.writerow([
                 'Code Value',
@@ -158,10 +223,8 @@ class CodesManagementClass(ToolBase):
                         row_data.append(possible_module_code.value)
                 code_csv_writer.writerow(row_data)
 
-        return export_file_name
-
     def run(self):
-        super(CodesManagementClass, self).run()
+        super(CodesSyncClass, self).run()
 
         if self.args.reuse_codes:
             self.codes_allowed_for_reuse = [code_val.strip() for code_val in self.args.reuse_codes.split(',')]
@@ -189,23 +252,7 @@ class CodesManagementClass(ToolBase):
                     return 1
 
             if not self.args.dry_run:
-                export_file_name = self.write_export_file(session)
-
-                # TODO:  get this to upload the file just written
-                # service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
-                # credentials = ServiceAccountCredentials.from_json_keyfile_name(service_key_info['key_path'])
-                #
-                # service = build('drive', 'v3', credentials=credentials)
-                #
-                # folder_id = '1PdtB30wbKWaoktgZtw5gwTpmL6U4mYDB'
-                # file_metadata = {
-                #     'name': 'text.txt',
-                #     'parents': [folder_id]
-                # }
-                #
-                # service.files().create(body=file_metadata).execute()
-
-                os.remove(export_file_name)
+                self.write_export_file(session)
 
         return 0
 
@@ -220,4 +267,8 @@ def add_additional_arguments(parser):
 
 
 def run():
-    cli_run(tool_cmd, tool_desc, CodesManagementClass, add_additional_arguments)
+    import_exit_code = cli_run(tool_cmd, tool_desc, CodesSyncClass, add_additional_arguments)
+    if import_exit_code == 0:
+        return cli_run(tool_cmd, tool_desc, CodesExportClass, add_additional_arguments, defaults={
+            'service_account': exporter_service_account_name
+        })
