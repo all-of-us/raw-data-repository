@@ -742,6 +742,40 @@ class ParticipantSummaryApiTest(BaseTestCase):
         sync_again = self.send_get(sync_url[index:])
         self.assertGreaterEqual(len(sync_again["entry"]), 14)
 
+    def test_filter_summary_by_unset_org(self):
+        self.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+        questionnaire_id = self.create_demographics_questionnaire()
+        participant = self.send_post("Participant", {"providerLink": []})
+        participant_id = participant["participantId"]
+        with FakeClock(TIME_1):
+            self.send_consent(participant_id)
+        # Populate some answers to the questionnaire
+        answers = {
+            "race": RACE_WHITE_CODE,
+            "genderIdentity": PMI_SKIP_CODE,
+            "firstName": self.fake.first_name(),
+            "middleName": self.fake.first_name(),
+            "lastName": self.fake.last_name(),
+            "zipCode": "78751",
+            "state": PMI_SKIP_CODE,
+            "streetAddress": self.streetAddress,
+            "streetAddress2": self.streetAddress2,
+            "city": "Austin",
+            "sex": PMI_SKIP_CODE,
+            "sexualOrientation": PMI_SKIP_CODE,
+            "phoneNumber": "512-555-5555",
+            "recontactMethod": PMI_SKIP_CODE,
+            "language": PMI_SKIP_CODE,
+            "education": PMI_SKIP_CODE,
+            "income": PMI_SKIP_CODE,
+            "dateOfBirth": datetime.date(1978, 10, 9),
+            "CABoRSignature": "signature.pdf",
+        }
+        self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
+        url = "ParticipantSummary?_sort=lastModified&organization=UNSET"
+        response = self.send_get(url)
+        self.assertEqual(len(response.get('entry')), 1)
+        self.assertEqual(response.get('entry')[0].get('resource').get('organization'), 'UNSET')
 
     def test_get_summary_list_returns_total(self):
         page_size = 10

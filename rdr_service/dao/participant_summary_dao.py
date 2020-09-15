@@ -414,6 +414,8 @@ class ParticipantSummaryDao(UpdatableDao):
                 field_name = "hpoId"
             return super(ParticipantSummaryDao, self).make_query_filter(field_name, hpo.hpoId)
         if field_name == "organization":
+            if value == UNSET:
+                return super(ParticipantSummaryDao, self).make_query_filter(field_name + "Id", None)
             organization = self.organization_dao.get_by_external_id(value)
             if not organization:
                 raise BadRequest(f"No organization found with name {value}")
