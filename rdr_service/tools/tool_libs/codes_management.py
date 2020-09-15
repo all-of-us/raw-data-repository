@@ -70,7 +70,7 @@ class CodesExportClass(ToolBase):
     def run(self):
         # Intentionally not calling super's run
         # since the SA for exporting probably doesn't have SQL permissions
-        # and super's run would currently tries to activate the sql proxy
+        # and super's run currently tries to activate the sql proxy
 
         service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
         credentials = ServiceAccountCredentials.from_json_keyfile_name(service_key_info['key_path'])
