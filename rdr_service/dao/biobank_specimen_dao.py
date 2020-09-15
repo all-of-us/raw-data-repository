@@ -48,8 +48,9 @@ class BiobankDaoBase(UpdatableDao):
                                           ('processingCompleteDate', BiobankDaoBase.parse_nullable_date)]:
             BiobankDaoBase.map_optional_json_field_to_object(status_source, model, status_field_name, parser=parser)
 
-        model.disposalDate = None
-        model.disposalReason = ''
+        if model.status and model.status.lower() != 'disposed':
+            model.disposalDate = None
+            model.disposalReason = ''
 
     @staticmethod
     def read_client_disposal(status_source, model):
@@ -59,7 +60,8 @@ class BiobankDaoBase(UpdatableDao):
             BiobankDaoBase.map_optional_json_field_to_object(status_source, model, disposal_client_field_name,
                                                              disposal_model_field_name, parser=parser)
 
-        model.status = 'Disposed'
+        if model.disposalDate or model.disposalReason:
+            model.status = 'Disposed'
 
     @staticmethod
     def map_optional_json_field_to_object(json, obj, json_field_name, object_field_name=None, parser=None):

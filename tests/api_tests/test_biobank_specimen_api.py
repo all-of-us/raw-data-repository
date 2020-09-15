@@ -859,6 +859,43 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual('', specimen.disposalReason)
         self.assertEqual(None, specimen.disposalDate)
 
+    def test_empty_disposal_leaves_status(self):
+        """Providing empty disposed fields on primary endpoint should not set status"""
+
+        # Initialize specimen with empty disposal fields
+        payload = self.get_minimal_specimen_json()
+        payload['status'] = {'status': 'In Circulation'}
+        payload['disposalStatus'] = {
+            'reason': '',
+            'disposalDate': ''
+        }
+        self.put_specimen(payload)
+
+        # Check that status field is unchanged
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+        self.assertEqual('In Circulation', specimen.status)
+
+    def test_disposed_status_update_leaves_disposal(self):
+        """Setting status to 'Disposed' (maybe redundant) shouldn't clear disposal fields"""
+
+        # Initialize specimen
+        payload = self.get_minimal_specimen_json()
+        payload['disposalStatus'] = {
+            'reason': 'mistake',
+            'disposalDate': TIME_2.isoformat()
+        }
+        self.put_specimen(payload)
+
+        # Resend status
+        payload['status'] = 'Disposed'
+        del payload['disposalStatus']
+        self.put_specimen(payload)
+
+        # Check that setting a status clears the disposal fields
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+        self.assertEqual('mistake', specimen.disposalReason)
+        self.assertEqual(TIME_2, specimen.disposalDate)
+
     def test_parent_disposed_not_found(self):
         self.send_put(f"Biobank/specimens/sabrina/status", {
             'disposalDate': TIME_1.isoformat()
