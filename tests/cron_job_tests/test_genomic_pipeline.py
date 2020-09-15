@@ -2279,11 +2279,18 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_aw1c_manifest_ingestion(self):
+        # Need W3 Manifest Job Run: run_id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.W3_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
         self._create_fake_datasets_for_gc_tests(3, arr_override=False,
                                                 genomic_workflow_state=GenomicWorkflowState.W3)
 
-        # Setup Test file
+        # Setup Test file (same as AW1, reusing test file)
         cvl_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-1.csv")
+        cvl_manifest_file = cvl_manifest_file.replace('aou_array', 'aou_cvl')
 
         cvl_manifest_filename = "RDR_AoU_CVL_PKG-1908-218051.csv"
 
@@ -2294,10 +2301,18 @@ class GenomicPipelineTest(BaseTestCase):
             folder=config.GENOMIC_GEM_AW1C_MANIFEST_SUBFOLDER,
         )
 
-        genomic_pipeline.ingest_aw1c_manifest()
+        genomic_pipeline.ingest_aw1c_manifest()  # run_ID = 2
+
+        # Test member was updated
+        member = self.member_dao.get(2)
+
+        self.assertEqual(2, member.cvlAW1CManifestJobRunID)
+        self.assertEqual('aou_cvl', member.genomeType)
+        self.assertEqual(GenomicWorkflowState.AW1C, member.genomicWorkflowState)
 
         # Test run record is success
-        run_obj = self.job_run_dao.get(1)
+        run_obj = self.job_run_dao.get(2)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_aw4_array_manifest_ingest(self):
         # Create AW3 array manifest job run: id = 1

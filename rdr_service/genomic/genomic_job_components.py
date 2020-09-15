@@ -225,6 +225,9 @@ class GenomicFileIngester:
             if self.job_id in (GenomicJob.AW4_ARRAY_WORKFLOW, GenomicJob.AW4_WGS_WORKFLOW):
                 return self._ingest_aw4_manifest(data_to_ingest)
 
+            if self.job_id in [GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST]:
+                return self._ingest_aw1c_manifest(data_to_ingest)
+
         else:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
@@ -536,6 +539,53 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
+    def _ingest_aw1c_manifest(self, file_data):
+        """
+        Processes the CVL AW1C manifest file data
+        :return: Result Code
+        """
+        try:
+            for row in file_data['rows']:
+                row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                                     for key in row], row.values()))
+                collection_tube_id = row_copy['collectiontubeid']
+                member = self.member_dao.get_member_from_collection_tube(collection_tube_id, GENOME_TYPE_WGS)
+
+                if member is None:
+                    # Currently ignoring invalid cases
+                    logging.warning(f'Invalid collection tube ID: {collection_tube_id}')
+                    continue
+
+                # Update the AW1C job run ID and genome_type
+                member.cvlAW1CManifestJobRunID = self.job_run_id
+                member.genomeType = row_copy['testname']
+
+                # Handle genomic state
+                _signal = "aw1c-reconciled"
+
+                if row_copy['failuremode'] not in (None, ''):
+                    _signal = 'aw1c-failed'
+
+                # update state and state modifed time only if changed
+                if member.genomicWorkflowState != GenomicStateHandler.get_new_state(
+                    member.genomicWorkflowState, signal=_signal):
+                    member.genomicWorkflowState = GenomicStateHandler.get_new_state(
+                        member.genomicWorkflowState,
+                        signal=_signal)
+
+                    member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+
+                self.member_dao.update(member)
+
+                # Update member for PDR
+                bq_genomic_set_member_update(member.id)
+                genomic_set_member_update(member.id)
+
+            return GenomicSubProcessResult.SUCCESS
+
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
     def _get_site_from_aw1(self):
         """
         Returns the Genomic Center's site ID from the AW1 filename
@@ -795,12 +845,10 @@ class GenomicFileValidator:
             """AW1C Biobank to CVLs manifest name rule"""
             filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
-                len(filename_components) == 4 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
-                filename_components[2] == 'cvl' and
-                re.search(r"pkg-[0-9]{4}-[0-9]{5,}\.csv$",
-                          filename_components[3]) is not None
+                filename_components[2] == 'cvl'
+            )
 
         def gem_metrics_name_rule(fn):
             """GEM Metrics name rule: i.e. AoU_GEM_metrics_aggregate_2020-07-11-00-00-00.csv"""
@@ -891,6 +939,9 @@ class GenomicFileValidator:
 
             if self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
                 return self.AW4_WGS_SCHEMA
+
+            if self.job_id == GenomicJob.AW1C_INGEST:
+                return self.GC_MANIFEST_SCHEMA
 
         except (IndexError, KeyError):
             return GenomicSubProcessResult.INVALID_FILE_NAME

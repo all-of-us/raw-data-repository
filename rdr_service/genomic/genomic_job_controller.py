@@ -346,7 +346,7 @@ class GenomicJobController:
 
     def run_aw1c_workflow(self):
         """
-        Uses GenomicFileIngester to ingest Genomic Manifest files (AW1C).
+        Uses GenomicFileIngester to ingest CVL Genomic Manifest files (AW1C).
         Reconciles samples in AW1C manifest against those sent in W3
         """
         try:
