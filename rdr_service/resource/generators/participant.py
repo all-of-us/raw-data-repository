@@ -6,6 +6,7 @@ from collections import OrderedDict
 from dateutil import parser, tz
 from dateutil.parser import ParserError
 from sqlalchemy import func, desc, exc
+from sqlalchemy.orm import load_only
 from werkzeug.exceptions import NotFound
 
 from rdr_service import config
@@ -23,10 +24,12 @@ from rdr_service.model.measurements import PhysicalMeasurements, PhysicalMeasure
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
+# TODO:  Using participant_summary as a workaround.  Replace with new participant_profile when it's available
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
-    SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag
+    SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus
 from rdr_service.resource import generators, schemas
 
 
@@ -93,6 +96,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
             # calculate test participant status
             summary = self._merge_schema_dicts(summary, self._calculate_test_participant(summary))
+            # prep additional participant profile info
+            summary = self._merge_schema_dicts(summary, self._prep_participant_profile(p_id, ro_session))
 
             # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
 
@@ -124,8 +129,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # The cohort_2_pilot_flag field values in participant_summary were set via a one-time backfill based on a
         # list of participant IDs provided by PTSC and archived in the participant_cohort_pilot table.  See:
         # https://precisionmedicineinitiative.atlassian.net/browse/DA-1622
-        # TO DO:  A participant_profile table may be implemented as part of the effort to eliminate dependencies on
-        # participant_summary.  The cohort_2_pilot_flag could be queried from that new table in the future
+        # TODO:  A participant_profile table may be implemented as part of the effort to eliminate dependencies on
+        # participant_summary.  The cohort_2_pilot_flag could be moved into _prep_participant_profile() in the future
         #
         # Note this query assumes participant_cohort_pilot only contains entries for the cohort 2 pilot
         # participants for genomics and has not been used for identifying participants in more recent pilots
@@ -164,6 +169,34 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             'cohort_2_pilot_flag': str(cohort_2_pilot_flag),
             'cohort_2_pilot_flag_id': int(cohort_2_pilot_flag)
         }
+
+        return data
+
+    def _prep_participant_profile(self, p_id, ro_session):
+        """
+        Get additional participant status fields that were incorporated into the RDR participant_summary
+        but can't be derived from other RDR tables.  Example is EHR status information which is
+        read from a curation dataset by a daily cron job that then applies updates to RDR participant_summary directly.
+        :param p_id: participant_id
+        :return: dict
+
+        """
+        # TODO: Workaround for PDR-106 is to pull needed EHR fields from participant_summary. LIMITED USE CASE ONLY
+        # Goal is to eliminate dependencies on participant_summary, which may go away someday.
+        # Long term solution may mean creating a participant_profile table for these outlier fields that are managed
+        # outside of the RDR API, and query that table instead.
+        data = {}
+        ps = ro_session.query(ParticipantSummary) \
+            .options(load_only("ehrReceiptTime", "ehrStatus", "ehrUpdateTime")) \
+            .filter(ParticipantSummary.participantId == p_id).first()
+        if ps and ps.ehrStatus:
+            ehr_status = EhrStatus(ps.ehrStatus)
+            data = {
+                'ehr_status': str(ehr_status),
+                'ehr_status_id': int(ehr_status),
+                'ehr_receipt': ps.ehrReceiptTime,
+                'ehr_update': ps.ehrUpdateTime
+            }
 
         return data
 
