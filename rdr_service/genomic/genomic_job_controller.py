@@ -241,6 +241,8 @@ class GenomicJobController:
                 except MissingConfigException:
                     self.sub_folder_name = folder
 
+                logging.info(f"Scanning folder: {self.sub_folder_name}")
+
                 bucket = '/' + gc_bucket_name
                 files = list_blobs(bucket, prefix=self.sub_folder_name)
 
