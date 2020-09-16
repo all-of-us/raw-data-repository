@@ -38,7 +38,7 @@ class BiobankDaoBase(UpdatableDao):
         return disposal_status
 
     @staticmethod
-    def read_client_status(status_source, model, clear_disposal_fields=False):
+    def read_client_status(status_source, model):
         for status_field_name, parser in [('status', None),
                                           ('freezeThawCount', None),
                                           ('location', None),
@@ -48,19 +48,19 @@ class BiobankDaoBase(UpdatableDao):
                                           ('processingCompleteDate', BiobankDaoBase.parse_nullable_date)]:
             BiobankDaoBase.map_optional_json_field_to_object(status_source, model, status_field_name, parser=parser)
 
-        if clear_disposal_fields:
+        if model.status and model.status.lower() != 'disposed':
             model.disposalDate = None
             model.disposalReason = ''
 
     @staticmethod
-    def read_client_disposal(status_source, model, set_status=False):
+    def read_client_disposal(status_source, model):
         for disposal_client_field_name, disposal_model_field_name, parser in\
                 [('reason', 'disposalReason', None),
                  ('disposalDate', None, BiobankSpecimenDao.parse_nullable_date)]:
             BiobankDaoBase.map_optional_json_field_to_object(status_source, model, disposal_client_field_name,
                                                              disposal_model_field_name, parser=parser)
 
-        if set_status:
+        if model.disposalDate or model.disposalReason:
             model.status = 'Disposed'
 
     @staticmethod
