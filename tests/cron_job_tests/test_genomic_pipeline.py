@@ -2357,7 +2357,7 @@ class GenomicPipelineTest(BaseTestCase):
     def test_aw1cf_alerting_emails(self, send_email_mock):
         aw1cf_manifest_filename = "RDR_AoU_CVL_PKG-1908-218051_FAILURE.csv"
 
-        subfolder = config.GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER
+        subfolder = config.GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER[0]
 
         self._write_cloud_csv(
             aw1cf_manifest_filename,
