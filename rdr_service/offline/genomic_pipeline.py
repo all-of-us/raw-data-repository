@@ -124,7 +124,7 @@ def aw1cf_alerts_workflow():
     with GenomicJobController(GenomicJob.AW1CF_ALERTS,
                               bucket_name=None,
                               bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
-                              sub_folder_tuple=config.GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER
+                              sub_folder_tuple=tuple(config.GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER)
                               ) as controller:
         controller.process_failure_manifests_for_alerts()
 
