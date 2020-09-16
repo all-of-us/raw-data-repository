@@ -405,6 +405,31 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(self.dao.get(p_dna_samples.participantId).enrollmentStatusCoreStoredSampleTime, None)
         self.assertEqual(self.dao.get(p_dna_samples.participantId).enrollmentStatusCoreOrderedSampleTime, None)
 
+    def test_sample_time_with_missing_status(self):
+        """
+        Legacy stored samples that are missing a status value should be treated as UNSET when finding
+        the sample status time for participant summary
+        """
+
+        participant = self._insert(Participant(participantId=1, biobankId=11))
+        confirmed_time = datetime.datetime(2018, 3, 1)
+        sample = self.data_generator.create_database_biobank_stored_sample(
+            biobankId=participant.biobankId,
+            test='1ED10',
+            confirmed=confirmed_time
+        )
+
+        # Sqlalchemy uses the default set for the status column when inserting the sample
+        # (even if we set the field to None when creating it).
+        # But setting it to None and then updating gets the NULL to appear and recreates what we're seeing in Prod.
+        sample.status = None
+        self.session.commit()
+
+        self.dao.update_from_biobank_stored_samples()
+
+        participant_summary = self.dao.get(participant.participantId)
+        self.assertEqual(confirmed_time, participant_summary.sampleStatus1ED10Time)
+
     def test_calculate_enrollment_status(self):
         self.assertEqual(
             EnrollmentStatus.FULL_PARTICIPANT,

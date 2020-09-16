@@ -149,7 +149,7 @@ _SAMPLE_SQL = """,
                      WHERE bss.biobank_id = ps.biobank_id
                        AND bss.test = %(sample_param_ref)s)
               ELSE (SELECT MAX(confirmed) from biobank_stored_sample bss
-                     WHERE bss.biobank_id = ps.biobank_id and bss.status < :disposed_bad
+                     WHERE bss.biobank_id = ps.biobank_id and (bss.status < :disposed_bad or bss.status is null)
                        AND bss.test = %(sample_param_ref)s)
               END
           ELSE NULL END
