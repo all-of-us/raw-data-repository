@@ -612,6 +612,7 @@ class GenomicJob(messages.Enum):
     GEM_METRICS_INGEST = 24
     AW1C_INGEST = 25
     AW1CF_INGEST = 26
+    AW1CF_ALERTS = 27
 
 
 class GenomicWorkflowState(messages.Enum):

@@ -20,7 +20,8 @@ from rdr_service.config import (
 from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
-    GenomicSubProcessStatus)
+    GenomicSubProcessStatus,
+    GenomicJob)
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
     GenomicReconciler,
@@ -216,9 +217,9 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def process_new_aw1f_for_alerts(self):
+    def process_failure_manifests_for_alerts(self):
         """
-        Scans for new AW1F files in GC buckets and sends email alert
+        Scans for new AW1F and AW1CF files in GC buckets and sends email alert
         """
 
         # Setup date
@@ -233,7 +234,13 @@ class GenomicJobController:
             failures_in_bucket = list()
 
             for folder in self.sub_folder_tuple:
-                self.sub_folder_name = config.getSetting(folder)
+                # If the folder is defined in config, use that,
+                # otherwise use the string constant.
+                try:
+                    self.sub_folder_name = config.getSetting(folder)
+                except MissingConfigException:
+                    self.sub_folder_name = folder
+
                 bucket = '/' + gc_bucket_name
                 files = list_blobs(bucket, prefix=self.sub_folder_name)
 
@@ -430,7 +437,11 @@ class GenomicJobController:
 
         subject = "All of Us GC Manifest Failure Alert"
         from_email = config.SENDGRID_FROM_EMAIL
+
         email_message = "New AW1 Failure manifests have been found:\n"
+
+        if self.job_id == GenomicJob.AW1CF_ALERTS:
+            email_message = "New AW1CF CVL Failure manifests have been found:\n"
 
         for bucket in alert_files.keys():
             email_message += f"\t{bucket}:\n"

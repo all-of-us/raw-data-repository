@@ -2333,7 +2333,7 @@ class GenomicPipelineTest(BaseTestCase):
             aw1cf_manifest_filename,
             aw1cf_manifest_file,
             bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
-            folder=config.GENOMIC_AW1F_SUBFOLDER,
+            folder=config.GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER,
         )
 
         # Ingest AW1F
@@ -2352,6 +2352,51 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
+
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController._send_email_with_sendgrid')
+    def test_aw1cf_alerting_emails(self, send_email_mock):
+        aw1cf_manifest_filename = "RDR_AoU_CVL_PKG-1908-218051_FAILURE.csv"
+
+        subfolder = config.GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER
+
+        self._write_cloud_csv(
+            aw1cf_manifest_filename,
+            ".",
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=subfolder,
+        )
+
+        genomic_pipeline.aw1cf_alerts_workflow()
+
+        # Set up expected SendGrid request
+        email_message = "New AW1CF CVL Failure manifests have been found:\n"
+        email_message += f"\t{_FAKE_GENOMIC_CENTER_BUCKET_A}:\n"
+        email_message += f"\t\t{subfolder}/{aw1cf_manifest_filename}\n"
+
+        expected_email_req = {
+            "personalizations": [
+                {
+                    "to": [{"email": "test-genomic@vumc.org"}],
+                    "subject": "All of Us GC Manifest Failure Alert"
+                }
+            ],
+            "from": {
+                "email": "no-reply@pmi-ops.org"
+            },
+            "content": [
+                {
+                    "type": "text/plain",
+                    "value": email_message
+                }
+            ]
+        }
+
+        send_email_mock.assert_called_with(expected_email_req)
+
+        # Test the end-to-end result code
+        job_run = self.job_run_dao.get(1)
+        self.assertEqual(GenomicJob.AW1CF_ALERTS, job_run.jobId)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, job_run.runResult)
 
     def test_aw4_array_manifest_ingest(self):
         # Create AW3 array manifest job run: id = 1
