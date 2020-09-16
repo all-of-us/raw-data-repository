@@ -37,6 +37,8 @@ def dispatch_participant_rebuild_tasks(pid_list, batch_size=100):
     """
        A utility routine to handle dispatching batched requests for rebuilding participants.  Is also called
        from other cron job endpoint handlers (e.g., biobank reconciliation and EHR status update jobs)
+       :param pid_list:  List of participant_id values to rebuild
+       :param batch_size:  Size of the batch of participant IDs to include in the rebuild task payload
     """
 
     if config.GAE_PROJECT not in _bq_env:

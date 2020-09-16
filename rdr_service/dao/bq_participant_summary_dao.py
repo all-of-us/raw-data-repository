@@ -6,7 +6,6 @@ from collections import OrderedDict
 from dateutil import parser, tz
 from dateutil.parser import ParserError
 from sqlalchemy import func, desc, exc
-from sqlalchemy.orm import load_only
 from werkzeug.exceptions import NotFound
 
 from rdr_service import config
@@ -181,12 +180,12 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         """
         # TODO: Workaround for PDR-106 is to pull needed EHR fields from participant_summary. LIMITED USE CASE ONLY
-        # Goal is to eliminate dependencies on participant_summary.  Long term solution may mean creating a
-        # participant_profile table for these outlier fields that are managed outside of the RDR API, and
-        # query that table instead
+        # Goal is to eliminate dependencies on participant_summary, which may go away someday.
+        # Long term solution may mean creating a participant_profile table for these outlier fields that are managed
+        # outside of the RDR API, and query that table instead.
         data = {}
-        ps = ro_session.query(ParticipantSummary) \
-            .options(load_only("ehrReceiptTime", "ehrStatus", "ehrUpdateTime")) \
+        ps = ro_session.query(ParticipantSummary.ehrStatus, ParticipantSummary.ehrReceiptTime,
+                              ParticipantSummary.ehrUpdateTime) \
             .filter(ParticipantSummary.participantId == p_id).first()
 
         if ps and ps.ehrStatus:

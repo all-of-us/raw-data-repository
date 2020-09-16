@@ -6,7 +6,6 @@ from collections import OrderedDict
 from dateutil import parser, tz
 from dateutil.parser import ParserError
 from sqlalchemy import func, desc, exc
-from sqlalchemy.orm import load_only
 from werkzeug.exceptions import NotFound
 
 from rdr_service import config
@@ -186,9 +185,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # Long term solution may mean creating a participant_profile table for these outlier fields that are managed
         # outside of the RDR API, and query that table instead.
         data = {}
-        ps = ro_session.query(ParticipantSummary) \
-            .options(load_only("ehrReceiptTime", "ehrStatus", "ehrUpdateTime")) \
+        ps = ro_session.query(ParticipantSummary.ehrStatus, ParticipantSummary.ehrReceiptTime,
+                              ParticipantSummary.ehrUpdateTime) \
             .filter(ParticipantSummary.participantId == p_id).first()
+
         if ps and ps.ehrStatus:
             ehr_status = EhrStatus(ps.ehrStatus)
             data = {
