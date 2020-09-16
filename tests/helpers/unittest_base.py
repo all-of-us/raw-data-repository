@@ -493,9 +493,8 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             return response
         return None
 
-
     def send_consent(self, participant_id, email=None, language=None, code_values=None, string_answers=None,
-                     authored=None):
+                     extra_string_values=[], authored=None, expected_status=200):
 
         if isinstance(participant_id, int):
             participant_id = f'P{participant_id}'
@@ -522,14 +521,13 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         qr_json = self.make_questionnaire_response_json(
             participant_id,
             self._consent_questionnaire_id,
-            string_answers=string_answers,
+            string_answers=string_answers + extra_string_values,
             language=language,
             code_answers=code_values,
             authored=authored,
         )
 
-
-        self.send_post(self.questionnaire_response_url(participant_id), qr_json)
+        return self.send_post(self.questionnaire_response_url(participant_id), qr_json, expected_status=expected_status)
 
     def assertJsonResponseMatches(self, obj_a, obj_b, strip_tz=True):
         self.assertMultiLineEqual(self._clean_and_format_response_json(obj_a, strip_tz=strip_tz),

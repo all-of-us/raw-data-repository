@@ -132,6 +132,19 @@
           "code": "ExtraConsent_CABoRSignature",
           "display": "Signature"
         }]
-      }]
+      },
+      {
+        "linkId": "cohort_group",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "ConsentPII_CohortGroup"
+          }
+        ],
+        "text": "hint text",
+        "type": "text",
+        "repeats": false
+      }
+    ]
   }
 }
