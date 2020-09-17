@@ -126,7 +126,16 @@ class QuestionnaireDao(UpdatableDao):
         if 'version' not in resource_json:
             raise BadRequest('No version info found in questionnaire')
 
-        q = Questionnaire(resource=json.dumps(resource_json), questionnaireId=id_, semanticVersion=expected_version)
+        external_id = None
+        if len(fhir_q.identifier) > 0:
+            external_id = fhir_q.identifier[0].value
+
+        q = Questionnaire(
+            resource=json.dumps(resource_json),
+            questionnaireId=id_,
+            semanticVersion=expected_version,
+            externalId=external_id
+        )
         # Assemble a map of (system, value) -> (display, code_type, parent_id) for passing into CodeDao.
         # Also assemble a list of (system, code) for concepts and (system, code, linkId) for questions,
         # which we'll use later when assembling the child objects.

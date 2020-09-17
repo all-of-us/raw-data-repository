@@ -30,6 +30,8 @@ class QuestionnaireBase(object):
     resource = Column("resource", BlobUTF8, nullable=False)
     status = Column("status", Enum(QuestionnaireDefinitionStatus), default=QuestionnaireDefinitionStatus.VALID)
 
+    externalId = Column('external_id', String(100))
+
     def asdict_with_children(self):
         return self.asdict(follow={"concepts": {}, "questions": {}})
 
