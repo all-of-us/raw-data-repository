@@ -346,6 +346,10 @@ class DataGenerator:
         if 'biobankStoredSampleId' not in kwargs:
             kwargs['biobankStoredSampleId'] = self.unique_biobank_stored_sample_id()
 
+        for field, default in [('biobankOrderIdentifier', self.faker.pystr())]:
+            if field not in kwargs:
+                kwargs[field] = default
+
         return BiobankStoredSample(**kwargs)
 
     def create_database_log_position(self, **kwargs):
