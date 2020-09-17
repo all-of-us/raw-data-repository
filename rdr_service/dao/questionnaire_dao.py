@@ -127,7 +127,7 @@ class QuestionnaireDao(UpdatableDao):
             raise BadRequest('No version info found in questionnaire')
 
         external_id = None
-        if len(fhir_q.identifier) > 0:
+        if fhir_q.identifier and len(fhir_q.identifier) > 0:
             external_id = fhir_q.identifier[0].value
 
         q = Questionnaire(
