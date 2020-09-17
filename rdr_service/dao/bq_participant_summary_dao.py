@@ -480,10 +480,10 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 select bss.test, bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed,
                        bss.status as bb_status, bo.biobank_order_id as bbo_id
                   from biobank_stored_sample bss
-                  left outer join biobank_order_identifier boi on bss.biobank_order_identifier = boi.`value`
+                  left outer join biobank_order_identifier boi on bss.biobank_order_identifier = boi.`value` and 
+                        boi.`system` = 'https://www.pmi-ops.org'
                   left outer join biobank_order bo on boi.biobank_order_id = bo.biobank_order_id
-                where boi.`system` = 'https://www.pmi-ops.org'
-                    and bss.biobank_id = :bb_id and bo.biobank_order_id is null;
+                where bss.biobank_id = :bb_id and bo.biobank_order_id is null;
              """
 
         data = {}
@@ -531,7 +531,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             cursor = ro_session.execute(_samples_without_biobank_order_sql, {'bb_id': p_bb_id})
             samples = [s for s in cursor]
             if len(samples):
-                orders.append({'bbo_biobank_order_id': UNKNOWN_BIOBANK_ORDER_ID, 'bbo_samples': list()})
+                orders.append({'bbo_tests_ordered': 0, 'bbo_tests_stored': len(samples),
+                    'bbo_biobank_order_id': UNKNOWN_BIOBANK_ORDER_ID, 'bbo_samples': list()})
                 for row in samples:
                     orders[-1]['bbo_samples'].append(_make_stored_sample_dict_from_row(row, has_order=False))
 
