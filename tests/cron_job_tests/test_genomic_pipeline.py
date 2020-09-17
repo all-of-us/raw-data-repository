@@ -2278,6 +2278,126 @@ class GenomicPipelineTest(BaseTestCase):
 
             self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+    def test_aw1c_manifest_ingestion(self):
+        # Need W3 Manifest Job Run: run_id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.W3_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(3, arr_override=False,
+                                                genomic_workflow_state=GenomicWorkflowState.W3)
+
+        # Setup Test file (same as AW1, reusing test file)
+        cvl_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-1.csv")
+        cvl_manifest_file = cvl_manifest_file.replace('aou_array', 'aou_cvl')
+
+        cvl_manifest_filename = "RDR_AoU_CVL_PKG-1908-218051.csv"
+
+        self._write_cloud_csv(
+            cvl_manifest_filename,
+            cvl_manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=config.GENOMIC_CVL_AW1C_MANIFEST_SUBFOLDER,
+        )
+
+        genomic_pipeline.ingest_aw1c_manifest()  # run_ID = 2
+
+        # Test member was updated
+        member = self.member_dao.get(2)
+
+        self.assertEqual(2, member.cvlAW1CManifestJobRunID)
+        self.assertEqual('aou_cvl', member.genomeType)
+        self.assertEqual(GenomicWorkflowState.AW1C, member.genomicWorkflowState)
+
+        # Test run record is success
+        run_obj = self.job_run_dao.get(2)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_aw1cf_ingestion_workflow(self):
+        # Need W3 Manifest Job Run: run_id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.W3_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(3, arr_override=False,
+                                                genomic_workflow_state=GenomicWorkflowState.W3)
+
+        # Setup Test file (same as AW1F, reusing test file)
+        aw1cf_manifest_file = test_data.open_genomic_set_file("Genomic-AW1F-Workflow-Test-1.csv")
+        aw1cf_manifest_file = aw1cf_manifest_file.replace('aou_wgs', 'aou_cvl')
+
+        aw1cf_manifest_filename = "RDR_AoU_CVL_PKG-1908-218051_FAILURE.csv"
+        self._write_cloud_csv(
+            aw1cf_manifest_filename,
+            aw1cf_manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=config.GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER,
+        )
+
+        # Ingest AW1F
+        genomic_pipeline.ingest_aw1cf_manifest_workflow()
+
+        # Test db updated
+        members = sorted(self.member_dao.get_all(), key=lambda x: x.id)
+        self.assertEqual('aou_cvl', members[1].genomeType)
+        self.assertEqual('damaged', members[1].gcManifestFailureMode)
+        self.assertEqual('Arrived and damaged', members[1].gcManifestFailureDescription)
+        self.assertEqual(GenomicWorkflowState.AW1CF_POST, members[1].genomicWorkflowState)
+
+        # Test file processing queue
+        files_processed = self.file_processed_dao.get_all()
+        self.assertEqual(len(files_processed), 1)
+
+        # Test the end-to-end result code
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
+
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController._send_email_with_sendgrid')
+    def test_aw1cf_alerting_emails(self, send_email_mock):
+        aw1cf_manifest_filename = "RDR_AoU_CVL_PKG-1908-218051_FAILURE.csv"
+
+        subfolder = config.GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER[0]
+
+        self._write_cloud_csv(
+            aw1cf_manifest_filename,
+            ".",
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=subfolder,
+        )
+
+        genomic_pipeline.aw1cf_alerts_workflow()
+
+        # Set up expected SendGrid request
+        email_message = "New AW1CF CVL Failure manifests have been found:\n"
+        email_message += f"\t{_FAKE_GENOMIC_CENTER_BUCKET_A}:\n"
+        email_message += f"\t\t{subfolder}/{aw1cf_manifest_filename}\n"
+
+        expected_email_req = {
+            "personalizations": [
+                {
+                    "to": [{"email": "test-genomic@vumc.org"}],
+                    "subject": "All of Us GC Manifest Failure Alert"
+                }
+            ],
+            "from": {
+                "email": "no-reply@pmi-ops.org"
+            },
+            "content": [
+                {
+                    "type": "text/plain",
+                    "value": email_message
+                }
+            ]
+        }
+
+        send_email_mock.assert_called_with(expected_email_req)
+
+        # Test the end-to-end result code
+        job_run = self.job_run_dao.get(1)
+        self.assertEqual(GenomicJob.AW1CF_ALERTS, job_run.jobId)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, job_run.runResult)
+
     def test_aw4_array_manifest_ingest(self):
         # Create AW3 array manifest job run: id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW3_ARRAY_WORKFLOW,

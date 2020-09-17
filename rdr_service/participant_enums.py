@@ -610,6 +610,9 @@ class GenomicJob(messages.Enum):
     AW4_ARRAY_WORKFLOW = 22
     AW4_WGS_WORKFLOW = 23
     GEM_METRICS_INGEST = 24
+    AW1C_INGEST = 25
+    AW1CF_INGEST = 26
+    AW1CF_ALERTS = 27
 
 
 class GenomicWorkflowState(messages.Enum):

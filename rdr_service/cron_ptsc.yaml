@@ -6,6 +6,8 @@ cron:
 - description: Genomic Pipeline AW0 (Cohort 1) Workflow (Manual)
 - description: Genomic AW1 Workflow (Manual)
 - description: Genomic AW1 Failures Workflow (Manual)
+- description: Genomic AW1C (CVL) Workflow (Manual)
+- description: Genomic AW1CF (CVL) Failures Workflow (Manual)
 - description: Genomic AW2 Workflow (Manual)
 - description: Genomic GEM A1-A2 Workflow (Manual)
 - description: Genomic GEM A2 Workflow (Manual)
