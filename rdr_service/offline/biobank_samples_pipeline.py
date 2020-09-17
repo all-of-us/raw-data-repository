@@ -13,7 +13,6 @@ import pytz
 
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs, open_cloud_file
-from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.code_constants import PPI_SYSTEM, RACE_AIAN_CODE, RACE_QUESTION_CODE
 from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN,\
     BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN
@@ -25,7 +24,7 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import from_client_biobank_id, get_biobank_id_prefix
 from rdr_service.model.participant import Participant
-from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
+from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import BiobankOrderStatus, OrganizationType, get_sample_status_enum_value
 
@@ -97,47 +96,14 @@ def update_bigquery_sync_participants(ts, dao):
 
     with dao.session() as session:
         participants = session.query(Participant.participantId).filter(Participant.lastModified > ts).all()
-
         total_rows = len(participants)
         count = int(math.ceil(float(total_rows) / float(batch_size)))
         logging.info('Biobank: calculated {0} tasks from {1} records with a batch size of {2}.'.
                      format(count, total_rows, batch_size))
 
-        count = 0
-        batch_count = 0
-        batch = list()
-        task = None if config.GAE_PROJECT == 'localhost' else GCPCloudTask()
+        pids = [participant.participantId for participant in participants]
+        dispatch_participant_rebuild_tasks(pids, batch_size=batch_size)
 
-        # queue up a batch of participant ids and send them to be rebuilt.
-        for p in participants:
-
-            batch.append({'pid': p.participantId})
-            count += 1
-
-            if count == batch_size:
-                payload = {'batch': batch}
-
-                if config.GAE_PROJECT == 'localhost':
-                    batch_rebuild_participants_task(payload)
-                else:
-                    task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
-                                        queue='resource-rebuild', quiet=True)
-                batch_count += 1
-                # reset for next batch
-                batch = list()
-                count = 0
-
-        # send last batch if needed.
-        if count:
-            payload = {'batch': batch}
-            batch_count += 1
-            if config.GAE_PROJECT == 'localhost':
-                batch_rebuild_participants_task(payload)
-            else:
-                task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
-                                    queue='resource-rebuild', quiet=True)
-
-        logging.info(f'Biobank: submitted {batch_count} tasks.')
 
 
 def get_last_biobank_sample_file_info(monthly=False):

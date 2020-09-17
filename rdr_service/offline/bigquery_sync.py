@@ -32,6 +32,55 @@ class BigQueryJobError(BaseException):
 # Only perform BQ/Resource operations in these environments.
 _bq_env = ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-sandbox', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']
 
+
+def dispatch_participant_rebuild_tasks(pid_list, batch_size=100):
+    """
+       A utility routine to handle dispatching batched requests for rebuilding participants.  Is also called
+       from other cron job endpoint handlers (e.g., biobank reconciliation and EHR status update jobs)
+       :param pid_list:  List of participant_id values to rebuild
+       :param batch_size:  Size of the batch of participant IDs to include in the rebuild task payload
+    """
+
+    if config.GAE_PROJECT not in _bq_env:
+        logging.warning(f'BigQuery operations not supported in {config.GAE_PROJECT}, skipping.')
+        return
+
+    count = 0
+    batch_count = 0
+    batch = list()
+    task = None if config.GAE_PROJECT == 'localhost' else GCPCloudTask()
+
+    # queue up a batch of participant ids and send them to be rebuilt.
+    for pid in pid_list:
+        batch.append({'pid': pid})
+        count += 1
+
+        if count == batch_size:
+            payload = {'batch': batch}
+
+            if config.GAE_PROJECT == 'localhost':
+                batch_rebuild_participants_task(payload)
+            else:
+                task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                             queue='resource-rebuild', quiet=True)
+            batch_count += 1
+            # reset for next batch
+            batch = list()
+            count = 0
+
+    # send last batch if needed.
+    if count:
+        payload = {'batch': batch}
+        batch_count += 1
+        if config.GAE_PROJECT == 'localhost':
+            batch_rebuild_participants_task(payload)
+        else:
+            task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                         queue='resource-rebuild', quiet=True)
+
+    logging.info(f'Submitted {batch_count} tasks.')
+
+
 def rebuild_bigquery_handler():
     """
     Cron job handler, setup queued tasks to rebuild bigquery data.
@@ -42,7 +91,6 @@ def rebuild_bigquery_handler():
         return
 
     batch_size = 100
-
     ro_dao = BigQuerySyncDao(backup=True)
     with ro_dao.session() as ro_session:
         total_rows = ro_session.query(func.count(Participant.participantId)).first()[0]
@@ -50,43 +98,8 @@ def rebuild_bigquery_handler():
         logging.info('Calculated {0} tasks from {1} records with a batch size of {2}.'.
                      format(count, total_rows, batch_size))
 
-        participants = ro_session.query(Participant.participantId).all()
-
-        count = 0
-        batch_count = 0
-        batch = list()
-        task = None if config.GAE_PROJECT == 'localhost' else GCPCloudTask()
-
-        # queue up a batch of participant ids and send them to be rebuilt.
-        for p in participants:
-
-            batch.append({'pid': p.participantId})
-            count += 1
-
-            if count == batch_size:
-                payload = {'batch': batch}
-
-                if config.GAE_PROJECT == 'localhost':
-                    batch_rebuild_participants_task(payload)
-                else:
-                    task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
-                                        queue='resource-rebuild', quiet=True)
-                batch_count += 1
-                # reset for next batch
-                batch = list()
-                count = 0
-
-        # send last batch if needed.
-        if count:
-            payload = {'batch': batch}
-            batch_count += 1
-            if config.GAE_PROJECT == 'localhost':
-                batch_rebuild_participants_task(payload)
-            else:
-                task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
-                                    queue='resource-rebuild', quiet=True)
-
-        logging.info(f'Submitted {batch_count} tasks.')
+        pids = [row.participantId for row in ro_session.query(Participant.participantId).all()]
+        dispatch_participant_rebuild_tasks(pids, batch_size=batch_size)
 
     #
     # Process tables that don't need to be broken up into smaller tasks.
@@ -111,8 +124,6 @@ def daily_rebuild_bigquery_handler():
         logging.warning(f'BigQuery operations not supported in {config.GAE_PROJECT}, skipping.')
         return
 
-    batch_size = 100
-
     ro_dao = BigQuerySyncDao(backup=True)
     with ro_dao.session() as ro_session:
         # Find all BQ records where enrollment status or withdrawn statuses are different.
@@ -128,42 +139,8 @@ def daily_rebuild_bigquery_handler():
         if not participants:
             logging.info(f'No participants found to rebuild.')
             return
-
-        count = 0
-        batch_count = 0
-        batch = list()
-        task = None if config.GAE_PROJECT == 'localhost' else GCPCloudTask()
-
-        # queue up a batch of participant ids and send them to be rebuilt.
-        for p in participants:
-
-            batch.append({'pid': p.participantId})
-            count += 1
-
-            if count == batch_size:
-                payload = {'batch': batch}
-
-                if config.GAE_PROJECT == 'localhost':
-                    batch_rebuild_participants_task(payload)
-                else:
-                    task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
-                                        queue='resource-rebuild', quiet=True)
-                batch_count += 1
-                # reset for next batch
-                batch = list()
-                count = 0
-
-        # send last batch if needed.
-        if count:
-            payload = {'batch': batch}
-            batch_count += 1
-            if config.GAE_PROJECT == 'localhost':
-                batch_rebuild_participants_task(payload)
-            else:
-                task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
-                                    queue='resource-rebuild', quiet=True)
-
-        logging.info(f'Submitted {batch_count} tasks.')
+        pid_list = [p.participantId for p in participants]
+        dispatch_participant_rebuild_tasks(pid_list, batch_size=100)
 
 
 def insert_batch_into_bq(bq, project_id, dataset, table, batch, dryrun=False):
