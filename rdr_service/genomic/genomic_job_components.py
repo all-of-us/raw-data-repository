@@ -1997,7 +1997,7 @@ class ManifestDefinitionProvider:
             job_run_field='gemA3ManifestJobRunId',
             source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A3),
             destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_WD_{now_formatted}.csv',
+            output_filename=f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_A3_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A3),
             signal=self.DEFAULT_SIGNAL,
         )
