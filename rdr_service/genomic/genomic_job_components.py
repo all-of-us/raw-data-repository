@@ -9,6 +9,7 @@ import re
 import pytz
 from collections import deque, namedtuple
 from copy import deepcopy
+from dateutil.parser import parse
 import sqlalchemy
 
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
@@ -348,7 +349,7 @@ class GenomicFileIngester:
                 member.gemPass = row['success']
 
                 member.gemA2ManifestJobRunId = self.job_run_id
-                member.gemDateOfImport = row['date_of_import']
+                member.gemDateOfImport = parse(row['date_of_import'])
 
                 _signal = 'a2-gem-pass' if member.gemPass.lower() == 'y' else 'a2-gem-fail'
 
