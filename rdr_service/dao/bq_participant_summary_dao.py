@@ -861,7 +861,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 if bboi['bbs_dna_test'] == 1:
                     # See: biobank_order_dao.py:_set_participant_summary_fields()
                     #      biobank_order_dao.py:_get_order_status_and_time()
-                    ordered_time = min(ordered_time, bboi['bbs_finalized'] or bboi['bbs_processed'] or
+                    if ordered_time == datetime.datetime.max:
+                        ordered_time = (bboi['bbs_finalized'] or bboi['bbs_processed'] or
                                        bboi['bbs_collected'] or bbo['bbo_created'] or datetime.datetime.max)
                     # See: participant_summary_dao.py:calculate_max_core_sample_time() and
                     #       _participant_summary_dao.py:126
@@ -898,7 +899,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         # This logic [DA-769] added to RDR on 10/31/2018, but the backfill [DA-784] only applied this logic where
         # the enrollment core stored and ordered field values were null. I think its impossible to fully recreate
-        # the timestamp values in the RDR enrollment core ordered and stored fields here. Example PID: 464786080.
+        # the timestamp values in the RDR enrollment core ordered and stored fields here. For example see: [PDR-114].
         # See: participant_summary_dao.py:calculate_max_core_sample_time()
         # If we have ordered or stored sample times, ensure that it is not before the alt_time value.
         alt_time = max(

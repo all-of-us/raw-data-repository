@@ -861,7 +861,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
             for bboi in bbo['samples']:
                 if bboi['dna_test'] == 1:
-                    ordered_time = min(ordered_time, bboi['finalized'] or datetime.datetime.max)
+                    # See: biobank_order_dao.py:_set_participant_summary_fields()
+                    #      biobank_order_dao.py:_get_order_status_and_time()
+                    if ordered_time == datetime.datetime.max:
+                        ordered_time = (bboi['bbs_finalized'] or bboi['bbs_processed'] or
+                                        bboi['bbs_collected'] or bbo['bbo_created'] or datetime.datetime.max)
                     # See: participant_summary_dao.py:calculate_max_core_sample_time() and
                     #       _participant_summary_dao.py:126
                     sst = stored_sample_times[bboi['test']]
@@ -884,13 +888,21 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         if sstl:
             stored_time = min(sstl)
 
+        ordered_time = ordered_time if ordered_time != datetime.datetime.max else None
+        stored_time = stored_time if stored_time != datetime.datetime.max else None
+
         data = {
-            'enrollment_core_ordered': ordered_time if ordered_time != datetime.datetime.max else None,
-            'enrollment_core_stored': stored_time if stored_time != datetime.datetime.max else None
+            'enrollment_core_ordered': ordered_time,
+            'enrollment_core_stored': stored_time
         }
-        if ordered_time == datetime.datetime.max and stored_time == datetime.datetime.max:
+
+        if not ordered_time and not stored_time:
             return data
 
+        # This logic [DA-769] added to RDR on 10/31/2018, but the backfill [DA-784] only applied this logic where
+        # the enrollment core stored and ordered field values were null. I think its impossible to fully recreate
+        # the timestamp values in the RDR enrollment core ordered and stored fields here. For example see: [PDR-114].
+        # See: participant_summary_dao.py:calculate_max_core_sample_time()
         # If we have ordered or stored sample times, ensure that it is not before the alt_time value.
         alt_time = max(
             summary.get('enrollment_member', datetime.datetime.min),
@@ -900,9 +912,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     else datetime.datetime.min
         )
 
-        if data['enrollment_core_ordered']:
+        if ordered_time:
             data['enrollment_core_ordered'] = max(ordered_time, alt_time)
-        if data['enrollment_core_stored']:
+        if stored_time:
             data['enrollment_core_stored'] = max(stored_time, alt_time)
 
         return data
