@@ -3132,11 +3132,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
         summary = ps_dao.get(participant_id)
         summary.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
         summary.suspensionStatus = SuspensionStatus.NOT_SUSPENDED
-        summary.enrollmentStatus = EnrollmentStatus.FULL_PARTICIPANT
         summary.consentForStudyEnrollment = 1
-        summary.consentForStudyEnrollmentAuthored = TIME_1
-        summary.consentForElectronicHealthRecords = 1
-        summary.consentForElectronicHealthRecordsAuthored = TIME_2
+        summary.consentForStudyEnrollmentFirstYesAuthored = TIME_1
+        summary.consentForElectronicHealthRecordsFirstYesAuthored = TIME_2
         summary.questionnaireOnTheBasics = QuestionnaireStatus.SUBMITTED
         summary.questionnaireOnOverallHealth = QuestionnaireStatus.SUBMITTED
         summary.questionnaireOnLifestyle = QuestionnaireStatus.SUBMITTED

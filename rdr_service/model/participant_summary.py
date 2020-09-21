@@ -74,8 +74,7 @@ _COMPUTE_RETENTION_ELIGIBLE_SQL = """
     CASE WHEN
       consent_for_study_enrollment = 1
       AND (
-        consent_for_electronic_health_records = 1 OR
-        ehr_consent_expire_status = 2 OR
+        consent_for_electronic_health_records_first_yes_authored is not null OR
         consent_for_dv_electronic_health_records_sharing = 1
       )
       AND questionnaire_on_the_basics = 1
