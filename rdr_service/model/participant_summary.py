@@ -73,7 +73,11 @@ SUSPENDED_OR_DECEASED_PARTICIPANT_FIELDS = ["zipCode", "city", "streetAddress", 
 _COMPUTE_RETENTION_ELIGIBLE_SQL = """
     CASE WHEN
       consent_for_study_enrollment = 1
-      AND (consent_for_electronic_health_records = 1 OR consent_for_dv_electronic_health_records_sharing = 1)
+      AND (
+        consent_for_electronic_health_records = 1 OR
+        ehr_consent_expire_status = 2 OR
+        consent_for_dv_electronic_health_records_sharing = 1
+      )
       AND questionnaire_on_the_basics = 1
       AND questionnaire_on_overall_health = 1
       AND questionnaire_on_lifestyle = 1
@@ -94,12 +98,16 @@ _COMPUTE_RETENTION_ELIGIBLE_TIME_SQL = """
           COALESCE(sample_status_1ed10_time, sample_status_2ed10_time, sample_status_1ed04_time,
                  sample_status_1sal_time, sample_status_1sal2_time, 0) != 0
         THEN GREATEST(
-            GREATEST (consent_for_study_enrollment_authored,
-             questionnaire_on_the_basics_authored,
-             questionnaire_on_overall_health_authored,
-             questionnaire_on_lifestyle_authored,
-             COALESCE(consent_for_electronic_health_records_authored, consent_for_study_enrollment_authored),
-             COALESCE(consent_for_dv_electronic_health_records_sharing_authored, consent_for_study_enrollment_authored)
+            GREATEST(consent_for_study_enrollment_first_yes_authored,
+             COALESCE(baseline_questionnaires_first_complete_authored,
+                 GREATEST(questionnaire_on_the_basics_authored,
+                          questionnaire_on_overall_health_authored,
+                          questionnaire_on_lifestyle_authored)
+             ),
+             COALESCE(consent_for_electronic_health_records_first_yes_authored,
+             consent_for_study_enrollment_first_yes_authored),
+             COALESCE(consent_for_dv_electronic_health_records_sharing_authored,
+             consent_for_study_enrollment_first_yes_authored)
             ),
             LEAST(COALESCE(sample_status_1ed10_time, '9999-01-01'),
                 COALESCE(sample_status_2ed10_time, '9999-01-01'),
@@ -605,6 +613,9 @@ class ParticipantSummary(Base):
 
     questionnaireOnTheBasicsAuthored = Column("questionnaire_on_the_basics_authored", UTCDateTime)
     "The UTC Date time of when the participant completed the basics questionnaire."
+
+    baselineQuestionnairesFirstCompleteAuthored = Column("baseline_questionnaires_first_complete_authored", UTCDateTime)
+    "The UTC Date time of when the participant first time completed all the baseline questionnaire."
 
     questionnaireOnHealthcareAccess = Column(
         "questionnaire_on_healthcare_access", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET

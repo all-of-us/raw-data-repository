@@ -3140,16 +3140,11 @@ class ParticipantSummaryApiTest(BaseTestCase):
         summary.questionnaireOnTheBasics = QuestionnaireStatus.SUBMITTED
         summary.questionnaireOnOverallHealth = QuestionnaireStatus.SUBMITTED
         summary.questionnaireOnLifestyle = QuestionnaireStatus.SUBMITTED
-        summary.questionnaireOnTheBasicsTime = TIME_3
-        summary.questionnaireOnLifestyleTime = TIME_3
-        summary.questionnaireOnOverallHealthTime = TIME_3
         summary.sampleOrderStatus1ED04Time = TIME_4
         summary.sampleOrderStatus1SALTime = TIME_4
         summary.sampleStatus1ED04Time = TIME_4
         summary.sampleStatus1SALTime = TIME_4
-        summary.questionnaireOnLifestyleAuthored = TIME_3
-        summary.questionnaireOnTheBasicsAuthored = TIME_3
-        summary.questionnaireOnOverallHealthAuthored = TIME_3
+        summary.baselineQuestionnairesFirstCompleteAuthored = TIME_3
         summary.samplesToIsolateDNA = SampleStatus.RECEIVED
         summary.deceasedStatus = DeceasedStatus.UNSET
         ps_dao.update(summary)

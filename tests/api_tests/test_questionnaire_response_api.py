@@ -13,7 +13,8 @@ from rdr_service import config
 from rdr_service.code_constants import PPI_EXTRA_SYSTEM, CONSENT_PERMISSION_YES_CODE, PPI_SYSTEM, \
     CONSENT_PERMISSION_NO_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE, GENDER_TRANSGENDER_CODE
 from rdr_service.dao.code_dao import CodeDao
-from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantRaceAnswersDao
+from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantRaceAnswersDao, \
+    ParticipantSummaryDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
 from rdr_service.model.code import Code
@@ -157,6 +158,33 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         # created should remain the same as the first submission.
         self.assertEqual(parse(summary["consentForStudyEnrollmentTime"]), created.replace(tzinfo=None))
         self.assertEqual(parse(summary["consentForStudyEnrollmentAuthored"]), authored_1.replace(tzinfo=None))
+
+    def test_update_baseline_questionnaires_first_complete_authored(self):
+        participant_id = self.create_participant()
+        with FakeClock(TIME_1):
+            self.send_consent(participant_id, authored=TIME_1)
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(summary.get('baselineQuestionnairesFirstCompleteAuthored'), None)
+
+        summary_dao = ParticipantSummaryDao()
+        summary_obj = summary_dao.get(participant_id[1:])
+        summary_obj.questionnaireOnLifestyleAuthored = TIME_1
+        summary_obj.questionnaireOnOverallHealthAuthored = TIME_2
+        summary_dao.update(summary_obj)
+
+        questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
+        with open(data_path("questionnaire_the_basics_resp.json")) as f:
+            resource = json.load(f)
+        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
+        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
+            questionnaire_id=questionnaire_id
+        )
+        with FakeClock(TIME_3):
+            resource["authored"] = TIME_3.isoformat()
+            self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(summary.get('baselineQuestionnairesFirstCompleteAuthored'), TIME_3.isoformat())
 
     def test_ehr_consent_expired(self):
         participant_id = self.create_participant()
