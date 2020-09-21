@@ -14,6 +14,13 @@ class DeceasedReportApiMixin:
 
 
 class DeceasedReportApi(DeceasedReportApiMixin, BaseApi):
+    """
+    If a participant passes away, the deceased report API is how the RDR is updated with the relevant information.
+
+    Endpoints are available for creating and reviewing deceased reports, as well as retrieving lists of reports for
+    one or more participants.
+    """
+
     @auth_required(PTC_AND_HEALTHPRO)
     def list(self, participant_id=None):
         search_kwargs = {key: value for key, value in request.args.items()}

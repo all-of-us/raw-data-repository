@@ -301,3 +301,25 @@ An edited biobank order (cancel/restore/amend) has a payload as follows.
     },
     "status": "cancelled"
   }
+
+
+Deceased Reports
+------------------------------------------------------------
+.. autoclass:: rdr_service.api.deceased_report_api.DeceasedReportApi
+
+
+Creating and reviewing a deceased report
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. autofunction:: rdr_service.dao.deceased_report_dao.DeceasedReportDao.from_client_json
+
+
+Retrieving deceased reports
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. autofunction:: rdr_service.dao.deceased_report_dao.DeceasedReportDao.load_reports
+
+.. autofunction:: rdr_service.dao.deceased_report_dao.DeceasedReportDao.to_client_json
+
+
+Effects on Participant Summary
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. autofunction:: rdr_service.dao.deceased_report_dao.DeceasedReportDao._update_participant_summary

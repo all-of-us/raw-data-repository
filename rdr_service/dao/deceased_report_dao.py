@@ -149,6 +149,23 @@ class DeceasedReportDao(UpdatableDao):
 
     @staticmethod
     def _update_participant_summary(session, report: DeceasedReport):
+        """
+        These are the three fields from the Participant Summary that are affected by deceased reports,
+        and explanations of what they will provide and when:
+
+        * deceasedStatus
+            Will be UNSET for any participants that have no deceased reports (or only reports that
+            have been denied). Is set to PENDING when a particpant has a deceased report with a status of *preliminary*.
+            And will be APPROVED for participants that have a *final* deceased report.
+        * deceasedAuthored
+            The most recent **issued** date received for an active deceased report. So for participants with a PENDING
+            deceased status this will be the time that an external user created a deceased report for the participant.
+            And for participants with an APPROVED status, this will be the time that the report was finalized.
+        * dateOfDeath
+            Date that the participant passed away if it was provided when creating or reviewing the report (using the
+            date from the reviewing request if both requests provided the field).
+        """
+
         participant_summary = session.query(ParticipantSummary).filter(
             ParticipantSummary.participantId == report.participantId
         ).one_or_none()
@@ -176,6 +193,137 @@ class DeceasedReportDao(UpdatableDao):
 
     # pylint: disable=unused-argument
     def from_client_json(self, resource, participant_id, id_=None, expected_version=None, client_id=None):
+        """
+        The API takes deceased report data structured as a FHIR Specification 4.0 Observation
+        (http://hl7.org/fhir/observation.html). Listed below is an outline of each field, what it means for a deceased
+        report, and any requiremnts for the field.
+
+        .. code-block:: javascript
+
+            {
+                // For creating a deceased report, the status must be given as preliminary
+                // REQUIRED
+                status: "preliminary",
+
+                // CodeableConcept structure defining the observation as a deceased report for the RDR API
+                // REQUIRED
+                code: {
+                    text: "DeceasedReport”
+                },
+
+                // The date of death of the participant
+                // OPTIONAL
+                effectiveDateTime: "2020-01-01",
+
+                // Details for how the user creating the report has become aware of the participant's deceased status
+                // REQUIRED
+                encounter: {
+                    // Must be one of the following: EHR, ATTEMPTED_CONTACT, NEXT_KIN_HPO, NEXT_KIN_SUPPORT, OTHER
+                    reference: "OTHER",
+
+                    // Required if reference is given as OTHER
+                    display: "Some other reason"
+                },
+
+                // The user that has created the deceased report
+                // REQUIRED
+                performer: [
+                    {
+                        type: "https://www.pmi-ops.org/healthpro-username",
+                        reference: "user.name@pmi-ops.org"
+                    }
+                ],
+
+                // The timestamp of when the user created the report
+                // REQUIRED
+                issued: "2020-01-31T08:34:12Z",  // assumed to be UTC if no timezone information is provided
+
+                // Text field for providing the cause of death
+                // OPTIONAL
+                valueString: "Heart disease",
+
+                // Array providing a single extension with a HumanName value providing information on the person
+                //  that has reported that the participant has passed away
+                // REQUIRED unless the encounter specifies EHR or OTHER
+                extension: [
+                    {
+                        url: "https://www.pmi-ops.org/deceased-reporter",
+                        valueHumanName: {
+                            text: "John Doe",
+                            extension: [
+                                {
+                                    // REQUIRED
+                                    url: "http://hl7.org/fhir/ValueSet/relatedperson-relationshiptype",
+                                    valueCode: "SIB"
+                                },
+                                {
+                                    // OPTIONAL
+                                    url: "https://www.pmi-ops.org/email-address",
+                                    valueString: "jdoe@yahoo.com"
+                                },
+                                {
+                                    // OPTIONAL
+                                    url: "https://www.pmi-ops.org/phone-number",
+                                    valueString: "123-456-7890"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+
+        Any participants that are are not paired to an HPO are automatically finalized,
+        otherwise the reports remain in the *preliminary* state until they are reviewed by an additional user.
+        A review request can set a report as *final* or *cancelled*. Here's a description of the relevant fields
+        for reviewing a report:
+
+        .. code-block:: javascript
+
+            {
+                // Review status for the deceased report. Can be "final" to finalize a report, or "cancelled" to deny it
+                // REQUIRED
+                status: "final",
+
+                // REQUIRED
+                code: {
+                    text: "DeceasedReport”
+                },
+
+                // Information for the user that has reviewed the report.
+                // REQUIRED
+                performer: [
+                    {
+                        type: "https://www.pmi-ops.org/healthpro-username",
+                        reference: "user.name@pmi-ops.org"
+                    }
+                ],
+
+                // The date of death of the participant. Will replace what is currently on the report.
+                // OPTIONAL
+                effectiveDateTime: "2020-01-01",
+
+                // The timestamp of when the user reviewed the report
+                issued: "2020-01-31T08:34:12Z"  // assumed to be UTC if no timezone information is provided
+
+                // Additional information for defining why the report is cancelled if cancelling the report
+                // REQUIRED if providing a status of "cancelled"
+                extension: [
+                    {
+                        url: "https://www.pmi-ops.org/observation-denial-reason",
+                        valueReference: {
+                            // Must be one of the following: INCORRECT_PARTICIPANT, MARKED_IN_ERROR,
+                            //  INSUFFICIENT_INFORMATION, OTHER
+                            reference: "OTHER",
+
+                            // Text description of the reason for cancelling
+                            // REQUIRED if reference gives OTHER
+                            display: "Another reason for denying the report"
+                        }
+                    }
+                ]
+            }
+        """
+
         try:
             observation = Observation(resource)
         except FHIRValidationError:
@@ -256,6 +404,58 @@ class DeceasedReportDao(UpdatableDao):
         observation.performer.append(performer)
 
     def to_client_json(self, model: DeceasedReport):
+        """
+        The FHIR Observation fields used for the deceased reports coming from the API are the same as for structures
+        sent to the API when creating and reviewing reports with the exceptions outlined below:
+
+        * Participant ID
+            The *subject* field will be populated with the ID of deceased report's participant.
+
+            .. code-block:: javascript
+
+                {
+                    ...
+                    "subject": {
+                        "reference": "P000000000"
+                    },
+                    ...
+                }
+
+        * Creator and reviewer
+            For reviewed reports, the *performer* array will contain both the author of the report and the reviewer
+            along with the dates that they took their actions.
+
+            .. code-block:: javascript
+
+                {
+                    ...
+                    "performer": [
+                        {
+                            "type": "https://www.pmi-ops.org/healthpro-username",
+                            "reference": "user.name@pmi-ops.org"
+                            "extension": [
+                                {
+                                    "url": "https://www.pmi-ops.org/observation/authored",
+                                    "valueDateTime": "2020-01-31T08:34:12Z"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "https://www.pmi-ops.org/healthpro-username",
+                            "reference": "another.user@pmi-ops.org"
+                            "extension": [
+                                {
+                                    "url": "https://www.pmi-ops.org/observation/reviewed",
+                                    "valueDateTime": "2020-02-05T09:00:27Z"
+                                }
+                            ]
+                        }
+                    ],
+                    ...
+                }
+
+        """
+
         status_map = {
             DeceasedReportStatus.PENDING: 'preliminary',
             DeceasedReportStatus.APPROVED: 'final',
@@ -371,6 +571,12 @@ class DeceasedReportDao(UpdatableDao):
         return None
 
     def load_reports(self, participant_id=None, org_id=None, status=None):
+        """
+        Deceased reports can be listed for for individual participants, or all of the reports matching a given status
+        (PENDING, APPROVED, OR DENIED) and/or organization id (such as UNSET). Reports will be listed by date of the
+        last action taken on them (authored or reviewed) with the most recent reports appearing at the top.
+        """
+
         with self.session() as session:
             # Order reports by newest to oldest based on last date a user modified it
             query = session.query(DeceasedReport).order_by(
