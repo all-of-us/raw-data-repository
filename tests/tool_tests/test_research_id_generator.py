@@ -36,13 +36,13 @@ class FinalizeOrdersTest(BaseTestCase):
         p3 = Participant(participantId=111, biobankId=444)
         self.dao.insert(p3)
         input_data = [{
-            'participant_id': 1,
+            'participant_id': '1',
             'research_id': 2
         }, {
-            'participant_id': 11,
+            'participant_id': '11',
             'research_id': 22
         }, {
-            'participant_id': 111,
+            'participant_id': '111',
             'research_id': 222
         }]
         self.run_tool(input_data, 'import')
@@ -60,10 +60,10 @@ class FinalizeOrdersTest(BaseTestCase):
         p2 = Participant(participantId=11, biobankId=44)
         self.dao.insert(p2)
         input_data = [{
-            'participant_id': 1,
+            'participant_id': '1',
             'research_id': 2
         }, {
-            'participant_id': 11,
+            'participant_id': '11',
             'research_id': 2
         }]
         with self.assertRaises(IntegrityError):
