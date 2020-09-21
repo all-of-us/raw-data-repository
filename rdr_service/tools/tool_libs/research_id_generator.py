@@ -52,7 +52,7 @@ class ResearchIdGeneratorClass(object):
         count = 0
         for participant in participants:
             if participant.researchId is None:
-                participant.researchId = pid_rid_mapping.get(participant.participantId)
+                participant.researchId = pid_rid_mapping.get(str(participant.participantId))
                 count = count + 1
         return count
 
