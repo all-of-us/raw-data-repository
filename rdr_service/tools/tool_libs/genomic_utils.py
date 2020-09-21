@@ -586,6 +586,59 @@ class ManualSampleClass(GenomicManifestBase):
         return 0
 
 
+class JobRunResult(GenomicManifestBase):
+    """Class to set a genomic_job_run.run_result to a particular status."""
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(JobRunResult, self).__init__(args, gcp_env)
+        self.valid_job_results = GenomicSubProcessResult.names()
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicJobRunDao()
+
+        # Check that supplied result is valid
+        if self.args.result not in self.valid_job_results:
+            _logger.error(f'Invalid job result. must be one of {self.valid_job_results}')
+            return 1
+
+        # Get the result to update to
+        new_result = GenomicSubProcessResult.lookup_by_name(self.args.result)
+
+        job_run = self.dao.get(self.args.id)
+
+        if job_run is None:
+            _logger.error(f'Job Run ID not found: {self.args.id}')
+            return 1
+
+        # Don't actually update the job_run
+        if self.args.dryrun:
+            _logger.warning(f'Would update Job Run ID {self.args.id}:')
+            _logger.warning(f'    {job_run.runResult} -> {self.args.result}')
+
+            if self.args.message:
+                _logger.warning(f'    {job_run.resultMessage} -> {self.args.message}')
+
+        else:
+            _logger.warning(f'Updating Job Run ID {self.args.id}:')
+            _logger.warning(f'    {job_run.runResult} -> {self.args.result}')
+
+            if self.args.message:
+                _logger.warning(f'    {job_run.resultMessage} -> {self.args.message}')
+                job_run.resultMessage = self.args.message
+
+            job_run.runResult = new_result
+
+            self.dao.update(job_run)
+
+        return 0
+
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -634,6 +687,16 @@ def run():
                                        default=None, required=True)  # noqa
     manual_sample_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
+    # Update Job Run ID to result
+    job_run_parser = subparser.add_parser("job-run-result")
+    job_run_parser.add_argument("--id", help="genomic_job_run.id to update",
+                                      default=None, required=True)  # noqa
+    job_run_parser.add_argument("--result", help="genomic_job_run.run_result to update to",
+                                      default=None, required=True)  # noqa
+    job_run_parser.add_argument("--message", help="genomic_job_run.result_message to update to (optional)",
+                                      default=None, required=False)  # noqa
+    job_run_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -655,6 +718,10 @@ def run():
 
         elif args.util == 'manual-sample':
             process = ManualSampleClass(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.util == 'job-run-result':
+            process = JobRunResult(args, gcp_env)
             exit_code = process.run()
 
         else:
