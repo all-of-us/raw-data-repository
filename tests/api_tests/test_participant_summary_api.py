@@ -20,7 +20,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
 from rdr_service.model.hpo import HPO
 from rdr_service.participant_enums import (ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType, TEST_HPO_ID,
-                                           TEST_HPO_NAME, EnrollmentStatus, WithdrawalStatus, SuspensionStatus,
+                                           TEST_HPO_NAME, WithdrawalStatus, SuspensionStatus,
                                            SampleStatus, DeceasedStatus, QuestionnaireStatus)
 from tests.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id
 from tests.helpers.unittest_base import BaseTestCase
