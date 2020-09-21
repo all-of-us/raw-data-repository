@@ -518,14 +518,9 @@ class GenomicSetMemberDao(UpdatableDao):
                     GenomicWorkflowState.A2
                 )) &
                 (
-                    (
-                        (ParticipantSummary.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED) &
-                        (ParticipantSummary.consentForGenomicsRORAuthored > _date)
-                    ) |
-                    (
-                        (ParticipantSummary.consentForStudyEnrollment != QuestionnaireStatus.SUBMITTED) &
-                        (ParticipantSummary.consentForStudyEnrollmentAuthored > _date)
-                    )
+                    (ParticipantSummary.consentForStudyEnrollment != QuestionnaireStatus.SUBMITTED) &
+                    (ParticipantSummary.consentForStudyEnrollmentAuthored > _date) &
+                    (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NO_USE)
                 )
             ).all()
         return members

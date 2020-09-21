@@ -9,6 +9,7 @@ import re
 import pytz
 from collections import deque, namedtuple
 from copy import deepcopy
+from dateutil.parser import parse
 import sqlalchemy
 
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
@@ -348,7 +349,7 @@ class GenomicFileIngester:
                 member.gemPass = row['success']
 
                 member.gemA2ManifestJobRunId = self.job_run_id
-                member.gemDateOfImport = row['date_of_import']
+                member.gemDateOfImport = parse(row['date_of_import'])
 
                 _signal = 'a2-gem-pass' if member.gemPass.lower() == 'y' else 'a2-gem-fail'
 
@@ -1997,7 +1998,7 @@ class ManifestDefinitionProvider:
             job_run_field='gemA3ManifestJobRunId',
             source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A3),
             destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_WD_{now_formatted}.csv',
+            output_filename=f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_A3_{now_formatted}.csv',
             columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A3),
             signal=self.DEFAULT_SIGNAL,
         )
