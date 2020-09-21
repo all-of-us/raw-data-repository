@@ -15,14 +15,16 @@ import csv
 import pytz
 
 from rdr_service import clock, config
-from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_set_update
+from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_set_update, \
+    bq_genomic_job_run_update
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet
-from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update
+from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
+    genomic_job_run_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -635,6 +637,10 @@ class JobRunResult(GenomicManifestBase):
             job_run.runResult = new_result
 
             self.dao.update(job_run)
+
+            # Update run for PDR
+            bq_genomic_job_run_update(job_run.id)
+            genomic_job_run_update(job_run.id)
 
         return 0
 
