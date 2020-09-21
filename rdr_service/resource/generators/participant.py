@@ -864,8 +864,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     # See: biobank_order_dao.py:_set_participant_summary_fields()
                     #      biobank_order_dao.py:_get_order_status_and_time()
                     if ordered_time == datetime.datetime.max:
-                        ordered_time = (bboi['bbs_finalized'] or bboi['bbs_processed'] or
-                                        bboi['bbs_collected'] or bbo['bbo_created'] or datetime.datetime.max)
+                        ordered_time = (bboi['finalized'] or bboi['processed'] or
+                                        bboi['collected'] or bbo['created'] or datetime.datetime.max)
                     # See: participant_summary_dao.py:calculate_max_core_sample_time() and
                     #       _participant_summary_dao.py:126
                     sst = stored_sample_times[bboi['test']]
