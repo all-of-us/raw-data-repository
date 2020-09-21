@@ -193,3 +193,15 @@ class QuestionnaireDaoTest(BaseTestCase):
 
         self.assertEqual(2, self.dao.get_latest_questionnaire_with_concept(self.CODE_1.codeId).questionnaireId)
         self.assertEqual(1, self.dao.get_latest_questionnaire_with_concept(self.CODE_2.codeId).questionnaireId)
+
+    def test_parsing_external_id(self):
+        model = self.dao.from_client_json({
+            "identifier": [
+                {"value": "FORM_1A"}
+            ],
+            "group": {},
+            "status": "published",
+            "version": "V1"
+        })
+
+        self.assertEqual('FORM_1A', model.externalId)
