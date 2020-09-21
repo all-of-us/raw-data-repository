@@ -92,6 +92,22 @@ def count_completed_ppi_modules(participant_summary):
     )
 
 
+def get_first_completed_baseline_time(participant_summary):
+    baseline_authored = getattr(participant_summary, 'baselineQuestionnairesFirstCompleteAuthored')
+    if baseline_authored:
+        return baseline_authored
+    baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
+    baseline_time = datetime(1000, 1, 1)
+    for field in baseline_ppi_module_fields:
+        field_value = getattr(participant_summary, field + "Authored")
+        if not field_value:
+            return None
+        else:
+            if field_value > baseline_time:
+                baseline_time = field_value
+    return baseline_time
+
+
 class QuestionnaireResponseDao(BaseDao):
     def __init__(self):
         super(QuestionnaireResponseDao, self).__init__(QuestionnaireResponse)
@@ -504,6 +520,9 @@ class QuestionnaireResponseDao(BaseDao):
 
         if module_changed:
             participant_summary.numCompletedBaselinePPIModules = count_completed_baseline_ppi_modules(
+                participant_summary
+            )
+            participant_summary.baselineQuestionnairesFirstCompleteAuthored = get_first_completed_baseline_time(
                 participant_summary
             )
             participant_summary.numCompletedPPIModules = count_completed_ppi_modules(participant_summary)
