@@ -207,7 +207,8 @@ def sync_bigquery_handler(dryrun=False):
 
     with ro_dao.session() as ro_session:
         tables = ro_session.query(BigQuerySync.projectId, BigQuerySync.datasetId, BigQuerySync.tableId). \
-            distinct(BigQuerySync.projectId, BigQuerySync.datasetId, BigQuerySync.tableId).all()
+            distinct(BigQuerySync.projectId, BigQuerySync.datasetId, BigQuerySync.tableId). \
+            filter(BigQuerySync.projectId != None).all()
 
         # don't always process the list in the same order so we don't get stuck processing the same table each run.
         for table_row in tables:
