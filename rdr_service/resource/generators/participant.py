@@ -116,22 +116,17 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         if not self.ro_dao:
             self.ro_dao = ResourceDataDao(backup=True)
 
-        def prep_value(val):
-            """ Prep value for SQL string """
-            if isinstance(val, str):
-                return f"'{val}'"
-            if isinstance(val, (datetime.datetime, datetime.date)):
-                return f"'{val.isoformat()}'"
-            return val
+        sql_json_set_values = ', '.join([f"'$.{k}', :p_{k}" for k, v in data.items()])
 
-        sql_json_set_values = ', '.join([f"'$.{k}', {prep_value(v)}" for k, v in data.items()])
+        args = {'pid': p_id, 'type_uid': SchemaID.participant.value}
+        for k, v in data.items():
+            args[f'p_{k}'] = v
 
         sql = f"""
             update resource_data rd inner join resource_type rt on rd.resource_type_id = rt.id 
               set rd.resource = json_set(rd.resource, {sql_json_set_values}) 
               where rd.resource_pk_id = :pid and rt.type_uid = :type_uid
         """
-        args = {'pid': p_id, 'type_uid': SchemaID.participant.value}
 
         with self.ro_dao.session() as session:
             session.execute(sql, args)

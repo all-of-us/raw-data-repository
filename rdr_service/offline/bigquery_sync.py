@@ -55,9 +55,8 @@ def dispatch_participant_rebuild_tasks(pid_list, batch_size=100):
         if isinstance(pid_data, (int, str)):
             batch.append({'pid': pid_data})
         elif isinstance(pid_data, dict):
-            payload = {'pid': pid_data['pid'], 'patch': pid_data}
-            payload['patch'].pop('pid')
-            batch.append(payload)
+            # payload = {'pid': pid_data['pid'], 'patch': pid_data['patch']}
+            batch.append(pid_data)
 
         count += 1
 

@@ -355,6 +355,122 @@ class GenomicResourceClass(object):
 
         return 1
 
+
+class EHRReceiptClass(object):
+    """  """
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        """
+        :param args: command line arguments.
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        """
+        self.args = args
+        self.gcp_env = gcp_env
+
+    def update_batch(self, records):
+        """
+        Submit batches of pids to Cloud Tasks for rebuild.
+        """
+        import gc
+        batch_size = 100
+
+        total_rows = len(records)
+        batch_total = int(math.ceil(float(total_rows) / float(batch_size)))
+        _logger.info('Calculated {0} tasks from {1} ehr records with a batch size of {2}.'.
+                     format(batch_total, total_rows, batch_size))
+
+        count = 0
+        batch_count = 0
+        batch = list()
+        task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
+
+        from rdr_service.participant_enums import EhrStatus
+
+        # queue up a batch of participant ids and send them to be rebuilt.
+        for row in records:
+
+            ehr_status = EhrStatus(row.ehr_status)
+
+            batch.append({
+                'pid': row.participant_id,
+                'patch': {
+                    'ehr_status': str(ehr_status),
+                    'ehr_status_id': int(ehr_status),
+                    'ehr_receipt': row.ehr_receipt_time.isoformat() if row.ehr_receipt_time else None,
+                    'ehr_update': row.ehr_update_time.isoformat() if row.ehr_update_time else None
+                }
+            })
+
+            count += 1
+
+            if count == batch_size:
+                payload = {'batch': batch}
+
+                if self.gcp_env.project == 'localhost':
+                    batch_rebuild_participants_task(payload)
+                else:
+                    task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                                        queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
+
+                batch_count += 1
+                # reset for next batch
+                batch = list()
+                count = 0
+                if not self.args.debug:
+                    print_progress_bar(
+                        batch_count, batch_total, prefix="{0}/{1}:".format(batch_count, batch_total), suffix="complete"
+                    )
+
+                # Collect the garbage after so long to prevent hitting open file limit.
+                if batch_count % 250 == 0:
+                    gc.collect()
+
+        # send last batch if needed.
+        if count:
+            payload = {'batch': batch}
+            batch_count += 1
+            if self.gcp_env.project == 'localhost':
+                batch_rebuild_participants_task(payload)
+            else:
+                task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
+                                    queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
+
+            if not self.args.debug:
+                print_progress_bar(
+                    batch_count, batch_total, prefix="{0}/{1}:".format(batch_count, batch_total), suffix="complete"
+                )
+
+        logging.info(f'Submitted {batch_count} tasks.')
+
+        return 0
+
+    def run(self):
+
+        clr = self.gcp_env.terminal_colors
+
+        self.gcp_env.activate_sql_proxy()
+        _logger.info('')
+
+        _logger.info(clr.fmt('\nUpdate Participant Summary Records with RDR EHR receipt data:',
+                             clr.custom_fg_color(156)))
+        _logger.info('')
+        _logger.info('=' * 90)
+        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+
+        dao = ResourceDataDao()
+
+        with dao.session() as session:
+
+            sql = 'select participant_id, ehr_status, ehr_receipt_time, ehr_update_time from participant_summary'
+            cursor = session.execute(sql)
+            records = [row for row in cursor]
+
+            _logger.info('  Total Records         : {0}'.format(clr.fmt(len(records))))
+            _logger.info('  Batch Size            : 100')
+
+            self.update_batch(records)
+
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -383,7 +499,7 @@ def run():
                                 action="store_true")  # noqa
 
 
-    genomic_parser = subparser.add_parser("genomic")
+    genomic_parser = subparser.add_parser("genomic", )
     genomic_parser.add_argument("--id", help="rebuild single genomic table id", type=int, default=None)  # noqa
     genomic_parser.add_argument("--all-ids", help="rebuild all records from table", default=False,
                          action="store_true")  # noqa
@@ -393,6 +509,11 @@ def run():
                                 action="store_true")  # noqa
     genomic_parser.add_argument("--batch", help="Submit ids in batch to Cloud Tasks", default=False,
                                 action="store_true")  # noqa
+
+    ehr_parser = subparser.add_parser('ehr-receipt')
+    ehr_parser.add_argument("--ehr", help="Submit batch to Cloud Tasks", default=False,
+                                action="store_true")  # noqa
+
 
     args = parser.parse_args()
 
@@ -409,6 +530,9 @@ def run():
                 return 1
 
             process = GenomicResourceClass(args, gcp_env)
+            exit_code = process.run()
+        elif hasattr(args, 'ehr'):
+            process = EHRReceiptClass(args, gcp_env)
             exit_code = process.run()
         else:
             _logger.info('Please select an option to run. For help use "pdr-tool --help".')

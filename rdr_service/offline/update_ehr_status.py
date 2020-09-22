@@ -7,6 +7,7 @@ from rdr_service.cloud_utils import bigquery
 from rdr_service.dao.ehr_dao import EhrReceiptDao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.participant_enums import EhrStatus
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 
 LOG = logging.getLogger(__name__)
@@ -65,9 +66,12 @@ def update_participant_summaries_from_job(job):
             # pids = [param['pid'] for param in parameter_sets]
             patch_data = [{
                 'pid': p['pid'],
-                'ehr_status': 1,
-                'ehr_receipt_time': now,
-                'ehr_update_time': now} for p in parameter_sets]
+                'patch': {
+                    'ehr_status': str(EhrStatus.PRESENT),
+                    'ehr_status_id': int(EhrStatus.PRESENT),
+                    'ehr_receipt': now,
+                    'ehr_update': now}
+            } for p in parameter_sets]
             dispatch_participant_rebuild_tasks(patch_data, batch_size=batch_size)
 
 

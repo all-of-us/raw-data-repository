@@ -14,7 +14,7 @@ from rdr_service.code_constants import CONSENT_GROR_YES_CODE, CONSENT_PERMISSION
     DVEHR_SHARING_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES, GROR_CONSENT_QUESTION_CODE, \
     EHR_CONSENT_EXPIRED_YES, UNKNOWN_BIOBANK_ORDER_ID
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
-from rdr_service.model.bq_base import BQRecord, BQFieldTypeEnum
+from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummary
 from rdr_service.model.bq_participant_summary import BQParticipantSummarySchema, BQStreetAddressTypeEnum, \
     BQModuleStatusEnum, BQParticipantSummary, COHORT_1_CUTOFF, COHORT_2_CUTOFF, BQConsentCohort
@@ -1095,6 +1095,7 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None,
         from rdr_service.dao.bq_pdr_participant_summary_dao import BQPDRParticipantSummaryGenerator
         pdr_bqgen = BQPDRParticipantSummaryGenerator()
 
+    # See if this is a partial update.
     if patch_data and isinstance(patch_data, dict):
         ps_bqr = ps_bqgen.patch_bqrecord(p_id, patch_data)
     else:

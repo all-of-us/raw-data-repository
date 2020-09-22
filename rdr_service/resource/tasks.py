@@ -32,6 +32,7 @@ def batch_rebuild_participants_task(payload):
     batch = payload['batch']
 
     logging.info(f'Start time: {datetime.utcnow()}, batch size: {len(batch)}')
+    # logging.info(json.dumps(batch, indent=2))
 
     for item in batch:
         p_id = item['pid']
