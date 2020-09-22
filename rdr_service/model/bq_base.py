@@ -533,11 +533,15 @@ class BQRecord(object):
                     # raise KeyError('{0} key not in schema'.format(key))
                     continue  # just ignore keys not in schema.
                 # TODO: Future: Validate value against schema BQField type and constraints here.
-                fld_type = getattr(schema, key)._fld_type
-                if val and fld_type == BQFieldTypeEnum.DATETIME and isinstance(val, str):
-                    val = parser.parse(val)
-                elif val and fld_type == BQFieldTypeEnum.DATE and isinstance(val, str):
-                    val = parser.parse(val).date()
+                if schema and isinstance(schema, BQSchema):
+                    try:
+                        fld_type = getattr(schema, key)._fld_type
+                        if val and fld_type == BQFieldTypeEnum.DATETIME and isinstance(val, str):
+                            val = parser.parse(val)
+                        elif val and fld_type == BQFieldTypeEnum.DATE and isinstance(val, str):
+                            val = parser.parse(val).date()
+                    except AttributeError:
+                        pass
                 # check for Enum32 object, if it is set the value to the enum value
                 if self._convert_to_enum and schema and schema[key]['description'] and schema[key]['enum'] is True:
                     try:
