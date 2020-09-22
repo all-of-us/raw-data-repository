@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import json
 import logging
 from time import sleep
@@ -48,8 +48,14 @@ class GCPCloudTask(object):
         if not res.rule.startswith(TASK_PREFIX):
             raise ValueError('endpoint is not configured using the task prefix.')
 
+        def json_serial(obj):
+            """JSON serializer for objects not serializable by default json code"""
+            if isinstance(obj, (datetime, date)):
+                return obj.isoformat()
+            return obj.__repr__()
+
         if payload:
-            payload = json.dumps(payload).encode()
+            payload = json.dumps(payload, default=json_serial).encode()
 
         # Construct the fully qualified queue name.
         parent = self._client.queue_path(project_id, location, queue)
