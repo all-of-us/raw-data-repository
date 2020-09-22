@@ -139,7 +139,7 @@ _python()
             ;;
         genomic)
             # These are options specific to this tool.
-            local toolopts="resend generate-manifest control-sample manual-sample"
+            local toolopts="resend generate-manifest control-sample manual-sample job-run-result member-state"
             COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
             return 0
             ;;
@@ -174,6 +174,26 @@ _python()
             return 0
             ;;
           manual-sample)
+            # genomic generate-manifest command
+            if echo ${COMP_WORDS[@]} | grep -w "genomic" > /dev/null; then
+              local toolopts="--help --csv --dryrun"
+              COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
+            else
+              COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
+            fi
+            return 0
+            ;;
+          job-run-result)
+            # genomic job-run-result command
+            if echo ${COMP_WORDS[@]} | grep -w "genomic" > /dev/null; then
+              local toolopts="--help --id --result --message --dryrun"
+              COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
+            else
+              COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
+            fi
+            return 0
+            ;;
+          member-state)
             # genomic generate-manifest command
             if echo ${COMP_WORDS[@]} | grep -w "genomic" > /dev/null; then
               local toolopts="--help --csv --dryrun"
