@@ -116,12 +116,13 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         sql_json_set_values = ', '.join([f"'$.{k}', :p_{k}" for k, v in data.items()])
 
-        args = {'pid': p_id, 'table_id': 'participant_summary'}
+        args = {'pid': p_id, 'table_id': 'participant_summary', 'modified': datetime.datetime.utcnow()}
         for k, v in data.items():
             args[f'p_{k}'] = v
 
         sql = f"""
-            update bigquery_sync set resource = json_set(resource, {sql_json_set_values}) 
+            update bigquery_sync 
+                set modified = :modified, resource = json_set(resource, {sql_json_set_values}) 
                where pk_id = :pid and table_id = :table_id
         """
 

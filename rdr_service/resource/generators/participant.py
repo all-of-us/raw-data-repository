@@ -118,13 +118,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         sql_json_set_values = ', '.join([f"'$.{k}', :p_{k}" for k, v in data.items()])
 
-        args = {'pid': p_id, 'type_uid': SchemaID.participant.value}
+        args = {'pid': p_id, 'type_uid': SchemaID.participant.value, 'modified': datetime.datetime.utcnow()}
         for k, v in data.items():
             args[f'p_{k}'] = v
 
         sql = f"""
             update resource_data rd inner join resource_type rt on rd.resource_type_id = rt.id 
-              set rd.resource = json_set(rd.resource, {sql_json_set_values}) 
+              set rd.modified = :modified, rd.resource = json_set(rd.resource, {sql_json_set_values}) 
               where rd.resource_pk_id = :pid and rt.type_uid = :type_uid
         """
 
