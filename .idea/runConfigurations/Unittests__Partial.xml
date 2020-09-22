@@ -14,7 +14,7 @@
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
     <option name="SCRIPT_NAME" value="unittest" />
-    <option name="PARAMETERS" value="discover -s tests -p &quot;*questionnaire*&quot;" />
+    <option name="PARAMETERS" value="discover -s tests -p &quot;*update_ehr_status*&quot;" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="true" />

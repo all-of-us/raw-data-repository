@@ -7,6 +7,7 @@ from rdr_service.cloud_utils import bigquery
 from rdr_service.dao.ehr_dao import EhrReceiptDao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import EhrStatus
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 
@@ -60,18 +61,24 @@ def update_participant_summaries_from_job(job):
         total_rows = query_result.rowcount
         LOG.info("Affected {} rows.".format(total_rows))
         if total_rows > 0:
+
             count = int(math.ceil(float(total_rows) / float(batch_size)))
             LOG.info('UpdateEhrStatus: calculated {0} participant rebuild tasks from {1} records and batch size of {2}'.
-                         format(count, total_rows, batch_size))
-            # pids = [param['pid'] for param in parameter_sets]
+                     format(count, total_rows, batch_size))
+            pids = [param['pid'] for param in parameter_sets]
+
+            with summary_dao.session() as session:
+                cursor = session.query(ParticipantSummary.participantId, ParticipantSummary.ehrReceiptTime).all()
+                records = [r for r in cursor if r.participantId in pids]
+
             patch_data = [{
-                'pid': p['pid'],
+                'pid': rec.participantId,
                 'patch': {
                     'ehr_status': str(EhrStatus.PRESENT),
                     'ehr_status_id': int(EhrStatus.PRESENT),
-                    'ehr_receipt': now,
+                    'ehr_receipt': rec.ehrReceiptTime if rec.ehrReceiptTime else now,
                     'ehr_update': now}
-            } for p in parameter_sets]
+            } for rec in records]
             dispatch_participant_rebuild_tasks(patch_data, batch_size=batch_size)
 
 
