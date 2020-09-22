@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 import re
 
@@ -13,7 +14,7 @@ from rdr_service.code_constants import CONSENT_GROR_YES_CODE, CONSENT_PERMISSION
     DVEHR_SHARING_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES, GROR_CONSENT_QUESTION_CODE, \
     EHR_CONSENT_EXPIRED_YES, UNKNOWN_BIOBANK_ORDER_ID
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
-from rdr_service.model.bq_base import BQRecord
+from rdr_service.model.bq_base import BQRecord, BQFieldTypeEnum
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummary
 from rdr_service.model.bq_participant_summary import BQParticipantSummarySchema, BQStreetAddressTypeEnum, \
     BQModuleStatusEnum, BQParticipantSummary, COHORT_1_CUTOFF, COHORT_2_CUTOFF, BQConsentCohort
@@ -74,6 +75,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         with self.ro_dao.session() as ro_session:
             # prep participant info from Participant record
             summary = self._prep_participant(p_id, ro_session)
+            # prep additional participant profile info
+            summary = self._merge_schema_dicts(summary, self._prep_participant_profile(p_id, ro_session))
             # prep ConsentPII questionnaire information
             summary = self._merge_schema_dicts(summary, self._prep_consentpii_answers(p_id))
             # prep questionnaire modules information, includes gathering extra consents.
@@ -95,10 +98,44 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
             # calculate test participant status
             summary = self._merge_schema_dicts(summary, self._calculate_test_participant(summary))
-            # prep additional participant profile info
-            summary = self._merge_schema_dicts(summary, self._prep_participant_profile(p_id, ro_session))
 
             return BQRecord(schema=BQParticipantSummarySchema, data=summary, convert_to_enum=convert_to_enum)
+
+    def patch_bqrecord(self, p_id, data):
+        """
+        Upsert data into an existing resource.  Warning: No data recalculation is performed in this method.
+        Note: This method uses the MySQL JSON_SET function to update the resource field in the backend.
+              It does not return the full resource record here.
+        https://dev.mysql.com/doc/refman/5.7/en/json-modification-functions.html#function_json-set
+        :param p_id: participant id
+        :param data: dict object
+        :return: dict
+        """
+        if not self.ro_dao:
+            self.ro_dao = BigQuerySyncDao(backup=True)
+
+        sql_json_set_values = ', '.join([f"'$.{k}', :p_{k}" for k, v in data.items()])
+
+        args = {'pid': p_id, 'table_id': 'participant_summary'}
+        for k, v in data.items():
+            args[f'p_{k}'] = v
+
+        sql = f"""
+            update bigquery_sync set resource = json_set(resource, {sql_json_set_values}) 
+               where pk_id = :pid and table_id = :table_id
+        """
+
+        with self.ro_dao.session() as session:
+            session.execute(sql, args)
+
+            sql = 'select resource from bigquery_sync where pk_id = :pid and table_id = :table_id limit 1'
+
+            cursor = session.execute(sql, args)
+            if cursor:
+                resource = next(cursor).resource
+                return BQRecord(schema=BQParticipantSummarySchema, data=json.loads(resource),
+                                convert_to_enum=False)
+        return None
 
     def _prep_participant(self, p_id, ro_session):
         """
@@ -1041,13 +1078,14 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         return data if data else None
 
 
-def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None):
+def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None, patch_data=None):
     """
     Rebuild a BQ record for a specific participant
     :param p_id: participant id
     :param ps_bqgen: BQParticipantSummaryGenerator object
     :param pdr_bqgen: BQPDRParticipantSummaryGenerator object
     :param project_id: Project ID override value.
+    :param patch_data: dict of resource values to update/insert.
     :return:
     """
     # Allow for batch requests to rebuild participant summary data.
@@ -1057,7 +1095,10 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None)
         from rdr_service.dao.bq_pdr_participant_summary_dao import BQPDRParticipantSummaryGenerator
         pdr_bqgen = BQPDRParticipantSummaryGenerator()
 
-    ps_bqr = ps_bqgen.make_bqrecord(p_id)
+    if patch_data and isinstance(patch_data, dict):
+        ps_bqr = ps_bqgen.patch_bqrecord(p_id, patch_data)
+    else:
+        ps_bqr = ps_bqgen.make_bqrecord(p_id)
 
     # Since the PDR participant summary is primarily a subset of the Participant Summary, call the full
     # Participant Summary generator and take what we need from it.
@@ -1067,8 +1108,9 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None)
 
     with w_dao.session() as w_session:
 
-        # save the participant summary record.
-        ps_bqgen.save_bqrecord(p_id, ps_bqr, bqtable=BQParticipantSummary, w_dao=w_dao, w_session=w_session,
+        # save the participant summary record if this is a full rebuild.
+        if not patch_data and isinstance(patch_data, dict):
+            ps_bqgen.save_bqrecord(p_id, ps_bqr, bqtable=BQParticipantSummary, w_dao=w_dao, w_session=w_session,
                                project_id=project_id)
         # save the PDR participant summary record
         pdr_bqgen.save_bqrecord(p_id, pdr_bqr, bqtable=BQPDRParticipantSummary, w_dao=w_dao, w_session=w_session,

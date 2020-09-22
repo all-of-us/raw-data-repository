@@ -62,8 +62,13 @@ def update_participant_summaries_from_job(job):
             count = int(math.ceil(float(total_rows) / float(batch_size)))
             LOG.info('UpdateEhrStatus: calculated {0} participant rebuild tasks from {1} records and batch size of {2}'.
                          format(count, total_rows, batch_size))
-            pids = [param['pid'] for param in parameter_sets]
-            dispatch_participant_rebuild_tasks(pids, batch_size=batch_size)
+            # pids = [param['pid'] for param in parameter_sets]
+            patch_data = [{
+                'pid': p['pid'],
+                'ehr_status': 1,
+                'ehr_receipt_time': now,
+                'ehr_update_time': now} for p in parameter_sets]
+            dispatch_participant_rebuild_tasks(patch_data, batch_size=batch_size)
 
 
 def make_update_organizations_job():
