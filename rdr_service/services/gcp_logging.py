@@ -1,4 +1,5 @@
 import collections
+import io
 import json
 import logging
 import os
@@ -128,6 +129,19 @@ def setup_log_line(record: logging.LogRecord, resource=None, method=None):
 
     message = message.replace('$$method$$', method if method else '')
     message = message.replace('$$resource$$', resource if resource else '/')
+
+    if record.exc_info:
+        # this block was pulled from python logging's built in log formatting
+        # todo: maybe we want to be using that instead? (to be able to pick up on other features)
+        sio = io.StringIO()
+        etype, value, tb = record.exc_info
+        traceback.print_exception(etype, value, tb, None, sio)
+        result_str = sio.getvalue()
+        sio.close()
+        if result_str[-1:] != "\n":
+            result_str = result_str + "\n"
+
+        message = result_str + message
 
     log_line = {
         "logMessage": message,
