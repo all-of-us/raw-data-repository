@@ -499,7 +499,7 @@ def run():
                                 action="store_true")  # noqa
 
 
-    genomic_parser = subparser.add_parser("genomic", )
+    genomic_parser = subparser.add_parser("genomic")
     genomic_parser.add_argument("--id", help="rebuild single genomic table id", type=int, default=None)  # noqa
     genomic_parser.add_argument("--all-ids", help="rebuild all records from table", default=False,
                          action="store_true")  # noqa
