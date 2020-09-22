@@ -28,7 +28,13 @@ Samples are also `stored` which means the Biobank has received and processed the
 Mayo has defined a sample manifest format that will be uploaded to the RDR daily. The RDR scans this manifest and uses it to populate `BiobankSamples` resources.
 Once these are created, a client can query for available stored samples.
 
+Biospecimen API
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+Work is in progress on a new API that will allow the Biobank team to stream biospecimen data to the RDR.
+
+This API allows for migration of batches of parent specimen and aliquot data, as well as specific updates to attributes
+and data for each sample entity.
 
 Direct Volunteer Subsystem
 ------------------------------------------------------------
