@@ -74,6 +74,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         with self.ro_dao.session() as ro_session:
             # prep participant info from Participant record
             summary = self._prep_participant(p_id, ro_session)
+            # prep additional participant profile info
+            summary = self._merge_schema_dicts(summary, self._prep_participant_profile(p_id, ro_session))
             # prep ConsentPII questionnaire information
             summary = self._merge_schema_dicts(summary, self._prep_consentpii_answers(p_id))
             # prep questionnaire modules information, includes gathering extra consents.
@@ -89,14 +91,12 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             summary = self._merge_schema_dicts(summary, self._prep_patient_status_info(p_id, ro_session))
             # calculate enrollment status for participant
             summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary))
-            # calculate enrollment status times
-            summary = self._merge_schema_dicts(summary, self._calculate_enrollment_timestamps(summary))
+            # # Depreciated for now: calculate enrollment status times
+            # summary = self._merge_schema_dicts(summary, self._calculate_enrollment_timestamps(summary))
             # calculate distinct visits
             summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
             # calculate test participant status
             summary = self._merge_schema_dicts(summary, self._calculate_test_participant(summary))
-            # prep additional participant profile info
-            summary = self._merge_schema_dicts(summary, self._prep_participant_profile(p_id, ro_session))
 
             return BQRecord(schema=BQParticipantSummarySchema, data=summary, convert_to_enum=convert_to_enum)
 
@@ -185,7 +185,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         # outside of the RDR API, and query that table instead.
         data = {}
         ps = ro_session.query(ParticipantSummary.ehrStatus, ParticipantSummary.ehrReceiptTime,
-                              ParticipantSummary.ehrUpdateTime) \
+                              ParticipantSummary.ehrUpdateTime,
+                              ParticipantSummary.enrollmentStatusCoreOrderedSampleTime,
+                              ParticipantSummary.enrollmentStatusCoreStoredSampleTime) \
             .filter(ParticipantSummary.participantId == p_id).first()
 
         if not ps:
@@ -198,7 +200,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 'ehr_status': str(ehr_status),
                 'ehr_status_id': int(ehr_status),
                 'ehr_receipt': ps.ehrReceiptTime,
-                'ehr_update': ps.ehrUpdateTime
+                'ehr_update': ps.ehrUpdateTime,
+                'enrollment_core_ordered': ps.enrollmentStatusCoreOrderedSampleTime,
+                'enrollment_core_stored': ps.enrollmentStatusCoreStoredSampleTime
             }
 
         return data
@@ -839,87 +843,90 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         return data
 
-    def _calculate_enrollment_timestamps(self, summary):
-        """
-        Calculate all enrollment status timestamps, based on calculate_max_core_sample_time() method in
-        participant summary dao.
-        :param summary: summary data
-        :return: dict
-        """
-        if summary['enrollment_status_id'] != int(EnrollmentStatusV2.CORE_PARTICIPANT):
-            return {}
-
-        # Calculate the earliest ordered sample and stored sample times.
-        ordered_time = stored_time = datetime.datetime.max
-        stored_sample_times = dict(zip(self._dna_sample_test_codes, [
-            {
-                'confirmed': datetime.datetime.min, 'confirmed_count': 0,
-                'disposed': datetime.datetime.min, 'disposed_count': 0
-            } for i in range(0, 5)]))  # pylint: disable=unused-variable
-
-        for bbo in summary['biobank_orders']:
-            if not bbo['bbo_samples']:
-                continue
-
-            for bboi in bbo['bbo_samples']:
-                if bboi['bbs_dna_test'] == 1:
-                    # See: biobank_order_dao.py:_set_participant_summary_fields()
-                    #      biobank_order_dao.py:_get_order_status_and_time()
-                    if ordered_time == datetime.datetime.max:
-                        ordered_time = (bboi['bbs_finalized'] or bboi['bbs_processed'] or
-                                       bboi['bbs_collected'] or bbo['bbo_created'] or datetime.datetime.max)
-                    # See: participant_summary_dao.py:calculate_max_core_sample_time() and
-                    #       _participant_summary_dao.py:126
-                    sst = stored_sample_times[bboi['bbs_test']]
-                    if bboi['bbs_confirmed']:
-                        sst['confirmed'] = max(sst['confirmed'], bboi['bbs_confirmed'])
-                        sst['confirmed_count'] += 1
-                    if bboi['bbs_disposed']:
-                        sst['disposed'] = max(sst['disposed'], bboi['bbs_disposed'])
-                        sst['disposed_count'] += 1
-
-        sstl = list()
-        for k, v in stored_sample_times.items():  # pylint: disable=unused-variable
-            if v['confirmed_count'] != v['disposed_count']:
-                ts = v['confirmed']
-            else:
-                ts = v['disposed']
-            if ts != datetime.datetime.min:
-                sstl.append(ts)
-
-        if sstl:
-            stored_time = min(sstl)
-
-        ordered_time = ordered_time if ordered_time != datetime.datetime.max else None
-        stored_time = stored_time if stored_time != datetime.datetime.max else None
-
-        data = {
-            'enrollment_core_ordered': ordered_time,
-            'enrollment_core_stored': stored_time
-        }
-
-        if not ordered_time and not stored_time:
-            return data
-
-        # This logic [DA-769] added to RDR on 10/31/2018, but the backfill [DA-784] only applied this logic where
-        # the enrollment core stored and ordered field values were null. I think its impossible to fully recreate
-        # the timestamp values in the RDR enrollment core ordered and stored fields here. For example see: [PDR-114].
-        # See: participant_summary_dao.py:calculate_max_core_sample_time()
-        # If we have ordered or stored sample times, ensure that it is not before the alt_time value.
-        alt_time = max(
-            summary.get('enrollment_member', datetime.datetime.min),
-            max(mod['mod_created'] or datetime.datetime.min for mod in summary['modules']
-                if mod['mod_baseline_module'] == 1),
-            max(pm['pm_finalized'] or datetime.datetime.min for pm in summary['pm'])
-            if 'pm' in summary else datetime.datetime.min
-        )
-
-        if ordered_time:
-            data['enrollment_core_ordered'] = max(ordered_time, alt_time)
-        if stored_time:
-            data['enrollment_core_stored'] = max(stored_time, alt_time)
-
-        return data
+    #
+    # Depreciated for now, but keep this code around for later.
+    #
+    # def _calculate_enrollment_timestamps(self, summary):
+    #     """
+    #     Calculate all enrollment status timestamps, based on calculate_max_core_sample_time() method in
+    #     participant summary dao.
+    #     :param summary: summary data
+    #     :return: dict
+    #     """
+    #     if summary['enrollment_status_id'] != int(EnrollmentStatusV2.CORE_PARTICIPANT):
+    #         return {}
+    #
+    #     # Calculate the earliest ordered sample and stored sample times.
+    #     ordered_time = stored_time = datetime.datetime.max
+    #     stored_sample_times = dict(zip(self._dna_sample_test_codes, [
+    #         {
+    #             'confirmed': datetime.datetime.min, 'confirmed_count': 0,
+    #             'disposed': datetime.datetime.min, 'disposed_count': 0
+    #         } for i in range(0, 5)]))  # pylint: disable=unused-variable
+    #
+    #     for bbo in summary['biobank_orders']:
+    #         if not bbo['bbo_samples']:
+    #             continue
+    #
+    #         for bboi in bbo['bbo_samples']:
+    #             if bboi['bbs_dna_test'] == 1:
+    #                 # See: biobank_order_dao.py:_set_participant_summary_fields()
+    #                 #      biobank_order_dao.py:_get_order_status_and_time()
+    #                 if ordered_time == datetime.datetime.max:
+    #                     ordered_time = (bboi['bbs_finalized'] or bboi['bbs_processed'] or
+    #                                    bboi['bbs_collected'] or bbo['bbo_created'] or datetime.datetime.max)
+    #                 # See: participant_summary_dao.py:calculate_max_core_sample_time() and
+    #                 #       _participant_summary_dao.py:126
+    #                 sst = stored_sample_times[bboi['bbs_test']]
+    #                 if bboi['bbs_confirmed']:
+    #                     sst['confirmed'] = max(sst['confirmed'], bboi['bbs_confirmed'])
+    #                     sst['confirmed_count'] += 1
+    #                 if bboi['bbs_disposed']:
+    #                     sst['disposed'] = max(sst['disposed'], bboi['bbs_disposed'])
+    #                     sst['disposed_count'] += 1
+    #
+    #     sstl = list()
+    #     for k, v in stored_sample_times.items():  # pylint: disable=unused-variable
+    #         if v['confirmed_count'] != v['disposed_count']:
+    #             ts = v['confirmed']
+    #         else:
+    #             ts = v['disposed']
+    #         if ts != datetime.datetime.min:
+    #             sstl.append(ts)
+    #
+    #     if sstl:
+    #         stored_time = min(sstl)
+    #
+    #     ordered_time = ordered_time if ordered_time != datetime.datetime.max else None
+    #     stored_time = stored_time if stored_time != datetime.datetime.max else None
+    #
+    #     data = {
+    #         'enrollment_core_ordered': ordered_time,
+    #         'enrollment_core_stored': stored_time
+    #     }
+    #
+    #     if not ordered_time and not stored_time:
+    #         return data
+    #
+    #     # This logic [DA-769] added to RDR on 10/31/2018, but the backfill [DA-784] only applied this logic where
+    #     # the enrollment core stored and ordered field values were null. I think its impossible to fully recreate
+    #     # the timestamp values in the RDR enrollment core ordered and stored fields here. For example see: [PDR-114].
+    #     # See: participant_summary_dao.py:calculate_max_core_sample_time()
+    #     # If we have ordered or stored sample times, ensure that it is not before the alt_time value.
+    #     alt_time = max(
+    #         summary.get('enrollment_member', datetime.datetime.min),
+    #         max(mod['mod_created'] or datetime.datetime.min for mod in summary['modules']
+    #             if mod['mod_baseline_module'] == 1),
+    #         max(pm['pm_finalized'] or datetime.datetime.min for pm in summary['pm'])
+    #         if 'pm' in summary else datetime.datetime.min
+    #     )
+    #
+    #     if ordered_time:
+    #         data['enrollment_core_ordered'] = max(ordered_time, alt_time)
+    #     if stored_time:
+    #         data['enrollment_core_stored'] = max(stored_time, alt_time)
+    #
+    #     return data
 
     def _calculate_distinct_visits(self, summary):  # pylint: disable=unused-argument
         """
