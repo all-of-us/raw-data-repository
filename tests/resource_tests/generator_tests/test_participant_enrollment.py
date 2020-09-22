@@ -177,6 +177,9 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
         self.assertEqual(ps_data['pm'][0]['finalized_site'], 'hpo-site-monroeville')
         self.assertEqual(ps_data['pm'][0]['status'], 'COMPLETED')
         self.assertEqual(ps_data['enrollment_status'], 'CORE_PARTICIPANT')
+        self.assertEqual(ps_data['ehr_status'], 'NOT_PRESENT')
+        self.assertIsNone(ps_data['ehr_receipt'])
+        self.assertIsNone(ps_data['ehr_update'])
 
     def test_cohort_3_without_gror(self):
         self._set_up_participant_data(fake_time=datetime(2020, 6, 1))

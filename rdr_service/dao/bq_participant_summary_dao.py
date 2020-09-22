@@ -188,8 +188,12 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                               ParticipantSummary.ehrUpdateTime) \
             .filter(ParticipantSummary.participantId == p_id).first()
 
-        if ps and ps.ehrStatus:
-            ehr_status = EhrStatus(ps.ehrStatus)
+        if not ps:
+            logging.debug(f'No participant_summary record found for {p_id}')
+        else:
+            # SqlAlchemy may return None for our zero-based NOT_PRESENT EhrStatus Enum, so map None to NOT_PRESENT
+            # See rdr_service.model.utils Enum decorator class
+            ehr_status = EhrStatus.NOT_PRESENT if ps.ehrStatus is None else ps.ehrStatus
             data = {
                 'ehr_status': str(ehr_status),
                 'ehr_status_id': int(ehr_status),
@@ -514,7 +518,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 select bss.test, bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed,
                        bss.status as bb_status, bo.biobank_order_id as bbo_id
                   from biobank_stored_sample bss
-                  left outer join biobank_order_identifier boi on bss.biobank_order_identifier = boi.`value` and 
+                  left outer join biobank_order_identifier boi on bss.biobank_order_identifier = boi.`value` and
                         boi.`system` = 'https://www.pmi-ops.org'
                   left outer join biobank_order bo on boi.biobank_order_id = bo.biobank_order_id
                 where bss.biobank_id = :bb_id and bo.biobank_order_id is null;
