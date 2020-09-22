@@ -135,10 +135,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 select resource from resource_data rd inner join resource_type rt on rd.resource_type_id = rt.id 
                  where rd.resource_pk_id = :pid and rt.type_uid = :type_uid limit 1"""
 
-            cursor = session.execute(sql, args)
-            if cursor:
-                resource = next(cursor).resource
-                summary = json.loads(resource)
+            rec = session.execute(sql, args).first()
+            if rec:
+                summary = json.loads(rec.resource)
                 return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
 
         return None

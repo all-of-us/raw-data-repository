@@ -131,10 +131,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
             sql = 'select resource from bigquery_sync where pk_id = :pid and table_id = :table_id limit 1'
 
-            cursor = session.execute(sql, args)
-            if cursor:
-                resource = next(cursor).resource
-                return BQRecord(schema=BQParticipantSummarySchema, data=json.loads(resource),
+            rec = session.execute(sql, args).first()
+            if rec:
+                return BQRecord(schema=BQParticipantSummarySchema, data=json.loads(rec.resource),
                                 convert_to_enum=False)
         return None
 
