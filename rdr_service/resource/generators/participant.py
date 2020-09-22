@@ -189,14 +189,18 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                               ParticipantSummary.ehrUpdateTime) \
             .filter(ParticipantSummary.participantId == p_id).first()
 
-        if ps and ps.ehrStatus:
-            ehr_status = EhrStatus(ps.ehrStatus)
+        if not ps:
+            logging.debug(f'No participant_summary record found for {p_id}')
+        else:
+            # SqlAlchemy may return None for our zero-based NOT_PRESENT EhrStatus Enum, so map None to NOT_PRESENT
+            # See rdr_service.model.utils Enum decorator class
+            ehr_status = EhrStatus.NOT_PRESENT if ps.ehrStatus is None else ps.ehrStatus
             data = {
                 'ehr_status': str(ehr_status),
                 'ehr_status_id': int(ehr_status),
                 'ehr_receipt': ps.ehrReceiptTime,
                 'ehr_update': ps.ehrUpdateTime
-            }
+             }
 
         return data
 

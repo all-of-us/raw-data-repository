@@ -70,7 +70,6 @@ enrollmentStatus
 
 ehrStatus
 ------------------------------------------------------------
-  * UNSET
   * NOT_PRESENT
   * PRESENT
 
