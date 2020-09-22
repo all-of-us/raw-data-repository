@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 import re
 
@@ -30,7 +31,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus
 from rdr_service.resource import generators, schemas
-
+from rdr_service.resource.constants import SchemaID
 
 _consent_module_question_map = {
     # module: question code string
@@ -101,6 +102,45 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
 
             return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
+
+    def patch_resource(self, p_id, data):
+        """
+        Upsert data into an existing resource.  Warning: No data recalculation is performed in this method.
+        Note: This method uses the MySQL JSON_SET function to update the resource field in the backend.
+              It does not return the full resource record here.
+        https://dev.mysql.com/doc/refman/5.7/en/json-modification-functions.html#function_json-set
+        :param p_id: participant id
+        :param data: dict object
+        :return: dict
+        """
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=True)
+
+        sql_json_set_values = ', '.join([f"'$.{k}', :p_{k}" for k, v in data.items()])
+
+        args = {'pid': p_id, 'type_uid': SchemaID.participant.value, 'modified': datetime.datetime.utcnow()}
+        for k, v in data.items():
+            args[f'p_{k}'] = v
+
+        sql = f"""
+            update resource_data rd inner join resource_type rt on rd.resource_type_id = rt.id 
+              set rd.modified = :modified, rd.resource = json_set(rd.resource, {sql_json_set_values}) 
+              where rd.resource_pk_id = :pid and rt.type_uid = :type_uid
+        """
+
+        with self.ro_dao.session() as session:
+            session.execute(sql, args)
+
+            sql = """
+                select resource from resource_data rd inner join resource_type rt on rd.resource_type_id = rt.id 
+                 where rd.resource_pk_id = :pid and rt.type_uid = :type_uid limit 1"""
+
+            rec = session.execute(sql, args).first()
+            if rec:
+                summary = json.loads(rec.resource)
+                return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
+
+        return None
 
     def _prep_participant(self, p_id, ro_session):
         """
@@ -1066,16 +1106,23 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         return data if data else None
 
 
-def rebuild_participant_summary_resource(p_id, res_gen=None):
+def rebuild_participant_summary_resource(p_id, res_gen=None, patch_data=None):
     """
     Rebuild a resource record for a specific participant
     :param p_id: participant id
     :param res_gen: ParticipantSummaryGenerator object
+    :param patch_data: dict of resource values to update/insert.
     :return:
     """
     # Allow for batch requests to rebuild participant summary data.
     if not res_gen:
         res_gen = ParticipantSummaryGenerator()
+
+    # See if this is a partial update.
+    if patch_data and isinstance(patch_data, dict):
+        res_gen.patch_resource(p_id, patch_data)
+        return patch_data
+
     res = res_gen.make_resource(p_id)
     res.save()
     return res

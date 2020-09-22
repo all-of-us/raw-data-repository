@@ -42,19 +42,33 @@ class ResourceRecordSet(object):
             raise AttributeError('SchemaMeta object not found in schema.Meta.')
         self._schema = schema()
         self._meta = self._schema.Meta.schema_meta
-        self._data = data
 
         if data:
-            # Convert date or datetime fields if necessary.
-            for name, meta in self._schema._declared_fields.items():
-                if name in data and type(meta) in (fields.DateTime, fields.Date) and isinstance(data[name], str):
-                    try:
-                        val = parser.parse(data[name])
-                        data[name] = val if type(meta) == fields.DateTime else val.date()
-                    except (ParserError, TypeError):
-                        pass
-
+            data = self._load_data(self._schema, data)
             self._resource = self._schema.dump(data)
+            self._data = data
+
+    def _load_data(self, schema, data):
+        """
+        Recursive function to load data into this object.  Convert datetime and date string values.
+        :param data: dict
+        """
+        # Convert date or datetime fields if necessary.
+        for name, meta in schema._declared_fields.items():
+            if isinstance(meta, fields.Nested):
+                if name in data:
+                    if isinstance(data[name], list):
+                        data[name] = [self._load_data(meta.schema, i) for i in data[name]]
+                    elif isinstance(data[name], dict):
+                        data[name] = self._load_data(meta.schema, data[name])
+                continue
+            if name in data and type(meta) in (fields.DateTime, fields.Date) and isinstance(data[name], str):
+                try:
+                    val = parser.parse(data[name])
+                    data[name] = val if type(meta) == fields.DateTime else val.date()
+                except (ParserError, TypeError):
+                    pass
+        return data
 
     def _get_or_create_type_record(self, dao, schema_meta):
         """
