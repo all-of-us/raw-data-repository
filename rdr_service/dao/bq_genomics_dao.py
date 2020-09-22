@@ -21,7 +21,7 @@ class BQGenomicSetGenerator(BigQueryGenerator):
     Generate a GenomicSet BQRecord object
     """
 
-    def make_bqrecord(self, _id, convert_to_enum=False, backup=True):
+    def make_bqrecord(self, _id, convert_to_enum=False, backup=False):
         """
         Build a BQRecord object from the given primary key id.
         :param _id: Primary key value from rdr table.
@@ -66,7 +66,7 @@ class BQGenomicSetMemberSchemaGenerator(BigQueryGenerator):
     Generate a GenomicSetMember BQRecord object
     """
 
-    def make_bqrecord(self, _id, convert_to_enum=False, backup=True):
+    def make_bqrecord(self, _id, convert_to_enum=False, backup=False):
         """
         Build a BQRecord object from the given primary key id.
         :param _id: Primary key value from rdr table.
@@ -118,7 +118,7 @@ class BQGenomicJobRunSchemaGenerator(BigQueryGenerator):
     Generate a GenomicJobRun BQRecord object
     """
 
-    def make_bqrecord(self, _id, convert_to_enum=False, backup=True):
+    def make_bqrecord(self, _id, convert_to_enum=False, backup=False):
         """
         Build a BQRecord object from the given primary key id.
         :param _id: Primary key value from rdr table.
@@ -168,7 +168,7 @@ class BQGenomicGCValidationMetricsSchemaGenerator(BigQueryGenerator):
     Generate a GenomicGCValidationMetrics BQRecord object
     """
 
-    def make_bqrecord(self, _id, convert_to_enum=False, backup=True):
+    def make_bqrecord(self, _id, convert_to_enum=False, backup=False):
         """
         Build a BQRecord object from the given primary key id.
         :param _id: Primary key value from rdr table.

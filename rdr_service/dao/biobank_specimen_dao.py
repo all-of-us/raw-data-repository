@@ -1,5 +1,6 @@
 from rdr_service.api_util import format_json_date
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
+from rdr_service.model.participant import Participant
 from rdr_service.api_util import parse_date
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankAliquot,\
@@ -205,6 +206,20 @@ class BiobankSpecimenDao(BiobankDaoBase):
             return order.id
         else:
             return None
+
+    @staticmethod
+    def _check_participant_exists(session, biobank_id):
+        participant_query = session.query(Participant).filter(Participant.biobankId == biobank_id)
+        if not session.query(participant_query.exists()).scalar():
+            raise BadRequest(f'Biobank id {to_client_biobank_id(biobank_id)} does not exist')
+
+    def insert_with_session(self, session, obj: BiobankSpecimen):
+        self._check_participant_exists(session, obj.biobankId)
+        return super(BiobankSpecimenDao, self).insert_with_session(session, obj)
+
+    def update_with_session(self, session, obj: BiobankSpecimen):
+        self._check_participant_exists(session, obj.biobankId)
+        return super(BiobankSpecimenDao, self).update_with_session(session, obj)
 
 
 class BiobankSpecimenAttributeDao(BiobankDaoBase):
