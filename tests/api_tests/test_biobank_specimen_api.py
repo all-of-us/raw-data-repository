@@ -68,9 +68,9 @@ class BiobankOrderApiTest(BaseTestCase):
                 kwargs[k] = default_value
         return BiobankOrder(**kwargs)
 
-    def put_specimen(self, payload):
+    def put_specimen(self, payload, expected_status=200):
         rlims_id = payload['rlimsID']
-        return self.send_put(f'Biobank/specimens/{rlims_id}', request_data=payload)
+        return self.send_put(f'Biobank/specimens/{rlims_id}', request_data=payload, expected_status=expected_status)
 
     def get_minimal_specimen_json(self, rlims_id='sabrina'):
         return {
@@ -180,6 +180,12 @@ class BiobankOrderApiTest(BaseTestCase):
 
         saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+
+    def test_put_specimen_with_non_existent_participant(self):
+        """Try to use a biobank that has the correct prefix, but doesn't exist in the database"""
+        payload = self.get_minimal_specimen_json()
+        payload['participantID'] = config_utils.to_client_biobank_id(123123)  # Using a biobankID that doesn't exist
+        self.put_specimen(payload, expected_status=400)
 
     def test_nonexistent_order_id(self):
         payload = self.get_minimal_specimen_json()
@@ -654,7 +660,7 @@ class BiobankOrderApiTest(BaseTestCase):
 
     def test_error_missing_fields_specimen_migration(self):
         specimens = [self.get_minimal_specimen_json(rlims_id) for rlims_id in ['sabrina', 'two', 'salem',
-                                                                               'invalid', 'bob']]
+                                                                               'invalid', 'bob', 'missing']]
         del specimens[0]['testcode']
         del specimens[0]['orderID']
         del specimens[1]['rlimsID']
@@ -675,10 +681,13 @@ class BiobankOrderApiTest(BaseTestCase):
             }
         ]
 
+        # Check for migration error about missing biobank ids
+        specimens[5]['participantID'] = config_utils.to_client_biobank_id(123123)
+
         result = self.send_put(f"Biobank/specimens", request_data=specimens)
         self.assertJsonResponseMatches(result, {
             'summary': {
-                'total_received': 5,
+                'total_received': 6,
                 'success_count': 1
             },
             'errors': [
@@ -696,6 +705,9 @@ class BiobankOrderApiTest(BaseTestCase):
                     # catch-all for any specimen errors
                     'rlimsID': 'invalid',
                     'error': 'Unknown error'
+                }, {
+                    'rlimsID': 'missing',
+                    'error': 'Biobank id Z123123 does not exist'
                 }
             ]
         })
