@@ -794,10 +794,12 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
             # Get existing ID if exists
             existing_metrics_obj = self.get_metrics_by_member_id(gc_metrics_obj.genomicSetMemberId)
             if existing_metrics_obj is not None:
+                logging.info(f'GC Metrics for member ID {gc_metrics_obj.genomicSetMemberId} found.')
                 gc_metrics_obj.id = existing_metrics_obj.id
 
             # Insert or overwrite the object
             with self.session() as session:
+                logging.info(f'Writing GC Metrics for member ID {gc_metrics_obj.genomicSetMemberId}.')
                 updated_metrics_obj = session.merge(gc_metrics_obj)
 
             # Update GC Metrics for PDR
