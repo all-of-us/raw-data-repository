@@ -791,13 +791,18 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 except KeyError:
                     gc_metrics_obj.__setattr__(key, None)
 
-            # Insert or update the object
+            # Get existing ID if exists
+            existing_metrics_obj = self.get_metrics_by_member_id(gc_metrics_obj.genomicSetMemberId)
+            if existing_metrics_obj is not None:
+                gc_metrics_obj.id = existing_metrics_obj.id
+
+            # Insert or overwrite the object
             with self.session() as session:
-                inserted_metrics_obj = session.merge(gc_metrics_obj)
+                updated_metrics_obj = session.merge(gc_metrics_obj)
 
             # Update GC Metrics for PDR
-            bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
-            genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+            bq_genomic_gc_validation_metrics_update(updated_metrics_obj.id)
+            genomic_gc_validation_metrics_update(updated_metrics_obj.id)
 
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:

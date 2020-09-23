@@ -256,6 +256,34 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(1)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+        # Test updated metrics
+        # Setup Test file (reusing test file)
+        updated_aw2_file = test_data.open_genomic_set_file('RDR_AoU_GEN_TestDataManifest.csv')
+        updated_aw2_file = updated_aw2_file.replace('10002', '11002')
+
+        updated_aw2_filename = "RDR_AoU_GEN_TestDataManifest_11192020.csv"
+
+        self._write_cloud_csv(
+            updated_aw2_filename,
+            updated_aw2_file,
+            bucket=bucket_name,
+            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]),
+        )
+
+        # Reset members' states back to AW1
+        members = self.member_dao.get_all()
+        for m in members:
+            m.genomicWorkflowState = GenomicWorkflowState.AW1
+            self.member_dao.update(m)
+
+        # run the GC Metrics Ingestion workflow again
+        genomic_pipeline.ingest_genomic_centers_metrics_files()
+
+        gc_metrics = self.metrics_dao.get_all()
+        self.assertEqual(len(gc_metrics), 2)
+        self.assertEqual(gc_metrics[1].limsId, '11002')
+
+
     def _update_test_sample_ids(self):
         # update sample ID (mock AW1 manifest)
         for m in self.member_dao.get_all():

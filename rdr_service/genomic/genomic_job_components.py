@@ -494,7 +494,7 @@ class GenomicFileIngester:
                 row_copy['member_id'] = member.id
                 self.metrics_dao.insert_or_update_gc_validation_metrics(row_copy)
             else:
-                logging.error(f'Sample ID {sample_id} has no corresponding Genomic Set Member.')
+                logging.error(f'Sample ID {sample_id} has no corresponding Genomic Set Member in AW1 state.')
 
                 # Aborting the job if sample ID cannot be found.
                 return GenomicSubProcessResult.ERROR
