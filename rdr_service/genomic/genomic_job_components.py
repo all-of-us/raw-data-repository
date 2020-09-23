@@ -290,6 +290,10 @@ class GenomicFileIngester:
                     else:
                         logging.warning(f'Invalid collection tube ID: {collection_tube_id}'
                                         f' or genome_type: {genome_type}')
+
+                        # Aborting the job if invalid collection tube ID found.
+                        return GenomicSubProcessResult.ERROR
+
                     continue
 
                 member.gcSiteId = _site
@@ -491,11 +495,12 @@ class GenomicFileIngester:
             if member is not None:
                 self.member_dao.update_member_state(member, GenomicWorkflowState.AW2)
                 row_copy['member_id'] = member.id
-                gc_metrics_batch.append(row_copy)
+                self.metrics_dao.insert_gc_validation_metrics_object(row_copy)
             else:
                 logging.warning(f'Sample ID {sample_id} has no corresponding Genomic Set Member.')
+                return GenomicSubProcessResult.ERROR
 
-        return self.metrics_dao.insert_gc_validation_metrics_batch(gc_metrics_batch)
+        return GenomicSubProcessResult.SUCCESS
 
     def _ingest_cvl_w2_manifest(self, file_data):
         """

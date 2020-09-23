@@ -777,25 +777,25 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
     def get_id(self, obj):
         return obj.id
 
-    def insert_gc_validation_metrics_batch(self, data_to_insert):
+    def insert_gc_validation_metrics_object(self, data_to_insert):
         """
-        Inserts a batch of GC validation metrics
-        :param data_to_insert: list of dictionary rows to insert
+        Inserts a GC validation metrics object
+        :param data_to_insert: dictionary of row-data from AW2 file to insert
         :return: result code
         """
         try:
-            for row in data_to_insert:
-                gc_metrics_obj = GenomicGCValidationMetrics()
-                for key in self.data_mappings.keys():
-                    try:
-                        gc_metrics_obj.__setattr__(key, row[self.data_mappings[key]])
-                    except KeyError:
-                        gc_metrics_obj.__setattr__(key, None)
-                inserted_metrics_obj = self.insert(gc_metrics_obj)
 
-                # Update GC Metrics for PDR
-                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
-                genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+            gc_metrics_obj = GenomicGCValidationMetrics()
+            for key in self.data_mappings.keys():
+                try:
+                    gc_metrics_obj.__setattr__(key, data_to_insert[self.data_mappings[key]])
+                except KeyError:
+                    gc_metrics_obj.__setattr__(key, None)
+            inserted_metrics_obj = self.insert(gc_metrics_obj)
+
+            # Update GC Metrics for PDR
+            bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+            genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
 
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:

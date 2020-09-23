@@ -604,7 +604,7 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_gc_metrics_reconciliation_vs_manifest(self):
         # Create the fake Google Cloud CSV files to ingest
-        self._create_fake_datasets_for_gc_tests(1, arr_override=True, array_participants=[1],
+        self._create_fake_datasets_for_gc_tests(2, arr_override=True, array_participants=[1, 2],
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
