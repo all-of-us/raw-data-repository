@@ -111,7 +111,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         config.override_setting(config.COPE_FORM_ID_MAP, {
             'Form_13,Cope': 'May',
             'June': 'June',
-            'Form_1': 'July'
+            'Form_1': 'July',
+            'OctCope': 'Oct'
         })
 
     def _setup_questionnaire(self):
@@ -762,6 +763,42 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             'Unrecognized identifier for COPE survey response '
             '(questionnaire_id: "2", version: "1", identifier: "new_id"'
         )
+
+    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
+    def test_unrecognized_october_cope_form(self, mock_logging):
+        self.insert_codes()
+        p = Participant(participantId=1, biobankId=2)
+        self.participant_dao.insert(p)
+
+        self._setup_participant()
+        self._create_cope_questionnaire(identifier='oct_unknown')
+
+        self._submit_questionnaire_response(self.cope_consent_yes, authored_datetime=datetime.datetime(2020, 10, 14))
+
+        participant_summary = self.participant_summary_dao.get(1)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeOct)
+        self.assertEqual(datetime.datetime(2020, 10, 14), participant_summary.questionnaireOnCopeOctAuthored)
+
+        mock_logging.error.assert_called_with(
+            'Unrecognized identifier for COPE survey response '
+            '(questionnaire_id: "2", version: "1", identifier: "oct_unknown"'
+        )
+
+    def test_october_cope_survey(self):
+        self.insert_codes()
+        p = Participant(participantId=1, biobankId=2)
+        self.participant_dao.insert(p)
+
+        self._setup_participant()
+        num_completed_ppi_after_setup = self.participant_summary_dao.get(1).numCompletedPPIModules
+
+        self._create_cope_questionnaire(identifier='OctCope')
+
+        self._submit_questionnaire_response(self.cope_consent_yes)
+
+        participant_summary = self.participant_summary_dao.get(1)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeOct)
+        self.assertEqual(num_completed_ppi_after_setup + 1, participant_summary.numCompletedPPIModules)
 
     def _create_dna_program_questionnaire(self, created_date=datetime.datetime(2020, 5, 5)):
         self._create_questionnaire(created_date)

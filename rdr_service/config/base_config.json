@@ -14,7 +14,8 @@
     "questionnaireOnMedications",
     "questionnaireOnCopeMay",
     "questionnaireOnCopeJune",
-    "questionnaireOnCopeJuly"
+    "questionnaireOnCopeJuly",
+    "questionnaireOnCopeOct"
   ],
   "baseline_sample_test_codes": [
   	"1ED04",
