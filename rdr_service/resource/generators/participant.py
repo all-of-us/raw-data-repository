@@ -113,9 +113,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param data: dict object
         :return: dict
         """
-        if not self.ro_dao:
-            self.ro_dao = ResourceDataDao(backup=True)
-
         sql_json_set_values = ', '.join([f"'$.{k}', :p_{k}" for k, v in data.items()])
 
         args = {'pid': p_id, 'type_uid': SchemaID.participant.value, 'modified': datetime.datetime.utcnow()}
@@ -127,8 +124,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
               set rd.modified = :modified, rd.resource = json_set(rd.resource, {sql_json_set_values}) 
               where rd.resource_pk_id = :pid and rt.type_uid = :type_uid
         """
-
-        with self.ro_dao.session() as session:
+        dao = ResourceDataDao(backup=False)
+        with dao.session() as session:
             session.execute(sql, args)
 
             sql = """
