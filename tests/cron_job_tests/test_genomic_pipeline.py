@@ -1724,9 +1724,8 @@ class GenomicPipelineTest(BaseTestCase):
         # Do withdraw GROR
         withdraw_time = datetime.datetime(2020, 4, 2, 0, 0, 0, 0)
         summary1 = self.summary_dao.get(1)
-        summary1.consentForStudyEnrollment = QuestionnaireStatus.SUBMITTED_NO_CONSENT
-        summary1.consentForStudyEnrollmentAuthored = withdraw_time
-        summary1.withdrawalStatus = WithdrawalStatus.NO_USE
+        summary1.consentForGenomicsROR = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+        summary1.consentForGenomicsRORAuthored = withdraw_time
         self.summary_dao.update(summary1)
         # Run A3 manifest
         with clock.FakeClock(withdraw_time):
@@ -1734,9 +1733,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Do Reconsent ROR
         reconsent_time = datetime.datetime(2020, 4, 3, 0, 0, 0, 0)
-        summary1.consentForStudyEnrollment = QuestionnaireStatus.SUBMITTED
-        summary1.consentForStudyEnrollmentAuthored = reconsent_time
-        summary1.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
+        summary1.consentForGenomicsROR = QuestionnaireStatus.SUBMITTED
+        summary1.consentForGenomicsRORAuthored = reconsent_time
         self.summary_dao.update(summary1)
         # Run A1 Again
         with clock.FakeClock(reconsent_time):
@@ -1814,7 +1812,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._update_test_sample_ids()
 
-        # Change GROR (Should not be included in A3)
+        # Change GROR (Should be included in A3)
         p3 = self.summary_dao.get(3)
         p3.consentForGenomicsROR = QuestionnaireStatus.SUBMITTED_NO_CONSENT
         p3.consentForGenomicsRORAuthored = datetime.datetime(2020, 5, 25, 0, 0, 0)
@@ -1834,10 +1832,10 @@ class GenomicPipelineTest(BaseTestCase):
             genomic_pipeline.gem_a3_manifest_workflow()  # run_id 2
 
         # Test the members' job run ID
-        # Not picked up by job
+        # Picked up by job
         test_member_3 = self.member_dao.get(3)
-        self.assertEqual(None, test_member_3.gemA3ManifestJobRunId)
-        self.assertEqual(GenomicWorkflowState.GEM_RPT_READY, test_member_3.genomicWorkflowState)
+        self.assertEqual(2, test_member_3.gemA3ManifestJobRunId)
+        self.assertEqual(GenomicWorkflowState.GEM_RPT_DELETED, test_member_3.genomicWorkflowState)
 
         # picked up by job
         test_member_2 = self.member_dao.get(2)
@@ -1857,9 +1855,11 @@ class GenomicPipelineTest(BaseTestCase):
             missing_cols = set(expected_gem_columns) - set(csv_reader.fieldnames)
             self.assertEqual(0, len(missing_cols))
             rows = list(csv_reader)
-            self.assertEqual(1, len(rows))
+            self.assertEqual(2, len(rows))
             self.assertEqual(test_member_2.biobankId, int(rows[0]['biobank_id']))
             self.assertEqual(test_member_2.sampleId, rows[0]['sample_id'])
+            self.assertEqual(test_member_3.biobankId, int(rows[1]['biobank_id']))
+            self.assertEqual(test_member_3.sampleId, rows[1]['sample_id'])
 
         # Array
         file_record = self.file_processed_dao.get(1)  # remember, GC Metrics is #1
