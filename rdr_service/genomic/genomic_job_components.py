@@ -288,8 +288,12 @@ class GenomicFileIngester:
                         # RDR may need to do something with them in the future
 
                     else:
-                        logging.warning(f'Invalid collection tube ID: {collection_tube_id}'
+                        logging.error(f'Invalid collection tube ID: {collection_tube_id}'
                                         f' or genome_type: {genome_type}')
+
+                        # Aborting the job if invalid collection tube ID found.
+                        return GenomicSubProcessResult.ERROR
+
                     continue
 
                 member.gcSiteId = _site
@@ -466,10 +470,7 @@ class GenomicFileIngester:
         :param data_to_ingest: stream of data in dict format
         :return result code
         """
-        gc_metrics_batch = []
-
-        # iterate over each row from CSV and
-        # add to insert batch gc metrics record
+        # iterate over each row from CSV and insert into gc metrics table
         for row in data_to_ingest['rows']:
             # change all key names to lower
             row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
@@ -491,11 +492,14 @@ class GenomicFileIngester:
             if member is not None:
                 self.member_dao.update_member_state(member, GenomicWorkflowState.AW2)
                 row_copy['member_id'] = member.id
-                gc_metrics_batch.append(row_copy)
+                self.metrics_dao.insert_or_update_gc_validation_metrics(row_copy)
             else:
-                logging.warning(f'Sample ID {sample_id} has no corresponding Genomic Set Member.')
+                logging.error(f'Sample ID {sample_id} has no corresponding Genomic Set Member in AW1 state.')
 
-        return self.metrics_dao.insert_gc_validation_metrics_batch(gc_metrics_batch)
+                # Aborting the job if sample ID cannot be found.
+                return GenomicSubProcessResult.ERROR
+
+        return GenomicSubProcessResult.SUCCESS
 
     def _ingest_cvl_w2_manifest(self, file_data):
         """

@@ -784,25 +784,34 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
     def get_id(self, obj):
         return obj.id
 
-    def insert_gc_validation_metrics_batch(self, data_to_insert):
+    def insert_or_update_gc_validation_metrics(self, data_to_insert):
         """
-        Inserts a batch of GC validation metrics
-        :param data_to_insert: list of dictionary rows to insert
+        Insert or updates a GC validation metrics object
+        :param data_to_insert: dictionary of row-data from AW2 file to insert
         :return: result code
         """
         try:
-            for row in data_to_insert:
-                gc_metrics_obj = GenomicGCValidationMetrics()
-                for key in self.data_mappings.keys():
-                    try:
-                        gc_metrics_obj.__setattr__(key, row[self.data_mappings[key]])
-                    except KeyError:
-                        gc_metrics_obj.__setattr__(key, None)
-                inserted_metrics_obj = self.insert(gc_metrics_obj)
+            gc_metrics_obj = GenomicGCValidationMetrics()
+            for key in self.data_mappings.keys():
+                try:
+                    gc_metrics_obj.__setattr__(key, data_to_insert[self.data_mappings[key]])
+                except KeyError:
+                    gc_metrics_obj.__setattr__(key, None)
 
-                # Update GC Metrics for PDR
-                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
-                genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+            # Get existing ID if exists
+            existing_metrics_obj = self.get_metrics_by_member_id(gc_metrics_obj.genomicSetMemberId)
+            if existing_metrics_obj is not None:
+                logging.info(f'GC Metrics for member ID {gc_metrics_obj.genomicSetMemberId} found.')
+                gc_metrics_obj.id = existing_metrics_obj.id
+
+            # Insert or overwrite the object
+            with self.session() as session:
+                logging.info(f'Writing GC Metrics for member ID {gc_metrics_obj.genomicSetMemberId}.')
+                updated_metrics_obj = session.merge(gc_metrics_obj)
+
+            # Update GC Metrics for PDR
+            bq_genomic_gc_validation_metrics_update(updated_metrics_obj.id)
+            genomic_gc_validation_metrics_update(updated_metrics_obj.id)
 
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
