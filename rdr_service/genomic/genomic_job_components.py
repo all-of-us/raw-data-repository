@@ -470,10 +470,7 @@ class GenomicFileIngester:
         :param data_to_ingest: stream of data in dict format
         :return result code
         """
-        gc_metrics_batch = []
-
-        # iterate over each row from CSV and
-        # add to insert batch gc metrics record
+        # iterate over each row from CSV and insert into gc metrics table
         for row in data_to_ingest['rows']:
             # change all key names to lower
             row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
