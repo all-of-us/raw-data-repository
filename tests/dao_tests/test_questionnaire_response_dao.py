@@ -688,8 +688,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self._submit_questionnaire_response(self.cope_consent_yes)
 
         self.assertEqual(2, self.participant_summary_dao.get(1).numCompletedPPIModules)
-        self.assertEqual(QuestionnaireStatus.SUBMITTED,
-                         self.participant_summary_dao.get(1).questionnaireOnCopeMay)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, self.participant_summary_dao.get(1).questionnaireOnCopeMay)
 
     def test_cope_resubmit(self):
         self.insert_codes()
@@ -744,7 +743,8 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         participant_summary = self.participant_summary_dao.get(1)
         self.assertEqual(QuestionnaireStatus.SUBMITTED_NO_CONSENT, participant_summary.questionnaireOnCopeJune)
 
-    def test_unrecognized_cope_form(self):
+    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
+    def test_unrecognized_cope_form(self, mock_logging):
         self.insert_codes()
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
@@ -757,6 +757,11 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         participant_summary = self.participant_summary_dao.get(1)
         self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeJuly)
         self.assertEqual(datetime.datetime(2020, 8, 9), participant_summary.questionnaireOnCopeJulyAuthored)
+
+        mock_logging.error.assert_called_with(
+            'Unrecognized identifier for COPE survey response '
+            '(questionnaire_id: "2", version: "1", identifier: "new_id"'
+        )
 
     def _create_dna_program_questionnaire(self, created_date=datetime.datetime(2020, 5, 5)):
         self._create_questionnaire(created_date)

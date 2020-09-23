@@ -261,13 +261,17 @@ class QuestionnaireResponseDao(BaseDao):
             return True
         return False
 
-    def _find_cope_month(self, questionnaire_history: QuestionnaireHistory, response_authored_date):
+    @staticmethod
+    def _find_cope_month(questionnaire_history: QuestionnaireHistory, response_authored_date):
         cope_form_id_map = config.getSettingJson(config.COPE_FORM_ID_MAP)
         for form_ids_str, month_name in cope_form_id_map.items():
             if questionnaire_history.externalId in form_ids_str.split(','):
                 return month_name
 
-        # Currently only have fields in participant summary for May, Jun and July
+        # If the questionnaire identifier isn't in the COPE map then using response authored date as a fallback
+        logging.error('Unrecognized identifier for COPE survey response '
+                      f'(questionnaire_id: "{questionnaire_history.questionnaireId}", '
+                      f'version: "{questionnaire_history.version}", identifier: "{questionnaire_history.externalId}"')
         return {
             5: 'May',
             6: 'June'
