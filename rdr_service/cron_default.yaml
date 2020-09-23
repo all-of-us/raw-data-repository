@@ -6,7 +6,7 @@ cron:
   target: offline
 - description: Skew duplicate last modified
   url: /offline/SkewDuplicates
-  schedule: every day 01:00
+  schedule: every day 01:30
   timezone: America/New_York
   target: offline
 - description: Daily reconciliation report
@@ -84,6 +84,16 @@ cron:
   timezone: America/New_York
   schedule: 1 of jan 12:00
   target: offline
+- description: Genomic AW1C (CVL) Workflow (Manual)
+  url: /offline/GenomicAW1CManifestWorkflow
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
+- description: Genomic AW1CF (CVL) Failures Workflow (Manual)
+  url: /offline/GenomicCVLFailuresWorkflow
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
 - description: Genomic AW2 Workflow (Manual)
   url: /offline/GenomicDataManifestWorkflow
   timezone: America/New_York
@@ -116,6 +126,11 @@ cron:
   target: offline
 - description: Genomic AW3 Workflow (Manual)
   url: /offline/GenomicAW3Workflow
+  timezone: America/New_York
+  schedule: 1 of jan 12:00
+  target: offline
+- description: Genomic AW4 Workflow (Manual)
+  url: /offline/GenomicAW4Workflow
   timezone: America/New_York
   schedule: 1 of jan 12:00
   target: offline

@@ -31,6 +31,7 @@ class DataGenerator:
         self.session = session
         self.faker = faker
         self._next_unique_participant_id = 900000000
+        self._next_unique_research_id = 9000000
         self._next_unique_participant_biobank_id = 500000000
         self._next_unique_biobank_order_id = 100000000
         self._next_unique_biobank_stored_sample_id = 800000000
@@ -122,6 +123,11 @@ class DataGenerator:
         self._next_unique_participant_id += 1
         return next_participant_id
 
+    def unique_research_id(self):
+        next_research_id = self._next_unique_research_id
+        self._next_unique_research_id += 1
+        return next_research_id
+
     def unique_participant_biobank_id(self):
         next_biobank_id = self._next_unique_participant_biobank_id
         self._next_unique_participant_biobank_id += 1
@@ -209,6 +215,8 @@ class DataGenerator:
             defaults['biobankId'] = self.unique_participant_biobank_id()
         if 'participantId' not in defaults:
             defaults['participantId'] = self.unique_participant_id()
+        if 'researchId' not in defaults:
+            defaults['researchId'] = self.unique_research_id()
 
         return Participant(**defaults)
 
@@ -337,6 +345,10 @@ class DataGenerator:
     def _biobank_stored_sample(self, **kwargs):
         if 'biobankStoredSampleId' not in kwargs:
             kwargs['biobankStoredSampleId'] = self.unique_biobank_stored_sample_id()
+
+        for field, default in [('biobankOrderIdentifier', self.faker.pystr())]:
+            if field not in kwargs:
+                kwargs[field] = default
 
         return BiobankStoredSample(**kwargs)
 

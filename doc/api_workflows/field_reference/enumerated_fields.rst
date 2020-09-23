@@ -70,7 +70,6 @@ enrollmentStatus
 
 ehrStatus
 ------------------------------------------------------------
-  * UNSET
   * NOT_PRESENT
   * PRESENT
 
@@ -217,3 +216,10 @@ DeceasedReportDenialReason
   * MARKED_IN_ERROR
   * INSUFFICIENT_INFORMATION
   * OTHER
+
+.. _retention_status:
+
+RetentionStatus
+------------------------------------------------------------
+.. autoclass:: rdr_service.participant_enums.RetentionStatus
+    :exclude-members: name, number

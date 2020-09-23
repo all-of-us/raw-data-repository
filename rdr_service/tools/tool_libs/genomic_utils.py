@@ -15,12 +15,16 @@ import csv
 import pytz
 
 from rdr_service import clock, config
+from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_set_update, \
+    bq_genomic_job_run_update
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet
+from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
+    genomic_job_run_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -377,64 +381,6 @@ class GenerateManifestClass(GenomicManifestBase):
             member_dao.update_member_state(member, new_state)
 
 
-class IgnoreStateClass(object):
-    def __init__(self, args, gcp_env: GCPEnvConfigObject):
-        """
-        :param args: command line arguments.
-        :param gcp_env: gcp environment information, see: gcp_initialize().
-        """
-        # Tool_lib attributes
-        self.args = args
-        self.gcp_env = gcp_env
-        self.dao = None
-
-    def run(self):
-        """
-        Main program process
-        :return: Exit code value
-        """
-        _logger.info("Running ignore tool")
-
-        # Validate Aruguments
-        if self.args.csv is None:
-            _logger.error('Argument --csv must be provided.')
-            return 1
-
-        if not os.path.exists(self.args.csv):
-            _logger.error(f'File {self.args.csv} was not found.')
-            return 1
-
-        # Activate the SQL Proxy
-        self.gcp_env.activate_sql_proxy()
-        self.dao = GenomicSetMemberDao()
-
-        # Update gsm IDs from file
-        with open(self.args.csv, encoding='utf-8-sig') as f:
-            lines = f.readlines()
-            for _member_id in lines:
-                _member = self.dao.get(_member_id)
-
-                if _member is None:
-                    _logger.warning(f"Member id {_member_id.rstrip()} does not exist.")
-                    continue
-
-                self.update_genomic_set_member_state(_member)
-
-        return 0
-
-    def update_genomic_set_member_state(self, member):
-        """
-        Sets the member.genomicWorkflowState = IGNORE for member
-        :param member:
-        :return:
-        """
-        member.genomicWorkflowState = GenomicWorkflowState.IGNORE
-
-        with self.dao.session() as session:
-            _logger.info(f"Updating member id {member.id}")
-            session.merge(member)
-
-
 class ControlSampleClass(GenomicManifestBase):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(ControlSampleClass, self).__init__(args, gcp_env)
@@ -473,6 +419,10 @@ class ControlSampleClass(GenomicManifestBase):
                     inserted_set = session.merge(new_genomic_set)
                     session.flush()
 
+                    # Update state for PDR
+                    bq_genomic_set_update(inserted_set.id, project_id=self.gcp_env.project)
+                    genomic_set_update(inserted_set.id)
+
                     for _sample_id in lines:
                         _logger.warning(f'Inserting {_sample_id}')
 
@@ -483,8 +433,11 @@ class ControlSampleClass(GenomicManifestBase):
                             participantId=0,
                         )
 
-                        session.merge(member_to_insert)
+                        inserted_member = session.merge(member_to_insert)
                         session.commit()
+
+                        bq_genomic_set_member_update(inserted_member.id, project_id=self.gcp_env.project)
+                        genomic_set_member_update(inserted_member.id)
 
             else:
                 for _sample_id in lines:
@@ -530,6 +483,10 @@ class ManualSampleClass(GenomicManifestBase):
                     inserted_set = session.merge(new_genomic_set)
                     session.flush()
 
+                    # Update state for PDR
+                    bq_genomic_set_update(inserted_set.id, project_id=self.gcp_env.project)
+                    genomic_set_update(inserted_set.id)
+
                     for line in csvreader:
                         _pid = line[0]
                         _bid = line[1]
@@ -554,7 +511,11 @@ class ManualSampleClass(GenomicManifestBase):
                                 gcSiteId=_siteId,
                             )
 
-                            session.merge(member_to_insert)
+                            inserted_member = session.merge(member_to_insert)
+                            session.flush()
+
+                            bq_genomic_set_member_update(inserted_member.id, project_id=self.gcp_env.project)
+                            genomic_set_member_update(inserted_member.id)
 
                     session.commit()
 
@@ -563,6 +524,136 @@ class ManualSampleClass(GenomicManifestBase):
                     _logger.warning(f'Would Insert {line}')
 
         return 0
+
+
+class JobRunResult(GenomicManifestBase):
+    """Class to set a genomic_job_run.run_result to a particular status."""
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(JobRunResult, self).__init__(args, gcp_env)
+        self.valid_job_results = GenomicSubProcessResult.names()
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicJobRunDao()
+
+        # Check that supplied result is valid
+        if self.args.result not in self.valid_job_results:
+            _logger.error(f'Invalid job result. must be one of {self.valid_job_results}')
+            return 1
+
+        # Get the result to update to
+        new_result = GenomicSubProcessResult.lookup_by_name(self.args.result)
+
+        job_run = self.dao.get(self.args.id)
+
+        if job_run is None:
+            _logger.error(f'Job Run ID not found: {self.args.id}')
+            return 1
+
+        # Don't actually update the job_run
+        if self.args.dryrun:
+            _logger.warning(f'Would update Job Run ID {self.args.id}:')
+            _logger.warning(f'    {job_run.runResult} -> {self.args.result}')
+
+            if self.args.message:
+                _logger.warning(f'    {job_run.resultMessage} -> {self.args.message}')
+
+        else:
+            _logger.warning(f'Updating Job Run ID {self.args.id}:')
+            _logger.warning(f'    {job_run.runResult} -> {self.args.result}')
+
+            if self.args.message:
+                _logger.warning(f'    {job_run.resultMessage} -> {self.args.message}')
+                job_run.resultMessage = self.args.message
+
+            job_run.runResult = new_result
+
+            self.dao.update(job_run)
+
+            # Update run for PDR
+            bq_genomic_job_run_update(job_run.id)
+            genomic_job_run_update(job_run.id)
+
+        return 0
+
+
+class UpdateGenomicMembersState(GenomicManifestBase):
+    """Class update a genomic_set_member to a particular state."""
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(UpdateGenomicMembersState, self).__init__(args, gcp_env)
+        self.valid_genomic_states = GenomicWorkflowState.names()
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+
+        _logger.info("Running Genomic State tool")
+        if self.args.dryrun:
+            _logger.info("Running in dryrun mode. No actual updates to data.")
+
+        # Validate Aruguments
+        if not os.path.exists(self.args.csv):
+            _logger.error(f'File {self.args.csv} was not found.')
+            return 1
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicSetMemberDao()
+
+        # Update gsm IDs from file
+        with open(self.args.csv, encoding='utf-8-sig') as f:
+            csvreader = csv.reader(f, delimiter=",")
+
+            for line in csvreader:
+                _member_id = line[0]
+                _provided_state = line[1]
+
+                # Check that supplied state is valid
+                if _provided_state not in self.valid_genomic_states:
+                    _logger.error(f'Invalid genomic. must be one of {self.valid_genomic_states}')
+                    return 1
+
+                new_state = GenomicWorkflowState.lookup_by_name(_provided_state)
+
+                # lookup member
+                member = self.dao.get(_member_id)
+
+                if member is None:
+                    _logger.error(f"Member id {_member_id.rstrip()} does not exist.")
+                    return 1
+
+                self.update_genomic_set_member_state(member, new_state)
+
+        return 0
+
+    def update_genomic_set_member_state(self, member, state):
+        """
+        Sets the member.genomicWorkflowState = state
+        :param member:
+        :param state:
+        :return:
+        """
+
+        with self.dao.session() as session:
+            _logger.warning(f"Updating member id {member.id}")
+            _logger.warning(f"    {member.genomicWorkflowState} -> {state}")
+
+            if not self.args.dryrun:
+                member.genomicWorkflowState = state
+                member.genomicWorkflowStateModifiedTime = self.nowts
+                session.merge(member)
+
+        # Update state for PDR
+        bq_genomic_set_member_update(member.id, project_id=self.gcp_env.project)
+        genomic_set_member_update(member.id)
 
 
 def run():
@@ -598,9 +689,11 @@ def run():
     new_manifest_parser.add_argument("--manifest", help=new_manifest_help, default=None)  # noqa
     new_manifest_parser.add_argument("--cohort", help="Cohort [1, 2, 3]", default=None)  # noqa
 
-    # Set GenomicWorkflowState to IGNORE for provided member IDs
-    ignore_state_parser = subparser.add_parser("ignore-state")
-    ignore_state_parser.add_argument("--csv", help="csv file with genomic_set_member ids", default=None)  # noqa
+    # Set GenomicWorkflowState to provided state for provided member IDs
+    member_state_parser = subparser.add_parser("member-state")
+    member_state_parser.add_argument("--csv", help="csv file with genomic_set_member.id, state",
+                                     default=None, required=True)  # noqa
+    member_state_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
     # Create GenomicSetMembers for provided control sample IDs (provided by Biobank)
     control_sample_parser = subparser.add_parser("control-sample")
@@ -613,6 +706,16 @@ def run():
                                        default=None, required=True)  # noqa
     manual_sample_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
+    # Update Job Run ID to result
+    job_run_parser = subparser.add_parser("job-run-result")
+    job_run_parser.add_argument("--id", help="genomic_job_run.id to update",
+                                      default=None, required=True)  # noqa
+    job_run_parser.add_argument("--result", help="genomic_job_run.run_result to update to",
+                                      default=None, required=True)  # noqa
+    job_run_parser.add_argument("--message", help="genomic_job_run.result_message to update to (optional)",
+                                      default=None, required=False)  # noqa
+    job_run_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -624,8 +727,8 @@ def run():
             process = GenerateManifestClass(args, gcp_env)
             exit_code = process.run()
 
-        elif args.util == 'ignore-state':
-            process = IgnoreStateClass(args, gcp_env)
+        elif args.util == 'member-state':
+            process = UpdateGenomicMembersState(args, gcp_env)
             exit_code = process.run()
 
         elif args.util == 'control-sample':
@@ -634,6 +737,10 @@ def run():
 
         elif args.util == 'manual-sample':
             process = ManualSampleClass(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.util == 'job-run-result':
+            process = JobRunResult(args, gcp_env)
             exit_code = process.run()
 
         else:

@@ -15,6 +15,7 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.offline import update_ehr_status
 from rdr_service.participant_enums import EhrStatus
+from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -152,6 +153,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
     def test_updates_participant_summaries(self, mock_summary_job, mock_organization_job):
         mock_summary_job.return_value.__iter__.return_value = [[self.EhrUpdatePidRow(11)]]
         mock_organization_job.return_value.__iter__.return_value = []
+        gen = ParticipantSummaryGenerator()
         with FakeClock(datetime.datetime(2019, 1, 1)):
             update_ehr_status.update_ehr_status()
 
@@ -165,10 +167,21 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
         self.assertEqual(summary.ehrReceiptTime, datetime.datetime(2019, 1, 1))
         self.assertEqual(summary.ehrUpdateTime, datetime.datetime(2019, 1, 2))
 
+        ps_data = gen.make_resource(11).get_data()
+        self.assertEqual(str(summary.ehrStatus), ps_data['ehr_status'])
+        self.assertEqual(summary.ehrReceiptTime, ps_data['ehr_receipt'])
+        self.assertEqual(summary.ehrUpdateTime, ps_data['ehr_update'])
+
         summary = self.summary_dao.get(12)
         self.assertEqual(summary.ehrStatus, EhrStatus.PRESENT)
         self.assertEqual(summary.ehrReceiptTime, datetime.datetime(2019, 1, 2))
         self.assertEqual(summary.ehrUpdateTime, datetime.datetime(2019, 1, 2))
+
+        ps_data = gen.make_resource(12).get_data()
+        self.assertEqual(str(summary.ehrStatus), ps_data['ehr_status'])
+        self.assertEqual(summary.ehrReceiptTime, ps_data['ehr_receipt'])
+        self.assertEqual(summary.ehrUpdateTime, ps_data['ehr_update'])
+
 
     @mock.patch("rdr_service.offline.update_ehr_status.make_update_organizations_job")
     @mock.patch("rdr_service.offline.update_ehr_status.make_update_participant_summaries_job")

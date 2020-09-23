@@ -37,7 +37,7 @@ TEST_EMAIL_PATTERN = "%@example.com"
 TEST_HPO_NAME = "TEST"
 TEST_HPO_ID = 19
 # Test login phone number prefix
-TEST_LOGIN_PHONE_NUMBER_PREFIX = "444"
+TEST_LOGIN_PHONE_NUMBER_PREFIX = "4442"
 PARTICIPANT_COHORT_2_START_TIME = datetime(2018, 4, 24, 0, 0, 0)
 PARTICIPANT_COHORT_3_START_TIME = datetime(2020, 4, 21, 4, 0, 0)
 
@@ -610,6 +610,9 @@ class GenomicJob(messages.Enum):
     AW4_ARRAY_WORKFLOW = 22
     AW4_WGS_WORKFLOW = 23
     GEM_METRICS_INGEST = 24
+    AW1C_INGEST = 25
+    AW1CF_INGEST = 26
+    AW1CF_ALERTS = 27
 
 
 class GenomicWorkflowState(messages.Enum):

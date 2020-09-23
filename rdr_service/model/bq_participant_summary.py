@@ -182,6 +182,7 @@ class BQParticipantSummarySchema(BQSchema):
 
     participant_id = BQField('participant_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     biobank_id = BQField('biobank_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    research_id = BQField('research_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     participant_origin = BQField('participant_origin', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
     first_name = BQField('first_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
@@ -197,7 +198,7 @@ class BQParticipantSummarySchema(BQSchema):
     enrollment_core_ordered = BQField('enrollment_core_ordered', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     enrollment_core_stored = BQField('enrollment_core_stored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
 
-    # These EHR fields are being replaced by a direct query from Curation's BigQuery database and need to be removed.
+    # PDR-106: The EHR fields are needed in PDR by PTSC and for consistency should come from RDR vs. Curation BigQuery
     ehr_status = BQField('ehr_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     ehr_status_id = BQField('ehr_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     ehr_receipt = BQField('ehr_receipt', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)

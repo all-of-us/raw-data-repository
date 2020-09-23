@@ -1,5 +1,6 @@
 from rdr_service.api_util import format_json_date
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
+from rdr_service.model.participant import Participant
 from rdr_service.api_util import parse_date
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankAliquot,\
@@ -38,7 +39,7 @@ class BiobankDaoBase(UpdatableDao):
         return disposal_status
 
     @staticmethod
-    def read_client_status(status_source, model, clear_disposal_fields=False):
+    def read_client_status(status_source, model):
         for status_field_name, parser in [('status', None),
                                           ('freezeThawCount', None),
                                           ('location', None),
@@ -48,19 +49,19 @@ class BiobankDaoBase(UpdatableDao):
                                           ('processingCompleteDate', BiobankDaoBase.parse_nullable_date)]:
             BiobankDaoBase.map_optional_json_field_to_object(status_source, model, status_field_name, parser=parser)
 
-        if clear_disposal_fields:
+        if model.status and model.status.lower() != 'disposed':
             model.disposalDate = None
             model.disposalReason = ''
 
     @staticmethod
-    def read_client_disposal(status_source, model, set_status=False):
+    def read_client_disposal(status_source, model):
         for disposal_client_field_name, disposal_model_field_name, parser in\
                 [('reason', 'disposalReason', None),
                  ('disposalDate', None, BiobankSpecimenDao.parse_nullable_date)]:
             BiobankDaoBase.map_optional_json_field_to_object(status_source, model, disposal_client_field_name,
                                                              disposal_model_field_name, parser=parser)
 
-        if set_status:
+        if model.disposalDate or model.disposalReason:
             model.status = 'Disposed'
 
     @staticmethod
@@ -205,6 +206,20 @@ class BiobankSpecimenDao(BiobankDaoBase):
             return order.id
         else:
             return None
+
+    @staticmethod
+    def _check_participant_exists(session, biobank_id):
+        participant_query = session.query(Participant).filter(Participant.biobankId == biobank_id)
+        if not session.query(participant_query.exists()).scalar():
+            raise BadRequest(f'Biobank id {to_client_biobank_id(biobank_id)} does not exist')
+
+    def insert_with_session(self, session, obj: BiobankSpecimen):
+        self._check_participant_exists(session, obj.biobankId)
+        return super(BiobankSpecimenDao, self).insert_with_session(session, obj)
+
+    def update_with_session(self, session, obj: BiobankSpecimen):
+        self._check_participant_exists(session, obj.biobankId)
+        return super(BiobankSpecimenDao, self).update_with_session(session, obj)
 
 
 class BiobankSpecimenAttributeDao(BiobankDaoBase):

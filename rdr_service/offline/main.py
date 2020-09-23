@@ -283,6 +283,31 @@ def genomic_aw1f_failures_workflow():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
+def aw1c_manifest_workflow():
+    """Temporarily running this manually for E2E Testing"""
+    now = datetime.utcnow()
+    if now.day == 0o1 and now.month == 0o1:
+        logging.info("skipping the scheduled run.")
+        return '{"success": "true"}'
+    genomic_pipeline.ingest_aw1c_manifest()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def aw1cf_failures_workflow():
+    """Temporarily running this manually for E2E Testing"""
+    now = datetime.utcnow()
+    if now.day == 0o1 and now.month == 0o1:
+        logging.info("skipping the scheduled run.")
+        return '{"success": "true"}'
+    genomic_pipeline.ingest_aw1cf_manifest_workflow()
+    genomic_pipeline.aw1cf_alerts_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
 def genomic_data_manifest_workflow():
     """Temporarily running this manually for E2E Testing"""
     now = datetime.utcnow()
@@ -366,6 +391,19 @@ def genomic_aw3_workflow():
         return '{"success": "true"}'
     genomic_pipeline.aw3_array_manifest_workflow()
     genomic_pipeline.aw3_wgs_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_aw4_workflow():
+    """Temporarily running this manually for E2E Testing"""
+    now = datetime.utcnow()
+    if now.day == 0o1 and now.month == 0o1:
+        logging.info("skipping the scheduled run.")
+        return '{"success": "true"}'
+    genomic_pipeline.aw4_array_manifest_workflow()
+    genomic_pipeline.aw4_wgs_manifest_workflow()
     return '{"success": "true"}'
 
 
@@ -537,6 +575,16 @@ def _build_pipeline_app():
         view_func=genomic_aw1f_failures_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicAW1CManifestWorkflow",
+        endpoint="aw1c_manifest_workflow",
+        view_func=aw1c_manifest_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicCVLFailuresWorkflow",
+        endpoint="aw1cf_failures_workflow",
+        view_func=aw1cf_failures_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicDataManifestWorkflow",
         endpoint="genomic_data_manifest_workflow",
         view_func=genomic_data_manifest_workflow, methods=["GET"]
@@ -570,6 +618,11 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicAW3Workflow",
         endpoint="genomic_aw3_workflow",
         view_func=genomic_aw3_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicAW4Workflow",
+        endpoint="genomic_aw4_workflow",
+        view_func=genomic_aw4_workflow, methods=["GET"]
     )
     # END Genomic Pipeline Jobs
 

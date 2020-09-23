@@ -20,7 +20,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
 from rdr_service.model.hpo import HPO
 from rdr_service.participant_enums import (ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType, TEST_HPO_ID,
-                                           TEST_HPO_NAME, EnrollmentStatus, WithdrawalStatus, SuspensionStatus,
+                                           TEST_HPO_NAME, WithdrawalStatus, SuspensionStatus,
                                            SampleStatus, DeceasedStatus, QuestionnaireStatus)
 from tests.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id
 from tests.helpers.unittest_base import BaseTestCase
@@ -742,6 +742,40 @@ class ParticipantSummaryApiTest(BaseTestCase):
         sync_again = self.send_get(sync_url[index:])
         self.assertGreaterEqual(len(sync_again["entry"]), 14)
 
+    def test_filter_summary_by_unset_org(self):
+        self.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+        questionnaire_id = self.create_demographics_questionnaire()
+        participant = self.send_post("Participant", {"providerLink": []})
+        participant_id = participant["participantId"]
+        with FakeClock(TIME_1):
+            self.send_consent(participant_id)
+        # Populate some answers to the questionnaire
+        answers = {
+            "race": RACE_WHITE_CODE,
+            "genderIdentity": PMI_SKIP_CODE,
+            "firstName": self.fake.first_name(),
+            "middleName": self.fake.first_name(),
+            "lastName": self.fake.last_name(),
+            "zipCode": "78751",
+            "state": PMI_SKIP_CODE,
+            "streetAddress": self.streetAddress,
+            "streetAddress2": self.streetAddress2,
+            "city": "Austin",
+            "sex": PMI_SKIP_CODE,
+            "sexualOrientation": PMI_SKIP_CODE,
+            "phoneNumber": "512-555-5555",
+            "recontactMethod": PMI_SKIP_CODE,
+            "language": PMI_SKIP_CODE,
+            "education": PMI_SKIP_CODE,
+            "income": PMI_SKIP_CODE,
+            "dateOfBirth": datetime.date(1978, 10, 9),
+            "CABoRSignature": "signature.pdf",
+        }
+        self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
+        url = "ParticipantSummary?_sort=lastModified&organization=UNSET"
+        response = self.send_get(url)
+        self.assertEqual(len(response.get('entry')), 1)
+        self.assertEqual(response.get('entry')[0].get('resource').get('organization'), 'UNSET')
 
     def test_get_summary_list_returns_total(self):
         page_size = 10
@@ -3098,24 +3132,17 @@ class ParticipantSummaryApiTest(BaseTestCase):
         summary = ps_dao.get(participant_id)
         summary.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
         summary.suspensionStatus = SuspensionStatus.NOT_SUSPENDED
-        summary.enrollmentStatus = EnrollmentStatus.FULL_PARTICIPANT
         summary.consentForStudyEnrollment = 1
-        summary.consentForStudyEnrollmentAuthored = TIME_1
-        summary.consentForElectronicHealthRecords = 1
-        summary.consentForElectronicHealthRecordsAuthored = TIME_2
+        summary.consentForStudyEnrollmentFirstYesAuthored = TIME_1
+        summary.consentForElectronicHealthRecordsFirstYesAuthored = TIME_2
         summary.questionnaireOnTheBasics = QuestionnaireStatus.SUBMITTED
         summary.questionnaireOnOverallHealth = QuestionnaireStatus.SUBMITTED
         summary.questionnaireOnLifestyle = QuestionnaireStatus.SUBMITTED
-        summary.questionnaireOnTheBasicsTime = TIME_3
-        summary.questionnaireOnLifestyleTime = TIME_3
-        summary.questionnaireOnOverallHealthTime = TIME_3
         summary.sampleOrderStatus1ED04Time = TIME_4
         summary.sampleOrderStatus1SALTime = TIME_4
         summary.sampleStatus1ED04Time = TIME_4
         summary.sampleStatus1SALTime = TIME_4
-        summary.questionnaireOnLifestyleAuthored = TIME_3
-        summary.questionnaireOnTheBasicsAuthored = TIME_3
-        summary.questionnaireOnOverallHealthAuthored = TIME_3
+        summary.baselineQuestionnairesFirstCompleteAuthored = TIME_3
         summary.samplesToIsolateDNA = SampleStatus.RECEIVED
         summary.deceasedStatus = DeceasedStatus.UNSET
         ps_dao.update(summary)

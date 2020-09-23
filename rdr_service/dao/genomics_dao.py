@@ -9,6 +9,7 @@ from sqlalchemy.sql import functions
 
 from rdr_service import clock
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao
+from rdr_service.dao.bq_genomics_dao import bq_genomic_gc_validation_metrics_update, bq_genomic_set_member_update
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
@@ -28,6 +29,7 @@ from rdr_service.participant_enums import (
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
+from rdr_service.resource.generators.genomics import genomic_gc_validation_metrics_update, genomic_set_member_update
 
 
 class GenomicSetDao(UpdatableDao):
@@ -427,7 +429,14 @@ class GenomicSetMemberDao(UpdatableDao):
         setattr(member, field, job_run_id)
         try:
             logging.info(f'Updating {field} with run ID.')
-            return self.update(member)
+            updated_member = self.update(member)
+
+            # Update member for PDR
+            bq_genomic_set_member_update(member.id)
+            genomic_set_member_update(member.id)
+
+            return updated_member
+
         except OperationalError:
             logging.error(f'Error updating member id: {member.id}.')
             return GenomicSubProcessResult.ERROR
@@ -441,7 +450,13 @@ class GenomicSetMemberDao(UpdatableDao):
 
         member.genomicWorkflowState = new_state
         member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
-        return self.update(member)
+        updated_member = self.update(member)
+
+        # Update member for PDR
+        bq_genomic_set_member_update(member.id)
+        genomic_set_member_update(member.id)
+
+        return updated_member
 
     def update_member_sequencing_file(self, member, job_run_id, filename):
         """
@@ -503,14 +518,9 @@ class GenomicSetMemberDao(UpdatableDao):
                     GenomicWorkflowState.A2
                 )) &
                 (
-                    (
-                        (ParticipantSummary.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED) &
-                        (ParticipantSummary.consentForGenomicsRORAuthored > _date)
-                    ) |
-                    (
-                        (ParticipantSummary.consentForStudyEnrollment != QuestionnaireStatus.SUBMITTED) &
-                        (ParticipantSummary.consentForStudyEnrollmentAuthored > _date)
-                    )
+                    (ParticipantSummary.consentForStudyEnrollment != QuestionnaireStatus.SUBMITTED) &
+                    (ParticipantSummary.consentForStudyEnrollmentAuthored > _date) &
+                    (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NO_USE)
                 )
             ).all()
         return members
@@ -781,7 +791,12 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                         gc_metrics_obj.__setattr__(key, row[self.data_mappings[key]])
                     except KeyError:
                         gc_metrics_obj.__setattr__(key, None)
-                self.insert(gc_metrics_obj)
+                inserted_metrics_obj = self.insert(gc_metrics_obj)
+
+                # Update GC Metrics for PDR
+                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+                genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
             return GenomicSubProcessResult.ERROR

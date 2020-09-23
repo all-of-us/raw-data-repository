@@ -662,6 +662,14 @@ class ParticipantApiTest(BaseTestCase):
         participant_summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertNotIn('consentForElectronicHealthRecordsFirstYesAuthored', participant_summary)
 
+    def test_pid_rid_mapping_api(self):
+        self.send_post("Participant", {"providerLink": [self.provider_link_2]})
+        result = self.send_get("ParticipantId/ResearchId/Mapping?signUpAfter=2020-01-01&sort=lastModified")
+        self.assertEqual(len(result['data']), 1)
+        self.assertTrue(isinstance(result['data'][0]['research_id'], int))
+        self.assertEqual(len(str(result['data'][0]['research_id'])), 7)
+        self.assertEqual(result['sort_by'], 'lastModified')
+
 
 def _add_code_answer(code_answers, link_id, code):
     if code:

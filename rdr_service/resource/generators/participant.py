@@ -1,7 +1,9 @@
 import datetime
+import json
 import logging
 import re
 
+from collections import OrderedDict
 from dateutil import parser, tz
 from dateutil.parser import ParserError
 from sqlalchemy import func, desc, exc
@@ -22,12 +24,14 @@ from rdr_service.model.measurements import PhysicalMeasurements, PhysicalMeasure
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
+# TODO:  Using participant_summary as a workaround.  Replace with new participant_profile when it's available
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
-    SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag
+    SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus
 from rdr_service.resource import generators, schemas
-
+from rdr_service.resource.constants import SchemaID
 
 _consent_module_question_map = {
     # module: question code string
@@ -71,6 +75,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         with self.ro_dao.session() as ro_session:
             # prep participant info from Participant record
             summary = self._prep_participant(p_id, ro_session)
+            # prep additional participant profile info
+            summary = self._merge_schema_dicts(summary, self._prep_participant_profile(p_id, ro_session))
             # prep ConsentPII questionnaire information
             summary = self._merge_schema_dicts(summary, self._prep_consentpii_answers(p_id))
             # prep questionnaire modules information, includes gathering extra consents.
@@ -86,8 +92,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             summary = self._merge_schema_dicts(summary, self._prep_patient_status_info(p_id, ro_session))
             # calculate enrollment status for participant
             summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary))
-            # calculate enrollment status times
-            summary = self._merge_schema_dicts(summary, self._calculate_enrollment_timestamps(summary))
+            # # Depreciated for now: calculate enrollment status times
+            # summary = self._merge_schema_dicts(summary, self._calculate_enrollment_timestamps(summary))
             # calculate distinct visits
             summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
             # calculate test participant status
@@ -96,6 +102,42 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
 
             return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
+
+    def patch_resource(self, p_id, data):
+        """
+        Upsert data into an existing resource.  Warning: No data recalculation is performed in this method.
+        Note: This method uses the MySQL JSON_SET function to update the resource field in the backend.
+              It does not return the full resource record here.
+        https://dev.mysql.com/doc/refman/5.7/en/json-modification-functions.html#function_json-set
+        :param p_id: participant id
+        :param data: dict object
+        :return: dict
+        """
+        sql_json_set_values = ', '.join([f"'$.{k}', :p_{k}" for k, v in data.items()])
+
+        args = {'pid': p_id, 'type_uid': SchemaID.participant.value, 'modified': datetime.datetime.utcnow()}
+        for k, v in data.items():
+            args[f'p_{k}'] = v
+
+        sql = f"""
+            update resource_data rd inner join resource_type rt on rd.resource_type_id = rt.id 
+              set rd.modified = :modified, rd.resource = json_set(rd.resource, {sql_json_set_values}) 
+              where rd.resource_pk_id = :pid and rt.type_uid = :type_uid
+        """
+        dao = ResourceDataDao(backup=False)
+        with dao.session() as session:
+            session.execute(sql, args)
+
+            sql = """
+                select resource from resource_data rd inner join resource_type rt on rd.resource_type_id = rt.id 
+                 where rd.resource_pk_id = :pid and rt.type_uid = :type_uid limit 1"""
+
+            rec = session.execute(sql, args).first()
+            if rec:
+                summary = json.loads(rec.resource)
+                return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
+
+        return None
 
     def _prep_participant(self, p_id, ro_session):
         """
@@ -123,8 +165,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # The cohort_2_pilot_flag field values in participant_summary were set via a one-time backfill based on a
         # list of participant IDs provided by PTSC and archived in the participant_cohort_pilot table.  See:
         # https://precisionmedicineinitiative.atlassian.net/browse/DA-1622
-        # TO DO:  A participant_profile table may be implemented as part of the effort to eliminate dependencies on
-        # participant_summary.  The cohort_2_pilot_flag could be queried from that new table in the future
+        # TODO:  A participant_profile table may be implemented as part of the effort to eliminate dependencies on
+        # participant_summary.  The cohort_2_pilot_flag could be moved into _prep_participant_profile() in the future
         #
         # Note this query assumes participant_cohort_pilot only contains entries for the cohort 2 pilot
         # participants for genomics and has not been used for identifying participants in more recent pilots
@@ -136,6 +178,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         data = {
             'participant_id': f'P{p_id}',
             'biobank_id': p.biobankId,
+            'research_id': p.researchId,
             'participant_origin': p.participantOrigin,
             'last_modified': p.lastModified,
             'sign_up_time': p.signUpTime,
@@ -162,6 +205,43 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             'cohort_2_pilot_flag': str(cohort_2_pilot_flag),
             'cohort_2_pilot_flag_id': int(cohort_2_pilot_flag)
         }
+
+        return data
+
+    def _prep_participant_profile(self, p_id, ro_session):
+        """
+        Get additional participant status fields that were incorporated into the RDR participant_summary
+        but can't be derived from other RDR tables.  Example is EHR status information which is
+        read from a curation dataset by a daily cron job that then applies updates to RDR participant_summary directly.
+        :param p_id: participant_id
+        :return: dict
+
+        """
+        # TODO: Workaround for PDR-106 is to pull needed EHR fields from participant_summary. LIMITED USE CASE ONLY
+        # Goal is to eliminate dependencies on participant_summary, which may go away someday.
+        # Long term solution may mean creating a participant_profile table for these outlier fields that are managed
+        # outside of the RDR API, and query that table instead.
+        data = {}
+        ps = ro_session.query(ParticipantSummary.ehrStatus, ParticipantSummary.ehrReceiptTime,
+                              ParticipantSummary.ehrUpdateTime,
+                              ParticipantSummary.enrollmentStatusCoreOrderedSampleTime,
+                              ParticipantSummary.enrollmentStatusCoreStoredSampleTime) \
+            .filter(ParticipantSummary.participantId == p_id).first()
+
+        if not ps:
+            logging.debug(f'No participant_summary record found for {p_id}')
+        else:
+            # SqlAlchemy may return None for our zero-based NOT_PRESENT EhrStatus Enum, so map None to NOT_PRESENT
+            # See rdr_service.model.utils Enum decorator class
+            ehr_status = EhrStatus.NOT_PRESENT if ps.ehrStatus is None else ps.ehrStatus
+            data = {
+                'ehr_status': str(ehr_status),
+                'ehr_status_id': int(ehr_status),
+                'ehr_receipt': ps.ehrReceiptTime,
+                'ehr_update': ps.ehrUpdateTime,
+                'enrollment_core_ordered': ps.enrollmentStatusCoreOrderedSampleTime,
+                'enrollment_core_stored': ps.enrollmentStatusCoreStoredSampleTime
+             }
 
         return data
 
@@ -479,10 +559,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 select bss.test, bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed,
                        bss.status as bb_status, bo.biobank_order_id as bbo_id
                   from biobank_stored_sample bss
-                  left outer join biobank_order_identifier boi on bss.biobank_order_identifier = boi.`value`
+                  left outer join biobank_order_identifier boi on bss.biobank_order_identifier = boi.`value` and
+                        boi.`system` = 'https://www.pmi-ops.org'
                   left outer join biobank_order bo on boi.biobank_order_id = bo.biobank_order_id
-                where boi.`system` = 'https://www.pmi-ops.org'
-                    and bss.biobank_id = :bb_id and bo.biobank_order_id is null;
+                where bss.biobank_id = :bb_id and bo.biobank_order_id is null;
              """
 
         data = {}
@@ -530,7 +610,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             cursor = ro_session.execute(_samples_without_biobank_order_sql, {'bb_id': p_bb_id})
             samples = [s for s in cursor]
             if len(samples):
-                orders.append({'biobank_order_id': UNKNOWN_BIOBANK_ORDER_ID, 'samples': list()})
+                orders.append({'tests_ordered': 0, 'tests_stored': len(samples),
+                    'biobank_order_id': UNKNOWN_BIOBANK_ORDER_ID, 'samples': list()})
                 for row in samples:
                     orders[-1]['samples'].append(_make_stored_sample_dict_from_row(row, has_order=False))
 
@@ -801,75 +882,90 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         return data
 
-    def _calculate_enrollment_timestamps(self, summary):
-        """
-        Calculate all enrollment status timestamps, based on calculate_max_core_sample_time() method in
-        participant summary dao.
-        :param summary: summary data
-        :return: dict
-        """
-        if summary['enrollment_status_id'] != int(EnrollmentStatusV2.CORE_PARTICIPANT):
-            return {}
-
-        # Calculate the min ordered sample and max stored sample times.
-        ordered_time = stored_time = datetime.datetime.max
-        stored_sample_times = dict(zip(self._dna_sample_test_codes, [
-            {
-                'confirmed': datetime.datetime.min, 'confirmed_count': 0,
-                'disposed': datetime.datetime.min, 'disposed_count': 0
-            } for i in range(0, 5)]))  # pylint: disable=unused-variable
-
-        for bbo in summary['biobank_orders']:
-            if not bbo['samples']:
-                continue
-
-            for bboi in bbo['samples']:
-                if bboi['dna_test'] == 1:
-                    ordered_time = min(ordered_time, bboi['finalized'] or datetime.datetime.max)
-                    # See: participant_summary_dao.py:calculate_max_core_sample_time() and
-                    #       _participant_summary_dao.py:126
-                    sst = stored_sample_times[bboi['test']]
-                    if bboi['confirmed']:
-                        sst['confirmed'] = max(sst['confirmed'], bboi['confirmed'])
-                        sst['confirmed_count'] += 1
-                    if bboi['disposed']:
-                        sst['disposed'] = max(sst['disposed'], bboi['disposed'])
-                        sst['disposed_count'] += 1
-
-        sstl = list()
-        for k, v in stored_sample_times.items():  # pylint: disable=unused-variable
-            if v['confirmed_count'] != v['disposed_count']:
-                ts = v['confirmed']
-            else:
-                ts = v['disposed']
-            if ts != datetime.datetime.min:
-                sstl.append(ts)
-
-        if sstl:
-            stored_time = min(sstl)
-
-        data = {
-            'enrollment_core_ordered': ordered_time if ordered_time != datetime.datetime.max else None,
-            'enrollment_core_stored': stored_time if stored_time != datetime.datetime.max else None
-        }
-        if ordered_time == datetime.datetime.max and stored_time == datetime.datetime.max:
-            return data
-
-        # If we have ordered or stored sample times, ensure that it is not before the alt_time value.
-        alt_time = max(
-            summary.get('enrollment_member', datetime.datetime.min),
-            max(mod['module_created'] or datetime.datetime.min for mod in summary['modules']
-                    if mod['baseline_module'] == 1),
-            max(pm['finalized'] or datetime.datetime.min for pm in summary['pm']) if 'pm' in summary
-                    else datetime.datetime.min
-        )
-
-        if data['enrollment_core_ordered']:
-            data['enrollment_core_ordered'] = max(ordered_time, alt_time)
-        if data['enrollment_core_stored']:
-            data['enrollment_core_stored'] = max(stored_time, alt_time)
-
-        return data
+    #
+    # Depreciated for now, but keep this code around for later.
+    #
+    # def _calculate_enrollment_timestamps(self, summary):
+    #     """
+    #     Calculate all enrollment status timestamps, based on calculate_max_core_sample_time() method in
+    #     participant summary dao.
+    #     :param summary: summary data
+    #     :return: dict
+    #     """
+    #     if summary['enrollment_status_id'] != int(EnrollmentStatusV2.CORE_PARTICIPANT):
+    #         return {}
+    #
+    #     # Calculate the min ordered sample and max stored sample times.
+    #     ordered_time = stored_time = datetime.datetime.max
+    #     stored_sample_times = dict(zip(self._dna_sample_test_codes, [
+    #         {
+    #             'confirmed': datetime.datetime.min, 'confirmed_count': 0,
+    #             'disposed': datetime.datetime.min, 'disposed_count': 0
+    #         } for i in range(0, 5)]))  # pylint: disable=unused-variable
+    #
+    #     for bbo in summary['biobank_orders']:
+    #         if not bbo['samples']:
+    #             continue
+    #
+    #         for bboi in bbo['samples']:
+    #             if bboi['dna_test'] == 1:
+    #                 # See: biobank_order_dao.py:_set_participant_summary_fields()
+    #                 #      biobank_order_dao.py:_get_order_status_and_time()
+    #                 if ordered_time == datetime.datetime.max:
+    #                     ordered_time = (bboi['finalized'] or bboi['processed'] or
+    #                                     bboi['collected'] or bbo['created'] or datetime.datetime.max)
+    #                 # See: participant_summary_dao.py:calculate_max_core_sample_time() and
+    #                 #       _participant_summary_dao.py:126
+    #                 sst = stored_sample_times[bboi['test']]
+    #                 if bboi['confirmed']:
+    #                     sst['confirmed'] = max(sst['confirmed'], bboi['confirmed'])
+    #                     sst['confirmed_count'] += 1
+    #                 if bboi['disposed']:
+    #                     sst['disposed'] = max(sst['disposed'], bboi['disposed'])
+    #                     sst['disposed_count'] += 1
+    #
+    #     sstl = list()
+    #     for k, v in stored_sample_times.items():  # pylint: disable=unused-variable
+    #         if v['confirmed_count'] != v['disposed_count']:
+    #             ts = v['confirmed']
+    #         else:
+    #             ts = v['disposed']
+    #         if ts != datetime.datetime.min:
+    #             sstl.append(ts)
+    #
+    #     if sstl:
+    #         stored_time = min(sstl)
+    #
+    #     ordered_time = ordered_time if ordered_time != datetime.datetime.max else None
+    #     stored_time = stored_time if stored_time != datetime.datetime.max else None
+    #
+    #     data = {
+    #         'enrollment_core_ordered': ordered_time,
+    #         'enrollment_core_stored': stored_time
+    #     }
+    #
+    #     if not ordered_time and not stored_time:
+    #         return data
+    #
+    #     # This logic [DA-769] added to RDR on 10/31/2018, but the backfill [DA-784] only applied this logic where
+    #     # the enrollment core stored and ordered field values were null. I think its impossible to fully recreate
+    #     # the timestamp values in the RDR enrollment core ordered and stored fields here. For example see: [PDR-114].
+    #     # See: participant_summary_dao.py:calculate_max_core_sample_time()
+    #     # If we have ordered or stored sample times, ensure that it is not before the alt_time value.
+    #     alt_time = max(
+    #         summary.get('enrollment_member', datetime.datetime.min),
+    #         max(mod['module_created'] or datetime.datetime.min for mod in summary['modules']
+    #                 if mod['baseline_module'] == 1),
+    #         max(pm['finalized'] or datetime.datetime.min for pm in summary['pm']) if 'pm' in summary
+    #                 else datetime.datetime.min
+    #     )
+    #
+    #     if ordered_time:
+    #         data['enrollment_core_ordered'] = max(ordered_time, alt_time)
+    #     if stored_time:
+    #         data['enrollment_core_stored'] = max(stored_time, alt_time)
+    #
+    #     return data
 
     def _calculate_distinct_visits(self, summary):  # pylint: disable=unused-argument
         """
@@ -935,7 +1031,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
     @staticmethod
     def get_module_answers(ro_dao, module, p_id, qr_id=None):
         """
-        Retrieve the most recent questionnaire module answers for the given participant id.
+        Retrieve the questionnaire module answers for the given participant id.  This retrieves all responses to
+        the module and applies/layers the answers from each response to the final data dict returned.
         :param ro_dao: Readonly ro_dao object
         :param module: Module name
         :param p_id: participant id.
@@ -943,19 +1040,19 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :return: dict
         """
         _module_info_sql = """
-                    SELECT qr.questionnaire_id,
-                           qr.questionnaire_response_id,
-                           qr.created,
-                           q.version,
-                           qr.authored,
-                           qr.language,
-                           qr.participant_id
-                    FROM questionnaire_response qr
-                            INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
-                            INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
-                    WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
-                    ORDER BY qr.created DESC;
-                """
+            SELECT DISTINCT qr.questionnaire_id,
+                   qr.questionnaire_response_id,
+                   qr.created,
+                   q.version,
+                   qr.authored,
+                   qr.language,
+                   qr.participant_id
+            FROM questionnaire_response qr
+                    INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
+                    INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
+            WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
+            ORDER BY qr.created;
+        """
 
         _answers_sql = """
             SELECT qr.questionnaire_id,
@@ -975,6 +1072,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             WHERE qr.questionnaire_response_id = :qr_id;
         """
 
+        answers = OrderedDict()
+
         if not ro_dao:
             ro_dao = ResourceDataDao(backup=True)
 
@@ -983,31 +1082,44 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             if not results:
                 return None
 
-            # Match the specific questionnaire response id otherwise return answers for the most recent response.
+            # Query the answers for all responses found.
             for row in results:
-                if qr_id and row.questionnaire_response_id != qr_id:
-                    continue
-
+                # Save parent record field values into data dict.
                 data = ro_dao.to_dict(row, result_proxy=results)
-                answers = session.execute(_answers_sql, {'qr_id': row.questionnaire_response_id})
+                qnans = session.execute(_answers_sql, {'qr_id': row.questionnaire_response_id})
+                # Save answers into data dict.
+                for qnan in qnans:
+                    data[qnan.code_name] = qnan.answer
+                # Insert data dict into answers list.
+                answers[row.questionnaire_response_id] = data
 
-                for answer in answers:
-                    data[answer.code_name] = answer.answer
-                return data
+        # Apply answers to data dict, response by response, until we reach the end or the specific response id.
+        data = dict()
+        for questionnaire_response_id, qnans in answers.items():
+            data.update(qnans)
+            if qr_id and qr_id == questionnaire_response_id:
+                break
 
-        return None
+        return data if data else None
 
 
-def rebuild_participant_summary_resource(p_id, res_gen=None):
+def rebuild_participant_summary_resource(p_id, res_gen=None, patch_data=None):
     """
     Rebuild a resource record for a specific participant
     :param p_id: participant id
     :param res_gen: ParticipantSummaryGenerator object
+    :param patch_data: dict of resource values to update/insert.
     :return:
     """
     # Allow for batch requests to rebuild participant summary data.
     if not res_gen:
         res_gen = ParticipantSummaryGenerator()
+
+    # See if this is a partial update.
+    if patch_data and isinstance(patch_data, dict):
+        res_gen.patch_resource(p_id, patch_data)
+        return patch_data
+
     res = res_gen.make_resource(p_id)
     res.save()
     return res

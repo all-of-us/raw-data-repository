@@ -102,7 +102,7 @@ class ParticipantDao(UpdatableDao):
             assert obj.biobankId
             return super(ParticipantDao, self).insert(obj)
         assert not obj.biobankId
-        return self._insert_with_random_id(obj, ("participantId", "biobankId"))
+        return self._insert_with_random_id(obj, ("participantId", "biobankId", "researchId"))
 
     def update_ghost_participant(self, session, pid):
         if not pid:
@@ -345,6 +345,38 @@ class ParticipantDao(UpdatableDao):
             .filter(Participant.biobankId % 100 <= percentage * 100)
             .yield_per(batch_size)
         )
+
+    def get_pid_rid_mapping(self, **kwargs):
+        sign_up_after = kwargs.get('sign_up_after')
+        sort = kwargs.get('sort') if kwargs.get('sort') == 'lastModified' else 'signUpTime'
+        try:
+            sign_up_after_date = datetime.datetime.strptime(sign_up_after, '%Y-%m-%d')
+        except TypeError or ValueError:
+            raise BadRequest("Invalid parameter signUpAfter, the format should be: YYYY-MM-DD")
+
+        with self.session() as session:
+            query = session.query(Participant.participantId, Participant.researchId, Participant.signUpTime,
+                                  Participant.lastModified)
+            query = query.filter(Participant.signUpTime >= sign_up_after_date)
+            if sort == 'lastModified':
+                query = query.order_by(Participant.lastModified)
+            else:
+                query = query.order_by(Participant.signUpTime)
+
+            query = query.limit(10000)
+
+            items = query.all()
+
+        result = {'data': [], 'sort_by': sort}
+        for item in items:
+            result['data'].append({
+                'participant_id': item.participantId,
+                'research_id': item.researchId,
+                'sign_up_time': item.signUpTime,
+                'last_modified': item.lastModified
+            })
+
+        return result
 
     def to_client_json(self, model):
         client_json = {

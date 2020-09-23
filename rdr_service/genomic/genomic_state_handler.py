@@ -172,6 +172,17 @@ class W2State(GenomicStateBase):
             return GenomicWorkflowState.W3
 
 
+class W3State(GenomicStateBase):
+    """State representing the W3 manifest state"""
+    def transition_function(self, signal):
+        if signal == 'aw1c-reconciled':
+            return GenomicWorkflowState.AW1C
+
+        if signal == 'aw1c-failed':
+            # TODO: There may be a pre-accessioning state as well
+            return GenomicWorkflowState.AW1CF_POST
+
+
 class GenomicStateHandler:
     """
     Basic FSM for Genomic States. Returns call to state's transision_function()
@@ -186,6 +197,7 @@ class GenomicStateHandler:
         GenomicWorkflowState.CVL_READY: CVLReadyState(),
         GenomicWorkflowState.W1: W1State(),
         GenomicWorkflowState.W2: W2State(),
+        GenomicWorkflowState.W3: W3State(),
         GenomicWorkflowState.GEM_READY: GEMReadyState(),
         GenomicWorkflowState.A1: A1State(),
         GenomicWorkflowState.A2: A2PassState(),

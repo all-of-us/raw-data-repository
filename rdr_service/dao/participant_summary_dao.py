@@ -149,7 +149,7 @@ _SAMPLE_SQL = """,
                      WHERE bss.biobank_id = ps.biobank_id
                        AND bss.test = %(sample_param_ref)s)
               ELSE (SELECT MAX(confirmed) from biobank_stored_sample bss
-                     WHERE bss.biobank_id = ps.biobank_id and bss.status < :disposed_bad
+                     WHERE bss.biobank_id = ps.biobank_id and (bss.status < :disposed_bad or bss.status is null)
                        AND bss.test = %(sample_param_ref)s)
               END
           ELSE NULL END
@@ -414,6 +414,8 @@ class ParticipantSummaryDao(UpdatableDao):
                 field_name = "hpoId"
             return super(ParticipantSummaryDao, self).make_query_filter(field_name, hpo.hpoId)
         if field_name == "organization":
+            if value == UNSET:
+                return super(ParticipantSummaryDao, self).make_query_filter(field_name + "Id", None)
             organization = self.organization_dao.get_by_external_id(value)
             if not organization:
                 raise BadRequest(f"No organization found with name {value}")

@@ -68,9 +68,9 @@ class BiobankOrderApiTest(BaseTestCase):
                 kwargs[k] = default_value
         return BiobankOrder(**kwargs)
 
-    def put_specimen(self, payload):
+    def put_specimen(self, payload, expected_status=200):
         rlims_id = payload['rlimsID']
-        return self.send_put(f'Biobank/specimens/{rlims_id}', request_data=payload)
+        return self.send_put(f'Biobank/specimens/{rlims_id}', request_data=payload, expected_status=expected_status)
 
     def get_minimal_specimen_json(self, rlims_id='sabrina'):
         return {
@@ -181,6 +181,12 @@ class BiobankOrderApiTest(BaseTestCase):
         saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
+    def test_put_specimen_with_non_existent_participant(self):
+        """Try to use a biobank that has the correct prefix, but doesn't exist in the database"""
+        payload = self.get_minimal_specimen_json()
+        payload['participantID'] = config_utils.to_client_biobank_id(123123)  # Using a biobankID that doesn't exist
+        self.put_specimen(payload, expected_status=400)
+
     def test_nonexistent_order_id(self):
         payload = self.get_minimal_specimen_json()
         payload['orderID'] = 'SOMETHING_MISSING_IN_DATABASE'
@@ -197,7 +203,7 @@ class BiobankOrderApiTest(BaseTestCase):
             'cohortID': 'cohort id',
             'sampleType': 'sample',
             'status': {
-                'status': 'good',
+                'status': 'Disposed',
                 'freezeThawCount': 1,
                 'location': 'Greendale',
                 'quantity': '1',
@@ -408,7 +414,7 @@ class BiobankOrderApiTest(BaseTestCase):
                 "rlimsID": "other",
                 "sampleType": "test",
                 "status": {
-                    "status": "frozen",
+                    "status": "Disposed",
                     "freezeThawCount": 3,
                     "location": "biobank",
                     "quantity": "5",
@@ -654,7 +660,7 @@ class BiobankOrderApiTest(BaseTestCase):
 
     def test_error_missing_fields_specimen_migration(self):
         specimens = [self.get_minimal_specimen_json(rlims_id) for rlims_id in ['sabrina', 'two', 'salem',
-                                                                               'invalid', 'bob']]
+                                                                               'invalid', 'bob', 'missing']]
         del specimens[0]['testcode']
         del specimens[0]['orderID']
         del specimens[1]['rlimsID']
@@ -675,10 +681,13 @@ class BiobankOrderApiTest(BaseTestCase):
             }
         ]
 
+        # Check for migration error about missing biobank ids
+        specimens[5]['participantID'] = config_utils.to_client_biobank_id(123123)
+
         result = self.send_put(f"Biobank/specimens", request_data=specimens)
         self.assertJsonResponseMatches(result, {
             'summary': {
-                'total_received': 5,
+                'total_received': 6,
                 'success_count': 1
             },
             'errors': [
@@ -696,6 +705,9 @@ class BiobankOrderApiTest(BaseTestCase):
                     # catch-all for any specimen errors
                     'rlimsID': 'invalid',
                     'error': 'Unknown error'
+                }, {
+                    'rlimsID': 'missing',
+                    'error': 'Biobank id Z123123 does not exist'
                 }
             ]
         })
@@ -788,7 +800,7 @@ class BiobankOrderApiTest(BaseTestCase):
         specimen = self.get_specimen_from_dao(_id=specimen.id)
         self.assertEqual('test', specimen.disposalReason)
 
-    def test_disposal_sets_status(self):
+    def test_disposal_endpoint_sets_status(self):
         # /disposalStatus with any information should set status to "Disposed"
         payload = self.get_minimal_specimen_json()
         payload['status'] = {'status': 'In Circulation'}
@@ -801,7 +813,7 @@ class BiobankOrderApiTest(BaseTestCase):
         specimen = self.get_specimen_from_dao(rlims_id='sabrina')
         self.assertEqual('Disposed', specimen.status)
 
-    def test_status_update_clears_disposal(self):
+    def test_status_endpoint_clears_disposal(self):
         # /status with any information should clear the disposal fields
         payload = self.get_minimal_specimen_json()
         payload['disposalStatus'] = {
@@ -817,6 +829,84 @@ class BiobankOrderApiTest(BaseTestCase):
         specimen = self.get_specimen_from_dao(rlims_id='sabrina')
         self.assertEqual('', specimen.disposalReason)
         self.assertEqual(None, specimen.disposalDate)
+
+    def test_disposal_sets_status(self):
+        """Providing disposed fields on primary endpoint should set status"""
+
+        # Initialize specimen
+        payload = self.get_minimal_specimen_json()
+        payload['status'] = {'status': 'In Circulation'}
+        self.put_specimen(payload)
+
+        # Set it as disposed
+        payload['disposalStatus'] = {
+            'reason': 'mistake',
+            'disposalDate': TIME_2.isoformat()
+        }
+        del payload['status']
+        self.put_specimen(payload)
+
+        # Check that disposing it changes the status
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+        self.assertEqual('Disposed', specimen.status)
+
+    def test_status_update_clears_disposal(self):
+        """Setting status on primary endpoint should clear disposal fields"""
+
+        # Initialize specimen
+        payload = self.get_minimal_specimen_json()
+        payload['disposalStatus'] = {
+            'reason': 'mistake',
+            'disposalDate': TIME_2.isoformat()
+        }
+        self.put_specimen(payload)
+
+        # Set a new status
+        payload['status'] = {'status': 'In Circulation'}
+        del payload['disposalStatus']
+        self.put_specimen(payload)
+
+        # Check that setting a status clears the disposal fields
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+        self.assertEqual('', specimen.disposalReason)
+        self.assertEqual(None, specimen.disposalDate)
+
+    def test_empty_disposal_leaves_status(self):
+        """Providing empty disposed fields on primary endpoint should not set status"""
+
+        # Initialize specimen with empty disposal fields
+        payload = self.get_minimal_specimen_json()
+        payload['status'] = {'status': 'In Circulation'}
+        payload['disposalStatus'] = {
+            'reason': '',
+            'disposalDate': ''
+        }
+        self.put_specimen(payload)
+
+        # Check that status field is unchanged
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+        self.assertEqual('In Circulation', specimen.status)
+
+    def test_disposed_status_update_leaves_disposal(self):
+        """Setting status to 'Disposed' (maybe redundant) shouldn't clear disposal fields"""
+
+        # Initialize specimen
+        payload = self.get_minimal_specimen_json()
+        payload['disposalStatus'] = {
+            'reason': 'mistake',
+            'disposalDate': TIME_2.isoformat()
+        }
+        self.put_specimen(payload)
+
+        # Resend status
+        payload['status'] = 'Disposed'
+        del payload['disposalStatus']
+        self.put_specimen(payload)
+
+        # Check that setting a status clears the disposal fields
+        specimen = self.get_specimen_from_dao(rlims_id='sabrina')
+        self.assertEqual('mistake', specimen.disposalReason)
+        self.assertEqual(TIME_2, specimen.disposalDate)
 
     def test_parent_disposed_not_found(self):
         self.send_put(f"Biobank/specimens/sabrina/status", {

@@ -52,10 +52,12 @@ class BigQueryGenerator(object):
         mappings = bqtable.get_project_map(cur_id)
 
         for project_id, dataset_id, table_id in mappings:
-            # If project_id is None, we shouldn't save records for this project.
+            # See if this table is disabled from being sent to BigQuery or not.  If it is disabled, we still
+            # insert the record into the bigquery sync table, but the sync cron job ignores it.
             if dataset_id is None:
-                # logging.warning('{0} is mapped to none in {1} project.'.format(project_id, cur_id))
-                continue
+                project_id = None
+                dataset_id = 'disabled'
+
             bqs_rec = w_session.query(BigQuerySync.id). \
                 filter(BigQuerySync.pk_id == pk_id, BigQuerySync.projectId == project_id,
                        BigQuerySync.datasetId == dataset_id, BigQuerySync.tableId == table_id).first()

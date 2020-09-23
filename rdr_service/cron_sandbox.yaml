@@ -15,6 +15,7 @@ cron:
 - description: Genomic CVL W2 Workflow (Manual)
 - description: Genomic CVL W3 Workflow (Manual)
 - description: Genomic AW3 Workflow (Manual)
+- description: Genomic AW4 Workflow (Manual)
 - description: Rotate service account keys older than 3 days
   url: /offline/DeleteOldKeys
   schedule: every day 01:00

@@ -82,7 +82,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
                                    notification=DeceasedNotification.EHR, notification_other=None, user_system='system',
                                    user_name='name', authored='2020-01-01T00:00:00Z', reporter_name='Jane Doe',
                                    reporter_relation='SPOUSE', reporter_phone=None,
-                                   reporter_email=None):
+                                   reporter_email=None, cause_of_death='Heart disease'):
         report_json = {
             'code': {
                 'text': 'DeceasedReport'
@@ -93,6 +93,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
                 'type': user_system,
                 'reference': user_name
             }],
+            'valueString': cause_of_death,
             'issued': authored
         }
 
@@ -176,7 +177,8 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
             notification=DeceasedNotification.EHR,
             user_system='https://example.com',
             user_name='me@test.com',
-            authored='2020-01-05T13:43:21Z'
+            authored='2020-01-05T13:43:21Z',
+            cause_of_death='Heart disease'
         )
         response = self.post_report(report_json, participant_id=self.paired_participant_with_summary.participantId)
 
@@ -189,6 +191,7 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         self.assertEqual('https://example.com', created_report.author.system)
         self.assertEqual('me@test.com', created_report.author.username)
         self.assertEqual(datetime(2020, 1, 5, 13, 43, 21), created_report.authored)
+        self.assertEqual('Heart disease', created_report.causeOfDeath)
 
         # Check participant summary data
         participant_summary = self.get_participant_summary_from_db(
@@ -320,11 +323,20 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         report_json = self.build_deceased_report_json(status='unknown')
         self.post_report(report_json, expected_status=400)
 
-        self.create_pending_deceased_report()
+        # Check for response when trying to use future date for authored
+        three_days_from_now = datetime.now() + timedelta(days=3)
+        report_json = self.build_deceased_report_json(authored=three_days_from_now.isoformat())
+        self.post_report(report_json, expected_status=400)
+
+        # Check for response when trying to use future date for date of death
+        three_days_from_now = date.today() + timedelta(days=3)
+        report_json = self.build_deceased_report_json(date_of_death=three_days_from_now.isoformat())
+        self.post_report(report_json, expected_status=400)
 
     def test_post_with_only_required_fields(self):
         report_json = self.build_deceased_report_json()
         del report_json['effectiveDateTime']
+        del report_json['valueString']
 
         response = self.post_report(report_json, participant_id=self.paired_participant_with_summary.participantId)
         del response['effectiveDateTime']
@@ -425,15 +437,15 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         self.assertEqual(date(2020, 1, 1), participant_summary.dateOfDeath)
 
         review_json = self.build_report_review_json(
-            date_of_death='2022-06-01'
+            date_of_death='2019-06-01'
         )
         self.post_report_review(review_json, report_id, participant_id)
 
         created_report = self.get_report_from_db(report_id)
-        self.assertEqual(date(2022, 6, 1), created_report.dateOfDeath)
+        self.assertEqual(date(2019, 6, 1), created_report.dateOfDeath)
 
         participant_summary = self.get_participant_summary_from_db(participant_id=participant_id)
-        self.assertEqual(date(2022, 6, 1), participant_summary.dateOfDeath)
+        self.assertEqual(date(2019, 6, 1), participant_summary.dateOfDeath)
 
     def test_only_healthpro_can_review(self):
         report = self.create_pending_deceased_report()

@@ -25,7 +25,7 @@ class ToolBase(object):
         return database_factory.make_server_cursor_database().session()
 
 
-def cli_run(tool_cmd, tool_desc, tool_class, parser_hook=None):
+def cli_run(tool_cmd, tool_desc, tool_class, parser_hook=None, defaults={}):
     # Set global debug value and setup application logging.
     setup_logging(
         logger, tool_cmd, "--debug" in sys.argv, "{0}.log".format(tool_cmd) if "--log-file" in sys.argv else None
@@ -36,7 +36,9 @@ def cli_run(tool_cmd, tool_desc, tool_class, parser_hook=None):
     parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
     parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
-    parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
+    parser.add_argument("--service-account",
+                        help="gcp iam service account",
+                        default=defaults.get('service_account', None))  # noqa
     if parser_hook:
         parser_hook(parser)
 

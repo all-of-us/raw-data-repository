@@ -32,16 +32,18 @@ def batch_rebuild_participants_task(payload):
     batch = payload['batch']
 
     logging.info(f'Start time: {datetime.utcnow()}, batch size: {len(batch)}')
+    # logging.info(json.dumps(batch, indent=2))
 
     for item in batch:
         p_id = item['pid']
+        patch_data = item['patch'] if 'patch' in item else None
         count += 1
 
-        rebuild_participant_summary_resource(p_id, res_gen=res_gen)
+        rebuild_participant_summary_resource(p_id, res_gen=res_gen, patch_data=patch_data)
 
-        ps_bqr = rebuild_bq_participant(p_id, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen)
-        # Test to see if participant record has been filtered.
-        if not ps_bqr:
+        ps_bqr = rebuild_bq_participant(p_id, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen, patch_data=patch_data)
+        # Test to see if participant record has been filtered or we are just patching.
+        if not ps_bqr or patch_data:
             continue
 
         # Generate participant questionnaire module response data

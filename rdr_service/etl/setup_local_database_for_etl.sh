@@ -135,17 +135,17 @@ for i in ${CSV_DIR}/voc/*; do mv $i `echo $i | tr [:upper:] [:lower:]`; done
 chmod -R 0777 ${CSV_DIR}
 
 echo "Importing filters..."
-mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --local --fields-terminated-by=\| cdm \
+mysqlimport -u ${ROOT_DB_USER} $ROOT_PASSWORD_ARGS --local --fields-terminated-by=\| cdm \
     ${CSV_DIR}/filters/combined_question_filter.csv \
     ${CSV_DIR}/filters/combined_survey_filter.csv
 
 echo "Importing source_to_concept_map.csv..."
-mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --local --fields-terminated-by=\| cdm ${CSV_DIR}/source_to_concept_map.csv
+mysqlimport -u ${ROOT_DB_USER} $ROOT_PASSWORD_ARGS --local --fields-terminated-by=\| cdm ${CSV_DIR}/source_to_concept_map.csv
 
 for file in ${CSV_DIR}/voc/*.csv
 do
     echo "Importing ${file}..."
-    mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --local --ignore-lines=1 voc ${file}
+    mysqlimport -u ${ROOT_DB_USER} $ROOT_PASSWORD_ARGS --local --ignore-lines=1 voc ${file}
 done
 
 echo "Nulling out empty string fields..."
@@ -154,10 +154,10 @@ mysql -v -v -v -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < etl/set_emp
 if [ "${GENERATE_SQL_DUMP}" ]
 then
     echo "Generating dump for cdm database.."
-    mysqldump --databases cdm -h 127.0.0.1 -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --hex-blob \
+    mysqldump --databases cdm -h 127.0.0.1 -u ${ROOT_DB_USER} $ROOT_PASSWORD_ARGS --hex-blob \
       --skip-triggers --default-character-set=utf8 > ${OUTPUT_DIR}/cdm.sql
     echo "Generating dump for voc database.."
-    mysqldump --databases voc -h 127.0.0.1 -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --hex-blob \
+    mysqldump --databases voc -h 127.0.0.1 -u ${ROOT_DB_USER} $ROOT_PASSWORD_ARGS --hex-blob \
       --skip-triggers --default-character-set=utf8 > ${OUTPUT_DIR}/voc.sql
     echo "Copying SQL dumps to gs://${DSTBUCKET}/${DSTFOLDER}..."
     gsutil cp -r ${OUTPUT_DIR}/*.sql gs://${DSTBUCKET}/${DSTFOLDER}

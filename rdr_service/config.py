@@ -70,6 +70,9 @@ GENOMIC_CVL_BUCKET_NAME = "genomic_cvl_bucket_name"
 GENOMIC_GEM_A1_MANIFEST_SUBFOLDER = "a1_manifests"
 GENOMIC_GEM_A2_MANIFEST_SUBFOLDER = "a2_manifests"
 GENOMIC_GEM_A3_MANIFEST_SUBFOLDER = "a3_manifests"
+GENOMIC_CVL_AW1C_MANIFEST_SUBFOLDER = "AW1C_cvl_samples_manifests"
+GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER = ("AW1CF_cvl_accessioning_results/AW1CF_post_results",
+                                        "AW1CF_cvl_accessioning_results/AW1CF_pre_results")
 GENOMIC_AW1F_SUBFOLDER = "post_accessioning_results"
 GENOME_TYPE_ARRAY = "aou_array"
 GENOME_TYPE_WGS = "aou_wgs"

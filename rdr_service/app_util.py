@@ -12,7 +12,7 @@ from flask import request
 from werkzeug.exceptions import Forbidden, Unauthorized, GatewayTimeout
 
 from rdr_service import clock, config
-from rdr_service.api.base_api import log_api_request
+from rdr_service.api import base_api
 from rdr_service.config import GAE_PROJECT
 
 _GMT = pytz.timezone("GMT")
@@ -244,7 +244,7 @@ def auth_required(role_whitelist):
     def auth_required_wrapper(func):
         def wrapped(*args, **kwargs):
             appid = GAE_PROJECT
-            request.log_record = log_api_request()
+            request.log_record = base_api.log_api_request()
             # Only enforce HTTPS and auth for external requests; requests made for data generation
             # are allowed through (when enabled).
             acceptable_hosts = ("None", "testbed-test", "testapp", "localhost", "127.0.0.1")
@@ -257,7 +257,7 @@ def auth_required(role_whitelist):
             result = func(*args, **kwargs)
             if request.logged is False:
                 try:
-                    log_api_request(log=request.log_record)
+                    base_api.log_api_request(log=request.log_record)
                 except RuntimeError:
                     # Unittests don't always setup a valid flask request context.
                     pass

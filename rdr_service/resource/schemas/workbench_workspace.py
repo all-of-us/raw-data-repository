@@ -3,6 +3,7 @@
 # file 'LICENSE', which is part of this source code package.
 #
 from marshmallow import validate
+from rdr_service.resource.constants import SchemaID
 
 from rdr_service.participant_enums import WorkbenchResearcherEthnicity, \
     WorkbenchWorkspaceAge, WorkbenchWorkspaceStatus, WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, \
@@ -87,10 +88,10 @@ class WorkbenchWorkspaceSchema(Schema):
         resource_pk_field = 'workspace_source_id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            4020,
-            'workbench_workspace',
-            'WorkbenchWorkspace',
-            'workspace_source_id'
+            type_uid=SchemaID.workbench_workspace.value,
+            type_name=SchemaID.workbench_workspace.name,
+            resource_uri='WorkbenchWorkspace',
+            resource_pk_field='workspace_source_id'
         )
 
 
@@ -115,10 +116,10 @@ class WorkbenchWorkspaceUsersSchema(Schema):
         resource_pk_field = 'user_id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
-            4030,
-            'workbench_workspace',
-            'WorkbenchWorkspace',
-            'user_id'
+            type_uid=SchemaID.workbench_workspace_users.value,
+            type_name=SchemaID.workbench_workspace_users.name,
+            resource_uri='WorkbenchWorkspaceUsers',
+            resource_pk_field='user_id'
         )
 
 

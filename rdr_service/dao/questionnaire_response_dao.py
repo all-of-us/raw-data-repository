@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from datetime import datetime
 
 import pytz
@@ -14,6 +15,7 @@ from rdr_service import storage
 from rdr_service import clock, config
 from rdr_service.code_constants import (
     CABOR_SIGNATURE_QUESTION_CODE,
+    CONSENT_COHORT_GROUP_CODE,
     CONSENT_FOR_DVEHR_MODULE,
     CONSENT_FOR_GENOMICS_ROR_MODULE,
     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
@@ -88,6 +90,22 @@ def count_completed_ppi_modules(participant_summary):
     return sum(
         1 for field in ppi_module_fields if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED
     )
+
+
+def get_first_completed_baseline_time(participant_summary):
+    baseline_authored = getattr(participant_summary, 'baselineQuestionnairesFirstCompleteAuthored')
+    if baseline_authored:
+        return baseline_authored
+    baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
+    baseline_time = datetime(1000, 1, 1)
+    for field in baseline_ppi_module_fields:
+        field_value = getattr(participant_summary, field + "Authored")
+        if not field_value:
+            return None
+        else:
+            if field_value > baseline_time:
+                baseline_time = field_value
+    return baseline_time
 
 
 class QuestionnaireResponseDao(BaseDao):
@@ -407,6 +425,23 @@ class QuestionnaireResponseDao(BaseDao):
                         answer_value = code_dao.get(answer.valueCodeId).value
                         if answer_value == COHORT_1_REVIEW_CONSENT_YES_CODE:
                             participant_summary.consentForStudyEnrollmentAuthored = authored
+                    elif code.value == CONSENT_COHORT_GROUP_CODE:
+                        try:
+                            cohort_group = int(answer.valueString)
+
+                            # Only checking that we know of the cohort group so we don't crash when
+                            # storing in the Enum column
+                            cohort_numbers = ParticipantCohort.numbers()
+                            if cohort_group not in cohort_numbers:
+                                raise BadRequest(f'Unable to accept {cohort_group} as a cohort, '
+                                                 f'currently only taking {cohort_numbers}')
+                            else:
+                                participant_summary.consentCohort = answer.valueString
+                                something_changed = True
+                        except ValueError:
+                            raise BadRequest(f'Invalid value given for cohort group: received "{answer.valueString}"')
+
+
 
         # If the answer for line 2 of the street address was left out then it needs to be clear on summary.
         # So when it hasn't been submitted and there is something set for streetAddress2 we want to clear it out.
@@ -456,7 +491,12 @@ class QuestionnaireResponseDao(BaseDao):
                         participant_summary.semanticVersionForPrimaryConsent = \
                             questionnaire_response.questionnaireSemanticVersion
                         if participant_summary.consentCohort is None or \
-                            participant_summary.consentCohort == ParticipantCohort.UNSET:
+                                participant_summary.consentCohort == ParticipantCohort.UNSET:
+
+                            if participant_summary.participantOrigin == 'vibrent':
+                                logging.warning(f'Missing expected consent cohort information for participant '
+                                                f'{participant_summary.participantId}')
+
                             if authored >= PARTICIPANT_COHORT_3_START_TIME:
                                 participant_summary.consentCohort = ParticipantCohort.COHORT_3
                             elif PARTICIPANT_COHORT_2_START_TIME <= authored < PARTICIPANT_COHORT_3_START_TIME:
@@ -496,6 +536,9 @@ class QuestionnaireResponseDao(BaseDao):
             participant_summary.numCompletedBaselinePPIModules = count_completed_baseline_ppi_modules(
                 participant_summary
             )
+            participant_summary.baselineQuestionnairesFirstCompleteAuthored = get_first_completed_baseline_time(
+                participant_summary
+            )
             participant_summary.numCompletedPPIModules = count_completed_ppi_modules(participant_summary)
 
         if something_changed:
@@ -516,11 +559,14 @@ class QuestionnaireResponseDao(BaseDao):
             participant_summary.lastModified = clock.CLOCK.now()
             session.merge(participant_summary)
 
-            # switch account to test account if the phone number is start with 444
+            # switch account to test account if the phone number starts with 4442
             # this is a requirement from PTSC
-            if participant_summary.loginPhoneNumber is not None and participant_summary.loginPhoneNumber.startswith(
-                TEST_LOGIN_PHONE_NUMBER_PREFIX
-            ):
+            ph = getattr(participant_summary, 'loginPhoneNumber') or \
+                 getattr(participant_summary, 'phoneNumber') or 'None'
+
+            ph_clean = re.sub('[\(|\)|\-|\s]', '', ph)
+
+            if ph_clean.startswith(TEST_LOGIN_PHONE_NUMBER_PREFIX):
                 ParticipantDao().switch_to_test_account(session, participant)
 
             # update participant gender/race answers table

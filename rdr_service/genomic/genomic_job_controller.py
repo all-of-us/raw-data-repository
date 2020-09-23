@@ -17,9 +17,11 @@ from rdr_service.config import (
     getSettingList,
     GENOME_TYPE_ARRAY,
     MissingConfigException)
+from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
-    GenomicSubProcessStatus)
+    GenomicSubProcessStatus,
+    GenomicJob)
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
     GenomicReconciler,
@@ -30,6 +32,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicJobRunDao
 )
+from rdr_service.resource.generators.genomics import genomic_job_run_update
 
 
 class GenomicJobController:
@@ -214,9 +217,9 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def process_new_aw1f_for_alerts(self):
+    def process_failure_manifests_for_alerts(self):
         """
-        Scans for new AW1F files in GC buckets and sends email alert
+        Scans for new AW1F and AW1CF files in GC buckets and sends email alert
         """
 
         # Setup date
@@ -226,11 +229,20 @@ class GenomicJobController:
         new_failure_files = dict()
 
         # Get files in each gc bucket and folder where updated date > last run date
+        logging.info("Searching buckets for accessioning FAILURE files.")
         for gc_bucket_name in self.bucket_name_list:
             failures_in_bucket = list()
 
             for folder in self.sub_folder_tuple:
-                self.sub_folder_name = config.getSetting(folder)
+                # If the folder is defined in config, use that,
+                # otherwise use the string constant.
+                try:
+                    self.sub_folder_name = config.getSetting(folder)
+                except MissingConfigException:
+                    self.sub_folder_name = folder
+
+                logging.info(f"Scanning folder: {self.sub_folder_name}")
+
                 bucket = '/' + gc_bucket_name
                 files = list_blobs(bucket, prefix=self.sub_folder_name)
 
@@ -240,16 +252,29 @@ class GenomicJobController:
 
                 if len(files_filtered) > 0:
                     for f in files_filtered:
+                        logging.info(f'Found failure file: {f}')
                         failures_in_bucket.append(f)
 
             if len(failures_in_bucket) > 0:
                 new_failure_files[gc_bucket_name] = failures_in_bucket
 
-        # Compile email message
-        email_req = self._compile_accesioning_failure_alert_email(new_failure_files)
+        self.job_result = GenomicSubProcessResult.NO_FILES
 
-        # send email
-        self._send_email_with_sendgrid(email_req)
+        if len(new_failure_files) > 0:
+            # Compile email message
+            logging.info('Compiling email...')
+            email_req = self._compile_accesioning_failure_alert_email(new_failure_files)
+
+            # send email
+            try:
+                logging.info('Sending Email to SendGrid...')
+                self._send_email_with_sendgrid(email_req)
+
+                logging.info('Email Sent.')
+                self.job_result = GenomicSubProcessResult.SUCCESS
+
+            except RuntimeError:
+                self.job_result = GenomicSubProcessResult.ERROR
 
     def run_cvl_reconciliation_report(self):
         """
@@ -328,9 +353,50 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
+    def run_aw1c_workflow(self):
+        """
+        Uses GenomicFileIngester to ingest CVL Genomic Manifest files (AW1C).
+        Reconciles samples in AW1C manifest against those sent in W3
+        """
+        try:
+            for cvl_bucket_name in self.bucket_name_list:
+                self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                                    job_run_id=self.job_run.id,
+                                                    bucket=cvl_bucket_name,
+                                                    sub_folder=self.sub_folder_name,
+                                                    _controller=self)
+                self.subprocess_results.add(
+                    self.ingester.generate_file_queue_and_do_ingestion()
+                )
+            self.job_result = self._aggregate_run_results()
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
+    def run_aw1cf_manifest_workflow(self):
+        """
+        Uses GenomicFileIngester to ingest CVL Manifest Failure files (AW1CF).
+        """
+        try:
+            for cvl_bucket_name in self.bucket_name_list:
+                self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                                    job_run_id=self.job_run.id,
+                                                    bucket=cvl_bucket_name,
+                                                    sub_folder=self.sub_folder_name,
+                                                    _controller=self)
+                self.subprocess_results.add(
+                    self.ingester.generate_file_queue_and_do_ingestion()
+                )
+            self.job_result = self._aggregate_run_results()
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""
         self.job_run_dao.update_run_record(self.job_run.id, self.job_result, GenomicSubProcessStatus.COMPLETED)
+
+        # Update run for PDR
+        bq_genomic_job_run_update(self.job_run.id)
+        genomic_job_run_update(self.job_run.id)
 
     def _aggregate_run_results(self):
         """
@@ -349,7 +415,13 @@ class GenomicJobController:
         return last_run_time if last_run_time else self.last_run_time
 
     def _create_run(self, job_id):
-        return self.job_run_dao.insert_run_record(job_id)
+        new_run = self.job_run_dao.insert_run_record(job_id)
+
+        # Insert new run for PDR
+        bq_genomic_job_run_update(new_run.id)
+        genomic_job_run_update(new_run.id)
+
+        return new_run
 
     def _compile_accesioning_failure_alert_email(self, alert_files):
         """
@@ -367,12 +439,16 @@ class GenomicJobController:
 
         subject = "All of Us GC Manifest Failure Alert"
         from_email = config.SENDGRID_FROM_EMAIL
+
         email_message = "New AW1 Failure manifests have been found:\n"
+
+        if self.job_id == GenomicJob.AW1CF_ALERTS:
+            email_message = "New AW1CF CVL Failure manifests have been found:\n"
 
         for bucket in alert_files.keys():
             email_message += f"\t{bucket}:\n"
             for file in alert_files[bucket]:
-                email_message += f"\t\t{file}:\n"
+                email_message += f"\t\t{file}\n"
 
         data = {
             "personalizations": [

@@ -93,17 +93,53 @@ def genomic_centers_aw1f_manifest_workflow():
         controller.run_aw1f_manifest_workflow()
 
 
+def ingest_aw1c_manifest():
+    """
+    Entrypoint for CVL AW1C Manifest Ingestion workflow
+    """
+    with GenomicJobController(GenomicJob.AW1C_INGEST,
+                              bucket_name=None,
+                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
+                              sub_folder_name=config.GENOMIC_CVL_AW1C_MANIFEST_SUBFOLDER) as controller:
+        controller.run_aw1c_workflow()
+
+
+def ingest_aw1cf_manifest_workflow():
+    """
+    Entrypoint for CVL Failure Manifest (AW1CF) Ingestion
+    """
+    with GenomicJobController(GenomicJob.AW1CF_INGEST,
+                              bucket_name=None,
+                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
+                              sub_folder_tuple=config.GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER
+                              ) as controller:
+        controller.run_aw1cf_manifest_workflow()
+
+
+def aw1cf_alerts_workflow():
+    """
+        Entrypoint for Accessioning Alerts:
+            CVL Failure Manifest (AW1CF)
+        """
+    with GenomicJobController(GenomicJob.AW1CF_ALERTS,
+                              bucket_name=None,
+                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
+                              sub_folder_tuple=config.GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER
+                              ) as controller:
+        controller.process_failure_manifests_for_alerts()
+
+
 def genomic_centers_accessioning_failures_workflow():
     """
         Entrypoint for Accessioning Alerts:
             Failure Manifest (AW1F)
         """
-    with GenomicJobController(GenomicJob.AW1F_MANIFEST,
+    with GenomicJobController(GenomicJob.AW1F_ALERTS,
                               bucket_name=None,
                               bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
                               sub_folder_tuple=config.GENOMIC_AW1F_SUBFOLDERS
                               ) as controller:
-        controller.process_new_aw1f_for_alerts()
+        controller.process_failure_manifests_for_alerts()
 
 
 def ingest_genomic_centers_metrics_files():
@@ -257,3 +293,4 @@ def create_cvl_w3_manifest():
     with GenomicJobController(GenomicJob.W3_MANIFEST,
                               bucket_name=config.GENOMIC_CVL_BUCKET_NAME,) as controller:
         controller.generate_manifest(GenomicManifestTypes.CVL_W3, _genome_type=config.GENOME_TYPE_CVL)
+
