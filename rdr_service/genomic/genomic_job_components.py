@@ -492,7 +492,7 @@ class GenomicFileIngester:
             if member is not None:
                 self.member_dao.update_member_state(member, GenomicWorkflowState.AW2)
                 row_copy['member_id'] = member.id
-                self.metrics_dao.insert_gc_validation_metrics_object(row_copy)
+                self.metrics_dao.insert_or_update_gc_validation_metrics(row_copy)
             else:
                 logging.error(f'Sample ID {sample_id} has no corresponding Genomic Set Member.')
 

@@ -777,21 +777,23 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
     def get_id(self, obj):
         return obj.id
 
-    def insert_gc_validation_metrics_object(self, data_to_insert):
+    def insert_or_update_gc_validation_metrics(self, data_to_insert):
         """
-        Inserts a GC validation metrics object
+        Insert or updates a GC validation metrics object
         :param data_to_insert: dictionary of row-data from AW2 file to insert
         :return: result code
         """
         try:
-
             gc_metrics_obj = GenomicGCValidationMetrics()
             for key in self.data_mappings.keys():
                 try:
                     gc_metrics_obj.__setattr__(key, data_to_insert[self.data_mappings[key]])
                 except KeyError:
                     gc_metrics_obj.__setattr__(key, None)
-            inserted_metrics_obj = self.insert(gc_metrics_obj)
+
+            # Insert or update the object
+            with self.session() as session:
+                inserted_metrics_obj = session.merge(gc_metrics_obj)
 
             # Update GC Metrics for PDR
             bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
