@@ -272,10 +272,15 @@ class QuestionnaireResponseDao(BaseDao):
         logging.error('Unrecognized identifier for COPE survey response '
                       f'(questionnaire_id: "{questionnaire_history.questionnaireId}", '
                       f'version: "{questionnaire_history.version}", identifier: "{questionnaire_history.externalId}"')
-        return {
-            5: 'May',
-            6: 'June'
-        }.get(response_authored_date.month, 'July')
+
+        if response_authored_date < datetime(2020, 6, 4):
+            return 'May'
+        elif response_authored_date < datetime(2020, 7, 1):
+            return 'June'
+        elif response_authored_date < datetime(2020, 10, 5):
+            return 'July'
+        else:
+            return 'Oct'
 
     def _update_participant_summary(
         self, session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
