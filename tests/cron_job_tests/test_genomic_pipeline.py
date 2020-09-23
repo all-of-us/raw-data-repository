@@ -281,7 +281,9 @@ class GenomicPipelineTest(BaseTestCase):
 
         gc_metrics = self.metrics_dao.get_all()
         self.assertEqual(len(gc_metrics), 2)
-        self.assertEqual(gc_metrics[1].limsId, '11002')
+        for m in gc_metrics:
+            if m.genomicSetMemberId == 2:
+                self.assertEqual(gc_metrics[1].limsId, '11002')
 
 
     def _update_test_sample_ids(self):
