@@ -111,9 +111,6 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :param data: dict object
         :return: dict
         """
-        if not self.ro_dao:
-            self.ro_dao = BigQuerySyncDao(backup=True)
-
         sql_json_set_values = ', '.join([f"'$.{k}', :p_{k}" for k, v in data.items()])
 
         args = {'pid': p_id, 'table_id': 'participant_summary', 'modified': datetime.datetime.utcnow()}
@@ -125,8 +122,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 set modified = :modified, resource = json_set(resource, {sql_json_set_values}) 
                where pk_id = :pid and table_id = :table_id
         """
-
-        with self.ro_dao.session() as session:
+        dao = BigQuerySyncDao(backup=False)
+        with dao.session() as session:
             session.execute(sql, args)
 
             sql = 'select resource from bigquery_sync where pk_id = :pid and table_id = :table_id limit 1'
