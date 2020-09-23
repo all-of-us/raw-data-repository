@@ -56,7 +56,7 @@ from rdr_service.dao.participant_summary_dao import (
 from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD
 from rdr_service.model.code import CodeType
-from rdr_service.model.questionnaire import QuestionnaireQuestion
+from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireDefinitionStatus,
@@ -261,19 +261,11 @@ class QuestionnaireResponseDao(BaseDao):
             return True
         return False
 
-    def _find_cope_month(self, questionnaire_history, response_authored_date):
-        resource_json = json.loads(questionnaire_history.resource)
-        if 'identifier' in resource_json:
-            identifier_json = resource_json['identifier']
-            if isinstance(identifier_json, list) and len(identifier_json) > 0:
-                first_identifier = identifier_json[0]
-                if 'value' in first_identifier:
-                    form_id = first_identifier['value']
-                    cope_form_id_map = config.getSettingJson(config.COPE_FORM_ID_MAP)
-
-                    for form_ids_str, month_name in cope_form_id_map.items():
-                        if form_id in form_ids_str.split(','):
-                            return month_name
+    def _find_cope_month(self, questionnaire_history: QuestionnaireHistory, response_authored_date):
+        cope_form_id_map = config.getSettingJson(config.COPE_FORM_ID_MAP)
+        for form_ids_str, month_name in cope_form_id_map.items():
+            if questionnaire_history.externalId in form_ids_str.split(','):
+                return month_name
 
         # Currently only have fields in participant summary for May, Jun and July
         return {

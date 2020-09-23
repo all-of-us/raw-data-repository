@@ -108,6 +108,12 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             value=PRIMARY_CONSENT_UPDATE_QUESTION_CODE
         )
 
+        config.override_setting(config.COPE_FORM_ID_MAP, {
+            'Form_13,Cope': 'May',
+            'June': 'June',
+            'Form_1': 'July'
+        })
+
     def _setup_questionnaire(self):
         q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
         q.concepts.append(self.CONCEPT_1)
@@ -635,9 +641,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             self.questionnaire_response_dao.insert(qr)
 
     def _create_questionnaire(self, created_date, question_code_id=None, identifier='1'):
-        questionnaire = Questionnaire(resource='{{"x": "y", "version": "V1", "identifier": [{{"value": "{}"}}]}}'.format(
-            identifier
-        ))
+        questionnaire = Questionnaire(resource=QUESTIONNAIRE_RESOURCE, externalId=identifier)
 
         if question_code_id:
             question = QuestionnaireQuestion(codeId=question_code_id, repeats=False)
@@ -672,17 +676,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
         self.questionnaire_response_dao.insert(qr)
 
-    @staticmethod
-    def setup_config_cope_semantic_version_map():
-        config.override_setting(config.COPE_FORM_ID_MAP, {
-            'Form_13,Cope': 'May',
-            'June': 'June',
-            'Form_1': 'July'
-        })
-
     def test_cope_updates_num_completed(self):
-        self.setup_config_cope_semantic_version_map()
-
         self.insert_codes()
         p = Participant(participantId=1, biobankId=2)
         with FakeClock(TIME):
@@ -698,8 +692,6 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
                          self.participant_summary_dao.get(1).questionnaireOnCopeMay)
 
     def test_cope_resubmit(self):
-        self.setup_config_cope_semantic_version_map()
-
         self.insert_codes()
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
@@ -714,8 +706,6 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
                          self.participant_summary_dao.get(1).questionnaireOnCopeMay)
 
     def test_cope_june_survey_status(self):
-        self.setup_config_cope_semantic_version_map()
-
         self.insert_codes()
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
@@ -729,8 +719,6 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeJune)
 
     def test_july_cope_survey(self):
-        self.setup_config_cope_semantic_version_map()
-
         self.insert_codes()
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
@@ -744,8 +732,6 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeJuly)
 
     def test_cope_june_survey_consent_deferred(self):
-        self.setup_config_cope_semantic_version_map()
-
         self.insert_codes()
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
@@ -759,8 +745,6 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self.assertEqual(QuestionnaireStatus.SUBMITTED_NO_CONSENT, participant_summary.questionnaireOnCopeJune)
 
     def test_unrecognized_cope_form(self):
-        self.setup_config_cope_semantic_version_map()
-
         self.insert_codes()
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
