@@ -104,6 +104,7 @@ HPO_REPORT_CONFIG_MIXIN_PATH = "hpo_report_config_mixin_path"
 LOCALHOST_DEFAULT_BUCKET_NAME = 'local_bucket'
 BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN = 'biobank_samples_daily_inventory_file_pattern'
 BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN = 'biobank_samples_monthly_inventory_file_pattern'
+COPE_FORM_ID_MAP = 'cope_form_id_map'
 
 # Questionnaire Codes
 DNA_PROGRAM_CONSENT_UPDATE_CODE = 'dna_program_consent_update_code'

@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pytz
 from sqlalchemy.orm import subqueryload
@@ -56,7 +56,7 @@ from rdr_service.dao.participant_summary_dao import (
 from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD
 from rdr_service.model.code import CodeType
-from rdr_service.model.questionnaire import QuestionnaireQuestion
+from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireDefinitionStatus,
@@ -261,6 +261,22 @@ class QuestionnaireResponseDao(BaseDao):
             return True
         return False
 
+    @staticmethod
+    def _find_cope_month(questionnaire_history: QuestionnaireHistory, response_authored_date):
+        cope_form_id_map = config.getSettingJson(config.COPE_FORM_ID_MAP)
+        for form_ids_str, month_name in cope_form_id_map.items():
+            if questionnaire_history.externalId in form_ids_str.split(','):
+                return month_name
+
+        # If the questionnaire identifier isn't in the COPE map then using response authored date as a fallback
+        logging.error('Unrecognized identifier for COPE survey response '
+                      f'(questionnaire_id: "{questionnaire_history.questionnaireId}", '
+                      f'version: "{questionnaire_history.version}", identifier: "{questionnaire_history.externalId}"')
+        return {
+            5: 'May',
+            6: 'June'
+        }.get(response_authored_date.month, 'July')
+
     def _update_participant_summary(
         self, session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
     ):
@@ -393,13 +409,7 @@ class QuestionnaireResponseDao(BaseDao):
                         else:
                             submission_status = QuestionnaireStatus.SUBMITTED_INVALID
 
-                        # COPE survey updates can occur at the end of the previous month
-                        adjusted_last_modified = questionnaire_history.lastModified + timedelta(days=5)
-                        # Currently only have fields in participant summary for May, Jun and July
-                        month_name = {
-                            5: 'May',
-                            6: 'June'
-                        }.get(adjusted_last_modified.month, 'July')
+                        month_name = self._find_cope_month(questionnaire_history, authored)
                         setattr(participant_summary, f'questionnaireOnCope{month_name}', submission_status)
                         setattr(participant_summary, f'questionnaireOnCope{month_name}Time',
                                 questionnaire_response.created)
