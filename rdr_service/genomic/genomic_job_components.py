@@ -288,7 +288,7 @@ class GenomicFileIngester:
                         # RDR may need to do something with them in the future
 
                     else:
-                        logging.warning(f'Invalid collection tube ID: {collection_tube_id}'
+                        logging.error(f'Invalid collection tube ID: {collection_tube_id}'
                                         f' or genome_type: {genome_type}')
 
                         # Aborting the job if invalid collection tube ID found.
@@ -494,7 +494,9 @@ class GenomicFileIngester:
                 row_copy['member_id'] = member.id
                 self.metrics_dao.insert_gc_validation_metrics_object(row_copy)
             else:
-                logging.warning(f'Sample ID {sample_id} has no corresponding Genomic Set Member.')
+                logging.error(f'Sample ID {sample_id} has no corresponding Genomic Set Member.')
+
+                # Aborting the job if sample ID cannot be found.
                 return GenomicSubProcessResult.ERROR
 
         return GenomicSubProcessResult.SUCCESS
