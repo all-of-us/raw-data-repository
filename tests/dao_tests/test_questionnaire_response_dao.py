@@ -806,8 +806,10 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
         self._create_consent_update_questionnaire()
         consent_update_authored_date = datetime.datetime(2020, 7, 27)
-        with FakeClock(consent_update_authored_date):
-            self._submit_questionnaire_response(response_consent_code=self.consent_update_yes)
+        self._submit_questionnaire_response(
+            response_consent_code=self.consent_update_yes,
+            authored_datetime=consent_update_authored_date
+        )
 
         participant_summary = self.participant_summary_dao.get(1)
         self.assertEqual(consent_update_authored_date, participant_summary.consentForStudyEnrollmentAuthored)
