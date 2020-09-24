@@ -117,7 +117,7 @@ class GenomicJobRunSchemaGenerator(generators.BaseGenerator):
         with ro_dao.session() as ro_session:
             row = ro_session.execute(text('select * from genomic_job_run where id = :id'), {'id': _pk}).first()
             data = ro_dao.to_dict(row)
-
+            data['orig_id'] = data['id']
             # Populate Enum fields.
             # column data is in 'job_id', instead of 'job' for this one.
             if data['job_id']:

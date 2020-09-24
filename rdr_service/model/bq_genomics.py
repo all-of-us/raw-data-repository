@@ -29,6 +29,8 @@ class BQGenomicSetSchema(BQSchema):
     id = BQField('id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    # PDR-149:  Need to preserve the RDR table id values
+    orig_id = BQField('orig_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     orig_created = BQField('orig_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     orig_modified = BQField('orig_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     genomic_set_name = BQField('genomic_set_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
@@ -65,6 +67,8 @@ class BQGenomicSetMemberSchema(BQSchema):
     id = BQField('id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    # PDR-149:  Need to preserve the RDR table id values
+    orig_id = BQField('orig_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     orig_created = BQField('orig_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     orig_modified = BQField('orig_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     genomic_set_id = BQField('genomic_set_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
@@ -177,6 +181,8 @@ class BQGenomicJobRunSchema(BQSchema):
     id = BQField('id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    # PDR-149:  Need to preserve RDR table id values
+    orig_id = BQField('orig_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     job = BQField('job', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE, fld_enum=GenomicJobEnum)
     job_id = BQField('job_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE, fld_enum=GenomicJobEnum)
     start_time = BQField('start_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
@@ -214,6 +220,8 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     id = BQField('id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    # PDR-149:  Need to preserve RDR table id values
+    orig_id = BQField('orig_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     orig_created = BQField('orig_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     orig_modified = BQField('orig_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     genomic_set_member_id = BQField('genomic_set_member_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
