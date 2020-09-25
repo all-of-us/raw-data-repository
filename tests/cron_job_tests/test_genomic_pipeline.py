@@ -1854,7 +1854,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Change Withdrawal (Should be included in A3)
         p3 = self.summary_dao.get(2)
         p3.consentForStudyEnrollment = QuestionnaireStatus.SUBMITTED_NO_CONSENT
-        p3.consentForStudyEnrollmentAuthored = datetime.datetime(2020, 5, 25, 0, 0, 0)
+        p3.consentForStudyEnrollmentAuthored = datetime.datetime(2020, 5, 26, 0, 0, 0)
         p3.withdrawalStatus = WithdrawalStatus.NO_USE
         self.summary_dao.update(p3)
 
@@ -1882,6 +1882,7 @@ class GenomicPipelineTest(BaseTestCase):
         expected_gem_columns = (
             "biobank_id",
             "sample_id",
+            "date_of_consent_removal",
         )
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_A3_{out_time}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
@@ -1891,8 +1892,10 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(2, len(rows))
             self.assertEqual(test_member_2.biobankId, int(rows[0]['biobank_id']))
             self.assertEqual(test_member_2.sampleId, rows[0]['sample_id'])
+            self.assertEqual('2020-05-26T00:00:00Z', rows[0]['date_of_consent_removal'])
             self.assertEqual(test_member_3.biobankId, int(rows[1]['biobank_id']))
             self.assertEqual(test_member_3.sampleId, rows[1]['sample_id'])
+            self.assertEqual('2020-05-25T00:00:00Z', rows[1]['date_of_consent_removal'])
 
         # Array
         file_record = self.file_processed_dao.get(1)  # remember, GC Metrics is #1

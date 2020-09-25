@@ -1236,13 +1236,17 @@ class GenomicReconciler:
         # Get unconsented members to update (consent > last run time of job_id)
         unconsented_gror_members = self.member_dao.get_unconsented_gror_since_date(_last_run_time)
 
-        # update each member with the new state
+        # update each member with the new state and withdrawal time
         for member in unconsented_gror_members:
             new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
                                                           signal='unconsented')
 
             if new_state is not None or new_state != member.genomicWorkflowState:
                 self.member_dao.update_member_state(member, new_state)
+
+                # Handle withdrawal (gror/primary consent) for reportConsentRemovalDate
+                removal_date = self.member_dao.get_gem_consent_removal_date(member)
+                self.member_dao.update_report_consent_removal_date(member, removal_date)
 
         # Get reconsented members to update (consent > last run time of job_id)
         reconsented_gror_members = self.member_dao.get_reconsented_gror_since_date(_last_run_time)
@@ -1254,6 +1258,7 @@ class GenomicReconciler:
 
             if new_state is not None or new_state != member.genomicWorkflowState:
                 self.member_dao.update_member_state(member, new_state)
+                self.member_dao.update_report_consent_removal_date(member, None)
 
     def _check_genotyping_file_exists(self, bucket_name, filename):
         files = list_blobs('/' + bucket_name)
@@ -2257,6 +2262,7 @@ class ManifestDefinitionProvider:
                     [
                         GenomicSetMember.biobankId,
                         GenomicSetMember.sampleId,
+                        sqlalchemy.func.date_format(GenomicSetMember.reportConsentRemovalDate, '%Y-%m-%dT%TZ'),
                     ]
                 ).select_from(
                     sqlalchemy.join(ParticipantSummary,
@@ -2304,6 +2310,7 @@ class ManifestDefinitionProvider:
             columns = (
                 'biobank_id',
                 'sample_id',
+                'date_of_consent_removal',
             )
 
         elif manifest_type == GenomicManifestTypes.CVL_W3:

@@ -206,6 +206,8 @@ class GenomicSetMember(Base):
 
     genomicWorkflowStateModifiedTime = Column("genomic_workflow_state_modified_time", DateTime, nullable=True)
 
+    reportConsentRemovalDate = Column('report_consent_removal_date', DateTime(timezone=True), nullable=True)
+
     genomicWorkflowStateHistory = Column("genomic_workflow_state_history", JSON, nullable=True)
 
 
