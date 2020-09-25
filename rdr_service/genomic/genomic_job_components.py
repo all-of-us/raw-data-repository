@@ -492,7 +492,17 @@ class GenomicFileIngester:
             if member is not None:
                 self.member_dao.update_member_state(member, GenomicWorkflowState.AW2)
                 row_copy['member_id'] = member.id
-                self.metrics_dao.insert_or_update_gc_validation_metrics(row_copy)
+
+                # check whether metrics object exists for that member
+                existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
+                if existing_metrics_obj is None:
+                    self.metrics_dao.insert_gc_validation_metrics(row_copy)
+
+                else:
+                    logging.info(f"Found existing metrics object for member ID {member.id}")
+                    # TODO: skipping update to metrics for now.
+                    continue
+
             else:
                 logging.error(f'Sample ID {sample_id} has no corresponding Genomic Set Member in AW1 state.')
 
