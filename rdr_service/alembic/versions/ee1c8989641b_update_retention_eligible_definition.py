@@ -60,7 +60,7 @@ def upgrade_rdr():
     """)
 
     op.execute("""
-        ALTER TABLE participant_summary MODIFY COLUMN retention_eligible_time smallint GENERATED ALWAYS AS (
+        ALTER TABLE participant_summary MODIFY COLUMN retention_eligible_time datetime GENERATED ALWAYS AS (
         CASE WHEN retention_eligible_status = 2 AND
           COALESCE(sample_status_1ed10_time, sample_status_2ed10_time, sample_status_1ed04_time,
                  sample_status_1sal_time, sample_status_1sal2_time, 0) != 0
