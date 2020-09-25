@@ -19,6 +19,7 @@ from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
 from rdr_service.model.code import Code
 from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus, ParticipantCohort, ParticipantCohortPilotFlag
 
@@ -998,12 +999,39 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(str(ParticipantCohort.COHORT_2), summary['consentCohort'])
 
-    def test_cohort_group_failure_cases(self):
-        """Test gracefully handling problems with cohort group value"""
+    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
+    def test_cohort_use_date_fallback_on_invalid_number(self, mock_logging):
+        """Test gracefully handling an invalid number sent for cohort group"""
         participant_id = self.create_participant()
 
-        self.send_consent(participant_id, extra_string_values=[('cohort_group', 'A')], expected_status=400)
-        self.send_consent(participant_id, extra_string_values=[('cohort_group', '72')], expected_status=400)
+        self.send_consent(
+            participant_id,
+            authored=datetime.datetime(2020, 4, 4),
+            extra_string_values=[('cohort_group', '72')]
+        )
+
+        participant_summary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == from_client_participant_id(participant_id)
+        ).one()
+        self.assertEqual(ParticipantCohort.COHORT_2, participant_summary.consentCohort)
+        mock_logging.error.assert_called_with('Invalid value given for cohort group: received "72"')
+
+    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
+    def test_cohort_use_date_fallback_on_string(self, mock_logging):
+        """Test gracefully handling a string sent for cohort group"""
+        participant_id = self.create_participant()
+
+        self.send_consent(
+            participant_id,
+            authored=datetime.datetime(2020, 4, 4),
+            extra_string_values=[('cohort_group', 'A')]
+        )
+
+        participant_summary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == from_client_participant_id(participant_id)
+        ).one()
+        self.assertEqual(ParticipantCohort.COHORT_2, participant_summary.consentCohort)
+        mock_logging.error.assert_called_with('Invalid value given for cohort group: received "A"')
 
     @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
     def test_warning_logged_for_missing_vibrent_cohort(self, mock_logging):

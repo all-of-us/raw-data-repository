@@ -434,13 +434,12 @@ class QuestionnaireResponseDao(BaseDao):
                             # storing in the Enum column
                             cohort_numbers = ParticipantCohort.numbers()
                             if cohort_group not in cohort_numbers:
-                                raise BadRequest(f'Unable to accept {cohort_group} as a cohort, '
-                                                 f'currently only taking {cohort_numbers}')
+                                raise ValueError
                             else:
                                 participant_summary.consentCohort = answer.valueString
                                 something_changed = True
                         except ValueError:
-                            raise BadRequest(f'Invalid value given for cohort group: received "{answer.valueString}"')
+                            logging.error(f'Invalid value given for cohort group: received "{answer.valueString}"')
 
 
 
