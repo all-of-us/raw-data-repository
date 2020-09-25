@@ -256,10 +256,10 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(1)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-        # Test updated metrics
+        # Test Inserted metrics are not re-inserted
         # Setup Test file (reusing test file)
         updated_aw2_file = test_data.open_genomic_set_file('RDR_AoU_GEN_TestDataManifest.csv')
-        updated_aw2_file = updated_aw2_file.replace('10002', '11002')
+        #updated_aw2_file = updated_aw2_file.replace('10002', '11002')
 
         updated_aw2_filename = "RDR_AoU_GEN_TestDataManifest_11192020.csv"
 
@@ -280,10 +280,13 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.ingest_genomic_centers_metrics_files()
 
         gc_metrics = self.metrics_dao.get_all()
+        # Test that the insert is skipped
         self.assertEqual(len(gc_metrics), 2)
-        for m in gc_metrics:
-            if m.genomicSetMemberId == 2:
-                self.assertEqual(m.limsId, '11002')
+        # TODO: Removing the update functionality for now.
+        #  When rerunning AW2, previously inserted metrics will be skipped
+        # for m in gc_metrics:
+        #     if m.genomicSetMemberId == 2:
+        #         self.assertEqual(m.limsId, '11002')
 
 
     def _update_test_sample_ids(self):
