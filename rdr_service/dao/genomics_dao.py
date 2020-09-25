@@ -421,18 +421,18 @@ class GenomicSetMemberDao(UpdatableDao):
         :param participant_id
         :return: datetime
         """
-        # get both dates and consent statuses status
+        # get both Primary and GROR dates and consent statuses
         with self.session() as session:
             consent_status = session.query(ParticipantSummary.consentForStudyEnrollment,
-                                   ParticipantSummary.consentForStudyEnrollmentAuthored,
-                                   ParticipantSummary.consentForGenomicsROR,
-                                   ParticipantSummary.consentForGenomicsRORAuthored,
-                                   ).filter(
+                                           ParticipantSummary.consentForStudyEnrollmentAuthored,
+                                           ParticipantSummary.consentForGenomicsROR,
+                                           ParticipantSummary.consentForGenomicsRORAuthored,
+                                           ).filter(
                 ParticipantSummary.participantId == member.participantId,
             ).first()
 
         # Calculate gem consent removal date
-        # Earliest date between GROR or Primary if both, else authored date.
+        # Earliest date between GROR or Primary if both,
         withdraw_dates = []
         if consent_status.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED:
             withdraw_dates.append(consent_status.consentForGenomicsRORAuthored)
