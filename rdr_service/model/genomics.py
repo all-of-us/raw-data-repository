@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
-from rdr_service.model.utils import Enum, MultiEnum
+from rdr_service.model.utils import Enum, MultiEnum, UTCDateTime
 from rdr_service.participant_enums import (
     GenomicSetStatus,
     GenomicSetMemberStatus,
@@ -205,6 +205,8 @@ class GenomicSetMember(Base):
                                   default=GenomicWorkflowState.UNSET)
 
     genomicWorkflowStateModifiedTime = Column("genomic_workflow_state_modified_time", DateTime, nullable=True)
+
+    reportConsentRemovalDate = Column('report_consent_removal_date', DateTime(timezone=True), nullable=True)
 
     genomicWorkflowStateHistory = Column("genomic_workflow_state_history", JSON, nullable=True)
 

@@ -415,6 +415,55 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
             ).all()
 
+    def get_gem_consent_removal_date(self, member):
+        """
+        Calculates the earliest removal date between GROR or Primary Consent
+        :param participant_id
+        :return: datetime
+        """
+        # get both dates and consent statuses status
+        with self.session() as session:
+            consent_status = session.query(ParticipantSummary.consentForStudyEnrollment,
+                                   ParticipantSummary.consentForStudyEnrollmentAuthored,
+                                   ParticipantSummary.consentForGenomicsROR,
+                                   ParticipantSummary.consentForGenomicsRORAuthored,
+                                   ).filter(
+                ParticipantSummary.participantId == member.participantId,
+            ).first()
+
+        # Calculate gem consent removal date
+        # Earliest date between GROR or Primary if both, else authored date.
+        withdraw_dates = []
+        if consent_status.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED:
+            withdraw_dates.append(consent_status.consentForGenomicsRORAuthored)
+
+        if consent_status.consentForStudyEnrollment != QuestionnaireStatus.SUBMITTED:
+            withdraw_dates.append(consent_status.consentForStudyEnrollmentAuthored)
+
+        return min([d for d in withdraw_dates if d is not None])
+
+    def update_report_consent_removal_date(self, member, date):
+        """
+        Updates the reportConsentRemovalDate on the genomic set member
+        :param member:
+        :param date:
+        :return: query result or result code of error
+        """
+        try:
+            logging.info(f'Updating reportConsentRemovalDate for member ID {member.id}.')
+            member.reportConsentRemovalDate = date
+            updated_member = self.update(member)
+
+            # Update member for PDR
+            bq_genomic_set_member_update(member.id)
+            genomic_set_member_update(member.id)
+
+            return updated_member
+
+        except OperationalError:
+            logging.error(f'Error updating member id: {member.id}.')
+            return GenomicSubProcessResult.ERROR
+
     def update_member_job_run_id(self, member, job_run_id, field):
         """
         Updates the GenomicSetMember with a job_run_id for an arbitrary workflow
