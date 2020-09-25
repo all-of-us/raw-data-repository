@@ -34,6 +34,8 @@ class BQGenomicSetGenerator(BigQueryGenerator):
             row = ro_session.execute(text('select * from genomic_set where id = :id'), {'id': _id}).first()
             data = ro_dao.to_dict(row)
 
+            # PDR-149:  Preserve id values from RDR
+            data['orig_id'] = data['id']
             data['orig_created'] = data['created']
             data['orig_modified'] = data['modified']
             data['created'] = data['modified'] = datetime.utcnow()
@@ -79,6 +81,8 @@ class BQGenomicSetMemberSchemaGenerator(BigQueryGenerator):
             row = ro_session.execute(text('select * from genomic_set_member where id = :id'), {'id': _id}).first()
             data = ro_dao.to_dict(row)
 
+            # PDR-149:  Preserve id values from RDR
+            data['orig_id'] = data['id']
             data['orig_created'] = data['created']
             data['orig_modified'] = data['modified']
 
@@ -131,6 +135,9 @@ class BQGenomicJobRunSchemaGenerator(BigQueryGenerator):
             row = ro_session.execute(text('select * from genomic_job_run where id = :id'), {'id': _id}).first()
             data = ro_dao.to_dict(row)
 
+            # PDR-149:  Preserve id values from RDR
+            data['orig_id'] = data['id']
+
             # Populate Enum fields.
             # column data is in 'job_id', instead of 'job' for this one.
             if data['job_id']:
@@ -181,7 +188,8 @@ class BQGenomicGCValidationMetricsSchemaGenerator(BigQueryGenerator):
             row = ro_session.execute(text('select * from genomic_gc_validation_metrics where id = :id'),
                                      {'id': _id}).first()
             data = ro_dao.to_dict(row)
-
+            # PDR-149:  Preserve id values from RDR
+            data['orig_id'] = data['id']
             data['orig_created'] = data['created']
             data['orig_modified'] = data['modified']
 
