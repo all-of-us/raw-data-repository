@@ -2478,7 +2478,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Run Workflow
         genomic_pipeline.aw4_array_manifest_workflow()  # run_id 2
 
-        # Test AW4 manifest ID updated field
+        # Test AW4 manifest updated fields
         members = self.member_dao.get_all()
         for member in members:
             if member.id in (1, 2):
@@ -2523,7 +2523,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Run Workflow
         genomic_pipeline.aw4_wgs_manifest_workflow()  # run_id 2
 
-        # Test AW4 manifest ID updated field
+        # Test AW4 manifest updated fields
         members = self.member_dao.get_all()
         for member in members:
             if member.id in (1, 2):
