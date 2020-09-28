@@ -1884,7 +1884,7 @@ class GenomicPipelineTest(BaseTestCase):
             "sample_id",
             "date_of_consent_removal",
         )
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_A3_{out_time}.csv')) as csv_file:
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_A3_manifest_{out_time}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             missing_cols = set(expected_gem_columns) - set(csv_reader.fieldnames)
             self.assertEqual(0, len(missing_cols))
@@ -1900,7 +1900,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Array
         file_record = self.file_processed_dao.get(1)  # remember, GC Metrics is #1
         self.assertEqual(2, file_record.runId)
-        self.assertEqual(f'{sub_folder}/AoU_GEM_A3_{out_time}.csv', file_record.fileName)
+        self.assertEqual(f'{sub_folder}/AoU_GEM_A3_manifest_{out_time}.csv', file_record.fileName)
 
         # Test the job result
         run_obj = self.job_run_dao.get(2)
