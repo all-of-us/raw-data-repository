@@ -47,7 +47,7 @@ from rdr_service.participant_enums import (
     GenomicSetMemberStatus,
     SuspensionStatus,
     GenomicWorkflowState,
-    ParticipantCohort)
+    ParticipantCohort, GenomicQcStatus)
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,
@@ -418,7 +418,9 @@ class GenomicFileIngester:
         """
         try:
             for row in file_data['rows']:
-                sample_id = row['sample_id']
+                row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                                     for key in row], row.values()))
+                sample_id = row_copy['sampleid']
                 genome_type = GENOME_TYPE_ARRAY if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW else GENOME_TYPE_WGS
 
                 member = self.member_dao.get_member_from_aw3_sample(sample_id,
@@ -428,6 +430,9 @@ class GenomicFileIngester:
                     continue
 
                 member.aw4ManifestJobRunID = self.job_run_id
+
+                # Set the QC status
+                member.qcStatus = self._get_qc_status_from_value(row_copy['qcstatus'])
 
                 self.member_dao.update(member)
 
@@ -620,6 +625,19 @@ class GenomicFileIngester:
 
         return self.member_dao.get_control_sample(sample_id)
 
+    def _get_qc_status_from_value(self, aw4_value):
+        """
+        Returns the GenomicQcStatus enum value for
+        :param aw4_value: string from AW4 file (PASS/FAIL)
+        :return: GenomicQcStatus
+        """
+        if aw4_value.strip().lower() == 'pass':
+            return GenomicQcStatus.PASS
+        elif aw4_value.strip().lower() == 'fail':
+            return GenomicQcStatus.FAIL
+        else:
+            logging.warning(f'Value from AW4 "{aw4_value}" is not PASS/FAIL.')
+            return GenomicQcStatus.UNSET
 
 class GenomicFileValidator:
     """
@@ -738,7 +756,8 @@ class GenomicFileValidator:
             "greenidatmd5path",
             "vcfpath",
             "vcfindexpath",
-            "researchid"
+            "researchid",
+            "qcstatus",
         )
 
         self.AW4_WGS_SCHEMA = (
@@ -755,7 +774,8 @@ class GenomicFileValidator:
             "crampath",
             "crammd5path",
             "craipath",
-            "researchid"
+            "researchid",
+            "qcstatus",
         )
 
     def validate_ingestion_file(self, filename, data_to_validate):

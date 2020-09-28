@@ -690,6 +690,12 @@ class GenomicManifestTypes(messages.Enum):
     AW3_WGS = 9
 
 
+class GenomicQcStatus(messages.Enum):
+    UNSET = 0
+    PASS = 1
+    FAIL = 2
+
+
 class WorkbenchWorkspaceStatus(messages.Enum):
     """Status of Workbench Workspace"""
 
