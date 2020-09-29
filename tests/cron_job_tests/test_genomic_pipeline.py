@@ -55,7 +55,8 @@ from rdr_service.participant_enums import (
     Race,
     QuestionnaireStatus,
     GenomicWorkflowState,
-    WithdrawalStatus)
+    WithdrawalStatus,
+    GenomicQcStatus)
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -2477,11 +2478,15 @@ class GenomicPipelineTest(BaseTestCase):
         # Run Workflow
         genomic_pipeline.aw4_array_manifest_workflow()  # run_id 2
 
-        # Test AW4 manifest ID updated field
+        # Test AW4 manifest updated fields
         members = self.member_dao.get_all()
         for member in members:
             if member.id in (1, 2):
                 self.assertEqual(2, member.aw4ManifestJobRunID)
+            if member.id == 1:
+                self.assertEqual(GenomicQcStatus.PASS, member.qcStatus)
+            if member.id == 2:
+                self.assertEqual(GenomicQcStatus.FAIL, member.qcStatus)
 
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
@@ -2518,11 +2523,15 @@ class GenomicPipelineTest(BaseTestCase):
         # Run Workflow
         genomic_pipeline.aw4_wgs_manifest_workflow()  # run_id 2
 
-        # Test AW4 manifest ID updated field
+        # Test AW4 manifest updated fields
         members = self.member_dao.get_all()
         for member in members:
             if member.id in (1, 2):
                 self.assertEqual(2, member.aw4ManifestJobRunID)
+            if member.id == 1:
+                self.assertEqual(GenomicQcStatus.PASS, member.qcStatus)
+            if member.id == 2:
+                self.assertEqual(GenomicQcStatus.FAIL, member.qcStatus)
 
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)

@@ -14,8 +14,8 @@ from rdr_service.participant_enums import (
     GenomicSubProcessStatus,
     GenomicSubProcessResult,
     GenomicJob,
-    GenomicWorkflowState
-)
+    GenomicWorkflowState,
+    GenomicQcStatus)
 
 
 class GenomicSet(Base):
@@ -209,6 +209,9 @@ class GenomicSetMember(Base):
     reportConsentRemovalDate = Column('report_consent_removal_date', DateTime(timezone=True), nullable=True)
 
     genomicWorkflowStateHistory = Column("genomic_workflow_state_history", JSON, nullable=True)
+
+    # Broad QC Status
+    qcStatus = Column('qc_status', Enum(GenomicQcStatus), default=GenomicQcStatus.UNSET)
 
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)

@@ -12,7 +12,8 @@ from rdr_service.participant_enums import (
     GenomicSubProcessStatus as _GenomicSubProcessStatus,
     GenomicSubProcessResult as _GenomicSubProcessResult,
     GenomicJob as _GenomicJob,
-    GenomicWorkflowState as _GenomicWorkflowState
+    GenomicWorkflowState as _GenomicWorkflowState,
+    GenomicQcStatus as _GenomicQcStatus
 )
 
 # Convert weird participant_enums to standard python enums.
@@ -23,6 +24,7 @@ GenomicSubProcessStatusEnum = Enum('GenomicSubProcessStatusEnum', _GenomicSubPro
 GenomicSubProcessResultEnum = Enum('GenomicSubProcessResultEnum', _GenomicSubProcessResult.to_dict())
 GenomicJobEnum = Enum('GenomicJobEnum', _GenomicJob.to_dict())
 GenomicWorkflowStateEnum = Enum('GenomicWorkflowStateEnum', _GenomicWorkflowState.to_dict())
+GenomicQcStatusEnum = Enum('GenomicQcStatusEnum', _GenomicQcStatus.to_dict())
 
 
 class BQGenomicSetSchema(BQSchema):
@@ -157,6 +159,10 @@ class BQGenomicSetMemberSchema(BQSchema):
                                           BQFieldModeEnum.NULLABLE)
     wgs_aw3_manifest_job_run_id = BQField('wgs_aw3_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
                                           BQFieldModeEnum.NULLABLE)
+    report_consent_removal_date = BQField('report_consent_removal_date',
+                                          BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    qc_status = BQField('qc_status', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+                        fld_enum=GenomicQcStatusEnum)
 
 
 class BQGenomicSetMember(BQTable):

@@ -14,7 +14,8 @@ from rdr_service.participant_enums import (
     GenomicSubProcessStatus,
     GenomicSubProcessResult,
     GenomicJob,
-    GenomicWorkflowState
+    GenomicWorkflowState,
+    GenomicQcStatus
 )
 
 
@@ -110,6 +111,9 @@ class GenomicSetMemberSchema(Schema):
     arr_aw3_manifest_job_run_id = fields.Int32()
     wgs_aw3_manifest_job_run_id = fields.Int32()
     genomic_workflow_state_modified_time = fields.DateTime()
+    report_consent_removal_date = fields.DateTime()
+    qc_status = fields.EnumString(enum=GenomicQcStatus)
+    qc_status_id = fields.EnumInteger(enum=GenomicQcStatus)
 
     class Meta:
         """
