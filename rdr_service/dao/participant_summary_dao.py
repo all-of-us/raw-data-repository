@@ -36,6 +36,7 @@ from rdr_service.model.participant_summary import (
     SUSPENDED_OR_DECEASED_PARTICIPANT_FIELDS,
     WITHDRAWN_PARTICIPANT_FIELDS,
     WITHDRAWN_PARTICIPANT_VISIBILITY_TIME,
+    RETENTION_WINDOW
 )
 from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.utils import get_property_type, to_client_participant_id
@@ -53,6 +54,7 @@ from rdr_service.participant_enums import (
     SuspensionStatus,
     WithdrawalStatus,
     get_bucketed_age,
+    RetentionStatus
 )
 from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
 
@@ -755,6 +757,34 @@ class ParticipantSummaryDao(UpdatableDao):
 
         if result.get("genderIdentityId"):
             del result["genderIdentityId"]  # deprecated in favor of genderIdentity
+
+        result["retentionType"] = 'UNSET'
+        if model.retentionEligibleStatus == RetentionStatus.ELIGIBLE:
+            eighteen_month_ago = clock.CLOCK.now() - RETENTION_WINDOW
+            if (model.questionnaireOnHealthcareAccessAuthored and
+                model.questionnaireOnHealthcareAccessAuthored > eighteen_month_ago) or \
+                (model.questionnaireOnFamilyHealthAuthored and
+                 model.questionnaireOnFamilyHealthAuthored > eighteen_month_ago) or \
+                (model.questionnaireOnMedicalHistoryAuthored and
+                 model.questionnaireOnMedicalHistoryAuthored > eighteen_month_ago) or \
+                (model.questionnaireOnCopeOctAuthored and
+                 model.questionnaireOnCopeOctAuthored > eighteen_month_ago) or \
+                (model.questionnaireOnCopeJulyAuthored and
+                 model.questionnaireOnCopeJulyAuthored > eighteen_month_ago) or \
+                (model.questionnaireOnCopeJuneAuthored and
+                 model.questionnaireOnCopeJuneAuthored > eighteen_month_ago) or \
+                (model.questionnaireOnCopeMayAuthored and
+                 model.questionnaireOnCopeMayAuthored > eighteen_month_ago) or \
+                (model.consentCohort == ParticipantCohort.COHORT_1 and
+                 model.consentForStudyEnrollmentAuthored != model.consentForStudyEnrollmentFirstYesAuthored and
+                 model.consentForStudyEnrollmentAuthored > eighteen_month_ago) or \
+                (model.consentCohort == ParticipantCohort.COHORT_1 and model.consentForGenomicsRORAuthored and
+                 model.consentForGenomicsRORAuthored > eighteen_month_ago) or \
+                (model.consentCohort == ParticipantCohort.COHORT_2 and model.consentForGenomicsRORAuthored and
+                 model.consentForGenomicsRORAuthored > eighteen_month_ago):
+                result["retentionType"] = 'ACTIVE'
+            elif model.ehrReceiptTime and model.ehrReceiptTime > eighteen_month_ago:
+                result["retentionType"] = 'PASSIVE'
 
         # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
         # def format_patient_status_record(status_obj):

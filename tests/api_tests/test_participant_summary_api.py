@@ -5,7 +5,7 @@ import threading
 import unittest
 from urllib.parse import urlencode
 
-from rdr_service import main
+from rdr_service import main, clock
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERMISSION_YES_CODE,
                                         DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,
@@ -222,6 +222,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "cohort2PilotFlag": "UNSET",
                 "deceasedStatus": "UNSET",
                 "retentionEligibleStatus": "NOT_ELIGIBLE",
+                "retentionType": "UNSET",
             }
         )
 
@@ -3100,6 +3101,38 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(ps['retentionEligibleStatus'], 'NOT_ELIGIBLE')
         self.assertEqual(ps.get('retentionEligibleTime'), None)
 
+    def test_retention_type(self):
+        participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
+        participant_id = participant["participantId"]
+        with FakeClock(TIME_1):
+            self.send_consent(participant_id)
+
+        eighteen_month_ago = clock.CLOCK.now() - datetime.timedelta(days=800)
+        attrs = {
+            'questionnaireOnMedicalHistoryAuthored': eighteen_month_ago
+        }
+        self._make_participant_retention_eligible(participant_id[1:], **attrs)
+        ps = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(ps['retentionEligibleStatus'], 'ELIGIBLE')
+        self.assertEqual(ps['retentionEligibleTime'], TIME_4.isoformat())
+        self.assertEqual(ps['retentionType'], 'UNSET')
+
+        in_eighteen_month = clock.CLOCK.now() - datetime.timedelta(days=20)
+        attrs = {
+            'questionnaireOnHealthcareAccessAuthored': in_eighteen_month
+        }
+        self._make_participant_retention_eligible(participant_id[1:], **attrs)
+        ps = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(ps['retentionType'], 'ACTIVE')
+
+        attrs = {
+            'questionnaireOnHealthcareAccessAuthored': None,
+            'ehrReceiptTime': in_eighteen_month
+        }
+        self._make_participant_retention_eligible(participant_id[1:], **attrs)
+        ps = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(ps['retentionType'], 'PASSIVE')
+
     @patch('rdr_service.api.base_api.DEFAULT_MAX_RESULTS', 1)
     def test_parameter_pagination(self):
         # Duplicated parameters should appear in the next link when paging results
@@ -3128,7 +3161,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         summary.samplesToIsolateDNA = SampleStatus.UNSET
         ps_dao.update(summary)
 
-    def _make_participant_retention_eligible(self, participant_id):
+    def _make_participant_retention_eligible(self, participant_id, **attrs):
         ps_dao = ParticipantSummaryDao()
         summary = ps_dao.get(participant_id)
         summary.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
@@ -3146,6 +3179,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
         summary.baselineQuestionnairesFirstCompleteAuthored = TIME_3
         summary.samplesToIsolateDNA = SampleStatus.RECEIVED
         summary.deceasedStatus = DeceasedStatus.UNSET
+
+        for key in attrs.keys():
+            setattr(summary, key, attrs.get(key))
+
         ps_dao.update(summary)
 
         return summary
