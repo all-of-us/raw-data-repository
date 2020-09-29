@@ -680,6 +680,7 @@ class GenomicFileValidator:
                 "chipwellbarcode",
                 "callrate",
                 "sexconcordance",
+                "contamination",
                 "processingstatus",
                 "notes",
             ),
