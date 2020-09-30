@@ -854,3 +854,28 @@ def gcp_restart_instances(project, service='default'):
         else:
             _logger.info(i)
     return 0
+
+
+def gcp_sql_export_csv(project, sql, destination, replica=True, database=None):
+    """
+    Create a CSV export from the database and stores the result in a bucket.
+    Uses the CLI utility documented at https://cloud.google.com/sdk/gcloud/reference/sql/export/csv
+
+    :param project: Specifies the project (or environment) to use to find the database
+    :param sql: SQL statement (as a string) used for retrieving CSV data
+    :param destination: Location to save the export file (in the form of gs://bucketName/fileName)
+    :param replica: Uses the first replica instance when set to True (defaults to True)
+    """
+
+    db_instance = GCP_REPLICA_INSTANCES[project] if replica else GCP_INSTANCES[project]
+    db_instance = db_instance.split(':')[-1]
+
+    args = f'{db_instance} {destination} --query="{sql}"'
+
+    if database:
+        args += f' --database {database}'
+
+    exit_code, _, error = gcp_gcloud_command('sql export csv', args)
+    if exit_code != 0:
+        _logger.error(error)
+        _logger.error(f'Failed to run sql export to {destination}. Gcloud gave exit code {exit_code}.')

@@ -529,6 +529,32 @@ CREATE TABLE cdm.dose_era
     UNIQUE KEY (id)
 );
 
+-- -----------------------------------------------
+-- questionnaire_vibrent_forms
+-- -----------------------------------------------
+-- TODO: soon external ids will be available in Prod,
+--  this table can be removed when they are
+DROP TABLE IF EXISTS cdm.questionnaire_vibrent_forms;
+
+CREATE TABLE cdm.questionnaire_vibrent_forms (
+    questionnaire_id            bigint,
+    version                     bigint,
+    vibrent_form_id             varchar(200),
+    INDEX vibrent_form_index    (questionnaire_id, version)
+);
+
+-- -----------------------------------------------
+-- questionnaire_answers_by_code
+-- -----------------------------------------------
+DROP TABLE IF EXISTS cdm.questionnaire_responses_by_module;
+
+CREATE TABLE cdm.questionnaire_responses_by_module (
+    participant_id              bigint,
+    authored                    datetime,
+    survey                      varchar(200),
+    INDEX answers_by_code_index (participant_id, survey)
+);
+
 -- -------------------------------------------------------------------
 -- source_file: src/src_clean.sql
 -- -------------------------------------------------------------------
@@ -565,14 +591,39 @@ CREATE TABLE cdm.src_clean (
 -- -------------------------------------------------------------------
 
 -- Do not set locks, allow dirty reads.
-SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+
+INSERT INTO cdm.questionnaire_vibrent_forms
+SELECT
+    qh.questionnaire_id,
+    qh.version,
+    json_unquote(json_extract(convert(qh.resource using utf8), '$.identifier[0].value')) vibrent_form_id
+FROM rdr.questionnaire_history qh
+;
+
+-- Setup for being able to filter questionnaire responses to the latest we have from each participant for each survey
+INSERT INTO cdm.questionnaire_responses_by_module
+SELECT qr.participant_id, qr.authored as authored, CASE
+        WHEN c.value = 'COPE' THEN qvf.vibrent_form_id
+        ELSE c.value
+    END survey
+FROM rdr.questionnaire_response qr
+JOIN rdr.questionnaire_concept qc
+    ON qr.questionnaire_id = qc.questionnaire_id
+        AND qr.questionnaire_version = qc.questionnaire_version
+JOIN rdr.code c ON c.code_id = qc.code_id
+JOIN cdm.questionnaire_vibrent_forms qvf -- Need to distinguish by vibrent_form_id for the COPE surveys
+    ON qvf.questionnaire_id = qr.questionnaire_id AND qvf.version = qr.questionnaire_version
+;
 
 INSERT INTO cdm.src_clean
 SELECT
     pa.participant_id               AS participant_id,
     pa.research_id                  AS research_id,
     co_b.value                      AS survey_name,
-    qr.created                      AS date_of_survey,
+    COALESCE(
+        qr.authored,
+        qr.created)                 AS date_of_survey,
     co_q.short_value                AS question_ppi_code,
     qq.code_id                      AS question_code_id,
     co_a.short_value                AS value_ppi_code,
@@ -615,12 +666,21 @@ JOIN rdr.questionnaire_response_answer qra
     ON  qra.questionnaire_response_id = qr.questionnaire_response_id
 JOIN rdr.questionnaire_question qq
     ON qra.question_id = qq.questionnaire_question_id
+JOIN cdm.questionnaire_vibrent_forms qvf
+    ON qvf.questionnaire_id = qr.questionnaire_id AND qvf.version = qr.questionnaire_version
 JOIN rdr.code co_q
     ON  qq.code_id = co_q.code_id
 LEFT JOIN rdr.code co_a
     ON  qra.value_code_id = co_a.code_id
 LEFT JOIN rdr.code co_b
     ON qc.code_id = co_b.code_id
+LEFT JOIN cdm.questionnaire_responses_by_module later_response
+    ON later_response.participant_id = qr.participant_id
+        AND later_response.survey = CASE
+            WHEN co_b.value = 'COPE' THEN qvf.vibrent_form_id
+            ELSE co_b.value
+        END
+        AND later_response.authored > qr.authored
 WHERE
     pa.withdrawal_status != 2
     AND pa.is_ghost_id IS NOT TRUE
@@ -636,10 +696,11 @@ WHERE
         OR qra.value_datetime IS NOT NULL
         OR qra.value_string IS NOT NULL
     )
+    AND later_response.participant_id IS NULL  -- Make sure the response doesn't have anything authored later
 ;
 
--- Reset ISOLATION level to previous setting
-COMMIT;
+-- Reset ISOLATION level to previous setting (assuming here that it was MySql's default)
+SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 
 
 ALTER TABLE cdm.src_clean ADD KEY (participant_id);

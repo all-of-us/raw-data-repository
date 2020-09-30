@@ -4,12 +4,11 @@
 #
 
 import argparse
-import csv
 import logging
 import sys
 
-from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
-from rdr_service.storage import GoogleCloudStorageProvider
+from rdr_service.services.gcp_utils import gcp_sql_export_csv
+from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 
 _logger = logging.getLogger("rdr_logger")
@@ -23,6 +22,7 @@ tool_desc = "Support tool for Curation ETL process"
 EXPORT_BATCH_SIZE = 10000
 
 # TODO: Rewrite the Curation ETL bash scripts into multiple Classes here.
+
 
 class CurationExportClass(object):
     """
@@ -43,30 +43,6 @@ class CurationExportClass(object):
         self.args = args
         self.gcp_env = gcp_env
 
-    def get_table_count(self, table):
-        """
-        Get the number of records in the table.
-        :param table: table name.
-        :return: integer
-        """
-        cursor = self.db_conn.cursor()
-        cursor.execute(f"select count(1) from cdm.{table}")
-        total = cursor.fetchone()[0]
-        cursor.close()
-        return total
-
-    def run_query(self, sql):
-        """
-        Run a query and return results
-        :param sql: sql statement to execute
-        :return: results from query
-        """
-        cursor = self.db_conn.cursor()
-        cursor.execute(sql)
-        results = cursor.fetchall()
-        cursor.close()
-        return results
-
     def get_field_names(self, table, exclude=None):
         """
         Run a query and get the field list.
@@ -83,61 +59,32 @@ class CurationExportClass(object):
         cursor.close()
         return fields
 
-    def clean_data(self, data):
-        """
-        Clean the data field if string
-        :param data: data value
-        :return: cleaned data value.
-        """
-        if isinstance(data, str):
-            # We found some records in the Observation table that had multiple "\0" characters in them.
-            return data.replace('\0', '').strip()
-        return data
-
     def export_table(self, table):
         """
         Export table to cloud bucket
         :param table: Table name
         :return:
         """
-        cloud_file = f'{self.args.export_path}/{table}.csv'
+        cloud_file = f'gs://{self.args.export_path}/{table}.csv'
 
-        total = self.get_table_count(table)
-        fields = self.get_field_names(table, ['id'])
-        field_list = ', '.join(fields)
-        count = 0
-        storage_provider = GoogleCloudStorageProvider()
+        # We have to add a row at the start for the CSV headers, Google hasn't implemented another way yet
+        # https://issuetracker.google.com/issues/111342008
+        column_names = self.get_field_names(table, ['id'])
+        header_string = ','.join([f"'{column_name}'" for column_name in column_names])
 
-        sql = f'SELECT {field_list} FROM {table}'
+        # We need to handle NULLs and convert them to empty strings as gcloud sql has a bug when putting them in a csv
+        # https://issuetracker.google.com/issues/64579566
+        # NULL characters (\0) can also corrupt the output file, so they're removed.
+        # And whitespace was trimmed before so that's moved into the SQL as well
+        field_list = [f"TRIM(REPLACE(COALESCE({name}, ''), '\\0', ''))" for name in column_names]
 
-        with storage_provider.open(cloud_file, 'wt') as h:
-
-            # Write out the header row of the CSV file.
-            writer = csv.DictWriter(h, fieldnames=fields, quoting=csv.QUOTE_NONNUMERIC)
-            writer.writeheader()
-            # If no data records, just return.
-            if total == 0:
-                _logger.info(f' {table:20} : 0/0 100.0% complete')
-                return
-
-            _logger.info(f'executing sql for table {table}')
-            cursor = self.db_conn.cursor()
-            cursor.execute(sql)
-            results = cursor.fetchmany(size=EXPORT_BATCH_SIZE)
-            while results:
-                for row in results:
-                    # merge field names and data into dict.
-                    data_dict = dict(zip(fields, [self.clean_data(d) for d in row]))
-                    writer.writerow(data_dict)
-                    count += 1
-
-                results = cursor.fetchmany(size=EXPORT_BATCH_SIZE)
-
-                print_progress_bar(
-                    count, total, prefix=f" {table:20} : {count}/{total}:", suffix="complete", bar_length=60)
-
-            cursor.close()
-            _logger.info(f'uploading {table} export to GCS bucket')
+        _logger.info(f'exporting {table}')
+        gcp_sql_export_csv(
+            self.args.project,
+            f"SELECT {header_string} UNION SELECT {','.join(field_list)} FROM {table}",
+            cloud_file,
+            database='cdm'
+        )
 
     def run(self):
         """
