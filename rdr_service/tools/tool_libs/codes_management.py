@@ -209,8 +209,9 @@ class CodesSyncClass(ToolBase):
 
         return response.content
 
-    def write_export_file(self, session):
-        with open(code_export_file_path + self.gcp_env.project, 'w') as output_file:
+    @staticmethod
+    def write_export_file(session):
+        with open(code_export_file_path, 'w') as output_file:
             code_csv_writer = csv.writer(output_file)
             code_csv_writer.writerow([
                 'Code Value',
