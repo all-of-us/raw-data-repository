@@ -601,7 +601,7 @@ SELECT
 FROM rdr.questionnaire_history qh
 ;
 
--- Setup for being able to filter question answers down to the latest we have from each participant for each question
+-- Setup for being able to filter questionnaire responses to the latest we have from each participant for each survey
 INSERT INTO cdm.questionnaire_responses_by_module
 SELECT qr.participant_id, qr.authored as authored, CASE
         WHEN c.value = 'COPE' THEN qvf.vibrent_form_id
