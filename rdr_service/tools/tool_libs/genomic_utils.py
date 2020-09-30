@@ -16,7 +16,7 @@ import pytz
 
 from rdr_service import clock, config
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_set_update, \
-    bq_genomic_job_run_update
+    bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao, \
     GenomicGCValidationMetricsDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler
@@ -25,7 +25,7 @@ from rdr_service.genomic.genomic_biobank_manifest_handler import (
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
-    genomic_job_run_update
+    genomic_job_run_update, genomic_gc_validation_metrics_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -740,6 +740,10 @@ class UpdateGcMetricsClass(GenomicManifestBase):
         # Only update the metric if this is not a dryrun
         if not self.args.dryrun:
             self.dao.update(metric)
+
+            # Update for BQ/Resource
+            bq_genomic_gc_validation_metrics_update(metric.id, project_id=self.gcp_env.project)
+            genomic_gc_validation_metrics_update(metric.id)
 
         _logger.warning(f'{self.msg} gc_metric ID {metric.id}')
 
