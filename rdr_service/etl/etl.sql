@@ -546,14 +546,13 @@ CREATE TABLE cdm.questionnaire_vibrent_forms (
 -- -----------------------------------------------
 -- questionnaire_answers_by_code
 -- -----------------------------------------------
-DROP TABLE IF EXISTS cdm.questionnaire_answers_by_code;
+DROP TABLE IF EXISTS cdm.questionnaire_responses_by_module;
 
-CREATE TABLE cdm.questionnaire_answers_by_code (
+CREATE TABLE cdm.questionnaire_responses_by_module (
     participant_id              bigint,
-    question_code_id            bigint,
     authored                    datetime,
     survey                      varchar(200),
-    INDEX answers_by_code_index (participant_id, question_code_id, survey)
+    INDEX answers_by_code_index (participant_id, survey)
 );
 
 -- -------------------------------------------------------------------
@@ -603,16 +602,12 @@ FROM rdr.questionnaire_history qh
 ;
 
 -- Setup for being able to filter question answers down to the latest we have from each participant for each question
-INSERT INTO cdm.questionnaire_answers_by_code
-SELECT qr.participant_id, qq.code_id question_code_id, qr.authored as authored, CASE
+INSERT INTO cdm.questionnaire_responses_by_module
+SELECT qr.participant_id, qr.authored as authored, CASE
         WHEN c.value = 'COPE' THEN qvf.vibrent_form_id
         ELSE c.value
     END survey
 FROM rdr.questionnaire_response qr
-JOIN rdr.questionnaire_response_answer qra
-    ON qra.questionnaire_response_id = qr.questionnaire_response_id
-JOIN rdr.questionnaire_question qq
-    ON qq.questionnaire_question_id = qra.question_id
 JOIN rdr.questionnaire_concept qc
     ON qr.questionnaire_id = qc.questionnaire_id
         AND qr.questionnaire_version = qc.questionnaire_version
@@ -679,14 +674,13 @@ LEFT JOIN rdr.code co_a
     ON  qra.value_code_id = co_a.code_id
 LEFT JOIN rdr.code co_b
     ON qc.code_id = co_b.code_id
-LEFT JOIN cdm.questionnaire_answers_by_code later_answer
-    ON later_answer.participant_id = qr.participant_id
-        AND later_answer.question_code_id = qq.code_id
-        AND later_answer.survey = CASE
+LEFT JOIN cdm.questionnaire_responses_by_module later_response
+    ON later_response.participant_id = qr.participant_id
+        AND later_response.survey = CASE
             WHEN co_b.value = 'COPE' THEN qvf.vibrent_form_id
             ELSE co_b.value
         END
-        AND later_answer.authored > qr.authored
+        AND later_response.authored > qr.authored
 WHERE
     pa.withdrawal_status != 2
     AND pa.is_ghost_id IS NOT TRUE
@@ -702,7 +696,7 @@ WHERE
         OR qra.value_datetime IS NOT NULL
         OR qra.value_string IS NOT NULL
     )
-    AND later_answer.participant_id IS NULL  -- Make sure the response doesn't have anything authored later
+    AND later_response.participant_id IS NULL  -- Make sure the response doesn't have anything authored later
 ;
 
 -- Reset ISOLATION level to previous setting (assuming here that it was MySql's default)
