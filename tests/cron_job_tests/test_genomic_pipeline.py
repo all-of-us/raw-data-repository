@@ -337,6 +337,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual('10001_R01C01', record.chipwellbarcode)
             self.assertEqual('0.34567890', record.callRate)
             self.assertEqual('True', record.sexConcordance)
+            self.assertEqual('8.67812390', record.contamination)
             self.assertEqual('Pass', record.processingStatus)
             self.assertEqual('This sample passed', record.notes)
 
