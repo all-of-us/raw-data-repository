@@ -10,6 +10,7 @@ from sqlalchemy.orm.session import Session
 from rdr_service.clock import CLOCK
 from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
 from rdr_service.model.code import Code, CodeType
+from rdr_service.services.gcp_config import GCP_INSTANCES
 from rdr_service.tools.tool_libs._tool_base import cli_run, logger, ToolBase
 from rdr_service.tools.tool_libs.app_engine_manager import AppConfigClass
 
@@ -67,6 +68,13 @@ class CodesExportClass(ToolBase):
         media = MediaFileUpload(code_export_file_path, mimetype='text/csv')
         drive_service.files().create(body=file_metadata, media_body=media, supportsAllDrives=True).execute()
 
+    @staticmethod
+    def initialize_process_context(tool_name, project, account, service_account):
+        if project == '_all':
+            project = 'all-of-us-rdr-prod'
+
+        return ToolBase.initialize_process_context(tool_name, project, account, service_account)
+
     def run(self):
         # Intentionally not calling super's run
         # since the SA for exporting probably doesn't have SQL permissions
@@ -75,6 +83,8 @@ class CodesExportClass(ToolBase):
         service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
         credentials = ServiceAccountCredentials.from_json_keyfile_name(service_key_info['key_path'])
         drive_service = build('drive', 'v3', credentials=credentials)
+
+        logger.info(f'Uploading code export for {self.gcp_env.project}')
 
         self.trash_previous_exports(credentials, drive_service)
         self.upload_file(drive_service)
@@ -199,9 +209,8 @@ class CodesSyncClass(ToolBase):
 
         return response.content
 
-    @staticmethod
-    def write_export_file(session):
-        with open(code_export_file_path, 'w') as output_file:
+    def write_export_file(self, session):
+        with open(code_export_file_path + self.gcp_env.project, 'w') as output_file:
             code_csv_writer = csv.writer(output_file)
             code_csv_writer.writerow([
                 'Code Value',
@@ -223,7 +232,18 @@ class CodesSyncClass(ToolBase):
                         row_data.append(possible_module_code.value)
                 code_csv_writer.writerow(row_data)
 
-    def run(self):
+    def run_process(self):
+        if self.args.project == '_all':
+            for project in GCP_INSTANCES.keys():
+                with self.initialize_process_context(self.tool_cmd, project, self.args.account,
+                                                     self.args.service_account) as gcp_env:
+                    self.gcp_env = gcp_env
+                    self.run(skip_file_export_write=('prod' not in project))
+            return 0
+        else:
+            return super(CodesSyncClass, self).run_process()
+
+    def run(self, skip_file_export_write=False):
         super(CodesSyncClass, self).run()
 
         if self.args.reuse_codes:
@@ -231,6 +251,9 @@ class CodesSyncClass(ToolBase):
 
         with self.get_session() as session:
             if not self.args.export_only:
+                if not self.args.dry_run:
+                    logger.info(f'Importing codes for {self.gcp_env.project}')
+
                 # Get the server config to read Redcap API keys
                 project_api_key = self.get_redcap_api_key(self.args.redcap_project)
                 if project_api_key is None:
@@ -251,7 +274,7 @@ class CodesSyncClass(ToolBase):
                                  'to specify that they should be allowed.')
                     return 1
 
-            if not self.args.dry_run:
+            if not self.args.dry_run and not skip_file_export_write:
                 self.write_export_file(session)
 
         return 0

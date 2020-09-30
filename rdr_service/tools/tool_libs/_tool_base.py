@@ -15,13 +15,17 @@ class ToolBase(object):
         self.tool_cmd = tool_cmd
         self.gcp_env = gcp_env
 
+    @staticmethod
+    def initialize_process_context(tool_cmd, project, account, service_account):
+        return GCPProcessContext(tool_cmd, project, account, service_account)
+
     def run_process(self):
         """
         Responsible for setting up the GCP environment and running the tool's code
         :return: Tool's exit code value
         """
-        with GCPProcessContext(self.tool_cmd, self.args.project,
-                               self.args.account, self.args.service_account) as gcp_env:
+        with self.initialize_process_context(self.tool_cmd, self.args.project,
+                                             self.args.account, self.args.service_account) as gcp_env:
             self.gcp_env = gcp_env
             return self.run()
 
@@ -54,5 +58,5 @@ def cli_run(tool_cmd, tool_desc, tool_class: ToolBase, parser_hook=None, default
         parser_hook(parser)
 
     args = parser.parse_args()
-    process = tool_class(args, tool_cmd)
+    process = tool_class(args, tool_cmd=tool_cmd)
     return process.run_process()
