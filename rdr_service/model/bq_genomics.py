@@ -51,11 +51,6 @@ class BQGenomicSet(BQTable):
     """  BigQuery Table """
     __tablename__ = 'genomic_set'
     __schema__ = BQGenomicSetSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-        ('all-of-us-rdr-stable', ('aou-pdr-data-stable', 'rdr_ops_data_view')),
-        ('pmi-drc-api-test', ('aou-pdr-data-test', 'rdr_ops_data_view')),
-    ]
 
 
 class BQGenomicSetView(BQView):
@@ -169,11 +164,6 @@ class BQGenomicSetMember(BQTable):
     """  BigQuery Table """
     __tablename__ = 'genomic_set_member'
     __schema__ = BQGenomicSetMemberSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-        ('all-of-us-rdr-stable', ('aou-pdr-data-stable', 'rdr_ops_data_view')),
-        ('pmi-drc-api-test', ('aou-pdr-data-test', 'rdr_ops_data_view')),
-    ]
 
 
 class BQGenomicSetMemberView(BQView):
@@ -208,11 +198,6 @@ class BQGenomicJobRun(BQTable):
     """  BigQuery Table """
     __tablename__ = 'genomic_job_run'
     __schema__ = BQGenomicJobRunSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-        ('all-of-us-rdr-stable', ('aou-pdr-data-stable', 'rdr_ops_data_view')),
-        ('pmi-drc-api-test', ('aou-pdr-data-test', 'rdr_ops_data_view')),
-    ]
 
 
 class BQGenomicJobRunView(BQView):
@@ -284,11 +269,6 @@ class BQGenomicGCValidationMetrics(BQTable):
     """  BigQuery Table """
     __tablename__ = 'genomic_gc_validation_metrics'
     __schema__ = BQGenomicGCValidationMetricsSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-        ('all-of-us-rdr-stable', ('aou-pdr-data-stable', 'rdr_ops_data_view')),
-        ('pmi-drc-api-test', ('aou-pdr-data-test', 'rdr_ops_data_view')),
-    ]
 
 
 class BQGenomicGCValidationMetricsView(BQView):
