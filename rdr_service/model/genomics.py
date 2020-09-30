@@ -358,7 +358,7 @@ class GenomicGCValidationMetrics(Base):
     craiPath = Column('crai_path', String(255), nullable=True)
 
     # Ignore Record
-    ignore = Column('ignore', SmallInteger, nullable=True, default=0)
+    ignoreFlag = Column('ignore_flag', SmallInteger, nullable=True, default=0)
     devNote = Column('dev_note', String(255), nullable=True)
 
 
