@@ -10,9 +10,20 @@ logger = logging.getLogger("rdr_logger")
 
 
 class ToolBase(object):
-    def __init__(self, args, gcp_env):
+    def __init__(self, args, gcp_env=None, tool_cmd=None):
         self.args = args
+        self.tool_cmd = tool_cmd
         self.gcp_env = gcp_env
+
+    def run_process(self):
+        """
+        Responsible for setting up the GCP environment and running the tool's code
+        :return: Tool's exit code value
+        """
+        with GCPProcessContext(self.tool_cmd, self.args.project,
+                               self.args.account, self.args.service_account) as gcp_env:
+            self.gcp_env = gcp_env
+            return self.run()
 
     def run(self):
         proxy_pid = self.gcp_env.activate_sql_proxy()
@@ -25,7 +36,7 @@ class ToolBase(object):
         return database_factory.make_server_cursor_database().session()
 
 
-def cli_run(tool_cmd, tool_desc, tool_class, parser_hook=None, defaults={}):
+def cli_run(tool_cmd, tool_desc, tool_class: ToolBase, parser_hook=None, defaults={}):
     # Set global debug value and setup application logging.
     setup_logging(
         logger, tool_cmd, "--debug" in sys.argv, "{0}.log".format(tool_cmd) if "--log-file" in sys.argv else None
@@ -43,9 +54,5 @@ def cli_run(tool_cmd, tool_desc, tool_class, parser_hook=None, defaults={}):
         parser_hook(parser)
 
     args = parser.parse_args()
-
-    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-        process = tool_class(args, gcp_env)
-        exit_code = process.run()
-
-        return exit_code
+    process = tool_class(args, tool_cmd)
+    return process.run_process()
