@@ -697,6 +697,12 @@ class UpdateGcMetricsClass(GenomicManifestBase):
                     _logger.error(f"Field not found in model: {field_name}")
                     return 1
 
+            # Document these changes in the dev_note field
+            dev_note = input("Please enter a developer note for these updates:\n")
+            if dev_note in (None, ""):
+                _logger.error('A developer note is required for these changes.')
+                return 1
+
             for line in csvreader:
                 _metric_id = line['id']
 
@@ -707,6 +713,7 @@ class UpdateGcMetricsClass(GenomicManifestBase):
                     _logger.error(f"Metric id {_metric_id.rstrip()} does not exist.")
                     return 1
 
+                metric.devNote = dev_note
                 self.process_line_for_gc_metric_object(metric, line)
 
         _logger.info(f'{self.msg} {self.counter} GC Metrics records.')
