@@ -4,7 +4,7 @@ import threading
 
 import sqlalchemy
 import sqlalchemy.orm
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 
 # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
 # from sqlalchemy.orm import selectinload
@@ -445,9 +445,13 @@ class ParticipantSummaryDao(UpdatableDao):
             if value not in ORIGINATING_SOURCES:
                 raise BadRequest(f"No origin source found for {value}")
             return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
+        if field_name == 'retentionType':
+            return self._make_retention_type_filter('retentionEligibleStatus', value)
 
         return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
 
+    def _make_retention_type_filter(self, field_name, value):
+        return RetentionTypeFieldFilter(field_name, Operator.EQUALS, value)
 
     def _make_patient_status_field_filter(self, field_name, value):
         try:
@@ -922,6 +926,98 @@ class PatientStatusFieldFilter(FieldFilter):
             return query.filter(criterion)
         else:
             raise ValueError(f"Invalid operator: {self.operator}.")
+
+
+class RetentionTypeFieldFilter(FieldFilter):
+    def __init__(self, field_name, operator, value):
+        super(RetentionTypeFieldFilter, self).__init__(field_name, operator, value)
+
+    def add_to_sqlalchemy_query(self, query, field):
+        if self.value in ('ACTIVE', 'PASSIVE'):
+            eighteen_month_ago = clock.CLOCK.now() - RETENTION_WINDOW
+            active_criterion = or_(
+                ParticipantSummary.questionnaireOnHealthcareAccessAuthored > eighteen_month_ago,
+                ParticipantSummary.questionnaireOnFamilyHealthAuthored > eighteen_month_ago,
+                ParticipantSummary.questionnaireOnMedicalHistoryAuthored > eighteen_month_ago,
+                ParticipantSummary.questionnaireOnCopeOctAuthored > eighteen_month_ago,
+                ParticipantSummary.questionnaireOnCopeJulyAuthored > eighteen_month_ago,
+                ParticipantSummary.questionnaireOnCopeJuneAuthored > eighteen_month_ago,
+                ParticipantSummary.questionnaireOnCopeMayAuthored > eighteen_month_ago,
+                and_(
+                    ParticipantSummary.consentCohort == ParticipantCohort.COHORT_1,
+                    ParticipantSummary.consentForStudyEnrollmentAuthored !=
+                    ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored,
+                    ParticipantSummary.consentForStudyEnrollmentAuthored > eighteen_month_ago
+                ),
+                and_(
+                    ParticipantSummary.consentCohort == ParticipantCohort.COHORT_1,
+                    ParticipantSummary.consentForGenomicsRORAuthored > eighteen_month_ago
+                ),
+                and_(
+                    ParticipantSummary.consentCohort == ParticipantCohort.COHORT_2,
+                    ParticipantSummary.consentForGenomicsRORAuthored > eighteen_month_ago
+                )
+            )
+            passive_criterion = and_(
+                or_(
+                    ParticipantSummary.questionnaireOnHealthcareAccessAuthored == None,
+                    ParticipantSummary.questionnaireOnHealthcareAccessAuthored <= eighteen_month_ago
+                ),
+                or_(
+                    ParticipantSummary.questionnaireOnFamilyHealthAuthored == None,
+                    ParticipantSummary.questionnaireOnFamilyHealthAuthored <= eighteen_month_ago
+                ),
+                or_(
+                    ParticipantSummary.questionnaireOnMedicalHistoryAuthored == None,
+                    ParticipantSummary.questionnaireOnMedicalHistoryAuthored <= eighteen_month_ago
+                ),
+                or_(
+                    ParticipantSummary.questionnaireOnCopeOctAuthored == None,
+                    ParticipantSummary.questionnaireOnCopeOctAuthored <= eighteen_month_ago
+                ),
+                or_(
+                    ParticipantSummary.questionnaireOnCopeJulyAuthored == None,
+                    ParticipantSummary.questionnaireOnCopeJulyAuthored <= eighteen_month_ago
+                ),
+                or_(
+                    ParticipantSummary.questionnaireOnCopeJuneAuthored == None,
+                    ParticipantSummary.questionnaireOnCopeJuneAuthored <= eighteen_month_ago
+                ),
+                or_(
+                    ParticipantSummary.questionnaireOnCopeMayAuthored == None,
+                    ParticipantSummary.questionnaireOnCopeMayAuthored <= eighteen_month_ago
+                ),
+                or_(
+                    ParticipantSummary.consentCohort != ParticipantCohort.COHORT_1,
+                    ParticipantSummary.consentForStudyEnrollmentAuthored ==
+                    ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored,
+                    ParticipantSummary.consentForStudyEnrollmentAuthored <= eighteen_month_ago
+                ),
+                or_(
+                    ParticipantSummary.consentCohort != ParticipantCohort.COHORT_1,
+                    ParticipantSummary.consentForGenomicsRORAuthored == None,
+                    ParticipantSummary.consentForGenomicsRORAuthored <= eighteen_month_ago
+                ),
+                or_(
+                    ParticipantSummary.consentCohort != ParticipantCohort.COHORT_2,
+                    ParticipantSummary.consentForGenomicsRORAuthored == None,
+                    ParticipantSummary.consentForGenomicsRORAuthored <= eighteen_month_ago
+                )
+            )
+            if self.value == 'ACTIVE':
+                query = query.filter(
+                    field == RetentionStatus.ELIGIBLE,
+                    active_criterion
+                )
+            elif self.value == 'PASSIVE':
+                query = query.filter(
+                    field == RetentionStatus.ELIGIBLE,
+                    passive_criterion,
+                    ParticipantSummary.ehrReceiptTime > eighteen_month_ago
+                )
+            return query
+        else:
+            raise ValueError(f"Invalid parameter: {self.value}.")
 
 
 class ParticipantGenderAnswersDao(UpdatableDao):

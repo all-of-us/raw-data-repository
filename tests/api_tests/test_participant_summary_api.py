@@ -3125,6 +3125,12 @@ class ParticipantSummaryApiTest(BaseTestCase):
         ps = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(ps['retentionType'], 'ACTIVE')
 
+        ps = self.send_get("ParticipantSummary?retentionType=ACTIVE&_includeTotal=TRUE")
+        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'ACTIVE')
+
+        ps = self.send_get("ParticipantSummary?retentionType=PASSIVE&_includeTotal=TRUE")
+        self.assertEqual(len(ps['entry']), 0)
+
         attrs = {
             'questionnaireOnHealthcareAccessAuthored': None,
             'ehrReceiptTime': in_eighteen_month
@@ -3132,6 +3138,12 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._make_participant_retention_eligible(participant_id[1:], **attrs)
         ps = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(ps['retentionType'], 'PASSIVE')
+
+        ps = self.send_get("ParticipantSummary?retentionType=PASSIVE&_includeTotal=TRUE")
+        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'PASSIVE')
+
+        ps = self.send_get("ParticipantSummary?retentionType=ACTIVE&_includeTotal=TRUE")
+        self.assertEqual(len(ps['entry']), 0)
 
     @patch('rdr_service.api.base_api.DEFAULT_MAX_RESULTS', 1)
     def test_parameter_pagination(self):
