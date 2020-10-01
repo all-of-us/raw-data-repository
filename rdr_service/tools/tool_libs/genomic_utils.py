@@ -16,15 +16,16 @@ import pytz
 
 from rdr_service import clock, config
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_set_update, \
-    bq_genomic_job_run_update
-from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao
+    bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update
+from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao, \
+    GenomicGCValidationMetricsDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
-from rdr_service.model.genomics import GenomicSetMember, GenomicSet
+from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
-    genomic_job_run_update
+    genomic_job_run_update, genomic_gc_validation_metrics_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -62,6 +63,8 @@ class GenomicManifestBase(object):
         self.nowts = clock.CLOCK.now()
         self.nowf = _UTC.localize(self.nowts).astimezone(_US_CENTRAL) \
             .replace(tzinfo=None).strftime(self.OUTPUT_CSV_TIME_FORMAT)
+        self.counter = 0
+        self.msg = "Updated"  # Output message
 
 
 class ResendSamplesClass(GenomicManifestBase):
@@ -598,6 +601,7 @@ class UpdateGenomicMembersState(GenomicManifestBase):
         _logger.info("Running Genomic State tool")
         if self.args.dryrun:
             _logger.info("Running in dryrun mode. No actual updates to data.")
+            self.msg = "Would update"
 
         # Validate Aruguments
         if not os.path.exists(self.args.csv):
@@ -607,6 +611,12 @@ class UpdateGenomicMembersState(GenomicManifestBase):
         # Activate the SQL Proxy
         self.gcp_env.activate_sql_proxy()
         self.dao = GenomicSetMemberDao()
+
+        # Document these changes in the dev_note field
+        dev_note = input("Please enter a developer note for these updates:\n")
+        if dev_note in (None, ""):
+            _logger.error('A developer note is required for these changes.')
+            return 1
 
         # Update gsm IDs from file
         with open(self.args.csv, encoding='utf-8-sig') as f:
@@ -625,12 +635,15 @@ class UpdateGenomicMembersState(GenomicManifestBase):
 
                 # lookup member
                 member = self.dao.get(_member_id)
+                member.devNote = dev_note
 
                 if member is None:
                     _logger.error(f"Member id {_member_id.rstrip()} does not exist.")
                     return 1
 
                 self.update_genomic_set_member_state(member, new_state)
+
+        _logger.info(f'{self.msg} {self.counter} Genomic Set Member records.')
 
         return 0
 
@@ -643,17 +656,110 @@ class UpdateGenomicMembersState(GenomicManifestBase):
         """
 
         with self.dao.session() as session:
-            _logger.warning(f"Updating member id {member.id}")
-            _logger.warning(f"    {member.genomicWorkflowState} -> {state}")
-
             if not self.args.dryrun:
                 member.genomicWorkflowState = state
                 member.genomicWorkflowStateModifiedTime = self.nowts
                 session.merge(member)
 
+            _logger.warning(f'{self.msg} member id {member.id}')
+            _logger.warning(f"    {member.genomicWorkflowState} -> {state}")
+
+            self.counter += 1
+
         # Update state for PDR
         bq_genomic_set_member_update(member.id, project_id=self.gcp_env.project)
         genomic_set_member_update(member.id)
+
+
+class UpdateGcMetricsClass(GenomicManifestBase):
+    """
+    Class for updating GC Metrics records
+    """
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(UpdateGcMetricsClass, self).__init__(args, gcp_env)
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+        _logger.info("Running Genomic GC Validation Metrics Update tool")
+
+        if self.args.dryrun:
+            _logger.warning("Running in dryrun mode. No actual updates to data.")
+            self.msg = "Would update"
+
+        # Validate Aruguments
+        if not os.path.exists(self.args.csv):
+            _logger.error(f'File {self.args.csv} was not found.')
+            return 1
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicGCValidationMetricsDao()
+
+        # Update GC Metrics IDs from file
+        with open(self.args.csv, encoding='utf-8-sig') as f:
+            csvreader = csv.DictReader(f)
+
+            # Check columns
+            _logger.info("Checking CSV columns against GenomicGCValidationMetrics model")
+            for field_name in csvreader.fieldnames:
+                if field_name not in GenomicGCValidationMetrics.__dict__.keys():
+                    _logger.error(f"Field not found in model: {field_name}")
+                    return 1
+
+            # Document these changes in the dev_note field
+            dev_note = input("Please enter a developer note for these updates:\n")
+            if dev_note in (None, ""):
+                _logger.error('A developer note is required for these changes.')
+                return 1
+
+            for line in csvreader:
+                _metric_id = line['id']
+
+                # lookup metric
+                metric = self.dao.get(_metric_id)
+
+                if metric is None:
+                    _logger.error(f"Metric id {_metric_id.rstrip()} does not exist.")
+                    return 1
+
+                metric.devNote = dev_note
+                self.process_line_for_gc_metric_object(metric, line)
+
+        _logger.info(f'{self.msg} {self.counter} GC Metrics records.')
+        return 0
+
+    def process_line_for_gc_metric_object(self, metric, line):
+        """
+        Maps each field in CSV to metric attribute and updates the metric object
+        :param metric:
+        :param line:
+        :return:
+        """
+        for v in line:
+            try:
+                # Skip ID since this doesn't change
+                if v == 'id':
+                    continue
+                setattr(metric, v, line[v])
+
+            except AttributeError:
+                _logger.error(f'Invalid attribute {v}')
+                return 1
+
+        # Only update the metric if this is not a dryrun
+        if not self.args.dryrun:
+            self.dao.update(metric)
+
+            # Update for BQ/Resource
+            bq_genomic_gc_validation_metrics_update(metric.id, project_id=self.gcp_env.project)
+            genomic_gc_validation_metrics_update(metric.id)
+
+        _logger.warning(f'{self.msg} gc_metric ID {metric.id}')
+
+        self.counter += 1
 
 
 def run():
@@ -706,6 +812,12 @@ def run():
                                        default=None, required=True)  # noqa
     manual_sample_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
+    # Update GenomicGCValidationMetrics from CSV
+    gc_metrics_parser = subparser.add_parser("update-gc-metrics")
+    gc_metrics_parser.add_argument("--csv", help="csv file with genomic_cv_validation_metrics.id, additional fields",
+                                     default=None, required=True)  # noqa
+    gc_metrics_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
+
     # Update Job Run ID to result
     job_run_parser = subparser.add_parser("job-run-result")
     job_run_parser.add_argument("--id", help="genomic_job_run.id to update",
@@ -741,6 +853,10 @@ def run():
 
         elif args.util == 'job-run-result':
             process = JobRunResult(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.util == 'update-gc-metrics':
+            process = UpdateGcMetricsClass(args, gcp_env)
             exit_code = process.run()
 
         else:

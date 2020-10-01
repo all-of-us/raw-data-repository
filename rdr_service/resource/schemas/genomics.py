@@ -114,6 +114,7 @@ class GenomicSetMemberSchema(Schema):
     report_consent_removal_date = fields.DateTime()
     qc_status = fields.EnumString(enum=GenomicQcStatus)
     qc_status_id = fields.EnumInteger(enum=GenomicQcStatus)
+    dev_note = fields.String(validate=validate.Length(max=255))
 
     class Meta:
         """
@@ -210,6 +211,8 @@ class GenomicGCValidationMetricsSchema(Schema):
     aou_hdr_coverage = fields.String(validate=validate.Length(max=10))
     vcf_tbi_path = fields.String(validate=validate.Length(max=255))
     vcf_tbi_received = fields.Int16()
+    ignore_flag = fields.Int16()
+    dev_note = fields.String(validate=validate.Length(max=255))
 
     class Meta:
         """

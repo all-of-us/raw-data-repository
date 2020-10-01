@@ -163,6 +163,7 @@ class BQGenomicSetMemberSchema(BQSchema):
                                           BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     qc_status = BQField('qc_status', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
                         fld_enum=GenomicQcStatusEnum)
+    dev_note = BQField('dev_note', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicSetMember(BQTable):
@@ -278,6 +279,8 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     aou_hdr_coverage = BQField('aou_hdr_coverage', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     vcf_tbi_path = BQField('vcf_tbi_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     vcf_tbi_received = BQField('vcf_tbi_received', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    ignore_flag = BQField('ignore-flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    dev_note = BQField('dev_note', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicGCValidationMetrics(BQTable):

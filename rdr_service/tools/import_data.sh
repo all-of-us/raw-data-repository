@@ -15,5 +15,5 @@ rdr_client/run_client.sh $@ import_codebook.py
 echo "Importing questionnaires..."
 tools/import_questionnaires.sh $@
 echo "Importing participants..."
-tools/import_participants.sh --file test/test-data/healthpro_test_participants.csv $@
+tools/import_participants.sh --file ../tests/test-data/healthpro_test_participants.csv $@
 

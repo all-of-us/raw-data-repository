@@ -866,7 +866,8 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
         with self.session() as session:
             return (
                 session.query(GenomicGCValidationMetrics)
-                .filter(GenomicGCValidationMetrics.genomicSetMemberId == None)
+                .filter(GenomicGCValidationMetrics.genomicSetMemberId == None,
+                        GenomicGCValidationMetrics.ignoreFlag != 1)
                 .all()
             )
 
@@ -884,6 +885,7 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                    GenomicGCValidationMetrics.ignoreFlag != 1,
                     (GenomicGCValidationMetrics.idatRedReceived == 0) |
                     (GenomicGCValidationMetrics.idatGreenReceived == 0) |
                     (GenomicGCValidationMetrics.idatRedMd5Received == 0) |
@@ -911,6 +913,7 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                    GenomicGCValidationMetrics.ignoreFlag != 1,
                     (GenomicGCValidationMetrics.hfVcfReceived == 0) |
                     (GenomicGCValidationMetrics.hfVcfTbiReceived == 0) |
                     (GenomicGCValidationMetrics.hfVcfMd5Received == 0) |
@@ -933,7 +936,8 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
         with self.session() as session:
             return (
                 session.query(GenomicGCValidationMetrics)
-                .filter(GenomicGCValidationMetrics.genomicSetMemberId == member_id)
+                .filter(GenomicGCValidationMetrics.genomicSetMemberId == member_id,
+                        GenomicGCValidationMetrics.ignoreFlag != 1)
                 .first()
             )
 
