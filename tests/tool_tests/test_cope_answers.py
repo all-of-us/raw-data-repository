@@ -1,10 +1,14 @@
 from collections import namedtuple
-from datetime import datetime
 import json
 import mock
+import os
 
+import rdr_service
+from rdr_service import config
 from rdr_service.tools.tool_libs.cope_answers import CopeAnswersClass
 from tests.helpers.unittest_base import BaseTestCase
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(rdr_service.__file__))
 
 FakeFile = namedtuple('FakeFile', ['name', 'updated'])
 
@@ -13,9 +17,8 @@ class CopeAnswerTest(BaseTestCase):
     def setUp(self):
         super().setUp()
 
-        # June COPE survey
         self.questionnaire_history = self.data_generator.create_database_questionnaire_history(
-            lastModified=datetime.strptime('2020-06-04', '%Y-%m-%d')
+            externalId='june_cope'
         )
 
         self.questions = {}
@@ -44,17 +47,29 @@ class CopeAnswerTest(BaseTestCase):
             )
 
     @staticmethod
-    def run_tool(cope_month='2020-06'):
-        environment = mock.MagicMock()
-        environment.project = 'unit_test'
+    def run_tool(cope_month='June'):
+        def get_server_config(*_):
+            server_config = {
+                config.COPE_FORM_ID_MAP: {
+                    'may_cope': 'May',
+                    'june_cope': 'June'
+                }
+            }
+            return json.dumps(server_config), 'test-file-name'
 
-        args = mock.MagicMock(spec=['cope_month'])
+        gcp_env = mock.MagicMock()
+        gcp_env.project = 'localhost'
+        gcp_env.git_project = PROJECT_ROOT
+        gcp_env.get_latest_config_from_bucket = get_server_config
+
+        args = mock.MagicMock(spec=['cope_month', 'codes'])
         args.cope_month = cope_month
+        args.codes = 'ipaq_1, ipaq_3, ipaq_5, ipaq_7'
 
         # Patching things to keep tool from trying to call GAE and to get result data
         with mock.patch('rdr_service.tools.tool_libs.cope_answers.open') as mock_open:
 
-            cope_answer_tool = CopeAnswersClass(args, environment)
+            cope_answer_tool = CopeAnswersClass(args, gcp_env)
             cope_answer_tool.run()
 
             # Return data written to file as JSON
@@ -109,7 +124,7 @@ class CopeAnswerTest(BaseTestCase):
 
         # Create May response that should not be counted for June results
         may_questionnaire_history = self.data_generator.create_database_questionnaire_history(
-            lastModified=datetime.strptime('2020-05-18', '%Y-%m-%d')
+            externalId='may_cope'
         )
         self.create_response(may_questionnaire_history, [
             {'question': 'ipaq_1', 'answer': 'a1'},
