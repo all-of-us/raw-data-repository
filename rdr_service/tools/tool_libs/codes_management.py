@@ -80,15 +80,16 @@ class CodesExportClass(ToolBase):
         # since the SA for exporting probably doesn't have SQL permissions
         # and super's run currently tries to activate the sql proxy
 
-        service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
-        credentials = ServiceAccountCredentials.from_json_keyfile_name(service_key_info['key_path'])
-        drive_service = build('drive', 'v3', credentials=credentials)
+        if not self.args.dry_run:
+            service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
+            credentials = ServiceAccountCredentials.from_json_keyfile_name(service_key_info['key_path'])
+            drive_service = build('drive', 'v3', credentials=credentials)
 
-        logger.info(f'Uploading code export for {self.gcp_env.project}')
+            logger.info(f'Uploading code export for {self.gcp_env.project}')
 
-        self.trash_previous_exports(credentials, drive_service)
-        self.upload_file(drive_service)
-        os.remove(code_export_file_path)
+            self.trash_previous_exports(credentials, drive_service)
+            self.upload_file(drive_service)
+            os.remove(code_export_file_path)
 
 
 class CodesSyncClass(ToolBase):
@@ -172,22 +173,23 @@ class CodesSyncClass(ToolBase):
         code_value = code_json['field_name']
         code_description = code_json['field_label']
 
-        if code_json['field_type'] == 'descriptive':
-            # Only catch the first 'descriptive' field we see. That's the module code.
-            # Descriptive fields other than the first are considered to be readonly, display text.
-            # So we don't want to save codes for them
-            if not self.module_code:
+        if code_value != 'record_id':  # Ignore the code Redcap automatically inserts into each project
+            if code_json['field_type'] == 'descriptive':
+                # Only catch the first 'descriptive' field we see. That's the module code.
+                # Descriptive fields other than the first are considered to be readonly, display text.
+                # So we don't want to save codes for them
+                if not self.module_code:
+                    new_code = self.initialize_code(session, code_value, code_description,
+                                                    self.module_code, CodeType.MODULE)
+                    self.module_code = new_code
+            else:
                 new_code = self.initialize_code(session, code_value, code_description,
-                                                self.module_code, CodeType.MODULE)
-                self.module_code = new_code
-        else:
-            new_code = self.initialize_code(session, code_value, code_description,
-                                            self.module_code, CodeType.QUESTION)
+                                                self.module_code, CodeType.QUESTION)
 
-            answers_string = code_json['select_choices_or_calculations']
-            if answers_string:
-                for answer_text in answers_string.split('|'):
-                    self.import_answer_code(session, answer_text.strip(), new_code)
+                answers_string = code_json['select_choices_or_calculations']
+                if answers_string:
+                    for answer_text in answers_string.split('|'):
+                        self.import_answer_code(session, answer_text.strip(), new_code)
 
     @staticmethod
     def retrieve_data_dictionary(api_key):
@@ -207,7 +209,7 @@ class CodesSyncClass(ToolBase):
         if response.status_code != 200:
             logger.error(f'ERROR: Received status code {response.status_code} from API')
 
-        return response.content
+        return response.json()
 
     @staticmethod
     def write_export_file(session):
@@ -282,7 +284,7 @@ class CodesSyncClass(ToolBase):
 
 
 def add_additional_arguments(parser):
-    parser.add_argument('--redcap-project', help='Name of Redcap project to sync')
+    parser.add_argument('--redcap-project', required=True, help='Name of Redcap project to sync')
     parser.add_argument('--reuse-codes', default='',
                         help='Codes that have intentionally been reused from another project')
     parser.add_argument('--dry-run', action='store_true', help='Only print information, do not save or export codes')
