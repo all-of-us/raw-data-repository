@@ -601,6 +601,7 @@ class UpdateGenomicMembersState(GenomicManifestBase):
         _logger.info("Running Genomic State tool")
         if self.args.dryrun:
             _logger.info("Running in dryrun mode. No actual updates to data.")
+            self.msg = "Would update"
 
         # Validate Aruguments
         if not os.path.exists(self.args.csv):
@@ -610,6 +611,12 @@ class UpdateGenomicMembersState(GenomicManifestBase):
         # Activate the SQL Proxy
         self.gcp_env.activate_sql_proxy()
         self.dao = GenomicSetMemberDao()
+
+        # Document these changes in the dev_note field
+        dev_note = input("Please enter a developer note for these updates:\n")
+        if dev_note in (None, ""):
+            _logger.error('A developer note is required for these changes.')
+            return 1
 
         # Update gsm IDs from file
         with open(self.args.csv, encoding='utf-8-sig') as f:
@@ -628,12 +635,15 @@ class UpdateGenomicMembersState(GenomicManifestBase):
 
                 # lookup member
                 member = self.dao.get(_member_id)
+                member.devNote = dev_note
 
                 if member is None:
                     _logger.error(f"Member id {_member_id.rstrip()} does not exist.")
                     return 1
 
                 self.update_genomic_set_member_state(member, new_state)
+
+        _logger.info(f'{self.msg} {self.counter} Genomic Set Member records.')
 
         return 0
 
@@ -646,13 +656,15 @@ class UpdateGenomicMembersState(GenomicManifestBase):
         """
 
         with self.dao.session() as session:
-            _logger.warning(f"Updating member id {member.id}")
-            _logger.warning(f"    {member.genomicWorkflowState} -> {state}")
-
             if not self.args.dryrun:
                 member.genomicWorkflowState = state
                 member.genomicWorkflowStateModifiedTime = self.nowts
                 session.merge(member)
+
+            _logger.warning(f'{self.msg} member id {member.id}')
+            _logger.warning(f"    {member.genomicWorkflowState} -> {state}")
+
+            self.counter += 1
 
         # Update state for PDR
         bq_genomic_set_member_update(member.id, project_id=self.gcp_env.project)
