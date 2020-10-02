@@ -22,9 +22,6 @@ class BQCode(BQTable):
     """ Code BigQuery Table """
     __tablename__ = 'code'
     __schema__ = BQCodeSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQCodeView(BQView):

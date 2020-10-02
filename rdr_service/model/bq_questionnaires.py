@@ -185,9 +185,6 @@ class BQPDRConsentPII(BQTable):
     """ PDR ConsentPII BigQuery Table """
     __tablename__ = 'pdr_mod_consentpii'
     __schema__ = BQPDRConsentPIISchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQPDRConsentPIIView(BQView):
@@ -254,9 +251,6 @@ class BQPDRTheBasics(BQTable):
     """ TheBasics BigQuery Table """
     __tablename__ = 'pdr_mod_thebasics'
     __schema__ = BQPDRTheBasicsSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQPDRTheBasicsView(BQView):
@@ -283,9 +277,6 @@ class BQPDRLifestyle(BQTable):
     """ Lifestyle BigQuery Table """
     __tablename__ = 'pdr_mod_lifestyle'
     __schema__ = BQPDRLifestyleSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQPDRLifestyleView(BQView):
@@ -316,9 +307,6 @@ class BQPDROverallHealth(BQTable):
     """ OverallHealth BigQuery Table """
     __tablename__ = 'pdr_mod_overallhealth'
     __schema__ = BQPDROverallHealthSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQPDROverallHealthView(BQView):
@@ -349,9 +337,6 @@ class BQPDREHRConsentPII(BQTable):
     """ EHRConsentPII BigQuery Table """
     __tablename__ = 'pdr_mod_ehrconsentpii'
     __schema__ = BQPDREHRConsentPIISchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQPDREHRConsentPIIView(BQView):
@@ -378,9 +363,6 @@ class BQPDRDVEHRSharing(BQTable):
     """ DVEHRSharing BigQuery Table """
     __tablename__ = 'pdr_mod_dvehrsharing'
     __schema__ = BQPDRDVEHRSharingSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQPDRDVEHRSharingView(BQView):
@@ -423,9 +405,6 @@ class BQPDRFamilyHistory(BQTable):
     """ FamilyHistory BigQuery Table """
     __tablename__ = 'pdr_mod_familyhistory'
     __schema__ = BQPDRFamilyHistorySchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQPDRFamilyHistoryView(BQView):
@@ -453,9 +432,6 @@ class BQPDRHealthcareAccess(BQTable):
     """ HealthcareAccess BigQuery Table """
     __tablename__ = 'pdr_mod_healthcareaccess'
     __schema__ = BQPDRHealthcareAccessSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQPDRHealthcareAccessView(BQView):
@@ -496,9 +472,6 @@ class BQPDRPersonalMedicalHistory(BQTable):
     """ PersonalMedicalHistory BigQuery Table """
     __tablename__ = 'pdr_mod_personalmedicalhistory'
     __schema__ = BQPDRPersonalMedicalHistorySchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQPDRPersonalMedicalHistoryView(BQView):
@@ -523,9 +496,6 @@ class BQPDRCOPEMay(BQTable):
     """ COPE BigQuery Table """
     __tablename__ = 'pdr_mod_cope_may'
     __schema__ = BQPDRCOPEMaySchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQPDRCOPEMayView(BQView):

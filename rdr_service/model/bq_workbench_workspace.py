@@ -84,9 +84,6 @@ class BQRWBWorkspace(BQTable):
     """ Research Workbench Workspace BigQuery Table """
     __tablename__ = 'rwb_workspace'
     __schema__ = BQRWBWorkspaceSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQRWBWorkspaceView(BQView):
@@ -161,9 +158,6 @@ class BQRWBWorkspaceUsers(BQTable):
     """ Research Workbench Workspace Users BigQuery Table """
     __tablename__ = 'rwb_workspace_users'
     __schema__ = BQRWBWorkspaceUsersSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQRWBWorkspaceUsersView(BQView):

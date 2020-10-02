@@ -48,9 +48,6 @@ class BQRWBResearcher(BQTable):
     """ Code BigQuery Table """
     __tablename__ = 'rwb_researcher'
     __schema__ = BQRWBResearcherSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQRWBResearcherView(BQView):
@@ -160,9 +157,6 @@ class BQRWBInstitutionalAffiliations(BQTable):
     """ Research Workbench Institutional Affiliations BigQuery Table """
     __tablename__ = 'rwb_institutional_affiliations'
     __schema__ = BQRWBInstitutionalAffiliationsSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQRWBInstitutionalAffiliationsView(BQView):

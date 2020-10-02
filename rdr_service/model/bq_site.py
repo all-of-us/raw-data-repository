@@ -78,9 +78,6 @@ class BQSite(BQTable):
     """ Organization Site BigQuery Table """
     __tablename__ = 'site'
     __schema__ = BQSiteSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQSiteView(BQView):

@@ -141,9 +141,6 @@ class BQPDRParticipantSummary(BQTable):
     """ PDR Participant Summary BigQuery Table """
     __tablename__ = 'pdr_participant'
     __schema__ = BQPDRParticipantSummarySchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQPDRParticipantSummaryView(BQView):
