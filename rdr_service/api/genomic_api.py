@@ -50,7 +50,7 @@ class GenomicOutreachApi(BaseApi):
         return BadRequest
 
     @auth_required(RDR_AND_PTC)
-    @restrict_to_gae_project(['all-of-us-rdr-sandbox', 'all-of-us-rdr-ptsc-test-1', 'localhost'])
+    @restrict_to_gae_project(['all-of-us-rdr-sandbox', 'all-of-us-rdr-ptsc-1-test', 'localhost'])
     def post(self, p_id, mode=None):
         """
         Generates a genomic test participant from payload
