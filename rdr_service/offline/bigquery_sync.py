@@ -32,6 +32,10 @@ class BigQueryJobError(BaseException):
 # Only perform BQ/Resource operations in these environments.
 _bq_env = ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-sandbox', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']
 
+# Safequard against trying to send a batch of records that exceeds a limit imposed by BQ api
+# Ran into this error:  "Request payload size exceeds the limit: 10485760 bytes." so leave some headroom
+_MAX_PAYLOAD_SIZE = 8500000
+
 
 def dispatch_participant_rebuild_tasks(pid_list, batch_size=100):
     """
@@ -270,6 +274,8 @@ def sync_bigquery_handler(dryrun=False):
                         'json': rec_data
                     }
                     batch.append(data)
+                    if data.__sizeof__() > _MAX_PAYLOAD_SIZE:
+                        break
 
                 if len(batch) > 0:
                     result, resp = insert_batch_into_bq(bq, project_id, dataset_id, table_id, batch, dryrun)
