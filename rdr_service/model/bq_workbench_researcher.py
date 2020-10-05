@@ -144,7 +144,7 @@ class BQRWBInstitutionalAffiliationsSchema(BQSchema):
     created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
 
-    user_id = BQField('user_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    researcher_id = BQField('researcher_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     institution = BQField('institution', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     role = BQField('role', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     non_academic_affiliation = BQField('non_academic_affiliation', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
