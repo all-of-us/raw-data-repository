@@ -7,7 +7,7 @@ from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_questionnaires import BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle, \
     BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory, \
-    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay
+    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay, BQPDRCOPEOct
 
 
 class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
@@ -38,7 +38,8 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             'FamilyHistory': BQPDRFamilyHistory,
             'HealthcareAccess': BQPDRHealthcareAccess,
             'PersonalMedicalHistory': BQPDRPersonalMedicalHistory,
-            'COPE': BQPDRCOPEMay
+            'COPE': BQPDRCOPEMay,
+            'cope_oct': BQPDRCOPEOct
         }
         table = table_map.get(module_id, None)
         if table is None:
