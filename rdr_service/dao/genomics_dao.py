@@ -3,11 +3,13 @@ import collections
 import pytz
 import sqlalchemy
 import logging
+from dateutil import parser
 
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import functions
+from werkzeug.exceptions import BadRequest
 
-from rdr_service import clock
+from rdr_service import clock, config
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_gc_validation_metrics_update, bq_genomic_set_member_update
 from rdr_service.model.genomics import (
@@ -1025,8 +1027,30 @@ class GenomicOutreachDao(BaseDao):
     def get_id(self, obj):
         pass
 
-    def from_client_json(self):
-        pass
+    def from_client_json(self, resource, participant_id=None, mode=None):
+        if mode is None or mode.lower() not in config.GENOMIC_API_MODES:
+            raise BadRequest(f"GenomicOutreach Mode required to be one of {config.GENOMIC_API_MODES}.")
+
+        genome_type = config.GENOME_TYPE_ARRAY
+
+        if mode.lower() == "rhp":
+            genome_type = config.GENOME_TYPE_WGS
+
+        try:
+            report_state = self._determine_report_state(resource['status'].lower())
+            modified_date = parser.parse(resource['date'])
+
+        except KeyError:
+            raise BadRequest("Resource is missing required fields: status, date")
+
+        member = GenomicSetMember(participantId=participant_id,
+                                  genomicSetId=1,
+                                  genomeType=genome_type,
+                                  genomicWorkflowState=report_state,
+                                  genomicWorkflowStateModifiedTime=modified_date)
+
+        return member
+
 
     def to_client_json(self, result):
         report_statuses = list()
@@ -1051,9 +1075,15 @@ class GenomicOutreachDao(BaseDao):
                  }
             )
 
+        # handle date
+        try:
+            ts = pytz.utc.localize(result['date'])
+        except ValueError:
+            ts = result['date']
+
         client_json = {
             "participant_report_statuses": report_statuses,
-            "timestamp": pytz.utc.localize(result['date'])
+            "timestamp": ts
         }
         return client_json
 
@@ -1108,3 +1138,20 @@ class GenomicOutreachDao(BaseDao):
                     GenomicSetMember.genomicWorkflowStateModifiedTime < end_date,
                 ).all()
             )
+
+    @staticmethod
+    def _determine_report_state(resource_status):
+        """
+        Reads 'resource_status' from ptsc and determines which report state value
+        to set
+        :param resource_status: string
+        :return: GenomicWorkflowState for report state
+        """
+        state_mapping = {
+            "ready": GenomicWorkflowState.GEM_RPT_READY,
+            "pending_delete": GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
+            "deleted": GenomicWorkflowState.GEM_RPT_DELETED,
+        }
+
+        return state_mapping[resource_status]
+

@@ -4,9 +4,10 @@ from flask import request
 from werkzeug.exceptions import NotFound, BadRequest
 
 from rdr_service import clock
-from rdr_service.api.base_api import BaseApi
+from rdr_service import config
+from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import GEM, RDR_AND_PTC, RDR
-from rdr_service.app_util import auth_required
+from rdr_service.app_util import auth_required, restrict_to_gae_project
 from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicOutreachDao
 
 
@@ -41,11 +42,27 @@ class GenomicOutreachApi(BaseApi):
 
     @auth_required(RDR_AND_PTC)
     def get(self, mode=None):
-        if mode not in ('GEM', 'RHP'):
-            raise BadRequest("GenomicOutreach Mode required to be \"GEM\" or \"RHP\".")
+        self._check_mode(mode)
 
-        if mode == "GEM":
+        if mode.lower() == "gem":
             return self.get_gem_outreach()
+
+        return BadRequest
+
+    @auth_required(RDR_AND_PTC)
+    @restrict_to_gae_project(['all-of-us-rdr-sandbox', 'all-of-us-rdr-ptsc-test-1', 'localhost'])
+    def post(self, p_id, mode=None):
+        """
+        Generates a genomic test participant from payload
+        Overwrites BaseAPI.post()
+        :param p_id:
+        :param mode:
+        :return:
+        """
+        self._check_mode(mode)
+
+        if mode.lower() == "gem":
+            return self.post_gem_outreach(p_id)
 
         return BadRequest
 
@@ -95,3 +112,35 @@ class GenomicOutreachApi(BaseApi):
             return self._make_response(proto_payload)
 
         return BadRequest
+
+    def post_gem_outreach(self, p_id):
+        """
+        Creates the genomic participant
+        :return: response
+        """
+        resource = request.get_json(force=True)
+
+        # Create GenomicSetMember with report state
+        model = self.dao.from_client_json(resource, participant_id=p_id, mode='gem')
+        m = self._do_insert(model)
+
+        response_data = {
+                            'date': m.genomicWorkflowStateModifiedTime,
+                            'data': [
+                                (m.participantId, m.genomicWorkflowState),
+                            ]
+                        }
+
+        # Log to requests_log
+        log_api_request(log=request.log_record)
+
+        return self._make_response(response_data)
+
+    @staticmethod
+    def _check_mode(mode):
+        """
+        Checks that the mode in the endpoint is valid
+        :param mode: "GEM" or "RHP"
+        """
+        if mode.lower() not in config.GENOMIC_API_MODES:
+            raise BadRequest(f"GenomicOutreach Mode required to be one of {config.GENOMIC_API_MODES}.")

@@ -284,6 +284,30 @@ def auth_required(role_whitelist):
     return auth_required_wrapper
 
 
+def restrict_to_gae_project(allowed_project_list):
+    """
+    A decorator for restricting access of a method
+    to a particular Google App Engine Project
+    :param project_list: list of GAE ids, i.e. 'all-of-us-rdr-stable', etc.
+    :return: function result or Forbidden
+    """
+    def restriction_function_wrapper(func):
+        def inner(*args, **kwargs):
+            app_id = GAE_PROJECT
+
+            # Check app_id against the registered environments
+            if app_id in allowed_project_list:
+                result = func(*args, **kwargs)
+            else:
+                raise Forbidden(f'This operation is forbidden on {app_id}')
+
+            return result
+
+        return inner
+
+    return restriction_function_wrapper
+
+
 def get_validated_user_info():
     """Returns a valid (user email, user info), or raises Unauthorized or Forbidden."""
     user_email = get_oauth_id()
