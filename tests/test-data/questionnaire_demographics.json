@@ -20,10 +20,6 @@
       {
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
         "code": "TheBasics"
-      },
-      {
-        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi-extra",
-        "code": "IgnoreThis"
       }],
       "group":[
          {

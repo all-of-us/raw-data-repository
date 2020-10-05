@@ -24,12 +24,12 @@ from rdr_service import config
 from rdr_service import main
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
-from rdr_service.dao import database_factory, questionnaire_dao, questionnaire_response_dao
+from rdr_service.dao import database_factory
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrder, BiobankOrderedSample
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
-from rdr_service.model.code import Code
+from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.offline import sql_exporter
 from rdr_service.storage import LocalFilesystemStorageProvider
@@ -55,9 +55,44 @@ class QuestionnaireTestMixin:
     def questionnaire_response_url(participant_id):
         return "Participant/%s/QuestionnaireResponse" % participant_id
 
+    def create_code_if_needed(self, code_value, code_type, system=PPI_SYSTEM):
+        code_dao = CodeDao()
+        code_dao.get_or_create_with_session(
+            self.session,
+            insert_if_created=True,
+            value=code_value,
+            system=system,
+            codeType=code_type,
+            mapped=True
+        )
+        self.session.commit()  # get_or_create adds to the session, but doesn't commit it
+
+    def _save_codes(self, structure, code_type=CodeType.MODULE):
+        """
+        Convenience method for establishing questionnaire codes in the database before submitting the json payload.
+        Finds any lists within a FHIR json structure that are named as concepts for a questionnaire or any fields
+        with the name of 'code' (to catch any question or answer codes).
+        """
+        if isinstance(structure, dict):
+            if 'code' in structure:  # 'code' found outside 'concept' list, likely an answer code on a question
+                answer_system = structure.get('system', PPI_SYSTEM)  # Not all answers in test data give a system
+                self.create_code_if_needed(structure['code'], CodeType.ANSWER, system=answer_system)
+            else:
+                for key, value in structure.items():
+                    if key == 'concept':  # Could be questionnaire or question concepts
+                        for code_json in value:
+                            self.create_code_if_needed(code_json['code'], code_type, code_json['system'])
+                    else:
+                        self._save_codes(value, code_type)
+        elif isinstance(structure, list):
+            for sub_structure in structure:
+                self._save_codes(sub_structure, CodeType.QUESTION)
+
+
     def create_questionnaire(self, filename):
         with open(data_path(filename)) as f:
             questionnaire = json.load(f)
+            self._save_codes(questionnaire)
             response = self.send_post("Questionnaire", questionnaire)
             return response["id"]
 
@@ -65,8 +100,8 @@ class QuestionnaireTestMixin:
     def make_code_answer(link_id, value):
         return (link_id, Concept(PPI_SYSTEM, value))
 
-    @staticmethod
     def make_questionnaire_response_json(
+        self,
         participant_id,
         questionnaire_id,
         code_answers=None,
@@ -81,13 +116,14 @@ class QuestionnaireTestMixin:
 
         results = []
         if code_answers:
-            for answer in code_answers:
+            for link_id, code in code_answers:
                 results.append(
                     {
-                        "linkId": answer[0],
-                        "answer": [{"valueCoding": {"code": answer[1].code, "system": answer[1].system}}],
+                        "linkId": link_id,
+                        "answer": [{"valueCoding": {"code": code.code, "system": code.system}}],
                     }
                 )
+                self.create_code_if_needed(code.code, CodeType.ANSWER, code.system)
 
         def add_question_result(question_data, answer_value, answer_structure):
             result = {"linkId": question_data}
@@ -368,9 +404,6 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
         # Allow printing the full diff report on errors.
         self.maxDiff = None
-        # Always add codes if missing when handling questionnaire responses.
-        questionnaire_dao._add_codes_if_missing = lambda: True
-        questionnaire_response_dao._add_codes_if_missing = lambda email: True
         self._consent_questionnaire_id = None
 
         self.session = database_factory.get_database().make_session()

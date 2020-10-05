@@ -14,6 +14,8 @@ class QuestionnaireApiTest(BaseTestCase):
         for json_file in questionnaire_files:
             with open(data_path(json_file)) as f:
                 questionnaire = json.load(f)
+
+            self._save_codes(questionnaire)
             response = self.send_post("Questionnaire", questionnaire)
             questionnaire_id = response["id"]
             del response["id"]
@@ -23,12 +25,10 @@ class QuestionnaireApiTest(BaseTestCase):
             del response["id"]
             self.assertJsonResponseMatches(questionnaire, response)
 
-        # Ensure we didn't create codes in the extra system
-        self.assertIsNone(CodeDao().get_code(PPI_EXTRA_SYSTEM, "IgnoreThis"))
-
     def insert_questionnaire(self):
         with open(data_path("questionnaire1.json")) as f:
             questionnaire = json.load(f)
+            self._save_codes(questionnaire)
             return self.send_post("Questionnaire", questionnaire, expected_response_headers={'ETag': 'W/"aaa"'})
 
     def test_update_before_insert(self):
@@ -48,6 +48,7 @@ class QuestionnaireApiTest(BaseTestCase):
 
         with open(data_path("questionnaire2.json")) as f2:
             questionnaire2 = json.load(f2)
+            self._save_codes(questionnaire2)
             self.send_put(
                 "Questionnaire/%s" % response["id"],
                 questionnaire2,
@@ -98,6 +99,7 @@ class QuestionnaireApiTest(BaseTestCase):
     def test_insert_with_version(self):
         with open(data_path('questionnaire5_with_version.json')) as f:
             questionnaire = json.load(f)
+        self._save_codes(questionnaire)
         response = self.send_post('Questionnaire', questionnaire)
         questionnaire_id = response['id']
         del response['id']

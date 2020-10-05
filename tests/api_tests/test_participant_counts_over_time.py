@@ -11937,7 +11937,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             code = kwargs.get(link_id)
             answers["string_answers"].append((link_id, code))
 
-        response_data = QuestionnaireTestMixin.make_questionnaire_response_json(participant_id, questionnaire_id, **answers)
+        response_data = self.make_questionnaire_response_json(participant_id, questionnaire_id, **answers)
 
         with FakeClock(time):
             url = "Participant/%s/QuestionnaireResponse" % participant_id
