@@ -10,6 +10,7 @@ from rdr_service.clock import FakeClock
 from rdr_service.code_constants import GENDER_IDENTITY_QUESTION_CODE, PMI_SKIP_CODE, PPI_SYSTEM, THE_BASICS_PPI_MODULE,\
     CONSENT_COPE_YES_CODE, CONSENT_COPE_NO_CODE, CONSENT_COPE_DEFERRED_CODE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE,\
     COHORT_1_REVIEW_CONSENT_YES_CODE, COHORT_1_REVIEW_CONSENT_NO_CODE
+from rdr_service.concepts import Concept
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -881,6 +882,28 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         resource = self.make_questionnaire_response_json(p_id, q_id, string_answers=string_answers)
         with self.assertRaises(BadRequest):
             qr = self.questionnaire_response_dao.from_client_json(resource, participant_id=int(p_id[1:]))
+
+    def test_response_payload_cannot_create_new_codes(self):
+        self.insert_codes()
+        q_id = self.create_questionnaire("questionnaire1.json")
+        p_id = self.create_participant()
+        self.send_consent(p_id)
+
+        resource = self.make_questionnaire_response_json(
+            p_id,
+            q_id,
+            code_answers=[('2.3.2', Concept(PPI_SYSTEM, 'new_answer_code'))],
+            create_codes=False
+        )
+        with self.assertRaises(BadRequest) as context:
+            self.questionnaire_response_dao.from_client_json(resource, participant_id=int(p_id[1:]))
+
+        exception = context.exception
+        self.assertEqual(
+            'The following code values were unrecognized: '
+            'new_answer_code (system: http://terminology.pmi-ops.org/CodeSystem/ppi)',
+            exception.description
+        )
 
     def test_get_after_withdrawal_fails(self):
         self.insert_codes()

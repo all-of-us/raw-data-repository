@@ -110,6 +110,7 @@ class QuestionnaireTestMixin:
         uri_answers=None,
         language=None,
         authored=None,
+        create_codes=True
     ):
         if isinstance(participant_id, int):
             participant_id = f'P{participant_id}'
@@ -123,7 +124,8 @@ class QuestionnaireTestMixin:
                         "answer": [{"valueCoding": {"code": code.code, "system": code.system}}],
                     }
                 )
-                self.create_code_if_needed(code.code, CodeType.ANSWER, code.system)
+                if create_codes:
+                    self.create_code_if_needed(code.code, CodeType.ANSWER, code.system)
 
         def add_question_result(question_data, answer_value, answer_structure):
             result = {"linkId": question_data}

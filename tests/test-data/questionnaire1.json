@@ -32,11 +32,13 @@
                 "option": [
                   {
                     "code": "1",
-                    "display": "Yes"
+                    "display": "Yes",
+                    "system":"sys"
                   },
                   {
                     "code": "2",
-                    "display": "No"
+                    "display": "No",
+                    "system": "sys"
                   }
                 ]
               }
@@ -52,11 +54,13 @@
                 "option": [
                   {
                     "code": "1",
-                    "display": "Male"
+                    "display": "Male",
+                    "system": "sys"
                   },
                   {
                     "code": "2",
-                    "display": "Female"
+                    "display": "Female",
+                    "system": "sys"
                   }
                 ]
               },
@@ -77,15 +81,18 @@
                 "option": [
                   {
                     "code": "1",
-                    "display": "Married"
+                    "display": "Married",
+                    "system": "sys"
                   },
                   {
                     "code": "2",
-                    "display": "Option 2"
+                    "display": "Option 2",
+                    "system": "sys"
                   },
                   {
                     "code": "3",
-                    "display": "Divorced"
+                    "display": "Divorced",
+                    "system": "sys"
                   }
                 ]
               }
@@ -101,11 +108,13 @@
                 "option": [
                   {
                     "code": "1",
-                    "display": "Yes"
+                    "display": "Yes",
+                    "system": "sys"
                   },
                   {
                     "code": "2",
-                    "display": "No"
+                    "display": "No",
+                    "system": "sys"
                   }
                 ]
               },
@@ -113,14 +122,22 @@
                 "linkId": "2.3.2",
                 "text": "Do you drink alcohol",
                 "type": "choice",
+                "concept": [
+                  {
+                    "system": "sys",
+                    "code": "alcohol_consumption"
+                  }
+                ],
                 "option": [
                   {
                     "code": "1",
-                    "display": "Yes"
+                    "display": "Yes",
+                    "system": "sys"
                   },
                   {
                     "code": "2",
-                    "display": "No"
+                    "display": "No",
+                    "system": "sys"
                   }
                 ]
               }

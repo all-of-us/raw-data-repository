@@ -220,6 +220,10 @@ class QuestionnaireDao(UpdatableDao):
                 if question.group:
                     for sub_group in question.group:
                         cls._populate_questions(sub_group, code_map, questions)
+                if question.option:
+                    for option in question.option:
+                        code_map[(option.system, option.code)] = (option.display, CodeType.ANSWER, None)
+
         if group.group:
             for sub_group in group.group:
                 cls._populate_questions(sub_group, code_map, questions)

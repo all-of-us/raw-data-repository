@@ -181,6 +181,8 @@ class CodeDao(CacheAllDao):
                 result_map[(system, value)] = code.codeId
         if len(result_map) == len(code_map):
             return result_map
+
+        missing_codes = []
         with self.session() as session:
             for system, value in list(code_map.keys()):
                 existing_code = result_map.get((system, value))
@@ -190,8 +192,14 @@ class CodeDao(CacheAllDao):
                     if existing_code:
                         result_map[(system, value)] = code.codeId
                     else:
-                        raise BadRequest(f"Couldn't find code: system = {system}, value = {value}")
-        return result_map
+                        missing_codes.append(f'{value} (system: {system})')
+
+        if missing_codes:
+            raise BadRequest(
+                f"The following code values were unrecognized: {', '.join(missing_codes)}"
+            )
+        else:
+            return result_map
 
 
 class CodeHistoryDao(BaseDao):
