@@ -7,11 +7,12 @@ from dateutil import parser
 
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import functions
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_gc_validation_metrics_update, bq_genomic_set_member_update
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
@@ -1036,6 +1037,11 @@ class GenomicOutreachDao(BaseDao):
         if mode.lower() == "rhp":
             genome_type = config.GENOME_TYPE_WGS
 
+        # Ensure PID exists
+        p = ParticipantDao().get(participant_id)
+        if p is None:
+            raise NotFound(f'P{participant_id} is not found.')
+
         try:
             report_state = self._determine_report_state(resource['status'].lower())
             modified_date = parser.parse(resource['date'])
@@ -1087,7 +1093,7 @@ class GenomicOutreachDao(BaseDao):
         }
         return client_json
 
-    def participant_lookup(self, pid):
+    def participant_state_lookup(self, pid):
         """
         Returns GEM report status for pid
         :param pid:

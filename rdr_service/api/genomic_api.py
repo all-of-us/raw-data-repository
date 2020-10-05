@@ -50,7 +50,7 @@ class GenomicOutreachApi(BaseApi):
         return BadRequest
 
     @auth_required(RDR_AND_PTC)
-    @restrict_to_gae_project(['all-of-us-rdr-ptsc-1-test', 'localhost'])
+    @restrict_to_gae_project(['all-of-us-rdr-sandbox', 'all-of-us-rdr-ptsc-1-test', 'localhost'])
     def post(self, p_id, mode=None):
         """
         Generates a genomic test participant from payload
@@ -92,7 +92,7 @@ class GenomicOutreachApi(BaseApi):
             if _pid.startswith("P"):
                 _pid = _pid[1:]
 
-            participant_report_states = self.dao.participant_lookup(_pid)
+            participant_report_states = self.dao.participant_state_lookup(_pid)
 
             if len(participant_report_states) == 0:
                 raise NotFound(f'Participant P{_pid} does not exist in the Genomic system.')

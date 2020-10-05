@@ -314,3 +314,15 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
         self.assertEqual(expected_response, resp)
         self.assertEqual(GenomicWorkflowState.GEM_RPT_PENDING_DELETE, member.genomicWorkflowState)
 
+    def test_genomic_test_participant_not_found(self):
+        # P2001 doesn't exist in participant
+        local_path = f"GenomicOutreach/GEM/Participant/P2001"
+
+        # Test Payload for participant report status
+        payload = {
+            "status": "pending_delete",
+            "date": "2020-09-13T20:52:12+00:00"
+        }
+
+        self.send_post(local_path, request_data=payload, expected_status=404)
+
