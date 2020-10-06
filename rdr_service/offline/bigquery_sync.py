@@ -29,6 +29,7 @@ from rdr_service.resource.tasks import batch_rebuild_participants_task
 class BigQueryJobError(BaseException):
     """ BigQuery Job Exception """
 
+
 # Only perform BQ/Resource operations in these environments.
 _bq_env = ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-sandbox', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']
 

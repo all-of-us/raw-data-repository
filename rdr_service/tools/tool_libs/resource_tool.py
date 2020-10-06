@@ -279,7 +279,8 @@ class GenomicResourceClass(object):
     def update_batch(self, table, _ids):
 
         # TODO: For future if needed: Create Cloud Task API call handler and then fill this code block out.
-        pass
+        _logger.error(f'Batch mode not currently implemented for genomic resource. Skipping rebuild of {table} records')
+
 
     def update_many_ids(self, table, _ids):
         if not _ids:
@@ -335,7 +336,7 @@ class GenomicResourceClass(object):
             if self.args.all_tables:
                 tables = [{'name': t, 'ids': list()} for t in  GENOMIC_DB_TABLES]
             else:
-                tables = list({'name': self.args.genomic_table, 'ids': list()}, )
+                tables = [{'name': self.args.genomic_table, 'ids': list()}]
             _logger.info('  Rebuild Table(s)      : {0}'.format(
                 clr.fmt(', '.join([t['name'] for t in tables]))))
 
@@ -457,13 +458,31 @@ class EHRReceiptClass(object):
         _logger.info('=' * 90)
         _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
 
+        pids = []
+        # TODO:  Getting pids from the file is duplicated from ParticipantResourceClass run() method.  Refactor?
+        if self.args.from_file:
+            filename = os.path.expanduser(self.args.from_file)
+            if not os.path.exists(filename):
+                _logger.error(f"File '{self.args.from_file}' not found.")
+                return 1
+
+            # read pids from file.
+            pids = open(os.path.expanduser(self.args.from_file)).readlines()
+            # convert pids from a list of strings to a list of integers.
+            pids = [int(i) for i in pids if i.strip()]
+            _logger.info('  PIDs File             : {0}'.format(clr.fmt(self.args.from_file)))
+            _logger.info('  Total PIDs            : {0}'.format(clr.fmt(len(pids))))
+
         dao = ResourceDataDao()
 
         with dao.session() as session:
 
             sql = 'select participant_id, ehr_status, ehr_receipt_time, ehr_update_time from participant_summary'
             cursor = session.execute(sql)
-            records = [row for row in cursor]
+            if len(pids):
+                records = [row for row in cursor if row.participant_id in pids]
+            else:
+                records = [row for row in cursor]
 
             _logger.info('  Total Records         : {0}'.format(clr.fmt(len(records))))
             _logger.info('  Batch Size            : 100')
@@ -513,6 +532,9 @@ def run():
     ehr_parser = subparser.add_parser('ehr-receipt')
     ehr_parser.add_argument("--ehr", help="Submit batch to Cloud Tasks", default=False,
                                 action="store_true")  # noqa
+    ehr_parser.add_argument("--from-file",
+                            help="rebuild EHR info for specific participant ids read from a file with a list of pids",
+                            default=None)  # noqa
 
 
     args = parser.parse_args()
