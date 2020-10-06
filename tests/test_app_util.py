@@ -1,4 +1,5 @@
 import datetime
+from flask import Flask
 import unittest
 
 import mock
@@ -276,6 +277,52 @@ class AppUtilTest(BaseTestCase):
 
         config.override_setting(config.ALLOW_NONPROD_REQUESTS, True)
         not_in_prod()
+
+    @mock.patch('rdr_service.app_util.GAE_PROJECT', 'totally_the_server')
+    @mock.patch('rdr_service.app_util.requests')
+    def test_get_oauth_id_tokeninfo_fallback(self, mock_requests):
+        """Make sure the tokeninfo endpoint gets used if userinfo fails"""
+
+        def mock_response(url):
+            response = mock.MagicMock()
+            if 'userinfo' in url:
+                response.status_code = 401
+            else:
+                response.status_code = 200
+                response.json.return_value = {'email': 'fallback_response'}
+
+            return response
+        mock_requests.get.side_effect = mock_response
+
+        # Need a request context for app_util to get a token from
+        with Flask('test').test_request_context(headers={'Authorization': 'Bearer token'}):
+            self.assertEqual('fallback_response', app_util.get_oauth_id())
+
+        mock_requests.get.assert_called_with('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=token')
+
+    @mock.patch('rdr_service.app_util.GAE_PROJECT', 'totally_the_server')
+    @mock.patch('rdr_service.app_util.logging')
+    @mock.patch('rdr_service.app_util.requests')
+    def test_get_oauth_id_fallback_on_no_email(self, mock_requests, mock_logging):
+        """Make sure tokeninfo is used if userinfo doesn't give the email"""
+
+        def mock_response(url):
+            response = mock.MagicMock(status_code=200)
+            if 'userinfo' in url:
+                response.json.return_value = {'other': 'data'}
+            else:
+                response.json.return_value = {'email': 'fallback_response'}
+
+            return response
+        mock_requests.get.side_effect = mock_response
+
+        # Need a request context for app_util to get a token from
+        with Flask('test').test_request_context(headers={'Authorization': 'Bearer token'}):
+            self.assertEqual('fallback_response', app_util.get_oauth_id())
+
+        mock_requests.get.assert_called_with('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=token')
+        mock_logging.error.assert_called_with('UserInfo endpoint did not return the email')
+
 
 
 if __name__ == "__main__":

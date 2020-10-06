@@ -84,8 +84,12 @@ def get_auth_token():
         raise ValueError(f"Invalid Authorization Header: {header}")
 
 
-def get_token_info_response(token):
-    google_tokeninfo_url = 'https://www.googleapis.com/oauth2/v3/tokeninfo'
+def get_token_info_response(token, use_tokeninfo=False):
+    verification_endpoint = 'userinfo'
+    if use_tokeninfo:
+        verification_endpoint = 'tokeninfo'
+
+    google_tokeninfo_url = 'https://www.googleapis.com/oauth2/v3/' + verification_endpoint
     qargs = urllib.parse.urlencode({'access_token': token})
     response = requests.get(f"{google_tokeninfo_url}?{qargs}")
     return response
@@ -102,29 +106,41 @@ def get_oauth_id():
         - could be validated locally instead of with API
     '''
     retries = 5
+    use_tokeninfo_endpoint = False
+
     while retries:
         retries -= 1
 
         if GAE_PROJECT == 'localhost':  # NOTE: 2019-08-15 mimic devappserver.py behavior
             return config.LOCAL_AUTH_USER
+
         try:
             token = get_auth_token()
         except ValueError as e:
             logging.info(f"Invalid Authorization Token: {e}")
             return None
         else:
-            #if GAE_PROJECT == 'localhost' and token == 'localtesting':  # NOTE: this would give us more robust local
-                                                                         # testing: allowing for anonymous code paths
-            #    return 'example@example.com'
-            response = get_token_info_response(token)
-            data = response.json()
+            response = get_token_info_response(token, use_tokeninfo=use_tokeninfo_endpoint)
+
             if response.status_code == 200:
-                token_expiry_seconds = data.get('expires_in')
-                logging.info(f'Token expiring in {token_expiry_seconds} seconds')
-                return data.get('email')
+                data = response.json()
+
+                if use_tokeninfo_endpoint:  # UserInfo doesn't return expiry info :(
+                    token_expiry_seconds = data.get('expires_in')
+                    logging.info(f'Token expiring in {token_expiry_seconds} seconds')
+
+                user_email = data.get('email')
+                if user_email is None:
+                    logging.error('UserInfo endpoint did not return the email')
+                    use_tokeninfo_endpoint = True
+                else:
+                    return user_email
             else:
-                message = str(data.get("error_description", response.content))
-                logging.info(f"Oauth failure: {message} (status: {response.status_code})")
+                if not use_tokeninfo_endpoint:
+                    logging.error("UserInfo failed, falling back on Tokeninfo")
+                    use_tokeninfo_endpoint = True
+
+                logging.info(f"Oauth failure: {response.content} (status: {response.status_code})")
 
         sleep(0.25)
         logging.info('Retrying authentication call to Google after failure.')
