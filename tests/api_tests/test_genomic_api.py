@@ -284,3 +284,45 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
         fake_now = clock.CLOCK.now().replace(microsecond=0)
         with clock.FakeClock(fake_now):
             self.send_get("GenomicOutreach/GEM?participant_id=P13", expected_status=404)
+
+    def test_genomic_test_participant_created(self):
+        p = self._make_participant()
+
+        self._make_summary(p)
+
+        local_path = f"GenomicOutreach/GEM/Participant/P{p.participantId}"
+
+        # Test Payload for participant report status
+        payload = {
+            "status": "pending_delete",
+            "date": "2020-09-13T20:52:12+00:00"
+        }
+
+        expected_response = {
+            "participant_report_statuses": [
+                {
+                    "participant_id": "P2",
+                    "report_status": "pending_delete"
+                }
+            ],
+            "timestamp": "2020-09-13T20:52:12+00:00"
+        }
+
+        resp = self.send_post(local_path, request_data=payload)
+        member = self.member_dao.get(2)
+
+        self.assertEqual(expected_response, resp)
+        self.assertEqual(GenomicWorkflowState.GEM_RPT_PENDING_DELETE, member.genomicWorkflowState)
+
+    def test_genomic_test_participant_not_found(self):
+        # P2001 doesn't exist in participant
+        local_path = f"GenomicOutreach/GEM/Participant/P2001"
+
+        # Test Payload for participant report status
+        payload = {
+            "status": "pending_delete",
+            "date": "2020-09-13T20:52:12+00:00"
+        }
+
+        self.send_post(local_path, request_data=payload, expected_status=404)
+

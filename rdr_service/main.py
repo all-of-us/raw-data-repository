@@ -305,8 +305,9 @@ api.add_resource(GenomicPiiApi,
 
 api.add_resource(GenomicOutreachApi,
                  API_PREFIX + "GenomicOutreach/<string:mode>",
+                 API_PREFIX + "GenomicOutreach/<string:mode>/Participant/<participant_id:p_id>",
                  endpoint='genomic.outreach',
-                 methods=['GET'])
+                 methods=['GET', 'POST'])
 
 api.add_resource(
     DeceasedReportApi,
