@@ -458,6 +458,7 @@ class EHRReceiptClass(object):
         _logger.info('=' * 90)
         _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
 
+        pids = []
         # TODO:  Getting pids from the file is duplicated from ParticipantResourceClass run() method.  Refactor?
         if self.args.from_file:
             filename = os.path.expanduser(self.args.from_file)
