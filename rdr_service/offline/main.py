@@ -247,11 +247,6 @@ def genomic_c2_participant_workflow():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_c1_participant_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
     genomic_pipeline.c1_participant_workflow()
     return '{"success": "true"}'
 
@@ -259,11 +254,6 @@ def genomic_c1_participant_workflow():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_gc_manifest_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
     genomic_pipeline.genomic_centers_manifest_workflow()
     return '{"success": "true"}'
 
@@ -271,11 +261,6 @@ def genomic_gc_manifest_workflow():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_aw1f_failures_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
     genomic_pipeline.genomic_centers_aw1f_manifest_workflow()
     genomic_pipeline.genomic_centers_accessioning_failures_workflow()
     return '{"success": "true"}'
@@ -323,11 +308,6 @@ def genomic_data_manifest_workflow():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_gem_a1_a2_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
     genomic_pipeline.gem_a1_manifest_workflow()
     genomic_pipeline.gem_a2_manifest_workflow()
     return '{"success": "true"}'
@@ -336,11 +316,6 @@ def genomic_gem_a1_a2_workflow():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_gem_a3_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
     genomic_pipeline.gem_a3_manifest_workflow()
     return '{"success": "true"}'
 
@@ -384,11 +359,6 @@ def genomic_cvl_w3_workflow():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_aw3_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
     genomic_pipeline.aw3_array_manifest_workflow()
     genomic_pipeline.aw3_wgs_manifest_workflow()
     return '{"success": "true"}'
@@ -397,11 +367,6 @@ def genomic_aw3_workflow():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_aw4_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
     genomic_pipeline.aw4_array_manifest_workflow()
     genomic_pipeline.aw4_wgs_manifest_workflow()
     return '{"success": "true"}'
@@ -550,7 +515,7 @@ def _build_pipeline_app():
 
     # BEGIN Genomic Pipeline Jobs
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicNewParticipantWorkflow",
+        OFFLINE_PREFIX + "GenomicC3AW0Workflow",
         endpoint="genomic_new_participant_workflow",
         view_func=genomic_new_participant_workflow, methods=["GET"]
     )
