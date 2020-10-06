@@ -213,6 +213,9 @@ class GenomicSetMember(Base):
     # Broad QC Status
     qcStatus = Column('qc_status', Enum(GenomicQcStatus), default=GenomicQcStatus.UNSET)
 
+    # Developer note
+    devNote = Column('dev_note', String(255), nullable=True)
+
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
 event.listen(GenomicSetMember, "before_update", model_update_listener)
@@ -353,6 +356,10 @@ class GenomicGCValidationMetrics(Base):
 
     craiReceived = Column('crai_received', SmallInteger, nullable=False, default=0)
     craiPath = Column('crai_path', String(255), nullable=True)
+
+    # Ignore Record
+    ignoreFlag = Column('ignore_flag', SmallInteger, nullable=True, default=0)
+    devNote = Column('dev_note', String(255), nullable=True)
 
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)

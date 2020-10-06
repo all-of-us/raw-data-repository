@@ -22,9 +22,6 @@ class BQOrganization(BQTable):
     """ Organization BigQuery Table """
     __tablename__ = 'organization'
     __schema__ = BQOrganizationSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQOrganizationView(BQView):

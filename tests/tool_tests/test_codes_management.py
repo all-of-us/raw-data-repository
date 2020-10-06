@@ -64,7 +64,7 @@ class CodesManagementTest(BaseTestCase):
                 mock.patch('rdr_service.tools.tool_libs.codes_management.open'):  # Prevent tests from making real files
             mock_response = mock_requests.post.return_value
             mock_response.status_code = 200
-            mock_response.content = redcap_data_dictionary
+            mock_response.json.return_value = redcap_data_dictionary
 
             mock_csv_writerow = mock_csv.writer.return_value.writerow
 
@@ -88,6 +88,11 @@ class CodesManagementTest(BaseTestCase):
 
     def test_question_and_answer_codes(self):
         self.run_tool([
+            self._get_mock_dictionary_item(
+                'record_id',
+                'Redcap inserts a record_id code into everything, it should be ignored',
+                'text'
+            ),
             self._get_mock_dictionary_item(
                 'participant_id',
                 'Participant ID',

@@ -270,6 +270,8 @@ class BQParticipantSummary(BQTable):
     __schema__ = BQParticipantSummarySchema
     __project_map__ = [
         ('all-of-us-rdr-prod', ('all-of-us-rdr-prod', None)),  # Block participant summary from production project.
+        ('all-of-us-rdr-stable', ('aou-pdr-data-stable', 'rdr_ops_data_view')),
+        ('pmi-drc-api-test', ('aou-pdr-data-test', 'rdr_ops_data_view')),
     ]
 
 

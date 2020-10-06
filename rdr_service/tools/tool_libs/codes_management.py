@@ -10,6 +10,7 @@ from sqlalchemy.orm.session import Session
 from rdr_service.clock import CLOCK
 from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
 from rdr_service.model.code import Code, CodeType
+from rdr_service.services.gcp_config import GCP_INSTANCES
 from rdr_service.tools.tool_libs._tool_base import cli_run, logger, ToolBase
 from rdr_service.tools.tool_libs.app_engine_manager import AppConfigClass
 
@@ -67,18 +68,28 @@ class CodesExportClass(ToolBase):
         media = MediaFileUpload(code_export_file_path, mimetype='text/csv')
         drive_service.files().create(body=file_metadata, media_body=media, supportsAllDrives=True).execute()
 
+    @staticmethod
+    def initialize_process_context(tool_name, project, account, service_account):
+        if project == '_all':
+            project = 'all-of-us-rdr-prod'
+
+        return ToolBase.initialize_process_context(tool_name, project, account, service_account)
+
     def run(self):
         # Intentionally not calling super's run
         # since the SA for exporting probably doesn't have SQL permissions
         # and super's run currently tries to activate the sql proxy
 
-        service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
-        credentials = ServiceAccountCredentials.from_json_keyfile_name(service_key_info['key_path'])
-        drive_service = build('drive', 'v3', credentials=credentials)
+        if not self.args.dry_run:
+            service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
+            credentials = ServiceAccountCredentials.from_json_keyfile_name(service_key_info['key_path'])
+            drive_service = build('drive', 'v3', credentials=credentials)
 
-        self.trash_previous_exports(credentials, drive_service)
-        self.upload_file(drive_service)
-        os.remove(code_export_file_path)
+            logger.info(f'Uploading code export for {self.gcp_env.project}')
+
+            self.trash_previous_exports(credentials, drive_service)
+            self.upload_file(drive_service)
+            os.remove(code_export_file_path)
 
 
 class CodesSyncClass(ToolBase):
@@ -162,22 +173,23 @@ class CodesSyncClass(ToolBase):
         code_value = code_json['field_name']
         code_description = code_json['field_label']
 
-        if code_json['field_type'] == 'descriptive':
-            # Only catch the first 'descriptive' field we see. That's the module code.
-            # Descriptive fields other than the first are considered to be readonly, display text.
-            # So we don't want to save codes for them
-            if not self.module_code:
+        if code_value != 'record_id':  # Ignore the code Redcap automatically inserts into each project
+            if code_json['field_type'] == 'descriptive':
+                # Only catch the first 'descriptive' field we see. That's the module code.
+                # Descriptive fields other than the first are considered to be readonly, display text.
+                # So we don't want to save codes for them
+                if not self.module_code:
+                    new_code = self.initialize_code(session, code_value, code_description,
+                                                    self.module_code, CodeType.MODULE)
+                    self.module_code = new_code
+            else:
                 new_code = self.initialize_code(session, code_value, code_description,
-                                                self.module_code, CodeType.MODULE)
-                self.module_code = new_code
-        else:
-            new_code = self.initialize_code(session, code_value, code_description,
-                                            self.module_code, CodeType.QUESTION)
+                                                self.module_code, CodeType.QUESTION)
 
-            answers_string = code_json['select_choices_or_calculations']
-            if answers_string:
-                for answer_text in answers_string.split('|'):
-                    self.import_answer_code(session, answer_text.strip(), new_code)
+                answers_string = code_json['select_choices_or_calculations']
+                if answers_string:
+                    for answer_text in answers_string.split('|'):
+                        self.import_answer_code(session, answer_text.strip(), new_code)
 
     @staticmethod
     def retrieve_data_dictionary(api_key):
@@ -197,7 +209,7 @@ class CodesSyncClass(ToolBase):
         if response.status_code != 200:
             logger.error(f'ERROR: Received status code {response.status_code} from API')
 
-        return response.content
+        return response.json()
 
     @staticmethod
     def write_export_file(session):
@@ -223,7 +235,18 @@ class CodesSyncClass(ToolBase):
                         row_data.append(possible_module_code.value)
                 code_csv_writer.writerow(row_data)
 
-    def run(self):
+    def run_process(self):
+        if self.args.project == '_all':
+            for project in GCP_INSTANCES.keys():
+                with self.initialize_process_context(self.tool_cmd, project, self.args.account,
+                                                     self.args.service_account) as gcp_env:
+                    self.gcp_env = gcp_env
+                    self.run(skip_file_export_write=('prod' not in project))
+            return 0
+        else:
+            return super(CodesSyncClass, self).run_process()
+
+    def run(self, skip_file_export_write=False):
         super(CodesSyncClass, self).run()
 
         if self.args.reuse_codes:
@@ -231,6 +254,9 @@ class CodesSyncClass(ToolBase):
 
         with self.get_session() as session:
             if not self.args.export_only:
+                if not self.args.dry_run:
+                    logger.info(f'Importing codes for {self.gcp_env.project}')
+
                 # Get the server config to read Redcap API keys
                 project_api_key = self.get_redcap_api_key(self.args.redcap_project)
                 if project_api_key is None:
@@ -251,14 +277,14 @@ class CodesSyncClass(ToolBase):
                                  'to specify that they should be allowed.')
                     return 1
 
-            if not self.args.dry_run:
+            if not self.args.dry_run and not skip_file_export_write:
                 self.write_export_file(session)
 
         return 0
 
 
 def add_additional_arguments(parser):
-    parser.add_argument('--redcap-project', help='Name of Redcap project to sync')
+    parser.add_argument('--redcap-project', required=True, help='Name of Redcap project to sync')
     parser.add_argument('--reuse-codes', default='',
                         help='Codes that have intentionally been reused from another project')
     parser.add_argument('--dry-run', action='store_true', help='Only print information, do not save or export codes')

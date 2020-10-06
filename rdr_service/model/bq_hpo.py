@@ -32,9 +32,6 @@ class BQHPO(BQTable):
     """ HPO BigQuery Table """
     __tablename__ = 'hpo'
     __schema__ = BQHPOSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-    ]
 
 
 class BQHPOView(BQView):

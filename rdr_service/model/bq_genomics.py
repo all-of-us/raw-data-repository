@@ -51,11 +51,6 @@ class BQGenomicSet(BQTable):
     """  BigQuery Table """
     __tablename__ = 'genomic_set'
     __schema__ = BQGenomicSetSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-        ('all-of-us-rdr-stable', ('aou-pdr-data-stable', 'rdr_ops_data_view')),
-        ('pmi-drc-api-test', ('aou-pdr-data-test', 'rdr_ops_data_view')),
-    ]
 
 
 class BQGenomicSetView(BQView):
@@ -163,17 +158,13 @@ class BQGenomicSetMemberSchema(BQSchema):
                                           BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     qc_status = BQField('qc_status', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
                         fld_enum=GenomicQcStatusEnum)
+    dev_note = BQField('dev_note', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicSetMember(BQTable):
     """  BigQuery Table """
     __tablename__ = 'genomic_set_member'
     __schema__ = BQGenomicSetMemberSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-        ('all-of-us-rdr-stable', ('aou-pdr-data-stable', 'rdr_ops_data_view')),
-        ('pmi-drc-api-test', ('aou-pdr-data-test', 'rdr_ops_data_view')),
-    ]
 
 
 class BQGenomicSetMemberView(BQView):
@@ -208,11 +199,6 @@ class BQGenomicJobRun(BQTable):
     """  BigQuery Table """
     __tablename__ = 'genomic_job_run'
     __schema__ = BQGenomicJobRunSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-        ('all-of-us-rdr-stable', ('aou-pdr-data-stable', 'rdr_ops_data_view')),
-        ('pmi-drc-api-test', ('aou-pdr-data-test', 'rdr_ops_data_view')),
-    ]
 
 
 class BQGenomicJobRunView(BQView):
@@ -278,17 +264,14 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     aou_hdr_coverage = BQField('aou_hdr_coverage', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     vcf_tbi_path = BQField('vcf_tbi_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     vcf_tbi_received = BQField('vcf_tbi_received', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    ignore_flag = BQField('ignore-flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    dev_note = BQField('dev_note', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicGCValidationMetrics(BQTable):
     """  BigQuery Table """
     __tablename__ = 'genomic_gc_validation_metrics'
     __schema__ = BQGenomicGCValidationMetricsSchema
-    __project_map__ = [
-        ('all-of-us-rdr-prod', ('aou-pdr-data-prod', 'rdr_ops_data_view')),
-        ('all-of-us-rdr-stable', ('aou-pdr-data-stable', 'rdr_ops_data_view')),
-        ('pmi-drc-api-test', ('aou-pdr-data-test', 'rdr_ops_data_view')),
-    ]
 
 
 class BQGenomicGCValidationMetricsView(BQView):
