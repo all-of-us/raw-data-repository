@@ -159,10 +159,7 @@ def get_highest_severity_level_from_lines(lines):
     :param lines: List of log records
     """
     if lines:
-        s = sorted(
-            [line['severity'] for line in lines],
-            key=lambda severity: -getattr(logging, "severity", 0)
-        )
+        s = sorted([line['severity'] for line in lines], reverse=True)
         return s[0]
     else:
         return gcp_logging_v2.gapic.enums.LogSeverity(200)
