@@ -264,7 +264,7 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     aou_hdr_coverage = BQField('aou_hdr_coverage', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     vcf_tbi_path = BQField('vcf_tbi_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     vcf_tbi_received = BQField('vcf_tbi_received', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-    ignore_flag = BQField('ignore-flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    ignore_flag = BQField('ignore_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     dev_note = BQField('dev_note', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 

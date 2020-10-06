@@ -79,7 +79,7 @@ class WorkbenchResearcherSchema(Schema):
 
 class WorkbenchInstitutionalAffiliationsSchema(Schema):
     """ Institutional Affiliations """
-    user_id = fields.Int32(required=True)
+    researcher_id = fields.Int32(required=True)
     institution = fields.String(validate=validate.Length(max=250))
     role = fields.String(validate=validate.Length(max=80))
     non_academic_affiliation = fields.EnumString(enum=WorkbenchInstitutionNonAcademic, required=True)
@@ -91,11 +91,11 @@ class WorkbenchInstitutionalAffiliationsSchema(Schema):
         schema_meta info declares how the schema and data is stored and organized in the Resource database tables.
         """
         ordered = True
-        resource_pk_field = 'user_id'
+        resource_pk_field = 'researcher_id'
         # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
         schema_meta = SchemaMeta(
             type_uid=SchemaID.workbench_institutional_affiliation.value,
             type_name=SchemaID.workbench_institutional_affiliation.name,
             resource_uri='WorkbenchInstitutionalAffiliation',
-            resource_pk_field='user_id'
+            resource_pk_field='researcher_id'
         )
