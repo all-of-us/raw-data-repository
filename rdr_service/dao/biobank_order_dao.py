@@ -407,7 +407,7 @@ class BiobankOrderDao(UpdatableDao):
     def _set_participant_summary_fields(self, obj, participant_summary):
         participant_summary.biospecimenStatus = OrderStatus.FINALIZED
         participant_summary.biospecimenOrderTime = obj.created
-        if not hasattr(obj, "barcode"):  # barcode means a DV order, they have no siteId's
+        if obj.sourceSiteId or obj.collectedSiteId or obj.processedSiteId or obj.finalizedSiteId:
             participant_summary.biospecimenSourceSiteId = obj.sourceSiteId
             participant_summary.biospecimenCollectedSiteId = obj.collectedSiteId
             participant_summary.biospecimenProcessedSiteId = obj.processedSiteId
