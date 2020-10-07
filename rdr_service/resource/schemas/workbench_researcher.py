@@ -3,12 +3,12 @@
 # file 'LICENSE', which is part of this source code package.
 #
 from marshmallow import validate
-from rdr_service.resource.constants import SchemaID
 
 from rdr_service.participant_enums import WorkbenchResearcherEthnicity, WorkbenchResearcherDisability, \
     WorkbenchResearcherEducation, WorkbenchInstitutionNonAcademic, WorkbenchResearcherDegree, \
     WorkbenchResearcherSexAtBirth, WorkbenchResearcherGender, WorkbenchResearcherRace
-from rdr_service.resource import Schema, SchemaMeta, fields
+from rdr_service.resource import Schema, fields
+from rdr_service.resource.constants import SchemaID
 
 
 class DegreeSchema(Schema):
@@ -63,18 +63,9 @@ class WorkbenchResearcherSchema(Schema):
     lgbtq_identity = fields.String(validate=validate.Length(max=250))
 
     class Meta:
-        """
-        schema_meta info declares how the schema and data is stored and organized in the Resource database tables.
-        """
-        ordered = True
+        schema_id = SchemaID.workbench_researcher
+        resource_uri = 'WorkbenchResearcher'
         resource_pk_field = 'user_source_id'
-        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.workbench_researcher.value,
-            type_name=SchemaID.workbench_researcher.name,
-            resource_uri='WorkbenchResearcher',
-            resource_pk_field='user_source_id'
-        )
 
 
 class WorkbenchInstitutionalAffiliationsSchema(Schema):
@@ -87,15 +78,6 @@ class WorkbenchInstitutionalAffiliationsSchema(Schema):
     is_verified = fields.Boolean()
 
     class Meta:
-        """
-        schema_meta info declares how the schema and data is stored and organized in the Resource database tables.
-        """
-        ordered = True
+        schema_id = SchemaID.workbench_institutional_affiliation
+        resource_uri = 'WorkbenchInstitutionalAffiliation'
         resource_pk_field = 'researcher_id'
-        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.workbench_institutional_affiliation.value,
-            type_name=SchemaID.workbench_institutional_affiliation.name,
-            resource_uri='WorkbenchInstitutionalAffiliation',
-            resource_pk_field='researcher_id'
-        )

@@ -6,7 +6,7 @@ from enum import Enum
 
 from marshmallow import validate
 
-from rdr_service.resource import Schema, SchemaMeta, fields
+from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
 # TODO: Use the Enums in participant_enums.py
@@ -76,15 +76,6 @@ class SiteSchema(Schema):
     is_obsolete_id = fields.EnumInteger(enum=ObsoleteStatusEnum)
 
     class Meta:
-        """
-        schema_meta info declares how the schema and data is stored and organized in the Resource database tables.
-        """
-        ordered = True
+        schema_id = SchemaID.site
+        resource_uri = 'Site'
         resource_pk_field = 'site_id'
-        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.site.value,
-            type_name=SchemaID.site.name,
-            resource_uri='Site',
-            resource_pk_field='site_id'
-        )

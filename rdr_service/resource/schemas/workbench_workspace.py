@@ -3,14 +3,14 @@
 # file 'LICENSE', which is part of this source code package.
 #
 from marshmallow import validate
-from rdr_service.resource.constants import SchemaID
 
 from rdr_service.participant_enums import WorkbenchResearcherEthnicity, \
     WorkbenchWorkspaceAge, WorkbenchWorkspaceStatus, WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, \
     WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, WorkbenchWorkspaceDisabilityStatus, \
     WorkbenchWorkspaceAccessToCare, WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, \
     WorkbenchWorkspaceUserRole
-from rdr_service.resource import Schema, SchemaMeta, fields
+from rdr_service.resource import Schema, fields
+from rdr_service.resource.constants import SchemaID
 
 
 class WorkspaceRaceEthnicitySchema(Schema):
@@ -81,18 +81,9 @@ class WorkbenchWorkspaceSchema(Schema):
     is_reviewed = fields.Boolean()
 
     class Meta:
-        """
-        schema_meta info declares how the schema and data is stored and organized in the Resource database tables.
-        """
-        ordered = True
+        schema_id = SchemaID.workbench_workspace
+        resource_uri = 'WorkbenchWorkspace'
         resource_pk_field = 'workspace_source_id'
-        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.workbench_workspace.value,
-            type_name=SchemaID.workbench_workspace.name,
-            resource_uri='WorkbenchWorkspace',
-            resource_pk_field='workspace_source_id'
-        )
 
 
 class WorkbenchWorkspaceUsersSchema(Schema):
@@ -109,17 +100,6 @@ class WorkbenchWorkspaceUsersSchema(Schema):
     is_creator = fields.Boolean()
 
     class Meta:
-        """
-        schema_meta info declares how the schema and data is stored and organized in the Resource database tables.
-        """
-        ordered = True
+        schema_id = SchemaID.workbench_workspace_users
+        resource_uri = 'WorkbenchWorkspaceUsers'
         resource_pk_field = 'user_id'
-        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.workbench_workspace_users.value,
-            type_name=SchemaID.workbench_workspace_users.name,
-            resource_uri='WorkbenchWorkspaceUsers',
-            resource_pk_field='user_id'
-        )
-
-

@@ -4,7 +4,7 @@
 #
 from marshmallow import validate
 
-from rdr_service.resource import Schema, SchemaMeta, fields
+from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
 
@@ -20,15 +20,6 @@ class OrganizationSchema(Schema):
     is_obsolete = fields.Boolean()
 
     class Meta:
-        """
-        schema_meta info declares how the schema and data is stored and organized in the Resource database tables.
-        """
-        ordered = True
+        schema_id = SchemaID.organization
+        resource_uri = 'Organization'
         resource_pk_field = 'organization_id'
-        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.organization.value,
-            type_name=SchemaID.organization.name,
-            resource_uri='Organization',
-            resource_pk_field='organization_id'
-        )

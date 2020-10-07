@@ -4,7 +4,7 @@
 #
 from marshmallow import validate
 
-from rdr_service.resource import Schema, SchemaMeta, fields
+from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
 from rdr_service.participant_enums import (
@@ -34,18 +34,10 @@ class GenomicSetSchema(Schema):
     validated_time = fields.DateTime()
 
     class Meta:
-        """
-        schema_meta info declares how the schema and data is stored and organized in the Resource database tables.
-        """
-        ordered = True
+        schema_id = SchemaID.genomic_set
+        resource_uri = 'GenomicSet'
         resource_pk_field = 'id'
-        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.genomic_set.value,
-            type_name=SchemaID.genomic_set.name,
-            resource_uri='GenomicSet',
-            resource_pk_field='id'
-        )
+
 
 class GenomicSetMemberSchema(Schema):
 
@@ -117,18 +109,9 @@ class GenomicSetMemberSchema(Schema):
     dev_note = fields.String(validate=validate.Length(max=255))
 
     class Meta:
-        """
-        schema_meta info declares how the schema and data is stored and organized in the Resource database tables.
-        """
-        ordered = True
+        schema_id = SchemaID.genomic_set_member
+        resource_uri = 'GenomicSetMember'
         resource_pk_field = 'id'
-        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.genomic_set_member.value,
-            type_name=SchemaID.genomic_set_member.name,
-            resource_uri='GenomicSetMember',
-            resource_pk_field='id'
-        )
 
 
 class GenomicJobRunSchema(Schema):
@@ -145,18 +128,10 @@ class GenomicJobRunSchema(Schema):
     result_message = fields.String(validate=validate.Length(max=150))
 
     class Meta:
-        """
-        schema_meta info declares how the schema and data is stored and organized in the Resource database tables.
-        """
-        ordered = True
+        schema_id = SchemaID.genomic_job_run
+        resource_uri = 'GenomicJobRun'
         resource_pk_field = 'id'
-        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.genomic_job_run.value,
-            type_name=SchemaID.genomic_job_run.name,
-            resource_uri='GenomicJobRun',
-            resource_pk_field='id'
-        )
+
 
 class GenomicGCValidationMetricsSchema(Schema):
 
@@ -215,15 +190,6 @@ class GenomicGCValidationMetricsSchema(Schema):
     dev_note = fields.String(validate=validate.Length(max=255))
 
     class Meta:
-        """
-        schema_meta info declares how the schema and data is stored and organized in the Resource database tables.
-        """
-        ordered = True
+        schema_id = SchemaID.genomic_gc_validation_metrics
+        resource_uri = 'GenomicGCValidationMetrics'
         resource_pk_field = 'id'
-        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.genomic_gc_validation_metrics.value,
-            type_name=SchemaID.genomic_gc_validation_metrics.name,
-            resource_uri='GenomicGCValidationMetrics',
-            resource_pk_field='id'
-        )

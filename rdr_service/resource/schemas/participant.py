@@ -4,12 +4,12 @@
 #
 from datetime import date
 from enum import Enum
-from marshmallow import validate, Schema as MarshmallowSchema
+from marshmallow import validate
 
 from rdr_service.participant_enums import QuestionnaireStatus, ParticipantCohort, Race, GenderIdentity, \
     PhysicalMeasurementsStatus, OrderStatus, EnrollmentStatusV2, EhrStatus, WithdrawalStatus, WithdrawalReason, \
     SuspensionStatus
-from rdr_service.resource import Schema, fields, SchemaMeta
+from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
 
@@ -23,7 +23,7 @@ COHORT_1_CUTOFF = date(2018, 4, 24)
 COHORT_2_CUTOFF = date(2020, 4, 16)
 
 
-class AddressSchema(MarshmallowSchema):
+class AddressSchema(Schema):
     """ Represents a street address """
     addr_type = fields.EnumString(enum=StreetAddressTypeEnum)
     addr_type_id = fields.EnumInteger(enum=StreetAddressTypeEnum)
@@ -35,27 +35,12 @@ class AddressSchema(MarshmallowSchema):
     addr_zip = fields.String(validate=validate.Length(max=10))
 
     class Meta:
-        ordered = True
+        schema_id = SchemaID.participant_address
+        resource_uri = 'Participant/{participant_id}/Address'
+        resource_pk_field = 'addr_type_id'
 
 
-class StandaloneAddressSchema(Schema, AddressSchema):
-    """
-    Standalone Schema
-    Adds: id, created, modified, participant id.
-    """
-    participant_id = fields.String(validate=validate.Length(max=10), required=True)
-
-    class Meta:
-        ordered = True
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.participant_address.value,
-            type_name=SchemaID.participant_address.name,
-            resource_uri='Participant/{participant_id}/Addresses',
-            resource_pk_field='addr_type_id'
-        )
-
-
-class ModuleStatusSchema(MarshmallowSchema):
+class ModuleStatusSchema(Schema):
     """ Store information about modules submitted """
     module = fields.String(validate=validate.Length(max=80))
     baseline_module = fields.Boolean()
@@ -66,27 +51,12 @@ class ModuleStatusSchema(MarshmallowSchema):
     status_id = fields.EnumInteger(enum=QuestionnaireStatus)
 
     class Meta:
-        ordered = True
+        schema_id = SchemaID.participant_modules
+        resource_uri = 'Participant/{participant_id}/Modules'
+        resource_pk_field = 'module'
 
 
-class StandaloneModuleStatusSchema(Schema, ModuleStatusSchema):
-    """
-    Standalone Schema
-    Adds: id, created, modified, participant id.
-    """
-    participant_id = fields.String(validate=validate.Length(max=10), required=True)
-
-    class Meta:
-        ordered = True
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.participant_modules.value,
-            type_name=SchemaID.participant_modules.name,
-            resource_uri='Participant/{participant_id}/Modules',
-            resource_pk_field='module'
-        )
-
-
-class ConsentSchema(MarshmallowSchema):
+class ConsentSchema(Schema):
     """ Store participant consent information """
     consent = fields.String(validate=validate.Length(max=80))
     consent_id = fields.Int32()
@@ -99,79 +69,34 @@ class ConsentSchema(MarshmallowSchema):
     consent_expired = fields.String(validate=validate.Length(max=80))
 
     class Meta:
-        ordered = True
+        schema_id = SchemaID.participant_consents
+        resource_uri = 'Participant/{participant_id}/Consents'
+        resource_pk_field = 'consent_id'
 
 
-class StandaloneConsentSchema(Schema, ConsentSchema):
-    """
-    Standalone Schema
-    Adds: id, created, modified, participant id.
-    """
-    participant_id = fields.String(validate=validate.Length(max=10), required=True)
-
-    class Meta:
-        ordered = True
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.participant_consents.value,
-            type_name=SchemaID.participant_consents.name,
-            resource_uri='Participant/{participant_id}/Consents',
-            resource_pk_field='consent_id'
-        )
-
-
-class RaceSchema(MarshmallowSchema):
+class RaceSchema(Schema):
     """ Participant race information """
     race = fields.EnumString(enum=Race)
     race_id = fields.EnumInteger(enum=Race)
 
     class Meta:
-        ordered = True
+        schema_id = SchemaID.participant_race
+        resource_uri = 'Participant/{participant_id}/Races'
+        resource_pk_field = 'race_id'
 
 
-class StandaloneRaceSchema(Schema, RaceSchema):
-    """
-    Standalone Schema
-    Adds: id, created, modified, participant id.
-    """
-    participant_id = fields.String(validate=validate.Length(max=10), required=True)
-
-    class Meta:
-        ordered = True
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.participant_race.value,
-            type_name=SchemaID.participant_race.name,
-            resource_uri='Participant/{participant_id}/Races',
-            resource_pk_field='race_id'
-        )
-
-
-class GenderSchema(MarshmallowSchema):
+class GenderSchema(Schema):
     """ Participant gender information """
     gender = fields.EnumString(GenderIdentity)
     gender_id = fields.EnumInteger(GenderIdentity)
 
     class Meta:
-        ordered = True
+        schema_id = SchemaID.participant_gender
+        resource_uri = 'Participant/{participant_id}/Genders'
+        resource_pk_field = 'gender_id'
 
 
-class StandaloneGenderSchema(Schema, GenderSchema):
-    """
-    Standalone Schema
-    Adds: id, created, modified, participant id.
-    """
-    participant_id = fields.String(validate=validate.Length(max=10), required=True)
-
-    class Meta:
-        ordered = True
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.participant_gender.value,
-            type_name=SchemaID.participant_gender.name,
-            resource_uri='Participant/{participant_id}/Genders',
-            resource_pk_field='gender_id'
-        )
-
-
-class PhysicalMeasurementsSchema(MarshmallowSchema):
+class PhysicalMeasurementsSchema(Schema):
     """ Participant Physical Measurements """
     physical_measurements_id = fields.Int32()
     status = fields.EnumString(enum=PhysicalMeasurementsStatus)
@@ -184,27 +109,12 @@ class PhysicalMeasurementsSchema(MarshmallowSchema):
     finalized = fields.DateTime()
 
     class Meta:
-        ordered = True
+        schema_id = SchemaID.participant_physical_measurements
+        resource_uri = 'Participant/{participant_id}/PhysicalMeasurements'
+        resource_pk_field = 'physical_measurements_id'
 
 
-class StandalonePhysicalMeasurementsSchema(Schema, PhysicalMeasurementsSchema):
-    """
-    Standalone Schema
-    Adds: id, created, modified, participant id.
-    """
-    participant_id = fields.String(validate=validate.Length(max=10), required=True)
-
-    class Meta:
-        ordered = True
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.participant_physical_measurements.value,
-            type_name=SchemaID.participant_physical_measurements.name,
-            resource_uri='Participant/{participant_id}/PhysicalMeasurements',
-            resource_pk_field='physical_measurements_id'
-        )
-
-
-class BiobankSampleSchema(MarshmallowSchema):
+class BiobankSampleSchema(Schema):
     """ Biobank sample information """
     test = fields.String(validate=validate.Length(max=80))
     baseline_test = fields.Boolean()
@@ -221,27 +131,12 @@ class BiobankSampleSchema(MarshmallowSchema):
     disposed_reason_id = fields.Int32()
 
     class Meta:
-        ordered = True
+        schema_id = SchemaID.participant_biobank_order_samples
+        resource_uri = 'Participant/{participant_id}/BiobankOrders/{biobank_order_id}/Samples'
+        resource_pk_field = 'test'
 
 
-class StandaloneBiobankSampleSchema(Schema, BiobankSampleSchema):
-    """
-    Standalone Schema
-    Adds: id, created, modified, participant id.
-    """
-    participant_id = fields.String(validate=validate.Length(max=10), required=True)
-
-    class Meta:
-        ordered = True
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.participant_biobank_order_samples.value,
-            type_name=SchemaID.participant_biobank_order_samples.name,
-            resource_uri='Participant/{participant_id}/BiobankOrders/{biobank_order_id}/Samples',
-            resource_pk_field='test'
-        )
-
-
-class BiobankOrderSchema(MarshmallowSchema):
+class BiobankOrderSchema(Schema):
     """
     Biobank order information
     """
@@ -261,31 +156,12 @@ class BiobankOrderSchema(MarshmallowSchema):
     tests_stored = fields.Int32()
 
     class Meta:
-        ordered = True
+        schema_id = SchemaID.participant_biobank_orders
+        resource_uri = 'Participant/{participant_id}/BiobankOrders'
+        resource_pk_field = 'biobank_order_id'
 
 
-class StandaloneBiobankOrderSchema(Schema, BiobankOrderSchema):
-    """
-    Standalone Schema
-    Adds: id, created, modified, participant id.
-    """
-    participant_id = fields.String(validate=validate.Length(max=10), required=True)
-
-    class Meta:
-        ordered = True
-        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.participant_biobank_orders.value,
-            type_name=SchemaID.participant_biobank_orders.name,
-            resource_uri='Participant/{participant_id}/BiobankOrders',
-            resource_pk_field='biobank_order_id',
-            nested_schemas=[
-                ('samples', StandaloneBiobankSampleSchema)
-            ]
-        )
-
-
-class PatientStatusSchema(MarshmallowSchema):
+class PatientStatusSchema(Schema):
     """
     Patient Status History: PatientStatusFlag Enum
     """
@@ -304,23 +180,10 @@ class PatientStatusSchema(MarshmallowSchema):
     comment = fields.Text()
     user = fields.String(validate=validate.Length(max=80))
 
-
-class StandalonePatientStatusSchema(Schema, PatientStatusSchema):
-    """
-    Standalone Schema
-    Adds: id, created, modified, participant id.
-    """
-    participant_id = fields.String(validate=validate.Length(max=10), required=True)
-
     class Meta:
-        ordered = True
-        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.patient_statuses.value,
-            type_name=SchemaID.patient_statuses.name,
-            resource_uri='Participant/{participant_id}/PatientStatuses',
-            resource_pk_field='patent_status_history_id',
-        )
+        schema_id = SchemaID.patient_statuses
+        resource_uri = 'Participant/{participant_id}/PatientStatuses'
+        resource_pk_field = 'patent_status_history_id'
 
 
 class ParticipantSchema(Schema):
@@ -406,20 +269,6 @@ class ParticipantSchema(Schema):
     patient_statuses = fields.Nested(PatientStatusSchema)
 
     class Meta:
-        ordered = True
-        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.participant.value,
-            type_name=SchemaID.participant.name,
-            resource_uri='Participant',
-            resource_pk_field='participant_id',
-            nested_schemas=[
-                ('addresses', StandaloneAddressSchema),
-                ('pm', StandalonePhysicalMeasurementsSchema),
-                ('races', StandaloneRaceSchema),
-                ('genders', StandaloneGenderSchema),
-                ('modules', StandaloneModuleStatusSchema),
-                ('consents', StandaloneConsentSchema),
-                ('biobank_orders', StandaloneBiobankOrderSchema),
-                ('patient_statues', StandalonePatientStatusSchema)
-            ])
+        schema_id = SchemaID.participant
+        resource_uri = 'Participant'
+        resource_pk_field = 'participant_id'

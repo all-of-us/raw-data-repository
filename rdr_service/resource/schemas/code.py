@@ -5,7 +5,7 @@
 from marshmallow import validate
 
 from rdr_service.model.code import CodeType
-from rdr_service.resource import Schema, SchemaMeta, fields
+from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
 
@@ -26,15 +26,6 @@ class CodeSchema(Schema):
     short_value = fields.String(validate=validate.Length(max=50))
 
     class Meta:
-        """
-        schema_meta info declares how the schema and data is stored and organized in the Resource database tables.
-        """
-        ordered = True
+        schema_id = SchemaID.codes
+        resource_uri = 'Codes'
         resource_pk_field = 'code_id'
-        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.codes.value,
-            type_name=SchemaID.codes.name,
-            resource_uri='Codes',
-            resource_pk_field='code_id'
-        )

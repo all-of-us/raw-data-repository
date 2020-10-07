@@ -10,10 +10,8 @@ import logging
 import re
 import time
 
-from marshmallow_jsonschema import JSONSchema
 from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError
-
 
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.code import Code
@@ -38,10 +36,10 @@ class ResourceRecordSet(object):
         :param schema: Schema model object for for this object
         :param data: Data record dict
         """
-        if not hasattr(schema.Meta, 'schema_meta'):
+        if not hasattr(schema, 'Meta'):
             raise AttributeError('SchemaMeta object not found in schema.Meta.')
         self._schema = schema()
-        self._meta = self._schema.Meta.schema_meta
+        self._meta = self._schema.Meta
 
         if data:
             data = self._load_data(self._schema, data)
@@ -117,7 +115,7 @@ class ResourceRecordSet(object):
         :param schema: Schema model object.
         :return: ResourceSchema object
         """
-        schema_dict = JSONSchema().dump(schema)
+        schema_dict = schema.to_dict()
         # Hash the schema. sort_keys=True is required so the hash remains the same for the same schema.
         hash_value = hashlib.sha256(json.dumps(schema_dict, sort_keys=True).encode('utf-8')).hexdigest()
 
