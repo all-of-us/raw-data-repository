@@ -76,12 +76,12 @@ class CurationExportClass(object):
         # https://issuetracker.google.com/issues/64579566
         # NULL characters (\0) can also corrupt the output file, so they're removed.
         # And whitespace was trimmed before so that's moved into the SQL as well
-        # Newlines and souble-quotes are also replace with spaces and single-quotes, respectively
+        # Newlines and double-quotes are also replaced with spaces and single-quotes, respectively
         field_list = [f"TRIM(REPLACE(REPLACE(REPLACE(COALESCE({name}, ''), '\\0', ''), '\n', ' '), '\\\"', '\\\''))"
                       for name in column_names]
 
-        # Unions are unordered, so the headers do not always end up at the top
-        # of the file. The below format forces the headers to the top of the file
+        # Unions are unordered, so the headers do not always end up at the top of the file.
+        # The below format forces the headers to the top of the file
         # This is needed because gcloud export sql doesn't support column headers and
         # Curation would like them in the file for schema validation (ROC-687)
         sql_string = f"""
