@@ -323,6 +323,15 @@ class AppUtilTest(BaseTestCase):
         mock_requests.get.assert_called_with('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=token')
         mock_logging.error.assert_called_with('UserInfo endpoint did not return the email')
 
+    @mock.patch('rdr_service.app_util.GAE_PROJECT', 'totally_the_server')
+    def test_invalid_token(self):
+        """Check that we get an unauthorized error with a bad token"""
+
+        # Need a request context for app_util to get a token from
+        with Flask('test').test_request_context(headers={'Authorization': 'Bearer token123'}),\
+                self.assertRaises(Unauthorized):
+            app_util.get_oauth_id()
+
 
 
 if __name__ == "__main__":

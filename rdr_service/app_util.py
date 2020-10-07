@@ -142,6 +142,9 @@ def get_oauth_id():
 
                 logging.info(f"Oauth failure: {response.content} (status: {response.status_code})")
 
+                if response.status_code in [400, 401]:  # tokeninfo returns 400
+                    raise Unauthorized
+
         sleep(0.25)
         logging.info('Retrying authentication call to Google after failure.')
 
