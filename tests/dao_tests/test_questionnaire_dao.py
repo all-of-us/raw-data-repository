@@ -1,10 +1,9 @@
 import datetime
 
 from sqlalchemy.exc import IntegrityError
-from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed
+from werkzeug.exceptions import NotFound, PreconditionFailed
 
 from rdr_service.clock import FakeClock
-from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.questionnaire_dao import (
     QuestionnaireConceptDao,
@@ -208,44 +207,3 @@ class QuestionnaireDaoTest(BaseTestCase):
         })
 
         self.assertEqual('FORM_1A', model.externalId)
-
-    def test_questionnaire_payload_cannot_create_new_codes(self):
-        with self.assertRaises(BadRequest) as context:
-            self.dao.from_client_json({
-                "group": {
-                    "concept": [
-                        {
-                            "system": PPI_SYSTEM,
-                            "code": 'new_module_code'
-                        }
-                    ],
-                    "question": [
-                        {
-                            "linkId": "test",
-                            "concept": [
-                                {
-                                    "code": "new_question_code",
-                                    "system": PPI_SYSTEM
-                                }
-                            ],
-                            "option": [
-                                {
-                                    "code": "new_answer_code",
-                                    "system": PPI_SYSTEM
-                                }
-                            ]
-                        }
-                    ]
-                },
-                "status": "published",
-                "version": "V1"
-            })
-
-        exception = context.exception
-        self.assertEqual(
-            "The following code values were unrecognized: "
-            "new_module_code (system: http://terminology.pmi-ops.org/CodeSystem/ppi), "
-            "new_question_code (system: http://terminology.pmi-ops.org/CodeSystem/ppi), "
-            "new_answer_code (system: http://terminology.pmi-ops.org/CodeSystem/ppi)",
-            exception.description
-        )

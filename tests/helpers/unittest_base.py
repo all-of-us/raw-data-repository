@@ -524,9 +524,8 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             )
         if expected_status == http.client.OK:
             return json.loads(response.data)
-        if expected_status == http.client.CREATED:
-            return response
-        return None
+
+        return response
 
     def send_consent(self, participant_id, email=None, language=None, code_values=None, string_answers=None,
                      extra_string_values=[], authored=None, expected_status=200):

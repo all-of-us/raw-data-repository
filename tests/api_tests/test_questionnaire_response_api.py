@@ -1060,6 +1060,25 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         user_info['example@example.com']['clientId'] = original_user_client_id
         config.override_setting(config.USER_INFO, user_info)
 
+    def test_response_payload_cannot_create_new_codes(self):
+        q_id = self.create_questionnaire("questionnaire1.json")
+        p_id = self.create_participant()
+        self.send_consent(p_id)
+
+        resource = self.make_questionnaire_response_json(
+            p_id,
+            q_id,
+            code_answers=[('2.3.2', Concept(PPI_SYSTEM, 'new_answer_code'))],
+            create_codes=False
+        )
+        response = self.send_post(self.questionnaire_response_url(p_id), resource, expected_status=400)
+
+        self.assertEqual(
+            'The following code values were unrecognized: '
+            'new_answer_code (system: http://terminology.pmi-ops.org/CodeSystem/ppi)',
+            response.json['message']
+        )
+
 
 def _add_code_answer(code_answers, link_id, code):
     if code:
