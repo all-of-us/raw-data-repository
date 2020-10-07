@@ -77,7 +77,7 @@ class Schema(MarshmallowSchema):
         props = ['schema_id', 'resource_uri', 'resource_pk_field']
         kwargs = dict(zip(props, [getattr(self.Meta, k, None) for k in props]))
         # Find all fields defined as Nested.
-        kwargs['nested_schemas'] = self.nested_fields()
+        kwargs['nested_fields'] = self.nested_fields()
         self.Meta = SchemaMeta(**kwargs)
 
     @classmethod
