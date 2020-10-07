@@ -76,12 +76,37 @@ class CurationExportClass(object):
         # https://issuetracker.google.com/issues/64579566
         # NULL characters (\0) can also corrupt the output file, so they're removed.
         # And whitespace was trimmed before so that's moved into the SQL as well
-        field_list = [f"TRIM(REPLACE(COALESCE({name}, ''), '\\0', ''))" for name in column_names]
+        # Newlines and souble-quotes are also replace with spaces and single-quotes, respectively
+        field_list = [f"TRIM(REPLACE(REPLACE(REPLACE(COALESCE({name}, ''), '\\0', ''), '\n', ' '), '\\\"', '\\\''))"
+                      for name in column_names]
+
+        # Unions are unordered, so the headers do not always end up at the top
+        # of the file. The below format forces the headers to the top of the file
+        # This is needed because gcloud export sql doesn't support column headers and
+        # Curation would like them in the file for schema validation (ROC-687)
+        sql_string = f"""
+            SELECT {','.join(field_list)}
+            FROM 
+            (
+                (
+                    SELECT
+                      1 as sort_col,
+                      {header_string}
+                ) 
+                UNION ALL
+                (
+                    SELECT 2,
+                        {','.join(field_list)}
+                    FROM {table}
+                )                
+            ) a
+            ORDER BY a.sort_col ASC
+        """
 
         _logger.info(f'exporting {table}')
         gcp_sql_export_csv(
             self.args.project,
-            f"SELECT {header_string} UNION SELECT {','.join(field_list)} FROM {table}",
+            sql_string,
             cloud_file,
             database='cdm'
         )
