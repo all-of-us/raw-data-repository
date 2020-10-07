@@ -22,6 +22,8 @@ from rdr_service.model.participant import Participant
 from rdr_service.offline.biobank_samples_pipeline import _PMI_OPS_SYSTEM
 from tests.test_data import load_test_data_json
 from tests.helpers.unittest_base import BaseTestCase
+from tests.test_data import load_biobank_order_json
+from rdr_service.model.utils import to_client_participant_id
 
 
 class DvOrderApiTestBase(BaseTestCase):
@@ -99,6 +101,17 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
         return req
 
     def test_order_updated(self):
+        # create a regular biobank order first, make sure the salivary order will not overwrite
+        # the participant summary specimen site info
+        order_json = load_biobank_order_json(self.participant.participantId, filename="biobank_order_2.json")
+        path = "Participant/%s/BiobankOrder" % to_client_participant_id(self.participant.participantId)
+        self.send_post(path, order_json)
+        ps = self.summary_dao.get(self.participant.participantId)
+        self.assertEqual(ps.biospecimenSourceSiteId, 1)
+        self.assertEqual(ps.biospecimenCollectedSiteId, 1)
+        self.assertEqual(ps.biospecimenProcessedSiteId, 1)
+        self.assertEqual(ps.biospecimenFinalizedSiteId, 2)
+
         self.assertEqual(0, len(self.get_orders()))
         post_response = self.send_post(
             "SupplyRequest",
@@ -120,6 +133,12 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
             "SupplyDelivery/{}".format(location_id),
             request_data=self._set_mayo_address(self.get_payload('dv_order_api_put_supply_delivery.json')),
         )
+        # make sure the participant summary specimen site info is not changed
+        ps = self.summary_dao.get(self.participant.participantId)
+        self.assertEqual(ps.biospecimenSourceSiteId, 1)
+        self.assertEqual(ps.biospecimenCollectedSiteId, 1)
+        self.assertEqual(ps.biospecimenProcessedSiteId, 1)
+        self.assertEqual(ps.biospecimenFinalizedSiteId, 2)
 
         orders = self.get_orders()
         self.assertEqual(1, len(orders))
@@ -134,10 +153,10 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
         with self.dv_order_dao.session() as session:
             # there should be three identifier records in the BiobankOrderIdentifier table
             identifiers = session.query(BiobankOrderIdentifier).all()
-            self.assertEqual(3, len(identifiers))
+            self.assertEqual(5, len(identifiers))
             # there should be one ordered sample in the BiobankOrderedSample table
             samples = session.query(BiobankOrderedSample).all()
-            self.assertEqual(1, len(samples))
+            self.assertEqual(17, len(samples))
 
             mayolink_history_records = session.query(MayolinkCreateOrderHistory).all()
             self.assertEqual(1, len(mayolink_history_records))
