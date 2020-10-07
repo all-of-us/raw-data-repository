@@ -286,7 +286,7 @@ class AppUtilTest(BaseTestCase):
         def mock_response(url):
             response = mock.MagicMock()
             if 'userinfo' in url:
-                response.status_code = 401
+                response.status_code = 403
             else:
                 response.status_code = 200
                 response.json.return_value = {'email': 'fallback_response'}
