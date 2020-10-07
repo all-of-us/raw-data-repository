@@ -85,7 +85,7 @@ class CurationExportClass(object):
         # This is needed because gcloud export sql doesn't support column headers and
         # Curation would like them in the file for schema validation (ROC-687)
         sql_string = f"""
-            SELECT {','.join(field_list)}
+            SELECT {','.join(column_names)}
             FROM 
             (
                 (
