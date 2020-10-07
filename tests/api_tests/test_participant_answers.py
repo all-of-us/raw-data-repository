@@ -49,9 +49,7 @@ class QuestionnaireAnswersApiTest(BaseTestCase):
         ]
         self.send_consent(p_id, email=email, language="en", code_values=code_answers)
 
-        response = self.send_get(self._answers_url(p_id, "OverallHealth"), expected_status=http.client.NOT_FOUND)
-
-        self.assertEqual(response, None)
+        self.send_get(self._answers_url(p_id, "OverallHealth"), expected_status=http.client.NOT_FOUND)
 
     def test_invalid_module(self):
         """
@@ -66,6 +64,4 @@ class QuestionnaireAnswersApiTest(BaseTestCase):
         ]
         self.send_consent(p_id, email=email, language="en", code_values=code_answers)
 
-        response = self.send_get(self._answers_url(p_id, "InvalidModule"), expected_status=http.client.BAD_REQUEST)
-
-        self.assertEqual(response, None)
+        self.send_get(self._answers_url(p_id, "InvalidModule"), expected_status=http.client.BAD_REQUEST)

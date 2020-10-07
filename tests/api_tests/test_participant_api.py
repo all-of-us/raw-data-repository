@@ -46,11 +46,8 @@ class ParticipantApiTest(BaseTestCase):
         self._ehr_questionnaire_id = None
 
     def test_participant_id_out_of_range(self):
-        response = self.send_get("Participant/P12345678", expected_status=404)
-        self.assertEqual(None, response)
-
-        response = self.send_get("Participant/P1234567890", expected_status=404)
-        self.assertEqual(None, response)
+        self.send_get("Participant/P12345678", expected_status=404)
+        self.send_get("Participant/P1234567890", expected_status=404)
 
     def test_insert(self):
         response = self.send_post("Participant", self.participant)

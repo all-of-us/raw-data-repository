@@ -1272,8 +1272,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         """
         qs = "".join(qs.split())  # Remove all whitespace
 
-        response = self.send_get("ParticipantCountsOverTime", query_string=qs, expected_status=http.client.BAD_REQUEST)
-        self.assertEqual(response, None)
+        self.send_get("ParticipantCountsOverTime", query_string=qs, expected_status=http.client.BAD_REQUEST)
 
     def test_url_parameter_validation_for_stratifications(self):
         # Ensure requests invalid stratifications are marked BAD REQUEST
@@ -1286,8 +1285,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
           """
         qs = "".join(qs.split())  # Remove all whitespace
 
-        response = self.send_get("ParticipantCountsOverTime", query_string=qs, expected_status=http.client.BAD_REQUEST)
-        self.assertEqual(response, None)
+        self.send_get("ParticipantCountsOverTime", query_string=qs, expected_status=http.client.BAD_REQUEST)
 
     def test_url_parameter_validation_for_awardee(self):
         # Ensure requests invalid awardee are marked BAD REQUEST
@@ -1301,8 +1299,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             """
         qs = "".join(qs.split())  # Remove all whitespace
 
-        response = self.send_get("ParticipantCountsOverTime", query_string=qs, expected_status=http.client.BAD_REQUEST)
-        self.assertEqual(response, None)
+        self.send_get("ParticipantCountsOverTime", query_string=qs, expected_status=http.client.BAD_REQUEST)
 
     def test_url_parameter_validation_for_enrollment_status(self):
         # Ensure requests invalid enrollment status are marked BAD REQUEST
@@ -1316,8 +1313,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             """
         qs = "".join(qs.split())  # Remove all whitespace
 
-        response = self.send_get("ParticipantCountsOverTime", query_string=qs, expected_status=http.client.BAD_REQUEST)
-        self.assertEqual(response, None)
+        self.send_get("ParticipantCountsOverTime", query_string=qs, expected_status=http.client.BAD_REQUEST)
 
     # Add tests for more invalida parameters, e.g.:
     # * starting or ending halfway through the data
