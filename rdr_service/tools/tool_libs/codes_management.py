@@ -327,10 +327,11 @@ class CodesSyncClass(ToolBase):
                     logger.error(f'The following question codes are missing answer options: {code_values_str}')
                     exit_code = 1
 
-            if exit_code == 1:
-                session.rollback()
-            elif not self.args.dry_run and not skip_file_export_write:
-                self.write_export_file(session)
+            if not self.args.dry_run:
+                if exit_code == 1:
+                    session.rollback()
+                elif not skip_file_export_write:
+                    self.write_export_file(session)
 
         return exit_code
 
