@@ -38,7 +38,8 @@ _consent_module_question_map = {
     'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
     'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
     'GROR': 'ResultsConsent_CheckDNA',
-    'PrimaryConsentUpdate': 'Reconsent_ReviewConsentAgree'
+    'PrimaryConsentUpdate': 'Reconsent_ReviewConsentAgree',
+    'ProgramUpdate': None
 }
 
 # _consent_expired_question_map must contain every module ID from _consent_module_question_map.
@@ -47,7 +48,8 @@ _consent_expired_question_map = {
     'DVEHRSharing': None,
     'EHRConsentPII': 'EHRConsentPII_ConsentExpired',
     'GROR': None,
-    'PrimaryConsentUpdate': None
+    'PrimaryConsentUpdate': None,
+    'ProgramUpdate': None
 }
 
 
@@ -118,8 +120,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             args[f'p_{k}'] = v
 
         sql = f"""
-            update bigquery_sync 
-                set modified = :modified, resource = json_set(resource, {sql_json_set_values}) 
+            update bigquery_sync
+                set modified = :modified, resource = json_set(resource, {sql_json_set_values})
                where pk_id = :pid and table_id = :table_id
         """
         dao = BigQuerySyncDao(backup=False)
@@ -350,9 +352,13 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                         'consent_module_authored': row.authored,
                         'consent_module_created': row.created,
                     }
-                    if module_name == 'ConsentPII':
-                        consent['consent'] = 'ConsentPII'
-                        consent['consent_id'] = self._lookup_code_id('ConsentPII', ro_session)
+                    # Note:  Based on currently available modules when a module has no
+                    # associated answer options (like ConsentPII or ProgramUpdate), any submitted response is given an
+                    # implicit ConsentPermission_Yes value.   May need adjusting if there are ever modules where that
+                    # may no longer be true
+                    if _consent_module_question_map[module_name] is None:
+                        consent['consent'] = module_name
+                        consent['consent_id'] = self._lookup_code_id(module_name, ro_session)
                         consent['consent_value'] = 'ConsentPermission_Yes'
                         consent['consent_value_id'] = self._lookup_code_id('ConsentPermission_Yes', ro_session)
                     else:
