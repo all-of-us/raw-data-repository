@@ -554,12 +554,27 @@ class DeceasedReportDao(UpdatableDao):
         return observation.as_json()
 
     @staticmethod
+    def _deceased_report_lock_name(participant_id):
+        return f'rdr.deceased_report.p{participant_id}'
+
+    @staticmethod
+    def _release_report_lock(session, participant_id):
+        release_result = session.execute(
+            f"SELECT RELEASE_LOCK('{DeceasedReportDao._deceased_report_lock_name(participant_id)}')"
+        ).scalar()
+
+        if release_result is None:
+            logging.error(f'Deceased report lock did not exist for P{participant_id}!')
+        elif release_result == 0:
+            logging.error(f'Deceased report lock for P{participant_id} was not taken by this thread!')
+
+    @staticmethod
     def _can_insert_active_report(session, participant_id, lock_timeout_seconds=30):
         # Obtain lock for creating a participant's deceased report
         # If the named lock is free, 1 is returned immediately. If the lock is already taken, then it waits until it's
         # free before making the check. Documentation gives that 'None' is returned in error cases.
         lock_result = session.execute(
-            f"SELECT GET_LOCK('rdr.deceased_report.p{participant_id}', {lock_timeout_seconds})"
+            f"SELECT GET_LOCK('{DeceasedReportDao._deceased_report_lock_name(participant_id)}', {lock_timeout_seconds})"
         ).scalar()
 
         if lock_result == 1:
@@ -582,7 +597,10 @@ class DeceasedReportDao(UpdatableDao):
     def insert_with_session(self, session, obj: DeceasedReport):
         if self._can_insert_active_report(session, obj.participantId):
             self._update_participant_summary(session, obj)
-            return super(DeceasedReportDao, self).insert_with_session(session, obj)
+            insert_result = super(DeceasedReportDao, self).insert_with_session(session, obj)
+            self._release_report_lock(session, obj.participantId)
+
+            return insert_result
 
     def update_with_session(self, session, obj: DeceasedReport):
         self._update_participant_summary(session, obj)

@@ -96,6 +96,8 @@ class Database(object):
             sess.commit()
         except Exception:
             sess.rollback()
+            # TODO: rolling back the session here might be preventing us from recording request_logs
+            #  when within the context (such as when inserting with a session in the DAOs)
             raise
         finally:
             sess.close()
