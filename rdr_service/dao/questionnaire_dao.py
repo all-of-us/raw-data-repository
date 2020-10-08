@@ -144,9 +144,7 @@ class QuestionnaireDao(UpdatableDao):
         from rdr_service.dao.code_dao import CodeDao
 
         # Get or insert codes, and retrieve their database IDs.
-        #add_codes_if_missing = _add_codes_if_missing()
-        add_codes_if_missing = True  # @TODO: do not hard code this !!!!!!!!!!!!!!!!!!
-        code_id_map = CodeDao().get_or_add_codes(code_map, add_codes_if_missing=add_codes_if_missing)
+        code_id_map = CodeDao().get_internal_id_code_map(code_map)
 
         # Now add the child objects, using the IDs in code_id_map
         cls._add_concepts(q, code_id_map, concepts)
@@ -222,6 +220,10 @@ class QuestionnaireDao(UpdatableDao):
                 if question.group:
                     for sub_group in question.group:
                         cls._populate_questions(sub_group, code_map, questions)
+                if question.option:
+                    for option in question.option:
+                        code_map[(option.system, option.code)] = (option.display, CodeType.ANSWER, None)
+
         if group.group:
             for sub_group in group.group:
                 cls._populate_questions(sub_group, code_map, questions)
@@ -282,10 +284,3 @@ class QuestionnaireQuestionDao(BaseDao):
         return (
             session.query(QuestionnaireQuestion).filter(QuestionnaireQuestion.questionnaireQuestionId.in_(ids)).all()
         )
-
-def _add_codes_if_missing():
-    # Only import "config" on demand, as it depends on Datastore packages (and
-    # GAE). This code path may not be executed via CLI or test code.
-    import config
-
-    return config.getSetting(config.ADD_QUESTIONNAIRE_CODES_IF_MISSING, False)

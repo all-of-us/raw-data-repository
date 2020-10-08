@@ -1,7 +1,7 @@
 import http.client
 import json
 
-from rdr_service.code_constants import PPI_EXTRA_SYSTEM
+from rdr_service.code_constants import PPI_EXTRA_SYSTEM, PPI_SYSTEM
 from rdr_service.dao.code_dao import CodeDao
 from tests.test_data import data_path
 from tests.helpers.unittest_base import BaseTestCase
@@ -14,6 +14,8 @@ class QuestionnaireApiTest(BaseTestCase):
         for json_file in questionnaire_files:
             with open(data_path(json_file)) as f:
                 questionnaire = json.load(f)
+
+            self._save_codes(questionnaire)
             response = self.send_post("Questionnaire", questionnaire)
             questionnaire_id = response["id"]
             del response["id"]
@@ -23,12 +25,10 @@ class QuestionnaireApiTest(BaseTestCase):
             del response["id"]
             self.assertJsonResponseMatches(questionnaire, response)
 
-        # Ensure we didn't create codes in the extra system
-        self.assertIsNone(CodeDao().get_code(PPI_EXTRA_SYSTEM, "IgnoreThis"))
-
     def insert_questionnaire(self):
         with open(data_path("questionnaire1.json")) as f:
             questionnaire = json.load(f)
+            self._save_codes(questionnaire)
             return self.send_post("Questionnaire", questionnaire, expected_response_headers={'ETag': 'W/"aaa"'})
 
     def test_update_before_insert(self):
@@ -48,6 +48,7 @@ class QuestionnaireApiTest(BaseTestCase):
 
         with open(data_path("questionnaire2.json")) as f2:
             questionnaire2 = json.load(f2)
+            self._save_codes(questionnaire2)
             self.send_put(
                 "Questionnaire/%s" % response["id"],
                 questionnaire2,
@@ -98,6 +99,7 @@ class QuestionnaireApiTest(BaseTestCase):
     def test_insert_with_version(self):
         with open(data_path('questionnaire5_with_version.json')) as f:
             questionnaire = json.load(f)
+        self._save_codes(questionnaire)
         response = self.send_post('Questionnaire', questionnaire)
         questionnaire_id = response['id']
         del response['id']
@@ -110,4 +112,43 @@ class QuestionnaireApiTest(BaseTestCase):
 
         # Ensure we didn't create codes in the extra system
         self.assertIsNone(CodeDao().get_code(PPI_EXTRA_SYSTEM, 'IgnoreThis'))
+
+    def test_questionnaire_payload_cannot_create_new_codes(self):
+        response = self.send_post('Questionnaire', {
+            "group": {
+                "concept": [
+                    {
+                        "system": PPI_SYSTEM,
+                        "code": 'new_module_code'
+                    }
+                ],
+                "question": [
+                    {
+                        "linkId": "test",
+                        "concept": [
+                            {
+                                "code": "new_question_code",
+                                "system": PPI_SYSTEM
+                            }
+                        ],
+                        "option": [
+                            {
+                                "code": "new_answer_code",
+                                "system": PPI_SYSTEM
+                            }
+                        ]
+                    }
+                ]
+            },
+            "status": "published",
+            "version": "V1"
+        }, expected_status=400)
+
+        self.assertEqual(
+            "The following code values were unrecognized: "
+            "new_module_code (system: http://terminology.pmi-ops.org/CodeSystem/ppi), "
+            "new_question_code (system: http://terminology.pmi-ops.org/CodeSystem/ppi), "
+            "new_answer_code (system: http://terminology.pmi-ops.org/CodeSystem/ppi)",
+            response.json['message']
+        )
 

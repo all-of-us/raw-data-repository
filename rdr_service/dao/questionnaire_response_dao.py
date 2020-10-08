@@ -44,7 +44,6 @@ from rdr_service.code_constants import (
     EHR_CONSENT_EXPIRED_YES,
     PRIMARY_CONSENT_UPDATE_QUESTION_CODE,
     COHORT_1_REVIEW_CONSENT_YES_CODE)
-from rdr_service.config_api import is_config_admin
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao, raise_if_withdrawn
@@ -625,7 +624,7 @@ class QuestionnaireResponseDao(BaseDao):
             if not answers:
                 logging.error("No answers from QuestionnaireResponse JSON. This is harmless but probably an error.")
             # Get or insert codes, and retrieve their database IDs.
-            code_id_map = CodeDao().get_or_add_codes(code_map, add_codes_if_missing=_add_codes_if_missing(client_id))
+            code_id_map = CodeDao().get_internal_id_code_map(code_map)
 
             # Now add the child answers, using the IDs in code_id_map
             self._add_answers(qr, code_id_map, answers)
@@ -753,15 +752,6 @@ class QuestionnaireResponseDao(BaseDao):
             if system_and_code:
                 answer.valueCodeId = code_id_map[system_and_code]
             qr.answers.append(answer)
-
-
-def _add_codes_if_missing(client_id):
-    """Don't add missing codes for questionnaire responses submitted by the config admin
-  (our command line tools.)
-
-  Tests override this to return true.
-  """
-    return not is_config_admin(client_id)
 
 
 def _validate_consent_pdfs(resource):

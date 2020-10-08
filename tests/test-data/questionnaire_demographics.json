@@ -20,10 +20,6 @@
       {
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
         "code": "TheBasics"
-      },
-      {
-        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi-extra",
-        "code": "IgnoreThis"
       }],
       "group":[
          {
@@ -49,31 +45,38 @@
                         "option":[
                            {
                               "code":"American Indian or Alaskan Native",
-                              "display":"American Indian or Alaskan Native"
+                              "display":"American Indian or Alaskan Native",
+                              "system": "sys"
                            },
                            {
                               "code":"Asian",
-                              "display":"Asian"
+                              "display":"Asian",
+                              "system": "sys"
                            },
                            {
                               "code":"Black or African American",
-                              "display":"Black or African American"
+                              "display":"Black or African American",
+                              "system": "sys"
                            },
                            {
                               "code":"Native Hawaiian or Pacific Islander",
-                              "display":"Native Hawaiian or Pacific Islander"
+                              "display":"Native Hawaiian or Pacific Islander",
+                              "system": "sys"
                            },
                            {
                               "code":"White",
-                              "display":"White"
+                              "display":"White",
+                              "system": "sys"
                            },
                            {
                               "code":"Other",
-                              "display":"Other"
+                              "display":"Other",
+                              "system": "sys"
                            },
                            {
                               "code":"Prefer not to answer",
-                              "display":"Prefer not to answer"
+                              "display":"Prefer not to answer",
+                              "system": "sys"
                            }
                         ]
                      },
@@ -84,15 +87,18 @@
                         "option":[
                            {
                               "code":"1",
-                              "display":"Answer Choice 1"
+                              "display":"Answer Choice 1",
+                              "system": "sys"
                            },
                            {
                               "code":"2",
-                              "display":"Option 2"
+                              "display":"Option 2",
+                              "system": "sys"
                            },
                            {
                               "code":"3",
-                              "display":"Option 3"
+                              "display":"Option 3",
+                              "system": "sys"
                            }
                         ]
                      },

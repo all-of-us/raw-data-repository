@@ -42,7 +42,7 @@ from rdr_service.participant_enums import (
     TEST_HPO_NAME,
     make_primary_provider_link_for_name,
 )
-from tests.helpers.unittest_base import BaseTestCase, QuestionnaireTestMixin
+from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.mysql_helper_data import PITT_HPO_ID
 
 TIME_1 = datetime.datetime(2017, 12, 31)
@@ -2589,7 +2589,7 @@ class PublicMetricsApiTest(BaseTestCase):
             code = kwargs.get(link_id)
             answers["string_answers"].append((link_id, code))
 
-        response_data = QuestionnaireTestMixin.make_questionnaire_response_json(participant_id, questionnaire_id, **answers)
+        response_data = self.make_questionnaire_response_json(participant_id, questionnaire_id, **answers)
 
         with FakeClock(time):
             url = "Participant/%s/QuestionnaireResponse" % participant_id

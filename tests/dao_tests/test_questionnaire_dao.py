@@ -114,7 +114,8 @@ class QuestionnaireDaoTest(BaseTestCase):
         self.check_history()
 
         expected_questionnaire = Questionnaire(
-            questionnaireId=1, version=1, semanticVersion='V1', created=TIME, lastModified=TIME, resource=RESOURCE_1_WITH_ID
+            questionnaireId=1, version=1, semanticVersion='V1', created=TIME, lastModified=TIME,
+            resource=RESOURCE_1_WITH_ID
         )
         questionnaire = self.dao.get(1)
         self.assertEqual(expected_questionnaire.asdict(), questionnaire.asdict())
@@ -127,7 +128,8 @@ class QuestionnaireDaoTest(BaseTestCase):
         questionnaire = self.dao.get_with_children(1)
 
         self.assertEqual(
-            self.sort_lists(expected_questionnaire.asdict_with_children()), self.sort_lists(questionnaire.asdict_with_children())
+            self.sort_lists(expected_questionnaire.asdict_with_children()),
+            self.sort_lists(questionnaire.asdict_with_children())
         )
         self.assertEqual(
             questionnaire.asdict(), self.dao.get_latest_questionnaire_with_concept(self.CODE_1.codeId).asdict()

@@ -1,5 +1,4 @@
 import logging
-import traceback
 
 from werkzeug.exceptions import BadRequest
 
@@ -168,13 +167,11 @@ class CodeDao(CacheAllDao):
             return self.find_ancestor_of_type(code.parent, code_type)
         return None
 
-    def get_or_add_codes(self, code_map, add_codes_if_missing=True):
+    def get_internal_id_code_map(self, code_map):
         """Accepts a map of (system, value) -> (display, code_type, parent_id) for codes found in a
     questionnaire or questionnaire response.
 
     Returns a map of (system, value) -> codeId for new and existing codes.
-
-    Adds new unmapped codes for anything that is missing.
     """
         # First get whatever is already in the cache.
         result_map = {}
@@ -184,6 +181,8 @@ class CodeDao(CacheAllDao):
                 result_map[(system, value)] = code.codeId
         if len(result_map) == len(code_map):
             return result_map
+
+        missing_codes = []
         with self.session() as session:
             for system, value in list(code_map.keys()):
                 existing_code = result_map.get((system, value))
@@ -192,31 +191,15 @@ class CodeDao(CacheAllDao):
                     existing_code = self._get_code_with_session(session, system, value)
                     if existing_code:
                         result_map[(system, value)] = code.codeId
-                        continue
+                    else:
+                        missing_codes.append(f'{value} (system: {system})')
 
-                    if not add_codes_if_missing:
-                        raise BadRequest(f"Couldn't find code: system = {system}, value = {value}")
-                    # If it's not in the database, add it.
-                    display, code_type, parent_id = code_map[(system, value)]
-                    code = Code(
-                        system=system,
-                        value=value,
-                        display=display,
-                        codeType=code_type,
-                        mapped=False,
-                        parentId=parent_id,
-                    )
-                    if self.silent:
-                        # Log the traceback so that stackdriver error reporting reports on it.
-                        logging.error(
-                            f"Adding unmapped code: system = {code.system}, \
-                            value = {code.value}: {traceback.format_exc()}"
-                        )
-
-                    self.insert_with_session(session, code)
-                    session.flush()
-                    result_map[(system, value)] = code.codeId
-        return result_map
+        if missing_codes:
+            raise BadRequest(
+                f"The following code values were unrecognized: {', '.join(missing_codes)}"
+            )
+        else:
+            return result_map
 
 
 class CodeHistoryDao(BaseDao):

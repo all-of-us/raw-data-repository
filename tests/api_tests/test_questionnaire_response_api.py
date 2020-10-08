@@ -10,7 +10,7 @@ from sqlalchemy.orm.session import make_transient
 
 from rdr_service.clock import FakeClock
 from rdr_service import config
-from rdr_service.code_constants import PPI_EXTRA_SYSTEM, CONSENT_PERMISSION_YES_CODE, PPI_SYSTEM, \
+from rdr_service.code_constants import CONSENT_PERMISSION_YES_CODE, PPI_SYSTEM, \
     CONSENT_PERMISSION_NO_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE, GENDER_TRANSGENDER_CODE
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantRaceAnswersDao, \
@@ -368,10 +368,12 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         )
 
         # Sending the response before the consent is an error.
+        self._save_codes(resource)
         self.send_post(_questionnaire_response_url(participant_id), resource, expected_status=http.client.BAD_REQUEST)
 
         # After consent, the post succeeds
         self.send_consent(participant_id)
+        self._save_codes(resource)
         response = self.send_post(_questionnaire_response_url(participant_id), resource)
         resource["id"] = response["id"]
         # The resource gets rewritten to include the version
@@ -386,6 +388,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         update_resource['questionnaire']['reference'] = \
             update_resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id,
                                                                  semantic_version='aaa')
+        self._save_codes(resource)
         response = self.send_post(_questionnaire_response_url(participant_id), update_resource)
         update_resource['id'] = response['id']
         self.assertJsonResponseMatches(update_resource, response)
@@ -395,9 +398,6 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         self.assertJsonResponseMatches(update_resource, get_response)
 
         code_dao = CodeDao()
-
-        # Ensure we didn't create codes in the extra system
-        self.assertIsNone(code_dao.get_code(PPI_EXTRA_SYSTEM, "IgnoreThis"))
 
         name_of_child = code_dao.get_code("sys", "nameOfChild")
         birth_weight = code_dao.get_code("sys", "birthWeight")
@@ -525,6 +525,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             resource["subject"]["reference"] = f'Patient/{participant_id}'
             resource["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
 
+            self._save_codes(resource)
             self.send_post(_questionnaire_response_url(participant_id), resource)
 
             summary = self.send_get("Participant/%s/Summary" % participant_id)
@@ -537,6 +538,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         dont_know_resp["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
 
         with FakeClock(TIME_2):
+            self._save_codes(dont_know_resp)
             self.send_post(_questionnaire_response_url(participant_id), dont_know_resp)
 
         summary = self.send_get("Participant/%s/Summary" % participant_id)
@@ -552,6 +554,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         resource["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
 
         with FakeClock(TIME_2):
+            self._save_codes(resource)
             self.send_post(_questionnaire_response_url(participant_id), resource)
 
         summary = self.send_get("Participant/%s/Summary" % participant_id)
@@ -568,6 +571,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         resource["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
 
         with FakeClock(TIME_2):
+            self._save_codes(resource)
             self.send_post(_questionnaire_response_url(participant_id),
                            resource,
                            expected_status=http.client.BAD_REQUEST)
@@ -614,6 +618,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             questionnaire_id=questionnaire_id
         )
         with FakeClock(TIME_2):
+            self._save_codes(resource)
             self.send_post(_questionnaire_response_url(participant_id), resource)
 
         summary = self.send_get("Participant/%s/Summary" % participant_id)
@@ -677,6 +682,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             questionnaire_id=questionnaire_id
         )
 
+        self._save_codes(resource)
         self.send_post(_questionnaire_response_url(participant_id), resource, expected_status=http.client.OK)
 
         # Alter response to set a bad link id value
@@ -851,6 +857,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         with FakeClock(TIME_2):
             resource["authored"] = TIME_2.isoformat()
+            self._save_codes(resource)
             self.send_post(_questionnaire_response_url(participant_id), resource)
 
         participant = self.send_get("Participant/%s" % participant_id)
@@ -935,6 +942,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         with FakeClock(TIME_2):
             resource["authored"] = TIME_2.isoformat()
+            self._save_codes(resource)
             self.send_post(_questionnaire_response_url(participant_id), resource)
 
         participant = self.send_get("Participant/%s" % participant_id)
@@ -1052,6 +1060,25 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         user_info['example@example.com']['clientId'] = original_user_client_id
         config.override_setting(config.USER_INFO, user_info)
+
+    def test_response_payload_cannot_create_new_codes(self):
+        q_id = self.create_questionnaire("questionnaire1.json")
+        p_id = self.create_participant()
+        self.send_consent(p_id)
+
+        resource = self.make_questionnaire_response_json(
+            p_id,
+            q_id,
+            code_answers=[('2.3.2', Concept(PPI_SYSTEM, 'new_answer_code'))],
+            create_codes=False
+        )
+        response = self.send_post(self.questionnaire_response_url(p_id), resource, expected_status=400)
+
+        self.assertEqual(
+            'The following code values were unrecognized: '
+            'new_answer_code (system: http://terminology.pmi-ops.org/CodeSystem/ppi)',
+            response.json['message']
+        )
 
 
 def _add_code_answer(code_answers, link_id, code):

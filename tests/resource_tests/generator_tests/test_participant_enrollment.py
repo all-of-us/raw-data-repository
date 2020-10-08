@@ -5,6 +5,7 @@ from rdr_service import clock
 from rdr_service.code_constants import *
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.physical_measurements_dao import PhysicalMeasurementsDao
+from rdr_service.model.code import CodeType
 from rdr_service.model.hpo import HPO
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.site import Site
@@ -63,6 +64,7 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
 
         code_answers = list()
         code_answers.append(self.make_code_answer('ehrConsent', response_code))
+        self.create_code_if_needed(response_code, CodeType.ANSWER)
 
         qr = self.make_questionnaire_response_json(self.participant_id, self.qn_ehrconsent_id,
                                                    code_answers=code_answers)
@@ -129,6 +131,7 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
 
         code_answers = list()
         code_answers.append(self.make_code_answer('genomic_consent', consent_response))
+        self.create_code_if_needed(consent_response, CodeType.ANSWER)
 
         qr = self.make_questionnaire_response_json(self.participant_id, self.qn_gror_id, code_answers=code_answers)
         with clock.FakeClock(response_time or self.TIME_1):
