@@ -6,7 +6,7 @@ from enum import Enum
 
 from marshmallow import validate
 
-from rdr_service.resource import Schema, SchemaMeta, fields
+from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 from rdr_service.resource.schemas.site import ObsoleteStatusEnum
 
@@ -30,15 +30,6 @@ class HPOSchema(Schema):
     is_obsolete_id = fields.EnumInteger(enum=ObsoleteStatusEnum)
 
     class Meta:
-        """
-        schema_meta info declares how the schema and data is stored and organized in the Resource database tables.
-        """
-        ordered = True
+        schema_id = SchemaID.hpo
+        resource_uri = 'HPO'
         resource_pk_field = 'hpo_id'
-        # SchemaMeta (unique type id, unique type name, type URI, resource pk field, nested schemas)
-        schema_meta = SchemaMeta(
-            type_uid=SchemaID.hpo.value,
-            type_name=SchemaID.hpo.name,
-            resource_uri='HPO',
-            resource_pk_field='hpo_id'
-        )
