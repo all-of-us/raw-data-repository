@@ -4,6 +4,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from oauth2client.service_account import ServiceAccountCredentials
 import os
+import re
 import requests
 from sqlalchemy.orm.session import Session
 
@@ -32,6 +33,21 @@ _now_string = datetime.now().strftime('%Y-%m-%d_%H%M')
 code_export_file_path = f'{CODE_EXPORT_NAME_PREFIX}{_now_string}.csv'
 drive_folder_id = ''
 exporter_service_account_name = ''
+
+CODE_TYPES_WITH_OPTIONS = ['radio', 'dropdown', 'checkbox']
+
+
+class CodeException(Exception):
+    def __init__(self, code_value):
+        self.code_value = code_value
+
+
+class InvalidCodeValue(CodeException):
+    pass
+
+
+class QuestionOptionsMissing(CodeException):
+    pass
 
 
 class CodesExportClass(ToolBase):
@@ -169,27 +185,39 @@ class CodesSyncClass(ToolBase):
         code, display = (part.strip() for part in answer_text.split(',', 1))
         self.initialize_code(session, code, display, question_code, CodeType.ANSWER)
 
+    @staticmethod
+    def is_code_value_valid(code_value):
+        not_allowed_chars_regex = re.compile(r'[^a-zA-Z0-9_]')  # Regex for any characters that aren't allowed
+        invalid_matches = not_allowed_chars_regex.search(code_value)
+        return invalid_matches is None
+
     def import_data_dictionary_item(self, session: Session, code_json):
         code_value = code_json['field_name']
         code_description = code_json['field_label']
 
         if code_value != 'record_id':  # Ignore the code Redcap automatically inserts into each project
-            if code_json['field_type'] == 'descriptive':
-                # Only catch the first 'descriptive' field we see. That's the module code.
-                # Descriptive fields other than the first are considered to be readonly, display text.
-                # So we don't want to save codes for them
-                if not self.module_code:
-                    new_code = self.initialize_code(session, code_value, code_description,
-                                                    self.module_code, CodeType.MODULE)
-                    self.module_code = new_code
+            if not self.is_code_value_valid(code_value):
+                raise InvalidCodeValue(code_value)
             else:
-                new_code = self.initialize_code(session, code_value, code_description,
-                                                self.module_code, CodeType.QUESTION)
+                if code_json['field_type'] == 'descriptive':
+                    # Only catch the first 'descriptive' field we see. That's the module code.
+                    # Descriptive fields other than the first are considered to be readonly, display text.
+                    # So we don't want to save codes for them
+                    if not self.module_code:
+                        new_code = self.initialize_code(session, code_value, code_description,
+                                                        self.module_code, CodeType.MODULE)
+                        self.module_code = new_code
+                else:
+                    new_code = self.initialize_code(session, code_value, code_description,
+                                                    self.module_code, CodeType.QUESTION)
 
-                answers_string = code_json['select_choices_or_calculations']
-                if answers_string:
-                    for answer_text in answers_string.split('|'):
-                        self.import_answer_code(session, answer_text.strip(), new_code)
+                    answers_string = code_json['select_choices_or_calculations']
+                    if answers_string:
+                        for answer_text in answers_string.split('|'):
+                            self.import_answer_code(session, answer_text.strip(), new_code)
+                    elif code_json['field_type'] in CODE_TYPES_WITH_OPTIONS:
+                        # The answers string was empty, but this is a type we'd expect to have options
+                        raise QuestionOptionsMissing(code_value)
 
     @staticmethod
     def retrieve_data_dictionary(api_key):
@@ -248,6 +276,9 @@ class CodesSyncClass(ToolBase):
 
     def run(self, skip_file_export_write=False):
         super(CodesSyncClass, self).run()
+        exit_code = 0
+        invalid_codes_found = []
+        questions_missing_options = []
 
         if self.args.reuse_codes:
             self.codes_allowed_for_reuse = [code_val.strip() for code_val in self.args.reuse_codes.split(',')]
@@ -266,21 +297,43 @@ class CodesSyncClass(ToolBase):
                 # Get the data-dictionary and process codes
                 dictionary_json = self.retrieve_data_dictionary(project_api_key)
                 for item_json in dictionary_json:
-                    self.import_data_dictionary_item(session, item_json)
+                    try:
+                        self.import_data_dictionary_item(session, item_json)
+                    except InvalidCodeValue as exc:
+                        invalid_codes_found.append(exc.code_value)
+                    except QuestionOptionsMissing as exc:
+                        questions_missing_options.append(exc.code_value)
 
                 # Don't save anything if codes were unintentionally reused
                 if self.code_reuse_found and not self.args.dry_run:
-                    session.rollback()
                     logger.error('The above codes were already in the RDR database. '
                                  'Please verify with the team creating questionnaires in Redcap that this '
                                  'was intentional, and then re-run the tool with the "--reuse-codes" argument '
                                  'to specify that they should be allowed.')
-                    return 1
+                    exit_code = 1
 
-            if not self.args.dry_run and not skip_file_export_write:
-                self.write_export_file(session)
+                # Don't save anything if no module code was found
+                if self.module_code is None:
+                    logger.error('No module code found, canceling import')
+                    exit_code = 1
 
-        return 0
+                if invalid_codes_found:
+                    code_values_str = ", ".join([f'"{value}"' for value in invalid_codes_found])
+                    logger.error(f'Invalid code values found: {code_values_str}')
+                    exit_code = 1
+
+                if questions_missing_options:
+                    code_values_str = ", ".join([f'"{value}"' for value in questions_missing_options])
+                    logger.error(f'The following question codes are missing answer options: {code_values_str}')
+                    exit_code = 1
+
+            if not self.args.dry_run:
+                if exit_code == 1:
+                    session.rollback()
+                elif not skip_file_export_write:
+                    self.write_export_file(session)
+
+        return exit_code
 
 
 def add_additional_arguments(parser):
