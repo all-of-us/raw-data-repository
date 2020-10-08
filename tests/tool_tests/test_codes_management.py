@@ -88,6 +88,7 @@ class CodesManagementTest(BaseTestCase):
 
     def test_question_and_answer_codes(self):
         self.run_tool([
+            self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
             self._get_mock_dictionary_item(
                 'record_id',
                 'Redcap inserts a record_id code into everything, it should be ignored',
@@ -105,13 +106,15 @@ class CodesManagementTest(BaseTestCase):
                 answers='A1, Choice One | A2, Choice Two | A3, Choice Three | A4, Etc.'
             )
         ])
-        self.assertEqual(6, self.session.query(Code).count(), '6 codes should have been created')
+        self.assertEqual(7, self.session.query(Code).count(), '7 codes should have been created')
 
-        self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION)
+        module_code = self.assertCodeExists('module_code', 'Test Questionnaire Module', CodeType.MODULE)
+        self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION, module_code)
         radio_code = self.assertCodeExists(
             'radio',
             'This is a single-select, multiple choice question',
-            CodeType.QUESTION
+            CodeType.QUESTION,
+            module_code
         )
         self.assertCodeExists('A1', 'Choice One', CodeType.ANSWER, radio_code)
         self.assertCodeExists('A2', 'Choice Two', CodeType.ANSWER, radio_code)
@@ -175,6 +178,7 @@ class CodesManagementTest(BaseTestCase):
         self.data_generator.create_database_code(value='A1')
 
         return_val, _, _ = self.run_tool([
+            self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
             self._get_mock_dictionary_item(
                 'radio',
                 'This is a single-select, multiple choice question',
@@ -182,7 +186,7 @@ class CodesManagementTest(BaseTestCase):
                 answers='A1, Choice One | A2, Choice Two | A3, Choice Three | A4, Etc.'
             )
         ])
-        self.assertEqual(5, self.session.query(Code).count(), 'Should be 5 codes after test')
+        self.assertEqual(6, self.session.query(Code).count(), 'Should be 6 codes after test')
         self.assertEqual(0, return_val, 'Script should successfully exit, ignoring that the answer code was reused')
 
     def test_allowing_for_explicit_question_code_reuse(self):
@@ -319,3 +323,43 @@ class CodesManagementTest(BaseTestCase):
             mock.call(['radio', 'multi-select', 'TestQuestionnaire', 'TestQuestionnaire']),
             mock.call(['TestQuestionnaire', 'Test Questionnaire Module']),
         ])
+
+    @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
+    def test_module_code_is_required(self, mock_logger):
+        return_val, *_ = self.run_tool([
+            self._get_mock_dictionary_item('participant_id', 'Participant ID', 'text'
+            )
+        ])
+
+        self.assertEqual(0, self.session.query(Code).count(), 'No codes should have been created')
+        mock_logger.error.assert_any_call('No module code found, canceling import')
+        self.assertEqual(1, return_val, 'Script should exit with an error code')
+
+    @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
+    def test_invalid_codes_are_rejected(self, mock_logger):
+        """Code values should only have alphanumeric or underscore characters"""
+        return_val, *_ = self.run_tool([
+            self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
+            self._get_mock_dictionary_item('valid_code', 'Participant ID', 'text'),
+            self._get_mock_dictionary_item("invalid'code", 'quote character not allowed', 'text'),
+            self._get_mock_dictionary_item('another bad code', 'spaces not allowed', 'text')
+        ])
+
+        self.assertEqual(0, self.session.query(Code).count(), 'No codes should have been created')
+        mock_logger.error.assert_any_call('''Invalid code values found: "invalid\'code", "another bad code"''')
+        self.assertEqual(1, return_val, 'Script should exit with an error code')
+
+    @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
+    def test_missing_options_fail_import(self, mock_logger):
+        """Questions that are single or multi select should have options associated with them"""
+        return_val, *_ = self.run_tool([
+            self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
+            self._get_mock_dictionary_item('radio_code', 'single-select', 'radio'),
+            self._get_mock_dictionary_item('dropdown_code', 'dropdown', 'dropdown'),
+            self._get_mock_dictionary_item('checkbox_code', 'multi-select', 'checkbox')
+        ])
+
+        self.assertEqual(0, self.session.query(Code).count(), 'No codes should have been created')
+        mock_logger.error.assert_any_call('The following question codes are missing answer options: '
+                                          '"radio_code", "dropdown_code", "checkbox_code"')
+        self.assertEqual(1, return_val, 'Script should exit with an error code')
