@@ -1,5 +1,4 @@
 import datetime
-import mock
 
 from werkzeug.exceptions import BadRequest
 
