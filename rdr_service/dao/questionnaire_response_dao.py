@@ -749,8 +749,9 @@ class QuestionnaireResponseDao(BaseDao):
     @staticmethod
     def _add_answers(qr, code_id_map, answers):
         for answer, system_and_code in answers:
+            system, code = system_and_code
             if system_and_code:
-                answer.valueCodeId = code_id_map[system_and_code]
+                answer.valueCodeId = code_id_map.get(system, code)
             qr.answers.append(answer)
 
 

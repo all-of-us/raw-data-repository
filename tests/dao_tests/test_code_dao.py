@@ -1,4 +1,5 @@
 import datetime
+import mock
 
 from werkzeug.exceptions import BadRequest
 
@@ -361,6 +362,59 @@ class CodeDaoTest(BaseTestCase):
             parentId=3,
         )
         self.assertEqual(expectedAnswer1.asdict(), self.code_dao.get(4).asdict())
+
+    def test_code_map(self):
+        """Make sure the correct code ids are loaded for the code map"""
+
+        # Create some initial codes
+        codes = []
+        for index in range(4):
+            code = self.data_generator.create_database_code(value=f'test_a_{index}')
+            codes.append(code)
+
+        # Initialize the CodeDao and it's cache
+        code_dao = CodeDao()
+        code_dao._get_cache()
+
+        # Create another code, one that won't be in the cache
+        uncached_code = self.data_generator.create_database_code(value='uncached_b')
+        codes.append(uncached_code)
+
+        # Get the CodeDao's internal id code map
+        metadata_map = {(code.system, code.value): 1 for code in codes}
+        # TODO: get_internal_id_code_map only uses system and value pairs now,
+        #  so it can be refactored to only accept those
+        id_map = code_dao.get_internal_id_code_map(metadata_map)
+
+        # Make sure all the code ids are correct
+        for code in codes:
+            mapped_id = id_map.get(code.system, code.value)
+            self.assertEqual(code.codeId, mapped_id, 'Mismatch found when mapping code data to ids')
+
+    def test_code_mapping_is_not_case_sensitive(self):
+        code_value = 'test_a_1'
+        code = self.data_generator.create_database_code(value=code_value.lower())
+
+        # Initialize the CodeDao and it's cache
+        code_dao = CodeDao()
+        code_dao._get_cache()
+
+        # Get the CodeDao's internal id code map
+        metadata_map = {
+            (code.system, code_value.upper()): 1
+        }
+        id_map = code_dao.get_internal_id_code_map(metadata_map)
+
+        # Make sure case doesn't matter when looking up the code
+        mapped_id = id_map.get(code.system, code.value.upper())
+        self.assertEqual(code.codeId, mapped_id, 'Mismatch found when mapping code data to ids')
+        mapped_id = id_map.get(code.system, code.value.lower())
+        self.assertEqual(code.codeId, mapped_id, 'Mismatch found when mapping code data to ids')
+
+        # TODO: the way that the CodeDao's caching works means that if a different case is used
+        #  by a payload then when building the id map, the code will not be found in the cache,
+        #  but will be loaded from the database. So case differences will always cause a miss
+        #  until the caching mechanism can be refactored.
 
 
 def _make_concept(concept_topic, concept_type, code, display, child_concepts=None):
