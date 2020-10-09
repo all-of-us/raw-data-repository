@@ -488,8 +488,8 @@ class ManualSampleClass(GenomicManifestBase):
                     session.flush()
 
                     # Update state for PDR
-                    #bq_genomic_set_update(inserted_set.id, project_id=self.gcp_env.project)
-                    #genomic_set_update(inserted_set.id)
+                    bq_genomic_set_update(inserted_set.id, project_id=self.gcp_env.project)
+                    genomic_set_update(inserted_set.id)
 
                     for line in csvreader:
                         _pid = line[0]
@@ -518,8 +518,8 @@ class ManualSampleClass(GenomicManifestBase):
                             inserted_member = session.merge(member_to_insert)
                             session.flush()
 
-                            #bq_genomic_set_member_update(inserted_member.id, project_id=self.gcp_env.project)
-                            #genomic_set_member_update(inserted_member.id)
+                            bq_genomic_set_member_update(inserted_member.id, project_id=self.gcp_env.project)
+                            genomic_set_member_update(inserted_member.id)
 
                     session.commit()
 
