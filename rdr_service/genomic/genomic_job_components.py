@@ -1290,6 +1290,7 @@ class GenomicReconciler:
         return 1 if len(filenames) > 0 else 0
 
     def _get_full_filename(self, bucket_name, filename):
+        # Use the storage provider if it was set by tool
         if self.storage_provider:
             files = self.storage_provider.list(bucket_name, prefix=None)
         else:
