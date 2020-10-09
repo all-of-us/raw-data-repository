@@ -24,6 +24,7 @@ from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics
+from rdr_service.offline.genomic_pipeline import reconcile_metrics_vs_genotyping_data
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
@@ -487,8 +488,8 @@ class ManualSampleClass(GenomicManifestBase):
                     session.flush()
 
                     # Update state for PDR
-                    bq_genomic_set_update(inserted_set.id, project_id=self.gcp_env.project)
-                    genomic_set_update(inserted_set.id)
+                    #bq_genomic_set_update(inserted_set.id, project_id=self.gcp_env.project)
+                    #genomic_set_update(inserted_set.id)
 
                     for line in csvreader:
                         _pid = line[0]
@@ -517,8 +518,8 @@ class ManualSampleClass(GenomicManifestBase):
                             inserted_member = session.merge(member_to_insert)
                             session.flush()
 
-                            bq_genomic_set_member_update(inserted_member.id, project_id=self.gcp_env.project)
-                            genomic_set_member_update(inserted_member.id)
+                            #bq_genomic_set_member_update(inserted_member.id, project_id=self.gcp_env.project)
+                            #genomic_set_member_update(inserted_member.id)
 
                     session.commit()
 
@@ -762,6 +763,39 @@ class UpdateGcMetricsClass(GenomicManifestBase):
         self.counter += 1
 
 
+class GenomicProcessRunner(GenomicManifestBase):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(GenomicProcessRunner, self).__init__(args, gcp_env)
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+        if self.args.job not in GenomicJob.names():
+            _logger.error(f'Job must be a valid GenomicJob: {GenomicJob.names()}')
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicJobRunDao()
+
+        _logger.info(f"Running Genomic Process Runner for: {self.args.job}")
+
+        if self.args.job == 'AW1_MANIFEST':
+            if self.args.file:
+                _logger.info(f'File Specified: {self.args.file}')
+
+        if self.args.job == 'RECONCILE_GENOTYPING_DATA':
+            try:
+                reconcile_metrics_vs_genotyping_data(provider=self.gscp)
+
+            except RuntimeError as e:   # pylint: disable=broad-except
+                _logger.error(e)
+                return 1
+
+        return 0
+
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -828,6 +862,14 @@ def run():
                                       default=None, required=False)  # noqa
     job_run_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
+    # Process Runner
+    process_runner_parser = subparser.add_parser("process-runner")
+    process_runner_parser.add_argument("--job", help="GenomicJob process to run",
+                                       default=None, required=True)
+    process_runner_parser.add_argument("--file", help="The full gs://file/to/process",
+                                       default=None, required=False)
+    process_runner_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -857,6 +899,10 @@ def run():
 
         elif args.util == 'update-gc-metrics':
             process = UpdateGcMetricsClass(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.util == 'process-runner':
+            process = GenomicProcessRunner(args, gcp_env)
             exit_code = process.run()
 
         else:
