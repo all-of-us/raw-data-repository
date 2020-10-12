@@ -44,6 +44,7 @@ class GenomicJobController:
                  sub_folder_tuple=None,
                  archive_folder_name=None,
                  bucket_name_list=None,
+                 storage_provider=None,
                  ):
 
         self.job_id = job_id
@@ -67,6 +68,7 @@ class GenomicJobController:
         self.reconciler = None
         self.biobank_coupler = None
         self.manifest_compiler = None
+        self.storage_provider = storage_provider
 
     def __enter__(self):
         logging.info(f'Beginning {self.job_id.name} workflow')
@@ -116,7 +118,7 @@ class GenomicJobController:
         """
         Reconciles the metrics to genotyping files using reconciler component
         """
-        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id)
+        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id, storage_provider=self.storage_provider)
         try:
             self.job_result = self.reconciler.reconcile_metrics_to_genotyping_data()
         except RuntimeError:

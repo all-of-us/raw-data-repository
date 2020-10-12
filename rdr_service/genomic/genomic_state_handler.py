@@ -71,6 +71,20 @@ class AW2State(GenomicStateBase):
             return GenomicWorkflowState.GEM_READY
 
 
+class AW2MissingState(GenomicStateBase):
+    """State representing the AW2 Missing Data state"""
+
+    def transition_function(self, signal):
+        if signal == 'missing':
+            return GenomicWorkflowState.AW2_MISSING
+
+        elif signal == 'cvl-ready':
+            return GenomicWorkflowState.CVL_READY
+
+        elif signal == 'gem-ready':
+            return GenomicWorkflowState.GEM_READY
+
+
 class GEMReadyState(GenomicStateBase):
     """State representing the GEM_READY state"""
     def transition_function(self, signal):
@@ -194,6 +208,7 @@ class GenomicStateHandler:
         GenomicWorkflowState.AW0: AW0State(),
         GenomicWorkflowState.AW1: AW1State(),
         GenomicWorkflowState.AW2: AW2State(),
+        GenomicWorkflowState.AW2_MISSING: AW2MissingState(),
         GenomicWorkflowState.CVL_READY: CVLReadyState(),
         GenomicWorkflowState.W1: W1State(),
         GenomicWorkflowState.W2: W2State(),

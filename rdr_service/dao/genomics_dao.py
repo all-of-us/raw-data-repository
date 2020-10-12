@@ -493,6 +493,10 @@ class GenomicSetMemberDao(UpdatableDao):
             logging.error(f'Error updating member id: {member.id}.')
             return GenomicSubProcessResult.ERROR
 
+        except Exception as e:  # pylint: disable=broad-except
+            logging.error(e)
+            return GenomicSubProcessResult.ERROR
+
     def update_member_state(self, member, new_state):
         """
         Sets the member's state to a new state
@@ -888,7 +892,10 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-                    GenomicGCValidationMetrics.ignoreFlag != 1,
+                    GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                    GenomicGCValidationMetrics.genomicFileProcessedId != None,
+                    ((GenomicGCValidationMetrics.ignoreFlag != 1) |
+                     (GenomicGCValidationMetrics.ignoreFlag is not None)),
                     (GenomicGCValidationMetrics.idatRedReceived == 0) |
                     (GenomicGCValidationMetrics.idatGreenReceived == 0) |
                     (GenomicGCValidationMetrics.idatRedMd5Received == 0) |
@@ -916,7 +923,10 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-                    GenomicGCValidationMetrics.ignoreFlag != 1,
+                    GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
+                    GenomicGCValidationMetrics.genomicFileProcessedId != None,
+                    ((GenomicGCValidationMetrics.ignoreFlag != 1) | (
+                            GenomicGCValidationMetrics.ignoreFlag is not None)),
                     (GenomicGCValidationMetrics.hfVcfReceived == 0) |
                     (GenomicGCValidationMetrics.hfVcfTbiReceived == 0) |
                     (GenomicGCValidationMetrics.hfVcfMd5Received == 0) |

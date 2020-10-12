@@ -1026,7 +1026,7 @@ class GenomicFileMover:
 
 class GenomicReconciler:
     """ This component handles reconciliation between genomic datasets """
-    def __init__(self, run_id, job_id, archive_folder=None, file_mover=None, bucket_name=None):
+    def __init__(self, run_id, job_id, archive_folder=None, file_mover=None, bucket_name=None, storage_provider=None):
 
         self.run_id = run_id
         self.job_id = job_id
@@ -1041,6 +1041,7 @@ class GenomicReconciler:
 
         # Other components
         self.file_mover = file_mover
+        self.storage_provider = storage_provider
 
         # Data files and names will be different
         # file types are defined as
@@ -1125,7 +1126,9 @@ class GenomicReconciler:
 
             # Update Job Run ID on member
             self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId')
-            self.member_dao.update_member_state(member, next_state)
+
+            if next_state is not None and next_state != member.genomicWorkflowState:
+                self.member_dao.update_member_state(member, next_state)
 
         # Make a roc ticket for missing data files
         if len(total_missing_data) > 0:
@@ -1287,7 +1290,11 @@ class GenomicReconciler:
         return 1 if len(filenames) > 0 else 0
 
     def _get_full_filename(self, bucket_name, filename):
-        files = list_blobs('/' + bucket_name)
+        # Use the storage provider if it was set by tool
+        if self.storage_provider:
+            files = self.storage_provider.list(bucket_name, prefix=None)
+        else:
+            files = list_blobs('/' + bucket_name)
         filenames = [f.name for f in files if f.name.lower().endswith(filename.lower())]
         return filenames[0] if len(filenames) > 0 else 0
 
@@ -2483,7 +2490,11 @@ class GenomicAlertHandler:
     ROC_BOARD_ID = "ROC"
 
     def __init__(self):
-        self._jira_handler = JiraTicketHandler()
+        self.alert_envs = ["all-of-us-rdr-prod", "all-of-us-rdr-stable"]
+        if GAE_PROJECT in self.alert_envs:
+            self._jira_handler = JiraTicketHandler()
+        else:
+            self._jira_handler = None
 
     def make_genomic_alert(self, summary: str, description: str):
         """
@@ -2492,7 +2503,7 @@ class GenomicAlertHandler:
         :param summary: the 'title' of the ticket
         :param description: the 'body' of the ticket
         """
-        if GAE_PROJECT in ["all-of-us-rdr-prod", "all-of-us-rdr-stable"]:
+        if self._jira_handler is not None:
             ticket = self._jira_handler.create_ticket(summary, description,
                                                       board_id=self.ROC_BOARD_ID)
 
