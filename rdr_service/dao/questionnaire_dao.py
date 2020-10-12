@@ -176,7 +176,7 @@ class QuestionnaireDao(UpdatableDao):
                 QuestionnaireConcept(
                     questionnaireId=q.questionnaireId,
                     questionnaireVersion=q.version,
-                    codeId=code_id_map.get((system, code)),
+                    codeId=code_id_map.get(system, code),
                 )
             )
 
@@ -188,7 +188,7 @@ class QuestionnaireDao(UpdatableDao):
                     questionnaireId=q.questionnaireId,
                     questionnaireVersion=q.version,
                     linkId=linkId,
-                    codeId=code_id_map.get((system, code)),
+                    codeId=code_id_map.get(system, code),
                     repeats=repeats if repeats else False,
                 )
             )

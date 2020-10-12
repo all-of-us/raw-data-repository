@@ -16,6 +16,22 @@ _CODE_TYPE_MAP = {
 }
 
 
+class CodeMap(object):
+    """Stores code object ids by the value and system"""
+
+    def __init__(self):
+        self.codes = {}
+
+    def add(self, code: Code):
+        self.codes[(code.system, code.value.lower())] = code.codeId
+
+    def get(self, system, value):
+        return self.codes.get((system, value.lower()))
+
+    def __len__(self):
+        return len(self.codes)
+
+
 class CodeBookDao(BaseDao):
     def __init__(self):
         super(CodeBookDao, self).__init__(CodeBook)
@@ -171,26 +187,26 @@ class CodeDao(CacheAllDao):
         """Accepts a map of (system, value) -> (display, code_type, parent_id) for codes found in a
     questionnaire or questionnaire response.
 
-    Returns a map of (system, value) -> codeId for new and existing codes.
+    Returns a map of (system, value) -> codeId for existing codes.
     """
         # First get whatever is already in the cache.
-        result_map = {}
+        result_map = CodeMap()
         for system, value in list(code_map.keys()):
             code = self.get_code(system, value)
             if code:
-                result_map[(system, value)] = code.codeId
+                result_map.add(code)
         if len(result_map) == len(code_map):
             return result_map
 
         missing_codes = []
         with self.session() as session:
             for system, value in list(code_map.keys()):
-                existing_code = result_map.get((system, value))
+                existing_code = result_map.get(system, value)
                 if not existing_code:
                     # Check to see if it's in the database. (Normally it won't be.)
                     existing_code = self._get_code_with_session(session, system, value)
                     if existing_code:
-                        result_map[(system, value)] = code.codeId
+                        result_map.add(existing_code)
                     else:
                         missing_codes.append(f'{value} (system: {system})')
 
