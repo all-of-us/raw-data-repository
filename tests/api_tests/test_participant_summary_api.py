@@ -3117,6 +3117,14 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(ps['retentionEligibleTime'], TIME_4.isoformat())
         self.assertEqual(ps['retentionType'], 'UNSET')
 
+        ps = self.send_get("ParticipantSummary?retentionType=UNSET&_includeTotal=TRUE")
+        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'UNSET')
+        ps = self.send_get("ParticipantSummary?retentionType=UNSET&retentionEligibleStatus=ELIGIBLE&_includeTotal=TRUE")
+        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'UNSET')
+        ps = self.send_get("ParticipantSummary?retentionType=UNSET&retentionEligibleStatus=NOT_ELIGIBLE"
+                           "&_includeTotal=TRUE")
+        self.assertEqual(len(ps['entry']), 0)
+
         in_eighteen_month = clock.CLOCK.now() - datetime.timedelta(days=20)
         attrs = {
             'questionnaireOnHealthcareAccessAuthored': in_eighteen_month
@@ -3127,8 +3135,14 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         ps = self.send_get("ParticipantSummary?retentionType=ACTIVE&_includeTotal=TRUE")
         self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'ACTIVE')
+        ps = self.send_get("ParticipantSummary?retentionType=ACTIVE&retentionEligibleStatus=ELIGIBLE"
+                           "&_includeTotal=TRUE")
+        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'ACTIVE')
 
         ps = self.send_get("ParticipantSummary?retentionType=PASSIVE&_includeTotal=TRUE")
+        self.assertEqual(len(ps['entry']), 0)
+
+        ps = self.send_get("ParticipantSummary?retentionType=UNSET&_includeTotal=TRUE")
         self.assertEqual(len(ps['entry']), 0)
 
         attrs = {
@@ -3141,8 +3155,14 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         ps = self.send_get("ParticipantSummary?retentionType=PASSIVE&_includeTotal=TRUE")
         self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'PASSIVE')
+        ps = self.send_get("ParticipantSummary?retentionType=PASSIVE&retentionEligibleStatus=ELIGIBLE"
+                           "&_includeTotal=TRUE")
+        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'PASSIVE')
 
         ps = self.send_get("ParticipantSummary?retentionType=ACTIVE&_includeTotal=TRUE")
+        self.assertEqual(len(ps['entry']), 0)
+
+        ps = self.send_get("ParticipantSummary?retentionType=UNSET&_includeTotal=TRUE")
         self.assertEqual(len(ps['entry']), 0)
 
     @patch('rdr_service.api.base_api.DEFAULT_MAX_RESULTS', 1)
