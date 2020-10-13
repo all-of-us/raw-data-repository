@@ -17,7 +17,7 @@ _MANIFEST_FILE_NAME_PREFIX = 'Quest_AoU_Serology'
 _QUEST_AOU_RESULTS_FILE_NAME_PREFIX = 'Quest_AoU_Results'
 _QUEST_AOU_TESTS_FILE_NAME_PREFIX = 'Quest_AoU_Tests'
 _CLIA_COMPLIANCE_SUB_FOLDER_NAME = 'clia-compliant-reports'
-_BATCH_SIZE = 100
+_BATCH_SIZE = 500
 BIOBANK_ID_PREFIX = get_biobank_id_prefix()
 
 
@@ -106,9 +106,11 @@ def _save_biobank_antibody_manifest_from_csv(csv_reader, csv_filename):
             records.append(record)
             if len(records) >= _BATCH_SIZE:
                 biobank_covid_antibody_dao.upsert_all_with_session(session, records)
+                session.commit()
                 records = []
         if records:
             biobank_covid_antibody_dao.upsert_all_with_session(session, records)
+            session.commit()
 
 
 def _create_biobank_covid_antibody_obj_from_row(row, csv_filename):
@@ -154,9 +156,11 @@ def _save_quest_covid_antibody_test_from_csv(csv_reader, csv_filename):
             records.append(record)
             if len(records) >= _BATCH_SIZE:
                 quest_covid_antibody_test_dao.upsert_all_with_session(session, records)
+                session.commit()
                 records = []
         if records:
             quest_covid_antibody_test_dao.upsert_all_with_session(session, records)
+            session.commit()
 
 
 def _create_quest_covid_antibody_test_obj_from_row(row, csv_filename):
@@ -193,9 +197,11 @@ def _save_quest_covid_antibody_test_result_from_csv(csv_reader, csv_filename):
             records.append(record)
             if len(records) >= _BATCH_SIZE:
                 quest_covid_antibody_test_result_dao.upsert_all_with_session(session, records)
+                session.commit()
                 records = []
         if records:
             quest_covid_antibody_test_result_dao.upsert_all_with_session(session, records)
+            session.commit()
 
 
 def _create_quest_covid_antibody_test_result_obj_from_row(row, csv_filename):
