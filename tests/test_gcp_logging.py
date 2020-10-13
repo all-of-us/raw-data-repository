@@ -39,6 +39,7 @@ class GCPLoggingTest(BaseTestCase):
         lines = [
             {'severity': logging.INFO},
             {'msg': 'This one has no severity'},
+            {'severity': None},
             {'severity': logging.CRITICAL},
             {'severity': logging.ERROR},
         ]
