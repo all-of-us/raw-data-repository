@@ -11,10 +11,12 @@ from sqlalchemy import (
 )
 from sqlalchemy import BLOB  # pylint: disable=unused-import
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import text
 
 from rdr_service.model.base import Base
-from rdr_service.model.utils import UTCDateTime
+from rdr_service.model.utils import EnumZeroBased, UTCDateTime
 from rdr_service.model.field_types import BlobUTF8
+from rdr_service.participant_enums import QuestionnaireResponseStatus
 
 
 class QuestionnaireResponse(Base):
@@ -31,6 +33,12 @@ class QuestionnaireResponse(Base):
     authored = Column("authored", UTCDateTime, nullable=True)
     language = Column("language", String(2), nullable=True)
     resource = Column("resource", BlobUTF8, nullable=False)
+    status = Column(
+        EnumZeroBased(QuestionnaireResponseStatus),
+        nullable=False,
+        default=QuestionnaireResponseStatus.COMPLETED,
+        server_default=text(str(int(QuestionnaireResponseStatus.COMPLETED)))
+    )
     answers = relationship("QuestionnaireResponseAnswer", cascade="all, delete-orphan")
     __table_args__ = (
         ForeignKeyConstraint(

@@ -92,6 +92,16 @@ class QuestionnaireDefinitionStatus(messages.Enum):
     INVALID = 1
 
 
+class QuestionnaireResponseStatus(messages.Enum):
+    """Given status of a questionnaire response"""
+
+    IN_PROGRESS = 0
+    COMPLETED = 1
+    AMENDED = 2
+    ENTERED_IN_ERROR = 3
+    STOPPED = 4
+
+
 class EnrollmentStatus(messages.Enum):
     """A status reflecting how fully enrolled a participant is"""
 

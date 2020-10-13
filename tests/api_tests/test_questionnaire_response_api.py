@@ -18,10 +18,11 @@ from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao,
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
 from rdr_service.model.code import Code
-from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import from_client_participant_id
-from rdr_service.participant_enums import QuestionnaireDefinitionStatus, ParticipantCohort, ParticipantCohortPilotFlag
+from rdr_service.participant_enums import QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,\
+    ParticipantCohort, ParticipantCohortPilotFlag
 
 from tests.test_data import data_path
 from tests.helpers.unittest_base import BaseTestCase
@@ -1080,6 +1081,53 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             response.json['message']
         )
 
+    def test_recording_response_payload_status(self):
+        q_id = self.create_questionnaire("questionnaire1.json")
+        p_id = self.create_participant()
+        self.send_consent(p_id)
+
+        resource = self.make_questionnaire_response_json(
+            p_id,
+            q_id,
+            code_answers=[('2.3.2', Concept(PPI_SYSTEM, 'new_answer_code'))],
+            status='entered-in-error'
+        )
+        self.send_post(self.questionnaire_response_url(p_id), resource)
+
+        recorded_response = self.session.query(QuestionnaireResponse).filter(
+            QuestionnaireResponse.participantId == from_client_participant_id(p_id),
+            QuestionnaireResponse.questionnaireId == q_id
+        ).one()
+        self.assertEqual(QuestionnaireResponseStatus.ENTERED_IN_ERROR, recorded_response.status)
+
+    def test_partial_survey_response(self):
+        """
+        We should be able to accept partial questionnaire responses without having them change the participant summary
+        """
+        participant_id = self.create_participant()
+        self.send_consent(participant_id)
+
+        # Set up a questionnaire that usually changes participant summary
+        questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
+
+        with open(data_path("questionnaire_the_basics_resp.json")) as f:
+            resource = json.load(f)
+
+        # Get questionnaire to match participant and questionnaire
+        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
+        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
+            questionnaire_id=questionnaire_id
+        )
+
+        # Submit response as in-progress
+        resource['status'] = 'in-progress'
+        self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        # Make sure response doesn't affect participant summary
+        participant_summary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == from_client_participant_id(participant_id)
+        ).one()
+        self.assertIsNone(participant_summary.questionnaireOnTheBasics)
 
 def _add_code_answer(code_answers, link_id, code):
     if code:
