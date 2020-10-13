@@ -104,12 +104,12 @@ cron:
   timezone: America/New_York
   schedule: every day 05:00
   target: offline
-- description: Genomic Reconciliation Array Data Workflow (Manual)
+- description: Genomic Reconciliation Array Data Workflow
   url: /offline/GenomicArrayReconciliationWorkflow
   timezone: America/New_York
   schedule: every day 05:30
   target: offline
-- description: Genomic Reconciliation WGS Data Workflow (Manual)
+- description: Genomic Reconciliation WGS Data Workflow
   url: /offline/GenomicWGSReconciliationWorkflow
   timezone: America/New_York
   schedule: every day 06:00
