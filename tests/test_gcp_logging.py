@@ -46,3 +46,12 @@ class GCPLoggingTest(BaseTestCase):
 
         highest_severity = gcp_logging.get_highest_severity_level_from_lines(lines)
         self.assertEqual(logging.CRITICAL, highest_severity)
+
+    def test_handle_no_severities_when_finding_highest(self):
+        lines = [
+            {'msg': 'This one has no severity'},
+            {'severity': None},
+        ]
+
+        highest_severity = gcp_logging.get_highest_severity_level_from_lines(lines)
+        self.assertEqual(enums.LogSeverity.INFO, highest_severity)
