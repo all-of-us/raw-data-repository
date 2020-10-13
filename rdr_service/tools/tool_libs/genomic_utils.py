@@ -20,6 +20,7 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_gen
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao, \
     GenomicGCValidationMetricsDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler
+from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
@@ -784,16 +785,35 @@ class GenomicProcessRunner(GenomicManifestBase):
         if self.args.job == 'AW1_MANIFEST':
             if self.args.file:
                 _logger.info(f'File Specified: {self.args.file}')
+                return self.run_aw1_manifest()
 
         if self.args.job == 'RECONCILE_GENOTYPING_DATA':
             try:
                 reconcile_metrics_vs_genotyping_data(provider=self.gscp)
 
-            except RuntimeError as e:   # pylint: disable=broad-except
+            except Exception as e:   # pylint: disable=broad-except
                 _logger.error(e)
                 return 1
 
         return 0
+
+    def run_aw1_manifest(self):
+        # Get bucket and filename from argument
+        bucket_name = self.args.file.split('/')[0]
+        file_name = self.args.file.replace(bucket_name + '/', '')
+
+        # Use a Controller to run the job
+        try:
+            with GenomicJobController(GenomicJob.AW1_MANIFEST,
+                                      storage_provider=self.gscp) as controller:
+                controller.bucket_name = bucket_name
+                controller.ingest_specific_aw1_manifest(file_name)
+
+            return 0
+
+        except Exception as e:  # pylint: disable=broad-except
+            _logger.error(e)
+            return 1
 
 
 def run():
@@ -866,7 +886,7 @@ def run():
     process_runner_parser = subparser.add_parser("process-runner")
     process_runner_parser.add_argument("--job", help="GenomicJob process to run",
                                        default=None, required=True)
-    process_runner_parser.add_argument("--file", help="The full gs://file/to/process",
+    process_runner_parser.add_argument("--file", help="The full 'bucket/subfolder/file.ext to process",
                                        default=None, required=False)
     process_runner_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 

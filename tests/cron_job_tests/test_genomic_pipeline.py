@@ -44,6 +44,7 @@ from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import (
     SampleStatus,
@@ -1519,6 +1520,46 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(len(files_processed), 1)
 
         # Test the end-to-end result code
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
+
+    @mock.patch('rdr_service.genomic.genomic_job_components.GenomicFileIngester._check_if_control_sample')
+    def test_ingest_specific_aw1_manifest(self, control_check_mock):
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+                                                array_participants=range(1, 4),
+                                                genomic_workflow_state=GenomicWorkflowState.AW0)
+
+        # Setup Test file
+        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-1.csv")
+
+        gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+
+        self._write_cloud_csv(
+            gc_manifest_filename,
+            gc_manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=_FAKE_GENOTYPING_FOLDER,
+        )
+
+        # Get bucket, subfolder, and filename from argument
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        file_name = _FAKE_GENOTYPING_FOLDER + '/' + gc_manifest_filename
+
+        # Use the Controller to run the job
+        with GenomicJobController(GenomicJob.AW1_MANIFEST) as controller:
+            controller.bucket_name = bucket_name
+            controller.ingest_specific_aw1_manifest(file_name)
+
+        # Test the data was ingested OK
+        for member in self.member_dao.get_all():
+            if member.id in [1, 2]:
+                self.assertEqual(1, member.reconcileGCManifestJobRunId)
+                self.assertEqual('rdr', member.gcSiteId)
+                self.assertEqual("aou_array", member.gcManifestTestName)
+
+        # test control samples
+        control_check_mock.assert_called_with(1234)
+
+        # Test the end result code is recorded
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
 
     def test_aw1f_ingestion_workflow(self):

@@ -187,6 +187,21 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
+    def ingest_specific_aw1_manifest(self, filename):
+        """
+        Uses GenomicFileIngester to ingest specific Genomic Manifest files (AW1).
+        """
+        try:
+            self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                                job_run_id=self.job_run.id,
+                                                bucket=self.bucket_name,
+                                                target_file=filename,
+                                                _controller=self)
+
+            self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
     def run_aw1f_manifest_workflow(self):
         """
         Ingests the BB to GC failure manifest (AW1F)
