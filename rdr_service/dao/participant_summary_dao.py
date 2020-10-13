@@ -933,7 +933,7 @@ class RetentionTypeFieldFilter(FieldFilter):
         super(RetentionTypeFieldFilter, self).__init__(field_name, operator, value)
 
     def add_to_sqlalchemy_query(self, query, field):
-        if self.value in ('ACTIVE', 'PASSIVE'):
+        if self.value in ('ACTIVE', 'PASSIVE', 'UNSET'):
             eighteen_month_ago = clock.CLOCK.now() - RETENTION_WINDOW
             active_criterion = or_(
                 ParticipantSummary.questionnaireOnHealthcareAccessAuthored > eighteen_month_ago,
@@ -1014,6 +1014,19 @@ class RetentionTypeFieldFilter(FieldFilter):
                     field == RetentionStatus.ELIGIBLE,
                     passive_criterion,
                     ParticipantSummary.ehrReceiptTime > eighteen_month_ago
+                )
+            elif self.value == 'UNSET':
+                query = query.filter(
+                    or_(
+                        field == RetentionStatus.NOT_ELIGIBLE,
+                        and_(
+                            passive_criterion,
+                            or_(
+                                ParticipantSummary.ehrReceiptTime == None,
+                                ParticipantSummary.ehrReceiptTime <= eighteen_month_ago
+                            )
+                        )
+                    )
                 )
             return query
         else:
