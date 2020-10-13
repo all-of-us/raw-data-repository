@@ -20,6 +20,7 @@ from rdr_service.participant_enums import (
     DeceasedReportStatus,
     DeceasedStatus,
     EnrollmentStatus,
+    QuestionnaireResponseStatus,
     SuspensionStatus,
     UNSET_HPO_ID,
     WithdrawalStatus,
@@ -98,7 +99,8 @@ class DataGenerator:
 
     def _questionnaire_response(self, **kwargs):
         for field, default in [('created', datetime.now()),
-                               ('resource', 'test')]:
+                               ('resource', 'test'),
+                               ('status', QuestionnaireResponseStatus.COMPLETED)]:
             if field not in kwargs:
                 kwargs[field] = default
 
