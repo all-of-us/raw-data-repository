@@ -34,3 +34,24 @@ class GCPLoggingTest(BaseTestCase):
             _, kwargs = mock_final_log_entry_call.call_args
             logged_severity = kwargs.get('severity')
             self.assertEqual(enums.LogSeverity.ERROR, logged_severity)
+
+    def test_handle_missing_severity_when_finding_highest(self):
+        lines = [
+            {'severity': logging.INFO},
+            {'msg': 'This one has no severity'},
+            {'severity': None},
+            {'severity': logging.CRITICAL},
+            {'severity': logging.ERROR},
+        ]
+
+        highest_severity = gcp_logging.get_highest_severity_level_from_lines(lines)
+        self.assertEqual(logging.CRITICAL, highest_severity)
+
+    def test_handle_no_severities_when_finding_highest(self):
+        lines = [
+            {'msg': 'This one has no severity'},
+            {'severity': None},
+        ]
+
+        highest_severity = gcp_logging.get_highest_severity_level_from_lines(lines)
+        self.assertEqual(enums.LogSeverity.INFO, highest_severity)
