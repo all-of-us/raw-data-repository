@@ -153,15 +153,6 @@ def ingest_genomic_centers_metrics_files():
         controller.ingest_gc_metrics()
 
 
-def reconcile_metrics_vs_manifest():
-    """
-    Entrypoint for GC Metrics File reconciliation
-    against Manifest subprocess of genomic_pipeline.
-    """
-    with GenomicJobController(GenomicJob.RECONCILE_MANIFEST) as controller:
-        controller.run_reconciliation_to_manifest()
-
-
 def reconcile_metrics_vs_genotyping_data(provider=None):
     """
     Entrypoint for GC Metrics File reconciliation

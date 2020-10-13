@@ -542,20 +542,6 @@ class GenomicSetMemberDao(UpdatableDao):
             ).all()
         return members
 
-    def get_null_field_members(self, field):
-        """
-        Get the genomic set members with a null value for a field
-        useful for reconciliation processes.
-        :param field: field to lookup null
-        :return: GenomicSetMember list
-        """
-        with self.session() as session:
-            members = session.query(GenomicSetMember).filter(
-                getattr(GenomicSetMember, field) == None,
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE
-            ).all()
-        return members
-
     def get_unconsented_gror_since_date(self, _date):
         """
         Get the genomic set members with GROR updated to No Consent since date

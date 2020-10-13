@@ -103,17 +103,6 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def run_reconciliation_to_manifest(self):
-        """
-        Reconciles the metrics to manifest using reconciler component
-        :return: result code for job run
-        """
-        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id)
-        try:
-            self.job_result = self.reconciler.reconcile_metrics_to_manifest()
-        except RuntimeError:
-            self.job_result = GenomicSubProcessResult.ERROR
-
     def run_reconciliation_to_genotyping_data(self):
         """
         Reconciles the metrics to genotyping files using reconciler component

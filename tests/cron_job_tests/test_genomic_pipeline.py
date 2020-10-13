@@ -637,33 +637,6 @@ class GenomicPipelineTest(BaseTestCase):
             codeType=CodeType.ANSWER, mapped=True)
         return self.code_dao.insert(code_to_insert).codeId
 
-    def test_gc_metrics_reconciliation_vs_manifest(self):
-        # Create the fake Google Cloud CSV files to ingest
-        self._create_fake_datasets_for_gc_tests(2, arr_override=True, array_participants=[1, 2],
-                                                genomic_workflow_state=GenomicWorkflowState.AW1)
-        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
-        self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
-                                         bucket_name,
-                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
-
-        self._update_test_sample_ids()
-
-        # Run the GC Metrics Ingestion workflow
-        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
-
-        # Run the GC Metrics Reconciliation
-        genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 2
-        test_set_member = self.member_dao.get(1)
-        gc_metric_record = self.metrics_dao.get(1)
-
-        # Test the gc_metrics were updated with reconciliation data
-        self.assertEqual(test_set_member.id, gc_metric_record.genomicSetMemberId)
-        self.assertEqual(2, test_set_member.reconcileMetricsBBManifestJobRunId)
-
-        run_obj = self.job_run_dao.get(2)
-
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
-
     @mock.patch('rdr_service.genomic.genomic_job_components.GenomicAlertHandler')
     def test_gc_metrics_reconciliation_vs_genotyping_data(self, patched_handler):
         mock_alert_handler = patched_handler.return_value
@@ -1689,14 +1662,13 @@ class GenomicPipelineTest(BaseTestCase):
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
 
-        genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 3
-        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 4
+        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 3
 
         # finally run the manifest workflow
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
         a1_time = datetime.datetime(2020, 4, 1, 0, 0, 0, 0)
         with clock.FakeClock(a1_time):
-            genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 5
+            genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 4
         a1f = a1_time.strftime("%Y-%m-%d-%H-%M-%S")
         # Test Genomic Set Member updated with GEM Array Manifest job run
         with self.member_dao.session() as member_session:
@@ -1718,7 +1690,7 @@ class GenomicPipelineTest(BaseTestCase):
                 GenomicSetMember.id == 1
             ).one()
 
-        self.assertEqual(5, test_member_1.gemA1ManifestJobRunId)
+        self.assertEqual(4, test_member_1.gemA1ManifestJobRunId)
         self.assertEqual(GenomicWorkflowState.A1, test_member_1.genomicWorkflowState)
 
         # Test the manifest file contents
@@ -1748,7 +1720,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Array
         file_record = self.file_processed_dao.get(2)  # remember, GC Metrics is #1
-        self.assertEqual(5, file_record.runId)
+        self.assertEqual(4, file_record.runId)
         self.assertEqual(f'{sub_folder}/AoU_GEM_A1_manifest_{a1f}.csv', file_record.fileName)
 
         # Test the job result
@@ -1944,20 +1916,19 @@ class GenomicPipelineTest(BaseTestCase):
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
 
-        genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 3
-        genomic_pipeline.reconcile_metrics_vs_sequencing_data()  # run_id = 4
+        genomic_pipeline.reconcile_metrics_vs_sequencing_data()  # run_id = 3
 
         # Run the W1 manifest workflow
         fake_dt = datetime.datetime(2020, 4, 3, 0, 0, 0, 0)
 
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.create_cvl_w1_manifest()  # run_id 5
+            genomic_pipeline.create_cvl_w1_manifest()  # run_id 4
 
         w1_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
         # Test member was updated
         member = self.member_dao.get(2)
-        self.assertEqual(5, member.cvlW1ManifestJobRunId)
+        self.assertEqual(4, member.cvlW1ManifestJobRunId)
         self.assertEqual(GenomicWorkflowState.W1, member.genomicWorkflowState)
 
         # Test the manifest file contents
@@ -1990,10 +1961,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test file processed is recorded
         file_record = self.file_processed_dao.get(2)  # remember, GC Metrics is #1
-        self.assertEqual(5, file_record.runId)
+        self.assertEqual(4, file_record.runId)
         self.assertEqual(f'{sub_folder}/AoU_CVL_Manifest_{w1_dtf}.csv', file_record.fileName)
 
-        run_obj = self.job_run_dao.get(5)
+        run_obj = self.job_run_dao.get(4)
 
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
@@ -2162,21 +2133,20 @@ class GenomicPipelineTest(BaseTestCase):
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
 
-        genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 3
-        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 4
+        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 3
 
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_array_manifest_workflow()  # run_id = 5
+            genomic_pipeline.aw3_array_manifest_workflow()  # run_id = 4
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
         # Test member was updated
         member = self.member_dao.get(2)
 
-        self.assertEqual(5, member.aw3ManifestJobRunID)
+        self.assertEqual(4, member.aw3ManifestJobRunID)
         self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
 
         # Test the manifest file contents
@@ -2223,7 +2193,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(metric.vcfMd5Path, rows[1]['vcf_md5_path'])
 
             # Test run record is success
-            run_obj = self.job_run_dao.get(5)
+            run_obj = self.job_run_dao.get(4)
 
             self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
@@ -2265,21 +2235,20 @@ class GenomicPipelineTest(BaseTestCase):
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
 
-        genomic_pipeline.reconcile_metrics_vs_manifest()  # run_id = 3
-        genomic_pipeline.reconcile_metrics_vs_sequencing_data()  # run_id = 4
+        genomic_pipeline.reconcile_metrics_vs_sequencing_data()  # run_id = 3
 
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 5
+            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 4
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
         # Test member was updated
         member = self.member_dao.get(2)
 
-        self.assertEqual(5, member.aw3ManifestJobRunID)
+        self.assertEqual(4, member.aw3ManifestJobRunID)
         self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
 
         # Test the manifest file contents
@@ -2330,7 +2299,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(metric.craiPath, rows[0]["crai_path"])
 
             # Test run record is success
-            run_obj = self.job_run_dao.get(5)
+            run_obj = self.job_run_dao.get(4)
 
             self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 

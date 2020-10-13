@@ -9,7 +9,9 @@ cron:
 - description: Genomic AW1 Failures Workflow
 - description: Genomic AW1C (CVL) Workflow (Manual)
 - description: Genomic AW1CF (CVL) Failures Workflow (Manual)
-- description: Genomic AW2 Workflow (Manual)
+- description: Genomic AW2 Workflow
+- description: Genomic Reconciliation Array Data Workflow
+- description: Genomic Reconciliation WGS Data Workflow
 - description: Genomic GEM A1-A2 Workflow
 - description: Genomic GEM A2 Workflow
 - description: Genomic CVL W1 Workflow (Manual)

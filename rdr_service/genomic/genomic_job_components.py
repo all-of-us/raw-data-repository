@@ -1064,23 +1064,6 @@ class GenomicReconciler:
                                       ("cramMd5Received", ".cram.md5sum", "cramMd5Path"),
                                       ("craiReceived", ".crai", "craiPath"))
 
-    def reconcile_metrics_to_manifest(self):
-        """ The main method for the metrics vs. manifest reconciliation """
-        try:
-
-            unreconciled_members = self.member_dao.get_null_field_members('reconcileMetricsBBManifestJobRunId')
-            results = []
-            for member in unreconciled_members:
-                results.append(
-                    self.member_dao.update_member_job_run_id(
-                        member, self.run_id, 'reconcileMetricsBBManifestJobRunId')
-                )
-            return GenomicSubProcessResult.SUCCESS \
-                if GenomicSubProcessResult.ERROR not in results \
-                else GenomicSubProcessResult.ERROR
-        except RuntimeError:
-            return GenomicSubProcessResult.ERROR
-
     def reconcile_metrics_to_genotyping_data(self):
         """ The main method for the AW2 manifest vs. array data reconciliation
         :return: result code
