@@ -147,6 +147,9 @@ class LocalFilesystemStorageProvider(StorageProvider):
         os.makedirs(os.path.dirname(destination_path), exist_ok=True)
         shutil.copy(source_path, destination_path)
 
+    def get_local_path(self, path):
+        return self._get_local_path(path)
+
     @staticmethod
     def _make_blob(*args, **kw):
         properties = kw.pop("properties", {})

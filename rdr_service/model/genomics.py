@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
-from rdr_service.model.utils import Enum, MultiEnum
+from rdr_service.model.utils import Enum, MultiEnum, UTCDateTime
 from rdr_service.participant_enums import (
     GenomicSetStatus,
     GenomicSetMemberStatus,
@@ -268,6 +268,7 @@ class GenomicFileProcessed(Base):
     fileResult = Column('file_result',
                         Enum(GenomicSubProcessResult),
                         default=GenomicSubProcessResult.UNSET)
+    uploadDate = Column('upload_date', UTCDateTime, nullable=True)
 
 
 class GenomicGCValidationMetrics(Base):

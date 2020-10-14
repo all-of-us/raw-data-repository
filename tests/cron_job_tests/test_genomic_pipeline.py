@@ -1,5 +1,6 @@
 import csv
 import datetime
+import time
 import os
 import mock
 
@@ -7,7 +8,7 @@ import pytz
 from dateutil.parser import parse
 
 
-from rdr_service import clock, config
+from rdr_service import clock, config, storage
 from rdr_service.api_util import open_cloud_file, list_blobs
 from rdr_service.code_constants import (
     BIOBANK_TESTS, COHORT_1_REVIEW_CONSENT_YES_CODE, COHORT_1_REVIEW_CONSENT_NO_CODE)
@@ -136,6 +137,12 @@ class GenomicPipelineTest(BaseTestCase):
         with open_cloud_file(path, mode='wb') as cloud_file:
             cloud_file.write(contents_str.encode("utf-8"))
 
+        # handle update time of test files
+        provider = storage.get_storage_provider()
+        n = clock.CLOCK.now()
+        ntime = time.mktime(n.timetuple())
+        os.utime(provider.get_local_path(path), (ntime, ntime))
+
     def _make_participant(self, **kwargs):
         """
     Make a participant with custom settings.
@@ -224,10 +231,16 @@ class GenomicPipelineTest(BaseTestCase):
             'RDR_AoU_GEN_TestDataManifest.csv',
             'test_empty_wells.csv'
         )
+
+        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
+
         for test_file in end_to_end_test_files:
-            self._create_ingestion_test_file(test_file, bucket_name,
-                                             folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]),
-                                             include_sub_num=True)
+            pytz.timezone('US/Central').localize(test_date)
+
+            with clock.FakeClock(test_date):
+                self._create_ingestion_test_file(test_file, bucket_name,
+                                                 folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]),
+                                                 include_sub_num=True)
 
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
                                                 array_participants=(1, 2),
@@ -241,6 +254,8 @@ class GenomicPipelineTest(BaseTestCase):
         # test file processing queue
         files_processed = self.file_processed_dao.get_all()
         self.assertEqual(len(files_processed), 1)
+        self.assertEqual(test_date.astimezone(pytz.utc), pytz.utc.localize(files_processed[0].uploadDate))
+
         self._gc_files_processed_test_cases(files_processed)
 
         # Test the fields against the DB
@@ -1472,13 +1487,16 @@ class GenomicPipelineTest(BaseTestCase):
         gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-1.csv")
 
         gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
+        pytz.timezone('US/Central').localize(test_date)
 
-        self._write_cloud_csv(
-            gc_manifest_filename,
-            gc_manifest_file,
-            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
-            folder=_FAKE_GENOTYPING_FOLDER,
-        )
+        with clock.FakeClock(test_date):
+            self._write_cloud_csv(
+                gc_manifest_filename,
+                gc_manifest_file,
+                bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+                folder=_FAKE_GENOTYPING_FOLDER,
+            )
 
         genomic_pipeline.genomic_centers_manifest_workflow()
 
@@ -1518,6 +1536,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test file processing queue
         files_processed = self.file_processed_dao.get_all()
         self.assertEqual(len(files_processed), 1)
+        self.assertEqual(test_date.astimezone(pytz.utc), pytz.utc.localize(files_processed[0].uploadDate))
 
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
@@ -1533,12 +1552,16 @@ class GenomicPipelineTest(BaseTestCase):
 
         gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
 
-        self._write_cloud_csv(
-            gc_manifest_filename,
-            gc_manifest_file,
-            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
-            folder=_FAKE_GENOTYPING_FOLDER,
-        )
+        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
+        pytz.timezone('US/Central').localize(test_date)
+
+        with clock.FakeClock(test_date):
+            self._write_cloud_csv(
+                gc_manifest_filename,
+                gc_manifest_file,
+                bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+                folder=_FAKE_GENOTYPING_FOLDER,
+            )
 
         # Get bucket, subfolder, and filename from argument
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
@@ -1558,6 +1581,9 @@ class GenomicPipelineTest(BaseTestCase):
 
         # test control samples
         control_check_mock.assert_called_with(1234)
+
+        files_processed = self.file_processed_dao.get_all()
+        self.assertEqual(test_date.astimezone(pytz.utc), pytz.utc.localize(files_processed[0].uploadDate))
 
         # Test the end result code is recorded
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)

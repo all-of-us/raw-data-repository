@@ -735,13 +735,15 @@ class GenomicFileProcessedDao(UpdatableDao):
                            bucket_name,
                            file_name,
                            end_time=None,
-                           file_result=None):
+                           file_result=None,
+                           upload_date=None):
         """
         Inserts the file record
         :param run_id: the id of the current genomics_job_run
         :param path: the path of the current file to be inserted
         :param bucket_name: name of Google Cloud bucket being processed
         :param file_name: name of file being processed
+        :param upload_date: the date the file was uploaded to the bucket
         :return: the inserted GenomicFileProcessed object
         """
         processing_file = GenomicFileProcessed()
@@ -752,6 +754,7 @@ class GenomicFileProcessedDao(UpdatableDao):
         processing_file.startTime = clock.CLOCK.now()
         processing_file.endTime = end_time
         processing_file.fileResult = file_result
+        processing_file.uploadDate = upload_date
 
         return self.insert(processing_file)
 
