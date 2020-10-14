@@ -9,7 +9,8 @@ from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
-from rdr_service.participant_enums import PARTICIPANT_COHORT_2_START_TIME, PARTICIPANT_COHORT_3_START_TIME
+from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME,\
+    PARTICIPANT_COHORT_3_START_TIME
 from rdr_service.app_util import get_account_origin_id
 from rdr_service import storage
 from rdr_service import clock, config
@@ -229,10 +230,11 @@ class QuestionnaireResponseDao(BaseDao):
         # to get the exclusive lock if another thread is updating the participant. See DA-269.
         # (We need to lock both participant and participant summary because the summary row may not
         # exist yet.)
-        with self.session() as new_session:
-            self._update_participant_summary(
-                new_session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
-            )
+        if questionnaire_response.status == QuestionnaireResponseStatus.COMPLETED:
+            with self.session() as new_session:
+                self._update_participant_summary(
+                    new_session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
+                )
 
         super(QuestionnaireResponseDao, self).insert_with_session(session, questionnaire_response)
         # Mark existing answers for the questions in this response given previously by this participant
@@ -585,6 +587,20 @@ class QuestionnaireResponseDao(BaseDao):
             return super(QuestionnaireResponseDao, self).insert(obj)
         return self._insert_with_random_id(obj, ["questionnaireResponseId"])
 
+    def read_status(self, fhir_response: fhir_questionnaireresponse.QuestionnaireResponse):
+        status_map = {
+            'in-progress': QuestionnaireResponseStatus.IN_PROGRESS,
+            'completed': QuestionnaireResponseStatus.COMPLETED,
+            'amended': QuestionnaireResponseStatus.AMENDED,
+            'entered-in-error': QuestionnaireResponseStatus.ENTERED_IN_ERROR,
+            'stopped': QuestionnaireResponseStatus.STOPPED
+        }
+
+        if fhir_response.status not in status_map:
+            raise BadRequest(f'Unrecognized status "{fhir_response.status}"')
+        else:
+            return status_map[fhir_response.status]
+
     def from_client_json(self, resource_json, participant_id=None, client_id=None):
         # pylint: disable=unused-argument
         # Parse the questionnaire response, but preserve the original response when persisting
@@ -616,6 +632,7 @@ class QuestionnaireResponseDao(BaseDao):
             authored=authored,
             language=language,
             resource=json.dumps(resource_json),
+            status=self.read_status(fhir_qr)
         )
 
         if fhir_qr.group is not None:
