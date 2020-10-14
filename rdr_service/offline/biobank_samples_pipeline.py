@@ -448,7 +448,10 @@ _ORDER_JOINS = """
 _STORED_SAMPLE_JOIN_CRITERIA = """
       biobank_stored_sample.biobank_id = participant.biobank_id
       AND biobank_stored_sample.test = biobank_ordered_sample.test
-      AND biobank_stored_sample.biobank_order_identifier = biobank_order_identifier.value
+      AND biobank_stored_sample.biobank_order_identifier = CASE
+        WHEN biobank_order_identifier.system = :ce_quest_system THEN kit_id_identifier.value
+        ELSE biobank_order_identifier.value
+      END
       AND biobank_ordered_sample.finalized IS NOT NULL
       AND biobank_stored_sample.confirmed IS NOT NULL
 """
@@ -573,7 +576,10 @@ _RECONCILIATION_REPORT_SQL = (
   FROM
    (SELECT
       participant.biobank_id raw_biobank_id,
-      biobank_order_identifier.value biobank_order_id,
+      CASE
+        WHEN biobank_order_identifier.system = :ce_quest_system THEN kit_id_identifier.value
+        ELSE biobank_order_identifier.value
+      END biobank_order_id,
       source_site.site_name source_site_name,
       source_site.mayolink_client_number source_site_mayolink_client_number,
       source_site_hpo.name source_site_hpo,
@@ -615,14 +621,14 @@ _RECONCILIATION_REPORT_SQL = (
     ON dv_order.biobank_order_id = biobank_order.biobank_order_id
         AND dv_order.is_test_sample IS NOT TRUE
     LEFT OUTER JOIN
+      biobank_order_identifier kit_id_identifier
+    ON biobank_order.biobank_order_id = kit_id_identifier.biobank_order_id
+       AND kit_id_identifier.system = :kit_id_system
+    LEFT OUTER JOIN
       biobank_stored_sample
     ON """
     + _STORED_SAMPLE_JOIN_CRITERIA
     + """
-    LEFT OUTER JOIN
-      biobank_order_identifier kit_id_identifier
-    ON biobank_order.biobank_order_id = kit_id_identifier.biobank_order_id
-       AND kit_id_identifier.system = :kit_id_system
     LEFT OUTER JOIN
       biobank_order_identifier tracking_number_identifier
     ON biobank_order.biobank_order_id = tracking_number_identifier.biobank_order_id
@@ -678,8 +684,13 @@ _RECONCILIATION_REPORT_SQL = (
         participant ON biobank_stored_sample.biobank_id = participant.biobank_id
     WHERE biobank_stored_sample.confirmed IS NOT NULL AND NOT EXISTS (
       SELECT 0 FROM """
-    + _ORDER_JOINS
-    + " WHERE "
+    + _ORDER_JOINS + """
+      LEFT OUTER JOIN
+        biobank_order_identifier kit_id_identifier
+      ON biobank_order.biobank_order_id = kit_id_identifier.biobank_order_id
+        AND kit_id_identifier.system = :kit_id_system
+      WHERE
+    """
     + _STORED_SAMPLE_JOIN_CRITERIA
     + """
     ) AND NOT EXISTS (
