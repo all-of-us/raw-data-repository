@@ -91,13 +91,16 @@ class GenomicFileIngester:
                  bucket=None,
                  archive_folder=None,
                  sub_folder=None,
-                 _controller=None):
+                 _controller=None,
+                 target_file=None):
 
         self.controller = _controller
         self.job_id = job_id
         self.job_run_id = job_run_id
         self.file_obj = None
         self.file_queue = deque()
+
+        self.target_file = target_file
 
         self.bucket_name = bucket
         self.archive_folder_name = archive_folder
@@ -116,7 +119,13 @@ class GenomicFileIngester:
         Creates the list of files to be ingested in this run.
         Ordering is currently arbitrary;
         """
-        files = self._get_uningested_file_names_from_bucket()
+        # Check Target file is set.
+        # It will not be set in cron job, but will be set by tool when run manually
+        if self.target_file is not None:
+            files = [self.target_file]
+        else:
+            files = self._get_uningested_file_names_from_bucket()
+
         if files == GenomicSubProcessResult.NO_FILES:
             return files
         else:
@@ -457,17 +466,24 @@ class GenomicFileIngester:
                 'Opening CSV file from queue {}: {}.'
                 .format(path.split('/')[1], filename)
             )
-            data_to_ingest = {'rows': []}
-            with open_cloud_file(path) as csv_file:
-                csv_reader = csv.DictReader(csv_file, delimiter=",")
-                data_to_ingest['fieldnames'] = csv_reader.fieldnames
-                for row in csv_reader:
-                    data_to_ingest['rows'].append(row)
-            return data_to_ingest
+            if self.controller.storage_provider:
+                with self.controller.storage_provider.open(path, 'r') as csv_file:
+                    return self._read_data_to_ingest(csv_file)
+            else:
+                with open_cloud_file(path) as csv_file:
+                    return self._read_data_to_ingest(csv_file)
 
         except FileNotFoundError:
             logging.error(f"File path '{path}' not found")
             return GenomicSubProcessResult.ERROR
+
+    def _read_data_to_ingest(self, csv_file):
+        data_to_ingest = {'rows': []}
+        csv_reader = csv.DictReader(csv_file, delimiter=",")
+        data_to_ingest['fieldnames'] = csv_reader.fieldnames
+        for row in csv_reader:
+            data_to_ingest['rows'].append(row)
+        return data_to_ingest
 
     def _process_gc_metrics_data_for_insert(self, data_to_ingest):
         """ Since input files vary in column names,
@@ -1063,23 +1079,6 @@ class GenomicReconciler:
                                       ("cramReceived", ".cram", "cramPath"),
                                       ("cramMd5Received", ".cram.md5sum", "cramMd5Path"),
                                       ("craiReceived", ".crai", "craiPath"))
-
-    def reconcile_metrics_to_manifest(self):
-        """ The main method for the metrics vs. manifest reconciliation """
-        try:
-
-            unreconciled_members = self.member_dao.get_null_field_members('reconcileMetricsBBManifestJobRunId')
-            results = []
-            for member in unreconciled_members:
-                results.append(
-                    self.member_dao.update_member_job_run_id(
-                        member, self.run_id, 'reconcileMetricsBBManifestJobRunId')
-                )
-            return GenomicSubProcessResult.SUCCESS \
-                if GenomicSubProcessResult.ERROR not in results \
-                else GenomicSubProcessResult.ERROR
-        except RuntimeError:
-            return GenomicSubProcessResult.ERROR
 
     def reconcile_metrics_to_genotyping_data(self):
         """ The main method for the AW2 manifest vs. array data reconciliation

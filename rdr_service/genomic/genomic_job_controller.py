@@ -103,17 +103,6 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def run_reconciliation_to_manifest(self):
-        """
-        Reconciles the metrics to manifest using reconciler component
-        :return: result code for job run
-        """
-        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id)
-        try:
-            self.job_result = self.reconciler.reconcile_metrics_to_manifest()
-        except RuntimeError:
-            self.job_result = GenomicSubProcessResult.ERROR
-
     def run_reconciliation_to_genotyping_data(self):
         """
         Reconciles the metrics to genotyping files using reconciler component
@@ -195,6 +184,21 @@ class GenomicJobController:
                         self.ingester.generate_file_queue_and_do_ingestion()
                     )
             self.job_result = self._aggregate_run_results()
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
+    def ingest_specific_aw1_manifest(self, filename):
+        """
+        Uses GenomicFileIngester to ingest specific Genomic Manifest files (AW1).
+        """
+        try:
+            self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                                job_run_id=self.job_run.id,
+                                                bucket=self.bucket_name,
+                                                target_file=filename,
+                                                _controller=self)
+
+            self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
