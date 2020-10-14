@@ -31,8 +31,6 @@ from tests.helpers.unittest_base import BaseTestCase
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = "rdr_fake_bucket"
 
-_CE_QUEST_SYSTEM = 'http://careevolution.com/CareTask'
-
 FakeBlob = namedtuple('FakeBlob', ['name', 'updated'])
 
 
@@ -364,11 +362,19 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         # Generate data for a Quest sample to be in the report
         participant = self.data_generator.create_database_participant()
         order = self.data_generator.create_database_biobank_order(participantId=participant.participantId)
-        order_identifier = self.data_generator.create_database_biobank_order_identifier(
+
+        # Setup order identifiers that CE would send for Quest order
+        self.data_generator.create_database_biobank_order_identifier(
+            biobankOrderId=order.biobankOrderId,
+            value='aoeu-1234',  # CE CareTask system doesn't use the KIT numbers for identifiers
+            system=biobank_samples_pipeline._CE_QUEST_SYSTEM
+        )
+        kit_order_identifier = self.data_generator.create_database_biobank_order_identifier(
             biobankOrderId=order.biobankOrderId,
             value='KIT-001',
-            system=_CE_QUEST_SYSTEM
+            system=biobank_samples_pipeline._KIT_ID_SYSTEM
         )
+
         ordered_sample = self.data_generator.create_database_biobank_ordered_sample(
             biobankOrderId=order.biobankOrderId,
             collected=datetime(2020, 6, 5),
@@ -378,7 +384,7 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         stored_sample = self.data_generator.create_database_biobank_stored_sample(
             test=ordered_sample.test,
             biobankId=participant.biobankId,
-            biobankOrderIdentifier=order_identifier.value,
+            biobankOrderIdentifier=kit_order_identifier.value,
             confirmed=self._datetime_days_ago(7)
         )
 
@@ -393,7 +399,7 @@ class BiobankSamplesPipelineTest(BaseTestCase):
                 f'Z{participant.biobankId}',
                 ordered_sample.test,
                 Decimal('1'),  # sent count
-                order_identifier.value,
+                kit_order_identifier.value,
                 self._format_datetime(ordered_sample.collected),
                 self._format_datetime(ordered_sample.processed),
                 self._format_datetime(ordered_sample.finalized),
@@ -406,7 +412,7 @@ class BiobankSamplesPipelineTest(BaseTestCase):
                 self._format_datetime(stored_sample.confirmed),  # received time
                 None,  # created family date
                 None,  # elapsed hours
-                None,  # kit identifier
+                'KIT-001',  # kit identifier
                 None,  # fedex tracking number
                 'N',  # is Native American
                 None, None, None,  # notes info: collected, processed, finalized
