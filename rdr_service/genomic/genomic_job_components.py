@@ -126,7 +126,7 @@ class GenomicFileIngester:
             _blob = get_blob(self.bucket_name, self.target_file)
             files = [(self.target_file, _blob.updated)]
         else:
-            files = self._get_uningested_file_names_from_bucket()
+            files = self._get_new_file_names_and_upload_dates_from_bucket()
 
         if files == GenomicSubProcessResult.NO_FILES:
             return files
@@ -142,7 +142,7 @@ class GenomicFileIngester:
 
                 self.file_queue.append(new_file_record)
 
-    def _get_uningested_file_names_from_bucket(self):
+    def _get_new_file_names_and_upload_dates_from_bucket(self):
         """
         Searches the bucket for un-processed files.
         :return: list of (filenames, upload_date) or NO_FILES result code
