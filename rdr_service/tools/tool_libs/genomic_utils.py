@@ -833,27 +833,40 @@ class FileUploadDateClass(GenomicManifestBase):
         files_to_backfill = self._get_files_to_backfill()
 
         _logger.info(f"Number of files to backfill: {len(files_to_backfill)}")
+        counter = 0
 
-        try:
-            for file in files_to_backfill:
-                # Get blob for file from gcs
-                _blob = self.gscp.get_blob(file.bucketName, file.fileName)
+        for file in files_to_backfill:
+            # Skip if data is incomplete (i.e. test data on lower environments)
+            if file.bucketName is None or file.bucketName == "":
+                continue
 
-                logging.warning(f'{file.fileName}: {_blob.updated}')
+            # Get blob for file from gcs
+            _blob = self.gscp.get_blob(file.bucketName,
+                                       file.filePath.replace(f'/{file.bucketName}/', ''))
 
-                # Don't update if dryrun
-                if self.args.dryrun:
-                    continue
+            if _blob is None:
+                _logger.error(f'File does not exist: {file.fileName}')
+                continue
 
-                else:
+            _logger.warning(f'{file.fileName}: {_blob.updated}')
+
+            # Don't update if dryrun
+            if self.args.dryrun:
+                continue
+
+            else:
+                try:
                     # Set upload_date
                     file.uploadDate = _blob.updated
                     self.dao.update(file)
 
-        except Exception as e:   # pylint: disable=broad-except
-            _logger.error(e)
-            return 1
+                    counter += 1
 
+                except Exception as e:   # pylint: disable=broad-except
+                    _logger.error(e)
+                    return 1
+
+        _logger.info(f'Updated {counter}/{len(files_to_backfill)} genomic_file_processed records')
         return 0
 
     def _get_files_to_backfill(self):
