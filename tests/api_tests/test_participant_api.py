@@ -227,11 +227,17 @@ class ParticipantApiTest(BaseTestCase):
         self.assertEqual(update_2["site"], "hpo-site-bannerphoenix")
         self.assertEqual(update_2["enrollmentSite"], "hpo-site-bannerphoenix")
 
+        self.send_consent(participant_id)
+        ps = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(ps['enrollmentSite'], "hpo-site-bannerphoenix")
+
         participant["site"] = "hpo-site-clinic-phoenix"
         update_3 = self.send_put(path, participant, headers={"If-Match": 'W/"3"'})
         self.assertEqual(update_3["site"], "hpo-site-clinic-phoenix")
         # enrollmentSite will not change
         self.assertEqual(update_2["enrollmentSite"], "hpo-site-bannerphoenix")
+        ps = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(ps['enrollmentSite'], "hpo-site-bannerphoenix")
 
     def test_repairing_after_biobank_order(self):
         participant = self.send_post("Participant", self.participant)
