@@ -166,9 +166,9 @@ class QuestionnaireResponseDao(BaseDao):
                     and link_id.lower() != "ignorethis"
                     and link_id not in link_ids
                 ):
+                    # The link_ids list being checked is a list of questions that have been answered,
+                    #  the list doesn't include valid link_ids that don't have answers
                     if "answer" in section:
-                        # The link_ids list being checked is a list of questions that have been answered,
-                        #  the list doesn't include valid link_ids that don't have answers
                         logging.error(f'Questionnaire response contains invalid link ID "{link_id}"')
                     else:
                         logging.warning(f'Questionnaire response has not answered link ID "{link_id}"')
