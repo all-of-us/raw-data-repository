@@ -399,9 +399,14 @@ class GenomicPipelineTest(BaseTestCase):
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(2, genomic_workflow_state=GenomicWorkflowState.AW1)
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
-        self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
-                                         bucket_name,
-                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
+
+        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
+        pytz.timezone('US/Central').localize(test_date)
+
+        with clock.FakeClock(test_date):
+            self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
+                                             bucket_name,
+                                             folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
 
         self._update_test_sample_ids()
 
@@ -428,6 +433,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test file processing queue
         files_processed = self.file_processed_dao.get_all()
         self.assertEqual(len(files_processed), 1)
+        self.assertEqual(test_date.astimezone(pytz.utc), pytz.utc.localize(files_processed[0].uploadDate))
 
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
