@@ -25,7 +25,7 @@ from rdr_service.participant_enums import QuestionnaireDefinitionStatus, Questio
     ParticipantCohort, ParticipantCohortPilotFlag
 
 from tests.test_data import data_path
-from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.unittest_base import BaseTestCase, QUESTIONNAIRE_NONE_ANSWER
 from rdr_service.concepts import Concept
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -1128,6 +1128,38 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             ParticipantSummary.participantId == from_client_participant_id(participant_id)
         ).one()
         self.assertIsNone(participant_summary.questionnaireOnTheBasics)
+
+    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
+    def test_link_id_validation(self, mock_logging):
+        # Get a participant set up for the test
+        participant_id = self.create_participant()
+        self.send_consent(participant_id)
+
+        # Set up questionnaire, inserting through DAO to get history to generate as well
+        questionnaire = self.data_generator._questionnaire()
+        question = self.data_generator._questionnaire_question(
+            questionnaireId=questionnaire.questionnaireId,
+            questionnaireVersion=questionnaire.version,
+            linkId='not_answered'
+        )
+        questionnaire.questions.append(question)
+        questionnaire_dao = QuestionnaireDao()
+        questionnaire_dao.insert(questionnaire)
+
+        # Create and send response
+        questionnaire_response_json = self.make_questionnaire_response_json(
+            participant_id,
+            questionnaire.questionnaireId,
+            string_answers=[
+                ('invalid_link', 'This is an answer to a question that is not in the questionnaire'),
+                ('not_answered', QUESTIONNAIRE_NONE_ANSWER)
+            ]
+        )
+        self.send_post(f'Participant/{participant_id}/QuestionnaireResponse', questionnaire_response_json)
+
+        # Make sure logs have been called for each issue
+        mock_logging.error.assert_any_call('Questionnaire response contains invalid link ID "invalid_link"')
+        mock_logging.warning.assert_any_call('Questionnaire response has not answered link ID "not_answered"')
 
 def _add_code_answer(code_answers, link_id, code):
     if code:

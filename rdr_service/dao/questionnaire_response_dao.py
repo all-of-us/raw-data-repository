@@ -159,14 +159,19 @@ class QuestionnaireResponseDao(BaseDao):
         # once we have a question section, iterate through list of answers.
         if "question" in resource:
             for section in resource["question"]:
-
+                link_id = section.get('linkId', None)
                 # Do not log warning or raise exception when link id is 'ignoreThis' for unit tests.
                 if (
-                    "linkId" in section
-                    and section["linkId"].lower() != "ignorethis"
-                    and section["linkId"] not in link_ids
+                    link_id is not None
+                    and link_id.lower() != "ignorethis"
+                    and link_id not in link_ids
                 ):
-                    logging.error(f"Questionnaire response contains invalid link ID {section['linkId']}.")
+                    if "answer" in section:
+                        # The link_ids list being checked is a list of questions that have been answered,
+                        #  the list doesn't include valid link_ids that don't have answers
+                        logging.error(f'Questionnaire response contains invalid link ID "{link_id}"')
+                    else:
+                        logging.warning(f'Questionnaire response has not answered link ID "{link_id}"')
 
     @staticmethod
     def _imply_street_address_2_from_street_address_1(code_ids):
