@@ -13,7 +13,7 @@ from rdr_service import config
 from rdr_service.resource.helpers import DateCollection
 from rdr_service.code_constants import CONSENT_GROR_YES_CODE, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE,\
     DVEHR_SHARING_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES, GROR_CONSENT_QUESTION_CODE,\
-    EHR_CONSENT_EXPIRED_YES, UNKNOWN_BIOBANK_ORDER_ID
+    EHR_CONSENT_EXPIRED_YES
 from rdr_service.dao.resource_dao import ResourceDataDao
 # TODO: Replace BQRecord here with a Resource alternative.
 from rdr_service.model.bq_base import BQRecord
@@ -617,7 +617,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             samples = [s for s in cursor]
             if len(samples):
                 orders.append({'tests_ordered': 0, 'tests_stored': len(samples),
-                    'biobank_order_id': UNKNOWN_BIOBANK_ORDER_ID, 'samples': list()})
+                    'biobank_order_id': 'UNSET', 'samples': list()})
                 for row in samples:
                     orders[-1]['samples'].append(_make_stored_sample_dict_from_row(row, has_order=False))
 
@@ -998,13 +998,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         if 'biobank_orders' in summary:
             for order in summary['biobank_orders']:
-                if order['biobank_order_id'] != UNKNOWN_BIOBANK_ORDER_ID \
+                if order['biobank_order_id'] != 'UNSET' \
                    and ['status_id'] != int(BiobankOrderStatus.CANCELLED) and 'samples' in order:
                     for sample in order['samples']:
                         if 'finalized' in sample and sample['finalized'] and \
                             isinstance(sample['finalized'], datetime.datetime):
                             dates.append(datetime_to_date(sample['finalized']))
-
         dates = list(set(dates))  # de-dup list
         data['distinct_visits'] = len(dates)
         return data

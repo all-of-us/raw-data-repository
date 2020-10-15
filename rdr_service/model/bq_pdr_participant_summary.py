@@ -8,7 +8,9 @@ from rdr_service.model.bq_participant_summary import (
     BQRaceSchema,
     BQGenderSchema,
     BQModuleStatusSchema,
-    BQConsentSchema, BQPatientStatusSchema
+    BQConsentSchema,
+    BQPatientStatusSchema,
+    BQBiobankOrderSchema
 )
 
 
@@ -135,6 +137,7 @@ class BQPDRParticipantSummarySchema(BQSchema):
 
     cohort_2_pilot_flag = BQField('cohort_2_pilot_flag', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     cohort_2_pilot_flag_id = BQField('cohort_2_pilot_flag_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    biobank_orders = BQRecordField('biobank_orders', schema=BQBiobankOrderSchema)
 
 
 class BQPDRParticipantSummary(BQTable):
@@ -309,3 +312,58 @@ class BQPDRPatientStatuesView(BQView):
       ) ps cross join unnest(patient_statuses) as nt
       WHERE ps.rn = 1 and ps.test_participant != 1
   """
+
+class BQPDRParticipantBiobankOrderView(BQView):
+    __viewname__ = 'v_pdr_participant_biobank_order'
+    __viewdescr__ = 'PDR Participant Biobank Order Details view'
+    __table__ = BQPDRParticipantSummary
+    __sql__ = """
+      SELECT ps.id, ps.created, ps.modified, ps.participant_id,
+             nt.bbo_biobank_order_id,
+             nt.bbo_created,
+             nt.bbo_status,
+             nt.bbo_status_id,
+             nt.bbo_dv_order,
+             nt.bbo_collected_site,
+             nt.bbo_collected_site_id,
+             nt.bbo_processed_site,
+             nt.bbo_processed_site_id,
+             nt.bbo_finalized_site,
+             nt.bbo_finalized_site_id,
+             nt.bbo_tests_ordered,
+             nt.bbo_tests_stored
+        FROM (
+          SELECT *,
+              ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
+            FROM `{project}`.{dataset}.pdr_participant
+        ) ps cross join unnest(biobank_orders) as nt
+        WHERE ps.rn = 1 and ps.test_participant != 1
+    """
+
+class BQPDRParticipantBiobankSampleView(BQView):
+    __viewname__ = 'v_pdr_participant_biobank_sample'
+    __viewdescr__ = 'PDR Participant Biobank Sample Details view'
+    __table__ = BQPDRParticipantSummary
+    __sql__ = """
+         SELECT ps.id, ps.created, ps.modified, ps.participant_id,
+               bbo.bbo_biobank_order_id,
+               nt.bbs_test,
+               nt.bbs_baseline_test,
+               nt.bbs_dna_test,
+               nt.bbs_collected,
+               nt.bbs_processed,
+               nt.bbs_finalized,
+               nt.bbs_created,
+               nt.bbs_confirmed,
+               nt.bbs_status,
+               nt.bbs_status_id,
+               nt.bbs_disposed,
+               nt.bbs_disposed_reason,
+               nt.bbs_disposed_reason_id
+           FROM (
+              SELECT *,
+                  ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
+                FROM `all-of-us-rdr-sandbox`.rdr_ops_data_view.pdr_participant
+            ) ps cross join unnest(biobank_orders) as bbo, unnest(bbo.bbo_samples) as nt
+            WHERE ps.rn = 1 and ps.test_participant != 1
+    """

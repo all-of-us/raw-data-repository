@@ -230,6 +230,10 @@ class BQMigration(object):
         if not self.args.delete and not self.gcp_env.activate_sql_proxy():
             return 1
 
+        migrate_all = self.args.names.lower() == 'all'
+        if not migrate_all:
+            migrate_list = self.args.names.lower().split(",")
+
         # TODO: Validate dataset name exists in BigQuery
         # Loop through table schemas
         for path, var_name in BQ_TABLES:
@@ -239,7 +243,7 @@ class BQMigration(object):
             ls_obj = bq_table.get_schema()
 
             # See if we need to skip this table
-            if self.args.names.lower() != 'all' and bq_table.get_name().lower() not in self.args.names.lower():
+            if not migrate_all and bq_table.get_name().lower() not in migrate_list:
                 continue
 
             if self.args.show_schemas:
@@ -293,7 +297,7 @@ class BQMigration(object):
             view_id = bq_view.get_name()
 
             # See if we need to skip this view
-            if self.args.names.lower() != 'all' and view_id.lower() not in self.args.names.lower():
+            if not migrate_all and view_id.lower() not in migrate_list:
                 continue
 
             bq_table = bq_view.get_table()

@@ -12,7 +12,7 @@ from werkzeug.exceptions import NotFound
 from rdr_service import config
 from rdr_service.code_constants import CONSENT_GROR_YES_CODE, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, \
     DVEHR_SHARING_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES, GROR_CONSENT_QUESTION_CODE, \
-    EHR_CONSENT_EXPIRED_YES, UNKNOWN_BIOBANK_ORDER_ID
+    EHR_CONSENT_EXPIRED_YES
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummary
@@ -522,6 +522,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                         where bss2.biobank_order_identifier = boi.`value`) as tests_stored
              from biobank_order bo left outer join biobank_order_identifier boi on bo.biobank_order_id = boi.biobank_order_id
              where boi.`system` = 'https://www.pmi-ops.org' and bo.participant_id = :pid
+                   and boi.`value` in (select bss.biobank_order_identifier from biobank_stored_sample bss)
              order by bo.created desc;
          """
 
@@ -614,7 +615,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             samples = [s for s in cursor]
             if len(samples):
                 orders.append({'bbo_tests_ordered': 0, 'bbo_tests_stored': len(samples),
-                    'bbo_biobank_order_id': UNKNOWN_BIOBANK_ORDER_ID, 'bbo_samples': list()})
+                    'bbo_biobank_order_id': 'UNSET', 'bbo_samples': list()})
                 for row in samples:
                     orders[-1]['bbo_samples'].append(_make_stored_sample_dict_from_row(row, has_order=False))
 
@@ -993,7 +994,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         if 'biobank_orders' in summary:
             for order in summary['biobank_orders']:
-                if order['bbo_biobank_order_id'] != UNKNOWN_BIOBANK_ORDER_ID and \
+                if order['bbo_biobank_order_id'] != 'UNSET' and \
                    order['bbo_status_id'] != int(BiobankOrderStatus.CANCELLED) and 'bbo_samples' in order:
                     for sample in order['bbo_samples']:
                         if 'bbs_finalized' in sample and sample['bbs_finalized'] and \
