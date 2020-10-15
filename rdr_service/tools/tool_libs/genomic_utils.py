@@ -18,13 +18,13 @@ from rdr_service import clock, config
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_set_update, \
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao, \
-    GenomicGCValidationMetricsDao
+    GenomicGCValidationMetricsDao, GenomicFileProcessedDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
-from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics
+from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed
 from rdr_service.offline.genomic_pipeline import reconcile_metrics_vs_genotyping_data
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update
@@ -816,6 +816,68 @@ class GenomicProcessRunner(GenomicManifestBase):
             return 1
 
 
+class FileUploadDateClass(GenomicManifestBase):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(FileUploadDateClass, self).__init__(args, gcp_env)
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicFileProcessedDao()
+
+        files_to_backfill = self._get_files_to_backfill()
+
+        _logger.info(f"Number of files to backfill: {len(files_to_backfill)}")
+        counter = 0
+
+        for file in files_to_backfill:
+            # Skip if data is incomplete (i.e. test data on lower environments)
+            if file.bucketName is None or file.bucketName == "":
+                continue
+
+            # Get blob for file from gcs
+            _blob = self.gscp.get_blob(file.bucketName,
+                                       file.filePath.replace(f'/{file.bucketName}/', ''))
+
+            if _blob is None:
+                _logger.error(f'File does not exist: {file.fileName}')
+                continue
+
+            _logger.warning(f'{file.fileName}: {_blob.updated}')
+
+            # Don't update if dryrun
+            if self.args.dryrun:
+                continue
+
+            else:
+                try:
+                    # Set upload_date
+                    file.uploadDate = _blob.updated
+                    self.dao.update(file)
+
+                    counter += 1
+
+                except Exception as e:   # pylint: disable=broad-except
+                    _logger.error(e)
+                    return 1
+
+        _logger.info(f'Updated {counter}/{len(files_to_backfill)} genomic_file_processed records')
+        return 0
+
+    def _get_files_to_backfill(self):
+        """Lookup for all genomic files processed with null upload_date"""
+        with self.dao.session() as session:
+            return session.query(
+                GenomicFileProcessed
+            ).filter(
+                GenomicFileProcessed.uploadDate == None
+            ).all()
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -890,6 +952,11 @@ def run():
                                        default=None, required=False)
     process_runner_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
+    # Backfill GenomicFileProcessed UploadDate
+    upload_date_parser = subparser.add_parser("backfill-upload-date")
+    upload_date_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
+
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -923,6 +990,10 @@ def run():
 
         elif args.util == 'process-runner':
             process = GenomicProcessRunner(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.util == 'backfill-upload-date':
+            process = FileUploadDateClass(args, gcp_env)
             exit_code = process.run()
 
         else:

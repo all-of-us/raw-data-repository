@@ -26,7 +26,8 @@ from rdr_service.api_util import (
     open_cloud_file,
     copy_cloud_file,
     delete_cloud_file,
-    list_blobs
+    list_blobs,
+    get_blob,
 )
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -122,27 +123,29 @@ class GenomicFileIngester:
         # Check Target file is set.
         # It will not be set in cron job, but will be set by tool when run manually
         if self.target_file is not None:
-            files = [self.target_file]
+            _blob = get_blob(self.bucket_name, self.target_file)
+            files = [(self.target_file, _blob.updated)]
         else:
-            files = self._get_uningested_file_names_from_bucket()
+            files = self._get_new_file_names_and_upload_dates_from_bucket()
 
         if files == GenomicSubProcessResult.NO_FILES:
             return files
         else:
-            for file_name in files:
-                file_path = "/" + self.bucket_name + "/" + file_name
+            for file_data in files:
+                file_path = "/" + self.bucket_name + "/" + file_data[0]
                 new_file_record = self.file_processed_dao.insert_file_record(
                     self.job_run_id,
                     file_path,
                     self.bucket_name,
-                    file_name.split('/')[-1])
+                    file_data[0].split('/')[-1],
+                    upload_date=file_data[1])
 
                 self.file_queue.append(new_file_record)
 
-    def _get_uningested_file_names_from_bucket(self):
+    def _get_new_file_names_and_upload_dates_from_bucket(self):
         """
         Searches the bucket for un-processed files.
-        :return: list of filenames or NO_FILES result code
+        :return: list of (filenames, upload_date) or NO_FILES result code
         """
         # Setup date
         timezone = pytz.timezone('Etc/Greenwich')
@@ -152,7 +155,7 @@ class GenomicFileIngester:
         bucket = '/' + self.bucket_name
         files = list_blobs(bucket, prefix=self.sub_folder_name)
 
-        files = [s.name for s in files
+        files = [(s.name, s.updated) for s in files
                  if s.updated > date_limit_obj
                  and self.file_validator.validate_filename(s.name.lower())]
 
@@ -2489,7 +2492,7 @@ class GenomicAlertHandler:
     ROC_BOARD_ID = "ROC"
 
     def __init__(self):
-        self.alert_envs = ["all-of-us-rdr-prod", "all-of-us-rdr-stable"]
+        self.alert_envs = ["all-of-us-rdr-prod"]
         if GAE_PROJECT in self.alert_envs:
             self._jira_handler = JiraTicketHandler()
         else:
