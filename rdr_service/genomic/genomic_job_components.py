@@ -2492,7 +2492,7 @@ class GenomicAlertHandler:
     ROC_BOARD_ID = "ROC"
 
     def __init__(self):
-        self.alert_envs = ["all-of-us-rdr-prod", "all-of-us-rdr-stable"]
+        self.alert_envs = ["all-of-us-rdr-prod"]
         if GAE_PROJECT in self.alert_envs:
             self._jira_handler = JiraTicketHandler()
         else:
