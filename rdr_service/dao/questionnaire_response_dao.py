@@ -286,7 +286,7 @@ class QuestionnaireResponseDao(BaseDao):
         elif response_authored_date < datetime(2020, 10, 5):
             return 'July'
         else:
-            return 'Oct'
+            return 'Nov'
 
     def _update_participant_summary(
         self, session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
