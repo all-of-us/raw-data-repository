@@ -525,6 +525,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         where bss2.biobank_order_identifier = boi.`value`) as tests_stored
              from biobank_order bo left outer join biobank_order_identifier boi on bo.biobank_order_id = boi.biobank_order_id
              where boi.`system` = 'https://www.pmi-ops.org' and bo.participant_id = :pid
+                   and boi.`value` in (select bss.biobank_order_identifier from biobank_stored_sample bss)
              order by bo.created desc;
          """
 
