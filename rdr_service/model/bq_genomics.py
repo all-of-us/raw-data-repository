@@ -208,6 +208,54 @@ class BQGenomicJobRunView(BQView):
     __table__ = BQGenomicJobRun
 
 
+class BQGenomicFileProcessedSchema(BQSchema):
+    id = BQField('id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+
+    # PDR-149:  Need to preserve RDR table id values
+    run_status = BQField('run_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
+                         fld_enum=GenomicSubProcessStatusEnum)
+    run_status_id = BQField('run_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+                         fld_enum=GenomicSubProcessStatusEnum)
+    run_result = BQField('run_result', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
+                         fld_enum=GenomicSubProcessResultEnum)
+    run_result_id = BQField('run_result_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+                         fld_enum=GenomicSubProcessResultEnum)
+    result_message = BQField('result_message', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+
+    # RDR fields
+    orig_id = BQField('orig_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    run_id = BQField('run_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    start_time = BQField('start_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    end_time = BQField('end_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    file_path = BQField('file_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    bucket_name = BQField('bucket_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    file_name = BQField('file_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    file_status_id = BQField('file_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+                             fld_enum=GenomicSubProcessStatusEnum)
+    file_status = BQField('file_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
+                          fld_enum=GenomicSubProcessStatusEnum)
+    file_result_id = BQField('file_result_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+                             fld_enum=GenomicSubProcessResultEnum)
+    file_result = BQField('file_result', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
+                          fld_enum=GenomicSubProcessResultEnum)
+    upload_date = BQField('upload_date', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+
+
+class BQGenomicFileProcessed(BQTable):
+    """  BigQuery Table """
+    __tablename__ = 'genomic_file_processed'
+    __schema__ = BQGenomicFileProcessedSchema
+
+
+class BQGenomicFileProcessedView(BQView):
+    __viewname__ = 'v_genomic_file_processed'
+    __viewdescr__ = 'Genomic File Processed View'
+    __pk_id__ = 'id'
+    __table__ = BQGenomicFileProcessed
+
+
 class BQGenomicGCValidationMetricsSchema(BQSchema):
     id = BQField('id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)

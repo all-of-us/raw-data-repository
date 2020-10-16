@@ -145,6 +145,45 @@ def genomic_job_run_update(_pk):
     res.save()
 
 
+class GenomicFileProcessedSchemaGenerator(generators.BaseGenerator):
+    """
+    Generate a GenomicFileProcessed resource object
+    """
+
+    def make_resource(self, _pk, backup=False):
+        """
+        Build a resource object from the given primary key id.
+        :param _pk: Primary key value from rdr table.
+        :param backup: if True, get from backup database instead of Primary.
+        :return: resource object
+        """
+        ro_dao = ResourceDataDao(backup=backup)
+        with ro_dao.session() as ro_session:
+            row = ro_session.execute(text('select * from genomic_file_processed where id = :id'), {'id': _pk}).first()
+            data = ro_dao.to_dict(row)
+            # Populate Enum fields.
+            if data['file_status']:
+                enum = GenomicSubProcessStatusEnum(data['file_status'])
+                data['file_status'] = str(enum)
+                data['file_status_id'] = int(enum)
+            if data['file_result']:
+                enum = GenomicSubProcessResultEnum(data['file_result'])
+                data['file_result'] = str(enum)
+                data['file_result_id'] = int(enum)
+
+            return generators.ResourceRecordSet(schemas.GenomicFileProcessedSchema, data)
+
+
+def genomic_file_processed_update(_pk):
+    """
+    Generate GenomicFileProcessed record.
+    :param _pk: Primary Key
+    """
+    gen = GenomicFileProcessedSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save()
+
+
 class GenomicGCValidationMetricsSchemaGenerator(generators.BaseGenerator):
     """
     Generate a GenomicGCValidationMetrics resource object
