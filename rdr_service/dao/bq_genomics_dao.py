@@ -216,7 +216,8 @@ def bq_genomic_file_processed_update(_id, project_id=None):
 
     w_dao = BigQuerySyncDao()
     with w_dao.session() as w_session:
-        gen.save_bqrecord(_id, bqr, bqtable=BQGenomicFileProcessed, w_dao=w_dao, w_session=w_session, project_id=project_id)
+        gen.save_bqrecord(_id, bqr, bqtable=BQGenomicFileProcessed, w_dao=w_dao,
+                          w_session=w_session, project_id=project_id)
 
 
 class BQGenomicGCValidationMetricsSchemaGenerator(BigQueryGenerator):
