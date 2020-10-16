@@ -51,7 +51,7 @@ class DataGenerator:
         for field, default in [('version', 1),
                                ('created', datetime.now()),
                                ('lastModified', datetime.now()),
-                               ('resource', 'test')]:
+                               ('resource', '{"version": 1}')]:
             if field not in kwargs:
                 kwargs[field] = default
 
@@ -117,6 +117,10 @@ class DataGenerator:
     def _questionnaire_question(self, **kwargs):
         if 'repeats' not in kwargs:
             kwargs['repeats'] = True
+
+        if 'codeId' not in kwargs:
+            code = self.create_database_code()
+            kwargs['codeId'] = code.codeId
 
         return QuestionnaireQuestion(**kwargs)
 
@@ -280,7 +284,8 @@ class DataGenerator:
         for field, default in [('system', PPI_SYSTEM),
                                ('codeType', 1),
                                ('mapped', False),
-                               ('created', datetime.now())]:
+                               ('created', datetime.now()),
+                               ('value', self.faker.pystr(4, 8))]:
             if field not in kwargs:
                 kwargs[field] = default
 
