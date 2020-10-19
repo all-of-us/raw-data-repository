@@ -31,6 +31,7 @@ BQ_TABLES = [
     ('rdr_service.model.bq_genomics', 'BQGenomicSetMember'),
     ('rdr_service.model.bq_genomics', 'BQGenomicJobRun'),
     ('rdr_service.model.bq_genomics', 'BQGenomicGCValidationMetrics'),
+    ('rdr_service.model.bq_genomics', 'BQGenomicFileProcessed')
 ]
 
 BQ_VIEWS = [
@@ -79,4 +80,5 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_genomics', 'BQGenomicSetMemberView'),
     ('rdr_service.model.bq_genomics', 'BQGenomicJobRunView'),
     ('rdr_service.model.bq_genomics', 'BQGenomicGCValidationMetricsView'),
+    ('rdr_service.model.bq_genomics', 'BQGenomicFileProcessedView')
 ]

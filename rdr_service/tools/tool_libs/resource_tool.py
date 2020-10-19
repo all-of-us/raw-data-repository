@@ -38,7 +38,8 @@ tool_cmd = "resource"
 tool_desc = "Tools for updating resource records in RDR"
 
 
-GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'genomic_gc_validation_metrics')
+GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'genomic_gc_validation_metrics',
+                     'genomic_file_processed')
 
 class ParticipantResourceClass(object):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
@@ -70,7 +71,8 @@ class ParticipantResourceClass(object):
                 BQPDROverallHealth,
                 BQPDREHRConsentPII,
                 BQPDRDVEHRSharing,
-                BQPDRCOPEMay
+                BQPDRCOPEMay,
+                BQPDRCOPENov,
             )
             for module in modules:
                 mod = module()
