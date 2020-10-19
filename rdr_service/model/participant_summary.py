@@ -272,13 +272,14 @@ class ParticipantSummary(Base):
     @declared_attr
     def siteId(cls):
         return Column("site_id", Integer, ForeignKey("site.site_id"))
+    site = None  # placeholder for docs, API sets on model using corresponding ID field
+    "A physical location a participant is paired with or UNSET if none."
 
     @declared_attr
     def enrollmentSiteId(cls):
         return Column("enrollment_site_id", Integer, ForeignKey("site.site_id"))
-
-    site = None  # placeholder for docs, API sets on model using corresponding ID field
-    "A physical location a participant is paired with or UNSET if none."
+    enrollmentSite = None  # placeholder for docs, API sets on model using corresponding ID field
+    "A physical location a participant is enrolled with or UNSET if none."
 
     enrollmentStatus = Column("enrollment_status", Enum(EnrollmentStatus), default=EnrollmentStatus.INTERESTED)
     """
