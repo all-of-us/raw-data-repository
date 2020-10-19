@@ -13,14 +13,14 @@ from dateutil.parser import parse
 import sqlalchemy
 
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
-    bq_genomic_set_update
+    bq_genomic_set_update, bq_genomic_file_processed_update
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 
 from rdr_service import clock
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.participant import Participant
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_gc_validation_metrics_update, \
-    genomic_set_update
+    genomic_set_update, genomic_file_processed_update
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
     open_cloud_file,
@@ -140,6 +140,10 @@ class GenomicFileIngester:
                     file_data[0].split('/')[-1],
                     upload_date=file_data[1])
 
+                # For BQ/PDR
+                bq_genomic_file_processed_update(new_file_record.id)
+                genomic_file_processed_update(new_file_record.id)
+
                 self.file_queue.append(new_file_record)
 
     def _get_new_file_names_and_upload_dates_from_bucket(self):
@@ -191,6 +195,10 @@ class GenomicFileIngester:
                         GenomicSubProcessStatus.COMPLETED,
                         ingestion_result
                     )
+
+                    # For BQ/PDR
+                    bq_genomic_file_processed_update(file_ingested.id)
+                    genomic_file_processed_update(file_ingested.id)
 
                 except IndexError:
                     logging.info('No files left in file queue.')

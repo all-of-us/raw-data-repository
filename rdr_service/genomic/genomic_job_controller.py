@@ -17,7 +17,7 @@ from rdr_service.config import (
     getSettingList,
     GENOME_TYPE_ARRAY,
     MissingConfigException)
-from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update
+from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomic_file_processed_update
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     GenomicSubProcessStatus,
@@ -32,7 +32,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicJobRunDao
 )
-from rdr_service.resource.generators.genomics import genomic_job_run_update
+from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update
 
 
 class GenomicJobController:
@@ -319,14 +319,20 @@ class GenomicJobController:
             if result == GenomicSubProcessResult.SUCCESS:
                 logging.info(f'Manifest created: {self.manifest_compiler.output_file_name}')
                 # Insert the file record
-                self.file_processed_dao.insert_file_record(
+                new_file_record = self.file_processed_dao.insert_file_record(
                     self.job_run.id,
                     f'{self.bucket_name}/{self.manifest_compiler.output_file_name}',
                     self.bucket_name,
                     self.manifest_compiler.output_file_name,
                     end_time=clock.CLOCK.now(),
-                    file_result=result
+                    file_result=result,
+                    upload_date=clock.CLOCK.now()
                 )
+
+                # For BQ/PDR
+                bq_genomic_file_processed_update(new_file_record.id)
+                genomic_file_processed_update(new_file_record.id)
+
                 self.subprocess_results.add(result)
             self.job_result = self._aggregate_run_results()
         except RuntimeError:

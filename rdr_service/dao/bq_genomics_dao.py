@@ -13,7 +13,8 @@ from rdr_service.model.bq_genomics import \
     BQGenomicJobRunSchema, BQGenomicJobRun, \
     BQGenomicGCValidationMetricsSchema, BQGenomicGCValidationMetrics, \
     GenomicSetStatusEnum, GenomicSetMemberStatusEnum, GenomicValidationFlag, GenomicSubProcessStatusEnum, \
-    GenomicSubProcessResultEnum, GenomicJobEnum, GenomicWorkflowStateEnum
+    GenomicSubProcessResultEnum, GenomicJobEnum, GenomicWorkflowStateEnum, BQGenomicFileProcessedSchema, \
+    BQGenomicFileProcessed
 
 
 class BQGenomicSetGenerator(BigQueryGenerator):
@@ -168,6 +169,55 @@ def bq_genomic_job_run_update(_id, project_id=None):
     w_dao = BigQuerySyncDao()
     with w_dao.session() as w_session:
         gen.save_bqrecord(_id, bqr, bqtable=BQGenomicJobRun, w_dao=w_dao, w_session=w_session, project_id=project_id)
+
+
+class BQGenomicFileProcessedSchemaGenerator(BigQueryGenerator):
+    """
+    Generate a BQGenomicFileProcessed BQRecord object
+    """
+
+    def make_bqrecord(self, _id, convert_to_enum=False, backup=False):
+        """
+        Build a BQRecord object from the given primary key id.
+        :param _id: Primary key value from rdr table.
+        :param convert_to_enum: If schema field description includes Enum class info, convert value to Enum.
+        :param backup: if True, get from backup database
+        :return: BQRecord object
+        """
+        ro_dao = BigQuerySyncDao(backup=backup)
+        with ro_dao.session() as ro_session:
+            row = ro_session.execute(text('select * from genomic_file_processed where id = :id'), {'id': _id}).first()
+            data = ro_dao.to_dict(row)
+
+            # PDR-149:  Preserve id values from RDR
+            data['orig_id'] = data['id']
+
+            # Populate Enum fields.
+            if data['file_status']:
+                enum = GenomicSubProcessStatusEnum(data['file_status'])
+                data['file_status'] = enum.name
+                data['file_status_id'] = enum.value
+            if data['file_result']:
+                enum = GenomicSubProcessResultEnum(data['file_result'])
+                data['file_result'] = enum.name
+                data['file_result_id'] = enum.value
+
+            return BQRecord(schema=BQGenomicFileProcessedSchema, data=data, convert_to_enum=convert_to_enum)
+
+
+def bq_genomic_file_processed_update(_id, project_id=None):
+    """
+    Generate BQGenomicFileProcessed record for BQ.
+    :param _id: Primary Key
+    :param project_id: Override the project_id
+    """
+    gen = BQGenomicFileProcessedSchemaGenerator()
+    bqr = gen.make_bqrecord(_id)
+
+    w_dao = BigQuerySyncDao()
+    with w_dao.session() as w_session:
+        gen.save_bqrecord(_id, bqr, bqtable=BQGenomicFileProcessed, w_dao=w_dao,
+                          w_session=w_session, project_id=project_id)
 
 
 class BQGenomicGCValidationMetricsSchemaGenerator(BigQueryGenerator):
