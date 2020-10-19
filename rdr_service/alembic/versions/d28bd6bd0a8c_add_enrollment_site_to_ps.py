@@ -1,7 +1,7 @@
 """add enrollment site to ps
 
 Revision ID: d28bd6bd0a8c
-Revises: 4d7e99e7b5b4
+Revises: a233678becb4
 Create Date: 2020-10-15 14:17:35.828066
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = 'd28bd6bd0a8c'
-down_revision = '4d7e99e7b5b4'
+down_revision = 'a233678becb4'
 branch_labels = None
 depends_on = None
 
