@@ -21,7 +21,7 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_se
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
-    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay
+    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov
 from rdr_service.model.participant import Participant
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
@@ -72,7 +72,7 @@ class ParticipantResourceClass(object):
                 BQPDREHRConsentPII,
                 BQPDRDVEHRSharing,
                 BQPDRCOPEMay,
-                BQPDRCOPENov,
+                BQPDRCOPENov
             )
             for module in modules:
                 mod = module()
