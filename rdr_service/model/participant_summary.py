@@ -275,6 +275,12 @@ class ParticipantSummary(Base):
     site = None  # placeholder for docs, API sets on model using corresponding ID field
     "A physical location a participant is paired with or UNSET if none."
 
+    @declared_attr
+    def enrollmentSiteId(cls):
+        return Column("enrollment_site_id", Integer, ForeignKey("site.site_id"))
+    enrollmentSite = None  # placeholder for docs, API sets on model using corresponding ID field
+    "A physical location a participant is enrolled with or UNSET if none."
+
     enrollmentStatus = Column("enrollment_status", Enum(EnrollmentStatus), default=EnrollmentStatus.INTERESTED)
     """
     Depends on a number of factors including questionnaires and biobank samples completed

@@ -71,6 +71,7 @@ _SITE_FIELDS = (
     "biospecimenProcessedSite",
     "biospecimenFinalizedSite",
     "site",
+    "enrollmentSite",
 )
 
 # Lazy caches of property names for client JSON conversion.

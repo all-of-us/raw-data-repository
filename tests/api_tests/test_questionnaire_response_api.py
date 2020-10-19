@@ -134,7 +134,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "semanticVersionForPrimaryConsent": "v1",
             "deceasedStatus": "UNSET",
             "retentionEligibleStatus": "NOT_ELIGIBLE",
-            "retentionType": "UNSET"
+            "retentionType": "UNSET",
+            "enrollmentSite": "UNSET"
         }
 
     def test_duplicate_consent_submission(self):

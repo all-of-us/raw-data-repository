@@ -201,6 +201,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "hpoId": "PITT",
                 "awardee": "PITT",
                 "site": "UNSET",
+                "enrollmentSite": "UNSET",
                 "organization": "UNSET",
                 "numCompletedPPIModules": 1,
                 "numCompletedBaselinePPIModules": 1,
@@ -3163,6 +3164,26 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(len(ps['entry']), 0)
 
         ps = self.send_get("ParticipantSummary?retentionType=UNSET&_includeTotal=TRUE")
+        self.assertEqual(len(ps['entry']), 0)
+
+    def test_query_by_enrollment_site(self):
+        participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
+        participant_id = participant["participantId"]
+        path = "Participant/%s" % participant_id
+        self.send_consent(participant_id)
+
+        participant["site"] = "hpo-site-bannerphoenix"
+        update_p = self.send_put(path, participant, headers={"If-Match": 'W/"1"'})
+        self.assertEqual(update_p["site"], "hpo-site-bannerphoenix")
+        self.assertEqual(update_p["enrollmentSite"], "hpo-site-bannerphoenix")
+
+        ps = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(ps['enrollmentSite'], "hpo-site-bannerphoenix")
+
+        ps = self.send_get("ParticipantSummary?enrollmentSite=hpo-site-bannerphoenix")
+        self.assertEqual(ps['entry'][0]['resource']['enrollmentSite'], 'hpo-site-bannerphoenix')
+
+        ps = self.send_get("ParticipantSummary?enrollmentSite=UNSET")
         self.assertEqual(len(ps['entry']), 0)
 
     @patch('rdr_service.api.base_api.DEFAULT_MAX_RESULTS', 1)
