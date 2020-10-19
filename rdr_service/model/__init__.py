@@ -18,7 +18,7 @@ BQ_TABLES = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRHealthcareAccess'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRPersonalMedicalHistory'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEMay'),
-    ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEOct'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRCOPENov'),
 
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummary'),
 
@@ -61,7 +61,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRHealthcareAccessView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRPersonalMedicalHistoryView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEMayView'),
-    ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEOctView'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRCOPENovView'),
 
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherView'),
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherGenderView'),
