@@ -213,17 +213,6 @@ class BQGenomicFileProcessedSchema(BQSchema):
     created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
 
-    # PDR-149:  Need to preserve RDR table id values
-    run_status = BQField('run_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
-                         fld_enum=GenomicSubProcessStatusEnum)
-    run_status_id = BQField('run_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
-                         fld_enum=GenomicSubProcessStatusEnum)
-    run_result = BQField('run_result', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
-                         fld_enum=GenomicSubProcessResultEnum)
-    run_result_id = BQField('run_result_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
-                         fld_enum=GenomicSubProcessResultEnum)
-    result_message = BQField('result_message', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-
     # RDR fields
     orig_id = BQField('orig_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     run_id = BQField('run_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
