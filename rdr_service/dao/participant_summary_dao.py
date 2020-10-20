@@ -771,8 +771,8 @@ class ParticipantSummaryDao(UpdatableDao):
                  model.questionnaireOnFamilyHealthAuthored > eighteen_month_ago) or \
                 (model.questionnaireOnMedicalHistoryAuthored and
                  model.questionnaireOnMedicalHistoryAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnCopeOctAuthored and
-                 model.questionnaireOnCopeOctAuthored > eighteen_month_ago) or \
+                (model.questionnaireOnCopeNovAuthored and
+                 model.questionnaireOnCopeNovAuthored > eighteen_month_ago) or \
                 (model.questionnaireOnCopeJulyAuthored and
                  model.questionnaireOnCopeJulyAuthored > eighteen_month_ago) or \
                 (model.questionnaireOnCopeJuneAuthored and
@@ -939,7 +939,7 @@ class RetentionTypeFieldFilter(FieldFilter):
                 ParticipantSummary.questionnaireOnHealthcareAccessAuthored > eighteen_month_ago,
                 ParticipantSummary.questionnaireOnFamilyHealthAuthored > eighteen_month_ago,
                 ParticipantSummary.questionnaireOnMedicalHistoryAuthored > eighteen_month_ago,
-                ParticipantSummary.questionnaireOnCopeOctAuthored > eighteen_month_ago,
+                ParticipantSummary.questionnaireOnCopeNovAuthored > eighteen_month_ago,
                 ParticipantSummary.questionnaireOnCopeJulyAuthored > eighteen_month_ago,
                 ParticipantSummary.questionnaireOnCopeJuneAuthored > eighteen_month_ago,
                 ParticipantSummary.questionnaireOnCopeMayAuthored > eighteen_month_ago,
@@ -972,8 +972,8 @@ class RetentionTypeFieldFilter(FieldFilter):
                     ParticipantSummary.questionnaireOnMedicalHistoryAuthored <= eighteen_month_ago
                 ),
                 or_(
-                    ParticipantSummary.questionnaireOnCopeOctAuthored == None,
-                    ParticipantSummary.questionnaireOnCopeOctAuthored <= eighteen_month_ago
+                    ParticipantSummary.questionnaireOnCopeNovAuthored == None,
+                    ParticipantSummary.questionnaireOnCopeNovAuthored <= eighteen_month_ago
                 ),
                 or_(
                     ParticipantSummary.questionnaireOnCopeJulyAuthored == None,

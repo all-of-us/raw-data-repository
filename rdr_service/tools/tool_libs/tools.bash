@@ -139,7 +139,7 @@ _python()
             ;;
         genomic)
             # These are options specific to this tool.
-            local toolopts="resend generate-manifest control-sample manual-sample job-run-result member-state update-gc-metrics process-runner"
+            local toolopts="resend generate-manifest control-sample manual-sample job-run-result member-state update-gc-metrics process-runner backfill-upload-date"
             COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
             return 0
             ;;

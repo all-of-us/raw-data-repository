@@ -13,20 +13,21 @@ from dateutil.parser import parse
 import sqlalchemy
 
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
-    bq_genomic_set_update
+    bq_genomic_set_update, bq_genomic_file_processed_update
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 
 from rdr_service import clock
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.participant import Participant
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_gc_validation_metrics_update, \
-    genomic_set_update
+    genomic_set_update, genomic_file_processed_update
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
     open_cloud_file,
     copy_cloud_file,
     delete_cloud_file,
-    list_blobs
+    list_blobs,
+    get_blob,
 )
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -91,13 +92,16 @@ class GenomicFileIngester:
                  bucket=None,
                  archive_folder=None,
                  sub_folder=None,
-                 _controller=None):
+                 _controller=None,
+                 target_file=None):
 
         self.controller = _controller
         self.job_id = job_id
         self.job_run_id = job_run_id
         self.file_obj = None
         self.file_queue = deque()
+
+        self.target_file = target_file
 
         self.bucket_name = bucket
         self.archive_folder_name = archive_folder
@@ -116,24 +120,36 @@ class GenomicFileIngester:
         Creates the list of files to be ingested in this run.
         Ordering is currently arbitrary;
         """
-        files = self._get_uningested_file_names_from_bucket()
+        # Check Target file is set.
+        # It will not be set in cron job, but will be set by tool when run manually
+        if self.target_file is not None:
+            _blob = get_blob(self.bucket_name, self.target_file)
+            files = [(self.target_file, _blob.updated)]
+        else:
+            files = self._get_new_file_names_and_upload_dates_from_bucket()
+
         if files == GenomicSubProcessResult.NO_FILES:
             return files
         else:
-            for file_name in files:
-                file_path = "/" + self.bucket_name + "/" + file_name
+            for file_data in files:
+                file_path = "/" + self.bucket_name + "/" + file_data[0]
                 new_file_record = self.file_processed_dao.insert_file_record(
                     self.job_run_id,
                     file_path,
                     self.bucket_name,
-                    file_name.split('/')[-1])
+                    file_data[0].split('/')[-1],
+                    upload_date=file_data[1])
+
+                # For BQ/PDR
+                bq_genomic_file_processed_update(new_file_record.id)
+                genomic_file_processed_update(new_file_record.id)
 
                 self.file_queue.append(new_file_record)
 
-    def _get_uningested_file_names_from_bucket(self):
+    def _get_new_file_names_and_upload_dates_from_bucket(self):
         """
         Searches the bucket for un-processed files.
-        :return: list of filenames or NO_FILES result code
+        :return: list of (filenames, upload_date) or NO_FILES result code
         """
         # Setup date
         timezone = pytz.timezone('Etc/Greenwich')
@@ -143,7 +159,7 @@ class GenomicFileIngester:
         bucket = '/' + self.bucket_name
         files = list_blobs(bucket, prefix=self.sub_folder_name)
 
-        files = [s.name for s in files
+        files = [(s.name, s.updated) for s in files
                  if s.updated > date_limit_obj
                  and self.file_validator.validate_filename(s.name.lower())]
 
@@ -179,6 +195,10 @@ class GenomicFileIngester:
                         GenomicSubProcessStatus.COMPLETED,
                         ingestion_result
                     )
+
+                    # For BQ/PDR
+                    bq_genomic_file_processed_update(file_ingested.id)
+                    genomic_file_processed_update(file_ingested.id)
 
                 except IndexError:
                     logging.info('No files left in file queue.')
@@ -457,17 +477,24 @@ class GenomicFileIngester:
                 'Opening CSV file from queue {}: {}.'
                 .format(path.split('/')[1], filename)
             )
-            data_to_ingest = {'rows': []}
-            with open_cloud_file(path) as csv_file:
-                csv_reader = csv.DictReader(csv_file, delimiter=",")
-                data_to_ingest['fieldnames'] = csv_reader.fieldnames
-                for row in csv_reader:
-                    data_to_ingest['rows'].append(row)
-            return data_to_ingest
+            if self.controller.storage_provider:
+                with self.controller.storage_provider.open(path, 'r') as csv_file:
+                    return self._read_data_to_ingest(csv_file)
+            else:
+                with open_cloud_file(path) as csv_file:
+                    return self._read_data_to_ingest(csv_file)
 
         except FileNotFoundError:
             logging.error(f"File path '{path}' not found")
             return GenomicSubProcessResult.ERROR
+
+    def _read_data_to_ingest(self, csv_file):
+        data_to_ingest = {'rows': []}
+        csv_reader = csv.DictReader(csv_file, delimiter=",")
+        data_to_ingest['fieldnames'] = csv_reader.fieldnames
+        for row in csv_reader:
+            data_to_ingest['rows'].append(row)
+        return data_to_ingest
 
     def _process_gc_metrics_data_for_insert(self, data_to_ingest):
         """ Since input files vary in column names,
@@ -1063,23 +1090,6 @@ class GenomicReconciler:
                                       ("cramReceived", ".cram", "cramPath"),
                                       ("cramMd5Received", ".cram.md5sum", "cramMd5Path"),
                                       ("craiReceived", ".crai", "craiPath"))
-
-    def reconcile_metrics_to_manifest(self):
-        """ The main method for the metrics vs. manifest reconciliation """
-        try:
-
-            unreconciled_members = self.member_dao.get_null_field_members('reconcileMetricsBBManifestJobRunId')
-            results = []
-            for member in unreconciled_members:
-                results.append(
-                    self.member_dao.update_member_job_run_id(
-                        member, self.run_id, 'reconcileMetricsBBManifestJobRunId')
-                )
-            return GenomicSubProcessResult.SUCCESS \
-                if GenomicSubProcessResult.ERROR not in results \
-                else GenomicSubProcessResult.ERROR
-        except RuntimeError:
-            return GenomicSubProcessResult.ERROR
 
     def reconcile_metrics_to_genotyping_data(self):
         """ The main method for the AW2 manifest vs. array data reconciliation
@@ -2490,7 +2500,7 @@ class GenomicAlertHandler:
     ROC_BOARD_ID = "ROC"
 
     def __init__(self):
-        self.alert_envs = ["all-of-us-rdr-prod", "all-of-us-rdr-stable"]
+        self.alert_envs = ["all-of-us-rdr-prod"]
         if GAE_PROJECT in self.alert_envs:
             self._jira_handler = JiraTicketHandler()
         else:

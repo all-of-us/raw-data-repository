@@ -22,7 +22,7 @@ from rdr_service.dao.questionnaire_response_dao import (
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort, \
     RetentionStatus
 from tests import test_data
@@ -112,7 +112,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             'Form_13,Cope': 'May',
             'June': 'June',
             'Form_1': 'July',
-            'OctCope': 'Oct'
+            'NovCope': 'Nov'
         })
 
     def _setup_questionnaire(self):
@@ -192,7 +192,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
     def test_insert_questionnaire_not_found(self):
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -208,7 +208,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
         q.concepts.append(QuestionnaireConcept(codeId=self.consent_code_id))
         self.questionnaire_dao.insert(q)
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -226,7 +226,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         p = Participant(participantId=1, biobankId=2, withdrawalStatus=WithdrawalStatus.NOT_WITHDRAWN)
         self.participant_dao.insert(p)
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -243,7 +243,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         p = Participant(participantId=1, biobankId=2, withdrawalStatus=WithdrawalStatus.NO_USE)
         self.participant_dao.insert(p)
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -260,7 +260,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -286,7 +286,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -303,7 +303,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -321,7 +321,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -340,7 +340,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -358,7 +358,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -376,7 +376,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -395,7 +395,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -409,7 +409,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             qr.authored = time
             self.questionnaire_response_dao.insert(qr)
 
-        expected_qr = QuestionnaireResponse(
+        expected_qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -429,7 +429,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -443,7 +443,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             qr.authored = time
             self.questionnaire_response_dao.insert(qr)
 
-        expected_qr = QuestionnaireResponse(
+        expected_qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -463,7 +463,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -480,7 +480,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             qr.authored = time
             self.questionnaire_response_dao.insert(qr)
 
-        expected_qr = QuestionnaireResponse(
+        expected_qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -503,7 +503,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -513,7 +513,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         )
         qr.answers.extend(self._names_and_email_answers())
         self.questionnaire_response_dao.insert(qr)
-        qr2 = QuestionnaireResponse(
+        qr2 = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -540,7 +540,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             self.participant_dao.insert(p)
         self._setup_questionnaire()
 
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -567,7 +567,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         with FakeClock(TIME_2):
             self.questionnaire_response_dao.insert(qr)
 
-        expected_qr = QuestionnaireResponse(
+        expected_qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -613,7 +613,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
     def _setup_participant(self):
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -656,7 +656,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
     def _submit_questionnaire_response(self, response_consent_code=None, questionnaire_version=1,
                                        consent_question_id=7, authored_datetime=datetime.datetime(2020, 5, 5)):
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireId=2,
             questionnaireVersion=questionnaire_version,
             questionnaireSemanticVersion=f'V{questionnaire_version}',
@@ -765,7 +765,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         )
 
     @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
-    def test_unrecognized_october_cope_form(self, mock_logging):
+    def test_unrecognized_november_cope_form(self, mock_logging):
         self.insert_codes()
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
@@ -776,15 +776,15 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self._submit_questionnaire_response(self.cope_consent_yes, authored_datetime=datetime.datetime(2020, 10, 14))
 
         participant_summary = self.participant_summary_dao.get(1)
-        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeOct)
-        self.assertEqual(datetime.datetime(2020, 10, 14), participant_summary.questionnaireOnCopeOctAuthored)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeNov)
+        self.assertEqual(datetime.datetime(2020, 10, 14), participant_summary.questionnaireOnCopeNovAuthored)
 
         mock_logging.error.assert_called_with(
             'Unrecognized identifier for COPE survey response '
             '(questionnaire_id: "2", version: "1", identifier: "oct_unknown"'
         )
 
-    def test_october_cope_survey(self):
+    def test_november_cope_survey(self):
         self.insert_codes()
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
@@ -792,12 +792,12 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self._setup_participant()
         num_completed_ppi_after_setup = self.participant_summary_dao.get(1).numCompletedPPIModules
 
-        self._create_cope_questionnaire(identifier='OctCope')
+        self._create_cope_questionnaire(identifier='NovCope')
 
         self._submit_questionnaire_response(self.cope_consent_yes)
 
         participant_summary = self.participant_summary_dao.get(1)
-        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeOct)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeNov)
         self.assertEqual(num_completed_ppi_after_setup + 1, participant_summary.numCompletedPPIModules)
 
     def _create_dna_program_questionnaire(self, created_date=datetime.datetime(2020, 5, 5)):
@@ -887,7 +887,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -908,7 +908,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         with FakeClock(TIME):
             self.participant_dao.insert(p)
         self._setup_questionnaire()
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -936,7 +936,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         with FakeClock(TIME_2):
             self.questionnaire_response_dao.insert(qr)
 
-        expected_qr = QuestionnaireResponse(
+        expected_qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -1002,7 +1002,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
         self.questionnaire_dao.insert(q2)
 
-        qr = QuestionnaireResponse(
+        qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -1054,7 +1054,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
-        qr2 = QuestionnaireResponse(
+        qr2 = self.data_generator._questionnaire_response(
             questionnaireResponseId=2,
             questionnaireId=2,
             questionnaireVersion=1,
@@ -1077,7 +1077,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             qr2.authored = TIME_3
             self.questionnaire_response_dao.insert(qr2)
 
-        expected_qr = QuestionnaireResponse(
+        expected_qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
             questionnaireVersion=1,
@@ -1096,7 +1096,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self.check_response(expected_qr)
 
         # The new questionnaire response should be there, too.
-        expected_qr2 = QuestionnaireResponse(
+        expected_qr2 = self.data_generator._questionnaire_response(
             questionnaireResponseId=2,
             questionnaireId=2,
             questionnaireVersion=1,
@@ -1136,7 +1136,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         # changes.
         self.assertEqual(expected_ps2.asdict(), self.participant_summary_dao.get(1).asdict())
 
-        qr3 = QuestionnaireResponse(
+        qr3 = self.data_generator._questionnaire_response(
             questionnaireResponseId=3,
             questionnaireId=2,
             questionnaireVersion=1,
@@ -1167,7 +1167,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self.check_response(expected_qr2)
 
         # The third questionnaire response should be there.
-        expected_qr3 = QuestionnaireResponse(
+        expected_qr3 = self.data_generator._questionnaire_response(
             questionnaireResponseId=3,
             questionnaireId=2,
             questionnaireVersion=1,

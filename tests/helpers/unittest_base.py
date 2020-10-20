@@ -110,7 +110,8 @@ class QuestionnaireTestMixin:
         uri_answers=None,
         language=None,
         authored=None,
-        create_codes=True
+        create_codes=True,
+        status='completed'
     ):
         if isinstance(participant_id, int):
             participant_id = f'P{participant_id}'
@@ -146,7 +147,7 @@ class QuestionnaireTestMixin:
 
         response_json = {
             "resourceType": "QuestionnaireResponse",
-            "status": "completed",
+            "status": status,
             "subject": {"reference": "Patient/{}".format(participant_id)},
             "questionnaire": {"reference": "Questionnaire/{}".format(questionnaire_id)},
             "group": {"question": results},

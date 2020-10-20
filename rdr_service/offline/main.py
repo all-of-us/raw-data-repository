@@ -294,21 +294,39 @@ def aw1cf_failures_workflow():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_data_manifest_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
     genomic_pipeline.ingest_genomic_centers_metrics_files()
-    genomic_pipeline.reconcile_metrics_vs_manifest()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_array_data_reconciliation_workflow():
     genomic_pipeline.reconcile_metrics_vs_genotyping_data()
     return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
-def genomic_gem_a1_a2_workflow():
+def genomic_wgs_data_reconciliation_workflow():
+    genomic_pipeline.reconcile_metrics_vs_sequencing_data()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_gem_a1_workflow():
+    """Temporarily running this manually for GEM Soft Launch"""
+    now = datetime.utcnow()
+    if now.day == 0o1 and now.month == 0o1:
+        logging.info("skipping the scheduled run.")
+        return '{"success": "true"}'
     genomic_pipeline.gem_a1_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_gem_a2_workflow():
     genomic_pipeline.gem_a2_manifest_workflow()
     return '{"success": "true"}'
 
@@ -555,9 +573,24 @@ def _build_pipeline_app():
         view_func=genomic_data_manifest_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicGemA1A2Workflow",
-        endpoint="genomic_gem_a1_a2_workflow",
-        view_func=genomic_gem_a1_a2_workflow, methods=["GET"]
+        OFFLINE_PREFIX + "GenomicArrayReconciliationWorkflow",
+        endpoint="genomic_array_data_reconciliation_workflow",
+        view_func=genomic_array_data_reconciliation_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicWGSReconciliationWorkflow",
+        endpoint="genomic_wgs_data_reconciliation_workflow",
+        view_func=genomic_wgs_data_reconciliation_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicGemA1Workflow",
+        endpoint="genomic_gem_a1_workflow",
+        view_func=genomic_gem_a1_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicGemA2Workflow",
+        endpoint="genomic_gem_a2_workflow",
+        view_func=genomic_gem_a2_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicGemA3Workflow",

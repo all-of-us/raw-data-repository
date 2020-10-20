@@ -133,6 +133,27 @@ class GenomicJobRunSchema(Schema):
         resource_pk_field = 'id'
 
 
+class GenomicFileProcessedSchema(Schema):
+
+    id = fields.Int32()
+    run_id = fields.Int32()
+    start_time = fields.DateTime()
+    end_time = fields.DateTime()
+    file_path = fields.String(validate=validate.Length(max=255))
+    bucket_name = fields.String(validate=validate.Length(max=128))
+    file_name = fields.String(validate=validate.Length(max=128))
+    file_status = fields.EnumString(enum=GenomicSubProcessStatus)
+    file_status_id = fields.EnumInteger(enum=GenomicSubProcessStatus)
+    file_result = fields.EnumString(enum=GenomicSubProcessResult)
+    file_result_id = fields.EnumInteger(enum=GenomicSubProcessResult)
+    upload_date = fields.DateTime()
+
+    class Meta:
+        schema_id = SchemaID.genomic_file_processed
+        resource_uri = 'GenomicFileProcessed'
+        resource_pk_field = 'id'
+
+
 class GenomicGCValidationMetricsSchema(Schema):
 
     id = fields.Int32()

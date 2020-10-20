@@ -18,15 +18,15 @@ from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import rebuild_bq_participant
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_set_member_update, \
-    bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update
+    bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
-    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay
+    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov
 from rdr_service.model.participant import Participant
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
 from rdr_service.resource.generators.genomics import genomic_set_update, genomic_set_member_update, \
-    genomic_job_run_update, genomic_gc_validation_metrics_update
+    genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 
@@ -38,7 +38,8 @@ tool_cmd = "resource"
 tool_desc = "Tools for updating resource records in RDR"
 
 
-GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'genomic_gc_validation_metrics')
+GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'genomic_gc_validation_metrics',
+                     'genomic_file_processed')
 
 class ParticipantResourceClass(object):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
@@ -70,7 +71,8 @@ class ParticipantResourceClass(object):
                 BQPDROverallHealth,
                 BQPDREHRConsentPII,
                 BQPDRDVEHRSharing,
-                BQPDRCOPEMay
+                BQPDRCOPEMay,
+                BQPDRCOPENov
             )
             for module in modules:
                 mod = module()
@@ -269,6 +271,9 @@ class GenomicResourceClass(object):
             elif table == 'genomic_job_run':
                 bq_genomic_job_run_update(_id, project_id=self.gcp_env.project)
                 genomic_job_run_update(_id)
+            elif table == 'genomic_file_processed':
+                bq_genomic_file_processed_update(_id, project_id=self.gcp_env.project)
+                genomic_file_processed_update(_id)
             elif table == 'genomic_gc_validation_metrics':
                 bq_genomic_gc_validation_metrics_update(_id, project_id=self.gcp_env.project)
                 genomic_gc_validation_metrics_update(_id)
