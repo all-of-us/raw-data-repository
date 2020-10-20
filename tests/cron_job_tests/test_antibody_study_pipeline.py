@@ -74,10 +74,10 @@ class AntibodyStudyPipelineTest(BaseTestCase):
 
         quest_covid_antibody_test_dao = QuestCovidAntibodyTestDao()
         records = quest_covid_antibody_test_dao.get_all()
-        self.assertEqual(len(records), 3)
+        self.assertEqual(len(records), 4)
         quest_covid_antibody_test_result_dao = QuestCovidAntibodyTestResultDao()
         records = quest_covid_antibody_test_result_dao.get_all()
-        self.assertEqual(len(records), 4)
+        self.assertEqual(len(records), 5)
 
     def _create_ingestion_test_file(self, test_data_filename, bucket_name, folder=None):
         test_data_file = self._open_test_file(test_data_filename, _BIOBANK_ID_PREFIX)
