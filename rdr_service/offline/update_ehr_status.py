@@ -92,13 +92,13 @@ def update_participant_summaries_from_job(job):
                 dispatch_participant_rebuild_tasks(patch_data, batch_size=batch_size)
 
             except BadGateway as e:
-                LOG.error(f'Bad Gateway: {e}')
+                LOG.error(f'Bad Gateway: {e}', exc_info=True)
 
             except InternalServerError as e:
-                LOG.error(f'Internal Server Error: {e}')
+                LOG.error(f'Internal Server Error: {e}', exc_info=True)
 
             except HTTPException as e:
-                LOG.error(f'HTTP Exception: {e}')
+                LOG.error(f'HTTP Exception: {e}', exc_info=True)
 
 
 def make_update_organizations_job():
