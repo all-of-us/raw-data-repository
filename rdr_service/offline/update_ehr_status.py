@@ -1,6 +1,8 @@
 import logging
 import math
 
+from werkzeug.exceptions import HTTPException, InternalServerError, BadGateway
+
 from rdr_service import clock, config
 from rdr_service.app_util import datetime_as_naive_utc
 from rdr_service.cloud_utils import bigquery
@@ -14,12 +16,19 @@ from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 LOG = logging.getLogger(__name__)
 
 
-def update_ehr_status():
+def update_ehr_status_organization():
     """
-  Entrypoint, executed as a cron job.
-  """
-    update_particiant_summaries()
+    Entrypoint, executed as a cron job.
+    """
     update_organizations()
+    logging.info('Update EHR complete')
+
+
+def update_ehr_status_participant():
+    """
+    Entrypoint, executed as a cron job.
+    """
+    update_particiant_summaries()
     logging.info('Update EHR complete')
 
 
@@ -79,7 +88,17 @@ def update_participant_summaries_from_job(job):
                     'ehr_receipt': rec.ehrReceiptTime if rec.ehrReceiptTime else now,
                     'ehr_update': now}
             } for rec in records]
-            dispatch_participant_rebuild_tasks(patch_data, batch_size=batch_size)
+            try:
+                dispatch_participant_rebuild_tasks(patch_data, batch_size=batch_size)
+
+            except BadGateway as e:
+                LOG.error(f'Bad Gateway: {e}')
+
+            except InternalServerError as e:
+                LOG.error(f'Internal Server Error: {e}')
+
+            except HTTPException as e:
+                LOG.error(f'HTTP Exception: {e}')
 
 
 def make_update_organizations_job():

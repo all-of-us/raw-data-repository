@@ -225,8 +225,15 @@ def run_va_sync_consent_files():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
-def update_ehr_status_cron():
-    update_ehr_status.update_ehr_status()
+def update_ehr_status_organization():
+    update_ehr_status.update_ehr_status_organization()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def update_ehr_status_participant():
+    update_ehr_status.update_ehr_status_participant()
     return '{"success": "true"}'
 
 
@@ -527,7 +534,14 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "UpdateEhrStatus", endpoint="update_ehr_status", view_func=update_ehr_status_cron,
+        OFFLINE_PREFIX + "UpdateEhrStatusOrganization",
+        endpoint="update_ehr_status_organization", view_func=update_ehr_status_organization,
+        methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "UpdateEhrStatusParticipant",
+        endpoint="update_ehr_status_participant", view_func=update_ehr_status_participant,
         methods=["GET"]
     )
 
