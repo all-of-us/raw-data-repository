@@ -60,9 +60,9 @@ class BQRWBResearcherView(BQView):
             SELECT
                 %%FIELD_LIST%%
             FROM (
-                SELECT *, 
+                SELECT *,
                     ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
-                  FROM `{project}`.{dataset}.rwb_researcher 
+                  FROM `{project}`.{dataset}.rwb_researcher
               ) t
               WHERE t.rn = 1
         """.replace('%%FIELD_LIST%%', BQRWBResearcherSchema.get_sql_field_names(
@@ -83,9 +83,9 @@ class BQRWBResearcherGenderView(BQView):
     __sql__ = """
         SELECT t.id, t.created, t.modified, nt.*
           FROM (
-            SELECT *, 
+            SELECT *,
                 ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
-              FROM `{project}`.{dataset}.rwb_researcher 
+              FROM `{project}`.{dataset}.rwb_researcher
           ) t cross join unnest(genders) as nt
           WHERE t.rn = 1
     """
@@ -99,9 +99,9 @@ class BQRWBResearcherRaceView(BQView):
     __sql__ = """
         SELECT t.id, t.created, t.modified, nt.*
           FROM (
-            SELECT *, 
+            SELECT *,
                 ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
-              FROM `{project}`.{dataset}.rwb_researcher 
+              FROM `{project}`.{dataset}.rwb_researcher
           ) t cross join unnest(races) as nt
           WHERE t.rn = 1
     """
@@ -115,9 +115,9 @@ class BQRWBResearcherSexAtBirthView(BQView):
     __sql__ = """
         SELECT t.id, t.created, t.modified, nt.*
           FROM (
-            SELECT *, 
+            SELECT *,
                 ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
-              FROM `{project}`.{dataset}.rwb_researcher 
+              FROM `{project}`.{dataset}.rwb_researcher
           ) t cross join unnest(sex_at_birth) as nt
           WHERE t.rn = 1
     """
@@ -131,9 +131,9 @@ class BQRWBResearcherDegreeView(BQView):
     __sql__ = """
         SELECT t.id, t.created, t.modified, nt.*
           FROM (
-            SELECT *, 
+            SELECT *,
                 ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
-              FROM `{project}`.{dataset}.rwb_researcher 
+              FROM `{project}`.{dataset}.rwb_researcher
           ) t cross join unnest(degrees) as nt
           WHERE t.rn = 1
     """
@@ -144,7 +144,7 @@ class BQRWBInstitutionalAffiliationsSchema(BQSchema):
     created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
 
-    researcher_id = BQField('researcher_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    researcher_id = BQField('researcher_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     institution = BQField('institution', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     role = BQField('role', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     non_academic_affiliation = BQField('non_academic_affiliation', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
