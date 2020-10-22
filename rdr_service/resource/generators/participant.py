@@ -477,40 +477,69 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
     def _prep_biobank_info(self, p_id, p_bb_id, ro_session):
         """
-        Look up biobank orders / stored samples
+        Look up biobank orders / ordered samples / stored samples
+        This was refactored during implementation of PDR-122, to add additional biobank details to PDR
         :param p_id: participant id
         :param p_bb_id:  participant's biobank id
         :param ro_session: Readonly DAO session object
         :return:
         """
 
-        def _make_stored_sample_dict_from_row(bss_row, has_order=True):
+        def _get_stored_sample_row(stored_samples, ordered_sample):
             """
-            Internal helper routine to populate a stored sample dict entry from a biobank_stored_sample
-            table query result row
+            Search a list of biobank_stored_sample rows to find a match to the biobank_ordered_sample record
+            (same test and order identifier)
+            :param stored_samples: list of biobank_stored_sample rows
+            :param ordered_sample: a biobank_ordered_sample row
+            :return:
             """
+            match = None
+            for sample in stored_samples:
+                if sample.test == ordered_sample.test and sample.biobank_order_id == ordered_sample.order_id:
+                    match = sample
+                    break
+
+            return match
+
+        def _make_sample_dict_from_row(bss=None, bos=None):
+            """"
+            Internal helper routine to populate a sample dict entry from the available ordered sample and
+            stored sample information.
+            :param bss:   A biobank_stored_sample row
+            :param bos:   A biobank_ordered_sample row
+            Note that there should never be an instance where neither parameter has content
+            """
+
+            # When a stored sample row is provided, use its confirmed and status fields
+            if bss:
+                test = bss.test
+                stored_confirmed = bss.confirmed
+                stored_status = bss.status
+            elif bos:
+                test = bos.test
+                stored_confirmed = None
+                stored_status = None
+            else:
+                # Should never get here, but...
+                return {}
+
             return {
-                'test': bss_row.test,
-                'baseline_test': 1 if bss_row.test in self._baseline_sample_test_codes else 0,  # Boolean field
-                'dna_test': 1 if bss_row.test in self._dna_sample_test_codes else 0,  # Boolean field
-                'collected': bss_row.collected if has_order else None,
-                'processed': bss_row.processed if has_order else None,
-                'finalized': bss_row.finalized if has_order else None,
-                'confirmed': bss_row.bb_confirmed,
-                'status': str(SampleStatus.RECEIVED) if bss_row.bb_confirmed else None,
-                'status_id': int(SampleStatus.RECEIVED) if bss_row.bb_confirmed else None,
-                'created': bss_row.bb_created,
-                'disposed': bss_row.bb_disposed,
-                'disposed_reason': str(SampleStatus(bss_row.bb_status)) if bss_row.bb_status else None,
-                'disposed_reason_id': int(SampleStatus(bss_row.bb_status)) if bss_row.bb_status else None,
+                'test': test,
+                'baseline_test': 1 if test in self._baseline_sample_test_codes else 0,  # Boolean field
+                'dna_test': 1 if test in self._dna_sample_test_codes else 0,  # Boolean field
+                'confirmed': stored_confirmed,
+                'status': str(SampleStatus.RECEIVED) if stored_confirmed else None,
+                'status_id': int(SampleStatus.RECEIVED) if stored_confirmed else None,
+                'collected': bos.collected if bos else None,
+                'processed': bos.processed if bos else None,
+                'finalized': bos.finalized if bos else None,
+                'created': bss.created if bss else None,
+                'disposed': bss.disposed if bss else None,
+                'disposed_reason': str(SampleStatus(stored_status)) if stored_status else None,
+                'disposed_reason_id': int(SampleStatus(stored_status)) if stored_status else None,
             }
 
-        # SQL to find total number of biobank stored samples associated with the participant
-        _stored_samples_count_sql = """
-             select count(*) from biobank_stored_sample where biobank_id = :bb_id;
-          """
-
-        # SQL to generate a list of biobank orders and counts of ordered and stored samples.
+        # SQL to generate a list of biobank orders associated with a participant
         _biobank_orders_sql = """
            select bo.biobank_order_id, bo.created, bo.order_status,
                    bo.collected_site_id, (select google_group from site where site.site_id = bo.collected_site_id) as collected_site,
@@ -518,69 +547,64 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                    bo.finalized_site_id, (select google_group from site where site.site_id = bo.finalized_site_id) as finalized_site,
                    case when exists (
                      select bdo.participant_id from biobank_dv_order bdo
-                        where bdo.biobank_order_id = bo.biobank_order_id) then 1 else 0 end as dv_order,
-                   (select count(1) from biobank_ordered_sample bos2
-                        where bos2.order_id = bo.biobank_order_id) as tests_ordered,
-                   (select count(1) from biobank_stored_sample bss2
-                        where bss2.biobank_order_identifier = boi.`value`) as tests_stored
-             from biobank_order bo left outer join biobank_order_identifier boi on bo.biobank_order_id = boi.biobank_order_id
-             where boi.`system` = 'https://www.pmi-ops.org' and bo.participant_id = :pid
-                   and boi.`value` in (select bss.biobank_order_identifier from biobank_stored_sample bss)
+                        where bdo.biobank_order_id = bo.biobank_order_id and bo.participant_id = bdo.participant_id)
+                   then 1 else 0 end as dv_order
+             from biobank_order bo where participant_id = :p_id
              order by bo.created desc;
          """
 
-        # SQL to collect all the ordered samples tests and stored sample tests.
-        _biobank_order_samples_sql = """
-            select bos.test, bos.collected, bos.processed, bos.finalized, bo.order_status,
-                   bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed,
-                   bss.status as bb_status
-            from biobank_order bo inner join biobank_order_identifier boi on bo.biobank_order_id = boi.biobank_order_id
-                 left join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
-                 left join biobank_stored_sample bss on boi.`value` = bss.biobank_order_identifier and bos.test = bss.test
-             where boi.`system` = 'https://www.pmi-ops.org' and bss.biobank_order_identifier = boi.value
-                and bo.biobank_order_id = :order_id
-        """
-
-        # Used when there are more ordered tests than stored tests.
+        # SQL to collect all the ordered samples associated with a biobank order
         _biobank_ordered_samples_sql = """
-          select bos.test, bos.collected, bos.processed, bos.finalized, bo.order_status,
-                   null as bb_confirmed, null as bb_created, null as bb_disposed, null as bb_status
-            from biobank_order bo left join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
-             where bo.biobank_order_id = :order_id;
+            select bo.biobank_order_id, bos.*
+            from biobank_order bo
+            inner join biobank_ordered_sample bos on bo.biobank_order_id = bos.order_id
+            where bo.participant_id = :p_id and bo.biobank_order_id = :bo_id
+            order by bos.order_id, test;
         """
 
-        # Used when there are less ordered tests than stored tests.
+        # SQL to select all the stored samples associated with a participant's biobank_id
+        # This may include stored samples for which we don't have an associated biobank order
+        # See: https://precisionmedicineinitiative.atlassian.net/browse/PDR-89.
         _biobank_stored_samples_sql = """
             select
-                bss.test, bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed,
-                   bss.status as bb_status
-            from biobank_order bo inner join biobank_order_identifier boi on bo.biobank_order_id = boi.biobank_order_id
-                 left join biobank_stored_sample bss on boi.`value` = bss.biobank_order_identifier
-             where boi.`system` = 'https://www.pmi-ops.org' and bo.biobank_order_id = :order_id;
+                (select distinct boi.biobank_order_id from
+                   biobank_order_identifier boi where boi.`value` = bss.biobank_order_identifier
+                ) as biobank_order_id,
+                bss.*
+            from biobank_stored_sample bss
+            where bss.biobank_id = :bb_id
+            order by biobank_order_id, test;
         """
 
-        # SQL to find stored samples for the participant that are not associated with a biobank order
-        # See: https://precisionmedicineinitiative.atlassian.net/browse/PDR-89. This will only be executed in
-        # a small number of cases where a participant has "unknown order" samples
-        _samples_without_biobank_order_sql = """
-                select bss.test, bss.confirmed as bb_confirmed, bss.created as bb_created, bss.disposed as bb_disposed,
-                       bss.status as bb_status, bo.biobank_order_id as bbo_id
-                  from biobank_stored_sample bss
-                  left outer join biobank_order_identifier boi on bss.biobank_order_identifier = boi.`value` and
-                        boi.`system` = 'https://www.pmi-ops.org'
-                  left outer join biobank_order bo on boi.biobank_order_id = bo.biobank_order_id
-                where bss.biobank_id = :bb_id and bo.biobank_order_id is null;
-             """
 
         data = {}
         orders = list()
-        stored_samples_added = 0
+        # Find all biobank orders associated with this participant
+        cursor = ro_session.execute(_biobank_orders_sql, {'p_id': p_id})
+        biobank_orders = [r for r in cursor]
 
-        # Find known biobank orders associated with this participant
-        cursor = ro_session.execute(_biobank_orders_sql, {'pid': p_id})
-        results = [r for r in cursor]
-        # loop through results and create one order record for each biobank_order_id value.
-        for row in results:
+        # Find stored samples associated with this participant. For any stored samples for which there
+        # is no known biobank order, create a separate list that will be consolidated into a "pseudo" order record
+        cursor = ro_session.execute(_biobank_stored_samples_sql, {'bb_id': p_bb_id})
+        bss_results = [r for r in cursor]
+        bss_missing_orders = list(filter(lambda r: r.biobank_order_id is None, bss_results))
+
+        # Create an order record for each of this participant's biobank orders
+        # This will reconcile ordered samples and stored samples (when available) to create sample summary records
+        # for each sample associated with the order record
+        for row in biobank_orders:
+            cursor = ro_session.execute(_biobank_ordered_samples_sql, {'p_id': p_id, 'bo_id': row.biobank_order_id})
+            bos_results = [r for r in cursor]
+            bbo_samples = list()
+            stored_count = 0
+            for ordered_sample in bos_results:
+                # This will look for a matching stored sample based on matching the biobank order id and test
+                # to what's in the ordered sample record
+                stored_sample = _get_stored_sample_row(bss_results, ordered_sample)
+                bbo_samples.append(_make_sample_dict_from_row(bss=stored_sample, bos=ordered_sample))
+                if stored_sample:
+                    stored_count += 1
+
             order = {
                 'biobank_order_id': row.biobank_order_id,
                 'created': row.created,
@@ -595,59 +619,29 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'processed_site_id': row.processed_site_id,
                 'finalized_site': row.finalized_site,
                 'finalized_site_id': row.finalized_site_id,
-                'tests_ordered': row.tests_ordered,
-                'tests_stored': row.tests_stored,
+                'tests_ordered': len(bos_results),
+                'tests_stored': stored_count,
                 'samples': list()
             }
 
-            # Query for all samples that have a matching ordered sample test and stored sample test.
-            cursor = ro_session.execute(_biobank_order_samples_sql, {'order_id': row.biobank_order_id})
-            s_results = [r for r in cursor]
-            for s_row in s_results:
-                order['samples'].append(_make_stored_sample_dict_from_row(s_row, has_order=True))
-                stored_samples_added += 1
-
             orders.append(order)
 
-        # Check if this participant has additional stored samples that were not added to the data dict above
-        # Occurs when the results for the biobank orders query (above) misses samples without an associated order
-        # See https://precisionmedicineinitiative.atlassian.net/browse/PDR-89
-        if stored_samples_added < ro_session.execute(_stored_samples_count_sql, {'bb_id': p_bb_id}).scalar():
-            # Include any "unknown order" samples associated with this participant
-            cursor = ro_session.execute(_samples_without_biobank_order_sql, {'bb_id': p_bb_id})
-            samples = [s for s in cursor]
-            if len(samples):
-                orders.append({'tests_ordered': 0, 'tests_stored': len(samples),
-                    'biobank_order_id': 'UNSET', 'samples': list()})
-                for row in samples:
-                    orders[-1]['samples'].append(_make_stored_sample_dict_from_row(row, has_order=False))
+        # Add any "orderless" stored samples for this participant.  They will all be associated with a
+        # pseudo order with an order id of 'UNSET'
+        if len(bss_missing_orders):
+            orderless_stored_samples = list()
+            for bss_row in bss_missing_orders:
+                orderless_stored_samples.append(_make_sample_dict_from_row(bss=bss_row, bos=None))
 
-        # Check to see that we have captured all of the stored samples for the orders.
-        # About 20% of the biobank orders have mis-matched ordered and stored sample counts.
-        for order in orders:
-            if order['tests_stored'] == 0 or order['tests_ordered'] == order['tests_stored']:
-                continue
-            # Fill in any missing ordered sample test records.
-            if order['tests_ordered'] > order['tests_stored'] and len(order['samples']) < order['tests_ordered']:
-                cursor = ro_session.execute(_biobank_ordered_samples_sql, {'order_id': order['biobank_order_id']})
-                results = [r for r in cursor]
-                existing_tests = [sample['test'] for sample in order['samples']]
-                for row in results:
-                    if row.test in existing_tests:
-                        continue
-                    order['samples'].append(_make_stored_sample_dict_from_row(row, has_order=True))
-            # Fill in any missing stored sample test records.
-            if order['tests_ordered'] < order['tests_stored']:
-                cursor = ro_session.execute(_biobank_stored_samples_sql, {'order_id': order['biobank_order_id']})
-                results = [r for r in cursor]
-                existing_tests = [sample['test'] for sample in order['samples']]
-                for row in results:
-                    if row.test in existing_tests:
-                        continue
-                    order['samples'].append(_make_stored_sample_dict_from_row(row, has_order=False))
+            orders.append({
+                'biobank_order_id': 'UNSET',
+                'tests_stored': len(orderless_stored_samples),
+                'samples': orderless_stored_samples
+            })
 
         if len(orders) > 0:
             data['biobank_orders'] = orders
+
         return data
 
     def _prep_patient_status_info(self, p_id, ro_session):
