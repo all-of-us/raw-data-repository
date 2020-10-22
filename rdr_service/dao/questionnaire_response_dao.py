@@ -75,6 +75,8 @@ _SIGNED_CONSENT_EXTENSION = "http://terminology.pmi-ops.org/StructureDefinition/
 
 _LANGUAGE_EXTENSION = "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language"
 
+_CATI_EXTENSION = "http://all-of-us.org/fhir/forms/non-participant-author"
+
 
 def count_completed_baseline_ppi_modules(participant_summary):
     baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
@@ -624,16 +626,20 @@ class QuestionnaireResponseDao(BaseDao):
             authored = fhir_qr.authored.date
 
         language = None
+        non_participant_author = None
         if fhir_qr.extension:
             for ext in fhir_qr.extension:
                 if "iso21090-ST-language" in ext.url:
                     language = ext.valueCode[:2]
+                if ext.url == _CATI_EXTENSION:
+                    non_participant_author = ext.valueString
 
         qr = QuestionnaireResponse(
             questionnaireId=questionnaire.questionnaireId,
             questionnaireVersion=questionnaire.version,
             questionnaireSemanticVersion=questionnaire.semanticVersion,
             participantId=participant_id,
+            nonParticipantAuthor=non_participant_author,
             authored=authored,
             language=language,
             resource=json.dumps(resource_json),

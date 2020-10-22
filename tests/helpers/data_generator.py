@@ -100,6 +100,7 @@ class DataGenerator:
     def _questionnaire_response(self, **kwargs):
         for field, default in [('created', datetime.now()),
                                ('resource', 'test'),
+                               ('nonParticipantAuthor', None),
                                ('status', QuestionnaireResponseStatus.COMPLETED)]:
             if field not in kwargs:
                 kwargs[field] = default

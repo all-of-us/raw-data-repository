@@ -16,7 +16,7 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantRaceAnswersDao, \
     ParticipantSummaryDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
-from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
+from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao, QuestionnaireResponseDao
 from rdr_service.model.code import Code
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -442,6 +442,29 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         self.assertEqual(
             datetime.datetime(1972, 11, 30, 12, 34, 42), code_id_to_answer[vitamin_k_dose_2.codeId].valueDateTime
         )
+
+    def test_cati_questionnaire_responses(self):
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id)
+
+        questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
+
+        with open(data_path("questionnaire_the_basics_resp.json")) as f:
+            resource = json.load(f)
+
+        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
+        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
+            questionnaire_id=questionnaire_id
+        )
+
+        with FakeClock(TIME_2):
+            resource["authored"] = TIME_2.isoformat()
+            response = self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        questionnaire_response_dao = QuestionnaireResponseDao()
+        qr = questionnaire_response_dao.get(response['id'])
+        self.assertEqual(qr.nonParticipantAuthor, 'CATI')
 
     def test_demographic_questionnaire_responses(self):
         with FakeClock(TIME_1):
