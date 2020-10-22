@@ -1,7 +1,7 @@
 """add cati to questionnaire response
 
 Revision ID: 8ab7f6708ea3
-Revises: d28bd6bd0a8c
+Revises: b43e5f5c2905
 Create Date: 2020-10-22 09:58:18.379524
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = '8ab7f6708ea3'
-down_revision = 'd28bd6bd0a8c'
+down_revision = 'b43e5f5c2905'
 branch_labels = None
 depends_on = None
 
