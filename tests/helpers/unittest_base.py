@@ -500,6 +500,8 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         expected_status=http.client.OK,
         headers=None,
         expected_response_headers=None,
+        test_client=None,
+        prefix=main.API_PREFIX
     ):
         """Makes a JSON API call against the test client and returns its response data.
 
@@ -509,15 +511,18 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
       request_data: Parsed JSON payload for the request.
       expected_status: What HTTP status to assert, if not 200 (OK).
     """
-        response = self.app.open(
-            main.API_PREFIX + local_path,
+        if test_client is None:
+            test_client = self.app
+        response = test_client.open(
+            prefix + local_path,
             method=method,
             data=json.dumps(request_data) if request_data is not None else None,
             query_string=query_string,
             content_type="application/json",
             headers=headers,
         )
-        self.assertEqual(expected_status, response.status_code, response.data)
+        if expected_status is not None:  # Allow tests the option to have an error without knowing the status code
+            self.assertEqual(expected_status, response.status_code, response.data)
         if expected_response_headers:
             self.assertTrue(
                 set(expected_response_headers.items()).issubset(set(response.headers.items())),

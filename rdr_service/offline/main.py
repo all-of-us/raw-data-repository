@@ -438,6 +438,7 @@ def check_enrollment_status():
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     offline_app = Flask(__name__)
+    offline_app.config['TRAP_HTTP_EXCEPTIONS'] = True
 
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "EnrollmentStatusCheck",
