@@ -626,20 +626,20 @@ class QuestionnaireResponseDao(BaseDao):
             authored = fhir_qr.authored.date
 
         language = None
-        is_cati = False
+        non_participant_author = None
         if fhir_qr.extension:
             for ext in fhir_qr.extension:
                 if "iso21090-ST-language" in ext.url:
                     language = ext.valueCode[:2]
-                if ext.url == _CATI_EXTENSION and ext.valueString == 'CATI':
-                    is_cati = True
+                if ext.url == _CATI_EXTENSION:
+                    non_participant_author = ext.valueString
 
         qr = QuestionnaireResponse(
             questionnaireId=questionnaire.questionnaireId,
             questionnaireVersion=questionnaire.version,
             questionnaireSemanticVersion=questionnaire.semanticVersion,
             participantId=participant_id,
-            isCATI=is_cati,
+            nonParticipantAuthor=non_participant_author,
             authored=authored,
             language=language,
             resource=json.dumps(resource_json),

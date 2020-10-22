@@ -29,7 +29,7 @@ class QuestionnaireResponse(Base):
     questionnaireVersion = Column("questionnaire_version", Integer, nullable=False)
     questionnaireSemanticVersion = Column('questionnaire_semantic_version', String(100))
     participantId = Column("participant_id", Integer, ForeignKey("participant.participant_id"), nullable=False)
-    isCATI = Column("is_cati", Boolean, default=False)
+    nonParticipantAuthor = Column("non_participant_author", String(80), nullable=True)
     created = Column("created", UTCDateTime, nullable=False)
     authored = Column("authored", UTCDateTime, nullable=True)
     language = Column("language", String(2), nullable=True)

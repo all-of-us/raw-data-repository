@@ -464,7 +464,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         questionnaire_response_dao = QuestionnaireResponseDao()
         qr = questionnaire_response_dao.get(response['id'])
-        self.assertEqual(qr.isCATI, True)
+        self.assertEqual(qr.nonParticipantAuthor, 'CATI')
 
     def test_demographic_questionnaire_responses(self):
         with FakeClock(TIME_1):
