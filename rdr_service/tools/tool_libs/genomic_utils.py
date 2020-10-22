@@ -16,7 +16,7 @@ import pytz
 
 from rdr_service import clock, config
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_set_update, \
-    bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update
+    bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao, \
     GenomicGCValidationMetricsDao, GenomicFileProcessedDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler
@@ -27,7 +27,7 @@ from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed
 from rdr_service.offline.genomic_pipeline import reconcile_metrics_vs_genotyping_data
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
-    genomic_job_run_update, genomic_gc_validation_metrics_update
+    genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -859,6 +859,10 @@ class FileUploadDateClass(GenomicManifestBase):
                     # Set upload_date
                     file.uploadDate = _blob.updated
                     self.dao.update(file)
+
+                    # For BQ/PDR
+                    bq_genomic_file_processed_update(file.id, project_id=self.gcp_env.project)
+                    genomic_file_processed_update(file.id)
 
                     counter += 1
 

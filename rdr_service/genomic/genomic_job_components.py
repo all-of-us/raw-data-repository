@@ -2271,7 +2271,7 @@ class ManifestDefinitionProvider:
                                            sqlalchemy.sql.expression.literal("no")),
                         ParticipantSummary.consentForGenomicsRORAuthored,
                         GenomicGCValidationMetrics.chipwellbarcode,
-                        GenomicSetMember.gcSiteId,
+                        sqlalchemy.func.upper(GenomicSetMember.gcSiteId),
                     ]
                 ).select_from(
                     sqlalchemy.join(

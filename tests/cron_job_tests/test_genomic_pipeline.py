@@ -1789,7 +1789,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("yes", rows[0]['consent_for_ror'])
             self.assertEqual(test_member_1.consentForGenomicsRORAuthored, parse(rows[0]['date_of_consent_for_ror']))
             self.assertEqual(test_member_1.chipwellbarcode, rows[0]['chipwellbarcode'])
-            self.assertEqual(test_member_1.gcSiteId, rows[0]['genome_center'])
+            self.assertEqual('JH', rows[0]['genome_center'])
 
         # Array
         file_record = self.file_processed_dao.get(2)  # remember, GC Metrics is #1
