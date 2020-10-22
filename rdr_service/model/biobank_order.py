@@ -142,7 +142,7 @@ class BiobankQuestOrderSiteAddress(Base):
 
 class BiobankOrderIdentifierBase(object):
     system = Column("system", String(80), primary_key=True)
-    value = Column("value", String(80), primary_key=True)
+    value = Column("value", String(80), primary_key=True, index=True)
 
     @declared_attr
     def biobankOrderId(cls):
