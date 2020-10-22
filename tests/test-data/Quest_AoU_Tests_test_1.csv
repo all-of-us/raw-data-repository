@@ -1,3 +1,3 @@
-Specimen ID,Test Code,Test Name,Run Date Time,Accession,Instrument Name,Position
-20176003961,39504,"SARS-CoV-2 Serology (COVID-19) Antibody (IgG), Immunoassay, Abbott",2020-07-21 21:25:00,D14075587,1/iSR53746,15
-20176003961,39504,"SARS-CoV-2 Serology (COVID-19) Antibody (IgG), Immunoassay, EUROIMMUN",2020-07-21 14:55:28,D14075596,,D8
+Specimen ID,Test Code,Test Name,Run Date Time,Accession,Instrument Name,Position,Batch
+20176003961,39504,"SARS-CoV-2 Serology (COVID-19) Antibody (IgG), Immunoassay, Abbott",2020-07-21 21:25:00,D14075587,1/iSR53746,15, 1
+20176003961,39504,"SARS-CoV-2 Serology (COVID-19) Antibody (IgG), Immunoassay, EUROIMMUN",2020-07-21 14:55:28,D14075596,,D8, 1

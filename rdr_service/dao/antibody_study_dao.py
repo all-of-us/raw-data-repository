@@ -46,7 +46,8 @@ class QuestCovidAntibodyTestDao(UpdatableDao):
 
     def _find_dup_with_session(self, session, quest_covid_antibody_test_obj):
         query = (session.query(QuestCovidAntibodyTest)
-                 .filter(QuestCovidAntibodyTest.accession == quest_covid_antibody_test_obj.accession))
+                 .filter(QuestCovidAntibodyTest.accession == quest_covid_antibody_test_obj.accession,
+                         QuestCovidAntibodyTest.batch == quest_covid_antibody_test_obj.batch))
 
         record = query.first()
         if record:
@@ -71,6 +72,7 @@ class QuestCovidAntibodyTestResultDao(UpdatableDao):
         query = (session.query(QuestCovidAntibodyTestResult)
                  .filter(QuestCovidAntibodyTestResult.accession == quest_covid_antibody_test_result_obj.accession,
                          QuestCovidAntibodyTestResult.resultName == quest_covid_antibody_test_result_obj.resultName,
+                         QuestCovidAntibodyTestResult.batch == quest_covid_antibody_test_result_obj.batch
                          ))
 
         record = query.first()

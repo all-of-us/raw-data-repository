@@ -173,6 +173,7 @@ def _create_quest_covid_antibody_test_obj_from_row(row, csv_filename):
         accession=row[QuestCovidAntibodyTestCsvColumns.ACCESSION],
         instrumentName=row[QuestCovidAntibodyTestCsvColumns.INSTRUMENT_NAME],
         position=row[QuestCovidAntibodyTestCsvColumns.POSITION],
+        batch=row.get('Batch', None),
         ingestFileName=csv_filename
     )
 
@@ -209,6 +210,7 @@ def _create_quest_covid_antibody_test_result_obj_from_row(row, csv_filename):
         accession=row[QuestCovidAntibodyTestResultCsvColumns.ACCESSION],
         resultName=row[QuestCovidAntibodyTestResultCsvColumns.RESULT_NAME],
         resultValue=row[QuestCovidAntibodyTestResultCsvColumns.RESULT_VALUE],
+        batch=row.get('Batch', None),
         ingestFileName=csv_filename
     )
 

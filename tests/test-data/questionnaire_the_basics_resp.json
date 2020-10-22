@@ -13,6 +13,10 @@
     {
       "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
       "valueCode": "en"
+    },
+    {
+      "url": "http://all-of-us.org/fhir/forms/non-participant-author",
+      "valueString": "CATI"
     }
   ],
   "group": {
