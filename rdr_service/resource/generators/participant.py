@@ -621,7 +621,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'finalized_site_id': row.finalized_site_id,
                 'tests_ordered': len(bos_results),
                 'tests_stored': stored_count,
-                'samples': list()
+                'samples': bbo_samples
             }
 
             orders.append(order)
