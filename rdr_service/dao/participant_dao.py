@@ -255,6 +255,7 @@ class ParticipantDao(UpdatableDao):
             summary.hpoId = obj.hpoId
             summary.organizationId = obj.organizationId
             summary.siteId = obj.siteId
+            summary.enrollmentSiteId = obj.enrollmentSiteId
             summary.withdrawalStatus = obj.withdrawalStatus
             summary.withdrawalReason = obj.withdrawalReason
             summary.withdrawalReasonJustification = obj.withdrawalReasonJustification
@@ -300,6 +301,7 @@ class ParticipantDao(UpdatableDao):
             hpoId=obj.hpoId,
             organizationId=obj.organizationId,
             siteId=obj.siteId,
+            enrollmentSiteId=obj.enrollmentSiteId,
             withdrawalStatus=obj.withdrawalStatus,
             withdrawalReason=obj.withdrawalReason,
             withdrawalReasonJustification=obj.withdrawalReasonJustification,

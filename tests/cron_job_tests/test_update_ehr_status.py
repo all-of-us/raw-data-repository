@@ -143,7 +143,8 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
         mock_organization_job.return_value = None
 
         with FakeClock(datetime.datetime(2019, 1, 1)):
-            update_ehr_status.update_ehr_status()
+            update_ehr_status.update_ehr_status_participant()
+            update_ehr_status.update_ehr_status_organization()
 
         self.assertFalse(mock_update_summaries.called)
         self.assertFalse(mock_update_organizations.called)
@@ -155,12 +156,14 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
         mock_organization_job.return_value.__iter__.return_value = []
         gen = ParticipantSummaryGenerator()
         with FakeClock(datetime.datetime(2019, 1, 1)):
-            update_ehr_status.update_ehr_status()
+            update_ehr_status.update_ehr_status_participant()
+            update_ehr_status.update_ehr_status_organization()
 
         mock_summary_job.return_value.__iter__.return_value = [[self.EhrUpdatePidRow(11), self.EhrUpdatePidRow(12)]]
         mock_organization_job.return_value.__iter__.return_value = []
         with FakeClock(datetime.datetime(2019, 1, 2)):
-            update_ehr_status.update_ehr_status()
+            update_ehr_status.update_ehr_status_participant()
+            update_ehr_status.update_ehr_status_organization()
 
         summary = self.summary_dao.get(11)
         self.assertEqual(summary.ehrStatus, EhrStatus.PRESENT)
@@ -195,7 +198,8 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
             ]
         ]
         with FakeClock(datetime.datetime(2019, 1, 1)):
-            update_ehr_status.update_ehr_status()
+            update_ehr_status.update_ehr_status_participant()
+            update_ehr_status.update_ehr_status_organization()
 
         foo_a_receipts = self.ehr_receipt_dao.get_by_organization_id(self.org_foo_a.organizationId)
         self.assertEqual(len(foo_a_receipts), 1)
@@ -219,7 +223,8 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
             ]
         ]
         with FakeClock(datetime.datetime(2019, 1, 2)):
-            update_ehr_status.update_ehr_status()
+            update_ehr_status.update_ehr_status_participant()
+            update_ehr_status.update_ehr_status_organization()
 
         foo_a_receipts = self.ehr_receipt_dao.get_by_organization_id(self.org_foo_a.organizationId)
         self.assertEqual(len(foo_a_receipts), 2)
@@ -246,7 +251,8 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
             ]
         ]
         with FakeClock(datetime.datetime(2019, 1, 1)):
-            update_ehr_status.update_ehr_status()
+            update_ehr_status.update_ehr_status_participant()
+            update_ehr_status.update_ehr_status_organization()
 
         foo_a_receipts = self.ehr_receipt_dao.get_all()
         self.assertEqual(len(foo_a_receipts), 0)

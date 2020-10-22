@@ -865,6 +865,8 @@ class WorkbenchResearcherDegree(messages.Enum):
     BA = 10
     BS = 11
     BSN = 12
+    MSW = 13
+    MPH = 14
 
 
 class WorkbenchResearcherDisability(messages.Enum):
