@@ -11,6 +11,7 @@ from werkzeug.exceptions import BadRequest
 from rdr_service import app_util, config
 from rdr_service.api_util import EXPORTER
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
+from rdr_service.main import _log_request_exception
 from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status, \
     antibody_study_pipeline
 from rdr_service.offline.base_pipeline import send_failure_alert
@@ -445,6 +446,7 @@ def check_enrollment_status():
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     offline_app = Flask(__name__)
+    offline_app.config['TRAP_HTTP_EXCEPTIONS'] = True
 
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "EnrollmentStatusCheck",
@@ -671,7 +673,7 @@ def _build_pipeline_app():
 
     offline_app.register_error_handler(DBAPIError, app_util.handle_database_disconnect)
 
-    got_request_exception.connect(flask_restful_log_exception_error, offline_app)
+    got_request_exception.connect(_log_request_exception, offline_app)
 
     return offline_app
 
