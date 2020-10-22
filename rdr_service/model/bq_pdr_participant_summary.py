@@ -363,7 +363,7 @@ class BQPDRParticipantBiobankSampleView(BQView):
            FROM (
               SELECT *,
                   ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
-                FROM `all-of-us-rdr-sandbox`.rdr_ops_data_view.pdr_participant
+                FROM `{project}`.{dataset}.pdr_participant
             ) ps cross join unnest(biobank_orders) as bbo, unnest(bbo.bbo_samples) as nt
             WHERE ps.rn = 1 and ps.test_participant != 1
     """

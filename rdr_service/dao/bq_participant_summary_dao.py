@@ -517,7 +517,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 stored_confirmed = None
                 stored_status = None
             else:
-                # Should never get here, but...
+                # Should never get here, but don't throw an error if something went wrong;  let the generator continue
+                logging.error(f'No stored or ordered sample info provided for biobank id {p_bb_id}. Please investigate')
                 return {}
 
             return {
