@@ -1432,9 +1432,9 @@ class GenomicBiobankSamplesCoupler:
         :return: result
         """
         samples = self._get_new_biobank_samples(from_date)
-        samples_meta = self.GenomicSampleMeta(*samples)
 
         if len(samples) > 0:
+            samples_meta = self.GenomicSampleMeta(*samples)
             return self.process_samples_into_manifest(samples_meta, cohort=self.COHORT_3_ID)
 
         else:
@@ -1647,15 +1647,26 @@ class GenomicBiobankSamplesCoupler:
                   JOIN code cr ON cr.code_id = ra.code_id
                       AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
             ) native ON native.participant_id = p.participant_id
+            LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
+                    AND m.genomic_workflow_state <> :ignore_param
         WHERE TRUE
             AND (
-                    ps.sample_status_1ed04 = :sample_status_param
-                    OR
-                    ps.sample_status_1sal2 = :sample_status_param
+                    CASE WHEN (
+                            ps.sample_status_1ed04 = :sample_status_param
+                            AND ss.test = "1ED04" 
+                            AND ss.status < 13
+                            ) THEN ss.test = "1ED04"
+                        WHEN (
+                            ps.sample_status_1sal2 = :sample_status_param
+                            AND ss.test = "1SAL2" 
+                            AND ss.status < 13
+                            ) THEN ss.test = "1SAL2"
+                        ELSE ss.test = "1ED04"
+                    END
                 )
-            AND ss.test IN ("1ED04", "1SAL2")
             AND ss.rdr_created > :from_date_param
             AND ps.consent_cohort = :cohort_3_param
+            AND m.id IS NULL
         """
         params = {
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
@@ -1666,6 +1677,7 @@ class GenomicBiobankSamplesCoupler:
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
             "cohort_3_param": ParticipantCohort.COHORT_3.__int__(),
+            "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
         }
         with self.samples_dao.session() as session:
             result = session.execute(_new_samples_sql, params).fetchall()
