@@ -1,4 +1,4 @@
-Accession,Specimen ID,Result Name,Result Value,Test Code,Test Name
-D12923642,20191000938,LIS Result,NEGATIVE,39504,"SARS-CoV-2 Serology (COVID-19) Antibody (IgG), Immunoassay, Abbott"
-D12923642,20191000938,LIS Comment,,39504,"SARS-CoV-2 Serology (COVID-19) Antibody (IgG), Immunoassay, Abbott"
-D12923642,20191000938,Instrument Raw Result,0.03,39504,"SARS-CoV-2 Serology (COVID-19) Antibody (IgG), Immunoassay, Abbott"
+Accession,Specimen ID,Result Name,Result Value,Test Code,Test Name,Batch
+D12923642,20191000938,LIS Result,NEGATIVE,39504,"SARS-CoV-2 Serology (COVID-19) Antibody (IgG), Immunoassay, Abbott", 1
+D12923642,20191000938,LIS Comment,,39504,"SARS-CoV-2 Serology (COVID-19) Antibody (IgG), Immunoassay, Abbott", 1
+D12923642,20191000938,Instrument Raw Result,0.03,39504,"SARS-CoV-2 Serology (COVID-19) Antibody (IgG), Immunoassay, Abbott", 1

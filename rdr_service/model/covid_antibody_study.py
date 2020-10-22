@@ -42,8 +42,9 @@ class QuestCovidAntibodyTest(Base):
     accession = Column("accession", String(80), nullable=False)
     instrumentName = Column("instrument_name", String(200))
     position = Column("position", String(80))
+    batch = Column("batch", String(80))
     ingestFileName = Column("ingest_file_name", String(80))
-    __table_args__ = (UniqueConstraint("accession"),)
+    __table_args__ = (UniqueConstraint("accession", "batch"),)
 
 
 class QuestCovidAntibodyTestResult(Base):
@@ -59,8 +60,9 @@ class QuestCovidAntibodyTestResult(Base):
     accession = Column("accession", String(80), nullable=False)
     resultName = Column("result_name", String(200))
     resultValue = Column("result_value", String(2000))
+    batch = Column("batch", String(80))
     ingestFileName = Column("ingest_file_name", String(80))
-    __table_args__ = (UniqueConstraint("accession", "result_name"),)
+    __table_args__ = (UniqueConstraint("accession", "result_name", "batch"),)
 
 
 event.listen(BiobankCovidAntibodySample, "before_insert", model_insert_listener)
