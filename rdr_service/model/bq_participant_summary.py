@@ -262,6 +262,7 @@ class BQParticipantSummarySchema(BQSchema):
 
     cohort_2_pilot_flag = BQField('cohort_2_pilot_flag', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     cohort_2_pilot_flag_id = BQField('cohort_2_pilot_flag_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    biobank_orders = BQRecordField('biobank_orders', schema=BQBiobankOrderSchema)
 
 
 class BQParticipantSummary(BQTable):
