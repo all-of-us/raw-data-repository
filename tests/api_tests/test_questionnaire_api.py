@@ -3,6 +3,7 @@ import json
 
 from rdr_service.code_constants import PPI_EXTRA_SYSTEM, PPI_SYSTEM
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.questionnaire_dao import QuestionnaireDao, QuestionnaireHistoryDao
 from tests.test_data import data_path
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -30,6 +31,17 @@ class QuestionnaireApiTest(BaseTestCase):
             questionnaire = json.load(f)
             self._save_codes(questionnaire)
             return self.send_post("Questionnaire", questionnaire, expected_response_headers={'ETag': 'W/"aaa"'})
+
+    def test_questionnaire_with_irb_extension(self):
+        response = self.insert_questionnaire()
+        dao = QuestionnaireDao()
+        questionnaire = dao.get(response.get('id'))
+        self.assertEqual(questionnaire.semanticDesc, 'semantic-description test string')
+        self.assertEqual(questionnaire.irbMapping, 'irb-mapping test string')
+        history_dao = QuestionnaireHistoryDao()
+        questionnaire_history = history_dao.get([questionnaire.questionnaireId, questionnaire.version])
+        self.assertEqual(questionnaire_history.semanticDesc, 'semantic-description test string')
+        self.assertEqual(questionnaire_history.irbMapping, 'irb-mapping test string')
 
     def test_update_before_insert(self):
         with open(data_path("questionnaire1.json")) as f:
