@@ -78,8 +78,9 @@ class _BQModuleSchema(BQSchema):
                 # Verify field name meets BigQuery requirements.
                 name = row['value']
                 is_valid, msg = self.field_name_is_valid(name)
-                if not is_valid and msg:
-                    logging.warning(msg)
+                if not is_valid:
+                    if msg:
+                        logging.warning(msg)
                     continue
 
                 if name in self._excluded_fields:
@@ -129,7 +130,8 @@ class _BQModuleSchema(BQSchema):
                 # Verify field name meets BigQuery requirements.
                 is_valid, msg = self.field_name_is_valid(name)
                 if not is_valid:
-                    logging.warning(msg)
+                    if msg:
+                        logging.warning(msg)
                     continue
 
                 # flag duplicate fields.
