@@ -59,17 +59,16 @@ class CodesManagementTest(BaseTestCase):
         args.reuse_codes = ','.join(reuse_codes)
         args.export_only = export_only
 
-        with mock.patch('rdr_service.tools.tool_libs.codes_management.requests') as mock_requests,\
+        with mock.patch('rdr_service.tools.tool_libs.codes_management.RedcapClient') as mock_redcap_class,\
                 mock.patch('rdr_service.tools.tool_libs.codes_management.csv') as mock_csv,\
                 mock.patch('rdr_service.tools.tool_libs.codes_management.open'):  # Prevent tests from making real files
-            mock_response = mock_requests.post.return_value
-            mock_response.status_code = 200
-            mock_response.json.return_value = redcap_data_dictionary
+            mock_redcap_instance = mock_redcap_class.return_value
+            mock_redcap_instance.get_data_dictionary.return_value = redcap_data_dictionary
 
             mock_csv_writerow = mock_csv.writer.return_value.writerow
 
             sync_codes_tool = CodesSyncClass(args, gcp_env)
-            return sync_codes_tool.run(), mock_requests, mock_csv_writerow
+            return sync_codes_tool.run(), mock_redcap_instance, mock_csv_writerow
 
     def _load_code_with_value(self, code_value) -> Code:
         return self.session.query(Code).filter(Code.value == code_value).one()
@@ -294,11 +293,12 @@ class CodesManagementTest(BaseTestCase):
         mock_csv_writerow.assert_not_called()
 
     def test_no_import_on_export_only(self):
-        _, mock_requests, _ = self.run_tool([
+        _, mock_redcap_instance, _ = self.run_tool([
             self._get_mock_dictionary_item('participant_id', 'Participant ID', 'text')
         ], export_only=True)
 
-        mock_requests.post.assert_not_called()  # Redcap should not be called when only exporting codes
+        # Redcap should not be called when only exporting codes
+        mock_redcap_instance.get_data_dictionary.assert_not_called()
         self.assertEqual(0, self.session.query(Code).count(), 'No codes should be created when only exporting')
 
     def test_export_file_creation(self):
