@@ -5,13 +5,13 @@ from googleapiclient.http import MediaFileUpload
 from oauth2client.service_account import ServiceAccountCredentials
 import os
 import re
-import requests
 from sqlalchemy.orm.session import Session
 
 from rdr_service.clock import CLOCK
 from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
 from rdr_service.model.code import Code, CodeType
 from rdr_service.services.gcp_config import GCP_INSTANCES
+from rdr_service.services.redcap_client import RedcapClient
 from rdr_service.tools.tool_libs._tool_base import cli_run, logger, ToolBase
 from rdr_service.tools.tool_libs.app_engine_manager import AppConfigClass
 
@@ -220,26 +220,6 @@ class CodesSyncClass(ToolBase):
                         raise QuestionOptionsMissing(code_value)
 
     @staticmethod
-    def retrieve_data_dictionary(api_key):
-        # https://precisionmedicineinitiative.atlassian.net/browse/PD-5404
-        headers = {
-            'User-Agent': 'RDR code sync tool',
-            'Accept': None,
-            'Connection': None,
-        }
-
-        response = requests.post('https://redcap.pmi-ops.org/api/', data={
-            'token': api_key,
-            'content': 'metadata',
-            'format': 'json',
-            'returnFormat': 'json'
-        }, headers=headers)
-        if response.status_code != 200:
-            logger.error(f'ERROR: Received status code {response.status_code} from API')
-
-        return response.json()
-
-    @staticmethod
     def write_export_file(session):
         with open(code_export_file_path, 'w') as output_file:
             code_csv_writer = csv.writer(output_file)
@@ -295,7 +275,8 @@ class CodesSyncClass(ToolBase):
                     return 1
 
                 # Get the data-dictionary and process codes
-                dictionary_json = self.retrieve_data_dictionary(project_api_key)
+                redcap = RedcapClient()
+                dictionary_json = redcap.get_data_dictionary(project_api_key)
                 for item_json in dictionary_json:
                     try:
                         self.import_data_dictionary_item(session, item_json)
