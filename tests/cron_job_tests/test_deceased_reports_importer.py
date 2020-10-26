@@ -209,6 +209,22 @@ class DeceasedReportImporterTest(BaseTestCase):
         ).one()
         self.assertEqual('scstaff@pmi-ops.org', pending_report.author.username)
 
+    @mock.patch('rdr_service.offline.import_deceased_reports.logging')
+    def test_bad_entry_for_date(self, mock_logging, redcap_class):
+        participant = self.data_generator.create_database_participant()
+
+        redcap_class.return_value.get_records.return_value = [
+            self._redcap_deceased_report_record(
+                redcap_record_id=1,
+                participant_id=participant.participantId,
+                notification=1,  # OTHER notification
+                report_death_date='2020-01-03 90:31'
+            ),
+        ]
+
+        self.importer.import_reports()
+        mock_logging.error.assert_called_with('Record 1 encountered an error', exc_info=True)
+
     def test_report_records_are_created(self):
         pass
 
