@@ -29,3 +29,8 @@ cron:
   timezone: America/New_York
   schedule: every 3 minutes
   target: offline
+- description: DeceasedReport Import
+  url: /offline/DeceasedReportImport
+  timezone: America/Chicago
+  schedule: every day 02:00
+  target: offline
