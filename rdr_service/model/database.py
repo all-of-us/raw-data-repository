@@ -21,6 +21,7 @@ from rdr_service.model.biobank_dv_order import BiobankDVOrder
 from rdr_service.model.code import CodeBook, Code, CodeHistory
 from rdr_service.model.calendar import Calendar
 from rdr_service.model.deceased_report import DeceasedReport
+from rdr_service.model.deceased_report_import_record import DeceasedReportImportRecord
 from rdr_service.model.ehr import EhrReceipt
 from rdr_service.model.hpo import HPO
 from rdr_service.model.log_position import LogPosition
