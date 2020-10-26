@@ -1,3 +1,4 @@
+from datetime import datetime
 import mock
 
 from rdr_service.services.redcap_client import RedcapClient
@@ -55,8 +56,10 @@ class CodesManagementTest(BaseTestCase):
     def test_records_request(self, mock_requests):
         """Make sure requests for records (responses) for the survey are made with expected parameters"""
 
-        self.redcap.get_records(self.project_api_token)
+        self.redcap.get_records(self.project_api_token, datetime(2020, 3, 4, hour=23, minute=8, second=37))
         _, kwargs = self._get_last_request_args(mock_requests)
 
         request_data = kwargs['data']
         self.assertEqual('record', request_data['content'])
+        self.assertEqual('2020-03-04 23:08:37', request_data['dateRangeBegin'])
+        self.assertTrue(request_data['exportSurveyFields'])
