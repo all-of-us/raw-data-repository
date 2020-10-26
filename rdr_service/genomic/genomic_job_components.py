@@ -27,8 +27,7 @@ from rdr_service.api_util import (
     copy_cloud_file,
     delete_cloud_file,
     list_blobs,
-    get_blob,
-)
+    get_blob)
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
@@ -123,8 +122,13 @@ class GenomicFileIngester:
         # Check Target file is set.
         # It will not be set in cron job, but will be set by tool when run manually
         if self.target_file is not None:
-            _blob = get_blob(self.bucket_name, self.target_file)
+            if self.controller.storage_provider is not None:
+                _blob = self.controller.storage_provider.get_blob(self.bucket_name, self.target_file)
+            else:
+                _blob = get_blob(self.bucket_name, self.target_file)
+
             files = [(self.target_file, _blob.updated)]
+
         else:
             files = self._get_new_file_names_and_upload_dates_from_bucket()
 
@@ -308,11 +312,11 @@ class GenomicFileIngester:
                         # RDR may need to do something with them in the future
 
                     else:
-                        logging.error(f'Invalid collection tube ID: {collection_tube_id}'
-                                        f' or genome_type: {genome_type}')
-
-                        # Aborting the job if invalid collection tube ID found.
-                        return GenomicSubProcessResult.ERROR
+                        #return GenomicSubProcessResult.ERROR
+                        logging.error(f"Missing collection tube ID: {collection_tube_id}, "
+                                      f"biobank id: {row_copy['biobankidsampleid'].split('_')[0]}, "
+                                      f"genome type: {genome_type}")
+                        # TODO: check if valid collection tube for participant and then upate GSM
 
                     continue
 
@@ -861,12 +865,9 @@ class GenomicFileValidator:
             """Biobank to GCs manifest name rule"""
             filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
-                len(filename_components) == 4 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
-                filename_components[2] in ('seq', 'gen') and
-                re.search(r"pkg-[0-9]{4}-[0-9]{5,}\.csv$",
-                          filename_components[3]) is not None
+                filename_components[2] in ('seq', 'gen')
             )
 
         def aw1f_manifest_name_rule(fn):

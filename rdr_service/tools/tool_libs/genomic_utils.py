@@ -15,6 +15,7 @@ import csv
 import pytz
 
 from rdr_service import clock, config
+from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_set_update, \
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao, \
@@ -589,7 +590,7 @@ class JobRunResult(GenomicManifestBase):
 
 
 class UpdateGenomicMembersState(GenomicManifestBase):
-    """Class update a genomic_set_member to a particular state."""
+    """Class update a genomic_set_member to a particular new_tube_id."""
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(UpdateGenomicMembersState, self).__init__(args, gcp_env)
         self.valid_genomic_states = GenomicWorkflowState.names()
@@ -628,7 +629,7 @@ class UpdateGenomicMembersState(GenomicManifestBase):
                 _member_id = line[0]
                 _provided_state = line[1]
 
-                # Check that supplied state is valid
+                # Check that supplied new_tube_id is valid
                 if _provided_state not in self.valid_genomic_states:
                     _logger.error(f'Invalid genomic. must be one of {self.valid_genomic_states}')
                     return 1
@@ -651,7 +652,7 @@ class UpdateGenomicMembersState(GenomicManifestBase):
 
     def update_genomic_set_member_state(self, member, state):
         """
-        Sets the member.genomicWorkflowState = state
+        Sets the member.genomicWorkflowState = new_tube_id
         :param member:
         :param state:
         :return:
@@ -668,7 +669,179 @@ class UpdateGenomicMembersState(GenomicManifestBase):
 
             self.counter += 1
 
-        # Update state for PDR
+        # Update new_tube_id for PDR
+        bq_genomic_set_member_update(member.id, project_id=self.gcp_env.project)
+        genomic_set_member_update(member.id)
+
+
+class ChangeCollectionTube(GenomicManifestBase):
+    """Class to update a genomic_set_member with a different collection tube id."""
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(ChangeCollectionTube, self).__init__(args, gcp_env)
+        self.valid_genomic_states = GenomicWorkflowState.names()
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+
+        _logger.info("Running Genomic Collection Tube tool")
+        if self.args.dryrun:
+            _logger.info("Running in dryrun mode. No actual updates to data.")
+            self.msg = "Would update"
+
+        # Validate Aruguments
+        if not os.path.exists(self.args.file):
+            _logger.error(f'File {self.args.file} was not found.')
+            return 1
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicSetMemberDao()
+
+        # Document these changes in the dev_note field
+        dev_note = input("Please enter a developer note for these updates:\n")
+        if dev_note in (None, ""):
+            _logger.error('A developer note is required for these changes.')
+            return 1
+
+        # Update gsm IDs from file
+        with open(self.args.file, encoding='utf-8-sig') as f:
+            csvreader = csv.reader(f, delimiter=",")
+
+            # Groups for output/logging
+            nonexistent_bids = []
+            invalid_tubes = []
+            already_existing_tubes_same_member = []
+            already_existing_tubes_diff_member = []
+
+            for line in csvreader:
+                _bid = line[0]
+                _new_tube_id = line[1]
+
+                # Check that supplied new_tube_id is valid
+                valid_tube = self._validate_tube_id(_bid, _new_tube_id)
+                if not valid_tube:
+                    invalid_tubes.append((_bid, _new_tube_id))
+
+                # lookup member for each genome type
+                for _genome_type in (config.GENOME_TYPE_WGS, config.GENOME_TYPE_ARRAY):
+                    member = self.dao.get_member_from_biobank_id(_bid, _genome_type)
+
+                    if member is None:
+                        # Member with BID doesn't exist, skip it and log it.
+                        nonexistent_bids.append((_bid, _genome_type))
+                        continue
+
+                    else:
+                        member.devNote = dev_note
+
+                        # Check that collection tube isn't already used
+                        new_tube_member = self.dao.get_member_from_collection_tube(_new_tube_id, _genome_type)
+
+                        if new_tube_member is None and valid_tube:
+                            # Valid tube isn't used
+                            if self.args.dryrun:
+                                _logger.warning(f'{self.msg} member id {member.id}')
+                                _logger.warning(f"    {member.collectionTubeId} -> {_new_tube_id}")
+
+                                self.counter += 1
+
+                            else:
+                                self.update_genomic_set_member_collection_tube(member, _new_tube_id)
+
+                        else:
+                            if new_tube_member == member:
+                                # collection tube already set for that member
+                                already_existing_tubes_same_member.append((_bid, _new_tube_id, member.id))
+
+                            else:
+                                # collection tube set for a different member
+                                already_existing_tubes_diff_member.append((_bid, _new_tube_id,
+                                                                           new_tube_member.id, member.id))
+
+        # Output Summary
+        _logger.info(f'{self.msg} {self.counter} Genomic Set Member records.')
+
+        self._output_results(nonexistent_bids,
+                             invalid_tubes,
+                             already_existing_tubes_same_member,
+                             already_existing_tubes_diff_member)
+
+        return 0
+
+    def _validate_tube_id(self, bid, new_tube_id):
+        """
+        Looks up biobank_stored_sample_ID and validates bid is what is expected
+        :param bid:
+        :param new_tube_id:
+        :return: boolean
+        """
+        ss_dao = BiobankStoredSampleDao()
+        sample = ss_dao.get(new_tube_id)
+
+        if self.args.sample_override:
+            return True
+
+        return bid == sample.biobankId
+
+    def _output_results(self, nonexistent_bids,
+                        invalid_tubes,
+                        already_existing_tubes_same_member,
+                        already_existing_tubes_diff_member):
+        """
+        Outputs results if any bad BID/tube IDs supplied
+        :param nonexistent_bids:
+        :param invalid_tubes:
+        :param already_existing_tubes_same_member:
+        :param already_existing_tubes_diff_member:
+        :return:
+        """
+        # Nonexistent BIDs
+        if len(nonexistent_bids) > 0:
+            _logger.warning(f'The following (BID, genome_type) could not be found in the genomics system:')
+            for bid_type in nonexistent_bids:
+                _logger.warning(f'    {bid_type}')
+
+        # Invalid Tubes
+        if len(invalid_tubes) > 0:
+            _logger.warning(f'The following collection tubes are not valid:')
+            for t in invalid_tubes:
+                _logger.warning(f'    {t}')
+
+        # Existing tubes same member
+        if len(already_existing_tubes_same_member) > 0:
+            _logger.warning(f'The following collection tubes are already associated to the genomic member:')
+            for t in already_existing_tubes_same_member:
+                _logger.warning(f'    {t}')
+
+        # Existing tubes different member
+        if len(already_existing_tubes_diff_member) > 0:
+            _logger.warning(f'The following collection tubes are already associated a different genomic member:')
+            for t in already_existing_tubes_diff_member:
+                _logger.warning(f'    {t}')
+
+    def update_genomic_set_member_collection_tube(self, member, new_tube_id):
+        """
+        Sets the member.collectionTubeId = new_tube_id
+        :param member:
+        :param new_tube_id:
+        :return:
+        """
+
+        with self.dao.session() as session:
+            _logger.warning(f'{self.msg} member id {member.id}')
+            _logger.warning(f"    {member.collectionTubeId} -> {new_tube_id}")
+
+            if not self.args.dryrun:
+                member.collectionTubeId = new_tube_id
+                session.merge(member)
+
+            self.counter += 1
+
+        # Update new_tube_id for PDR
         bq_genomic_set_member_update(member.id, project_id=self.gcp_env.project)
         genomic_set_member_update(member.id)
 
@@ -960,6 +1133,14 @@ def run():
     upload_date_parser = subparser.add_parser("backfill-upload-date")
     upload_date_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
+    # Collection tube
+    collection_tube_parser = subparser.add_parser("collection-tube")
+    collection_tube_parser.add_argument("--file", help="A CSV file with collection-tube, biobank_id",
+                                        default=None, required=False)
+    collection_tube_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
+    collection_tube_parser.add_argument("--sample-override", help="for testing",
+                                        default=False, action="store_true")  # noqa
+
 
     args = parser.parse_args()
 
@@ -998,6 +1179,10 @@ def run():
 
         elif args.util == 'backfill-upload-date':
             process = FileUploadDateClass(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.util == 'collection-tube':
+            process = ChangeCollectionTube(args, gcp_env)
             exit_code = process.run()
 
         else:

@@ -139,7 +139,7 @@ _python()
             ;;
         genomic)
             # These are options specific to this tool.
-            local toolopts="resend generate-manifest control-sample manual-sample job-run-result member-state update-gc-metrics process-runner backfill-upload-date"
+            local toolopts="resend generate-manifest control-sample manual-sample job-run-result member-state update-gc-metrics process-runner backfill-upload-date collection-tube"
             COMPREPLY=( $(compgen -W "${stdopts} ${toolopts}" -- ${cur}) )
             return 0
             ;;
@@ -217,6 +217,16 @@ _python()
             # genomic update-gc-metrics command
             if echo ${COMP_WORDS[@]} | grep -w "genomic" > /dev/null; then
               local toolopts="--help --job --file --dryrun"
+              COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
+            else
+              COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
+            fi
+            return 0
+            ;;
+          collection-tube)
+            # genomic collection-tube command
+            if echo ${COMP_WORDS[@]} | grep -w "genomic" > /dev/null; then
+              local toolopts="--help --file --dryrun --sample-override"
               COMPREPLY=( $(compgen -W "${toolopts}" -- ${cur}) )
             else
               COMPREPLY=( $(compgen -W "${stdopts}" -- ${cur}) )
