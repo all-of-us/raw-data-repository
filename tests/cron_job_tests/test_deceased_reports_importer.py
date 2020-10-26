@@ -1,8 +1,10 @@
 from datetime import date, datetime, timedelta
 import mock
 
+from rdr_service.clock import FakeClock
 from rdr_service.offline.import_deceased_reports import DeceasedReportImporter, PROJECT_TOKEN_CONFIG_KEY
 from rdr_service.model.deceased_report import DeceasedReport
+from rdr_service.model.deceased_report_import_record import DeceasedReportImportRecord
 from rdr_service.participant_enums import DeceasedNotification, DeceasedReportStatus
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -60,6 +62,7 @@ class DeceasedReportImporterTest(BaseTestCase):
 
         redcap_class.return_value.get_records.return_value = [
             self._redcap_deceased_report_record(
+                redcap_record_id=1,
                 participant_id=unpaired_participant.participantId,
                 date_of_death='2020-01-01',
                 cause_of_death='test',
@@ -68,6 +71,7 @@ class DeceasedReportImporterTest(BaseTestCase):
                 report_death_date='2020-01-03 12:31'
             ),
             self._redcap_deceased_report_record(
+                redcap_record_id=2,
                 participant_id=paired_participant.participantId,
                 notification=2,  # NEXT_KIN_SUPPORT notification
                 reporter_first_name='Jane',
@@ -75,7 +79,7 @@ class DeceasedReportImporterTest(BaseTestCase):
                 reporter_relationship=2,  # CHILD
                 reporter_email='jdoe@test.com',
                 reporter_phone='1234567890',
-                survey_completion_datetime='2020-10-31 01:27:45'
+                survey_completion_datetime='2020-10-24 01:27:45'
             )
         ]
 
@@ -102,7 +106,7 @@ class DeceasedReportImporterTest(BaseTestCase):
         self.assertEqual(DeceasedNotification.NEXT_KIN_SUPPORT, pending_report.notification)
         self.assertIsNone(pending_report.notificationOther)
         self.assertEqual('scstaff@pmi-ops.org', pending_report.author.username)
-        self.assertEqual(datetime(2020, 10, 31, 1, 27, 45), pending_report.authored)
+        self.assertEqual(datetime(2020, 10, 24, 1, 27, 45), pending_report.authored)
         self.assertIsNone(pending_report.reviewer)
         self.assertIsNone(pending_report.reviewed)
         self.assertEqual('Jane Doe', pending_report.reporterName)
@@ -118,12 +122,14 @@ class DeceasedReportImporterTest(BaseTestCase):
 
         redcap_class.return_value.get_records.return_value = [
             self._redcap_deceased_report_record(
+                redcap_record_id=1,
                 participant_id=unidentified_participant.participantId,
                 notification=1,  # OTHER notification
                 reporter_email='reportauthor@test.com',
                 identity_confirmed=False
             ),
             self._redcap_deceased_report_record(
+                redcap_record_id=2,
                 participant_id=participant.participantId,
                 notification=1,  # OTHER notification
                 reporter_email='reportauthor@test.com',
@@ -225,8 +231,83 @@ class DeceasedReportImporterTest(BaseTestCase):
         self.importer.import_reports()
         mock_logging.error.assert_called_with('Record 1 encountered an error', exc_info=True)
 
-    def test_report_records_are_created(self):
-        pass
+    def test_report_records_are_created(self, redcap_class):
+        """Checking that import records are created and have deceased reports attached when appropriate"""
+        identified_participant = self.data_generator.create_database_participant()
+        unidentified_participant = self.data_generator.create_database_participant()
 
-    def test_reports_not_imported_again(self):
-        pass
+        redcap_class.return_value.get_records.return_value = [
+            self._redcap_deceased_report_record(
+                redcap_record_id=1,
+                participant_id=identified_participant.participantId,
+                notification=1  # OTHER notification
+            ),
+            self._redcap_deceased_report_record(
+                redcap_record_id=2,
+                participant_id=unidentified_participant.participantId,
+                notification=1,  # OTHER notification,
+                identity_confirmed=False
+            )
+        ]
+
+        self.importer.import_reports()
+
+        import_records = self.session.query(DeceasedReportImportRecord).all()
+
+        # Make sure there's an import record for each record from redcap
+        recorded_ids = [import_record.recordId for import_record in import_records]
+        self.assertIn(1, recorded_ids)
+        self.assertIn(2, recorded_ids)
+
+        # Check the linked reports
+        for record in import_records:
+            if record.recordId == 1:  # Record for identified participant
+                # Make sure that the report was created
+                self.assertIsNotNone(record.deceasedReport)
+            elif record.recordId == 2:  # Record for unidentified participant
+                # Make sure the report wasn't created
+                self.assertIsNone(record.deceasedReport)
+
+    def test_reports_not_imported_again(self, redcap_class):
+        """Checking that redcap records are not imported twice, and that 'lastSeen' is updated"""
+        identified_participant = self.data_generator.create_database_participant()
+        unidentified_participant = self.data_generator.create_database_participant()
+
+        redcap_class.return_value.get_records.return_value = [
+            self._redcap_deceased_report_record(
+                redcap_record_id=1,
+                participant_id=identified_participant.participantId,
+                notification=1  # OTHER notification
+            ),
+            self._redcap_deceased_report_record(
+                redcap_record_id=2,
+                participant_id=unidentified_participant.participantId,
+                notification=1,  # OTHER notification,
+                identity_confirmed=False
+            )
+        ]
+
+        first_import_time = datetime(2020, 10, 8)
+        with FakeClock(first_import_time):
+            self.importer.import_reports()
+
+        # Setting deceased report as DENIED so that there are no active reports for the participant
+        new_deceased_report = self.session.query(DeceasedReport).filter(
+            DeceasedReport.participantId == identified_participant.participantId
+        ).one()
+        new_deceased_report.status = DeceasedReportStatus.DENIED
+        self.session.commit()
+
+        # Import from redcap again
+        second_import_time = datetime(2020, 10, 10)
+        with FakeClock(second_import_time):
+            self.importer.import_reports()
+
+        # Check that the valid redcap record doesn't create a new deceased report
+        self.assertEqual(1, self.session.query(DeceasedReport).count(), 'There should only be one deceased report')
+
+        import_records = self.session.query(DeceasedReportImportRecord).all()
+        # Check the linked reports times
+        for record in import_records:
+            self.assertEqual(first_import_time, record.created)
+            self.assertEqual(second_import_time, record.lastSeen)
