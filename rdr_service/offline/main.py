@@ -26,8 +26,7 @@ from rdr_service.offline.public_metrics_export import LIVE_METRIC_SET_ID, Public
 from rdr_service.offline.sa_key_remove import delete_service_account_keys
 from rdr_service.offline.table_exporter import TableExporter
 from rdr_service.services.flask import OFFLINE_PREFIX, flask_start, flask_stop
-from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
-    flask_restful_log_exception_error
+from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging
 
 
 def _alert_on_exceptions(func):
