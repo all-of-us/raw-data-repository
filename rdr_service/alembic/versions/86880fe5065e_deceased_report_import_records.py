@@ -1,7 +1,7 @@
 """deceased report import records
 
 Revision ID: 86880fe5065e
-Revises: 641372364227
+Revises: 90a21cce431b
 Create Date: 2020-10-27 11:51:59.814691
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = '86880fe5065e'
-down_revision = '641372364227'
+down_revision = '90a21cce431b'
 branch_labels = None
 depends_on = None
 
