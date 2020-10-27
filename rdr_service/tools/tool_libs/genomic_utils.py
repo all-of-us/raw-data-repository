@@ -972,7 +972,8 @@ class GenomicProcessRunner(GenomicManifestBase):
         # Use a Controller to run the job
         try:
             with GenomicJobController(GenomicJob.AW1_MANIFEST,
-                                      storage_provider=self.gscp) as controller:
+                                      storage_provider=self.gscp,
+                                      bq_project_id=self.args.project) as controller:
                 controller.bucket_name = bucket_name
                 controller.ingest_specific_aw1_manifest(file_name)
 

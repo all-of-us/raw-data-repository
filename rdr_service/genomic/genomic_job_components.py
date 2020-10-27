@@ -145,7 +145,7 @@ class GenomicFileIngester:
                     upload_date=file_data[1])
 
                 # For BQ/PDR
-                bq_genomic_file_processed_update(new_file_record.id)
+                bq_genomic_file_processed_update(new_file_record.id, project_id=self.controller.bq_project_id)
                 genomic_file_processed_update(new_file_record.id)
 
                 self.file_queue.append(new_file_record)
@@ -201,7 +201,7 @@ class GenomicFileIngester:
                     )
 
                     # For BQ/PDR
-                    bq_genomic_file_processed_update(file_ingested.id)
+                    bq_genomic_file_processed_update(file_ingested.id, self.controller.bq_project_id)
                     genomic_file_processed_update(file_ingested.id)
 
                 except IndexError:
@@ -352,7 +352,7 @@ class GenomicFileIngester:
                 self.member_dao.update(member)
 
                 # Update member for PDR
-                bq_genomic_set_member_update(member.id)
+                bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
                 genomic_set_member_update(member.id)
 
             return GenomicSubProcessResult.SUCCESS
@@ -394,7 +394,7 @@ class GenomicFileIngester:
                 self.member_dao.update(member)
 
                 # Update member for PDR
-                bq_genomic_set_member_update(member.id)
+                bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
                 genomic_set_member_update(member.id)
 
             return GenomicSubProcessResult.SUCCESS
@@ -427,7 +427,7 @@ class GenomicFileIngester:
                 self.member_dao.update(member)
 
                 # Update member for PDR
-                bq_genomic_set_member_update(member.id)
+                bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
                 genomic_set_member_update(member.id)
 
             return GenomicSubProcessResult.SUCCESS
@@ -461,7 +461,7 @@ class GenomicFileIngester:
                 self.member_dao.update(member)
 
                 # Update member for PDR
-                bq_genomic_set_member_update(member.id)
+                bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
                 genomic_set_member_update(member.id)
 
             return GenomicSubProcessResult.SUCCESS
@@ -582,7 +582,7 @@ class GenomicFileIngester:
                 self.member_dao.update(member)
 
                 # Update member for PDR
-                bq_genomic_set_member_update(member.id)
+                bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
                 genomic_set_member_update(member.id)
 
             return GenomicSubProcessResult.SUCCESS
@@ -631,7 +631,7 @@ class GenomicFileIngester:
                 self.member_dao.update(member)
 
                 # Update member for PDR
-                bq_genomic_set_member_update(member.id)
+                bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
                 genomic_set_member_update(member.id)
 
             return GenomicSubProcessResult.SUCCESS
