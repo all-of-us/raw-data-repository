@@ -4,6 +4,10 @@
   "date": "2016-09-13T10:19:52-04:00",
   "publisher": "admin",
   "version": "aaa",
+  "extension":[
+    {"url":"http://all-of-us.org/fhir/forms/semantic-description","valueString":"semantic-description test string"},
+    {"url":"http://all-of-us.org/fhir/forms/irb-mapping","valueString":"irb-mapping test string"}
+  ],
   "group": {
     "linkId": "root",
     "required": true,

@@ -15,6 +15,9 @@ from rdr_service.model.questionnaire import (
     QuestionnaireQuestion,
 )
 
+_SEMANTIC_DESCRIPTION_EXTENSION = "http://all-of-us.org/fhir/forms/semantic-description"
+_IRB_MAPPING_EXTENSION = "http://all-of-us.org/fhir/forms/irb-mapping"
+
 
 class QuestionnaireDao(UpdatableDao):
     def __init__(self):
@@ -130,11 +133,22 @@ class QuestionnaireDao(UpdatableDao):
         if fhir_q.identifier and len(fhir_q.identifier) > 0:
             external_id = fhir_q.identifier[0].value
 
+        semantic_desc = None
+        irb_mapping = None
+        if fhir_q.extension:
+            for ext in fhir_q.extension:
+                if ext.url == _SEMANTIC_DESCRIPTION_EXTENSION:
+                    semantic_desc = ext.valueString
+                if ext.url == _IRB_MAPPING_EXTENSION:
+                    irb_mapping = ext.valueString
+
         q = Questionnaire(
             resource=json.dumps(resource_json),
             questionnaireId=id_,
             semanticVersion=expected_version,
-            externalId=external_id
+            externalId=external_id,
+            semanticDesc=semantic_desc,
+            irbMapping=irb_mapping
         )
         # Assemble a map of (system, value) -> (display, code_type, parent_id) for passing into CodeDao.
         # Also assemble a list of (system, code) for concepts and (system, code, linkId) for questions,
