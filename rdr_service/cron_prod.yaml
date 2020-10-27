@@ -31,6 +31,6 @@ cron:
   target: offline
 - description: DeceasedReport Import
   url: /offline/DeceasedReportImport
-  timezone: America/Chicago
-  schedule: every day 02:00
+  timezone: America/New_York
+  schedule: every day 03:00
   target: offline

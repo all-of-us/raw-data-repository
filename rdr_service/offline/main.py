@@ -17,7 +17,7 @@ from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
     daily_rebuild_bigquery_handler, rebuild_bigquery_handler
-from rdr_service.offline.import_deceased_reports import DeceasedReportImporter, PROJECT_TOKEN_CONFIG_KEY
+from rdr_service.offline.import_deceased_reports import DeceasedReportImporter
 from rdr_service.offline.enrollment_check import check_enrollment
 from rdr_service.offline.exclude_ghost_participants import mark_ghost_participants
 from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
@@ -446,8 +446,7 @@ def check_enrollment_status():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def import_deceased_reports():
-    api_key = config.getSettingJson(PROJECT_TOKEN_CONFIG_KEY)
-    importer = DeceasedReportImporter(api_key)
+    importer = DeceasedReportImporter(config.get_config())
     importer.import_reports()
     return '{ "success": "true" }'
 

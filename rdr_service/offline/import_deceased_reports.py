@@ -101,6 +101,7 @@ class DeceasedReportImporter:
 
         with self.deceased_report_dao.session() as session:
             for record in records:
+                participant_id = None
                 try:
                     participant_id = from_client_participant_id(record['recordid'])
                     import_record = self._retrieve_import_record(participant_id, session)
