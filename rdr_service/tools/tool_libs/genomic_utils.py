@@ -736,12 +736,13 @@ class ChangeCollectionTube(GenomicManifestBase):
                         continue
 
                     else:
-                        member.devNote = dev_note
-
                         # Check that collection tube isn't already used
                         new_tube_member = self.dao.get_member_from_collection_tube(_new_tube_id, _genome_type)
 
                         if new_tube_member is None and valid_tube:
+                            # Set the dev note
+                            member.devNote = dev_note
+
                             # Valid tube isn't used, update the record
                             self.update_genomic_set_member_collection_tube(member, _new_tube_id)
 
@@ -778,7 +779,11 @@ class ChangeCollectionTube(GenomicManifestBase):
         if self.args.sample_override:
             return True
 
-        return bid == sample.biobankId
+        if sample is not None:
+            return bid == sample.biobankId
+
+        else:
+            return False
 
     def _output_results(self, nonexistent_bids,
                         invalid_tubes,
