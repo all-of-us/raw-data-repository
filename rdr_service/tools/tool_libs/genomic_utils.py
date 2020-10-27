@@ -590,7 +590,7 @@ class JobRunResult(GenomicManifestBase):
 
 
 class UpdateGenomicMembersState(GenomicManifestBase):
-    """Class update a genomic_set_member to a particular new_tube_id."""
+    """Class update a genomic_set_member to a particular state."""
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(UpdateGenomicMembersState, self).__init__(args, gcp_env)
         self.valid_genomic_states = GenomicWorkflowState.names()
@@ -629,7 +629,7 @@ class UpdateGenomicMembersState(GenomicManifestBase):
                 _member_id = line[0]
                 _provided_state = line[1]
 
-                # Check that supplied new_tube_id is valid
+                # Check that supplied state is valid
                 if _provided_state not in self.valid_genomic_states:
                     _logger.error(f'Invalid genomic. must be one of {self.valid_genomic_states}')
                     return 1
@@ -652,7 +652,7 @@ class UpdateGenomicMembersState(GenomicManifestBase):
 
     def update_genomic_set_member_state(self, member, state):
         """
-        Sets the member.genomicWorkflowState = new_tube_id
+        Sets the member.genomicWorkflowState = state
         :param member:
         :param state:
         :return:
@@ -669,7 +669,7 @@ class UpdateGenomicMembersState(GenomicManifestBase):
 
             self.counter += 1
 
-        # Update new_tube_id for PDR
+        # Update state for PDR
         bq_genomic_set_member_update(member.id, project_id=self.gcp_env.project)
         genomic_set_member_update(member.id)
 
@@ -679,7 +679,6 @@ class ChangeCollectionTube(GenomicManifestBase):
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(ChangeCollectionTube, self).__init__(args, gcp_env)
-        self.valid_genomic_states = GenomicWorkflowState.names()
 
     def run(self):
         """
@@ -717,11 +716,12 @@ class ChangeCollectionTube(GenomicManifestBase):
             already_existing_tubes_same_member = []
             already_existing_tubes_diff_member = []
 
+            # Iterate through each bid-tube_id pair
             for line in csvreader:
                 _bid = line[0]
                 _new_tube_id = line[1]
 
-                # Check that supplied new_tube_id is valid
+                # Check that supplied new_tube_id is valid and associated to bid
                 valid_tube = self._validate_tube_id(_bid, _new_tube_id)
                 if not valid_tube:
                     invalid_tubes.append((_bid, _new_tube_id))
@@ -742,15 +742,8 @@ class ChangeCollectionTube(GenomicManifestBase):
                         new_tube_member = self.dao.get_member_from_collection_tube(_new_tube_id, _genome_type)
 
                         if new_tube_member is None and valid_tube:
-                            # Valid tube isn't used
-                            if self.args.dryrun:
-                                _logger.warning(f'{self.msg} member id {member.id}')
-                                _logger.warning(f"    {member.collectionTubeId} -> {_new_tube_id}")
-
-                                self.counter += 1
-
-                            else:
-                                self.update_genomic_set_member_collection_tube(member, _new_tube_id)
+                            # Valid tube isn't used, update the record
+                            self.update_genomic_set_member_collection_tube(member, _new_tube_id)
 
                         else:
                             if new_tube_member == member:
@@ -830,20 +823,21 @@ class ChangeCollectionTube(GenomicManifestBase):
         :param new_tube_id:
         :return:
         """
+        _logger.warning(f'{self.msg} member id {member.id}')
+        _logger.warning(f"    {member.collectionTubeId} -> {new_tube_id}")
 
         with self.dao.session() as session:
-            _logger.warning(f'{self.msg} member id {member.id}')
-            _logger.warning(f"    {member.collectionTubeId} -> {new_tube_id}")
-
             if not self.args.dryrun:
                 member.collectionTubeId = new_tube_id
                 session.merge(member)
 
+                # Update new_tube_id for PDR
+                bq_genomic_set_member_update(member.id, project_id=self.gcp_env.project)
+                genomic_set_member_update(member.id)
+
             self.counter += 1
 
-        # Update new_tube_id for PDR
-        bq_genomic_set_member_update(member.id, project_id=self.gcp_env.project)
-        genomic_set_member_update(member.id)
+
 
 
 class UpdateGcMetricsClass(GenomicManifestBase):
