@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from dateutil import parser
 import logging
+from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest, HTTPException
 
 from rdr_service.clock import CLOCK
@@ -8,6 +9,7 @@ from rdr_service.dao.api_user_dao import ApiUserDao
 from rdr_service.dao.deceased_report_dao import DeceasedReportDao
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.deceased_report_import_record import DeceasedReportImportRecord
+from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import DeceasedNotification, DeceasedReportStatus
 from rdr_service.services.redcap_client import RedcapClient
 
@@ -27,7 +29,7 @@ class DeceasedReportImporter:
         self.api_user_dao = ApiUserDao()
         self.deceased_report_dao = DeceasedReportDao()
 
-    def _parse_other_type_report(self, record, report: DeceasedReport):
+    def _parse_other_type_report(self, record: dict, report: DeceasedReport):
         report.notification = DeceasedNotification.OTHER
         report.notificationOther = 'HPO contacted support center before Sept. 2020'
 
@@ -47,11 +49,11 @@ class DeceasedReportImporter:
             raise BadRequest('Missing reporter name')
         report.reporterName = f"{first_name} {last_name}"
         relationship_map = {
-            1: 'PRN',
-            2: 'CHILD',
-            3: 'SIB',
-            4: 'SPS',
-            5: 'O'
+            '1': 'PRN',
+            '2': 'CHILD',
+            '3': 'SIB',
+            '4': 'SPS',
+            '5': 'O'
         }
         provided_relationship = record['reportperson_relationship']
         report.reporterRelationship = relationship_map[provided_relationship]
@@ -62,19 +64,20 @@ class DeceasedReportImporter:
     @staticmethod
     def _get_report_authored_data(record):
         provided_date_of_report_str = record.get('reportdeath_date')
-        if not provided_date_of_report_str:
-            provided_date_of_report_str = record['reported_death_timestamp']
-        return parser.parse(provided_date_of_report_str)
+        if provided_date_of_report_str:
+            return parser.parse(provided_date_of_report_str)
+        else:
+            return CLOCK.now()
 
     @staticmethod
-    def _retrieve_import_record(record_id, session):
+    def _retrieve_import_record(participant_id, session):
         import_record = session.query(DeceasedReportImportRecord).filter(
-            DeceasedReportImportRecord.recordId == record_id
+            DeceasedReportImportRecord.participantId == participant_id
         ).one_or_none()
 
         if not import_record:
             import_record = DeceasedReportImportRecord(
-                recordId=record_id,
+                participantId=participant_id,
                 created=CLOCK.now()
             )
             session.add(import_record)
@@ -98,31 +101,35 @@ class DeceasedReportImporter:
 
         with self.deceased_report_dao.session() as session:
             for record in records:
-                record_id = record['record_id']
-                import_record = self._retrieve_import_record(record_id, session)
-
-                if import_record.deceasedReport:
-                    # A deceased report as already been created for this record
-                    continue
-
                 try:
+                    participant_id = from_client_participant_id(record['recordid'])
+                    import_record = self._retrieve_import_record(participant_id, session)
+
+                    if import_record.deceasedReport:
+                        logging.warning(
+                            f'Skipping record for {participant_id} since deceased report has already been generated"'
+                        )
+                        continue
+
                     if record['reportdeath_identityconfirm'] == 0:
                         # Skip any records that don't have the participant's identity confirmed
                         continue
 
                     report = DeceasedReport(
                         status=DeceasedReportStatus.PENDING,  # auto-approved in DAO if needed
-                        participantId=record['recordid'],
+                        participantId=participant_id,
                         causeOfDeath=record.get('death_cause')
                     )
 
                     notification_type = record['reportperson_type']
-                    if notification_type == 1:
+                    if notification_type == '1':
                         self._parse_other_type_report(record, report)
-                    elif notification_type == 2:
+                    elif notification_type == '2':
                         self._parse_kin_type_report(record, report)
                     else:
-                        logging.error(f'Record {record_id} has an unrecognized notification: "{notification_type}"')
+                        logging.error(
+                            f'Record for {participant_id} has an unrecognized notification value: "{notification_type}"'
+                        )
                         continue
 
                     date_of_death_str = record.get('death_date')
@@ -136,5 +143,8 @@ class DeceasedReportImporter:
                     # Need to set the deceased report on the record after inserting to avoid the sessions conflicting
                     import_record.deceasedReport = report
                     session.commit()
+                except IntegrityError:
+                    session.rollback()
+                    logging.error(f'Record for {participant_id} encountered a database error', exc_info=True)
                 except (HTTPException, KeyError, ValueError):
-                    logging.error(f'Record {record_id} encountered an error', exc_info=True)
+                    logging.error(f'Record for {participant_id} encountered an error', exc_info=True)
