@@ -23,6 +23,8 @@ class QuestionnaireBase(object):
     # Incrementing version, starts at 1 and is incremented on each update.
     version = Column("version", Integer, nullable=False)
     semanticVersion = Column('semantic_version', String(100))
+    semanticDesc = Column('semantic_desc', String(500))
+    irbMapping = Column('irb_mapping', String(500))
     created = Column("created", UTCDateTime, nullable=False)
     lastModified = Column("last_modified", UTCDateTime, nullable=False)
     # The JSON representation of the questionnaire provided by the client.
