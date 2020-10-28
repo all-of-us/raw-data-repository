@@ -227,7 +227,7 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
             return module_list
 
         modules = list(filter(lambda x: x['mod_module'] == module_name, module_list))
-        return sorted(modules, key=(lambda d: d['mod_module_authored']))
+        return sorted(modules, key=(lambda d: d['mod_authored']))
 
     def test_registered_participant_gen(self):
         """ Test a BigQuery after initial participant creation """
@@ -370,6 +370,12 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
         ps_json = gen.make_bqrecord(self.participant_id)
         self.assertEqual('CORE_PARTICIPANT', ps_json['enrollment_status'])
 
+        # This verifies the module submitted status from the participant generator data for each of the GROR modules
+        gror_modules = self.get_modules_by_name('GROR', ps_json['modules'])
+        self.assertEqual('SUBMITTED', gror_modules[0]['mod_status'])
+        self.assertEqual('SUBMITTED_NO_CONSENT', gror_modules[1]['mod_status'])
+
+
     def test_previous_ehr_and_dv_ehr_reverted(self):
         # Scenario: a participant previously reached core participant status with EHR and DV EHR consent both YES
         # If EHR consent is changed to No, they should remain Core
@@ -397,6 +403,11 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
                                 response_time=datetime(2019, 7, 1))
         ps_json = gen.make_bqrecord(self.participant_id)
         self.assertEqual('CORE_PARTICIPANT', ps_json['enrollment_status'])
+
+        # This verifies the module submitted status from the participant generator data for each of the zrjt modules
+        gror_modules = self.get_modules_by_name('EHRConsentPII', ps_json['modules'])
+        self.assertEqual('SUBMITTED', gror_modules[0]['mod_status'])
+        self.assertEqual('SUBMITTED_NO_CONSENT', gror_modules[1]['mod_status'])
 
     def test_no_on_ehr_overrides_yes_on_dv(self):
         # Scenario: a participant has had DV_EHR yes, but previously had a no on EHR.
