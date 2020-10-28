@@ -1260,9 +1260,9 @@ class HierarchyContentApiTest(BaseTestCase):
         self.assertEqual(existing_entity.phoneNumber, '7031234567')
         self.assertEqual(existing_entity.siteType, 'Pop-up Site without PM/B')
 
-        # Pop-up Site without PM/B site is filtered out from awardee api
+        # Pop-up Site without PM/B site should not be filtered out from awardee api
         result = self.send_get('Awardee')
-        self.assertNotIn('hpo-site-awesome-testing', str(result))
+        self.assertIn('hpo-site-awesome-testing', str(result))
 
     def _setup_data(self):
         organization_dao = OrganizationDao()
