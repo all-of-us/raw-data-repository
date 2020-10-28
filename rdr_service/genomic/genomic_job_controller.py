@@ -45,6 +45,7 @@ class GenomicJobController:
                  archive_folder_name=None,
                  bucket_name_list=None,
                  storage_provider=None,
+                 bq_project_id=None,
                  ):
 
         self.job_id = job_id
@@ -54,6 +55,7 @@ class GenomicJobController:
         self.sub_folder_tuple = sub_folder_tuple
         self.bucket_name_list = getSettingList(bucket_name_list, default=[])
         self.archive_folder_name = archive_folder_name
+        self.bq_project_id = bq_project_id
 
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET
