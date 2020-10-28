@@ -403,7 +403,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                             consent['consent_expired'] = \
                                 qnan.get(_consent_expired_question_map[module_name] or 'None', None)
                             # Check for a specific submittal status based on the answer value (default to SUBMITTED)
-                            module_status = _consent_answer_status_map.get(consent_value, BQModuleStatusEnum.SUBMITTED)
+                            module_status = _consent_answer_status_map.get(consent_value, None)
+                            if not module_status:
+                                logging.warning(
+                                    f'Defaulting {module_name} answer {consent_value} to status SUBMITTED (pid: {p_id})'
+                                )
+                                module_status = BQModuleStatusEnum.SUBMITTED
 
                         consents.append(consent)
 

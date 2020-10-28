@@ -105,6 +105,11 @@ PERSONAL_MEDICAL_HISTORY_MODULE = "PersonalMedicalHistory"
 MEDICATIONS_MODULE = "MedicationsPPI"
 # TODO: UPDATE THIS TO REAL CODEBOOK VALUES WHEN PRESENT
 HEALTHCARE_ACCESS_MODULE = "HealthcareAccess"
+# COVID Experience surveys:
+# The COPE module covers the May/June/July (2020) COPE Survey questionnaires
+# A new survey was developed for November 2020
+COPE_MODULE = 'COPE'
+COPE_NOV_MODULE = 'cope_nov'
 
 # DVEHR ANSWERS
 DVEHRSHARING_CONSENT_CODE_YES = "DVEHRSharing_Yes"
