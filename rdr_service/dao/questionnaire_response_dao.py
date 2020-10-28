@@ -172,8 +172,6 @@ class QuestionnaireResponseDao(BaseDao):
                     #  the list doesn't include valid link_ids that don't have answers
                     if "answer" in section:
                         logging.error(f'Questionnaire response contains invalid link ID "{link_id}"')
-                    else:
-                        logging.warning(f'Questionnaire response has not answered link ID "{link_id}"')
 
     @staticmethod
     def _imply_street_address_2_from_street_address_1(code_ids):
