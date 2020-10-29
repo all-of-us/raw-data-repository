@@ -101,6 +101,10 @@ def upgrade_rdr():
     """)
 
     add_table_history_table('biobank_mail_kit_order', op)
+    # History table is created from copy of existing table, so dropping constraints
+    op.drop_constraint('uidx_partic_id_order_id', 'biobank_mail_kit_order_history', type_="unique")
+    op.drop_constraint('biobank_order_id', 'biobank_mail_kit_order_history', type_="unique")
+
     history_table_columns = f'{column_names}, revision_action, revision_id, revision_dt'
     op.execute(f"""
         INSERT INTO biobank_mail_kit_order_history ({history_table_columns})
