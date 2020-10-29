@@ -92,7 +92,5 @@ class OrganizationDao(CacheAllDao):
                 for site in model.sites
                 if site.siteStatus and site.siteStatus == site.siteStatus.ACTIVE
                 and site.isObsolete in obsolete_filters
-                and site.siteType not in ('Pop-up Site without PM/B',
-                                          'Mobile Clinical Research Unit (MCRU) Site without PM/B')
             ]
         return resource
