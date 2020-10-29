@@ -110,11 +110,17 @@ HEALTHCARE_ACCESS_MODULE = "HealthcareAccess"
 # A new survey was developed for November 2020
 COPE_MODULE = 'COPE'
 COPE_NOV_MODULE = 'cope_nov'
+GENETIC_ANCESTRY_MODULE = 'GeneticAncestry'
 
 # DVEHR ANSWERS
 DVEHRSHARING_CONSENT_CODE_YES = "DVEHRSharing_Yes"
 DVEHRSHARING_CONSENT_CODE_NO = "DVEHRSharing_No"
 DVEHRSHARING_CONSENT_CODE_NOT_SURE = "DVEHRSharing_NotSure"
+
+# Genetic Ancestry Consent Answers
+GENETIC_ANCESTRY_CONSENT_CODE_YES = "ConsentAncestryTraits_Yes"
+GENETIC_ANCESTRY_CONSENT_CODE_NO = "ConsentAncestryTraits_No"
+GENETIC_ANCESTRY_CONSENT_CODE_NOT_SURE = "ConsentAncestryTraits_NotSure"
 
 
 BIOBANK_TESTS = [

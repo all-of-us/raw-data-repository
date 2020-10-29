@@ -50,7 +50,9 @@ _consent_module_question_map = {
     'GROR': 'ResultsConsent_CheckDNA',
     'PrimaryConsentUpdate': 'Reconsent_ReviewConsentAgree',
     'ProgramUpdate': None,
-    'COPE': 'section_participation'
+    'COPE': 'section_participation',
+    'cope_nov': 'section_participation',
+    'GeneticAncestry': 'GeneticAncestry_ConsentAncestryTraits'
 }
 
 # _consent_expired_question_map must contain every module ID from _consent_module_question_map.
@@ -61,7 +63,9 @@ _consent_expired_question_map = {
     'GROR': None,
     'PrimaryConsentUpdate': None,
     'ProgramUpdate': None,
-    'COPE': None
+    'COPE': None,
+    'cope_nov': None,
+    'GeneticAncestry': None
 }
 
 # Possible answer codes for the consent module questions and what submittal status the answers correspond to
@@ -81,7 +85,10 @@ _consent_answer_status_map = {
     # COPE_A_13
     CONSENT_COPE_NO_CODE: BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
     # COPE_A_231
-    CONSENT_COPE_DEFERRED_CODE: BQModuleStatusEnum.SUBMITTED_NOT_SURE
+    CONSENT_COPE_DEFERRED_CODE: BQModuleStatusEnum.SUBMITTED_NOT_SURE,
+    'ConsentAncestryTraits_Yes': BQModuleStatusEnum.SUBMITTED,
+    'ConsentAncestryTraits_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    'ConsentAncestryTraits_NotSure': BQModuleStatusEnum.SUBMITTED_NOT_SURE
 }
 
 class BQParticipantSummaryGenerator(BigQueryGenerator):
@@ -358,7 +365,6 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
                 # check if this is a module with consents.
                 if module_name in _consent_module_question_map:
-
                     # Calculate Consent Cohort from ConsentPII authored
                     if consent_dt is None and module_name == 'ConsentPII' and row.authored:
                         consent_dt = row.authored
@@ -403,6 +409,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                                 logging.warning(
                                    f'Defaulting {module_name} answer {consent_value} to status SUBMITTED (pid: {p_id}) '
                                 )
+                                # TODO: SUBMITTED is what all module statuses used to default to, so will use the same
+                                # default in cases where there was no known value in the map for the answer code.
+                                # May want to reconsider if this should be something else (UNSET?)
                                 module_status = BQModuleStatusEnum.SUBMITTED
 
                         consents.append(consent)
