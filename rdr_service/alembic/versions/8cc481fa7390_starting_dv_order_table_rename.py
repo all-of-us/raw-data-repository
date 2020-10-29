@@ -8,6 +8,7 @@ Create Date: 2020-10-29 08:27:40.849301
 from alembic import op
 import sqlalchemy as sa
 import rdr_service.model.utils
+from sqlalchemy.dialects import mysql
 
 
 from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
@@ -36,14 +37,15 @@ def downgrade(engine_name):
 
 
 def upgrade_rdr():
-    op.create_table('biobank_mail_kit_order',
+    op.create_table(
+    'biobank_mail_kit_order',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('created', sa.DateTime(), nullable=True),
-    sa.Column('modified', sa.DateTime(), nullable=True),
+    sa.Column('created', mysql.DATETIME(fsp=6), nullable=False),
+    sa.Column('modified', mysql.DATETIME(fsp=6), nullable=False),
     sa.Column('version', sa.Integer(), nullable=False),
     sa.Column('participant_id', sa.Integer(), nullable=False),
-    sa.Column('order_id', sa.BigInteger(), nullable=True),
-    sa.Column('order_date', sa.DateTime(), nullable=True),
+    sa.Column('order_id', sa.Integer(), nullable=True),
+    sa.Column('order_date', mysql.DATETIME(fsp=6), nullable=True),
     sa.Column('supplier', sa.String(length=80), nullable=True),
     sa.Column('supplier_status', sa.String(length=30), nullable=True),
     sa.Column('item_name', sa.String(length=80), nullable=True),
@@ -60,13 +62,13 @@ def upgrade_rdr():
     sa.Column('biobank_city', sa.String(length=255), nullable=True),
     sa.Column('biobank_state_id', sa.Integer(), nullable=True),
     sa.Column('biobank_zip_code', sa.String(length=10), nullable=True),
-    sa.Column('shipment_last_update', sa.DateTime(), nullable=True),
+    sa.Column('shipment_last_update', mysql.DATETIME(fsp=6), nullable=True),
     sa.Column('tracking_id', sa.String(length=80), nullable=True),
     sa.Column('biobank_tracking_id', sa.String(length=80), nullable=True),
     sa.Column('order_type', sa.String(length=80), nullable=True),
     sa.Column('order_status', rdr_service.model.utils.Enum(OrderShipmentStatus), nullable=True),
     sa.Column('shipment_carrier', sa.String(length=80), nullable=True),
-    sa.Column('shipment_est_arrival', sa.DateTime(), nullable=True),
+    sa.Column('shipment_est_arrival', mysql.DATETIME(fsp=6), nullable=True),
     sa.Column('shipment_status', rdr_service.model.utils.Enum(OrderShipmentTrackingStatus), nullable=True),
     sa.Column('barcode', sa.String(length=80), nullable=True),
     sa.Column('biobank_order_id', sa.String(length=80), nullable=True),
