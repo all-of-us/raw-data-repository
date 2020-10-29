@@ -10,7 +10,7 @@ from rdr_service.model.participant import Participant
 from tests.helpers.unittest_base import BaseTestCase
 
 
-class DvOrderApiTestBase(BaseTestCase):
+class PatientStatusApiTestBase(BaseTestCase):
     mayolink_response = None
 
     def setUp(self):
