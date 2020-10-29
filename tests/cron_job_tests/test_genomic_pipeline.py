@@ -28,7 +28,7 @@ from rdr_service.dao.questionnaire_dao import QuestionnaireDao, QuestionnaireQue
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao, QuestionnaireResponseAnswerDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.code_dao import CodeDao, CodeType
-from rdr_service.model.biobank_dv_order import BiobankDVOrder
+from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import (
     BiobankOrder,
     BiobankOrderIdentifier,
@@ -176,7 +176,7 @@ class GenomicPipelineTest(BaseTestCase):
             ("version", 1),
             ("identifiers", [BiobankOrderIdentifier(system="a", value="c")]),
             ("samples", [BiobankOrderedSample(test="1SAL2", description="description", processingRequired=True)]),
-            ("dvOrders", [BiobankDVOrder(participantId=participant_id, version=1)]),
+            ("mailKitOrders", [BiobankMailKitOrder(participantId=participant_id, version=1)]),
         ):
             if k not in kwargs:
                 kwargs[k] = default_value
