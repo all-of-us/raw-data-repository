@@ -57,6 +57,7 @@ commands:
       - run:
           name: Deploy App To Test Environment
           command: ./ci/deploy_app.sh << parameters.project-id >> << parameters.git-target >>
+          no_output_timeout: 60m
 
 jobs:
   job_run_unittests:
