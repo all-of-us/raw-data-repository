@@ -14,7 +14,7 @@ from rdr_service.api_util import (
 from rdr_service.dao.dv_order_dao import DvOrderDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
-from rdr_service.model.biobank_dv_order import BiobankDVOrder
+from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import BiobankOrder
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
@@ -128,7 +128,7 @@ class DvOrderDaoTestBase(BaseTestCase):
 
             # return a BiobankDVOrder object from database
             with self.dao.session() as session:
-                dv_order_result = session.query(BiobankDVOrder).filter_by(
+                dv_order_result = session.query(BiobankMailKitOrder).filter_by(
                     participantId=self.participant.participantId).first()
 
             # run tests against dv_order_result

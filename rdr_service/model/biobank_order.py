@@ -4,6 +4,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 from rdr_service.model.field_types import BlobUTF8
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
+from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.utils import Enum, UTCDateTime, UTCDateTime6
 from rdr_service.participant_enums import BiobankOrderStatus
 
@@ -119,7 +120,7 @@ class BiobankOrder(BiobankOrderBase, Base):
     logPosition = relationship("LogPosition")
     identifiers = relationship("BiobankOrderIdentifier", cascade="all, delete-orphan")
     samples = relationship("BiobankOrderedSample", cascade="all, delete-orphan")
-    dvOrders = relationship("BiobankDVOrder", cascade="all, delete-orphan")
+    mailKitOrders = relationship(BiobankMailKitOrder, cascade="all, delete-orphan")
     questSiteAddress = relationship("BiobankQuestOrderSiteAddress", uselist=False, cascade="all, delete-orphan",
                                     backref="biobank_order")
 

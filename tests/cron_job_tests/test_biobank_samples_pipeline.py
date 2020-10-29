@@ -17,7 +17,7 @@ from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.model.biobank_dv_order import BiobankDVOrder
+from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import get_biobank_id_prefix, to_client_biobank_id
@@ -75,7 +75,7 @@ class BiobankSamplesPipelineTest(BaseTestCase):
             ("version", 1),
             ("identifiers", [BiobankOrderIdentifier(system="a", value="c")]),
             ("samples", [BiobankOrderedSample(test="1SAL2", description="description", processingRequired=True)]),
-            ("dvOrders", [BiobankDVOrder(participantId=participantId, modified=modified, version=1)]),
+            ("mailKitOrders", [BiobankMailKitOrder(participantId=participantId, modified=modified, version=1)]),
         ):
             if k not in kwargs:
                 kwargs[k] = default_value

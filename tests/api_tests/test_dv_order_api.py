@@ -7,7 +7,7 @@ from rdr_service.dao.dv_order_dao import DvOrderDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.model.biobank_dv_order import BiobankDVOrder
+from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import (
     BiobankOrderIdentifier,
     BiobankOrderedSample,
@@ -54,7 +54,7 @@ class DvOrderApiTestBase(BaseTestCase):
 
     def get_orders(self):
         with self.dv_order_dao.session() as session:
-            return list(session.query(BiobankDVOrder))
+            return list(session.query(BiobankMailKitOrder))
 
 
 class DvOrderApiTestPostSupplyRequest(DvOrderApiTestBase):
@@ -249,7 +249,7 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
             for record in ordered_samples_history:
                 session.delete(record)
 
-            dv_orders = session.query(BiobankDVOrder).filter_by(
+            dv_orders = session.query(BiobankMailKitOrder).filter_by(
                 participantId=self.participant.participantId
             ).all()
             for dv_order in dv_orders:

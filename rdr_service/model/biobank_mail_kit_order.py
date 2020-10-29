@@ -5,22 +5,23 @@ from sqlalchemy import (
 )
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
+from rdr_service.model.hpo import HPO
 from rdr_service.model.utils import Enum, UTCDateTime6
 from rdr_service.participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus
 
 
-class BiobankDVOrder(Base):
+class BiobankMailKitOrder(Base):
     """
   Direct Volunteer kit order shipment record
   """
     # mapping a user_info.clientID (from config) to a system identifier
-    _DV_ID_SYSTEM = {
+    _ID_SYSTEM = {
         'vibrent': "http://vibrenthealth.com",
         'careevolution': "http://carevolution.be",
         'example': "system-test"
     }
 
-    __tablename__ = "biobank_dv_order"
+    __tablename__ = "biobank_mail_kit_order"
 
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
@@ -117,8 +118,12 @@ class BiobankDVOrder(Base):
     biobankRequisition = Column("biobank_requisition", Text, nullable=True)
     isTestSample = Column("is_test_sample", Boolean, default=False)
 
+    # Participant's paired HPO at the time of receiving the mail-kit order
+    # None for DV participants
+    associatedHpoId = Column("associated_hpo_id", Integer, ForeignKey(HPO.hpoId))
+
     __table_args__ = (UniqueConstraint("participant_id", "order_id", name="uidx_partic_id_order_id"),)
 
 
-event.listen(BiobankDVOrder, "before_insert", model_insert_listener)
-event.listen(BiobankDVOrder, "before_update", model_update_listener)
+event.listen(BiobankMailKitOrder, "before_insert", model_insert_listener)
+event.listen(BiobankMailKitOrder, "before_update", model_update_listener)

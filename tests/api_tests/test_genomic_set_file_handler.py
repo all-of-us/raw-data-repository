@@ -12,7 +12,7 @@ from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.genomic import genomic_biobank_manifest_handler, genomic_set_file_handler
-from rdr_service.model.biobank_dv_order import BiobankDVOrder
+from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -75,7 +75,7 @@ class GenomicSetFileHandlerTest(BaseTestCase):
             ("version", 1),
             ("identifiers", [BiobankOrderIdentifier(system="a", value="c")]),
             ("samples", [BiobankOrderedSample(test="1SAL2", description="description", processingRequired=True)]),
-            ("dvOrders", [BiobankDVOrder(participantId=participant_id, modified=modified, version=1)]),
+            ("mailKitOrders", [BiobankMailKitOrder(participantId=participant_id, modified=modified, version=1)]),
         ):
             if k not in kwargs:
                 kwargs[k] = default_value
