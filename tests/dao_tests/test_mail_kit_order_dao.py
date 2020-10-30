@@ -11,7 +11,7 @@ from rdr_service.api_util import (
     parse_date,
     get_code_id,
 )
-from rdr_service.dao.dv_order_dao import DvOrderDao
+from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
@@ -26,7 +26,8 @@ from tests.helpers.unittest_base import BaseTestCase
 
 from collections import namedtuple
 
-class DvOrderDaoTestBase(BaseTestCase):
+
+class MailKitOrderDaoTestBase(BaseTestCase):
     def setUp(self):
         super().setUp()
 
@@ -34,7 +35,7 @@ class DvOrderDaoTestBase(BaseTestCase):
         self.put_delivery = load_test_data_json("dv_order_api_put_supply_delivery.json")
         self.post_request = load_test_data_json("dv_order_api_post_supply_request.json")
         self.put_request = load_test_data_json("dv_order_api_put_supply_request.json")
-        self.dao = DvOrderDao()
+        self.dao = MailKitOrderDao()
 
         self.code_dao = CodeDao()
         self.participant_dao = ParticipantDao()
@@ -58,7 +59,7 @@ class DvOrderDaoTestBase(BaseTestCase):
         }
 
         mayolinkapi_patcher = mock.patch(
-            "rdr_service.dao.dv_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
+            "rdr_service.dao.mail_kit_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
         )
         mayolinkapi_patcher.start()
         self.addCleanup(mayolinkapi_patcher.stop)
@@ -144,7 +145,7 @@ class DvOrderDaoTestBase(BaseTestCase):
             self.make_supply_posts(test_case)
             run_db_test(expected_data)
 
-    @mock.patch("rdr_service.dao.dv_order_dao.MayoLinkApi")
+    @mock.patch("rdr_service.dao.mail_kit_order_dao.MayoLinkApi")
     def test_service_unavailable(self, mocked_api):
         # pylint: disable=unused-argument
         def raises(*args):

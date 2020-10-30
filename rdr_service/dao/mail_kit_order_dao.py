@@ -37,10 +37,10 @@ _UTC = pytz.utc
 _US_CENTRAL = pytz.timezone("US/Central")
 
 
-class DvOrderDao(UpdatableDao):
+class MailKitOrderDao(UpdatableDao):
     def __init__(self):
         self.code_dao = CodeDao()
-        super(DvOrderDao, self).__init__(BiobankMailKitOrder)
+        super(MailKitOrderDao, self).__init__(BiobankMailKitOrder)
         # used for testing
         self.biobank_address = {
             "city": "Rochester",

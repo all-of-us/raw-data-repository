@@ -7,15 +7,15 @@ from werkzeug.exceptions import BadRequest, Conflict, MethodNotAllowed
 from rdr_service.api.base_api import UpdatableApi
 from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO, DV_FHIR_URL
 from rdr_service.app_util import ObjDict, auth_required, get_oauth_id, get_account_origin_id
-from rdr_service.dao.dv_order_dao import DvOrderDao
+from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import OrderShipmentTrackingStatus
 
 
-class DvOrderApi(UpdatableApi):
+class MailKitOrderApi(UpdatableApi):
     def __init__(self):
-        super(DvOrderApi, self).__init__(DvOrderDao())
+        super(MailKitOrderApi, self).__init__(MailKitOrderDao())
 
     @staticmethod
     def _lookup_resource_type_method(resource_type_method_map, raw_resource):
@@ -125,7 +125,7 @@ class DvOrderApi(UpdatableApi):
             self.dao.insert_biobank_order(p_id, merged_resource)
             self.dao.insert_mayolink_create_order_history(p_id, merged_resource, resource, response)
 
-        response = super(DvOrderApi, self).put(
+        response = super(MailKitOrderApi, self).put(
             bo_id, participant_id=p_id, skip_etag=True, resource=merged_resource
         )
         response[2]["Location"] = "/rdr/v1/SupplyDelivery/{}".format(bo_id)
@@ -141,7 +141,7 @@ class DvOrderApi(UpdatableApi):
         patient = fhir_resource.contained.get(resourceType="Patient")
         pid = patient.identifier.get(system=DV_FHIR_URL + "participantId").value
         p_id = from_client_participant_id(pid)
-        response = super(DvOrderApi, self).post(participant_id=p_id)
+        response = super(MailKitOrderApi, self).post(participant_id=p_id)
         order_id = fhir_resource.identifier.get(system=DV_FHIR_URL + "orderId").value
         response[2]["Location"] = "/rdr/v1/SupplyRequest/{}".format(order_id)
         response[2]['auth_user'] = resource['auth_user']
@@ -163,7 +163,7 @@ class DvOrderApi(UpdatableApi):
         obj = ObjDict(pk)
         id_ = self.dao.get_id(obj)[0]
 
-        return super(DvOrderApi, self).get(id_=id_, participant_id=p_id)
+        return super(MailKitOrderApi, self).get(id_=id_, participant_id=p_id)
 
     @auth_required(PTC)
     def put(self, bo_id=None):  # pylint: disable=unused-argument
@@ -196,7 +196,7 @@ class DvOrderApi(UpdatableApi):
 
         if not p_id:
             raise BadRequest("Request must include participant id")
-        response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
+        response = super(MailKitOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
 
         return response
 
@@ -270,7 +270,7 @@ class DvOrderApi(UpdatableApi):
             self.dao.insert_biobank_order(p_id, merged_resource)
             self.dao.insert_mayolink_create_order_history(p_id, merged_resource, resource, response)
 
-        response = super(DvOrderApi, self).put(
+        response = super(MailKitOrderApi, self).put(
             bo_id, participant_id=p_id, skip_etag=True, resource=merged_resource
         )
         return response
@@ -298,6 +298,6 @@ def merge_dicts(dict_a, dict_b):
 
 
 def _make_response(self, obj):
-    result = super(DvOrderApi, self)._make_response(obj)
-    etag = super(DvOrderApi, self)._make_etag(obj.version)
+    result = super(MailKitOrderApi, self)._make_response(obj)
+    etag = super(MailKitOrderApi, self)._make_etag(obj.version)
     return result, 201, {"ETag": etag}
