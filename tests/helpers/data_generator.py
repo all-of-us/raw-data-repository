@@ -1,8 +1,8 @@
 from datetime import datetime
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.model.api_user import ApiUser
-from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderHistory, BiobankOrderedSample,\
-    BiobankOrderedSampleHistory, BiobankOrderIdentifier
+from rdr_service.model.biobank_order import BiobankMailKitOrder, BiobankOrder, BiobankOrderHistory,\
+    BiobankOrderedSample, BiobankOrderedSampleHistory, BiobankOrderIdentifier
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.deceased_report import DeceasedReport
@@ -15,6 +15,7 @@ from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept,
     QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.model.site import Site
+from rdr_service.offline.biobank_samples_pipeline import _PMI_OPS_SYSTEM
 from rdr_service.participant_enums import (
     DeceasedNotification,
     DeceasedReportStatus,
@@ -317,12 +318,32 @@ class DataGenerator:
 
         return BiobankOrder(**kwargs)
 
+    def create_database_biobank_mail_kit_order(self, **kwargs):
+        biobank_mail_kit_order = self._biobank_mail_kit_order(**kwargs)
+        self._commit_to_database(biobank_mail_kit_order)
+
+        return biobank_mail_kit_order
+
+    def _biobank_mail_kit_order(self, **kwargs):
+        for field, default in [('version', 1)]:
+            if field not in kwargs:
+                kwargs[field] = default
+
+        return BiobankMailKitOrder(**kwargs)
+
     def create_database_biobank_order_identifier(self, **kwargs):
         biobank_order_identifier = self._biobank_order_identifier(**kwargs)
         self._commit_to_database(biobank_order_identifier)
         return biobank_order_identifier
 
     def _biobank_order_identifier(self, **kwargs):
+        for field, default in [('system', _PMI_OPS_SYSTEM)]:
+            if field not in kwargs:
+                kwargs[field] = default
+
+        if 'biobankOrderId' not in kwargs:
+            kwargs['biobankOrderId'] = self.create_database_biobank_order().biobankOrderId
+
         return BiobankOrderIdentifier(**kwargs)
 
     def create_database_biobank_ordered_sample(self, **kwargs):

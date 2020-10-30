@@ -26,6 +26,7 @@ from rdr_service.participant_enums import (
     PhysicalMeasurementsStatus,
     QuestionnaireStatus,
     Race,
+    SampleCollectionMethod,
     SampleStatus,
     SuspensionStatus,
     WithdrawalReason,
@@ -900,6 +901,12 @@ class ParticipantSummary(Base):
 
     sampleStatus1SAL2Time = Column("sample_status_1sal2_time", UTCDateTime)
     "The datetime in UTC in which the biobank processed the sample."
+
+    sample1SAL2CollectionMethod = Column(
+        "sample_1sal2_collection_method",
+        Enum(SampleCollectionMethod),
+        default=SampleCollectionMethod.UNSET
+    )
 
     sampleStatus1ED02 = Column("sample_status_1ed02", Enum(SampleStatus), default=SampleStatus.UNSET)
     """

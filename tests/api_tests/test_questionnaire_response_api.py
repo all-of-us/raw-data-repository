@@ -135,7 +135,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "deceasedStatus": "UNSET",
             "retentionEligibleStatus": "NOT_ELIGIBLE",
             "retentionType": "UNSET",
-            "enrollmentSite": "UNSET"
+            "enrollmentSite": "UNSET",
+            "sample1SAL2CollectionMethod": "UNSET"
         }
 
     def test_duplicate_consent_submission(self):

@@ -24,7 +24,8 @@ from rdr_service.model.config_utils import get_biobank_id_prefix, to_client_biob
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.offline import biobank_samples_pipeline
-from rdr_service.participant_enums import EnrollmentStatus, SampleStatus, get_sample_status_enum_value
+from rdr_service.participant_enums import EnrollmentStatus, SampleStatus, get_sample_status_enum_value,\
+    SampleCollectionMethod
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -160,6 +161,33 @@ class BiobankSamplesPipelineTest(BaseTestCase):
             self.assertEqual(summary_dao.get(participant.participantId).numBaselineSamplesArrived, 0)
 
         test_codes = random.sample(_BASELINE_TESTS, nids)
+
+        # Arbitrarily pick samples to be used for testing 1SAL2 collection method checking
+        mail_kit_1sal2_participant_id = participant_ids[6]
+        on_site_1sal2_participant_id = participant_ids[11]
+        no_order_1sal2_participant_id = participant_ids[14]
+        test_codes[6] = test_codes[11] = test_codes[14] = '1SAL2'
+
+        mailed_biobank_order = self.data_generator.create_database_biobank_order(
+            participantId=mail_kit_1sal2_participant_id
+        )
+        self.data_generator.create_database_biobank_order_identifier(
+            biobankOrderId=mailed_biobank_order.biobankOrderId,
+            value='KIT-6'  # from the 7th record in biobank_samples_1.csv
+        )
+        self.data_generator.create_database_biobank_mail_kit_order(
+            biobankOrderId=mailed_biobank_order.biobankOrderId,
+            participantId=mail_kit_1sal2_participant_id
+        )
+
+        on_site_biobank_order = self.data_generator.create_database_biobank_order(
+            participantId=on_site_1sal2_participant_id
+        )
+        self.data_generator.create_database_biobank_order_identifier(
+            biobankOrderId=on_site_biobank_order.biobankOrderId,
+            value='KIT-11'  # from the 12th record in the biobank_samples_1.csv
+        )
+
         samples_file = test_data.open_biobank_samples(biobank_ids=biobank_ids, tests=test_codes)
         lines = samples_file.split("\n")[1:]  # remove field name line
 
@@ -192,6 +220,22 @@ class BiobankSamplesPipelineTest(BaseTestCase):
 
                 ts = datetime.strptime(ts_str, "%Y/%m/%d %H:%M:%S")
                 self._check_summary(participant_ids[x], test_codes[x], ts, status)
+
+        # Check that the 1SAL2 collection methods were set correctly
+        on_site_summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == on_site_1sal2_participant_id
+        ).one()
+        self.assertEqual(SampleCollectionMethod.ON_SITE, on_site_summary.sample1SAL2CollectionMethod)
+
+        mail_kit_summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == mail_kit_1sal2_participant_id
+        ).one()
+        self.assertEqual(SampleCollectionMethod.MAIL_KIT, mail_kit_summary.sample1SAL2CollectionMethod)
+
+        no_order_summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == no_order_1sal2_participant_id
+        ).one()
+        self.assertIsNone(no_order_summary.sample1SAL2CollectionMethod)
 
     def test_old_csv_not_imported(self):
         self.clear_default_storage()
