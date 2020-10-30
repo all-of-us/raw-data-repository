@@ -620,6 +620,7 @@ _RECONCILIATION_REPORT_SQL = (
         biobank_mail_kit_order dv_order
     ON dv_order.biobank_order_id = biobank_order.biobank_order_id
         AND dv_order.is_test_sample IS NOT TRUE
+        AND dv_order.associated_hpo_id IS NULL
     LEFT OUTER JOIN
       biobank_order_identifier kit_id_identifier
     ON biobank_order.biobank_order_id = kit_id_identifier.biobank_order_id
@@ -706,7 +707,8 @@ _RECONCILIATION_REPORT_SQL = (
                      FROM participant p
                         JOIN biobank_mail_kit_order dv
                         ON p.participant_id = dv.participant_id
-                        AND dv.is_test_sample IS NOT TRUE)
+                        AND dv.is_test_sample IS NOT TRUE
+                        AND dv.associated_hpo_id IS NULL)
                 ELSE TRUE
             END
         )
@@ -760,6 +762,7 @@ WHERE TRUE
      )
      AND bss.biobank_stored_sample_id IS NULL
      AND dvo.is_test_sample IS NOT TRUE
+     AND dvo.associated_hpo_id IS NULL
     """
 )
 
