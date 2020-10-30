@@ -37,6 +37,8 @@ class MailKitOrderApiTestBase(BaseTestCase):
         self.summary_dao = ParticipantSummaryDao()
         self.code_dao = CodeDao()
 
+        # WARNING: the HPO looks like it gets set here, but is cleared during the insert
+        # TODO: find out whot should be happening here
         self.hpo = self.hpo_dao.get_by_name("PITT")
         self.participant = Participant(hpoId=self.hpo.hpoId, participantId=123456789, biobankId=7)
         self.participant_dao.insert(self.participant)
@@ -69,6 +71,41 @@ class MailKitOrderApiTestPostSupplyRequest(MailKitOrderApiTestBase):
         orders = self.get_orders()
         self.assertEqual(1, len(orders))
 
+    def _build_supply_request_payload(self, participant: Participant):
+        json = self.get_payload('dv_order_api_post_supply_request.json')
+
+        # set the participant id
+        json['contained'][0]['identifier'][0]['value'] = to_client_participant_id(participant.participantId)
+        return json
+
+    # The test setup creates a participant and appears to set an HPO on it, but the HPO is cleared
+    # during the insertion process. So the following tests are created to work with their own participants
+    def test_dv_order_created(self):
+        unpaired_participant = self.data_generator.create_database_participant()
+        self.data_generator.create_database_participant_summary(participant=unpaired_participant)
+
+        request_json = self._build_supply_request_payload(unpaired_participant)
+        self.send_post("SupplyRequest", request_data=request_json, expected_status=http.client.CREATED)
+
+        # Check that the order has no HPO set
+        order: BiobankMailKitOrder = self.session.query(BiobankMailKitOrder).filter(
+            BiobankMailKitOrder.participantId == unpaired_participant.participantId
+        ).one()
+        self.assertIsNone(order.associatedHpoId)
+
+    def test_hpo_mail_kit_order_created(self):
+        hpo = self.data_generator.create_database_hpo()
+        paired_participant = self.data_generator.create_database_participant(hpoId=hpo.hpoId)
+        self.data_generator.create_database_participant_summary(participant=paired_participant)
+
+        request_json = self._build_supply_request_payload(paired_participant)
+        self.send_post("SupplyRequest", request_data=request_json, expected_status=http.client.CREATED)
+
+        # Check that the order has no HPO set
+        order: BiobankMailKitOrder = self.session.query(BiobankMailKitOrder).filter(
+            BiobankMailKitOrder.participantId == paired_participant.participantId
+        ).one()
+        self.assertEqual(hpo.hpoId, order.associatedHpoId)
 
 class MailKitOrderApiTestPutSupplyRequest(MailKitOrderApiTestBase):
     mayolink_response = {
