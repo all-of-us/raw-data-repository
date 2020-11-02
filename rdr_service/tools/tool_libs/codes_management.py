@@ -13,7 +13,6 @@ from rdr_service.model.code import Code, CodeType
 from rdr_service.services.gcp_config import GCP_INSTANCES
 from rdr_service.services.redcap_client import RedcapClient
 from rdr_service.tools.tool_libs._tool_base import cli_run, logger, ToolBase
-from rdr_service.tools.tool_libs.app_engine_manager import AppConfigClass
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
@@ -114,13 +113,7 @@ class CodesSyncClass(ToolBase):
     code_reuse_found = False
 
     def get_redcap_api_key(self, redcap_project_name):
-        # The AppConfig class uses the git_project field from args when initializing,
-        # looks like it uses it as a root directory for other purposes.
-        self.args.git_project = self.gcp_env.git_project
-
-        # Get the server config
-        app_config_manager = AppConfigClass(self.args, self.gcp_env)
-        server_config = app_config_manager.get_bucket_app_config()
+        server_config = self.get_server_config()
 
         if REDCAP_PROJECT_KEYS not in server_config:
             logger.error('ERROR: Server config file does not list any API keys')
