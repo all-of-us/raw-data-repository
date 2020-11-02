@@ -1,7 +1,7 @@
 """adding 1sal2 collection method
 
 Revision ID: e4a837723c94
-Revises: 8cc481fa7390
+Revises: 86880fe5065e
 Create Date: 2020-10-30 13:34:08.237109
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = 'e4a837723c94'
-down_revision = '8cc481fa7390'
+down_revision = '86880fe5065e'
 branch_labels = None
 depends_on = None
 
