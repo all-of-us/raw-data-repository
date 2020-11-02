@@ -50,6 +50,7 @@ from rdr_service.participant_enums import (
     PatientStatusFlag,
     PhysicalMeasurementsStatus,
     QuestionnaireStatus,
+    SampleCollectionMethod,
     SampleStatus,
     SuspensionStatus,
     WithdrawalStatus,
@@ -158,6 +159,52 @@ _SAMPLE_SQL = """,
           ELSE NULL END
    """
 
+_COLLECTION_METHOD_CASE_SQL = f"""
+    # Results in NULL if an order wasn't found (since we're unsure how the order was made)
+    CASE
+        WHEN bmko.id IS NOT NULL
+            # there's a mail-kit order tied to the sample
+            THEN {int(SampleCollectionMethod.MAIL_KIT)}
+        WHEN bo.biobank_order_id IS NOT NULL
+            # there's an order created for the sample, but no mail-kit order tied to it
+            THEN {int(SampleCollectionMethod.ON_SITE)}
+        ELSE
+            # there's no order for the sample
+            {int(SampleCollectionMethod.UNSET)}
+    END
+"""
+_SAMPLE_COLLECTION_METHOD_SQL = f""",
+    sample_%(test)s_collection_method =
+    CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample bss
+          WHERE bss.biobank_id = ps.biobank_id AND bss.test = %(sample_param_ref)s)
+      THEN
+          # Use the same sample that is used to set the status and time fields
+          CASE WHEN (SELECT MIN(bss.status) FROM biobank_stored_sample bss
+                   WHERE bss.biobank_id = ps.biobank_id
+                   AND bss.test = %(sample_param_ref)s) >= :disposed_bad
+               THEN (
+                   SELECT {_COLLECTION_METHOD_CASE_SQL}
+                     FROM biobank_stored_sample bss
+                     LEFT JOIN biobank_order_identifier boi on boi.value = bss.biobank_order_identifier
+                     LEFT JOIN biobank_order bo on bo.biobank_order_id = boi.biobank_order_id
+                     LEFT JOIN biobank_mail_kit_order bmko on bmko.biobank_order_id = bo.biobank_order_id
+                     WHERE bss.biobank_id = ps.biobank_id AND bss.test = %(sample_param_ref)s
+                     ORDER BY disposed DESC
+                     LIMIT 1)
+          ELSE (
+                    SELECT {_COLLECTION_METHOD_CASE_SQL}
+                    FROM biobank_stored_sample bss
+                    LEFT JOIN biobank_order_identifier boi on boi.value = bss.biobank_order_identifier
+                    LEFT JOIN biobank_order bo on bo.biobank_order_id = boi.biobank_order_id
+                    LEFT JOIN biobank_mail_kit_order bmko on bmko.biobank_order_id = bo.biobank_order_id
+                    WHERE bss.biobank_id = ps.biobank_id and (bss.status < :disposed_bad or bss.status is null)
+                        AND bss.test = %(sample_param_ref)s
+                    ORDER BY confirmed DESC
+                    LIMIT 1)
+          END
+      ELSE NULL END
+"""
+
 _WHERE_SQL = """
 not ps.sample_status_%(test)s_time <=>
 (SELECT MAX(bss.confirmed) FROM biobank_stored_sample bss
@@ -191,6 +238,8 @@ def _get_sample_sql_and_params(now):
         sample_param_ref = ":%s" % sample_param
         lower_test = BIOBANK_TESTS[i].lower()
         sql += _SAMPLE_SQL % {"test": lower_test, "sample_param_ref": sample_param_ref}
+        if lower_test == '1sal2':
+            sql += _SAMPLE_COLLECTION_METHOD_SQL % {"test": lower_test, "sample_param_ref": sample_param_ref}
         params[sample_param] = BIOBANK_TESTS[i]
         if where_sql != "":
             where_sql += " or "

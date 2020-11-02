@@ -138,6 +138,14 @@ class SampleStatus(messages.Enum):
     QUALITY_ISSUE = 18
 
 
+class SampleCollectionMethod(messages.Enum):
+    """How a sample was collected"""
+
+    UNSET = 0
+    MAIL_KIT = 1
+    ON_SITE = 2
+
+
 class EhrStatus(messages.Enum):
     """Status of EHRs"""
 

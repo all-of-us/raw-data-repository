@@ -599,8 +599,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                    bo.processed_site_id, (select google_group from site where site.site_id = bo.processed_site_id) as processed_site,
                    bo.finalized_site_id, (select google_group from site where site.site_id = bo.finalized_site_id) as finalized_site,
                    case when exists (
-                     select bdo.participant_id from biobank_mail_kit_order bdo
-                        where bdo.biobank_order_id = bo.biobank_order_id and bo.participant_id = bdo.participant_id)
+                     select bmko.participant_id
+                     from biobank_mail_kit_order bmko
+                     where bmko.biobank_order_id = bo.biobank_order_id
+                        and bo.participant_id = bmko.participant_id
+                        and bmko.associated_hpo_id is null
+                   )
                    then 1 else 0 end as dv_order
              from biobank_order bo where participant_id = :p_id
              order by bo.created desc;
