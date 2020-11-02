@@ -29,7 +29,7 @@ SELECT p.participant_id, ps.date_of_birth date_of_birth,
   (SELECT ISODATE[MIN(bs.confirmed)] FROM biobank_stored_sample bs
     WHERE bs.biobank_id = p.biobank_id) first_samples_arrived_date,
   (SELECT ISODATE[MIN(pm.finalized)] FROM physical_measurements pm
-    WHERE pm.participant_id = p.participant_id 
+    WHERE pm.participant_id = p.participant_id
     AND pm.finalized is not null
     AND pm.status is null or pm.status <> 2) first_physical_measurements_date,
   (SELECT ISODATE[MIN(bss.confirmed)] FROM biobank_stored_sample bss
@@ -41,6 +41,7 @@ SELECT p.participant_id, ps.date_of_birth date_of_birth,
    AND p.hpo_id != :test_hpo_id
    AND p.withdrawal_status != 2
    AND NOT ps.email LIKE :test_email_pattern
+   AND p.is_test_participant != TRUE
 """
 
 # Find HPO ID changes in participant history.
@@ -54,6 +55,7 @@ SELECT ph.participant_id participant_id, hpo.name hpo,
    AND ph.hpo_id != :test_hpo_id
    AND p.hpo_id != :test_hpo_id
    AND p.withdrawal_status != 2
+   AND p.is_test_participant != TRUE
    AND NOT EXISTS
     (SELECT * FROM participant_history ph_prev
       WHERE ph_prev.participant_id = ph.participant_id
@@ -81,6 +83,7 @@ SELECT qr.participant_id participant_id, ISODATE[qr.created] start_time,
    AND qr.participant_id = p.participant_id
    AND p.hpo_id != :test_hpo_id
    AND p.withdrawal_status != 2
+   AND p.is_test_participant != TRUE
    AND NOT EXISTS
     (SELECT * FROM participant_summary ps
       WHERE ps.participant_id = p.participant_id

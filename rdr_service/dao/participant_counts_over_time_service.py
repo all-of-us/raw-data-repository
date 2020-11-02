@@ -99,6 +99,7 @@ class ParticipantCountsOverTimeService(BaseDao):
                   left join participant_summary ps on p.participant_id = ps.participant_id
                   WHERE p.hpo_id <> :test_hpo_id
                   AND p.is_ghost_id IS NOT TRUE
+                  AND p.is_test_participant IS NOT TRUE
                   AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
                   AND p.withdrawal_status = :not_withdraw
                   AND p.hpo_id = :hpo_id
@@ -391,7 +392,7 @@ class ParticipantCountsOverTimeService(BaseDao):
             "table_prefix": table_prefix,
             "not_withdrawn": WithdrawalStatus.NOT_WITHDRAWN,
         }
-        facets_sql += " AND p.is_ghost_id IS NOT TRUE "
+        facets_sql += " AND p.is_ghost_id IS NOT TRUE AND p.is_test_participant IS NOT TRUE"
 
         if participant_origins:
             facets_sql += " AND p.participant_origin in ({}) "\

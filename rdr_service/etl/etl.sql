@@ -684,6 +684,7 @@ LEFT JOIN cdm.questionnaire_responses_by_module later_response
 WHERE
     pa.withdrawal_status != 2
     AND pa.is_ghost_id IS NOT TRUE
+    AND pa.is_test_participant IS NOT TRUE
     AND pa.participant_origin <> 'careevolution'
     AND hp.name != 'TEST'
     AND
