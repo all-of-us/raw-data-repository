@@ -3,11 +3,11 @@ import http.client
 import mock
 
 from rdr_service.dao.code_dao import CodeDao
-from rdr_service.dao.dv_order_dao import DvOrderDao
+from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.model.biobank_dv_order import BiobankDVOrder
+from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import (
     BiobankOrderIdentifier,
     BiobankOrderedSample,
@@ -26,12 +26,12 @@ from tests.test_data import load_biobank_order_json
 from rdr_service.model.utils import to_client_participant_id
 
 
-class DvOrderApiTestBase(BaseTestCase):
+class MailKitOrderApiTestBase(BaseTestCase):
     mayolink_response = None
 
     def setUp(self, with_data=True):
         super().setUp(with_data=with_data)
-        self.dv_order_dao = DvOrderDao()
+        self.mail_kit_order_dao = MailKitOrderDao()
         self.hpo_dao = HPODao()
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
@@ -44,7 +44,7 @@ class DvOrderApiTestBase(BaseTestCase):
         self.summary_dao.insert(self.summary)
 
         mayolinkapi_patcher = mock.patch(
-            "rdr_service.dao.dv_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
+            "rdr_service.dao.mail_kit_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
         )
         mayolinkapi_patcher.start()
         self.addCleanup(mayolinkapi_patcher.stop)
@@ -53,11 +53,11 @@ class DvOrderApiTestBase(BaseTestCase):
         return load_test_data_json(filename)
 
     def get_orders(self):
-        with self.dv_order_dao.session() as session:
-            return list(session.query(BiobankDVOrder))
+        with self.mail_kit_order_dao.session() as session:
+            return list(session.query(BiobankMailKitOrder))
 
 
-class DvOrderApiTestPostSupplyRequest(DvOrderApiTestBase):
+class MailKitOrderApiTestPostSupplyRequest(MailKitOrderApiTestBase):
     def test_order_created(self):
         self.assertEqual(0, len(self.get_orders()))
         response = self.send_post(
@@ -70,7 +70,7 @@ class DvOrderApiTestPostSupplyRequest(DvOrderApiTestBase):
         self.assertEqual(1, len(orders))
 
 
-class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
+class MailKitOrderApiTestPutSupplyRequest(MailKitOrderApiTestBase):
     mayolink_response = {
         "orders": {
             "order": {
@@ -150,7 +150,7 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
             self.assertEqual(i.biobankStatus, "Queued")
             self.assertEqual(i.biobankTrackingId, "PAT-123-456")
 
-        with self.dv_order_dao.session() as session:
+        with self.mail_kit_order_dao.session() as session:
             # there should be three identifier records in the BiobankOrderIdentifier table
             identifiers = session.query(BiobankOrderIdentifier).all()
             self.assertEqual(5, len(identifiers))
@@ -211,7 +211,7 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
                 )
 
                 # Compare the results in the DB with the system identifiers defined above
-                with self.dv_order_dao.session() as session:
+                with self.mail_kit_order_dao.session() as session:
                     test_order_id = self.mayolink_response['orders']['order']['number']
                     identifiers = session.query(BiobankOrderIdentifier).filter_by(
                         biobankOrderId=test_order_id
@@ -235,7 +235,7 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
         """DB clean-up to avoid duplicate key errors"""
         test_order_id = self.mayolink_response['orders']['order']['number']
 
-        with self.dv_order_dao.session() as session:
+        with self.mail_kit_order_dao.session() as session:
 
             identifier_history = session.query(BiobankOrderIdentifierHistory).filter_by(
                 biobankOrderId=test_order_id
@@ -249,7 +249,7 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
             for record in ordered_samples_history:
                 session.delete(record)
 
-            dv_orders = session.query(BiobankDVOrder).filter_by(
+            dv_orders = session.query(BiobankMailKitOrder).filter_by(
                 participantId=self.participant.participantId
             ).all()
             for dv_order in dv_orders:
@@ -267,7 +267,7 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
             for bb_order in bb_orders:
                 session.delete(bb_order)
 
-class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
+class MailKitOrderApiTestPostSupplyDelivery(MailKitOrderApiTestBase):
     mayolink_response = {
         "orders": {
             "order": {
@@ -303,7 +303,7 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
         orders = self.get_orders()
         self.assertEqual(1, len(orders))
 
-    @mock.patch("rdr_service.dao.dv_order_dao.get_code_id")
+    @mock.patch("rdr_service.dao.mail_kit_order_dao.get_code_id")
     def test_biobank_address_received(self, patched_code_id):
         patched_code_id.return_value = 1
 
@@ -322,7 +322,7 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
         )
 
         request = self.get_payload("dv_order_api_put_supply_delivery.json")
-        biobank_address = self.dv_order_dao.biobank_address
+        biobank_address = self.mail_kit_order_dao.biobank_address
         request["contained"][0]["address"] = biobank_address
 
         location_id = response.location.rsplit("/", 1)[-1]
@@ -345,7 +345,7 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
             self.assertEqual(i.id, int(1))
             self.assertEqual(i.order_id, int(999999))
 
-    @mock.patch("rdr_service.dao.dv_order_dao.get_code_id")
+    @mock.patch("rdr_service.dao.mail_kit_order_dao.get_code_id")
     def test_biobank_address_received_alt_json(self, patched_code_id):
         patched_code_id.return_value = 1
 
@@ -364,7 +364,7 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
         )
 
         request = self.get_payload("dv_order_api_put_supply_delivery.json")
-        biobank_address = self.dv_order_dao.biobank_address
+        biobank_address = self.mail_kit_order_dao.biobank_address
         request["contained"][0]["address"] = biobank_address
 
         location_id = response.location.rsplit("/", 1)[-1]
@@ -383,7 +383,7 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
             self.assertEqual(i.order_id, int(999999))
 
 
-class DvOrderApiTestPutSupplyDelivery(DvOrderApiTestBase):
+class MailKitOrderApiTestPutSupplyDelivery(MailKitOrderApiTestBase):
     mayolink_response = {
         "orders": {
             "order": {

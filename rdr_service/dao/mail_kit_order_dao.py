@@ -23,7 +23,7 @@ from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
-from rdr_service.model.biobank_dv_order import BiobankDVOrder
+from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample, \
     MayolinkCreateOrderHistory
 from rdr_service.model.config_utils import to_client_biobank_id
@@ -37,10 +37,10 @@ _UTC = pytz.utc
 _US_CENTRAL = pytz.timezone("US/Central")
 
 
-class DvOrderDao(UpdatableDao):
+class MailKitOrderDao(UpdatableDao):
     def __init__(self):
         self.code_dao = CodeDao()
-        super(DvOrderDao, self).__init__(BiobankDVOrder)
+        super(MailKitOrderDao, self).__init__(BiobankMailKitOrder)
         # used for testing
         self.biobank_address = {
             "city": "Rochester",
@@ -77,7 +77,7 @@ class DvOrderDao(UpdatableDao):
 
         order_id = int(fhir_resource.basedOn[0].identifier.value)
         with self.session() as session:
-            result = session.query(BiobankDVOrder.barcode).filter(BiobankDVOrder.order_id == order_id).first()
+            result = session.query(BiobankMailKitOrder.barcode).filter(BiobankMailKitOrder.order_id == order_id).first()
             barcode = None if not result else result if isinstance(result, str) else result.barcode
 
         # Convert to Central Timezone for Mayo
@@ -142,7 +142,7 @@ class DvOrderDao(UpdatableDao):
     ):  # pylint: disable=unused-argument
         """Initial loading of the DV order table does not include all attributes."""
         fhir_resource = SimpleFhirR4Reader(resource_json)
-        order = BiobankDVOrder(participantId=participant_id)
+        order = BiobankMailKitOrder(participantId=participant_id)
         order.participantId = participant_id
 
         if resource_json["resourceType"].lower() == "supplydelivery":
@@ -265,7 +265,7 @@ class DvOrderDao(UpdatableDao):
         obj.biobankOrderId = resource["biobankOrderId"]
         obj.orderOrigin = resource.get("orderOrigin")
         test = self.get(resource["id"])
-        obj.dvOrders = [test]
+        obj.mailKitOrders = [test]
         bod = BiobankOrderDao()
         obj.samples = [BiobankOrderedSample(test="1SAL2", processingRequired=False, description="salivary pilot kit")]
         self._add_identifiers_and_main_id(obj, app_util.ObjectView(resource))
@@ -295,12 +295,12 @@ class DvOrderDao(UpdatableDao):
                 if i["system"].lower() == DV_FHIR_URL + "trackingid":
                     order.identifiers.append(
                         BiobankOrderIdentifier(
-                            system=BiobankDVOrder._DV_ID_SYSTEM[client_id] + "/trackingId", value=i["value"]
+                            system=BiobankMailKitOrder._ID_SYSTEM[client_id] + "/trackingId", value=i["value"]
                         )
                     )
             except AttributeError:
                 raise BadRequest(
-                    f"No identifier for system {BiobankDVOrder._DV_ID_SYSTEM[client_id]}, required for primary key."
+                    f"No identifier for system {BiobankMailKitOrder._ID_SYSTEM[client_id]}, required for primary key."
                 )
             except KeyError:
                 raise BadRequest(
@@ -311,12 +311,12 @@ class DvOrderDao(UpdatableDao):
                 if i["identifier"]["system"].lower() == DV_FHIR_URL + "orderid":
                     order.identifiers.append(
                         BiobankOrderIdentifier(
-                            system=BiobankDVOrder._DV_ID_SYSTEM[client_id], value=i["identifier"]["value"]
+                            system=BiobankMailKitOrder._ID_SYSTEM[client_id], value=i["identifier"]["value"]
                         )
                     )
             except AttributeError:
                 raise BadRequest(
-                    f"No identifier for system {BiobankDVOrder._DV_ID_SYSTEM[client_id]}, required for primary key."
+                    f"No identifier for system {BiobankMailKitOrder._ID_SYSTEM[client_id]}, required for primary key."
                 )
             except KeyError:
                 raise BadRequest(
@@ -325,7 +325,7 @@ class DvOrderDao(UpdatableDao):
 
     def get_etag(self, id_, pid):
         with self.session() as session:
-            query = session.query(BiobankDVOrder.version).filter_by(participantId=pid).filter_by(order_id=id_)
+            query = session.query(BiobankMailKitOrder.version).filter_by(participantId=pid).filter_by(order_id=id_)
             result = query.first()
             if result:
                 return result[0]
@@ -339,7 +339,7 @@ class DvOrderDao(UpdatableDao):
     def get_id(self, obj):
         with self.session() as session:
             query = (
-                session.query(BiobankDVOrder.id)
+                session.query(BiobankMailKitOrder.id)
                 .filter_by(participantId=obj.participantId)
                 .filter_by(order_id=obj.order_id)
             )
@@ -348,7 +348,7 @@ class DvOrderDao(UpdatableDao):
     def get_biobank_info(self, order):
         with self.session() as session:
             query = (
-                session.query(BiobankDVOrder)
+                session.query(BiobankMailKitOrder)
                 .options(load_only("barcode", "biobankOrderId", "biobankStatus", "biobankReceived"))
                 .filter_by(participantId=order.participantId)
                 .filter_by(order_id=order.order_id)

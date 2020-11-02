@@ -17,6 +17,7 @@ from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
     daily_rebuild_bigquery_handler, rebuild_bigquery_handler
+from rdr_service.offline.import_deceased_reports import DeceasedReportImporter
 from rdr_service.offline.enrollment_check import check_enrollment
 from rdr_service.offline.exclude_ghost_participants import mark_ghost_participants
 from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
@@ -442,6 +443,14 @@ def check_enrollment_status():
     return '{ "success": "true" }'
 
 
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def import_deceased_reports():
+    importer = DeceasedReportImporter(config.get_config())
+    importer.import_reports()
+    return '{ "success": "true" }'
+
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     offline_app = Flask(__name__)
@@ -658,6 +667,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "PatientStatusBackfill",
         endpoint="patient_status_backfill",
         view_func=patient_status_backfill,
+        methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "DeceasedReportImport",
+        endpoint="deceased_report_import",
+        view_func=import_deceased_reports,
         methods=["GET"],
     )
 

@@ -23,7 +23,7 @@ from rdr_service.api.biobank_specimen_api import BiobankSpecimenApi, BiobankSpec
 from rdr_service.api.check_ppi_data_api import check_ppi_data
 from rdr_service.api.data_gen_api import DataGenApi, SpecDataGenApi
 from rdr_service.api.deceased_report_api import DeceasedReportApi, DeceasedReportReviewApi
-from rdr_service.api.dv_order_api import DvOrderApi
+from rdr_service.api.mail_kit_order_api import MailKitOrderApi
 from rdr_service.api.genomic_api import GenomicPiiApi, GenomicOutreachApi
 from rdr_service.api.import_codebook_api import import_codebook
 from rdr_service.api.metric_sets_api import MetricSetsApi
@@ -203,12 +203,12 @@ api.add_resource(
 )
 
 api.add_resource(
-    DvOrderApi,
+    MailKitOrderApi,
     API_PREFIX + "SupplyRequest/<string:bo_id>",
     API_PREFIX + "SupplyRequest",
     API_PREFIX + "SupplyDelivery",
     API_PREFIX + "SupplyDelivery/<string:bo_id>",
-    endpoint="participant.dv_order",
+    endpoint="participant.mail_kit_order",  # previously dv_order
     methods=["POST", "GET", "PUT"],
 )
 

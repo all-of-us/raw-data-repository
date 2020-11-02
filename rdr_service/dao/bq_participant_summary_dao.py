@@ -10,9 +10,19 @@ from sqlalchemy import func, desc, exc
 from werkzeug.exceptions import NotFound
 
 from rdr_service import config
-from rdr_service.code_constants import CONSENT_GROR_YES_CODE, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, \
-    DVEHR_SHARING_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES, GROR_CONSENT_QUESTION_CODE, \
-    EHR_CONSENT_EXPIRED_YES
+from rdr_service.code_constants import (
+    CONSENT_GROR_YES_CODE,
+    CONSENT_PERMISSION_YES_CODE,
+    CONSENT_PERMISSION_NO_CODE,
+    DVEHR_SHARING_QUESTION_CODE,
+    EHR_CONSENT_QUESTION_CODE,
+    DVEHRSHARING_CONSENT_CODE_YES,
+    GROR_CONSENT_QUESTION_CODE,
+    EHR_CONSENT_EXPIRED_YES,
+    CONSENT_COPE_YES_CODE,
+    CONSENT_COPE_NO_CODE,
+    CONSENT_COPE_DEFERRED_CODE
+)
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummary
@@ -39,7 +49,10 @@ _consent_module_question_map = {
     'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
     'GROR': 'ResultsConsent_CheckDNA',
     'PrimaryConsentUpdate': 'Reconsent_ReviewConsentAgree',
-    'ProgramUpdate': None
+    'ProgramUpdate': None,
+    'COPE': 'section_participation',
+    'cope_nov': 'section_participation',
+    'GeneticAncestry': 'GeneticAncestry_ConsentAncestryTraits'
 }
 
 # _consent_expired_question_map must contain every module ID from _consent_module_question_map.
@@ -49,9 +62,34 @@ _consent_expired_question_map = {
     'EHRConsentPII': 'EHRConsentPII_ConsentExpired',
     'GROR': None,
     'PrimaryConsentUpdate': None,
-    'ProgramUpdate': None
+    'ProgramUpdate': None,
+    'COPE': None,
+    'cope_nov': None,
+    'GeneticAncestry': None
 }
 
+# Possible answer codes for the consent module questions and what submittal status the answers correspond to
+_consent_answer_status_map = {
+    'ConsentPermission_Yes': BQModuleStatusEnum.SUBMITTED,
+    'ConsentPermission_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    'DVEHRSharing_Yes': BQModuleStatusEnum.SUBMITTED,
+    'DVEHRSharing_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    'DVEHRSharing_NotSure': BQModuleStatusEnum.SUBMITTED_NOT_SURE,
+    'CheckDNA_Yes': BQModuleStatusEnum.SUBMITTED,
+    'CheckDNA_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    'CheckDNA_NotSure': BQModuleStatusEnum.SUBMITTED_NOT_SURE,
+    'ReviewConsentAgree_Yes': BQModuleStatusEnum.SUBMITTED,
+    'ReviewConsentAgree_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    # COPE_A_44
+    CONSENT_COPE_YES_CODE: BQModuleStatusEnum.SUBMITTED,
+    # COPE_A_13
+    CONSENT_COPE_NO_CODE: BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    # COPE_A_231
+    CONSENT_COPE_DEFERRED_CODE: BQModuleStatusEnum.SUBMITTED_NOT_SURE,
+    'ConsentAncestryTraits_Yes': BQModuleStatusEnum.SUBMITTED,
+    'ConsentAncestryTraits_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
+    'ConsentAncestryTraits_NotSure': BQModuleStatusEnum.SUBMITTED_NOT_SURE
+}
 
 class BQParticipantSummaryGenerator(BigQueryGenerator):
     """
@@ -315,60 +353,73 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         if results:
             for row in results:
                 module_name = self._lookup_code_value(row.codeId, ro_session)
-                modules.append({
+                module_data = {
                     'mod_module': module_name,
                     'mod_baseline_module': 1 if module_name in self._baseline_modules else 0,  # Boolean field
                     'mod_authored': row.authored,
                     'mod_created': row.created,
                     'mod_language': row.language,
-                    'mod_status': BQModuleStatusEnum.SUBMITTED.name,
-                    'mod_status_id': BQModuleStatusEnum.SUBMITTED.value,
-                })
+                }
+                # Default status, may be updated based on consent answer
+                module_status = BQModuleStatusEnum.SUBMITTED
 
                 # check if this is a module with consents.
-                if module_name not in _consent_module_question_map:
-                    continue
+                if module_name in _consent_module_question_map:
+                    # Calculate Consent Cohort from ConsentPII authored
+                    if consent_dt is None and module_name == 'ConsentPII' and row.authored:
+                        consent_dt = row.authored
+                        if consent_dt < COHORT_1_CUTOFF:
+                            cohort = BQConsentCohort.COHORT_1
+                        elif COHORT_1_CUTOFF <= consent_dt <= COHORT_2_CUTOFF:
+                            cohort = BQConsentCohort.COHORT_2
+                        else:
+                            cohort = BQConsentCohort.COHORT_3
+                        data['consent_cohort'] = cohort.name
+                        data['consent_cohort_id'] = cohort.value
 
-                # Calculate Consent Cohort from ConsentPII authored
-                if consent_dt is None and module_name == 'ConsentPII' and row.authored:
-                    consent_dt = row.authored
-                    if consent_dt < COHORT_1_CUTOFF:
-                        cohort = BQConsentCohort.COHORT_1
-                    elif COHORT_1_CUTOFF <= consent_dt <= COHORT_2_CUTOFF:
-                        cohort = BQConsentCohort.COHORT_2
-                    else:
-                        cohort = BQConsentCohort.COHORT_3
-                    data['consent_cohort'] = cohort.name
-                    data['consent_cohort_id'] = cohort.value
+                    qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
+                    if qnans:
+                        qnan = BQRecord(schema=None, data=qnans)
+                        consent = {
+                            'consent': _consent_module_question_map[module_name],
+                            'consent_id': self._lookup_code_id(_consent_module_question_map[module_name], ro_session),
+                            'consent_date': parser.parse(qnan['authored']).date() if qnan['authored'] else None,
+                            'consent_module': module_name,
+                            'consent_module_authored': row.authored,
+                            'consent_module_created': row.created,
+                        }
+                        # Note:  Based on currently available modules when a module has no
+                        # associated answer options (like ConsentPII or ProgramUpdate), any submitted response is given
+                        # animplicit ConsentPermission_Yes value.   May need adjusting if there are ever modules where
+                        # that may no longer be true
+                        if _consent_module_question_map[module_name] is None:
+                            consent['consent'] = module_name
+                            consent['consent_id'] = self._lookup_code_id(module_name, ro_session)
+                            consent['consent_value'] = 'ConsentPermission_Yes'
+                            consent['consent_value_id'] = self._lookup_code_id('ConsentPermission_Yes', ro_session)
+                        else:
+                            consent_value = qnan.get(_consent_module_question_map[module_name], None)
+                            consent['consent_value'] = consent_value
+                            consent['consent_value_id'] = self._lookup_code_id(consent_value, ro_session)
+                            consent['consent_expired'] = \
+                                qnan.get(_consent_expired_question_map[module_name] or 'None', None)
+                            # Check for a specific submittal status based on the answer value (default to SUBMITTED)
+                            module_status = _consent_answer_status_map.get(consent_value, None)
+                            if not module_status:
+                                logging.warning(
+                                   f'Defaulting {module_name} answer {consent_value} to status SUBMITTED (pid: {p_id}) '
+                                )
+                                # TODO: SUBMITTED is what all module statuses used to default to, so will use the same
+                                # default in cases where there was no known value in the map for the answer code.
+                                # May want to reconsider if this should be something else (UNSET?)
+                                module_status = BQModuleStatusEnum.SUBMITTED
 
-                qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
-                if qnans:
-                    qnan = BQRecord(schema=None, data=qnans)
-                    consent = {
-                        'consent': _consent_module_question_map[module_name],
-                        'consent_id': self._lookup_code_id(_consent_module_question_map[module_name], ro_session),
-                        'consent_date': parser.parse(qnan['authored']).date() if qnan['authored'] else None,
-                        'consent_module': module_name,
-                        'consent_module_authored': row.authored,
-                        'consent_module_created': row.created,
-                    }
-                    # Note:  Based on currently available modules when a module has no
-                    # associated answer options (like ConsentPII or ProgramUpdate), any submitted response is given an
-                    # implicit ConsentPermission_Yes value.   May need adjusting if there are ever modules where that
-                    # may no longer be true
-                    if _consent_module_question_map[module_name] is None:
-                        consent['consent'] = module_name
-                        consent['consent_id'] = self._lookup_code_id(module_name, ro_session)
-                        consent['consent_value'] = 'ConsentPermission_Yes'
-                        consent['consent_value_id'] = self._lookup_code_id('ConsentPermission_Yes', ro_session)
-                    else:
-                        consent['consent_value'] = qnan.get(_consent_module_question_map[module_name], None)
-                        consent['consent_value_id'] = self._lookup_code_id(
-                            qnan.get(_consent_module_question_map[module_name], None), ro_session)
-                        consent['consent_expired'] = \
-                            qnan.get(_consent_expired_question_map[module_name] or 'None', None)
+                        consents.append(consent)
 
-                    consents.append(consent)
+                module_data['mod_status'] = module_status.name
+                module_data['mod_status_id'] = module_status.value
+                modules.append(module_data)
+
 
         if len(modules) > 0:
             # remove any duplicate modules and consents because of replayed responses.
@@ -544,7 +595,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                    bo.processed_site_id, (select google_group from site where site.site_id = bo.processed_site_id) as processed_site,
                    bo.finalized_site_id, (select google_group from site where site.site_id = bo.finalized_site_id) as finalized_site,
                    case when exists (
-                     select bdo.participant_id from biobank_dv_order bdo
+                     select bdo.participant_id from biobank_mail_kit_order bdo
                         where bdo.biobank_order_id = bo.biobank_order_id and bo.participant_id = bdo.participant_id)
                    then 1 else 0 end as dv_order
              from biobank_order bo where participant_id = :p_id

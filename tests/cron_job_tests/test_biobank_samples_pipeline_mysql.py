@@ -11,8 +11,8 @@ from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
-from rdr_service.model.biobank_dv_order import BiobankDVOrder
-from rdr_service.dao.dv_order_dao import DvOrderDao
+from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
+from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.model.code import CodeType
 from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.model.participant import Participant
@@ -223,8 +223,8 @@ class MySqlReconciliationTest(BaseTestCase):
             mayo_create_time
         )
 
-        dv_dao = DvOrderDao()
-        dv_order_obj = BiobankDVOrder(
+        dv_dao = MailKitOrderDao()
+        dv_order_obj = BiobankMailKitOrder(
             participantId=participant_obj.participantId,
             version=1,
             biobankOrderId=order.biobankOrderId,

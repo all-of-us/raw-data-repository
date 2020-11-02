@@ -617,7 +617,7 @@ _RECONCILIATION_REPORT_SQL = (
     + _ORDER_JOINS
     + """
     LEFT OUTER JOIN
-        biobank_dv_order dv_order
+        biobank_mail_kit_order dv_order
     ON dv_order.biobank_order_id = biobank_order.biobank_order_id
         AND dv_order.is_test_sample IS NOT TRUE
     LEFT OUTER JOIN
@@ -704,7 +704,7 @@ _RECONCILIATION_REPORT_SQL = (
                     biobank_stored_sample.biobank_id NOT IN (
                     SELECT p.biobank_id
                      FROM participant p
-                        JOIN biobank_dv_order dv
+                        JOIN biobank_mail_kit_order dv
                         ON p.participant_id = dv.participant_id
                         AND dv.is_test_sample IS NOT TRUE)
                 ELSE TRUE
@@ -748,7 +748,7 @@ _SALIVARY_MISSING_REPORT_SQL = (
     , bo.created AS collection_date
     , p.participant_origin
 FROM
-    biobank_dv_order dvo
+    biobank_mail_kit_order dvo
     JOIN participant p ON p.participant_id = dvo.participant_id
     JOIN biobank_order bo ON bo.biobank_order_id = dvo.biobank_order_id
     JOIN biobank_ordered_sample bos ON bos.order_id = bo.biobank_order_id

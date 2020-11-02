@@ -169,6 +169,19 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
 
             self._make_default_biobank_order(self.participant_id)
 
+    @staticmethod
+    def get_modules_by_name(module_name=None, module_list=None):
+        """
+            Extracts module entries from the participant resource generator data modules list
+            Returns a filtered list of entries that match the module name, sorted by authored date
+        """
+        if not (module_name and isinstance(module_list, list)):
+            return module_list
+
+        modules = list(filter(lambda x: x['module'] == module_name, module_list))
+        return sorted(modules, key=(lambda d: d['module_authored']))
+
+
     def test_full_participant_status(self):
         """ Full Participant Test"""
         self._set_up_participant_data()
@@ -223,9 +236,15 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
         ps_data = gen.make_resource(self.participant_id).get_data()
         self.assertEqual('CORE_PARTICIPANT', ps_data['enrollment_status'])
 
-    def test_previous_ehr_unsure_with_dv_yes(self):
-        # Scenario: a participant previously had their EHR consent as UNSURE, but their DV_EHR as YES.
-        # As long as everything else at the same time was right for them to be Core, they should remain Core
+        # This verifies the module submitted status from the participant generator data for each of the GROR modules
+        gror_modules = self.get_modules_by_name('GROR', ps_data['modules'])
+        self.assertEqual('SUBMITTED', gror_modules[0]['status'])
+        self.assertEqual('SUBMITTED_NO_CONSENT', gror_modules[1]['status'])
+
+
+    def test_previous_ehr_and_dv_ehr_reverted(self):
+        # Scenario: a participant previously had their EHR consent YES, and their DV_EHR as YES.
+        # If EHR consent is changed to No, they should remain Core
         self._set_up_participant_data(skip_ehr=True)
 
         gen = ParticipantSummaryGenerator()
@@ -237,7 +256,7 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
 
         # Get Core status through EHR consents
         self._submit_ehrconsent(self.participant_id,
-                                response_code=CONSENT_PERMISSION_NOT_SURE,
+                                response_code=CONSENT_PERMISSION_YES_CODE,
                                 response_time=datetime(2019, 2, 14))
         self._submit_dvehrconsent(self.participant_id, response_time=datetime(2019, 4, 1))
         ps_data = gen.make_resource(self.participant_id).get_data()
@@ -250,6 +269,11 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
                                 response_time=datetime(2019, 7, 1))
         ps_data = gen.make_resource(self.participant_id).get_data()
         self.assertEqual('CORE_PARTICIPANT', ps_data['enrollment_status'])
+
+        # This checks the module submitted status for each of the EHR consent module responses
+        ehr_modules = self.get_modules_by_name('EHRConsentPII', ps_data['modules'])
+        self.assertEqual('SUBMITTED', ehr_modules[0]['status'])
+        self.assertEqual('SUBMITTED_NO_CONSENT', ehr_modules[1]['status'])
 
     def test_no_on_ehr_overrides_yes_on_dv(self):
         # Scenario: a participant has had DV_EHR yes, but previously had a no on EHR.
