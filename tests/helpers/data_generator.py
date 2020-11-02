@@ -214,7 +214,8 @@ class DataGenerator:
             'participantOrigin': 'example',
             'version': 1,
             'lastModified': datetime.now(),
-            'signUpTime': datetime.now()
+            'signUpTime': datetime.now(),
+            'isTestParticipant': False
         }
         defaults.update(kwargs)
 
@@ -271,7 +272,8 @@ class DataGenerator:
             "version": 1,
             "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
             "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
-            "participantOrigin": "example"
+            "participantOrigin": "example",
+            "isTestParticipant": False
         }
         common_args.update(kwargs)
         return ParticipantHistory(**common_args)
