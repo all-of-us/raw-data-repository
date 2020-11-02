@@ -142,14 +142,15 @@ def genomic_centers_accessioning_failures_workflow():
         controller.process_failure_manifests_for_alerts()
 
 
-def ingest_genomic_centers_metrics_files():
+def ingest_genomic_centers_metrics_files(provider=None):
     """
     Entrypoint for GC Metrics File Ingestion subprocess of genomic_pipeline.
     """
     with GenomicJobController(GenomicJob.METRICS_INGESTION,
                               bucket_name=None,
                               bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME,
-                              sub_folder_tuple=config.GENOMIC_AW2_SUBFOLDERS) as controller:
+                              sub_folder_tuple=config.GENOMIC_AW2_SUBFOLDERS,
+                              storage_provider=provider) as controller:
         controller.ingest_gc_metrics()
 
 

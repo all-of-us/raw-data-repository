@@ -718,7 +718,7 @@ class ChangeCollectionTube(GenomicManifestBase):
 
             # Iterate through each bid-tube_id pair
             for line in csvreader:
-                _bid = line[0]
+                _bid = int(line[0])
                 _new_tube_id = line[1]
 
                 # Check that supplied new_tube_id is valid and associated to bid
@@ -747,14 +747,18 @@ class ChangeCollectionTube(GenomicManifestBase):
                             self.update_genomic_set_member_collection_tube(member, _new_tube_id)
 
                         else:
-                            if new_tube_member == member:
-                                # collection tube already set for that member
-                                already_existing_tubes_same_member.append((_bid, _new_tube_id, member.id))
+                            if new_tube_member is not None:
+                                if new_tube_member == member:
+                                    # collection tube already set for that member
+                                    already_existing_tubes_same_member.append((_bid, _new_tube_id, member.id))
+
+                                else:
+                                    # collection tube set for a different member
+                                    already_existing_tubes_diff_member.append((_bid, _new_tube_id,
+                                                                               new_tube_member.id, member.id))
 
                             else:
-                                # collection tube set for a different member
-                                already_existing_tubes_diff_member.append((_bid, _new_tube_id,
-                                                                           new_tube_member.id, member.id))
+                                _logger.error(f'No valid tube for: bid: {_bid}; tube_id: {_new_tube_id}')
 
         # Output Summary
         _logger.info(f'{self.msg} {self.counter} Genomic Set Member records.')
@@ -959,9 +963,25 @@ class GenomicProcessRunner(GenomicManifestBase):
                 _logger.info(f'File Specified: {self.args.file}')
                 return self.run_aw1_manifest()
 
+            else:
+                _logger.error(f'A file is required for this job.')
+
         if self.args.job == 'RECONCILE_GENOTYPING_DATA':
             try:
                 reconcile_metrics_vs_genotyping_data(provider=self.gscp)
+
+            except Exception as e:   # pylint: disable=broad-except
+                _logger.error(e)
+                return 1
+
+        if self.args.job == 'METRICS_INGESTION':
+            try:
+                if self.args.file:
+                    _logger.info(f'File Specified: {self.args.file}')
+                    return self.run_aw2_manifest()
+
+                else:
+                    _logger.error(f'A file is required for this job.')
 
             except Exception as e:   # pylint: disable=broad-except
                 _logger.error(e)
@@ -981,6 +1001,25 @@ class GenomicProcessRunner(GenomicManifestBase):
                                       bq_project_id=self.gcp_env.project) as controller:
                 controller.bucket_name = bucket_name
                 controller.ingest_specific_aw1_manifest(file_name)
+
+            return 0
+
+        except Exception as e:  # pylint: disable=broad-except
+            _logger.error(e)
+            return 1
+
+    def run_aw2_manifest(self):
+        # Get bucket and filename from argument
+        bucket_name = self.args.file.split('/')[0]
+        file_name = self.args.file.replace(bucket_name + '/', '')
+
+        # Use a Controller to run the job
+        try:
+            with GenomicJobController(GenomicJob.METRICS_INGESTION,
+                                      storage_provider=self.gscp,
+                                      bq_project_id=self.gcp_env.project) as controller:
+                controller.bucket_name = bucket_name
+                controller.ingest_specific_aw2_manifest(file_name)
 
             return 0
 
@@ -1054,6 +1093,7 @@ class FileUploadDateClass(GenomicManifestBase):
             ).filter(
                 GenomicFileProcessed.uploadDate == None
             ).all()
+
 
 def run():
     # Set global debug value and setup application logging.
