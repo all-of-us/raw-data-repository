@@ -965,6 +965,7 @@ class GenomicProcessRunner(GenomicManifestBase):
 
             else:
                 _logger.error(f'A file is required for this job.')
+                return 1
 
         if self.args.job == 'RECONCILE_GENOTYPING_DATA':
             try:
@@ -982,6 +983,7 @@ class GenomicProcessRunner(GenomicManifestBase):
 
                 else:
                     _logger.error(f'A file is required for this job.')
+                    return 1
 
             except Exception as e:   # pylint: disable=broad-except
                 _logger.error(e)

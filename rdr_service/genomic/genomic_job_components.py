@@ -542,13 +542,12 @@ class GenomicFileIngester:
 
                 else:
                     logging.info(f"Found existing metrics object for member ID {member.id}")
-                    print(f"Found existing metrics object for member ID {member.id}")
-                    # TODO: skipping update to metrics for now.
+                    # Don't overwrite metrics object
                     continue
 
             else:
                 logging.error(f"No GSM in AW1 state bid,sample_id: {row_copy['biobankid']}, {sample_id}")
-                # TODO: Check if we've already processed sample_ID
+                # TODO: Add a check if we've already processed sample_ID
                 continue
 
         return GenomicSubProcessResult.SUCCESS
