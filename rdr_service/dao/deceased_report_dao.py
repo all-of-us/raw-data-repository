@@ -69,15 +69,12 @@ class DeceasedReportDao(UpdatableDao):
             raise BadRequest('Performer reference for authoring user required')
         return ApiUserDao().load_or_init(user_reference.type, user_reference.reference)
 
-    def _read_authored_timestamp(self, observation: Observation):
+    @staticmethod
+    def _read_authored_timestamp(observation: Observation):
         if observation.issued is None:
             raise BadRequest('Report issued date is required')
 
-        authored_date = observation.issued.date
-        if self._is_future_datetime(authored_date):
-            raise BadRequest(f'Report issued date can not be a future date, received {authored_date}')
-        else:
-            return authored_date
+        return observation.issued.date
 
     @staticmethod
     def _read_encounter(observation: Observation, report):  # Get notification data
@@ -155,8 +152,8 @@ class DeceasedReportDao(UpdatableDao):
         and explanations of what they will provide and when:
 
         * deceasedStatus
-            Will be UNSET for any participants that have no deceased reports (or only reports that
-            have been denied). Is set to PENDING when a particpant has a deceased report with a status of *preliminary*.
+            Will be UNSET for any participants that have no deceased reports (or only reports that have been denied).
+            Is set to PENDING when a participant has a deceased report with a status of *preliminary*.
             And will be APPROVED for participants that have a *final* deceased report.
         * deceasedAuthored
             The most recent **issued** date received for an active deceased report. So for participants with a PENDING
@@ -197,7 +194,7 @@ class DeceasedReportDao(UpdatableDao):
         """
         The API takes deceased report data structured as a FHIR Specification 4.0 Observation
         (http://hl7.org/fhir/observation.html). Listed below is an outline of each field, what it means for a deceased
-        report, and any requiremnts for the field.
+        report, and any requirements for the field.
 
         .. code-block:: javascript
 
@@ -339,12 +336,6 @@ class DeceasedReportDao(UpdatableDao):
             if requested_report_status != DeceasedReportStatus.PENDING:
                 raise BadRequest('Status field should be "preliminary" when creating deceased report')
             report = DeceasedReport(participantId=participant_id)
-
-            # Should auto-approve reports for unpaired participants
-            participant = self._load_participant(participant_id)
-            if participant.hpoId == 0:
-                requested_report_status = DeceasedReportStatus.APPROVED
-                report.reviewed = self._read_authored_timestamp(observation)
 
             self._read_encounter(observation, report)
 
@@ -594,8 +585,25 @@ class DeceasedReportDao(UpdatableDao):
                           f'received result: "{lock_result}"')
             raise InternalServerError('Unable to create deceased report')
 
+    def is_valid(self, report: DeceasedReport):
+        if self._is_future_datetime(report.authored):
+            raise BadRequest(f'Report issued date can not be a future date, received {report.authored}')
+
+        if report.notification == DeceasedNotification.NEXT_KIN_SUPPORT:
+            if not report.reporterRelationship:
+                raise BadRequest(f'Missing reporter relationship')
+
+        return True
+
     def insert_with_session(self, session, obj: DeceasedReport):
-        if self._can_insert_active_report(session, obj.participantId):
+        # Should auto-approve reports for unpaired participants
+        participant = self._load_participant(obj.participantId)
+        if participant.hpoId == 0:
+            obj.status = DeceasedReportStatus.APPROVED
+            obj.reviewer = obj.author
+            obj.reviewed = obj.authored
+
+        if self.is_valid(obj) and self._can_insert_active_report(session, obj.participantId):
             self._update_participant_summary(session, obj)
             insert_result = super(DeceasedReportDao, self).insert_with_session(session, obj)
             self._release_report_lock(session, obj.participantId)
