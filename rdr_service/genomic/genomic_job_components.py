@@ -314,10 +314,14 @@ class GenomicFileIngester:
                     else:
                         #return GenomicSubProcessResult.ERROR
                         logging.error(f"Missing collection tube ID: {collection_tube_id}, "
-                                      f"biobank id: {row_copy['biobankidsampleid'].split('_')[0]}, "
+                                      f"biobank id: {row_copy['biobankidsampleid'].split('_')[0][1:]}, "
                                       f"genome type: {genome_type}")
-                        # TODO: check if valid collection tube for participant and then upate GSM
+                        # TODO: check if valid collection tube for participant and then upate GSM.collectionTubeId
 
+                    continue
+
+                # Skip already processed members if failure mode isn't defined in manifest
+                if member.reconcileGCManifestJobRunId is not None and row_copy['failuremode'] in (None, ''):
                     continue
 
                 member.gcSiteId = _site
@@ -521,29 +525,30 @@ class GenomicFileIngester:
             except KeyError:
                 pass
 
+            # TODO: Fix aligned q30 bases data-length
+
             genome_type = self.file_validator.genome_type
             member = self.member_dao.get_member_from_sample_id_with_state(int(sample_id),
                                                                           genome_type,
                                                                           GenomicWorkflowState.AW1)
             if member is not None:
-                self.member_dao.update_member_state(member, GenomicWorkflowState.AW2)
                 row_copy['member_id'] = member.id
 
                 # check whether metrics object exists for that member
                 existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
                 if existing_metrics_obj is None:
+                    self.member_dao.update_member_state(member, GenomicWorkflowState.AW2)
                     self.metrics_dao.insert_gc_validation_metrics(row_copy)
 
                 else:
                     logging.info(f"Found existing metrics object for member ID {member.id}")
-                    # TODO: skipping update to metrics for now.
+                    # Don't overwrite metrics object
                     continue
 
             else:
-                logging.error(f'Sample ID {sample_id} has no corresponding Genomic Set Member in AW1 state.')
-
-                # Aborting the job if sample ID cannot be found.
-                return GenomicSubProcessResult.ERROR
+                logging.error(f"No GSM in AW1 state bid,sample_id: {row_copy['biobankid']}, {sample_id}")
+                # TODO: Add a check if we've already processed sample_ID
+                continue
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -1054,7 +1059,8 @@ class GenomicFileMover:
 
 class GenomicReconciler:
     """ This component handles reconciliation between genomic datasets """
-    def __init__(self, run_id, job_id, archive_folder=None, file_mover=None, bucket_name=None, storage_provider=None):
+    def __init__(self, run_id, job_id, archive_folder=None, file_mover=None,
+                 bucket_name=None, storage_provider=None, controller=None):
 
         self.run_id = run_id
         self.job_id = job_id
@@ -1070,6 +1076,7 @@ class GenomicReconciler:
         # Other components
         self.file_mover = file_mover
         self.storage_provider = storage_provider
+        self.controller = controller
 
         # Data files and names will be different
         # file types are defined as
@@ -1124,7 +1131,8 @@ class GenomicReconciler:
 
             # Update GC Metrics for PDR
             if inserted_metrics_obj:
-                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id,
+                                                        project_id=self.controller.bq_project_id)
                 genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
 
             next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='gem-ready')
@@ -1194,7 +1202,8 @@ class GenomicReconciler:
 
             # Update GC Metrics for PDR
             if inserted_metrics_obj:
-                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id,
+                                                        project_id=self.controller.bq_project_id)
                 genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
 
             next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='cvl-ready')
@@ -1415,13 +1424,14 @@ class GenomicBiobankSamplesCoupler:
                                                          "gror",
                                                          "valid_ai_ans"])
 
-    def __init__(self, run_id):
+    def __init__(self, run_id, controller=None):
         self.samples_dao = BiobankStoredSampleDao()
         self.set_dao = GenomicSetDao()
         self.member_dao = GenomicSetMemberDao()
         self.site_dao = SiteDao()
         self.ps_dao = ParticipantSummaryDao()
         self.run_id = run_id
+        self.controller = controller
 
     def create_new_genomic_participants(self, from_date):
         """
@@ -1534,11 +1544,9 @@ class GenomicBiobankSamplesCoupler:
             inserted_wgs_member = self.member_dao.insert(new_wgs_member_obj)
 
             # Add member to PDR
-            bq_genomic_set_member_update(inserted_array_member.id)
-            genomic_set_member_update(inserted_array_member.id)
-
-            bq_genomic_set_member_update(inserted_wgs_member.id)
-            genomic_set_member_update(inserted_wgs_member.id)
+            for mid in (inserted_array_member.id, inserted_wgs_member.id):
+                bq_genomic_set_member_update(mid, project_id=self.controller.bq_project_id)
+                genomic_set_member_update(mid)
 
         # Create & transfer the Biobank Manifest based on the new genomic set
         try:
@@ -1982,7 +1990,7 @@ class GenomicBiobankSamplesCoupler:
         inserted_set = self.set_dao.insert(new_set_obj)
 
         # Insert new set for PDR
-        bq_genomic_set_update(inserted_set.id)
+        bq_genomic_set_update(inserted_set.id, project_id=self.controller.bq_project_id)
         genomic_set_update(inserted_set.id)
 
         return inserted_set
