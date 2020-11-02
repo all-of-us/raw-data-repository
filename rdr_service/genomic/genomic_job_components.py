@@ -113,6 +113,7 @@ class GenomicFileIngester:
         self.file_processed_dao = GenomicFileProcessedDao()
         self.member_dao = GenomicSetMemberDao()
         self.job_run_dao = GenomicJobRunDao()
+        self.sample_dao = BiobankStoredSampleDao()
 
     def generate_file_processing_queue(self):
         """
@@ -298,27 +299,51 @@ class GenomicFileIngester:
                 member = self.member_dao.get_member_from_collection_tube(collection_tube_id, genome_type)
 
                 if member is None:
-                    # Fix for invalid values
+                    # check if we should update the collection tube ID
                     try:
-                        parent_sample_id = int(row_copy['parentsampleid'])
+                        bid = int(row_copy['biobankidsampleid'].split('_')[0][1:])
+
+                        # get the target member based on genome type, biobank ID, and state
+                        _state = GenomicWorkflowState.AW0
+
+                        member = self.member_dao.get_member_from_biobank_id_in_state(bid,
+                                                                                     genome_type,
+                                                                                     _state)
+                        # Validate new collection tube ID, set collection tube ID
+                        if member and self._validate_collection_tube_id(collection_tube_id, bid):
+                            member.collectionTubeId = collection_tube_id
+
+                        else:
+                            logging.error(f"Invalid collection tube ID: {collection_tube_id}, "
+                                          f"biobank id: {bid}, "
+                                          f"genome type: {genome_type}")
 
                     except ValueError:
-                        parent_sample_id = 0
+                        pass
 
-                    # Check if Programmatic control
-                    if self._check_if_control_sample(parent_sample_id) is not None:
-                        logging.warning(f'Control sample found: {parent_sample_id}')
-                        # TODO: Ignoring control samples for now
-                        # RDR may need to do something with them in the future
+                    if member is None:
+                        # Check if Programmatic control
+                        # Fix for invalid parent sample values
+                        try:
+                            parent_sample_id = int(row_copy['parentsampleid'])
 
-                    else:
-                        #return GenomicSubProcessResult.ERROR
-                        logging.error(f"Missing collection tube ID: {collection_tube_id}, "
-                                      f"biobank id: {row_copy['biobankidsampleid'].split('_')[0][1:]}, "
-                                      f"genome type: {genome_type}")
-                        # TODO: check if valid collection tube for participant and then upate GSM.collectionTubeId
+                        except ValueError:
+                            parent_sample_id = 0
 
-                    continue
+                        if self._check_if_control_sample(parent_sample_id) is not None:
+                            logging.warning(f'Control sample found: {parent_sample_id}')
+                            # Ignoring control samples for now
+                            # RDR may need to do something with them in the future
+
+                        else:
+                            logging.error(f"Skipping collection tube ID: {collection_tube_id}, "
+                                          f"biobank id: {bid}, "
+                                          f"genome type: {genome_type}")
+
+                        continue
+
+
+
 
                 # Skip already processed members if failure mode isn't defined in manifest
                 if member.reconcileGCManifestJobRunId is not None and row_copy['failuremode'] in (None, ''):
@@ -660,6 +685,21 @@ class GenomicFileIngester:
         """
 
         return self.member_dao.get_control_sample(sample_id)
+
+    def _validate_collection_tube_id(self, collection_tube_id, bid):
+        """
+        Returns true if biobank_ID is associated to biobank_stored_sample_id
+        (collection_tube_id)
+        :param collection_tube_id:
+        :param bid:
+        :return: boolean
+        """
+        sample = self.sample_dao.get(collection_tube_id)
+
+        if sample:
+            return int(sample.biobankId) == int(bid)
+
+        return False
 
     def _get_qc_status_from_value(self, aw4_value):
         """

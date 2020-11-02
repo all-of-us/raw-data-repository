@@ -1529,8 +1529,20 @@ class GenomicPipelineTest(BaseTestCase):
                                                 array_participants=range(1, 4),
                                                 genomic_workflow_state=GenomicWorkflowState.AW0)
 
+        # Add extra sample for collection_tube_id test
+        sample_args = {
+            'test': '1ED10',
+            'confirmed': clock.CLOCK.now(),
+            'created': clock.CLOCK.now(),
+            'biobankId': 2,
+            'biobankOrderIdentifier': f'e2',
+            'biobankStoredSampleId': 100002,
+        }
+
+        self._make_stored_sample(**sample_args)
+
         # Setup Test file
-        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-1.csv")
+        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-3.csv")
 
         gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
         test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
@@ -1573,6 +1585,10 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("", member.gcManifestFailureMode)
                 self.assertEqual("", member.gcManifestFailureDescription)
                 self.assertEqual(GenomicWorkflowState.AW1, member.genomicWorkflowState)
+
+            if member.id == 2:
+                self.assertEqual("100002", member.collectionTubeId)
+
             if member.id == 3:
                 self.assertNotEqual(1, member.reconcileGCManifestJobRunId)
 
@@ -1594,7 +1610,7 @@ class GenomicPipelineTest(BaseTestCase):
                                                 genomic_workflow_state=GenomicWorkflowState.AW0)
 
         # Setup Test file
-        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-1.csv")
+        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-3.csv")
 
         gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
 
