@@ -1,7 +1,7 @@
 """new test participant field
 
 Revision ID: b3a08a8aca02
-Revises: 8cc481fa7390
+Revises: e4a837723c94
 Create Date: 2020-10-30 14:50:58.213166
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = 'b3a08a8aca02'
-down_revision = '8cc481fa7390'
+down_revision = 'e4a837723c94'
 branch_labels = None
 depends_on = None
 
