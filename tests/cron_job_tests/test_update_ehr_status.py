@@ -129,7 +129,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
         return participant, summary
 
     # Mock BigQuery result types
-    EhrUpdatePidRow = collections.namedtuple("EhrUpdatePidRow", ["person_id"])
+    EhrUpdatePidRow = collections.namedtuple("EhrUpdatePidRow", ["person_id", "upload_time"])
     TableCountsRow = collections.namedtuple("TableCountsRow", ["org_id", "person_upload_time"])
 
     @mock.patch("rdr_service.offline.update_ehr_status.update_organizations_from_job")
@@ -169,14 +169,18 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
     def test_updates_participant_summaries(self, mock_summary_job):
 
         # Run job with data for participants 11 and 14
-        mock_summary_job.return_value.__iter__.return_value = [[self.EhrUpdatePidRow(11), self.EhrUpdatePidRow(14)]]
-        first_job_run_time = datetime.datetime(2019, 1, 1)
+        p_eleven_first_upload = self.EhrUpdatePidRow(11, datetime.datetime(2020, 3, 12, 8))
+        p_fourteen_upload = self.EhrUpdatePidRow(14, datetime.datetime(2020, 3, 12, 10))
+        mock_summary_job.return_value.__iter__.return_value = [[p_eleven_first_upload, p_fourteen_upload]]
+        first_job_run_time = datetime.datetime(2020, 4, 1)
         with FakeClock(first_job_run_time):
             update_ehr_status.update_ehr_status_participant()
 
         # Run job with data for participants 11 and 12 (leaving 14 out)
-        mock_summary_job.return_value.__iter__.return_value = [[self.EhrUpdatePidRow(11), self.EhrUpdatePidRow(12)]]
-        second_job_run_time = datetime.datetime(2019, 1, 2)
+        new_p_eleven_upload = self.EhrUpdatePidRow(11, datetime.datetime(2020, 3, 30, 2))
+        p_twelve_upload = self.EhrUpdatePidRow(12, datetime.datetime(2020, 3, 27, 18))
+        mock_summary_job.return_value.__iter__.return_value = [[new_p_eleven_upload, p_twelve_upload]]
+        second_job_run_time = datetime.datetime(2020, 4, 2)
         with FakeClock(second_job_run_time):
             update_ehr_status.update_ehr_status_participant()
 
@@ -184,24 +188,24 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
             participant_id=11,
             had_ehr_status=EhrStatus.PRESENT,
             currently_has_ehr=True,
-            first_ehr_time=first_job_run_time,
-            latest_ehr_time=second_job_run_time
+            first_ehr_time=p_eleven_first_upload.upload_time,
+            latest_ehr_time=new_p_eleven_upload.upload_time
         )
 
         self.assert_ehr_data_matches(
             participant_id=12,
             had_ehr_status=EhrStatus.PRESENT,
             currently_has_ehr=True,
-            first_ehr_time=second_job_run_time,
-            latest_ehr_time=second_job_run_time
+            first_ehr_time=p_twelve_upload.upload_time,
+            latest_ehr_time=p_twelve_upload.upload_time
         )
 
         self.assert_ehr_data_matches(
             participant_id=14,
             had_ehr_status=EhrStatus.PRESENT,
             currently_has_ehr=False,
-            first_ehr_time=first_job_run_time,
-            latest_ehr_time=first_job_run_time
+            first_ehr_time=p_fourteen_upload.upload_time,
+            latest_ehr_time=p_fourteen_upload.upload_time
         )
 
 

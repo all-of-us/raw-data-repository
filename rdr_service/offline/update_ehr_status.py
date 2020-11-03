@@ -40,7 +40,7 @@ def make_update_participant_summaries_job():
         LOG.warning("Config lookup exception for {}: {}".format(config_param, e))
         bigquery_view = None
     if bigquery_view:
-        query = "SELECT person_id FROM `{}`".format(bigquery_view)
+        query = "SELECT person_id, upload_time FROM `{}`".format(bigquery_view)
         return bigquery.BigQueryJob(query, default_dataset_id="operations_analytics", page_size=1000)
     else:
         return None
@@ -63,11 +63,10 @@ def update_participant_summaries_from_job(job):
     summary_dao = ParticipantSummaryDao()
     summary_dao.prepare_for_ehr_status_update()
 
-    now = clock.CLOCK.now()
     batch_size = 100
     for i, page in enumerate(job):
         LOG.info("Processing page {} of results...".format(i))
-        parameter_sets = [{"pid": row.person_id, "receipt_time": now} for row in page]
+        parameter_sets = [{"pid": row.person_id, "receipt_time": row.upload_time} for row in page]
         query_result = summary_dao.bulk_update_ehr_status(parameter_sets)
         total_rows = query_result.rowcount
         LOG.info("Affected {} rows.".format(total_rows))
@@ -79,17 +78,22 @@ def update_participant_summaries_from_job(job):
             pids = [param['pid'] for param in parameter_sets]
 
             with summary_dao.session() as session:
-                cursor = session.query(ParticipantSummary.participantId, ParticipantSummary.ehrReceiptTime).all()
+                cursor = session.query(
+                    ParticipantSummary.participantId,
+                    ParticipantSummary.ehrReceiptTime,
+                    ParticipantSummary.ehrUpdateTime
+                ).all()  # TODO: this should use an IN clause
                 records = [r for r in cursor if r.participantId in pids]
 
             patch_data = [{
-                'pid': rec.participantId,
+                'pid': summary.participantId,
                 'patch': {
                     'ehr_status': str(EhrStatus.PRESENT),
                     'ehr_status_id': int(EhrStatus.PRESENT),
-                    'ehr_receipt': rec.ehrReceiptTime if rec.ehrReceiptTime else now,
-                    'ehr_update': now}
-            } for rec in records]
+                    'ehr_receipt': summary.ehrReceiptTime,
+                    'ehr_update': summary.ehrUpdateTime
+                }
+            } for summary in records]
             try:
                 dispatch_participant_rebuild_tasks(patch_data, batch_size=batch_size)
 

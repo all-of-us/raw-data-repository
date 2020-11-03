@@ -917,7 +917,7 @@ class ParticipantSummaryDao(UpdatableDao):
                     ParticipantSummary.isEhrDataAvailable: True,
                     ParticipantSummary.ehrUpdateTime: sqlalchemy.bindparam("receipt_time"),
                     ParticipantSummary.ehrReceiptTime: sqlalchemy.case(
-                        [(ParticipantSummary.ehrReceiptTime == None, sqlalchemy.bindparam("receipt_time"))],
+                        [(ParticipantSummary.ehrReceiptTime.is_(None), sqlalchemy.bindparam("receipt_time"))],
                         else_=ParticipantSummary.ehrReceiptTime,
                     ),
                 }
