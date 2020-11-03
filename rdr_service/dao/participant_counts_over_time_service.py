@@ -52,7 +52,7 @@ class ParticipantCountsOverTimeService(BaseDao):
                     warnings.simplefilter('ignore')
                     session.execute('DROP TABLE IF EXISTS {};'.format(temp_table_name))
                 # generated columns can not be inserted any value, need to drop them
-                exclude_columns = ['retention_eligible_time', 'retention_eligible_status']
+                exclude_columns = ['retention_eligible_time', 'retention_eligible_status', 'is_test_participant']
                 session.execute('CREATE TABLE {} LIKE participant_summary'.format(temp_table_name))
 
                 indexes_cursor = session.execute('SHOW INDEX FROM {}'.format(temp_table_name))
@@ -99,6 +99,7 @@ class ParticipantCountsOverTimeService(BaseDao):
                   left join participant_summary ps on p.participant_id = ps.participant_id
                   WHERE p.hpo_id <> :test_hpo_id
                   AND p.is_ghost_id IS NOT TRUE
+                  AND p.is_test_participant IS NOT TRUE
                   AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
                   AND p.withdrawal_status = :not_withdraw
                   AND p.hpo_id = :hpo_id
