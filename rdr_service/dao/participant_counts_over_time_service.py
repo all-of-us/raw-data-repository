@@ -52,7 +52,7 @@ class ParticipantCountsOverTimeService(BaseDao):
                     warnings.simplefilter('ignore')
                     session.execute('DROP TABLE IF EXISTS {};'.format(temp_table_name))
                 # generated columns can not be inserted any value, need to drop them
-                exclude_columns = ['retention_eligible_time', 'retention_eligible_status', 'is_test_participant']
+                exclude_columns = ['retention_eligible_time', 'retention_eligible_status']
                 session.execute('CREATE TABLE {} LIKE participant_summary'.format(temp_table_name))
 
                 indexes_cursor = session.execute('SHOW INDEX FROM {}'.format(temp_table_name))
@@ -75,6 +75,7 @@ class ParticipantCountsOverTimeService(BaseDao):
                 session.execute('ALTER TABLE {} MODIFY suspension_status SMALLINT'.format(temp_table_name))
                 session.execute('ALTER TABLE {} MODIFY participant_origin VARCHAR(80)'.format(temp_table_name))
                 session.execute('ALTER TABLE {} MODIFY deceased_status SMALLINT'.format(temp_table_name))
+                session.execute('ALTER TABLE {} MODIFY is_ehr_data_available TINYINT(1)'.format(temp_table_name))
 
                 columns_cursor = session.execute('SELECT * FROM {} LIMIT 0'.format(temp_table_name))
 
