@@ -224,6 +224,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "deceasedStatus": "UNSET",
                 "retentionEligibleStatus": "NOT_ELIGIBLE",
                 "retentionType": "UNSET",
+                "sample1SAL2CollectionMethod": "UNSET"
             }
         )
 

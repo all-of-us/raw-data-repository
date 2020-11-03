@@ -26,10 +26,12 @@ from rdr_service.fhir_utils import SimpleFhirR4Reader
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample, \
     MayolinkCreateOrderHistory
+from rdr_service.model.participant import Participant
 from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.offline.biobank_samples_pipeline import _PMI_OPS_SYSTEM
-from rdr_service.participant_enums import BiobankOrderStatus, OrderShipmentStatus, OrderShipmentTrackingStatus
+from rdr_service.participant_enums import BiobankOrderStatus, OrderShipmentStatus, OrderShipmentTrackingStatus,\
+    UNSET_HPO_ID
 
 
 # Timezones for MayoLINK
@@ -253,6 +255,15 @@ class MailKitOrderDao(UpdatableDao):
                 order.version = expected_version
                 if order.supplierStatus.lower() == "shipped":
                     order.barcode = fhir_resource.extension.get(url=DV_BARCODE_URL).valueString
+
+            with self.session() as session:
+                participant = session.query(Participant).filter(
+                    Participant.participantId == participant_id
+                ).one_or_none()
+                if participant is None:
+                    raise NotFound(f'Unable to find participant {to_client_participant_id(participant_id)}')
+                elif participant.hpoId != UNSET_HPO_ID:
+                    order.associatedHpoId = participant.hpoId
 
         return order
 

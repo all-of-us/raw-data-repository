@@ -170,7 +170,8 @@ class BQPDRParticipantSummaryView(BQView):
             'modules',
             'consents',
             'biospec',
-            'patient_statuses'
+            'patient_statuses',
+            'biobank_orders'
         ])
     )
 
@@ -194,7 +195,8 @@ class BQPDRParticipantSummaryAllView(BQPDRParticipantSummaryView):
             'modules',
             'consents',
             'biospec',
-            'patient_statuses'
+            'patient_statuses',
+            'biobank_orders'
         ])
     )
 
