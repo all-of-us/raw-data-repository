@@ -34,6 +34,7 @@ from rdr_service.model.biobank_order import (
     BiobankOrderIdentifier,
     BiobankOrderedSample
 )
+from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -2275,7 +2276,10 @@ class GenomicPipelineTest(BaseTestCase):
             "green_idat_md5_path",
             "vcf_path",
             "vcf_index_path",
-            "research_id"
+            "research_id",
+            "sex_concordance",
+            "contamination",
+            "processing_status",
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -2289,7 +2293,7 @@ class GenomicPipelineTest(BaseTestCase):
             rows = list(csv_reader)
 
             self.assertEqual(2, len(rows))
-            self.assertEqual(member.biobankId, int(rows[1]['biobank_id']))
+            self.assertEqual(f"{get_biobank_id_prefix()}{member.biobankId}", rows[1]['biobank_id'])
             self.assertEqual(member.sampleId, rows[1]['sample_id'])
             self.assertEqual(member.sexAtBirth, rows[1]['sex_at_birth'])
             self.assertEqual(member.gcSiteId, rows[1]['site_id'])
@@ -2304,6 +2308,11 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(metric.vcfPath, rows[1]['vcf_path'])
             self.assertEqual(metric.vcfTbiPath, rows[1]['vcf_index_path'])
             self.assertEqual(metric.vcfMd5Path, rows[1]['vcf_md5_path'])
+
+            # Test processing status columns
+            self.assertEqual(metric.sexConcordance, rows[1]['sex_concordance'])
+            self.assertEqual(metric.contamination, rows[1]['contamination'])
+            self.assertEqual(metric.processingStatus, rows[1]['processing_status'])
 
             # Test run record is success
             run_obj = self.job_run_dao.get(4)
@@ -2373,14 +2382,17 @@ class GenomicPipelineTest(BaseTestCase):
             "site_id",
             "vcf_hf_path",
             "vcf_hf_index_path",
-            # "vcf_hf_md5_path",
+            "vcf_hf_md5_path",
             "vcf_raw_path",
             "vcf_raw_index_path",
-            # "vcf_raw_md5_path",
+            "vcf_raw_md5_path",
             "cram_path",
             "cram_md5_path",
             "crai_path",
-            "research_id"
+            "research_id",
+            "sex_concordance",
+            "contamination",
+            "processing_status",
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -2394,7 +2406,8 @@ class GenomicPipelineTest(BaseTestCase):
             rows = list(csv_reader)
 
             self.assertEqual(1, len(rows))
-            self.assertEqual(f'{member.biobankId}_{member.sampleId}', rows[0]['biobankidsampleid'])
+            self.assertEqual(f'{get_biobank_id_prefix()}{member.biobankId}_{member.sampleId}',
+                             rows[0]['biobankidsampleid'])
             self.assertEqual(member.sexAtBirth, rows[0]['sex_at_birth'])
             self.assertEqual(member.gcSiteId, rows[0]['site_id'])
             self.assertEqual(1000002, int(rows[0]['research_id']))
@@ -2410,6 +2423,11 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(metric.cramPath, rows[0]["cram_path"])
             self.assertEqual(metric.cramMd5Path, rows[0]["cram_md5_path"])
             self.assertEqual(metric.craiPath, rows[0]["crai_path"])
+
+            # Test processing status columns
+            self.assertEqual(metric.sexConcordance, rows[0]['sex_concordance'])
+            self.assertEqual(metric.contamination, rows[0]['contamination'])
+            self.assertEqual(metric.processingStatus, rows[0]['processing_status'])
 
             # Test run record is success
             run_obj = self.job_run_dao.get(4)
