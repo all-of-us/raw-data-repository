@@ -61,6 +61,8 @@ def update_particiant_summaries():
 
 def update_participant_summaries_from_job(job):
     summary_dao = ParticipantSummaryDao()
+    summary_dao.prepare_for_ehr_status_update()
+
     now = clock.CLOCK.now()
     batch_size = 100
     for i, page in enumerate(job):

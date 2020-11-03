@@ -897,6 +897,15 @@ class ParticipantSummaryDao(UpdatableDao):
         with self.session() as session:
             return self.bulk_update_ehr_status_with_session(session, parameter_sets)
 
+    def prepare_for_ehr_status_update(self):
+        with self.session() as session:
+            query = (
+                sqlalchemy.update(ParticipantSummary).values({
+                    ParticipantSummary.isEhrDataAvailable: False
+                })
+            )
+            return session.execute(query)
+
     @staticmethod
     def bulk_update_ehr_status_with_session(session, parameter_sets):
         query = (
@@ -905,6 +914,7 @@ class ParticipantSummaryDao(UpdatableDao):
             .values(
                 {
                     ParticipantSummary.ehrStatus.name: EhrStatus.PRESENT,
+                    ParticipantSummary.isEhrDataAvailable: True,
                     ParticipantSummary.ehrUpdateTime: sqlalchemy.bindparam("receipt_time"),
                     ParticipantSummary.ehrReceiptTime: sqlalchemy.case(
                         [(ParticipantSummary.ehrReceiptTime == None, sqlalchemy.bindparam("receipt_time"))],

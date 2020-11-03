@@ -149,41 +149,60 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
         self.assertFalse(mock_update_summaries.called)
         self.assertFalse(mock_update_organizations.called)
 
-    @mock.patch("rdr_service.offline.update_ehr_status.make_update_organizations_job")
-    @mock.patch("rdr_service.offline.update_ehr_status.make_update_participant_summaries_job")
-    def test_updates_participant_summaries(self, mock_summary_job, mock_organization_job):
-        mock_summary_job.return_value.__iter__.return_value = [[self.EhrUpdatePidRow(11)]]
-        mock_organization_job.return_value.__iter__.return_value = []
+    def assert_ehr_data_matches(self, had_ehr_status: EhrStatus, currently_has_ehr, first_ehr_time, latest_ehr_time,
+                                participant_id):
+        # Check participant summary
+        participant_summary = self.summary_dao.get(participant_id)
+        self.assertEqual(had_ehr_status, participant_summary.ehrStatus)
+        self.assertEqual(currently_has_ehr, participant_summary.isEhrDataAvailable)
+        self.assertEqual(first_ehr_time, participant_summary.ehrReceiptTime)
+        self.assertEqual(latest_ehr_time, participant_summary.ehrUpdateTime)
+
+        # Check generated data
         gen = ParticipantSummaryGenerator()
-        with FakeClock(datetime.datetime(2019, 1, 1)):
-            update_ehr_status.update_ehr_status_participant()
-            update_ehr_status.update_ehr_status_organization()
+        ps_data = gen.make_resource(participant_id).get_data()
+        self.assertEqual(str(participant_summary.ehrStatus), ps_data['ehr_status'])
+        self.assertEqual(participant_summary.ehrReceiptTime, ps_data['ehr_receipt'])
+        self.assertEqual(participant_summary.ehrUpdateTime, ps_data['ehr_update'])
 
+    @mock.patch("rdr_service.offline.update_ehr_status.make_update_participant_summaries_job")
+    def test_updates_participant_summaries(self, mock_summary_job):
+
+        # Run job with data for participants 11 and 14
+        mock_summary_job.return_value.__iter__.return_value = [[self.EhrUpdatePidRow(11), self.EhrUpdatePidRow(14)]]
+        first_job_run_time = datetime.datetime(2019, 1, 1)
+        with FakeClock(first_job_run_time):
+            update_ehr_status.update_ehr_status_participant()
+
+        # Run job with data for participants 11 and 12 (leaving 14 out)
         mock_summary_job.return_value.__iter__.return_value = [[self.EhrUpdatePidRow(11), self.EhrUpdatePidRow(12)]]
-        mock_organization_job.return_value.__iter__.return_value = []
-        with FakeClock(datetime.datetime(2019, 1, 2)):
+        second_job_run_time = datetime.datetime(2019, 1, 2)
+        with FakeClock(second_job_run_time):
             update_ehr_status.update_ehr_status_participant()
-            update_ehr_status.update_ehr_status_organization()
 
-        summary = self.summary_dao.get(11)
-        self.assertEqual(summary.ehrStatus, EhrStatus.PRESENT)
-        self.assertEqual(summary.ehrReceiptTime, datetime.datetime(2019, 1, 1))
-        self.assertEqual(summary.ehrUpdateTime, datetime.datetime(2019, 1, 2))
+        self.assert_ehr_data_matches(
+            participant_id=11,
+            had_ehr_status=EhrStatus.PRESENT,
+            currently_has_ehr=True,
+            first_ehr_time=first_job_run_time,
+            latest_ehr_time=second_job_run_time
+        )
 
-        ps_data = gen.make_resource(11).get_data()
-        self.assertEqual(str(summary.ehrStatus), ps_data['ehr_status'])
-        self.assertEqual(summary.ehrReceiptTime, ps_data['ehr_receipt'])
-        self.assertEqual(summary.ehrUpdateTime, ps_data['ehr_update'])
+        self.assert_ehr_data_matches(
+            participant_id=12,
+            had_ehr_status=EhrStatus.PRESENT,
+            currently_has_ehr=True,
+            first_ehr_time=second_job_run_time,
+            latest_ehr_time=second_job_run_time
+        )
 
-        summary = self.summary_dao.get(12)
-        self.assertEqual(summary.ehrStatus, EhrStatus.PRESENT)
-        self.assertEqual(summary.ehrReceiptTime, datetime.datetime(2019, 1, 2))
-        self.assertEqual(summary.ehrUpdateTime, datetime.datetime(2019, 1, 2))
-
-        ps_data = gen.make_resource(12).get_data()
-        self.assertEqual(str(summary.ehrStatus), ps_data['ehr_status'])
-        self.assertEqual(summary.ehrReceiptTime, ps_data['ehr_receipt'])
-        self.assertEqual(summary.ehrUpdateTime, ps_data['ehr_update'])
+        self.assert_ehr_data_matches(
+            participant_id=14,
+            had_ehr_status=EhrStatus.PRESENT,
+            currently_has_ehr=False,
+            first_ehr_time=first_job_run_time,
+            latest_ehr_time=first_job_run_time
+        )
 
 
     @mock.patch("rdr_service.offline.update_ehr_status.make_update_organizations_job")
