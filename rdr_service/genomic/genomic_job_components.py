@@ -342,9 +342,6 @@ class GenomicFileIngester:
 
                         continue
 
-
-
-
                 # Skip already processed members if failure mode isn't defined in manifest
                 if member.reconcileGCManifestJobRunId is not None and row_copy['failuremode'] in (None, ''):
                     continue
@@ -572,7 +569,6 @@ class GenomicFileIngester:
 
             else:
                 logging.error(f"No GSM in AW1 state bid,sample_id: {row_copy['biobankid']}, {sample_id}")
-                # TODO: Add a check if we've already processed sample_ID
                 continue
 
         return GenomicSubProcessResult.SUCCESS
