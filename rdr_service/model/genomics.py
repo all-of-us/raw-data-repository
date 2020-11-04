@@ -1,7 +1,7 @@
 from sqlalchemy import (
     Column, DateTime, ForeignKey, Integer,
-    String, SmallInteger, UniqueConstraint, event
-)
+    String, SmallInteger, UniqueConstraint, event,
+    BigInteger)
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mysql import JSON
 
@@ -299,7 +299,7 @@ class GenomicGCValidationMetrics(Base):
     contamination = Column('contamination', String(10), nullable=True)
     sexConcordance = Column('sex_concordance', String(10), nullable=True)
     sexPloidy = Column('sex_ploidy', String(10), nullable=True)
-    alignedQ30Bases = Column('aligned_q30_bases', Integer, nullable=True)
+    alignedQ30Bases = Column('aligned_q30_bases', BigInteger, nullable=True)
     arrayConcordance = Column('array_concordance', String(10), nullable=True)
     processingStatus = Column('processing_status', String(15), nullable=True)
     notes = Column('notes', String(128), nullable=True)
