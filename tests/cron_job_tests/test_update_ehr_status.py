@@ -129,7 +129,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
         return participant, summary
 
     # Mock BigQuery result types
-    EhrUpdatePidRow = collections.namedtuple("EhrUpdatePidRow", ["person_id", "upload_time"])
+    EhrUpdatePidRow = collections.namedtuple("EhrUpdatePidRow", ["person_id", "latest_upload_time"])
     TableCountsRow = collections.namedtuple("TableCountsRow", ["org_id", "person_upload_time"])
 
     @mock.patch("rdr_service.offline.update_ehr_status.update_organizations_from_job")
@@ -188,24 +188,24 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
             participant_id=11,
             had_ehr_status=EhrStatus.PRESENT,
             currently_has_ehr=True,
-            first_ehr_time=p_eleven_first_upload.upload_time,
-            latest_ehr_time=new_p_eleven_upload.upload_time
+            first_ehr_time=p_eleven_first_upload.latest_upload_time,
+            latest_ehr_time=new_p_eleven_upload.latest_upload_time
         )
 
         self.assert_ehr_data_matches(
             participant_id=12,
             had_ehr_status=EhrStatus.PRESENT,
             currently_has_ehr=True,
-            first_ehr_time=p_twelve_upload.upload_time,
-            latest_ehr_time=p_twelve_upload.upload_time
+            first_ehr_time=p_twelve_upload.latest_upload_time,
+            latest_ehr_time=p_twelve_upload.latest_upload_time
         )
 
         self.assert_ehr_data_matches(
             participant_id=14,
             had_ehr_status=EhrStatus.PRESENT,
             currently_has_ehr=False,
-            first_ehr_time=p_fourteen_upload.upload_time,
-            latest_ehr_time=p_fourteen_upload.upload_time
+            first_ehr_time=p_fourteen_upload.latest_upload_time,
+            latest_ehr_time=p_fourteen_upload.latest_upload_time
         )
 
 
