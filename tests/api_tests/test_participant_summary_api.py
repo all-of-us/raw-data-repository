@@ -225,7 +225,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "retentionEligibleStatus": "NOT_ELIGIBLE",
                 "retentionType": "UNSET",
                 "sample1SAL2CollectionMethod": "UNSET",
-                "isEhrDataAvailable": False
+                "isEhrDataAvailable": False,
+                "wasEhrDataAvailable": False
             }
         )
 

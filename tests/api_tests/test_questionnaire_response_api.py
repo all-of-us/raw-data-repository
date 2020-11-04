@@ -137,7 +137,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "retentionType": "UNSET",
             "enrollmentSite": "UNSET",
             "sample1SAL2CollectionMethod": "UNSET",
-            "isEhrDataAvailable": False
+            "isEhrDataAvailable": False,
+            "wasEhrDataAvailable": False
         }
 
     def test_duplicate_consent_submission(self):
