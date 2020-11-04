@@ -312,7 +312,10 @@ class ParticipantDao(UpdatableDao):
         )
 
     @staticmethod
-    def _get_hpo_id(obj):
+    def _get_hpo_id(obj: Participant):
+        if obj.isTestParticipant:
+            return HPODao().get_by_name(TEST_HPO_NAME).hpoId
+
         hpo_name = _get_hpo_name_from_participant(obj)
         if hpo_name:
             hpo = HPODao().get_by_name(hpo_name)
@@ -428,23 +431,39 @@ class ParticipantDao(UpdatableDao):
                 )
             except (ValueError, TypeError):
                 raise ValueError("Could not parse {} as TIMESTAMP".format(resource_json["withdrawalTimeStamp"]))
+
+        # allow for only sending the test flag (PATCH) if updating a participant as a test account
+        test_flag = resource_json.get("testParticipant", False)
+        participant = None
+
+        if test_flag:
+            participant = self.get(id_)
+        if participant is None:
+            participant = Participant(participantId=id_)
+
         # biobankId, lastModified, signUpTime are set by DAO.
-        return Participant(
-            participantId=id_,
-            externalId=resource_json.get("externalId"),
-            version=expected_version,
-            providerLink=json.dumps(resource_json.get("providerLink")),
-            clientId=client_id,
-            withdrawalStatus=resource_json.get("withdrawalStatus"),
-            withdrawalReason=resource_json.get("withdrawalReason"),
-            withdrawalAuthored=resource_json.get("withdrawalTimeStamp"),
-            withdrawalReasonJustification=resource_json.get("withdrawalReasonJustification"),
-            suspensionStatus=resource_json.get("suspensionStatus"),
-            organizationId=get_organization_id_from_external_id(resource_json, self.organization_dao),
-            hpoId=get_awardee_id_from_name(resource_json, self.hpo_dao),
-            siteId=get_site_id_from_google_group(resource_json, self.site_dao),
-            enrollmentSiteId=get_site_id_from_google_group(resource_json, self.site_dao),
-        )
+        for participant_model_field, resource_value in [
+                    ('externalId', resource_json.get("externalId")),
+                    ('version', expected_version),
+                    ('providerLink', json.dumps(resource_json.get("providerLink"))),
+                    ('clientId', client_id),
+                    ('withdrawalStatus', resource_json.get("withdrawalStatus")),
+                    ('withdrawalReason', resource_json.get("withdrawalReason")),
+                    ('withdrawalAuthored', resource_json.get("withdrawalTimeStamp")),
+                    ('withdrawalReasonJustification', resource_json.get("withdrawalReasonJustification")),
+                    ('suspensionStatus', resource_json.get("suspensionStatus")),
+                    ('organizationId', get_organization_id_from_external_id(resource_json, self.organization_dao)),
+                    ('hpoId', get_awardee_id_from_name(resource_json, self.hpo_dao)),
+                    ('siteId', get_site_id_from_google_group(resource_json, self.site_dao)),
+                    ('enrollmentSiteId', get_site_id_from_google_group(resource_json, self.site_dao)),
+                    ('isTestParticipant', test_flag)
+                ]:
+            if resource_value is not None:
+                participant.__setattr__(participant_model_field, resource_value)
+
+        if participant.isTestParticipant:
+            self.switch_to_test_account(None, participant, commit_update=False)
+        return participant
 
     def add_missing_hpo_from_site(self, session, participant_id, site_id):
         if site_id is None:
@@ -470,11 +489,11 @@ class ParticipantDao(UpdatableDao):
         # Update the version and add history row
         self._do_update(session, participant, participant)
 
-    def switch_to_test_account(self, session, participant):
+    def switch_to_test_account(self, session, participant, commit_update=True):
         test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
 
         if participant is None:
-            raise BadRequest("No participant for HPO ID udpate.")
+            raise BadRequest("No participant for HPO ID update.")
 
         if participant.hpoId == test_hpo_id:
             return
@@ -483,8 +502,9 @@ class ParticipantDao(UpdatableDao):
         participant.organizationId = None
         participant.siteId = None
 
-        # Update the version and add history row
-        self._do_update(session, participant, participant)
+        if commit_update:
+            # Update the version and add history row
+            self._do_update(session, participant, participant)
 
     def handle_integrity_error(self, tried_ids, e, obj):
         if "external_id" in str(e.orig):

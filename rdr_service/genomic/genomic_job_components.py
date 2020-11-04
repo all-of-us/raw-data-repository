@@ -113,6 +113,7 @@ class GenomicFileIngester:
         self.file_processed_dao = GenomicFileProcessedDao()
         self.member_dao = GenomicSetMemberDao()
         self.job_run_dao = GenomicJobRunDao()
+        self.sample_dao = BiobankStoredSampleDao()
 
     def generate_file_processing_queue(self):
         """
@@ -298,26 +299,51 @@ class GenomicFileIngester:
                 member = self.member_dao.get_member_from_collection_tube(collection_tube_id, genome_type)
 
                 if member is None:
-                    # Fix for invalid values
+                    # check if we should update the collection tube ID
                     try:
-                        parent_sample_id = int(row_copy['parentsampleid'])
+                        bid = int(row_copy['biobankidsampleid'].split('_')[0][1:])
+
+                        # get the target member based on genome type, biobank ID, and state
+                        _state = GenomicWorkflowState.AW0
+
+                        member = self.member_dao.get_member_from_biobank_id_in_state(bid,
+                                                                                     genome_type,
+                                                                                     _state)
+                        # Validate new collection tube ID, set collection tube ID
+                        if member and self._validate_collection_tube_id(collection_tube_id, bid):
+                            member.collectionTubeId = collection_tube_id
+
+                        else:
+                            logging.error(f"Invalid collection tube ID: {collection_tube_id}, "
+                                          f"biobank id: {bid}, "
+                                          f"genome type: {genome_type}")
 
                     except ValueError:
-                        parent_sample_id = 0
+                        pass
 
-                    # Check if Programmatic control
-                    if self._check_if_control_sample(parent_sample_id) is not None:
-                        logging.warning(f'Control sample found: {parent_sample_id}')
-                        # TODO: Ignoring control samples for now
-                        # RDR may need to do something with them in the future
+                    if member is None:
+                        # Check if Programmatic control
+                        # Fix for invalid parent sample values
+                        try:
+                            parent_sample_id = int(row_copy['parentsampleid'])
 
-                    else:
-                        #return GenomicSubProcessResult.ERROR
-                        logging.error(f"Missing collection tube ID: {collection_tube_id}, "
-                                      f"biobank id: {row_copy['biobankidsampleid'].split('_')[0]}, "
-                                      f"genome type: {genome_type}")
-                        # TODO: check if valid collection tube for participant and then upate GSM
+                        except ValueError:
+                            parent_sample_id = 0
 
+                        if self._check_if_control_sample(parent_sample_id) is not None:
+                            logging.warning(f'Control sample found: {parent_sample_id}')
+                            # Ignoring control samples for now
+                            # RDR may need to do something with them in the future
+
+                        else:
+                            logging.error(f"Skipping collection tube ID: {collection_tube_id}, "
+                                          f"biobank id: {bid}, "
+                                          f"genome type: {genome_type}")
+
+                        continue
+
+                # Skip already processed members if failure mode isn't defined in manifest
+                if member.reconcileGCManifestJobRunId is not None and row_copy['failuremode'] in (None, ''):
                     continue
 
                 member.gcSiteId = _site
@@ -521,29 +547,29 @@ class GenomicFileIngester:
             except KeyError:
                 pass
 
+            # TODO: Fix aligned q30 bases data-length
+
             genome_type = self.file_validator.genome_type
             member = self.member_dao.get_member_from_sample_id_with_state(int(sample_id),
                                                                           genome_type,
                                                                           GenomicWorkflowState.AW1)
             if member is not None:
-                self.member_dao.update_member_state(member, GenomicWorkflowState.AW2)
                 row_copy['member_id'] = member.id
 
                 # check whether metrics object exists for that member
                 existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
                 if existing_metrics_obj is None:
+                    self.member_dao.update_member_state(member, GenomicWorkflowState.AW2)
                     self.metrics_dao.insert_gc_validation_metrics(row_copy)
 
                 else:
                     logging.info(f"Found existing metrics object for member ID {member.id}")
-                    # TODO: skipping update to metrics for now.
+                    # Don't overwrite metrics object
                     continue
 
             else:
-                logging.error(f'Sample ID {sample_id} has no corresponding Genomic Set Member in AW1 state.')
-
-                # Aborting the job if sample ID cannot be found.
-                return GenomicSubProcessResult.ERROR
+                logging.error(f"No GSM in AW1 state bid,sample_id: {row_copy['biobankid']}, {sample_id}")
+                continue
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -655,6 +681,21 @@ class GenomicFileIngester:
         """
 
         return self.member_dao.get_control_sample(sample_id)
+
+    def _validate_collection_tube_id(self, collection_tube_id, bid):
+        """
+        Returns true if biobank_ID is associated to biobank_stored_sample_id
+        (collection_tube_id)
+        :param collection_tube_id:
+        :param bid:
+        :return: boolean
+        """
+        sample = self.sample_dao.get(collection_tube_id)
+
+        if sample:
+            return int(sample.biobankId) == int(bid)
+
+        return False
 
     def _get_qc_status_from_value(self, aw4_value):
         """
@@ -1054,7 +1095,8 @@ class GenomicFileMover:
 
 class GenomicReconciler:
     """ This component handles reconciliation between genomic datasets """
-    def __init__(self, run_id, job_id, archive_folder=None, file_mover=None, bucket_name=None, storage_provider=None):
+    def __init__(self, run_id, job_id, archive_folder=None, file_mover=None,
+                 bucket_name=None, storage_provider=None, controller=None):
 
         self.run_id = run_id
         self.job_id = job_id
@@ -1070,6 +1112,7 @@ class GenomicReconciler:
         # Other components
         self.file_mover = file_mover
         self.storage_provider = storage_provider
+        self.controller = controller
 
         # Data files and names will be different
         # file types are defined as
@@ -1124,7 +1167,8 @@ class GenomicReconciler:
 
             # Update GC Metrics for PDR
             if inserted_metrics_obj:
-                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id,
+                                                        project_id=self.controller.bq_project_id)
                 genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
 
             next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='gem-ready')
@@ -1194,7 +1238,8 @@ class GenomicReconciler:
 
             # Update GC Metrics for PDR
             if inserted_metrics_obj:
-                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id,
+                                                        project_id=self.controller.bq_project_id)
                 genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
 
             next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='cvl-ready')
@@ -1415,13 +1460,14 @@ class GenomicBiobankSamplesCoupler:
                                                          "gror",
                                                          "valid_ai_ans"])
 
-    def __init__(self, run_id):
+    def __init__(self, run_id, controller=None):
         self.samples_dao = BiobankStoredSampleDao()
         self.set_dao = GenomicSetDao()
         self.member_dao = GenomicSetMemberDao()
         self.site_dao = SiteDao()
         self.ps_dao = ParticipantSummaryDao()
         self.run_id = run_id
+        self.controller = controller
 
     def create_new_genomic_participants(self, from_date):
         """
@@ -1534,11 +1580,9 @@ class GenomicBiobankSamplesCoupler:
             inserted_wgs_member = self.member_dao.insert(new_wgs_member_obj)
 
             # Add member to PDR
-            bq_genomic_set_member_update(inserted_array_member.id)
-            genomic_set_member_update(inserted_array_member.id)
-
-            bq_genomic_set_member_update(inserted_wgs_member.id)
-            genomic_set_member_update(inserted_wgs_member.id)
+            for mid in (inserted_array_member.id, inserted_wgs_member.id):
+                bq_genomic_set_member_update(mid, project_id=self.controller.bq_project_id)
+                genomic_set_member_update(mid)
 
         # Create & transfer the Biobank Manifest based on the new genomic set
         try:
@@ -1982,7 +2026,7 @@ class GenomicBiobankSamplesCoupler:
         inserted_set = self.set_dao.insert(new_set_obj)
 
         # Insert new set for PDR
-        bq_genomic_set_update(inserted_set.id)
+        bq_genomic_set_update(inserted_set.id, project_id=self.controller.bq_project_id)
         genomic_set_update(inserted_set.id)
 
         return inserted_set

@@ -11,6 +11,7 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
+from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
@@ -673,6 +674,51 @@ class ParticipantApiTest(BaseTestCase):
         self.assertEqual(len(str(result['data'][0]['research_id'])), 7)
         self.assertEqual(result['sort_by'], 'lastModified')
 
+    def test_new_participant_with_test_participant_flag(self):
+        org = self.data_generator.create_database_organization(externalId='test_org')
+        site = self.data_generator.create_database_site(googleGroup='test_site')
+        response = self.send_post("Participant", {
+            'testParticipant': True,
+            'organization': org.externalId,
+            'site': site.googleGroup
+        })
+        participant_id = from_client_participant_id(response['participantId'])
+
+        participant: Participant = self.session.query(Participant).filter(
+            Participant.participantId == participant_id
+        ).one()
+        self.assertTrue(participant.isTestParticipant)
+
+        # make sure the participant is paired correctly (that what was sent was ignored)
+        self.assertEqual(TEST_HPO_ID, participant.hpoId)
+        self.assertIsNone(participant.organizationId)
+        self.assertIsNone(participant.siteId)
+
+    def test_update_existing_participant_as_test_participant_flag(self):
+        hpo = self.data_generator.create_database_hpo()
+        org = self.data_generator.create_database_organization(externalId='test_org')
+        site = self.data_generator.create_database_site(googleGroup='test_site')
+        participant = self.data_generator.create_database_participant(
+            siteId=site.siteId,
+            organizationId=org.organizationId,
+            hpoId=hpo.hpoId
+        )
+
+        # When updating as a test participant, only the testParticipant field should need to be sent
+        self.send_put(f"Participant/P{participant.participantId}", {
+            'testParticipant': True
+        }, headers={"If-Match": 'W/"1"'})
+
+        self.session.expire_all()
+        updated_participant: Participant = self.session.query(Participant).filter(
+            Participant.participantId == participant.participantId
+        ).one()
+        self.assertTrue(updated_participant.isTestParticipant)
+
+        # make sure the participant is paired correctly (that the org and site are cleared, and the TEST hpo is used)
+        self.assertEqual(TEST_HPO_ID, updated_participant.hpoId)
+        self.assertIsNone(updated_participant.organizationId)
+        self.assertIsNone(updated_participant.siteId)
 
 def _add_code_answer(code_answers, link_id, code):
     if code:

@@ -161,6 +161,7 @@ left join site
 left join participant_summary summary
   on participant.participant_id = summary.participant_id
 where participant.is_ghost_id is not true
+  and participant.is_test_participant is not true
   and summary.consent_for_study_enrollment = 1
   and (
     summary.email is null

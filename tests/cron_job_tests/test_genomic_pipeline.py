@@ -305,6 +305,46 @@ class GenomicPipelineTest(BaseTestCase):
         #     if m.genomicSetMemberId == 2:
         #         self.assertEqual(m.limsId, '11002')
 
+    def test_ingest_specific_aw2_file(self):
+        self._create_fake_datasets_for_gc_tests(2, arr_override=True,
+                                                array_participants=(1, 2),
+                                                genomic_workflow_state=GenomicWorkflowState.AW1)
+
+        # Setup Test file
+        aw2_manifest_file = test_data.open_genomic_set_file("RDR_AoU_GEN_TestDataManifest.csv")
+
+        aw2_manifest_filename = "RDR_AoU_GEN_TestDataManifest_11192019_1.csv"
+
+        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
+        pytz.timezone('US/Central').localize(test_date)
+
+        subfolder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
+        with clock.FakeClock(test_date):
+            self._write_cloud_csv(
+                aw2_manifest_filename,
+                aw2_manifest_file,
+                bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+                folder=subfolder,
+            )
+
+        # Get bucket, subfolder, and filename from argument
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        file_name = subfolder + '/' + aw2_manifest_filename
+
+        # Use the Controller to run the job
+        with GenomicJobController(GenomicJob.METRICS_INGESTION) as controller:
+            controller.bucket_name = bucket_name
+            controller.ingest_specific_aw2_manifest(file_name)
+
+        files_processed = self.file_processed_dao.get_all()
+        self.assertEqual(test_date.astimezone(pytz.utc), pytz.utc.localize(files_processed[0].uploadDate))
+
+        # Test the data was ingested OK
+        self._gc_files_processed_test_cases(files_processed)
+
+        # Test the end result code is recorded
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
+
 
     def _update_test_sample_ids(self):
         # update sample ID (mock AW1 manifest)
@@ -1489,8 +1529,20 @@ class GenomicPipelineTest(BaseTestCase):
                                                 array_participants=range(1, 4),
                                                 genomic_workflow_state=GenomicWorkflowState.AW0)
 
+        # Add extra sample for collection_tube_id test
+        sample_args = {
+            'test': '1ED10',
+            'confirmed': clock.CLOCK.now(),
+            'created': clock.CLOCK.now(),
+            'biobankId': 2,
+            'biobankOrderIdentifier': f'e2',
+            'biobankStoredSampleId': 100002,
+        }
+
+        self._make_stored_sample(**sample_args)
+
         # Setup Test file
-        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-1.csv")
+        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-3.csv")
 
         gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
         test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
@@ -1533,6 +1585,10 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("", member.gcManifestFailureMode)
                 self.assertEqual("", member.gcManifestFailureDescription)
                 self.assertEqual(GenomicWorkflowState.AW1, member.genomicWorkflowState)
+
+            if member.id == 2:
+                self.assertEqual("100002", member.collectionTubeId)
+
             if member.id == 3:
                 self.assertNotEqual(1, member.reconcileGCManifestJobRunId)
 
@@ -1554,7 +1610,7 @@ class GenomicPipelineTest(BaseTestCase):
                                                 genomic_workflow_state=GenomicWorkflowState.AW0)
 
         # Setup Test file
-        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-1.csv")
+        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-3.csv")
 
         gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
 

@@ -105,11 +105,28 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
+    def ingest_specific_aw2_manifest(self, filename):
+        """
+        Uses GenomicFileIngester to ingest specific GC Validation Manifest files (AW2).
+        """
+        try:
+            self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                                job_run_id=self.job_run.id,
+                                                bucket=self.bucket_name,
+                                                target_file=filename,
+                                                _controller=self)
+
+            self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
     def run_reconciliation_to_genotyping_data(self):
         """
         Reconciles the metrics to genotyping files using reconciler component
         """
-        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id, storage_provider=self.storage_provider)
+        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id,
+                                            storage_provider=self.storage_provider,
+                                            controller=self)
         try:
             self.job_result = self.reconciler.reconcile_metrics_to_genotyping_data()
         except RuntimeError:
@@ -119,7 +136,7 @@ class GenomicJobController:
         """
         Reconciles the metrics to sequencing files using reconciler component
         """
-        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id)
+        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id, controller=self)
         try:
             self.job_result = self.reconciler.reconcile_metrics_to_sequencing_data()
         except RuntimeError:
@@ -131,7 +148,7 @@ class GenomicJobController:
         And manifest file using BiobankSamplesCoupler
         and ManifestCoupler components
         """
-        self.biobank_coupler = GenomicBiobankSamplesCoupler(self.job_run.id)
+        self.biobank_coupler = GenomicBiobankSamplesCoupler(self.job_run.id, controller=self)
 
         try:
             last_run_date = self._get_last_successful_run_time()
@@ -145,7 +162,7 @@ class GenomicJobController:
         Creates new GenomicSet, GenomicSetMembers,
         And manifest file for Cohort 2 participants
         """
-        self.biobank_coupler = GenomicBiobankSamplesCoupler(self.job_run.id)
+        self.biobank_coupler = GenomicBiobankSamplesCoupler(self.job_run.id, controller=self)
 
         try:
             last_run_date = self._get_last_successful_run_time()
@@ -159,7 +176,7 @@ class GenomicJobController:
         Creates new GenomicSet, GenomicSetMembers,
         And manifest file for Cohort 1 participants
         """
-        self.biobank_coupler = GenomicBiobankSamplesCoupler(self.job_run.id)
+        self.biobank_coupler = GenomicBiobankSamplesCoupler(self.job_run.id, controller=self)
 
         try:
             last_run_date = self._get_last_successful_run_time()
@@ -289,7 +306,7 @@ class GenomicJobController:
         Creates the CVL reconciliation report using the reconciler object
         """
         self.reconciler = GenomicReconciler(
-            self.job_run.id, self.job_id, bucket_name=self.bucket_name
+            self.job_run.id, self.job_id, bucket_name=self.bucket_name, controller=self
         )
         try:
             cvl_result = self.reconciler.generate_cvl_reconciliation_report()
@@ -332,7 +349,7 @@ class GenomicJobController:
                 )
 
                 # For BQ/PDR
-                bq_genomic_file_processed_update(new_file_record.id)
+                bq_genomic_file_processed_update(new_file_record.id, self.bq_project_id)
                 genomic_file_processed_update(new_file_record.id)
 
                 self.subprocess_results.add(result)
@@ -347,7 +364,7 @@ class GenomicJobController:
         :param _genome_type: array or wgs
         """
 
-        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id)
+        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id, controller=self)
 
         if _genome_type == GENOME_TYPE_ARRAY:
             self.reconciler.reconcile_gem_report_states(_last_run_time=self.last_run_time)
@@ -409,7 +426,7 @@ class GenomicJobController:
         self.job_run_dao.update_run_record(self.job_run.id, self.job_result, GenomicSubProcessStatus.COMPLETED)
 
         # Update run for PDR
-        bq_genomic_job_run_update(self.job_run.id)
+        bq_genomic_job_run_update(self.job_run.id, self.bq_project_id)
         genomic_job_run_update(self.job_run.id)
 
     def _aggregate_run_results(self):
@@ -432,7 +449,7 @@ class GenomicJobController:
         new_run = self.job_run_dao.insert_run_record(job_id)
 
         # Insert new run for PDR
-        bq_genomic_job_run_update(new_run.id)
+        bq_genomic_job_run_update(new_run.id, self.bq_project_id)
         genomic_job_run_update(new_run.id)
 
         return new_run

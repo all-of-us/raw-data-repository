@@ -183,7 +183,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         """
         # Note: We need to be careful here, there is a delay from when a participant is inserted in the primary DB
         # and when it shows up in the replica DB instance.
-        p = ro_session.query(Participant).filter(Participant.participantId == p_id).first()
+        p: Participant = ro_session.query(Participant).filter(Participant.participantId == p_id).first()
         if not p:
             msg = f'Participant lookup for P{p_id} failed.'
             logging.error(msg)
@@ -238,6 +238,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             'site': self._lookup_site_name(p.siteId, ro_session),
             'site_id': p.siteId,
             'is_ghost_id': 1 if p.isGhostId is True else 0,
+            'test_participant': 1 if p.isTestParticipant is True else 0,
             'cohort_2_pilot_flag': str(cohort_2_pilot_flag),
             'cohort_2_pilot_flag_id': int(cohort_2_pilot_flag)
         }
@@ -1064,8 +1065,10 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         # Check for @example.com in email address
         if not test_participant:
+            if summary.get('test_participant') == 1:
+                test_participant = 1
             # Check to see if the participant is in the Test HPO.
-            if (summary.get('hpo') or 'None').lower() == 'test':
+            elif (summary.get('hpo') or 'None').lower() == 'test':
                 test_participant = 1
             # Test if @example.com is in email address.
             elif '@example.com' in (summary.get('email') or ''):
