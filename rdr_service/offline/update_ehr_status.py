@@ -40,7 +40,7 @@ def make_update_participant_summaries_job():
         LOG.warning("Config lookup exception for {}: {}".format(config_param, e))
         bigquery_view = None
     if bigquery_view:
-        query = "SELECT person_id, upload_time FROM `{}`".format(bigquery_view)
+        query = "SELECT person_id, latest_upload_time FROM `{}`".format(bigquery_view)
         return bigquery.BigQueryJob(query, default_dataset_id="operations_analytics", page_size=1000)
     else:
         return None
@@ -66,7 +66,7 @@ def update_participant_summaries_from_job(job):
     batch_size = 100
     for i, page in enumerate(job):
         LOG.info("Processing page {} of results...".format(i))
-        parameter_sets = [{"pid": row.person_id, "receipt_time": row.upload_time} for row in page]
+        parameter_sets = [{"pid": row.person_id, "receipt_time": row.latest_upload_time} for row in page]
         query_result = summary_dao.bulk_update_ehr_status(parameter_sets)
         total_rows = query_result.rowcount
         LOG.info("Affected {} rows.".format(total_rows))
