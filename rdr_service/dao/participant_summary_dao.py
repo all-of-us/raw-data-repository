@@ -865,6 +865,12 @@ class ParticipantSummaryDao(UpdatableDao):
                 or model.suspensionStatus == SuspensionStatus.NO_CONTACT\
                 or model.deceasedStatus == DeceasedStatus.APPROVED:
             result["recontactMethod"] = "NO_CONTACT"
+
+        # Map deprecated EHR fields to updated names
+        result['wasEhrDataAvailable'] = model.ehrStatus == EhrStatus.PRESENT
+        result['firstEhrReceiptTime'] = model.ehrReceiptTime
+        result['latestEhrReceiptTime'] = model.ehrUpdateTime
+
         # Strip None values.
         result = {k: v for k, v in list(result.items()) if v is not None}
 
