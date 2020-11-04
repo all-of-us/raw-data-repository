@@ -195,7 +195,9 @@ def aw4_array_manifest_workflow():
     Entrypoint for AW4 Array Workflow
     """
     with GenomicJobController(GenomicJob.AW4_ARRAY_WORKFLOW,
-                              bucket_name=config.DRC_BROAD_BUCKET_NAME) as controller:
+                              bucket_name=config.DRC_BROAD_BUCKET_NAME,
+                              sub_folder_name=config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[0])
+                              ) as controller:
         controller.run_general_ingestion_workflow()
 
 
@@ -204,7 +206,9 @@ def aw4_wgs_manifest_workflow():
     Entrypoint for AW4 WGS Workflow
     """
     with GenomicJobController(GenomicJob.AW4_WGS_WORKFLOW,
-                              bucket_name=config.DRC_BROAD_BUCKET_NAME) as controller:
+                              bucket_name=config.DRC_BROAD_BUCKET_NAME,
+                              sub_folder_name=config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[0])
+                              ) as controller:
         controller.run_general_ingestion_workflow()
 
 
