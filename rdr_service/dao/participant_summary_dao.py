@@ -55,7 +55,8 @@ from rdr_service.participant_enums import (
     SuspensionStatus,
     WithdrawalStatus,
     get_bucketed_age,
-    RetentionStatus
+    RetentionStatus,
+    RetentionType
 )
 from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
 
@@ -812,7 +813,7 @@ class ParticipantSummaryDao(UpdatableDao):
         if result.get("genderIdentityId"):
             del result["genderIdentityId"]  # deprecated in favor of genderIdentity
 
-        result["retentionType"] = 'UNSET'
+        result["retentionType"] = str(RetentionType.UNSET)
         if model.retentionEligibleStatus == RetentionStatus.ELIGIBLE:
             eighteen_month_ago = clock.CLOCK.now() - RETENTION_WINDOW
             if (model.questionnaireOnHealthcareAccessAuthored and
@@ -836,9 +837,12 @@ class ParticipantSummaryDao(UpdatableDao):
                  model.consentForGenomicsRORAuthored > eighteen_month_ago) or \
                 (model.consentCohort == ParticipantCohort.COHORT_2 and model.consentForGenomicsRORAuthored and
                  model.consentForGenomicsRORAuthored > eighteen_month_ago):
-                result["retentionType"] = 'ACTIVE'
-            elif model.ehrReceiptTime and model.ehrReceiptTime > eighteen_month_ago:
-                result["retentionType"] = 'PASSIVE'
+                result["retentionType"] = str(RetentionType.ACTIVE)
+            if model.ehrReceiptTime and model.ehrReceiptTime > eighteen_month_ago:
+                if result["retentionType"] == str(RetentionType.ACTIVE):
+                    result["retentionType"] = str(RetentionType.ACTIVE_AND_PASSIVE)
+                else:
+                    result["retentionType"] = str(RetentionType.PASSIVE)
 
         # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
         # def format_patient_status_record(status_obj):
@@ -983,7 +987,7 @@ class RetentionTypeFieldFilter(FieldFilter):
         super(RetentionTypeFieldFilter, self).__init__(field_name, operator, value)
 
     def add_to_sqlalchemy_query(self, query, field):
-        if self.value in ('ACTIVE', 'PASSIVE', 'UNSET'):
+        if self.value in [str(RetentionType(item)) for item in RetentionType]:
             eighteen_month_ago = clock.CLOCK.now() - RETENTION_WINDOW
             active_criterion = or_(
                 ParticipantSummary.questionnaireOnHealthcareAccessAuthored > eighteen_month_ago,
@@ -1008,7 +1012,7 @@ class RetentionTypeFieldFilter(FieldFilter):
                     ParticipantSummary.consentForGenomicsRORAuthored > eighteen_month_ago
                 )
             )
-            passive_criterion = and_(
+            not_active_criterion = and_(
                 or_(
                     ParticipantSummary.questionnaireOnHealthcareAccessAuthored == None,
                     ParticipantSummary.questionnaireOnHealthcareAccessAuthored <= eighteen_month_ago
@@ -1054,23 +1058,34 @@ class RetentionTypeFieldFilter(FieldFilter):
                     ParticipantSummary.consentForGenomicsRORAuthored <= eighteen_month_ago
                 )
             )
-            if self.value == 'ACTIVE':
+            if self.value == str(RetentionType.ACTIVE):
                 query = query.filter(
                     field == RetentionStatus.ELIGIBLE,
-                    active_criterion
+                    active_criterion,
+                    or_(
+                        ParticipantSummary.ehrReceiptTime == None,
+                        ParticipantSummary.ehrReceiptTime <= eighteen_month_ago
+                    )
+
                 )
-            elif self.value == 'PASSIVE':
+            elif self.value == str(RetentionType.PASSIVE):
                 query = query.filter(
                     field == RetentionStatus.ELIGIBLE,
-                    passive_criterion,
+                    not_active_criterion,
                     ParticipantSummary.ehrReceiptTime > eighteen_month_ago
                 )
-            elif self.value == 'UNSET':
+            elif self.value == str(RetentionType.ACTIVE_AND_PASSIVE):
+                query = query.filter(
+                    field == RetentionStatus.ELIGIBLE,
+                    active_criterion,
+                    ParticipantSummary.ehrReceiptTime > eighteen_month_ago
+                )
+            elif self.value == str(RetentionType.UNSET):
                 query = query.filter(
                     or_(
                         field == RetentionStatus.NOT_ELIGIBLE,
                         and_(
-                            passive_criterion,
+                            not_active_criterion,
                             or_(
                                 ParticipantSummary.ehrReceiptTime == None,
                                 ParticipantSummary.ehrReceiptTime <= eighteen_month_ago
