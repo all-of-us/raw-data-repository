@@ -869,6 +869,12 @@ class ParticipantSummaryDao(UpdatableDao):
                 or model.suspensionStatus == SuspensionStatus.NO_CONTACT\
                 or model.deceasedStatus == DeceasedStatus.APPROVED:
             result["recontactMethod"] = "NO_CONTACT"
+
+        # Map deprecated EHR fields to updated names
+        result['wasEhrDataAvailable'] = model.ehrStatus == EhrStatus.PRESENT
+        result['firstEhrReceiptTime'] = model.ehrReceiptTime
+        result['latestEhrReceiptTime'] = model.ehrUpdateTime
+
         # Strip None values.
         result = {k: v for k, v in list(result.items()) if v is not None}
 
@@ -901,6 +907,15 @@ class ParticipantSummaryDao(UpdatableDao):
         with self.session() as session:
             return self.bulk_update_ehr_status_with_session(session, parameter_sets)
 
+    def prepare_for_ehr_status_update(self):
+        with self.session() as session:
+            query = (
+                sqlalchemy.update(ParticipantSummary).values({
+                    ParticipantSummary.isEhrDataAvailable: False
+                })
+            )
+            return session.execute(query)
+
     @staticmethod
     def bulk_update_ehr_status_with_session(session, parameter_sets):
         query = (
@@ -909,9 +924,10 @@ class ParticipantSummaryDao(UpdatableDao):
             .values(
                 {
                     ParticipantSummary.ehrStatus.name: EhrStatus.PRESENT,
+                    ParticipantSummary.isEhrDataAvailable: True,
                     ParticipantSummary.ehrUpdateTime: sqlalchemy.bindparam("receipt_time"),
                     ParticipantSummary.ehrReceiptTime: sqlalchemy.case(
-                        [(ParticipantSummary.ehrReceiptTime == None, sqlalchemy.bindparam("receipt_time"))],
+                        [(ParticipantSummary.ehrReceiptTime.is_(None), sqlalchemy.bindparam("receipt_time"))],
                         else_=ParticipantSummary.ehrReceiptTime,
                     ),
                 }
