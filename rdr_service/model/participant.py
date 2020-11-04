@@ -12,6 +12,7 @@ from sqlalchemy import (
 from sqlalchemy import BLOB  # pylint: disable=unused-import
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import expression
 
 from rdr_service.model.base import Base
 from rdr_service.model.utils import Enum, UTCDateTime, UTCDateTime6
@@ -68,6 +69,13 @@ class ParticipantBase(object):
     isGhostId = Column("is_ghost_id", Boolean)
     # The date the participant was marked as ghost
     dateAddedGhost = Column("date_added_ghost", UTCDateTime)
+
+    isTestParticipant = Column(
+        "is_test_participant",
+        Boolean, nullable=False,
+        default=False,
+        server_default=expression.false()
+    )
 
     @declared_attr
     def hpoId(cls):
