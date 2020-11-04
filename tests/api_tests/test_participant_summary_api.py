@@ -3167,6 +3167,29 @@ class ParticipantSummaryApiTest(BaseTestCase):
         ps = self.send_get("ParticipantSummary?retentionType=UNSET&_includeTotal=TRUE")
         self.assertEqual(len(ps['entry']), 0)
 
+        attrs = {
+            'questionnaireOnHealthcareAccessAuthored': in_eighteen_month,
+            'ehrReceiptTime': in_eighteen_month
+        }
+        self._make_participant_retention_eligible(participant_id[1:], **attrs)
+        ps = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(ps['retentionType'], 'ACTIVE_AND_PASSIVE')
+
+        ps = self.send_get("ParticipantSummary?retentionType=ACTIVE_AND_PASSIVE&_includeTotal=TRUE")
+        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'ACTIVE_AND_PASSIVE')
+        ps = self.send_get("ParticipantSummary?retentionType=ACTIVE_AND_PASSIVE&retentionEligibleStatus=ELIGIBLE"
+                           "&_includeTotal=TRUE")
+        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'ACTIVE_AND_PASSIVE')
+
+        ps = self.send_get("ParticipantSummary?retentionType=ACTIVE&_includeTotal=TRUE")
+        self.assertEqual(len(ps['entry']), 0)
+
+        ps = self.send_get("ParticipantSummary?retentionType=PASSIVE&_includeTotal=TRUE")
+        self.assertEqual(len(ps['entry']), 0)
+
+        ps = self.send_get("ParticipantSummary?retentionType=UNSET&_includeTotal=TRUE")
+        self.assertEqual(len(ps['entry']), 0)
+
     def test_query_by_enrollment_site(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
         participant_id = participant["participantId"]
