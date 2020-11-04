@@ -11,6 +11,7 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.offline import update_ehr_status
@@ -165,6 +166,15 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
         self.assertEqual(participant_summary.ehrReceiptTime, ps_data['ehr_receipt'])
         self.assertEqual(participant_summary.ehrUpdateTime, ps_data['ehr_update'])
 
+    def assert_has_participant_ehr_record(self, participant_id, file_timestamp, first_seen, last_seen):
+        record = self.session.query(ParticipantEhrReceipt).filter(
+            ParticipantEhrReceipt.participantId == participant_id,
+            ParticipantEhrReceipt.fileTimestamp == file_timestamp,
+            ParticipantEhrReceipt.firstSeen == first_seen,
+            ParticipantEhrReceipt.lastSeen == last_seen
+        ).one_or_none()
+        self.assertIsNotNone(record, f'EHR receipt was not recorded for participant {participant_id}')
+
     @mock.patch("rdr_service.offline.update_ehr_status.make_update_participant_summaries_job")
     def test_updates_participant_summaries(self, mock_summary_job):
 
@@ -179,7 +189,9 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
         # Run job with data for participants 11 and 12 (leaving 14 out)
         new_p_eleven_upload = self.EhrUpdatePidRow(11, datetime.datetime(2020, 3, 30, 2))
         p_twelve_upload = self.EhrUpdatePidRow(12, datetime.datetime(2020, 3, 27, 18))
-        mock_summary_job.return_value.__iter__.return_value = [[new_p_eleven_upload, p_twelve_upload]]
+        mock_summary_job.return_value.__iter__.return_value = [
+            [p_eleven_first_upload, new_p_eleven_upload, p_twelve_upload]
+        ]
         second_job_run_time = datetime.datetime(2020, 4, 2)
         with FakeClock(second_job_run_time):
             update_ehr_status.update_ehr_status_participant()
@@ -191,6 +203,18 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
             first_ehr_time=p_eleven_first_upload.latest_upload_time,
             latest_ehr_time=new_p_eleven_upload.latest_upload_time
         )
+        self.assert_has_participant_ehr_record(
+            participant_id=11,
+            file_timestamp=p_eleven_first_upload.latest_upload_time,
+            first_seen=first_job_run_time,
+            last_seen=second_job_run_time
+        )
+        self.assert_has_participant_ehr_record(
+            participant_id=11,
+            file_timestamp=new_p_eleven_upload.latest_upload_time,
+            first_seen=second_job_run_time,
+            last_seen=second_job_run_time
+        )
 
         self.assert_ehr_data_matches(
             participant_id=12,
@@ -199,6 +223,12 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
             first_ehr_time=p_twelve_upload.latest_upload_time,
             latest_ehr_time=p_twelve_upload.latest_upload_time
         )
+        self.assert_has_participant_ehr_record(
+            participant_id=12,
+            file_timestamp=p_twelve_upload.latest_upload_time,
+            first_seen=second_job_run_time,
+            last_seen=second_job_run_time
+        )
 
         self.assert_ehr_data_matches(
             participant_id=14,
@@ -206,6 +236,12 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
             currently_has_ehr=False,
             first_ehr_time=p_fourteen_upload.latest_upload_time,
             latest_ehr_time=p_fourteen_upload.latest_upload_time
+        )
+        self.assert_has_participant_ehr_record(
+            participant_id=14,
+            file_timestamp=p_fourteen_upload.latest_upload_time,
+            first_seen=first_job_run_time,
+            last_seen=first_job_run_time
         )
 
 
@@ -262,7 +298,9 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
     @mock.patch("rdr_service.offline.update_ehr_status.make_update_participant_summaries_job")
     def test_ignores_bad_data(self, mock_summary_job, mock_organization_job):
         invalid_participant_id = -1
-        mock_summary_job.return_value.__iter__.return_value = [[self.EhrUpdatePidRow(invalid_participant_id)]]
+        mock_summary_job.return_value.__iter__.return_value = [[
+            self.EhrUpdatePidRow(invalid_participant_id, datetime.datetime(2020, 10, 10))
+        ]]
         mock_organization_job.return_value.__iter__.return_value = [
             [
                 self.TableCountsRow(org_id="FOO_A", person_upload_time="an invalid date string"),
