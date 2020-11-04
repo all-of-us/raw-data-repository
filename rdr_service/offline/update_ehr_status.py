@@ -100,6 +100,9 @@ def update_participant_summaries_from_job(job):
             except HTTPException as e:
                 LOG.error(f'HTTP Exception: {e}', exc_info=True)
 
+            except Exception:  # pylint: disable=broad-except
+                LOG.error(f'Exception encountered', exc_info=True)
+
 
 def make_update_organizations_job():
     config_param = config.EHR_STATUS_BIGQUERY_VIEW_ORGANIZATION
