@@ -1,10 +1,12 @@
 import argparse
 import logging
 import sys
+from typing import Type
 
 from rdr_service.dao import database_factory
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
+from rdr_service.tools.tool_libs.app_engine_manager import AppConfigClass
 
 logger = logging.getLogger("rdr_logger")
 
@@ -35,12 +37,21 @@ class ToolBase(object):
             logger.error("activating google sql proxy failed.")
             return 1
 
+    def get_server_config(self):
+        # The AppConfig class uses the git_project field from args when initializing,
+        # looks like it uses it as a root directory for other purposes.
+        self.args.git_project = self.gcp_env.git_project
+
+        # Get the server config
+        app_config_manager = AppConfigClass(self.args, self.gcp_env)
+        return app_config_manager.get_bucket_app_config()
+
     @staticmethod
     def get_session():
         return database_factory.make_server_cursor_database().session()
 
 
-def cli_run(tool_cmd, tool_desc, tool_class: ToolBase, parser_hook=None, defaults={}):
+def cli_run(tool_cmd, tool_desc, tool_class: Type[ToolBase], parser_hook=None, defaults={}):
     # Set global debug value and setup application logging.
     setup_logging(
         logger, tool_cmd, "--debug" in sys.argv, "{0}.log".format(tool_cmd) if "--log-file" in sys.argv else None
