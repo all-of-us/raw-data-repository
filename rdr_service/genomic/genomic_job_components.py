@@ -14,6 +14,7 @@ import sqlalchemy
 
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
     bq_genomic_set_update, bq_genomic_file_processed_update
+from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 
 from rdr_service import clock
@@ -1451,6 +1452,7 @@ class GenomicBiobankSamplesCoupler:
                                                          "pids",
                                                          "order_ids",
                                                          "site_ids",
+                                                         "state_ids",
                                                          "sample_ids",
                                                          "valid_withdrawal_status",
                                                          "valid_suspension_status",
@@ -1466,6 +1468,7 @@ class GenomicBiobankSamplesCoupler:
         self.member_dao = GenomicSetMemberDao()
         self.site_dao = SiteDao()
         self.ps_dao = ParticipantSummaryDao()
+        self.code_dao = CodeDao()
         self.run_id = run_id
         self.controller = controller
 
@@ -1558,11 +1561,24 @@ class GenomicBiobankSamplesCoupler:
             )
             valid_flags = self._calculate_validation_flags(validation_criteria)
             logging.info(f'Creating genomic set members for PID: {samples_meta.pids[i]}')
+
+            # Get NY flag for collected-site
+            if samples_meta.site_ids[i]:
+                _ny_flag = self._get_new_york_flag_from_site(samples_meta.site_ids[i])
+
+            # Get NY flag for mail-kit
+            elif samples_meta.state_ids[i]:
+                _ny_flag = self._get_new_york_flag_from_state_id(samples_meta.state_ids[i])
+
+            else:
+                logging.warning(f'No collection site or mail kit state. Skipping biobank_id: {bid}')
+                continue
+
             new_array_member_obj = GenomicSetMember(
                 biobankId=bid,
                 genomicSetId=new_genomic_set.id,
                 participantId=samples_meta.pids[i],
-                nyFlag=self._get_new_york_flag(samples_meta.site_ids[i]),
+                nyFlag=_ny_flag,
                 sexAtBirth=samples_meta.sabs[i],
                 collectionTubeId=samples_meta.sample_ids[i],
                 validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
@@ -1655,6 +1671,7 @@ class GenomicBiobankSamplesCoupler:
           p.participant_id,
           o.biobank_order_id,
           o.collected_site_id,
+          mk.state_id,
           ss.biobank_stored_sample_id,
           CASE
             WHEN p.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
@@ -1694,6 +1711,7 @@ class GenomicBiobankSamplesCoupler:
             ) native ON native.participant_id = p.participant_id
             LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
                     AND m.genomic_workflow_state <> :ignore_param
+            LEFT JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id
         WHERE TRUE
             AND (
                     CASE WHEN (
@@ -1741,6 +1759,7 @@ class GenomicBiobankSamplesCoupler:
               ps.participant_id,
               0 AS biobank_order_id,
               0 AS collected_site_id,
+              NULL as state_id,
               0 AS biobank_stored_sample_id,
               CASE
                 WHEN ps.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
@@ -1825,6 +1844,7 @@ class GenomicBiobankSamplesCoupler:
               ps.participant_id,
               0 AS biobank_order_id,
               0 AS collected_site_id,
+              NULL as state_id,
               0 AS biobank_stored_sample_id,
               CASE
                 WHEN ps.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
@@ -2036,13 +2056,21 @@ class GenomicBiobankSamplesCoupler:
         new_member_obj = GenomicSetMember(**kwargs)
         return self.member_dao.insert(new_member_obj)
 
-    def _get_new_york_flag(self, collected_site_id):
+    def _get_new_york_flag_from_site(self, collected_site_id):
         """
         Looks up whether a collected site's state is NY
         :param collected_site_id: the id of the site
         :return: int (1 or 0 for NY or Not)
         """
         return int(self.site_dao.get(collected_site_id).state == 'NY')
+
+    def _get_new_york_flag_from_state_id(self, state_id):
+        """
+        Looks up whether a collected site's state is NY
+        :param state_id: the code ID for the state
+        :return: int (1 or 0 for NY or Not)
+        """
+        return int(self.code_dao.get(state_id).value.split('_')[1] == 'NY')
 
     def _calculate_validation_flags(self, validation_criteria):
         """
