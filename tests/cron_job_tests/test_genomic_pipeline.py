@@ -2277,9 +2277,9 @@ class GenomicPipelineTest(BaseTestCase):
             "vcf_path",
             "vcf_index_path",
             "research_id",
-            "sex_concordance",
-            "contamination",
-            "processing_status",
+            # "sex_concordance",
+            # "contamination",
+            # "processing_status",
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -2310,9 +2310,10 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(metric.vcfMd5Path, rows[1]['vcf_md5_path'])
 
             # Test processing status columns
-            self.assertEqual(metric.sexConcordance, rows[1]['sex_concordance'])
-            self.assertEqual(metric.contamination, rows[1]['contamination'])
-            self.assertEqual(metric.processingStatus, rows[1]['processing_status'])
+            # TODO: Column reqs not finalized yet
+            # self.assertEqual(metric.sexConcordance, rows[1]['sex_concordance'])
+            # self.assertEqual(metric.contamination, rows[1]['contamination'])
+            # self.assertEqual(metric.processingStatus, rows[1]['processing_status'])
 
             # Test run record is success
             run_obj = self.job_run_dao.get(4)
@@ -2390,9 +2391,9 @@ class GenomicPipelineTest(BaseTestCase):
             "cram_md5_path",
             "crai_path",
             "research_id",
-            "sex_concordance",
-            "contamination",
-            "processing_status",
+            # "sex_concordance",
+            # "contamination",
+            # "processing_status",
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -2425,9 +2426,10 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(metric.craiPath, rows[0]["crai_path"])
 
             # Test processing status columns
-            self.assertEqual(metric.sexConcordance, rows[0]['sex_concordance'])
-            self.assertEqual(metric.contamination, rows[0]['contamination'])
-            self.assertEqual(metric.processingStatus, rows[0]['processing_status'])
+            # TODO: Column reqs not finalized yet
+            # self.assertEqual(metric.sexConcordance, rows[0]['sex_concordance'])
+            # self.assertEqual(metric.contamination, rows[0]['contamination'])
+            # self.assertEqual(metric.processingStatus, rows[0]['processing_status'])
 
             # Test run record is success
             run_obj = self.job_run_dao.get(4)

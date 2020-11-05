@@ -2138,9 +2138,9 @@ class ManifestDefinitionProvider:
                         GenomicGCValidationMetrics.vcfTbiPath,
                         GenomicGCValidationMetrics.vcfMd5Path,
                         Participant.researchId,
-                        GenomicGCValidationMetrics.sexConcordance,
-                        GenomicGCValidationMetrics.contamination,
-                        GenomicGCValidationMetrics.processingStatus,
+                        #GenomicGCValidationMetrics.sexConcordance,
+                        #GenomicGCValidationMetrics.contamination,
+                        #GenomicGCValidationMetrics.processingStatus,
                     ]
                 ).select_from(
                     sqlalchemy.join(
@@ -2193,9 +2193,9 @@ class ManifestDefinitionProvider:
                         GenomicGCValidationMetrics.craiPath,
                         Participant.researchId,
                         GenomicSetMember.sampleId,
-                        GenomicGCValidationMetrics.sexConcordance,
-                        GenomicGCValidationMetrics.contamination,
-                        GenomicGCValidationMetrics.processingStatus,
+                        #GenomicGCValidationMetrics.sexConcordance,
+                        #GenomicGCValidationMetrics.contamination,
+                        #GenomicGCValidationMetrics.processingStatus,
                     ]
                 ).select_from(
                     sqlalchemy.join(
@@ -2411,9 +2411,9 @@ class ManifestDefinitionProvider:
                 "vcf_index_path",
                 "vcf_md5_path",
                 "research_id",
-                "sex_concordance",
-                "contamination",
-                "processing_status",
+                #"sex_concordance",
+                #"contamination",
+                #"processing_status",
             )
 
         elif manifest_type == GenomicManifestTypes.AW3_WGS:
@@ -2433,9 +2433,9 @@ class ManifestDefinitionProvider:
                 "cram_md5_path",
                 "crai_path",
                 "research_id",
-                "sex_concordance",
-                "contamination",
-                "processing_status",
+                #"sex_concordance",
+                #"contamination",
+                #"processing_status",
             )
 
         return columns
