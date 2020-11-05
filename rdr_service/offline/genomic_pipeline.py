@@ -207,7 +207,7 @@ def aw4_wgs_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.AW4_WGS_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              sub_folder_name=config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[0])
+                              sub_folder_name=config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[1])
                               ) as controller:
         controller.run_general_ingestion_workflow()
 
