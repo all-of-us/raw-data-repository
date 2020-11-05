@@ -7,7 +7,6 @@ import json
 
 from rdr_service import config
 from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
-from rdr_service.tools.tool_libs.app_engine_manager import AppConfigClass
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
@@ -45,13 +44,7 @@ class CopeAnswersClass(ToolBase):
         }
 
     def find_external_ids_for_month(self, cope_month):
-        # The AppConfig class uses the git_project field from args when initializing,
-        # looks like it uses it as a root directory for other purposes.
-        self.args.git_project = self.gcp_env.git_project
-
-        # Get the server config
-        app_config_manager = AppConfigClass(self.args, self.gcp_env)
-        server_config = app_config_manager.get_bucket_app_config()
+        server_config = self.get_server_config()
 
         for external_ids, month in server_config[config.COPE_FORM_ID_MAP].items():
             if cope_month.lower() == month.lower():

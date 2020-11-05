@@ -22,6 +22,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicGCValidationMetricsDao,
 )
+from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao, QuestionnaireQuestionDao
@@ -114,6 +115,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.sample_dao = BiobankStoredSampleDao()
+        self.mk_dao = MailKitOrderDao()
         self.site_dao = SiteDao()
         self.code_dao = CodeDao()
         self.q_dao = QuestionnaireDao()
@@ -868,7 +870,7 @@ class GenomicPipelineTest(BaseTestCase):
     def test_new_participant_workflow(self):
         # Test for Cohort 3 workflow
         # create test samples
-        test_biobank_ids = (100001, 100002, 100003, 100004, 100005, 100006, 100007)
+        test_biobank_ids = (100001, 100002, 100003, 100004, 100005, 100006, 100007, 100008)
         fake_datetime_old = datetime.datetime(2019, 12, 31, tzinfo=pytz.utc)
         fake_datetime_new = datetime.datetime(2020, 1, 5, tzinfo=pytz.utc)
         # update the sites' States for the state test (NY or AZ)
@@ -901,9 +903,23 @@ class GenomicPipelineTest(BaseTestCase):
             test_identifier = BiobankOrderIdentifier(
                     system=u'c',
                     value=u'e{}'.format(bid))
+
+            # collected site
+            if bid == 100002:
+                # NY
+                col_site = 1
+
+            elif bid == 100008:
+                # mail kit, NY
+                col_site = None
+
+            else:
+                # not NY
+                col_site = 2
+
             self._make_biobank_order(biobankOrderId=f'W{bid}',
                                      participantId=p.participantId,
-                                     collectedSiteId=1 if bid == 100002 else 2,
+                                     collectedSiteId=col_site,
                                      identifiers=[test_identifier])
             sample_args = {
                 'test': '1UR10' if bid == 100005 else '1SAL2',
@@ -918,6 +934,22 @@ class GenomicPipelineTest(BaseTestCase):
                 insert_dtm = fake_datetime_old
             with clock.FakeClock(insert_dtm):
                 self._make_stored_sample(**sample_args)
+
+            # Make Mail Kit NY participant
+            if bid == 100008:
+                code_to_insert = Code(
+                    system="http://terminology.pmi-ops.org/CodeSystem/ppi",
+                    value="State_NY",
+                    display="c",
+                    topic="d",
+                    codeType=CodeType.ANSWER, mapped=True)
+
+                ny_code = self.code_dao.insert(code_to_insert)
+
+                mko = self.mk_dao.get(8)
+                mko.stateId = ny_code.codeId
+
+                self.mk_dao.update(mko)
 
         # insert an 'already ran' workflow to test proper exclusions
         self.job_run_dao.insert(GenomicJobRun(
@@ -937,7 +969,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Should be a aou_wgs and aou_array for each
         new_genomic_members = self.member_dao.get_all()
-        self.assertEqual(10, len(new_genomic_members))
+        self.assertEqual(12, len(new_genomic_members))
 
         # Test GenomicMember's data
         # 100001 : Excluded, created before last run,
@@ -945,41 +977,55 @@ class GenomicPipelineTest(BaseTestCase):
         member_genome_types = {_member.biobankId: list() for _member in new_genomic_members}
         for member in new_genomic_members:
             member_genome_types[member.biobankId].append(member.genomeType)
-            if member.biobankId == '100002':
+
+            if member.biobankId == 100002:
                 # 100002 : Included, Valid
                 self.assertEqual(1, member.nyFlag)
                 self.assertEqual('100002', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
-            if member.biobankId == '100003':
+
+            if member.biobankId == 100003:
                 # 100003 : Included, Valid
                 self.assertEqual(0, member.nyFlag)
                 self.assertEqual('100003', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
-            if member.biobankId == '100004':
+
+            if member.biobankId == 100004:
                 # 100004 : Included, NA is now a valid SAB
                 self.assertEqual(0, member.nyFlag)
                 self.assertEqual('100004', member.collectionTubeId)
                 self.assertEqual('NA', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
-            if member.biobankId == '100006':
+
+            if member.biobankId == 100006:
                 # 100006 : Included, Invalid consent
                 self.assertEqual(0, member.nyFlag)
                 self.assertEqual('100006', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.INVALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
-            if member.biobankId == '100007':
+
+            if member.biobankId == 100007:
                 # 100007 : Included, Invalid Indian/Native
                 self.assertEqual(0, member.nyFlag)
                 self.assertEqual('100007', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.INVALID, member.validationStatus)
                 self.assertEqual('Y', member.ai_an)
+
+            if member.biobankId == 100008:
+                # 100008 : Included, Invalid Indian/Native
+                self.assertEqual(1, member.nyFlag)
+                self.assertEqual('100008', member.collectionTubeId)
+                self.assertEqual('F', member.sexAtBirth)
+                self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
+                self.assertEqual('N', member.ai_an)
+
         for bbid in member_genome_types.keys():
             self.assertIn('aou_array', member_genome_types[bbid])
             self.assertIn('aou_wgs', member_genome_types[bbid])

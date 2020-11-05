@@ -21,7 +21,7 @@ from rdr_service.model.code import CodeType
 from rdr_service.model.hpo import HPO
 from rdr_service.participant_enums import (ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType, TEST_HPO_ID,
                                            TEST_HPO_NAME, WithdrawalStatus, SuspensionStatus,
-                                           SampleStatus, DeceasedStatus, QuestionnaireStatus)
+                                           SampleStatus, DeceasedStatus, QuestionnaireStatus, EhrStatus)
 from tests.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -224,7 +224,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 "deceasedStatus": "UNSET",
                 "retentionEligibleStatus": "NOT_ELIGIBLE",
                 "retentionType": "UNSET",
-                "sample1SAL2CollectionMethod": "UNSET"
+                "sample1SAL2CollectionMethod": "UNSET",
+                "isEhrDataAvailable": False,
+                "wasEhrDataAvailable": False
             }
         )
 
@@ -3167,6 +3169,29 @@ class ParticipantSummaryApiTest(BaseTestCase):
         ps = self.send_get("ParticipantSummary?retentionType=UNSET&_includeTotal=TRUE")
         self.assertEqual(len(ps['entry']), 0)
 
+        attrs = {
+            'questionnaireOnHealthcareAccessAuthored': in_eighteen_month,
+            'ehrReceiptTime': in_eighteen_month
+        }
+        self._make_participant_retention_eligible(participant_id[1:], **attrs)
+        ps = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(ps['retentionType'], 'ACTIVE_AND_PASSIVE')
+
+        ps = self.send_get("ParticipantSummary?retentionType=ACTIVE_AND_PASSIVE&_includeTotal=TRUE")
+        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'ACTIVE_AND_PASSIVE')
+        ps = self.send_get("ParticipantSummary?retentionType=ACTIVE_AND_PASSIVE&retentionEligibleStatus=ELIGIBLE"
+                           "&_includeTotal=TRUE")
+        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'ACTIVE_AND_PASSIVE')
+
+        ps = self.send_get("ParticipantSummary?retentionType=ACTIVE&_includeTotal=TRUE")
+        self.assertEqual(len(ps['entry']), 0)
+
+        ps = self.send_get("ParticipantSummary?retentionType=PASSIVE&_includeTotal=TRUE")
+        self.assertEqual(len(ps['entry']), 0)
+
+        ps = self.send_get("ParticipantSummary?retentionType=UNSET&_includeTotal=TRUE")
+        self.assertEqual(len(ps['entry']), 0)
+
     def test_query_by_enrollment_site(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
         participant_id = participant["participantId"]
@@ -3208,6 +3233,24 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.send_get("ParticipantSummary?enrollmentStatus=MEMBER|FULL_PARTICIPANT", expected_status=400)
         self.send_get("ParticipantSummary?withdrawalStatus=test", expected_status=400)
         self.send_get("ParticipantSummary?suspensionStatus=test", expected_status=400)
+
+    def test_ehr_field_mapping(self):
+        """Check that the new set of EHR data availablity fields are present on the summary"""
+        first_receipt_time = datetime.datetime(2020, 3, 27)
+        latest_receipt_time = datetime.datetime(2020, 8, 4)
+
+        participant_summary = self.data_generator.create_database_participant_summary(
+            ehrStatus=EhrStatus.PRESENT,
+            isEhrDataAvailable=True,
+            ehrReceiptTime=first_receipt_time,
+            ehrUpdateTime=latest_receipt_time
+        )
+        response = self.send_get(f'Participant/P{participant_summary.participantId}/Summary')
+
+        self.assertTrue(response['isEhrDataAvailable'])
+        self.assertTrue(response['wasEhrDataAvailable'])
+        self.assertEqual(first_receipt_time.isoformat(), response['firstEhrReceiptTime'])
+        self.assertEqual(latest_receipt_time.isoformat(), response['latestEhrReceiptTime'])
 
     def _remove_participant_retention_eligible(self, participant_id):
         ps_dao = ParticipantSummaryDao()

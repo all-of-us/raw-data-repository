@@ -438,6 +438,14 @@ class RetentionStatus(messages.Enum):
     ELIGIBLE = 2
 
 
+class RetentionType(messages.Enum):
+
+    UNSET = 0
+    ACTIVE = 1
+    PASSIVE = 2
+    ACTIVE_AND_PASSIVE = 3
+
+
 class MetricsCacheType(messages.Enum):
     """Types of metrics cache"""
 

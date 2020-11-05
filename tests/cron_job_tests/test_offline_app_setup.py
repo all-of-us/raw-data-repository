@@ -1,5 +1,4 @@
 import mock
-from werkzeug.exceptions import HTTPException
 
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -14,14 +13,13 @@ class OfflineAppTest(BaseTestCase):
 
     def test_offline_http_exceptions_get_logged(self):
         """Make sure HTTPException are logged when thrown"""
-        expected_error_message_text = 'This exception message should appear in the logs'
 
         # Need to raise an HTTPException on a cron call, picking an arbitrary one that is easy to mock
         with mock.patch('rdr_service.offline.main.mark_ghost_participants') as mock_cron_call, \
                 mock.patch('rdr_service.app_util.check_cron', return_value=True),\
-                mock.patch('rdr_service.main.logging') as mock_logging:
+                mock.patch('rdr_service.services.gcp_logging.logging') as mock_logging:
             def throw_exception():
-                raise HTTPException(expected_error_message_text)
+                raise Exception('This exception message should appear in the logs')
             mock_cron_call.side_effect = throw_exception
 
             # Call to trigger the exception
@@ -35,5 +33,5 @@ class OfflineAppTest(BaseTestCase):
             error_log_call = mock_logging.error.call_args
             self.assertIsNotNone(error_log_call, 'An error log should have been made')
 
-            error_message = error_log_call.args[0]
-            self.assertIn(expected_error_message_text, error_message)
+            traceback = error_log_call.args[0]
+            self.assertIn('throw_exception', traceback, "Traceback should show where the error was raised")

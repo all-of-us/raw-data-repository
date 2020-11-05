@@ -253,7 +253,8 @@ class DataGenerator:
             "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
             "enrollmentStatus": EnrollmentStatus.INTERESTED,
             "participantOrigin": participant.participantOrigin,
-            "deceasedStatus": DeceasedStatus.UNSET
+            "deceasedStatus": DeceasedStatus.UNSET,
+            "isEhrDataAvailable": False
         }
 
         defaults.update(kwargs)

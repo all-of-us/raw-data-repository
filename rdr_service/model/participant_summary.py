@@ -1,6 +1,7 @@
 import datetime
 
 from sqlalchemy import (
+    Boolean,
     Column,
     Computed,
     Date,
@@ -15,6 +16,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import expression
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, EnumZeroBased, UTCDateTime, UTCDateTime6
@@ -346,16 +348,56 @@ class ParticipantSummary(Base):
     # EHR status related columns
     ehrStatus = Column("ehr_status", Enum(EhrStatus), default=EhrStatus.NOT_PRESENT)
     """
-    Indicates whether Electronic Health Records (EHR) are present for this participant
+    .. warning::
+        DEPRECATED - use :py:attr:`wasEhrDataAvailable` instead.
+
+    Indicates whether Electronic Health Records (EHR) have ever been present for the participant.
 
     :ref:`Enumerated values <ehr_status>`
     """
 
     ehrReceiptTime = Column("ehr_receipt_time", UTCDateTime)
-    'UTC timestamp indicating when RDR was first made aware of signed and uploaded EHR documents'
+    """
+    .. warning::
+        DEPRECATED - use :py:attr:`firstEhrReceiptTime` instead.
+
+    UTC timestamp indicating when RDR was first made aware of signed and uploaded EHR documents
+    """
 
     ehrUpdateTime = Column("ehr_update_time", UTCDateTime)
-    'UTC timestamp indicating the latest time RDR was aware of signed and uploaded EHR documents'
+    """
+    .. warning::
+        DEPRECATED - use :py:attr:`latestEhrReceiptTime` instead.
+
+    UTC timestamp indicating the latest time RDR was aware of signed and uploaded EHR documents
+    """
+
+    isEhrDataAvailable = Column(
+        "is_ehr_data_available",
+        Boolean,
+        nullable=False,
+        server_default=expression.false()
+    )
+    """
+    A true or false value that indicates whether Electronic Health Records (EHR)
+    are currently present for the participant.
+    """
+
+    wasEhrDataAvailable = None  # Placeholder filled in by the DAO using the value in ehrStatus
+    """
+    A true or false value that indicates whether Electronic Health Records (EHR)
+    have ever been present for the participant.
+    """
+
+    firstEhrReceiptTime = None  # Placeholder filled in by the DAO using the value in ehrReceiptTime
+    """
+    UTC timestamp indicating when RDR was first made aware of signed and uploaded EHR documents
+    """
+
+    latestEhrReceiptTime = None  # Placeholder filled in by the DAO using the value in ehrUpdateTime
+    """
+    UTC timestamp indicating the latest time RDR was aware of signed and uploaded EHR documents
+    """
 
     physicalMeasurementsStatus = Column(
         "physical_measurements_status", Enum(PhysicalMeasurementsStatus), default=PhysicalMeasurementsStatus.UNSET
