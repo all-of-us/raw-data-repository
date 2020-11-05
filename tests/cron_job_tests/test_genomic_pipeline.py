@@ -2633,7 +2633,7 @@ class GenomicPipelineTest(BaseTestCase):
         # simulates the AW1 (sample_ids come from Biobank)
         self._update_test_sample_ids()
 
-        # Set up test A2 manifest
+        # Set up test Aw4 manifest
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
         sub_folder = config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[0])
 
@@ -2678,7 +2678,7 @@ class GenomicPipelineTest(BaseTestCase):
         # simulates the AW1 (sample_ids come from Biobank)
         self._update_test_sample_ids()
 
-        # Set up test A2 manifest
+        # Set up test AW4 manifest
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
         sub_folder = config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[1])
 
