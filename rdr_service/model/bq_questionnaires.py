@@ -550,7 +550,7 @@ class BQPDRCOPEDec(BQTable):
 
 class BQPDRCOPEDecView(BQView):
     """ PDR COPE Dec BiqQuery View """
-    __viewname__ = 'v_pdr_mod_cope_Dec'
+    __viewname__ = 'v_pdr_mod_cope_dec'
     __viewdescr__ = 'PDR COPE Dec Module View'
     __table__ = BQPDRCOPEDec
     __pk_id__ = ['participant_id', 'questionnaire_response_id']
