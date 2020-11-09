@@ -24,7 +24,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.participant_enums import DeceasedNotification, DeceasedReportDenialReason, DeceasedReportStatus,\
-    DeceasedStatus
+    DeceasedStatus, SuspensionStatus, WithdrawalStatus
 
 
 class DeceasedReportDao(UpdatableDao):
@@ -629,17 +629,21 @@ class DeceasedReportDao(UpdatableDao):
 
         with self.session() as session:
             # Order reports by newest to oldest based on last date a user modified it
-            query = session.query(DeceasedReport).order_by(
+            query = session.query(DeceasedReport).join(Participant).order_by(
                 desc(func.coalesce(DeceasedReport.reviewed, DeceasedReport.authored))
+            ).filter(
+                Participant.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                Participant.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN
             )
             if participant_id is not None:
                 query = query.filter(DeceasedReport.participantId == participant_id)
             else:
                 if org_id is not None:
                     if org_id == 'UNSET':
-                        query = query.join(Participant).filter(Participant.organizationId.is_(None))
+                        query = query.filter(Participant.organizationId.is_(None))
                     else:
-                        query = query.join(Participant).join(Organization).filter(Organization.externalId == org_id)
+                        # Join and filter by the participant's Organization
+                        query = query.join(Organization).filter(Organization.externalId == org_id)
                 if status is not None:
                     if status not in self.status_map:
                         raise BadRequest(f'Invalid status "{status}"')

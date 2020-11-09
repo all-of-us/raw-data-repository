@@ -11,7 +11,7 @@ from rdr_service.model.api_user import ApiUser
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import DeceasedNotification, DeceasedReportDenialReason, DeceasedReportStatus,\
-    DeceasedStatus
+    DeceasedStatus, SuspensionStatus, WithdrawalStatus
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -697,6 +697,14 @@ class SearchDeceasedReportApiTest(DeceasedReportTestBase):
             status=DeceasedReportStatus.PENDING,
             authored=datetime(2020, 2, 18)
         ).id
+        unpaired_suspended_participant_id = create_participant_func(
+            suspensionStatus=SuspensionStatus.NO_CONTACT
+        ).participantId
+        create_deceased_report_func(
+            participantId=unpaired_suspended_participant_id,
+            status=DeceasedReportStatus.PENDING,
+            authored=datetime(2020, 2, 18)
+        )
 
         test_org = self.data_generator.create_database_organization(externalId='TEST')
         test_participant_1_id = create_participant_func(organizationId=test_org.organizationId).participantId
@@ -718,6 +726,15 @@ class SearchDeceasedReportApiTest(DeceasedReportTestBase):
             status=DeceasedReportStatus.APPROVED,
             reviewed=datetime(2020, 2, 3)
         ).id
+        test_withdrawn_participant_id = create_participant_func(
+            organizationId=test_org.organizationId,
+            withdrawalStatus=WithdrawalStatus.NO_USE
+        ).participantId
+        create_deceased_report_func(
+            participantId=test_withdrawn_participant_id,
+            status=DeceasedReportStatus.PENDING,
+            reviewed=datetime(2020, 2, 3)
+        )
 
         other_org = self.data_generator.create_database_organization(externalId='')
         other_participant_1_id = create_participant_func(organizationId=other_org.organizationId).participantId
@@ -756,6 +773,7 @@ class SearchDeceasedReportApiTest(DeceasedReportTestBase):
             self.unpaired_2_report_id   # Authored 01/05
         ], self.send_get(f'DeceasedReports?status=cancelled'))
 
+        # This also implicitly checks that the suspended and withdrawn participants are left out
         self.assertListResponseMatches([
             self.test_1_report_id,      # Authored 12/05
             self.unpaired_1_report_id,  # Authored 04/01
@@ -763,12 +781,14 @@ class SearchDeceasedReportApiTest(DeceasedReportTestBase):
         ], self.send_get(f'DeceasedReports?status=preliminary'))
 
     def test_searching_api_by_organization(self):
+        # This also implicitly checks that the withdrawn participant is left out
         self.assertListResponseMatches([
             self.test_1_report_id,      # Authored 12/05
             self.test_2_report_id,      # Authored 08/09
             self.test_3_report_id       # Authored 02/03
         ], self.send_get(f'DeceasedReports?org_id=TEST'))
 
+        # This also implicitly checks that the suspended participant is left out
         self.assertListResponseMatches([
             self.unpaired_1_report_id,  # Authored 04/01
             self.unpaired_3_report_id,  # Authored 02/18
