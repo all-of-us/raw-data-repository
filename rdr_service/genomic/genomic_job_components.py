@@ -485,7 +485,9 @@ class GenomicFileIngester:
 
                 # Set the QC status and fingerprint path
                 member.qcStatus = self._get_qc_status_from_value(row_copy['qcstatus'])
-                member.fingerprintPath = row_copy['fppath']
+
+                if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
+                    member.fingerprintPath = row_copy['fppath']
 
                 self.member_dao.update(member)
 
