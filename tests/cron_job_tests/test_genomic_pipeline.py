@@ -2650,8 +2650,10 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(2, member.aw4ManifestJobRunID)
             if member.id == 1:
                 self.assertEqual(GenomicQcStatus.PASS, member.qcStatus)
+                self.assertEqual("gs://drc-broad-test/fp_path_1.vcf.gz", member.fingerprintPath)
             if member.id == 2:
                 self.assertEqual(GenomicQcStatus.FAIL, member.qcStatus)
+                self.assertEqual("gs://drc-broad-test/fp_path_2.vcf.gz", member.fingerprintPath)
 
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)

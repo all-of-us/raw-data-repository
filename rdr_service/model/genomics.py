@@ -213,6 +213,9 @@ class GenomicSetMember(Base):
     # Broad QC Status
     qcStatus = Column('qc_status', Enum(GenomicQcStatus), default=GenomicQcStatus.UNSET)
 
+    # Broad fingerprint file path
+    fingerprintPath = Column('fingerprint_path', String(255), nullable=True)
+
     # Developer note
     devNote = Column('dev_note', String(255), nullable=True)
 
