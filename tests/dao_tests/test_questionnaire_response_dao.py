@@ -816,6 +816,20 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeDec)
         self.assertEqual(num_completed_ppi_after_setup + 1, participant_summary.numCompletedPPIModules)
 
+    def test_ppi_questionnaire_count_field_not_found(self):
+        """Make sure QuestionnaireResponseDao doesn't fail when an unknown field is part of the list"""
+
+        config.override_setting(config.PPI_QUESTIONNAIRE_FIELDS, ['questionnaireOnTheBasics', 'nonExistentField'])
+
+        self.insert_codes()
+        p = Participant(participantId=1, biobankId=2)
+        self.participant_dao.insert(p)
+
+        self._setup_participant()
+        num_completed_ppi_after_setup = self.participant_summary_dao.get(1).numCompletedPPIModules
+        self.assertEqual(1, num_completed_ppi_after_setup,
+                         "Was expecting the Basics questionnaire as part of the setup to check that counting works")
+
     def _create_dna_program_questionnaire(self, created_date=datetime.datetime(2020, 5, 5)):
         self._create_questionnaire(created_date)
         self.data_generator.create_database_questionnaire_concept(

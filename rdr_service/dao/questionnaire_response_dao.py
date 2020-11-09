@@ -90,7 +90,7 @@ def count_completed_baseline_ppi_modules(participant_summary):
 def count_completed_ppi_modules(participant_summary):
     ppi_module_fields = config.getSettingList(config.PPI_QUESTIONNAIRE_FIELDS, [])
     return sum(
-        1 for field in ppi_module_fields if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED
+        1 for field in ppi_module_fields if getattr(participant_summary, field, None) == QuestionnaireStatus.SUBMITTED
     )
 
 
