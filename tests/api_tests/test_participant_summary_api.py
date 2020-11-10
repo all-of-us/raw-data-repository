@@ -3026,61 +3026,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
         BaseTestCase.switch_auth_user("example@example.com", "example")
         self.assertEqual(response['total'], 1)
 
-    def test_new_suspension_logic(self):
-        participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
-        participant_id = participant["participantId"]
-        questionnaire_id = self.create_questionnaire("questionnaire3.json")
-        with FakeClock(TIME_1):
-            self.send_consent(participant_id)
-        # Populate some answers to the questionnaire
-        answers = {
-            "race": RACE_WHITE_CODE,
-            "genderIdentity": GENDER_PREFER_NOT_TO_ANSWER_CODE,
-            "firstName": self.fake.first_name(),
-            "middleName": self.fake.first_name(),
-            "lastName": self.fake.last_name(),
-            "zipCode": "78751",
-            "state": PMI_SKIP_CODE,
-            "streetAddress": self.streetAddress,
-            "streetAddress2": self.streetAddress2,
-            "city": "Austin",
-            "sex": PMI_SKIP_CODE,
-            "sexualOrientation": PMI_SKIP_CODE,
-            "phoneNumber": "512-555-5555",
-            "recontactMethod": PMI_SKIP_CODE,
-            "language": PMI_SKIP_CODE,
-            "education": PMI_SKIP_CODE,
-            "income": PMI_SKIP_CODE,
-            "dateOfBirth": datetime.date(1978, 10, 9),
-            "CABoRSignature": "signature.pdf",
-        }
-        self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
-        participant["suspensionStatus"] = "NO_CONTACT"
-        path = "Participant/%s" % participant_id
-
-        # SUSPENDED_PARTICIPANT_FIELDS = ["zipCode", "city", "streetAddress", "streetAddress2", "phoneNumber",
-        #                                 "loginPhoneNumber", "email"]
-        with FakeClock(TIME_1):
-            self.send_put(path, participant, headers={"If-Match": 'W/"1"'})
-        with FakeClock(TIME_2):
-            ps = self.send_get("Participant/%s/Summary" % participant_id)
-            self.assertEqual(ps['streetAddress'], '1234 Main Street')
-            self.assertEqual(ps['zipCode'], '78751')
-            self.assertEqual(ps['city'], 'Austin')
-            self.assertEqual(ps['streetAddress2'], 'APT C')
-            self.assertEqual(ps['phoneNumber'], '512-555-5555')
-            self.assertEqual(hasattr(ps, 'loginPhoneNumber'), False)
-            self.assertNotEqual(ps['email'], 'UNSET')
-        with FakeClock(TIME_4):
-            ps = self.send_get("Participant/%s/Summary" % participant_id)
-            self.assertEqual(ps['streetAddress'], 'UNSET')
-            self.assertEqual(ps['zipCode'], 'UNSET')
-            self.assertEqual(ps['city'], 'UNSET')
-            self.assertEqual(ps['streetAddress2'], 'UNSET')
-            self.assertEqual(ps['phoneNumber'], 'UNSET')
-            self.assertEqual(ps['loginPhoneNumber'], 'UNSET')
-            self.assertEqual(ps['email'], 'UNSET')
-
     def test_retention(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
         participant_id = participant["participantId"]
