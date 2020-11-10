@@ -79,6 +79,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "questionnaireOnCopeJune": "UNSET",
             "questionnaireOnCopeJuly": "UNSET",
             "questionnaireOnCopeNov": "UNSET",
+            "questionnaireOnCopeDec": "UNSET",
             "questionnaireOnDnaProgram": "UNSET",
             "biospecimenCollectedSite": "UNSET",
             "biospecimenFinalizedSite": "UNSET",

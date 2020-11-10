@@ -52,6 +52,7 @@ _consent_module_question_map = {
     'ProgramUpdate': None,
     'COPE': 'section_participation',
     'cope_nov': 'section_participation',
+    'cope_dec': 'section_participation',
     'GeneticAncestry': 'GeneticAncestry_ConsentAncestryTraits'
 }
 
@@ -65,6 +66,7 @@ _consent_expired_question_map = {
     'ProgramUpdate': None,
     'COPE': None,
     'cope_nov': None,
+    'cope_dec': None,
     'GeneticAncestry': None
 }
 

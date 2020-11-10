@@ -531,3 +531,27 @@ class BQPDRCOPENovView(BQView):
     __table__ = BQPDRCOPENov
     __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
+
+
+#
+# COPE Dec Survey
+#
+class BQPDRCOPEDecSchema(_BQModuleSchema):
+    """ COPE Dec Module """
+    _module = 'cope_dec'  # Lowercase on purpose.
+    _excluded_fields = ()
+
+
+class BQPDRCOPEDec(BQTable):
+    """ COPE Dec BigQuery Table """
+    __tablename__ = 'pdr_mod_cope_dec'
+    __schema__ = BQPDRCOPENovSchema
+
+
+class BQPDRCOPEDecView(BQView):
+    """ PDR COPE Dec BiqQuery View """
+    __viewname__ = 'v_pdr_mod_cope_dec'
+    __viewdescr__ = 'PDR COPE Dec Module View'
+    __table__ = BQPDRCOPEDec
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    _show_created = True
