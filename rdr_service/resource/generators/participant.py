@@ -1175,6 +1175,22 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 return None
 
             # Query the answers for all responses found.
+            # Note on special logic for GROR module:  the original GROR consent questionnaire was quickly replaced by
+            # a revised questionnaire with a different consent question/answer structure.  GROR consents (~200)
+            # that came in for the old/deprecated questionnaire_id were resent by PTSC using the new questionnaire_id
+            # (See ROC-447/ROC-475)
+            #
+            # When processing a deprecated GROR response, add a key/value pair to the data
+            # simulating what the consent answer would look like in the revised consent.  E.g., if the
+            # deprecated GROR consent response had these question codes/boolean answer values (only one will be True/1):
+            #   'CheckDNA_Yes': '0',
+            #   'CheckDNA_No': '1',
+            #   'CheckDNA_NotSure': '0'
+            # ... then this key/value pair will be added to simulate the revised GROR consent question code/answer code:
+            #    'ResultsConsent_CheckDNA': 'CheckDNA_No'
+            #
+            # This way the answers returned can have the same logic applied to them by _prep_modules(), for all GROR
+            # consents.  This is intended to help resolve some mismatch issues between RDR and PDR GROR data
             for row in results:
                 # Save parent record field values into data dict.
                 data = ro_dao.to_dict(row, result_proxy=results)
@@ -1182,6 +1198,15 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 # Save answers into data dict.
                 for qnan in qnans:
                     data[qnan.code_name] = qnan.answer
+                    # Special handling of GROR deprecated responses
+                    if module == 'GROR' \
+                        and data['questionnaire_id'] == _deprecated_gror_consent_questionnaire_id \
+                        and qnan.code_name in _deprecated_gror_consent_question_code_names \
+                        and qnan.answer and qnan.answer == '1':
+                        # The deprecated consent question code name (if it has the selected/True value), ends up being
+                        # the answer code value for the updated GROR consent question
+                        data[_consent_module_question_map['GROR']] = qnan.code_name
+
                 # Insert data dict into answers list.
                 answers[row.questionnaire_response_id] = data
 

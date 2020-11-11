@@ -1195,7 +1195,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                     if module == 'GROR' \
                        and data['questionnaire_id'] == _deprecated_gror_consent_questionnaire_id \
                        and qnan.code_name in _deprecated_gror_consent_question_code_names \
-                       and qnan.answer and int(qnan.answer) == 1:
+                       and qnan.answer and qnan.answer == '1':
                         # The deprecated consent question code name (if it has the selected/True value), ends up being
                         # the answer code value for the updated GROR consent question
                         data[_consent_module_question_map['GROR']] = qnan.code_name
