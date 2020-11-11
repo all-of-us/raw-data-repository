@@ -1,6 +1,5 @@
 import logging
 
-from rdr_service import config
 from rdr_service.offline.update_ehr_status import make_update_participant_summaries_job,\
     update_participant_summaries_from_job
 from rdr_service.services.system_utils import setup_logging
