@@ -34,16 +34,19 @@ def update_ehr_status_participant():
     logging.info('Update EHR complete')
 
 
-def make_update_participant_summaries_job():
-    config_param = config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT
-    try:
-        bigquery_view = config.getSetting(config_param, None)
-    except config.InvalidConfigException as e:
-        LOG.warning("Config lookup exception for {}: {}".format(config_param, e))
-        bigquery_view = None
+def make_update_participant_summaries_job(project_id=None, bigquery_view=None):
+    if bigquery_view is None:
+        config_param = config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT
+        try:
+            bigquery_view = config.getSetting(config_param, None)
+        except config.InvalidConfigException as e:
+            LOG.warning("Config lookup exception for {}: {}".format(config_param, e))
+            bigquery_view = None
+
     if bigquery_view:
         query = "SELECT person_id, latest_upload_time FROM `{}`".format(bigquery_view)
-        return bigquery.BigQueryJob(query, default_dataset_id="operations_analytics", page_size=1000)
+        return bigquery.BigQueryJob(query, default_dataset_id="operations_analytics", page_size=1000,
+                                    project_id=project_id)
     else:
         return None
 
@@ -84,7 +87,7 @@ def _track_historical_participant_ehr_data(session, participant_id, file_time, j
     record.lastSeen = job_time
 
 
-def update_participant_summaries_from_job(job):
+def update_participant_summaries_from_job(job, project_id=None):
     summary_dao = ParticipantSummaryDao()
     summary_dao.prepare_for_ehr_status_update()
     now = clock.CLOCK.now()
@@ -130,8 +133,9 @@ def update_participant_summaries_from_job(job):
                     'ehr_update': summary.ehrUpdateTime
                 }
             } for summary in records]
+
             try:
-                dispatch_participant_rebuild_tasks(patch_data, batch_size=batch_size)
+                dispatch_participant_rebuild_tasks(patch_data, batch_size=batch_size, project_id=project_id)
 
             except BadGateway as e:
                 LOG.error(f'Bad Gateway: {e}', exc_info=True)

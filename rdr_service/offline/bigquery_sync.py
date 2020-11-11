@@ -34,14 +34,16 @@ class BigQueryJobError(BaseException):
 _bq_env = ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-sandbox', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']
 
 
-def dispatch_participant_rebuild_tasks(pid_list, batch_size=100):
+def dispatch_participant_rebuild_tasks(pid_list, batch_size=100, project_id=None):
     """
     A utility routine to handle dispatching batched requests for rebuilding participants.  Is also called
     from other cron job endpoint handlers (e.g., biobank reconciliation and EHR status update jobs)
+    :param project_id: String identifier for the GAE project
     :param pid_list:  List of participant_id values or dicts with patch data to rebuild
     :param batch_size:  Size of the batch of participant IDs to include in the rebuild task payload
     :param patch_data: list of dict with pids and fields to patch in participant resource.
     """
+
     if config.GAE_PROJECT not in _bq_env:
         logging.warning(f'BigQuery operations not supported in {config.GAE_PROJECT}, skipping.')
         return
@@ -65,7 +67,7 @@ def dispatch_participant_rebuild_tasks(pid_list, batch_size=100):
             payload = {'batch': batch}
 
             if config.GAE_PROJECT == 'localhost':
-                batch_rebuild_participants_task(payload)
+                batch_rebuild_participants_task(payload, project_id=project_id)
             else:
                 task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
                              queue='resource-rebuild', quiet=True)
@@ -79,7 +81,7 @@ def dispatch_participant_rebuild_tasks(pid_list, batch_size=100):
         payload = {'batch': batch}
         batch_count += 1
         if config.GAE_PROJECT == 'localhost':
-            batch_rebuild_participants_task(payload)
+            batch_rebuild_participants_task(payload, project_id=project_id)
         else:
             task.execute('rebuild_participants_task', payload=payload, in_seconds=15,
                          queue='resource-rebuild', quiet=True)
