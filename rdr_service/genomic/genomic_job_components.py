@@ -2206,10 +2206,11 @@ class ManifestDefinitionProvider:
                         GenomicGCValidationMetrics.vcfPath,
                         GenomicGCValidationMetrics.vcfTbiPath,
                         GenomicGCValidationMetrics.vcfMd5Path,
+                        GenomicGCValidationMetrics.callRate,
+                        GenomicGCValidationMetrics.sexConcordance,
+                        GenomicGCValidationMetrics.contamination,
+                        GenomicGCValidationMetrics.processingStatus,
                         Participant.researchId,
-                        #GenomicGCValidationMetrics.sexConcordance,
-                        #GenomicGCValidationMetrics.contamination,
-                        #GenomicGCValidationMetrics.processingStatus,
                     ]
                 ).select_from(
                     sqlalchemy.join(
@@ -2260,11 +2261,13 @@ class ManifestDefinitionProvider:
                         GenomicGCValidationMetrics.cramPath,
                         GenomicGCValidationMetrics.cramMd5Path,
                         GenomicGCValidationMetrics.craiPath,
+                        GenomicGCValidationMetrics.contamination,
+                        GenomicGCValidationMetrics.sexConcordance,
+                        GenomicGCValidationMetrics.arrayConcordance,
+                        GenomicGCValidationMetrics.processingStatus,
+                        GenomicGCValidationMetrics.meanCoverage,
                         Participant.researchId,
                         GenomicSetMember.sampleId,
-                        #GenomicGCValidationMetrics.sexConcordance,
-                        #GenomicGCValidationMetrics.contamination,
-                        #GenomicGCValidationMetrics.processingStatus,
                     ]
                 ).select_from(
                     sqlalchemy.join(
@@ -2479,10 +2482,11 @@ class ManifestDefinitionProvider:
                 "vcf_path",
                 "vcf_index_path",
                 "vcf_md5_path",
+                "callrate",
+                "sex_concordance",
+                "contamination",
+                "processing_status",
                 "research_id",
-                #"sex_concordance",
-                #"contamination",
-                #"processing_status",
             )
 
         elif manifest_type == GenomicManifestTypes.AW3_WGS:
@@ -2501,10 +2505,12 @@ class ManifestDefinitionProvider:
                 "cram_path",
                 "cram_md5_path",
                 "crai_path",
+                "contamination",
+                "sex_concordance",
+                "array_concordance",
+                "processing_status",
+                "mean_coverage",
                 "research_id",
-                #"sex_concordance",
-                #"contamination",
-                #"processing_status",
             )
 
         return columns

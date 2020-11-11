@@ -1882,8 +1882,8 @@ class GenomicPipelineTest(BaseTestCase):
         sub_folder = config.GENOMIC_GEM_A1_MANIFEST_SUBFOLDER
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_A1_manifest_{a1f}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
-            missing_cols = set(expected_gem_columns) - set(csv_reader.fieldnames)
-            self.assertEqual(0, len(missing_cols))
+            missing_cols = len(set(expected_gem_columns)) - len(set(csv_reader.fieldnames))
+            self.assertEqual(0, missing_cols)
             rows = list(csv_reader)
             self.assertEqual(2, len(rows))
             self.assertEqual(test_member_1.biobankId, int(rows[0]['biobank_id']))
@@ -2036,8 +2036,8 @@ class GenomicPipelineTest(BaseTestCase):
         )
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_A3_manifest_{out_time}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
-            missing_cols = set(expected_gem_columns) - set(csv_reader.fieldnames)
-            self.assertEqual(0, len(missing_cols))
+            missing_cols = len(set(expected_gem_columns)) - len(set(csv_reader.fieldnames))
+            self.assertEqual(0, missing_cols)
             rows = list(csv_reader)
             self.assertEqual(2, len(rows))
             self.assertEqual(test_member_2.biobankId, int(rows[0]['biobank_id']))
@@ -2125,8 +2125,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_CVL_Manifest_{w1_dtf}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
-            missing_cols = set(expected_w1_columns) - set(csv_reader.fieldnames)
-            self.assertEqual(0, len(missing_cols))
+            missing_cols = len(set(expected_w1_columns)) - len(set(csv_reader.fieldnames))
+            self.assertEqual(0, missing_cols)
 
             rows = list(csv_reader)
 
@@ -2246,8 +2246,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_CVL_W1_{out_time}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
-            missing_cols = set(expected_w3_columns) - set(csv_reader.fieldnames)
-            self.assertEqual(0, len(missing_cols))
+            missing_cols = len(set(expected_w3_columns)) - len(set(csv_reader.fieldnames))
+            self.assertEqual(0, missing_cols)
 
             rows = list(csv_reader)
 
@@ -2338,10 +2338,12 @@ class GenomicPipelineTest(BaseTestCase):
             "green_idat_md5_path",
             "vcf_path",
             "vcf_index_path",
+            "vcf_md5_path",
+            "callrate",
+            "sex_concordance",
+            "contamination",
+            "processing_status",
             "research_id",
-            # "sex_concordance",
-            # "contamination",
-            # "processing_status",
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -2349,8 +2351,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_GEN_{aw3_dtf}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
-            missing_cols = set(expected_aw3_columns) - set(csv_reader.fieldnames)
-            self.assertEqual(0, len(missing_cols))
+            missing_cols = len(set(expected_aw3_columns)) - len(set(csv_reader.fieldnames))
+            self.assertEqual(0, missing_cols)
 
             rows = list(csv_reader)
 
@@ -2371,11 +2373,11 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(metric.vcfTbiPath, rows[1]['vcf_index_path'])
             self.assertEqual(metric.vcfMd5Path, rows[1]['vcf_md5_path'])
 
-            # Test processing status columns
-            # TODO: Column reqs not finalized yet
-            # self.assertEqual(metric.sexConcordance, rows[1]['sex_concordance'])
-            # self.assertEqual(metric.contamination, rows[1]['contamination'])
-            # self.assertEqual(metric.processingStatus, rows[1]['processing_status'])
+            # Test processing GC metrics columns
+            self.assertEqual(metric.callRate, rows[1]['callrate'])
+            self.assertEqual(metric.sexConcordance, rows[1]['sex_concordance'])
+            self.assertEqual(metric.contamination, rows[1]['contamination'])
+            self.assertEqual(metric.processingStatus, rows[1]['processing_status'])
 
             # Test run record is success
             run_obj = self.job_run_dao.get(4)
@@ -2452,10 +2454,12 @@ class GenomicPipelineTest(BaseTestCase):
             "cram_path",
             "cram_md5_path",
             "crai_path",
+            "contamination",
+            "sex_concordance",
+            "array_concordance",
+            "processing_status",
+            "mean_coverage",
             "research_id",
-            # "sex_concordance",
-            # "contamination",
-            # "processing_status",
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -2463,8 +2467,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
-            missing_cols = set(expected_aw3_columns) - set(csv_reader.fieldnames)
-            self.assertEqual(0, len(missing_cols))
+            missing_cols = len(set(expected_aw3_columns)) - len(set(csv_reader.fieldnames))
+            self.assertEqual(0, missing_cols)
 
             rows = list(csv_reader)
 
@@ -2487,11 +2491,12 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(metric.cramMd5Path, rows[0]["cram_md5_path"])
             self.assertEqual(metric.craiPath, rows[0]["crai_path"])
 
-            # Test processing status columns
-            # TODO: Column reqs not finalized yet
-            # self.assertEqual(metric.sexConcordance, rows[0]['sex_concordance'])
-            # self.assertEqual(metric.contamination, rows[0]['contamination'])
-            # self.assertEqual(metric.processingStatus, rows[0]['processing_status'])
+            # Test GC metrics columns
+            self.assertEqual(metric.contamination, rows[0]['contamination'])
+            self.assertEqual(metric.sexConcordance, rows[0]['sex_concordance'])
+            self.assertEqual(metric.arrayConcordance, rows[0]['array_concordance'])
+            self.assertEqual(metric.processingStatus, rows[0]['processing_status'])
+            self.assertEqual(metric.meanCoverage, rows[0]['mean_coverage'])
 
             # Test run record is success
             run_obj = self.job_run_dao.get(4)
