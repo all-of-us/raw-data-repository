@@ -467,7 +467,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     query = query.filter(func.lower(WorkbenchWorkspaceApproved.name).like(workspace_name_like))
 
                 if intend_to_study_like:
-                    query = query.filter(func.lower(WorkbenchWorkspaceApproved.intendToStudy).like(intend_to_study_like))
+                    query = query.filter(func.lower(WorkbenchWorkspaceApproved.intendToStudy)
+                                         .like(intend_to_study_like))
 
             if project_purpose:
                 for purpose in project_purpose:
