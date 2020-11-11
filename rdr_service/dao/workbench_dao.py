@@ -418,10 +418,12 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         sequest_hour = kwargs.get('sequest_hour')
         given_name = kwargs.get('given_name')
         family_name = kwargs.get('family_name')
+        owner_name = kwargs.get('owner_name')
         user_source_id = kwargs.get('user_source_id')
         user_role = kwargs.get('user_role')
         workspace_name_like = kwargs.get('workspace_name_like')
         intend_to_study_like = kwargs.get('intend_to_study_like')
+        workspace_like = kwargs.get('workspace_like')
         project_purpose = kwargs.get('project_purpose')
         page = kwargs.get('page')
         page_size = kwargs.get('page_size')
@@ -457,11 +459,15 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             if status is not None:
                 query = query.filter(WorkbenchWorkspaceApproved.status == status)
 
-            if workspace_name_like:
-                query = query.filter(func.lower(WorkbenchWorkspaceApproved.name).like(workspace_name_like))
+            if workspace_like:
+                query = query.filter(or_(func.lower(WorkbenchWorkspaceApproved.name).like(workspace_like),
+                                         func.lower(WorkbenchWorkspaceApproved.intendToStudy).like(workspace_like)))
+            else:
+                if workspace_name_like:
+                    query = query.filter(func.lower(WorkbenchWorkspaceApproved.name).like(workspace_name_like))
 
-            if intend_to_study_like:
-                query = query.filter(func.lower(WorkbenchWorkspaceApproved.intendToStudy).like(intend_to_study_like))
+                if intend_to_study_like:
+                    query = query.filter(func.lower(WorkbenchWorkspaceApproved.intendToStudy).like(intend_to_study_like))
 
             if project_purpose:
                 for purpose in project_purpose:
@@ -502,10 +508,14 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     'affiliations': affiliations
                 }
                 hit_search = False
-                if given_name and given_name in researcher.givenName.lower():
-                    hit_search = True
-                if family_name and family_name in researcher.familyName.lower():
-                    hit_search = True
+                if role == WorkbenchWorkspaceUserRole('OWNER') and owner_name:
+                    if owner_name in user.get('userName').lower():
+                        hit_search = True
+                elif role == WorkbenchWorkspaceUserRole('OWNER'):
+                    if given_name and given_name in researcher.givenName.lower():
+                        hit_search = True
+                    if family_name and family_name in researcher.familyName.lower():
+                        hit_search = True
                 if user_source_id and user_role:
                     if user_source_id == researcher.userSourceId and role == WorkbenchWorkspaceUserRole('OWNER') \
                         and user_role == 'owner':
@@ -587,7 +597,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 }
                 results.append(record)
 
-        if given_name or family_name or (user_source_id and user_role):
+        if owner_name or given_name or family_name or (user_source_id and user_role):
             expected_result = [ws for ws in results if ws.get('hitSearch') is True
                                and ws.get('hasVerifiedInstitution') is True]
         else:

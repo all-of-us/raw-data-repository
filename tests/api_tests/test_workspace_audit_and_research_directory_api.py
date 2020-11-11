@@ -719,15 +719,26 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         # test search by workspace intendToStudy
         result = self.send_get('researchHub/projectDirectory?intendToStudyLike=string2')
         self.assertEqual(len(result['data']), 1)
-        # test search by given/family name
+        # test search by generalized parameter workspaceLike
+        result = self.send_get('researchHub/projectDirectory?workspaceLike=str')
+        self.assertEqual(len(result['data']), 2)
+        result = self.send_get('researchHub/projectDirectory?workspaceLike=string2')
+        self.assertEqual(len(result['data']), 1)
+        # test parameter "workspaceLike" will overwrite "intendToStudyLike"
+        result = self.send_get('researchHub/projectDirectory?workspaceLike=str&intendToStudyLike=string2')
+        self.assertEqual(len(result['data']), 2)
+        # test search by owner given/family name
         result = self.send_get('researchHub/projectDirectory?givenName=givenname1')
         self.assertEqual(len(result['data']), 1)
         result = self.send_get('researchHub/projectDirectory?givenName=givenname2')
-        self.assertEqual(len(result['data']), 2)
+        self.assertEqual(len(result['data']), 1)
         result = self.send_get('researchHub/projectDirectory?familyName=familyname1')
         self.assertEqual(len(result['data']), 1)
         result = self.send_get('researchHub/projectDirectory?familyName=familyname2')
-        self.assertEqual(len(result['data']), 2)
+        self.assertEqual(len(result['data']), 1)
+        # test search by owner full name
+        result = self.send_get('researchHub/projectDirectory?ownerName=nname1%20fami')
+        self.assertEqual(len(result['data']), 1)
         # test search by user id
         result = self.send_get('researchHub/projectDirectory?userId=1&userRole=owner')
         self.assertEqual(len(result['data']), 1)
@@ -1117,7 +1128,6 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         result = self.send_get('workbench/audit/workspace/snapshots?snapshot_id=1')
         self.assertEqual(len(result), 1)
 
-
     def test_hide_workspace_without_verified_institution_from_RH(self):
         # create researchers
         researchers_json = [
@@ -1382,4 +1392,3 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
 
         result = self.send_get('researchHub/projectDirectory')
         self.assertEqual(len(result['data']), 2)
-

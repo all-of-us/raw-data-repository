@@ -9,6 +9,7 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus
 DEFAULT_SEQUESTRATION_WINDOWS = 23
 MAX_PAGE_SIZE = 2000
 
+
 class ResearchProjectsDirectoryApi(Resource):
     def __init__(self):
         self.workspace_dao = WorkbenchWorkspaceDao()
@@ -20,10 +21,12 @@ class ResearchProjectsDirectoryApi(Resource):
             'sequest_hour': request.args.get('sequestHour'),
             'given_name': request.args.get('givenName'),
             'family_name': request.args.get('familyName'),
+            'owner_name': request.args.get('ownerName'),
             'user_source_id': request.args.get('userId'),
             'user_role': request.args.get('userRole'),
             'workspace_name_like': request.args.get('workspaceNameLike'),
             'intend_to_study_like': request.args.get('intendToStudyLike'),
+            'workspace_like': request.args.get('workspaceLike'),
             'project_purpose': request.args.get('projectPurpose'),
             'page': request.args.get('page'),
             'page_size': request.args.get('pageSize')
@@ -99,9 +102,13 @@ class ResearchProjectsDirectoryApi(Resource):
 
         filters['given_name'] = params['given_name'].lower() if params['given_name'] else None
         filters['family_name'] = params['family_name'].lower() if params['family_name'] else None
+        filters['owner_name'] = params['owner_name'].lower() if params['owner_name'] else None
+
         filters['workspace_name_like'] = '%{}%'.format(params['workspace_name_like'].lower()) \
             if params['workspace_name_like'] else None
         filters['intend_to_study_like'] = '%{}%'.format(params['intend_to_study_like'].lower()) \
             if params['intend_to_study_like'] else None
+        filters['workspace_like'] = '%{}%'.format(params['workspace_like'].lower()) \
+            if params['workspace_like'] else None
 
         return filters
