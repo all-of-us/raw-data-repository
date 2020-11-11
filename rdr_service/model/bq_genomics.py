@@ -156,8 +156,11 @@ class BQGenomicSetMemberSchema(BQSchema):
                                           BQFieldModeEnum.NULLABLE)
     report_consent_removal_date = BQField('report_consent_removal_date',
                                           BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
-    qc_status = BQField('qc_status', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+    qc_status = BQField('qc_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
                         fld_enum=GenomicQcStatusEnum)
+    qc_status_id = BQField('qc_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+                           fld_enum=GenomicQcStatusEnum)
+    fingerprint_path = BQField('fingerprint_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     dev_note = BQField('dev_note', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 

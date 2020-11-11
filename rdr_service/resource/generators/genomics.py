@@ -16,8 +16,8 @@ from rdr_service.participant_enums import (
     GenomicSubProcessStatus as GenomicSubProcessStatusEnum,
     GenomicSubProcessResult as GenomicSubProcessResultEnum,
     GenomicJob as GenomicJobEnum,
-    GenomicWorkflowState as GenomicWorkflowStateEnum
-)
+    GenomicWorkflowState as GenomicWorkflowStateEnum,
+    GenomicQcStatus as GenomicQcStatusEnum)
 from rdr_service.resource import generators, schemas
 
 
@@ -87,6 +87,12 @@ class GenomicSetMemberSchemaGenerator(generators.BaseGenerator):
                 enum = GenomicWorkflowStateEnum(data['genomic_workflow_state'])
                 data['genomic_workflow_state'] = str(enum)
                 data['genomic_workflow_state_id'] = int(enum)
+
+            # QC Status
+            if data['qc_status']:
+                enum = GenomicQcStatusEnum(data['qc_status'])
+                data['qc_status'] = str(enum)
+                data['qc_status_id'] = int(enum)
 
             return generators.ResourceRecordSet(schemas.GenomicSetMemberSchema, data)
 
