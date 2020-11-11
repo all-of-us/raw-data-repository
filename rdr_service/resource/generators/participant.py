@@ -373,7 +373,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             for row in results:
                 consent_added = False
                 module_name = self._lookup_code_value(row.codeId, ro_session)
-                module_name = self._lookup_code_value(row.codeId, ro_session)
                 # Start with a default submittal status.  May be updated if this is a consent module with a specific
                 # consent question/answer that determines module submittal status
                 module_status = BQModuleStatusEnum.SUBMITTED
@@ -386,12 +385,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'status': module_status.name,
                     'status_id': module_status.value
                 }
-                # Default status, may be updated based on consent answer
-                module_status = BQModuleStatusEnum.SUBMITTED
 
                 # check if this is a module with consents.
                 if module_name in _consent_module_question_map:
-
                     # Calculate Consent Cohort from ConsentPII authored
                     if consent_dt is None and module_name == 'ConsentPII' and row.authored:
                         consent_dt = row.authored
