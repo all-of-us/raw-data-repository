@@ -1,7 +1,7 @@
 """add fingerprint_path to genomic_set_member
 
 Revision ID: f73a5e7b1822
-Revises: f01713c9817f
+Revises: 0d5e58df7917
 Create Date: 2020-11-09 12:17:28.477732
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'f73a5e7b1822'
-down_revision = 'f01713c9817f'
+down_revision = '0d5e58df7917'
 branch_labels = None
 depends_on = None
 
