@@ -588,8 +588,10 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         self.assertEqual(1, self.session.query(ApiUser).count())
 
     def test_participant_summary_fields_redacted(self):
+        """Should still see contact information, but contact method should be updated for deceased participants"""
+
         participant = self.data_generator.create_database_participant()
-        self.data_generator.create_database_participant_summary(
+        summary_obj = self.data_generator.create_database_participant_summary(
             participant=participant,
             phoneNumber='123-456-7890',
             loginPhoneNumber='1-800-555-5555',
@@ -610,8 +612,16 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
                          "Test is built assuming an APPROVED report would be created")
 
         summary_response = self.send_get(f'Participant/P{participant_id}/Summary')
-        for field in ['phoneNumber', 'loginPhoneNumber', 'email', 'streetAddress', 'streetAddress2', 'city', 'zipCode']:
-            self.assertEqual('UNSET', summary_response[field])
+        for field_name, value in [
+            ('phoneNumber', summary_obj.phoneNumber),
+            ('loginPhoneNumber', summary_obj.loginPhoneNumber),
+            ('email', summary_obj.email),
+            ('streetAddress', summary_obj.streetAddress),
+            ('streetAddress2', summary_obj.streetAddress2),
+            ('city', summary_obj.city),
+            ('zipCode', summary_obj.zipCode)
+        ]:
+            self.assertEqual(value, summary_response[field_name])
         self.assertEqual('NO_CONTACT', summary_response['recontactMethod'])
 
     def test_participant_summary_redact_time_window(self):
