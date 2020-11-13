@@ -26,6 +26,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "ethnicity": "HISPANIC",
                 "gender": ["MAN"],
                 "race": ["AIAN"],
+                "degree": ["PHD", "MPH"],
                 "sexAtBirth": ["FEMALE"],
                 "sexualOrientation": "BISEXUAL",
                 "affiliations": [
@@ -58,6 +59,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "sexualOrientation": "BISEXUAL",
                 "gender": ["MAN", "WOMAN"],
                 "race": ["AIAN", "WHITE"],
+                "degree": ["PHD", "MPH"],
                 "affiliations": [
                     {
                         "institution": "institution2",
@@ -188,12 +190,14 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'creationTime': '2019-11-25T17:43:41.085000',
                        'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'ACTIVE',
                        'workspaceUsers': [
-                           {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
+                           {'userId': 0, 'userName': 'given name 1 family name 1', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [
                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
                                 'nonAcademicAffiliation': 'INDUSTRY'},
                                {'institution': 'display name', 'role': 'verified institution role 1',
                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}]},
-                           {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
+                           {'userId': 1, 'userName': 'given name 2 family name 2', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [
                                {'institution': 'institution2', 'role': 'institution role 2', 'isVerified': None,
                                 'nonAcademicAffiliation': 'UNSET'},
                                {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
@@ -203,6 +207,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            ]}
                        ],
                        'workspaceOwner': [{'userId': 1, 'userName': 'given name 2 family name 2',
+                                           'degree': ['PHD', 'MPH'],
                                            'affiliations': [{'institution': 'institution2',
                                                              'role': 'institution role 2',
                                                              'isVerified': None,
@@ -244,13 +249,15 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'creationTime': '2019-11-25T17:43:41.085000',
                        'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'INACTIVE',
                        'workspaceUsers': [
-                           {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
+                           {'userId': 0, 'userName': 'given name 1 family name 1', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [
                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
                                 'nonAcademicAffiliation': 'INDUSTRY'},
                                {'institution': 'display name', 'role': 'verified institution role 1',
                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}
                            ]},
-                           {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
+                           {'userId': 1, 'userName': 'given name 2 family name 2', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [
                                {'institution': 'institution2', 'role': 'institution role 2', 'isVerified': None,
                                 'nonAcademicAffiliation': 'UNSET'},
                                {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
@@ -260,6 +267,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            ]}
                        ],
                        'workspaceOwner': [{'userId': 0, 'userName': 'given name 1 family name 1',
+                                           'degree': ['PHD', 'MPH'],
                                            'affiliations': [{'institution': 'institution1',
                                                              'role': 'institution role 1',
                                                              'isVerified': None,
@@ -327,13 +335,15 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'creationTime': '2019-11-25T17:43:41.085000',
                        'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'ACTIVE',
                        'workspaceUsers': [
-                           {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
+                           {'userId': 0, 'userName': 'given name 1 family name 1', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [
                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
                                 'nonAcademicAffiliation': 'INDUSTRY'},
                                {'institution': 'display name', 'role': 'verified institution role 1',
                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}
                            ]},
-                           {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
+                           {'userId': 1, 'userName': 'given name 2 family name 2', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [
                                {'institution': 'institution2', 'role': 'institution role 2', 'isVerified': None,
                                 'nonAcademicAffiliation': 'UNSET'},
                                {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
@@ -343,6 +353,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            ]}
                        ],
                        'workspaceOwner': [{'userId': 1, 'userName': 'given name 2 family name 2',
+                                           'degree': ['PHD', 'MPH'],
                                            'affiliations': [{'institution': 'institution2',
                                                              'role': 'institution role 2',
                                                              'isVerified': None,
@@ -388,13 +399,15 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'creationTime': '2019-11-25T17:43:41.085000',
                        'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'ACTIVE',
                        'workspaceUsers': [
-                           {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
+                           {'userId': 0, 'userName': 'given name 1 family name 1', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [
                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
                                 'nonAcademicAffiliation': 'INDUSTRY'},
                                {'institution': 'display name', 'role': 'verified institution role 1',
                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}
                            ]},
-                           {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
+                           {'userId': 1, 'userName': 'given name 2 family name 2', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [
                                {'institution': 'institution2', 'role': 'institution role 2', 'isVerified': None,
                                 'nonAcademicAffiliation': 'UNSET'},
                                {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
@@ -404,6 +417,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            ]}
                        ],
                        'workspaceOwner': [{'userId': 1, 'userName': 'given name 2 family name 2',
+                                           'degree': ['PHD', 'MPH'],
                                            'affiliations': [{'institution': 'institution2',
                                                              'role': 'institution role 2',
                                                              'isVerified': None,
@@ -468,13 +482,15 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'creationTime': '2019-11-25T17:43:41.085000',
                        'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'INACTIVE',
                        'workspaceUsers': [
-                           {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
+                           {'userId': 0, 'userName': 'given name 1 family name 1', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [
                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
                                 'nonAcademicAffiliation': 'INDUSTRY'},
                                {'institution': 'display name', 'role': 'verified institution role 1',
                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}
                            ]},
-                           {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
+                           {'userId': 1, 'userName': 'given name 2 family name 2', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [
                                {'institution': 'institution2', 'role': 'institution role 2', 'isVerified': None,
                                 'nonAcademicAffiliation': 'UNSET'},
                                {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
@@ -484,6 +500,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            ]}
                        ],
                        'workspaceOwner': [{'userId': 0, 'userName': 'given name 1 family name 1',
+                                           'degree': ['PHD', 'MPH'],
                                            'affiliations': [{'institution': 'institution1',
                                                              'role': 'institution role 1',
                                                              'isVerified': None,
@@ -517,6 +534,227 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        }
                        },
                       result['data'])
+
+    def test_get_research_projects_directory_search_and_filter(self):
+        # create researchers
+        researchers_json = [
+            {
+                "userId": 0,
+                "creationTime": "2019-11-26T21:21:13.056Z",
+                "modifiedTime": "2019-11-26T21:21:13.056Z",
+                "givenName": "givenname1",
+                "familyName": "familyname1",
+                "streetAddress1": "string",
+                "streetAddress2": "string",
+                "city": "string",
+                "state": "string",
+                "zipCode": "string",
+                "country": "string",
+                "ethnicity": "HISPANIC",
+                "gender": ["MAN"],
+                "race": ["AIAN"],
+                "degree": ["PHD", "MPH"],
+                "sexAtBirth": ["FEMALE"],
+                "sexualOrientation": "BISEXUAL",
+                "affiliations": [
+                    {
+                        "institution": "institution1",
+                        "role": "institution role 1",
+                        "nonAcademicAffiliation": "INDUSTRY"
+                    }
+                ],
+                "verifiedInstitutionalAffiliation": {
+                    "institutionDisplayName": "display name",
+                    "institutionShortName": "verified institution",
+                    "institutionalRole": "verified institution role 1",
+                    "nonAcademicAffiliation": "INDUSTRY"
+                }
+            },
+            {
+                "userId": 1,
+                "creationTime": "2019-11-27T21:21:13.056Z",
+                "modifiedTime": "2019-11-27T21:21:13.056Z",
+                "givenName": "givenname2",
+                "familyName": "familyname2",
+                "streetAddress1": "string2",
+                "streetAddress2": "string2",
+                "city": "string2",
+                "state": "string2",
+                "zipCode": "string2",
+                "country": "string2",
+                "ethnicity": "HISPANIC",
+                "sexualOrientation": "BISEXUAL",
+                "gender": ["MAN", "WOMAN"],
+                "race": ["AIAN", "WHITE"],
+                "degree": ["PHD", "MPH"],
+                "affiliations": [
+                    {
+                        "institution": "institution2",
+                        "role": "institution role 2"
+                    },
+                    {
+                        "institution": "institution22",
+                        "role": "institution role 22",
+                        "nonAcademicAffiliation": "INDUSTRY"
+                    }
+                ],
+                "verifiedInstitutionalAffiliation": {
+                    "institutionShortName": "verified institution",
+                    "institutionalRole": "verified institution role 1",
+                    "nonAcademicAffiliation": "INDUSTRY"
+                }
+            }
+        ]
+        self.send_post('workbench/directory/researchers', request_data=researchers_json)
+
+        # create workspace
+        request_json = [
+            {
+                "workspaceId": 0,
+                "name": "workspace name str Search test",
+                "creationTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "status": "ACTIVE",
+                "workspaceUsers": [
+                    {
+                        "userId": 1,
+                        "role": "OWNER",
+                        "status": "ACTIVE"
+                    }
+                ],
+                "creator": {
+                    "userId": 1,
+                    "givenName": "aaa",
+                    "familyName": "bbb"
+                },
+                "excludeFromPublicDirectory": False,
+                "ethicalLegalSocialImplications": True,
+                "diseaseFocusedResearch": True,
+                "diseaseFocusedResearchName": "disease focused research name str",
+                "otherPurposeDetails": "other purpose details str",
+                "methodsDevelopment": True,
+                "controlSet": True,
+                "ancestry": True,
+                "socialBehavioral": False,
+                "populationHealth": True,
+                "drugDevelopment": True,
+                "commercialPurpose": True,
+                "educational": True,
+                "otherPurpose": True,
+                "scientificApproaches": 'reasonForInvestigation string',
+                "intendToStudy": 'intendToStudy string',
+                "findingsFromStudy": 'findingsFromStudy string',
+                "focusOnUnderrepresentedPopulations": True,
+                "workspaceDemographic": {
+                    "raceEthnicity": ['AIAN', 'MENA'],
+                    "age": ['AGE_0_11', 'AGE_65_74'],
+                    "sexAtBirth": "UNSET",
+                    "genderIdentity": "OTHER_THAN_MAN_WOMAN",
+                    "sexualOrientation": "OTHER_THAN_STRAIGHT",
+                    "geography": "RURAL",
+                    "disabilityStatus": "DISABILITY",
+                    "accessToCare": "NOT_EASILY_ACCESS_CARE",
+                    "educationLevel": "LESS_THAN_HIGH_SCHOOL",
+                    "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
+                    "others": "string"
+                }
+            },
+            {
+                "workspaceId": 1,
+                "name": "workspace name str 2",
+                "creationTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "status": "INACTIVE",
+                "workspaceUsers": [
+                    {
+                        "userId": 0,
+                        "role": "OWNER",
+                        "status": "ACTIVE"
+                    },
+                    {
+                        "userId": 1,
+                        "role": "READER",
+                        "status": "ACTIVE"
+                    }
+                ],
+                "creator": {
+                    "userId": 0,
+                    "givenName": "aaa",
+                    "familyName": "bbb"
+                },
+                "excludeFromPublicDirectory": False,
+                "ethicalLegalSocialImplications": False,
+                "diseaseFocusedResearch": True,
+                "diseaseFocusedResearchName": "disease focused research name str 2",
+                "otherPurposeDetails": "other purpose details str 2",
+                "methodsDevelopment": False,
+                "controlSet": False,
+                "ancestry": False,
+                "socialBehavioral": False,
+                "populationHealth": False,
+                "drugDevelopment": False,
+                "commercialPurpose": False,
+                "educational": False,
+                "otherPurpose": False,
+                "scientificApproaches": 'reasonForInvestigation string2',
+                "intendToStudy": 'intendToStudy string2',
+                "findingsFromStudy": 'findingsFromStudy string2'
+            }
+        ]
+        now = clock.CLOCK.now()
+        sequest_hours_ago = now - timedelta(hours=24)
+        with FakeClock(sequest_hours_ago):
+            self.send_post('workbench/directory/workspaces', request_data=request_json)
+        result = self.send_get('researchHub/projectDirectory')
+        self.assertEqual(len(result['data']), 2)
+        # test search by project purpose
+        result = self.send_get('researchHub/projectDirectory?projectPurpose=controlSet')
+        self.assertEqual(len(result['data']), 1)
+        # test search by multiple project purpose
+        result = self.send_get('researchHub/projectDirectory?projectPurpose=controlSet,socialBehavioral')
+        self.assertEqual(len(result['data']), 0)
+        # test search by workspace name
+        result = self.send_get('researchHub/projectDirectory?workspaceNameLike=Search%20test')
+        self.assertEqual(len(result['data']), 1)
+        # test search by workspace intendToStudy
+        result = self.send_get('researchHub/projectDirectory?intendToStudyLike=string2')
+        self.assertEqual(len(result['data']), 1)
+        # test search by generalized parameter workspaceLike
+        result = self.send_get('researchHub/projectDirectory?workspaceLike=str')
+        self.assertEqual(len(result['data']), 2)
+        result = self.send_get('researchHub/projectDirectory?workspaceLike=string2')
+        self.assertEqual(len(result['data']), 1)
+        # test parameter "workspaceLike" will overwrite "intendToStudyLike"
+        result = self.send_get('researchHub/projectDirectory?workspaceLike=str&intendToStudyLike=string2')
+        self.assertEqual(len(result['data']), 2)
+        # test search by owner given/family name
+        result = self.send_get('researchHub/projectDirectory?givenName=givenname1')
+        self.assertEqual(len(result['data']), 1)
+        result = self.send_get('researchHub/projectDirectory?givenName=givenname2')
+        self.assertEqual(len(result['data']), 1)
+        result = self.send_get('researchHub/projectDirectory?familyName=familyname1')
+        self.assertEqual(len(result['data']), 1)
+        result = self.send_get('researchHub/projectDirectory?familyName=familyname2')
+        self.assertEqual(len(result['data']), 1)
+        # test search by owner full name
+        result = self.send_get('researchHub/projectDirectory?ownerName=nname1%20fami')
+        self.assertEqual(len(result['data']), 1)
+        # test search by user id
+        result = self.send_get('researchHub/projectDirectory?userId=1&userRole=owner')
+        self.assertEqual(len(result['data']), 1)
+        result = self.send_get('researchHub/projectDirectory?userId=1&userRole=member')
+        self.assertEqual(len(result['data']), 1)
+        result = self.send_get('researchHub/projectDirectory?userId=1&userRole=all')
+        self.assertEqual(len(result['data']), 2)
+        # test page and page size
+        result = self.send_get('researchHub/projectDirectory?page=1&pageSize=1')
+        self.assertEqual(len(result['data']), 1)
+        result = self.send_get('researchHub/projectDirectory?page=2&pageSize=1')
+        self.assertEqual(len(result['data']), 1)
+        result = self.send_get('researchHub/projectDirectory?page=3&pageSize=1')
+        self.assertEqual(len(result['data']), 0)
+        result = self.send_get('researchHub/projectDirectory?page=1&pageSize=2')
+        self.assertEqual(len(result['data']), 2)
 
     def test_get_research_projects_directory_less_than_23_hours(self):
         # create researchers
@@ -890,7 +1128,6 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         result = self.send_get('workbench/audit/workspace/snapshots?snapshot_id=1')
         self.assertEqual(len(result), 1)
 
-
     def test_hide_workspace_without_verified_institution_from_RH(self):
         # create researchers
         researchers_json = [
@@ -910,6 +1147,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "gender": ["MAN"],
                 "race": ["AIAN"],
                 "sexAtBirth": ["FEMALE"],
+                "degree": ["PHD", "MPH"],
                 "sexualOrientation": "BISEXUAL",
                 "affiliations": [
                     {
@@ -940,6 +1178,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "sexualOrientation": "BISEXUAL",
                 "gender": ["MAN", "WOMAN"],
                 "race": ["AIAN", "WHITE"],
+                "degree": ["PHD", "MPH"],
                 "affiliations": [
                     {
                         "institution": "institution2",
@@ -1065,18 +1304,21 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'creationTime': '2019-11-25T17:43:41.085000',
                        'modifiedTime': '2019-11-25T17:43:41.085000', 'status': 'INACTIVE',
                        'workspaceUsers': [
-                           {'userId': 0, 'userName': 'given name 1 family name 1', 'affiliations': [
+                           {'userId': 0, 'userName': 'given name 1 family name 1', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [
                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
                                 'nonAcademicAffiliation': 'INDUSTRY'},
                            {'institution': 'verified institution', 'role': 'verified institution role 1',
                             'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}]},
-                           {'userId': 1, 'userName': 'given name 2 family name 2', 'affiliations': [
+                           {'userId': 1, 'userName': 'given name 2 family name 2', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [
                                {'institution': 'institution2', 'role': 'institution role 2', 'isVerified': None,
                                 'nonAcademicAffiliation': 'UNSET'},
                                {'institution': 'institution22', 'role': 'institution role 22', 'isVerified': None,
                                 'nonAcademicAffiliation': 'INDUSTRY'}]}
                        ],
                        'workspaceOwner': [{'userId': 0, 'userName': 'given name 1 family name 1',
+                                           'degree': ['PHD', 'MPH'],
                                            'affiliations': [{'institution': 'institution1',
                                                              'role': 'institution role 1',
                                                              'isVerified': None,
@@ -1150,4 +1392,3 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
 
         result = self.send_get('researchHub/projectDirectory')
         self.assertEqual(len(result['data']), 2)
-

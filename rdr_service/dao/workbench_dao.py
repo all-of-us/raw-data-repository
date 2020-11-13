@@ -280,7 +280,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             return result
 
     def get_workspace_by_workspace_id_with_session(self, session, workspace_id):
-        return session.query(WorkbenchWorkspaceApproved)\
+        return session.query(WorkbenchWorkspaceApproved) \
             .filter(WorkbenchWorkspaceApproved.workspaceSourceId == workspace_id).first()
 
     def remove_workspace_by_workspace_id_with_session(self, session, workspace_id):
@@ -332,15 +332,15 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                                     if affiliation.nonAcademicAffiliation else 'UNSET'
                             }
                 workspace_researcher = {
-                            "userId": researcher.userSourceId,
-                            "creationTime": researcher.creationTime,
-                            "modifiedTime": researcher.modifiedTime,
-                            "givenName": researcher.givenName,
-                            "familyName": researcher.familyName,
-                            "email": researcher.email,
-                            "verifiedInstitutionalAffiliation": verified_institutional_affiliation,
-                            "affiliations": affiliations
-                        }
+                    "userId": researcher.userSourceId,
+                    "creationTime": researcher.creationTime,
+                    "modifiedTime": researcher.modifiedTime,
+                    "givenName": researcher.givenName,
+                    "familyName": researcher.familyName,
+                    "email": researcher.email,
+                    "verifiedInstitutionalAffiliation": verified_institutional_affiliation,
+                    "affiliations": affiliations
+                }
 
                 exist = False
                 for result in results:
@@ -413,7 +413,25 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
         return results
 
-    def get_workspaces_with_user_detail(self, status, sequest_hour):
+    def get_workspaces_with_user_detail(self, **kwargs):
+        status = kwargs.get('status')
+        sequest_hour = kwargs.get('sequest_hour')
+        given_name = kwargs.get('given_name')
+        family_name = kwargs.get('family_name')
+        owner_name = kwargs.get('owner_name')
+        user_source_id = kwargs.get('user_source_id')
+        user_role = kwargs.get('user_role')
+        workspace_name_like = kwargs.get('workspace_name_like')
+        intend_to_study_like = kwargs.get('intend_to_study_like')
+        workspace_like = kwargs.get('workspace_like')
+        project_purpose = kwargs.get('project_purpose')
+        page = kwargs.get('page')
+        page_size = kwargs.get('page_size')
+        if page and page_size:
+            offset = (page - 1) * page_size
+        if offset < 0:
+            raise BadRequest("invalid parameter: page")
+
         results = []
         now = clock.CLOCK.now()
         sequest_hours_ago = now - timedelta(hours=sequest_hour)
@@ -425,7 +443,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     .group_by(WorkbenchWorkspaceSnapshot.workspaceSourceId).subquery()
             )
             query = (
-                session.query(WorkbenchWorkspaceApproved, WorkbenchResearcher,
+                session.query(WorkbenchWorkspaceApproved, WorkbenchResearcher, WorkbenchWorkspaceUser.role,
                               snapshot_subquery.c.snapshot_id)
                     .options(joinedload(WorkbenchWorkspaceApproved.workbenchWorkspaceUser),
                              joinedload(WorkbenchResearcher.workbenchInstitutionalAffiliations))
@@ -435,13 +453,29 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                             WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
                             or_(WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
                                 WorkbenchWorkspaceApproved.isReviewed == 1))
+                    .order_by(desc(WorkbenchWorkspaceApproved.modifiedTime))
             )
 
             if status is not None:
                 query = query.filter(WorkbenchWorkspaceApproved.status == status)
 
+            if workspace_like:
+                query = query.filter(or_(func.lower(WorkbenchWorkspaceApproved.name).like(workspace_like),
+                                         func.lower(WorkbenchWorkspaceApproved.intendToStudy).like(workspace_like)))
+            else:
+                if workspace_name_like:
+                    query = query.filter(func.lower(WorkbenchWorkspaceApproved.name).like(workspace_name_like))
+
+                if intend_to_study_like:
+                    query = query.filter(func.lower(WorkbenchWorkspaceApproved.intendToStudy)
+                                         .like(intend_to_study_like))
+
+            if project_purpose:
+                for purpose in project_purpose:
+                    query = query.filter(getattr(WorkbenchWorkspaceApproved, purpose) == 1)
+
             items = query.all()
-            for workspace, researcher, snapshot_id in items:
+            for workspace, researcher, role, snapshot_id in items:
                 affiliations = []
                 researcher_has_verified_institution = False
                 workspace_has_verified_institution = False
@@ -471,13 +505,34 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 user = {
                     'userId': researcher.userSourceId,
                     'userName': researcher.givenName + ' ' + researcher.familyName,
+                    'degree': [str(WorkbenchResearcherDegree(value)) for value in researcher.degree],
                     'affiliations': affiliations
                 }
+                hit_search = False
+                if role == WorkbenchWorkspaceUserRole('OWNER') and owner_name:
+                    if owner_name in user.get('userName').lower():
+                        hit_search = True
+                elif role == WorkbenchWorkspaceUserRole('OWNER'):
+                    if given_name and given_name in researcher.givenName.lower():
+                        hit_search = True
+                    if family_name and family_name in researcher.familyName.lower():
+                        hit_search = True
+                if user_source_id and user_role:
+                    if user_source_id == researcher.userSourceId and role == WorkbenchWorkspaceUserRole('OWNER') \
+                        and user_role == 'owner':
+                        hit_search = True
+                    elif user_source_id == researcher.userSourceId and role != WorkbenchWorkspaceUserRole('OWNER') \
+                        and user_role == 'member':
+                        hit_search = True
+                    elif user_source_id == researcher.userSourceId and user_role == 'all':
+                        hit_search = True
 
                 exist = False
                 for result in results:
                     if result['workspaceId'] == workspace.workspaceSourceId:
                         result['workspaceUsers'].append(user)
+                        if hit_search:
+                            result['hitSearch'] = True
                         if user.get('userId') == owner_user_id:
                             result['workspaceOwner'].append(user)
                         if workspace_has_verified_institution:
@@ -490,6 +545,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 record = {
                     'workspaceId': workspace.workspaceSourceId,
                     'snapshotId': snapshot_id,
+                    'hitSearch': hit_search,
                     'name': workspace.name,
                     'creationTime': workspace.creationTime,
                     'modifiedTime': workspace.modifiedTime,
@@ -541,7 +597,21 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     }
                 }
                 results.append(record)
-        expected_result = [ws for ws in results if ws.get('hasVerifiedInstitution') is True]
+
+        if owner_name or given_name or family_name or (user_source_id and user_role):
+            expected_result = [ws for ws in results if ws.get('hitSearch') is True
+                               and ws.get('hasVerifiedInstitution') is True]
+        else:
+            expected_result = [ws for ws in results if ws.get('hasVerifiedInstitution') is True]
+
+        for er in expected_result:
+            er.pop('hitSearch', None)
+
+        if offset >= len(expected_result):
+            expected_result = []
+        else:
+            page_end = offset + page_size if offset + page_size < len(expected_result) else len(expected_result)
+            expected_result = expected_result[offset:page_end]
         metadata_dao = MetadataDao()
         metadata = metadata_dao.get_by_key(WORKBENCH_LAST_SYNC_KEY)
         if metadata:
@@ -549,7 +619,12 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         else:
             last_sync_date = clock.CLOCK.now()
 
-        return {"last_sync_date": last_sync_date, "data": expected_result}
+        return {
+            "page": page,
+            "pageSize": page_size,
+            "last_sync_date": last_sync_date,
+            "data": expected_result
+        }
 
     def add_approved_workspace_with_session(self, session, workspace_snapshot, is_reviewed=False):
         exist = self.get_workspace_by_workspace_id_with_session(session, workspace_snapshot.workspaceSourceId)
@@ -596,14 +671,14 @@ class WorkbenchWorkspaceHistoryDao(UpdatableDao):
         return obj.id
 
     def get_snapshot_by_id_with_session(self, session, snapshot_id):
-        return session.query(WorkbenchWorkspaceSnapshot)\
-            .options(subqueryload(WorkbenchWorkspaceSnapshot.workbenchWorkspaceUser))\
+        return session.query(WorkbenchWorkspaceSnapshot) \
+            .options(subqueryload(WorkbenchWorkspaceSnapshot.workbenchWorkspaceUser)) \
             .filter(WorkbenchWorkspaceSnapshot.id == snapshot_id).first()
 
     def is_snapshot_exist_with_session(self, session, workspace_id, modified_time):
-        record = session.query(WorkbenchWorkspaceSnapshot)\
+        record = session.query(WorkbenchWorkspaceSnapshot) \
             .filter(WorkbenchWorkspaceSnapshot.workspaceSourceId == workspace_id,
-                    WorkbenchWorkspaceSnapshot.modifiedTime == modified_time)\
+                    WorkbenchWorkspaceSnapshot.modifiedTime == modified_time) \
             .first()
         return True if record else False
 
@@ -827,7 +902,7 @@ class WorkbenchResearcherDao(UpdatableDao):
             session.add(history)
 
     def get_researcher_by_user_id_with_session(self, session, user_id):
-        return session.query(WorkbenchResearcher).filter(WorkbenchResearcher.userSourceId == user_id)\
+        return session.query(WorkbenchResearcher).filter(WorkbenchResearcher.userSourceId == user_id) \
             .order_by(desc(WorkbenchResearcher.created)).first()
 
 
@@ -842,15 +917,15 @@ class WorkbenchResearcherHistoryDao(UpdatableDao):
                 .order_by(desc(WorkbenchResearcherHistory.created)).first()
 
     def is_snapshot_exist_with_session(self, session, user_source_id, modified_time):
-        record = session.query(WorkbenchResearcherHistory)\
+        record = session.query(WorkbenchResearcherHistory) \
             .filter(WorkbenchResearcherHistory.userSourceId == user_source_id,
-                    WorkbenchResearcherHistory.modifiedTime == modified_time)\
+                    WorkbenchResearcherHistory.modifiedTime == modified_time) \
             .first()
         return True if record else False
 
     def get_researcher_history_by_id_with_session(self, researcher_history_id):
         with self.session() as session:
-            return session.query(WorkbenchResearcherHistory)\
+            return session.query(WorkbenchResearcherHistory) \
                 .filter(WorkbenchResearcherHistory.id == researcher_history_id).first()
 
     def get_id(self, obj):
@@ -944,7 +1019,6 @@ class WorkbenchWorkspaceAuditDao(UpdatableDao):
         workspace_snapshot.excludeFromPublicDirectory = True
         workspace_snapshot.isReviewed = True
         self.workspace_dao.remove_workspace_by_workspace_id_with_session(session, workspace_snapshot.workspaceSourceId)
-
 
     def add_approved_workspace_with_session(self, session, workspace_snapshot_id):
         workspace_snapshot = self.workspace_snapshot_dao.get_snapshot_by_id_with_session(session, workspace_snapshot_id)
