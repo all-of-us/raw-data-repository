@@ -659,8 +659,8 @@ class ParticipantSummaryDao(UpdatableDao):
                 participant_summary.consentForElectronicHealthRecords is None
                 and participant_summary.consentForDvElectronicHealthRecordsSharing == QuestionnaireStatus.SUBMITTED
             ):
-                return participant_summary.consentForDvElectronicHealthRecordsSharingTime
-            return participant_summary.consentForElectronicHealthRecordsTime
+                return participant_summary.consentForDvElectronicHealthRecordsSharingAuthored
+            return participant_summary.consentForElectronicHealthRecordsAuthored
         else:
             return None
 
