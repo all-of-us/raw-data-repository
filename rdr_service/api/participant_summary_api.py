@@ -8,6 +8,8 @@ from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.config import getSettingList, HPO_LITE_AWARDEE
+from rdr_service.code_constants import UNSET
 
 
 class ParticipantSummaryApi(BaseApi):
@@ -40,7 +42,11 @@ class ParticipantSummaryApi(BaseApi):
             if auth_awardee:
                 # make sure request has awardee
                 requested_awardee = request.args.get("awardee")
-                if requested_awardee != auth_awardee:
+                hpo_lite_awardees = getSettingList(HPO_LITE_AWARDEE, default=[])
+                if requested_awardee == UNSET and auth_awardee in hpo_lite_awardees:
+                    # allow hpo lite awardee to access UNSET participants
+                    pass
+                elif requested_awardee != auth_awardee:
                     raise Forbidden
             return super(ParticipantSummaryApi, self)._query("participantId")
 
