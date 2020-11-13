@@ -709,10 +709,10 @@ class GenomicPipelineTest(BaseTestCase):
         mock_alert_handler.make_genomic_alert.return_value = 1
 
         # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(2, arr_override=True, array_participants=[1,2],
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True, array_participants=[1, 2, 3],
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
-        self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
+        self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifestWithFailure.csv',
                                          bucket_name,
                                          folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
 
@@ -801,9 +801,9 @@ class GenomicPipelineTest(BaseTestCase):
         mock_alert_handler.make_genomic_alert.return_value = 1
 
         # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(2, genomic_workflow_state=GenomicWorkflowState.AW1)
+        self._create_fake_datasets_for_gc_tests(3, genomic_workflow_state=GenomicWorkflowState.AW1)
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
-        self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
+        self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifestWithFailure.csv',
                                          bucket_name,
                                          folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
 
