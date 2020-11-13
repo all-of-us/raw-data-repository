@@ -1146,7 +1146,7 @@ class GenomicReconciler:
         """ The main method for the AW2 manifest vs. array data reconciliation
         :return: result code
         """
-        metrics = self.metrics_dao.get_with_missing_gen_files()
+        metrics = self.metrics_dao.get_with_missing_gen_files(self.controller.last_run_time)
 
         total_missing_data = []
 
@@ -1211,7 +1211,7 @@ class GenomicReconciler:
         """ The main method for the AW2 manifest vs. sequencing data reconciliation
         :return: result code
         """
-        metrics = self.metrics_dao.get_with_missing_seq_files()
+        metrics = self.metrics_dao.get_with_missing_seq_files(self.controller.last_run_time)
 
         # TODO: Update filnames when clarified
         external_ids = "LocalID_InternalRevisionNumber"
