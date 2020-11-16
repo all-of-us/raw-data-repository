@@ -38,6 +38,13 @@ class BQPDRBiospecimenSchema(BQSchema):
                                              BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
+class BQPDREhrReceiptSchema(BQSchema):
+    """
+    PDR Participant EHR Receipt Histories
+    """
+    file_timestamp = BQField('file_timestamp', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    first_seen = BQField('first_seen', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    last_seen = BQField('last_seen', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
 
 class BQPDRParticipantSummarySchema(BQSchema):
     """
@@ -138,6 +145,12 @@ class BQPDRParticipantSummarySchema(BQSchema):
     cohort_2_pilot_flag = BQField('cohort_2_pilot_flag', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     cohort_2_pilot_flag_id = BQField('cohort_2_pilot_flag_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     biobank_orders = BQRecordField('biobank_orders', schema=BQBiobankOrderSchema)
+    # PDR-166:  Additional EHR status / history information enabled by DA-1781
+    is_ehr_data_available = BQField('is_ehr_data_available', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    was_ehr_data_available = BQField('was_ehr_data_available', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    first_ehr_receipt_time = BQField('first_ehr_receipt_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    latest_ehr_receipt_time = BQField('latest_ehr_receipt_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    ehr_receipts = BQRecordField('ehr_receipts', schema=BQPDREhrReceiptSchema)
 
 
 class BQPDRParticipantSummary(BQTable):
@@ -171,7 +184,8 @@ class BQPDRParticipantSummaryView(BQView):
             'consents',
             'biospec',
             'patient_statuses',
-            'biobank_orders'
+            'biobank_orders',
+            'ehr_receipts'
         ])
     )
 
@@ -196,7 +210,8 @@ class BQPDRParticipantSummaryAllView(BQPDRParticipantSummaryView):
             'consents',
             'biospec',
             'patient_statuses',
-            'biobank_orders'
+            'biobank_orders',
+            'ehr_receipts'
         ])
     )
 
@@ -369,3 +384,17 @@ class BQPDRParticipantBiobankSampleView(BQView):
             ) ps cross join unnest(biobank_orders) as bbo, unnest(bbo.bbo_samples) as nt
             WHERE ps.rn = 1 and ps.test_participant != 1
     """
+
+class BQPDDREhrReceipt(BQView):
+    __viewname__ = 'v_pdr_participant_ehr_receipt'
+    __viewdescr__ = 'PDR Participant EHR Receipts View'
+    __table__ = BQPDRParticipantSummary
+    __sql__ = """
+    SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
+      FROM (
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
+          FROM `{project}`.{dataset}.pdr_participant
+      ) ps cross join unnest(ehr_receipts) as nt
+      WHERE ps.rn = 1 and ps.test_participant != 1
+  """
