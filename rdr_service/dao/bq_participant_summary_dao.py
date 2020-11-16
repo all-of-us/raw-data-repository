@@ -257,9 +257,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         PDR-166:
         As of DA-1781/RDR 1.83.1, a participant_ehr_receipt table was implemented in RDR to track
         when EHR files are received/"seen" for a participant.   See the technical design (DA-1780)
-        The PDR data will mirror the revised EHR status fields.  Note:  There is still a dependency on
+        The PDR data will mirror the revised RDR EHR status fields.  Note:  There is still a dependency on
         participant_summary for old EHR receipt timestamps that predated the creation of participant_ehr_receipt
-        TODO:  May be able to get the old EHR data from bigquery_sync / resource data instead
+        TODO:  May be able to get the old EHR timestamp data from bigquery_sync / resource data instead
 
         :param p_id: participant_id
         :return: dict
@@ -306,14 +306,14 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                           ParticipantEhrReceipt.fileTimestamp).all()
 
             if len(pehr_results):
-                # Based on the UpdateEhrStatus cron job behavior, if a participant has an EHR receipt entry with a
-                # "last seen" date that matches the max "last seen" date in the participant_ehr_receipt table, they
-                # must still have their is_ehr_data_available flag set to true in participant_summary
+                # If a participant has an EHR receipt entry with a "last seen" date that matches the max "last seen"
+                # date in the participant_ehr_receipt table, they must have had their is_ehr_data_available flag set
+                # to true in participant_summary the last time the UpdateEhrStatus cron job ran
                 ehr_last_seen = ro_session.query(func.max(ParticipantEhrReceipt.lastSeen).label("max_time")).first()
                 for row in pehr_results:
                     is_ehr_data_available = is_ehr_data_available or row.lastSeen == ehr_last_seen.max_time
-                    # The earliest EHR receipt timestamp may have predated implementation of the participant_ehr_receipt
-                    # table, and may only exist in the participant_summary data retrieved previously
+                    # This pid's earliest EHR receipt timestamp may have predated implementation of the
+                    # participant_ehr_receipt table, and may only exist in the participant_summary data retrieved above
                     data['ehr_receipt'] = min(row.fileTimestamp, data['ehr_receipt'] or datetime.datetime.max)
                     data['ehr_update'] = max(row.fileTimestamp, data['ehr_update'] or datetime.datetime.min)
 
