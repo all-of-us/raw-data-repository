@@ -1,0 +1,23 @@
+## PostgreSQL
+psycopg2
+
+## Mysql
+mysqlclient
+
+## google cloud services
+## https://cloud.google.com/python/references/libraries
+google-api-python-client
+google-cloud-storage
+google-cloud-bigquery
+google-cloud-datastore
+google-cloud-firestore
+google-python-cloud-debugger
+google-cloud-logging
+google-cloud-tasks
+protobuf   # Google protobuffers, for app engine logging.
+
+## Misc
+python-dateutil
+
+# AOU Cloud Services
+-e git+ssh://git@github.com/all-of-us/python-aou-cloud-services.git#egg=aou_cloud
