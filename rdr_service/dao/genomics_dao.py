@@ -883,9 +883,10 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 .all()
             )
 
-    def get_with_missing_gen_files(self):
+    def get_with_missing_gen_files(self, _date):
         """
         Retrieves all gc metrics with missing genotyping files
+        :param: _date: last run time
         :return: list of returned GenomicGCValidationMetrics objects
         """
         with self.session() as session:
@@ -899,6 +900,8 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
                     GenomicGCValidationMetrics.genomicFileProcessedId != None,
+                    sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
+                    GenomicGCValidationMetrics.modified > _date,
                     ((GenomicGCValidationMetrics.ignoreFlag != 1) |
                      (GenomicGCValidationMetrics.ignoreFlag is not None)),
                     (GenomicGCValidationMetrics.idatRedReceived == 0) |
@@ -912,9 +915,10 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                 .all()
             )
 
-    def get_with_missing_seq_files(self):
+    def get_with_missing_seq_files(self, _date):
         """
         Retrieves all gc metrics with missing sequencing files
+        :param: _date: last run time
         :return: list of returned GenomicGCValidationMetrics objects
         """
         with self.session() as session:
@@ -930,6 +934,8 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                     GenomicGCValidationMetrics.genomicFileProcessedId != None,
+                    sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
+                    GenomicGCValidationMetrics.modified > _date,
                     ((GenomicGCValidationMetrics.ignoreFlag != 1) | (
                             GenomicGCValidationMetrics.ignoreFlag is not None)),
                     (GenomicGCValidationMetrics.hfVcfReceived == 0) |

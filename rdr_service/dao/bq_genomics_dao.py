@@ -14,7 +14,7 @@ from rdr_service.model.bq_genomics import \
     BQGenomicGCValidationMetricsSchema, BQGenomicGCValidationMetrics, \
     GenomicSetStatusEnum, GenomicSetMemberStatusEnum, GenomicValidationFlag, GenomicSubProcessStatusEnum, \
     GenomicSubProcessResultEnum, GenomicJobEnum, GenomicWorkflowStateEnum, BQGenomicFileProcessedSchema, \
-    BQGenomicFileProcessed
+    BQGenomicFileProcessed, GenomicQcStatusEnum
 
 
 class BQGenomicSetGenerator(BigQueryGenerator):
@@ -100,6 +100,12 @@ class BQGenomicSetMemberSchemaGenerator(BigQueryGenerator):
                 enum = GenomicWorkflowStateEnum(data['genomic_workflow_state'])
                 data['genomic_workflow_state'] = enum.name
                 data['genomic_workflow_state_id'] = enum.value
+
+            # QC Status
+            if data['qc_status']:
+                enum = GenomicQcStatusEnum(data['qc_status'])
+                data['qc_status'] = enum.name
+                data['qc_status_id'] = enum.value
 
             return BQRecord(schema=BQGenomicSetMemberSchema, data=data, convert_to_enum=convert_to_enum)
 

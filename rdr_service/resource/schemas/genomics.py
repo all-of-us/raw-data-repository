@@ -106,6 +106,7 @@ class GenomicSetMemberSchema(Schema):
     report_consent_removal_date = fields.DateTime()
     qc_status = fields.EnumString(enum=GenomicQcStatus)
     qc_status_id = fields.EnumInteger(enum=GenomicQcStatus)
+    fingerprint_path = fields.String(validate=validate.Length(max=255))
     dev_note = fields.String(validate=validate.Length(max=255))
 
     class Meta:

@@ -90,7 +90,7 @@ def count_completed_baseline_ppi_modules(participant_summary):
 def count_completed_ppi_modules(participant_summary):
     ppi_module_fields = config.getSettingList(config.PPI_QUESTIONNAIRE_FIELDS, [])
     return sum(
-        1 for field in ppi_module_fields if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED
+        1 for field in ppi_module_fields if getattr(participant_summary, field, None) == QuestionnaireStatus.SUBMITTED
     )
 
 
@@ -285,8 +285,10 @@ class QuestionnaireResponseDao(BaseDao):
             return 'June'
         elif response_authored_date < datetime(2020, 10, 5):
             return 'July'
-        else:
+        elif response_authored_date < datetime(2020, 12, 5):  # Nov scheduled to close on Dec 3rd
             return 'Nov'
+        else:
+            return 'Dec'
 
     def _update_participant_summary(
         self, session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json

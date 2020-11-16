@@ -483,8 +483,11 @@ class GenomicFileIngester:
 
                 member.aw4ManifestJobRunID = self.job_run_id
 
-                # Set the QC status
+                # Set the QC status and fingerprint path
                 member.qcStatus = self._get_qc_status_from_value(row_copy['qcstatus'])
+
+                if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
+                    member.fingerprintPath = row_copy['fppath']
 
                 self.member_dao.update(member)
 
@@ -713,6 +716,7 @@ class GenomicFileIngester:
             logging.warning(f'Value from AW4 "{aw4_value}" is not PASS/FAIL.')
             return GenomicQcStatus.UNSET
 
+
 class GenomicFileValidator:
     """
     This class validates the Genomic Centers files
@@ -833,6 +837,7 @@ class GenomicFileValidator:
             "vcfindexpath",
             "researchid",
             "qcstatus",
+            "fppath",
         )
 
         self.AW4_WGS_SCHEMA = (
@@ -1141,7 +1146,7 @@ class GenomicReconciler:
         """ The main method for the AW2 manifest vs. array data reconciliation
         :return: result code
         """
-        metrics = self.metrics_dao.get_with_missing_gen_files()
+        metrics = self.metrics_dao.get_with_missing_gen_files(self.controller.last_run_time)
 
         total_missing_data = []
 
@@ -1206,7 +1211,7 @@ class GenomicReconciler:
         """ The main method for the AW2 manifest vs. sequencing data reconciliation
         :return: result code
         """
-        metrics = self.metrics_dao.get_with_missing_seq_files()
+        metrics = self.metrics_dao.get_with_missing_seq_files(self.controller.last_run_time)
 
         # TODO: Update filnames when clarified
         external_ids = "LocalID_InternalRevisionNumber"

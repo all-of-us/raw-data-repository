@@ -69,11 +69,6 @@ WITHDRAWN_PARTICIPANT_VISIBILITY_TIME = datetime.timedelta(days=2)
 
 RETENTION_WINDOW = datetime.timedelta(days=547)
 
-# suspended or deceased participants don't allow contact but can still use samples. These fields
-# will not be returned when queried on suspended participant.
-SUSPENDED_OR_DECEASED_PARTICIPANT_FIELDS = ["zipCode", "city", "streetAddress", "streetAddress2", "phoneNumber",
-                                            "loginPhoneNumber", "email"]
-
 # SQL Conditional for participant's retention eligibility computed column (1 = NOT_ELIGIBLE, 2 = ELIGIBLE)
 _COMPUTE_RETENTION_ELIGIBLE_SQL = """
     CASE WHEN
@@ -739,6 +734,9 @@ class ParticipantSummary(Base):
     questionnaireOnCopeNov = Column(
         "questionnaire_on_cope_nov", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
+    questionnaireOnCopeDec = Column(
+        "questionnaire_on_cope_dec", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
+    )
     """
     Indicates the status of a periodic questionnaire on COVID Participant Experience (COPE)
     that a participant can fill out.
@@ -750,12 +748,14 @@ class ParticipantSummary(Base):
     questionnaireOnCopeJuneTime = Column("questionnaire_on_cope_june_time", UTCDateTime)
     questionnaireOnCopeJulyTime = Column("questionnaire_on_cope_july_time", UTCDateTime)
     questionnaireOnCopeNovTime = Column("questionnaire_on_cope_nov_time", UTCDateTime)
+    questionnaireOnCopeDecTime = Column("questionnaire_on_cope_dec_time", UTCDateTime)
     "Indicates the time at which the RDR received notice of the specified COPE questionnaire."
 
     questionnaireOnCopeMayAuthored = Column("questionnaire_on_cope_may_authored", UTCDateTime)
     questionnaireOnCopeJuneAuthored = Column("questionnaire_on_cope_june_authored", UTCDateTime)
     questionnaireOnCopeJulyAuthored = Column("questionnaire_on_cope_july_authored", UTCDateTime)
     questionnaireOnCopeNovAuthored = Column("questionnaire_on_cope_nov_authored", UTCDateTime)
+    questionnaireOnCopeDecAuthored = Column("questionnaire_on_cope_dec_authored", UTCDateTime)
     "Indicates the time at which the participant completed the specified COPE questionnaire."
 
     questionnaireOnDnaProgram = Column(

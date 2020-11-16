@@ -15,7 +15,8 @@
     "questionnaireOnCopeMay",
     "questionnaireOnCopeJune",
     "questionnaireOnCopeJuly",
-    "questionnaireOnCopeNov"
+    "questionnaireOnCopeNov",
+    "questionnaireOnCopeDec"
   ],
   "baseline_sample_test_codes": [
   	"1ED04",
