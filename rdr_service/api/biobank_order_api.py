@@ -10,7 +10,7 @@ class BiobankOrderApi(UpdatableApi):
     def __init__(self):
         super(BiobankOrderApi, self).__init__(BiobankOrderDao(), get_returns_children=True)
 
-    @auth_required(HEALTHPRO)
+    @auth_required(PTC_AND_HEALTHPRO)
     def post(self, p_id):
         return super(BiobankOrderApi, self).post(participant_id=p_id)
 
@@ -18,11 +18,11 @@ class BiobankOrderApi(UpdatableApi):
     def get(self, p_id=None, bo_id=None):  # pylint: disable=unused-argument
         return super(BiobankOrderApi, self).get(id_=bo_id, participant_id=p_id)
 
-    @auth_required(HEALTHPRO)
+    @auth_required(PTC_AND_HEALTHPRO)
     def put(self, p_id, bo_id):  # pylint: disable=unused-argument
         return super(BiobankOrderApi, self).put(bo_id, participant_id=p_id)
 
-    @auth_required(HEALTHPRO)
+    @auth_required(PTC_AND_HEALTHPRO)
     def patch(self, p_id, bo_id):  # pylint: disable=unused-argument
         return super(BiobankOrderApi, self).patch(bo_id)
 
