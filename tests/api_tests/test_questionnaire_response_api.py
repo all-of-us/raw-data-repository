@@ -217,7 +217,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
                                           datetime.datetime(2020, 2, 12))
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2020-02-12T00:00:00')
-        self.assertEqual(summary.get('enrollmentStatusMemberTime'), '2020-03-12T00:00:00')
+        self.assertEqual(summary.get('enrollmentStatusMemberTime'), '2020-02-12T00:00:00')
         self.assertEqual(summary.get('enrollmentStatus'), 'MEMBER')
         self.assertEqual(summary.get('ehrConsentExpireStatus'), 'UNSET')
 
@@ -304,7 +304,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
                                           datetime.datetime(2020, 4, 11))
         summary = self.send_get("Participant/{0}/Summary".format(participant_id))
         self.assertEqual(summary.get('consentForElectronicHealthRecordsAuthored'), '2020-04-11T00:00:00')
-        self.assertEqual(summary.get('enrollmentStatusMemberTime'), '2020-04-12T00:00:00')
+        self.assertEqual(summary.get('enrollmentStatusMemberTime'), '2020-04-11T00:00:00')
         self.assertEqual(summary.get('enrollmentStatus'), 'MEMBER')
         self.assertEqual(summary.get('ehrConsentExpireStatus'), 'UNSET')
         self.assertEqual(summary.get('ehrConsentExpireTime'), None)
