@@ -314,7 +314,7 @@ class DeployAppClass(object):
         alembic = AlembicManagerClass(self.args, self.gcp_env, ['upgrade', 'head'])
         if alembic.run() != 0:
             _logger.warning('Deploy process stopped.')
-            return 1
+            #return 1
 
         _logger.info('Preparing configuration files...')
         config_files = self.setup_service_config_files()
