@@ -385,7 +385,7 @@ class BQPDRParticipantBiobankSampleView(BQView):
             WHERE ps.rn = 1 and ps.test_participant != 1
     """
 
-class BQPDDREhrReceipt(BQView):
+class BQPDREhrReceiptView(BQView):
     __viewname__ = 'v_pdr_participant_ehr_receipt'
     __viewdescr__ = 'PDR Participant EHR Receipts View'
     __table__ = BQPDRParticipantSummary
