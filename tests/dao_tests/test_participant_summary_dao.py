@@ -493,18 +493,18 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         )
 
     def testUpdateEnrollmentStatus(self):
-        ehr_consent_time = datetime.datetime(2018, 3, 1)
+        ehr_consent_authored_time = datetime.datetime(2018, 3, 1)
         summary = ParticipantSummary(
             participantId=1,
             biobankId=2,
             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
             consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
-            consentForElectronicHealthRecordsTime=ehr_consent_time,
+            consentForElectronicHealthRecordsAuthored=ehr_consent_authored_time,
             enrollmentStatus=EnrollmentStatus.INTERESTED,
         )
         self.dao.update_enrollment_status(summary)
         self.assertEqual(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
-        self.assertEqual(ehr_consent_time, summary.enrollmentStatusMemberTime)
+        self.assertEqual(ehr_consent_authored_time, summary.enrollmentStatusMemberTime)
 
     def testCoreStatusRemains(self):
         member_time = datetime.datetime(2020, 6, 1)
