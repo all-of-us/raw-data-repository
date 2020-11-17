@@ -339,7 +339,6 @@ class GenomicFileIngester:
 
                         else:
                             logging.error(f"Skipping collection tube ID: {collection_tube_id}, "
-                                          f"biobank id: {bid}, "
                                           f"genome type: {genome_type}")
 
                         continue
