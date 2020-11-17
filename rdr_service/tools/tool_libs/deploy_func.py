@@ -5,6 +5,8 @@
 #
 # Template for RDR tool python program.
 #
+
+import argparse
 import importlib
 import logging
 import os
@@ -16,6 +18,7 @@ from pathlib import Path
 
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_utils import gcp_gcloud_command
+from rdr_service.services.system_utils import setup_logging, setup_i18n
 
 _logger = logging.getLogger("pdr")
 
@@ -23,7 +26,7 @@ _logger = logging.getLogger("pdr")
 # Remember to add/update bash completion in 'tools.bash'
 tool_cmd = "deploy-func"
 tool_desc = "Deploy gcloud function"
-
+cloud_functions_dir = "gcloud_functions"
 
 class DeployFunctionClass(object):
     def __init__(self, args, gcp_env: GCPEnvConfigObject, project_path, func_path):
@@ -40,7 +43,7 @@ class DeployFunctionClass(object):
         """
         Get the deploy trigger arguments from the function main.py file.
         """
-        mod = importlib.import_module(f'{self.args.function}.main')
+        mod = importlib.import_module(f'{cloud_functions_dir}.{self.args.function}.main')
         args = mod.get_deploy_args(self.gcp_env)
 
         return args
@@ -51,7 +54,7 @@ class DeployFunctionClass(object):
         :param tmp_path: string with path to temporary deployment directory.
         """
         # Copy the function directory files.
-        shutil.copytree(f'{self.func_path}/', f'{tmp_path}/', dirs_exist_ok=True)
+        shutil.copytree(f'{self.func_path}/', f'{tmp_path}/f/')
 
         # Copy the 'aou_cloud' directory.
         # import aou_cloud as _aou_cloud
@@ -60,8 +63,8 @@ class DeployFunctionClass(object):
         #                     ignore=shutil.ignore_patterns('__pycache__', 'tools', 'tests'))
 
         # Copy the requirements.txt file and remove 'aou_cloud' requirement.
-        lines = open(f'{self.project_path}/requirements.txt').readlines()
-        with open(f'{tmp_path}/requirements.txt', 'w') as h:
+        lines = open(f'{self.project_path}/{cloud_functions_dir}/requirements.txt').readlines()
+        with open(f'{tmp_path}/f/requirements.txt', 'w') as h:
             for line in lines:
                 if line.startswith('#') or 'python-aou-cloud-services' in line:
                     continue
@@ -99,8 +102,14 @@ class DeployFunctionClass(object):
 
         result = self._prep_for_deploy(tmp_path)
 
+        # Copy the 'aou_cloud' directory.
+        import aou_cloud as _aou_cloud
+        aou_path = os.path.dirname(_aou_cloud.__file__)
+        shutil.copytree(f'{aou_path}', f'{tmp_path}/f/aou_cloud',
+                        ignore=shutil.ignore_patterns('__pycache__', 'tools', 'tests'))
+
         cwd = os.path.abspath(os.curdir)
-        os.chdir(tmp_path)
+        os.chdir(os.path.join(f'{tmp_path}/', 'f'))
 
         if result == 0:
 
@@ -130,8 +139,20 @@ class DeployFunctionClass(object):
 
 def run():
     # Set global debug value and setup application logging.
-    GCPProcessContext.setup_logging(tool_cmd)
-    parser = GCPProcessContext.get_argparser(tool_cmd, tool_desc)
+    setup_logging(
+        _logger, tool_cmd, "--debug" in sys.argv, "{0}.log".format(tool_cmd) if "--log-file" in sys.argv else None
+    )
+    setup_i18n()
+
+    parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
+
+    # Setup program arguments.
+    parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
+    parser.add_argument("--debug", help="enable debug output", default=False, action="store_true")  # noqa
+    parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
+    parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
+    parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
+    parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
 
     parser.add_argument("--quiet", help="do not ask for user input", default=False, action="store_true")  # noqa
     parser.add_argument('--function', help="gcloud function directory name", required=True)
@@ -139,11 +160,11 @@ def run():
     args = parser.parse_args()
 
     project_path = Path(os.path.dirname(sys.argv[0])).parent
-    func_path = os.path.join(project_path, args.function)
+    func_path = os.path.join(f'{project_path}/{cloud_functions_dir}', args.function)
     if not os.path.exists(func_path):
         raise FileNotFoundError('GCloud function directory not found.')
 
-    with GCPProcessContext(tool_cmd, args) as gcp_env:
+    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
         process = DeployFunctionClass(args, gcp_env, project_path, func_path)
         exit_code = process.run()
         return exit_code

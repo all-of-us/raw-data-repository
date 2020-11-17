@@ -7,9 +7,9 @@ import logging
 import sys
 from urllib.parse import quote
 
-from rdr_service.api_util import open_cloud_file
-from rdr_service.services.gcp_function import GCPCloudFunctionContext, FunctionStoragePubSubHandler, FunctionEvent
-from rdr_service.services.system_utils import JSONObject, setup_logging
+from aou_cloud.services.gcp_cloud_storage import open_cloud_file
+from aou_cloud.services.gcp_cloud_function import GCPCloudFunctionContext, FunctionStoragePubSubHandler
+from aou_cloud.services.system_utils import JSONObject, setup_logging
 
 
 
@@ -22,7 +22,7 @@ function_name = 'genomic_manifest_test'
 # --trigger-event=EVENT_TYPE --trigger-resource=RESOURCE]
 # NOTE: Default function timeout limit is 60s, maximum can be 540s.
 deploy_args = [
-    '--trigger-resource=color-analytics-%%PROJECT-SUFFIX%%',
+    '--trigger-resource=%%CLOUD_RESOURCE%%',
     '--trigger-event google.storage.object.finalize',
     '--timeout=540',
     '--memory=512'
@@ -51,30 +51,8 @@ class GenomicManifestTestFunction(FunctionStoragePubSubHandler):
             counter = 0
             for row in csv_reader:
                 counter += 1
-        #         batch.append(JSONObject(row))
-        #         processed_count += 1
-        #         if len(batch) >= self.batch_size:
-        #             self._process_csv_batch(batch)
-        #             batch.clear()
-        #
-        #     if batch:
-        #         self._process_csv_batch(batch)
-        #
-        # lines = self.temp_batch_file.readlines()
-        # for line in lines:
-        #     batch.append(json.loads(line.decode('utf-8')))
-        #     if len(batch) >= 250:
-        #         self._send_batch_to_bq(batch)
-        #         batch.clear()
-        #
-        # if batch:
-        #     self._send_batch_to_bq(batch)
-        #
-        # _logger.info(f'Processed {processed_count} records from {cloud_file_path}.')
-        # _logger.info(f'  Inserts: {self.insert_count}')
-        # _logger.info(f'   Errors: {self.error_count}')
 
-        _logger.info(f'Length of file: {counter - 1}')
+            _logger.info(f'Length of file: {counter}')
 
 
 def get_deploy_args(gcp_env):
@@ -84,9 +62,14 @@ def get_deploy_args(gcp_env):
     """
     _project_suffix = gcp_env.project.split('-')[-1]
 
+    cloud_resource = 'aou-rdr-sandbox-mock-data'
+
+    if _project_suffix == 'sandbox':
+        cloud_resource = 'aou-rdr-sandbox-mock-data'
+
     args = [function_name]
     for arg in deploy_args:
-        args.append(arg.replace('%%PROJECT-SUFFIX%%', _project_suffix))
+        args.append(arg.replace('%%CLOUD_RESOURCE%%', cloud_resource))
 
     return args
 
@@ -111,7 +94,7 @@ if __name__ == '__main__':
     """ Test code locally """
     setup_logging(_logger, function_name, debug=True)
 
-    context = FunctionEvent(1669022966780817, 'google.storage.object.finalize')
+    #context = FunctionEvent(1669022966780817, 'google.storage.object.finalize')
     file = "AW1_genotyping_sample_manifests/RDR_AoU_GEN_PKG-1908-218052.csv"
 
     event = {
@@ -134,4 +117,4 @@ if __name__ == '__main__':
       "updated": "2020-10-26T21:34:04.887Z"
     }
 
-    sys.exit(genomic_manifest_test(event, context))
+    #sys.exit(genomic_manifest_test(event, context))
