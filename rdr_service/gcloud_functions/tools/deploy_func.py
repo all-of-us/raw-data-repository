@@ -14,8 +14,8 @@ import tempfile
 
 from pathlib import Path
 
-from tools import GCPProcessContext, GCPEnvConfigObject
-from aou_cloud.services.gcp_utils import gcp_gcloud_command
+from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
+from rdr_service.services.gcp_utils import gcp_gcloud_command
 
 _logger = logging.getLogger("pdr")
 
@@ -54,10 +54,10 @@ class DeployFunctionClass(object):
         shutil.copytree(f'{self.func_path}/', f'{tmp_path}/', dirs_exist_ok=True)
 
         # Copy the 'aou_cloud' directory.
-        import aou_cloud as _aou_cloud
-        aou_path = os.path.dirname(_aou_cloud.__file__)
-        shutil.copytree(f'{aou_path}', f'{tmp_path}/aou_cloud', dirs_exist_ok=True,
-                            ignore=shutil.ignore_patterns('__pycache__', 'tools', 'tests'))
+        # import aou_cloud as _aou_cloud
+        # aou_path = os.path.dirname(_aou_cloud.__file__)
+        # shutil.copytree(f'{aou_path}', f'{tmp_path}/aou_cloud', dirs_exist_ok=True,
+        #                     ignore=shutil.ignore_patterns('__pycache__', 'tools', 'tests'))
 
         # Copy the requirements.txt file and remove 'aou_cloud' requirement.
         lines = open(f'{self.project_path}/requirements.txt').readlines()

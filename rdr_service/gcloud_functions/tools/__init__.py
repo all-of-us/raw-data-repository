@@ -17,10 +17,10 @@ from getpass import getpass
 from dateutil.parser import ParserError, parse
 from google.api_core.exceptions import NotFound
 
-from aou_cloud.services.gcp_cloud_datastore import GoogleCloudDatastoreConfigProvider
-from aou_cloud.services.gcp_cloud_storage import GoogleCloudStorageProvider
-from aou_cloud.services.gcp_utils import gcp_activate_sql_proxy, gcp_cleanup, gcp_initialize
-from aou_cloud.services.system_utils import remove_pidfile, write_pidfile_or_die, git_project_root, \
+from rdr_service.services.gcp_cloud_datastore import GoogleCloudDatastoreConfigProvider
+from rdr_service.storage import GoogleCloudStorageProvider
+from rdr_service.services.gcp_utils import gcp_activate_sql_proxy, gcp_cleanup, gcp_initialize
+from rdr_service.services.system_utils import remove_pidfile, write_pidfile_or_die, git_project_root, \
     TerminalColors, setup_logging
 
 
