@@ -165,6 +165,9 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
         self.assertEqual(str(participant_summary.ehrStatus), ps_data['ehr_status'])
         self.assertEqual(participant_summary.ehrReceiptTime, ps_data['ehr_receipt'])
         self.assertEqual(participant_summary.ehrUpdateTime, ps_data['ehr_update'])
+        self.assertEqual(participant_summary.isEhrDataAvailable, ps_data['is_ehr_data_available'])
+        self.assertEqual(first_ehr_time, ps_data['first_ehr_receipt_time'])
+        self.assertEqual(latest_ehr_time, ps_data['latest_ehr_receipt_time'])
 
     def assert_has_participant_ehr_record(self, participant_id, file_timestamp, first_seen, last_seen):
         record = self.session.query(ParticipantEhrReceipt).filter(
@@ -174,6 +177,20 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
             ParticipantEhrReceipt.lastSeen == last_seen
         ).one_or_none()
         self.assertIsNotNone(record, f'EHR receipt was not recorded for participant {participant_id}')
+
+        # Check generated data.
+        gen = ParticipantSummaryGenerator()
+        ps_data = gen.make_resource(participant_id).get_data()
+        self.assertIsNotNone(ps_data['ehr_receipts'], f'PDR EHR receipt data not generated for pid {participant_id}')
+
+        # Look for a matching dict entry in the ps_data['ehr_receipts'] list, since it may also contain other entries
+        # depending on the test construction
+        generated_ehr_receipt = {
+            'file_timestamp': file_timestamp,
+            'first_seen': first_seen,
+            'last_seen': last_seen
+        }
+        self.assertIn(generated_ehr_receipt, ps_data['ehr_receipts'])
 
     @mock.patch("rdr_service.offline.update_ehr_status.make_update_participant_summaries_job")
     def test_updates_participant_summaries(self, mock_summary_job):
