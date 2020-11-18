@@ -65,12 +65,7 @@ def update_participant_summaries():
         LOG.warning("Skipping update_participant_summaries because of invalid config")
 
 
-import datetime
-
-
-def _track_historical_participant_ehr_data(session, parameter_sets, job_time=datetime.datetime.now()):
-    params = [{**param, 'nowtime': job_time} for param in parameter_sets]
-
+def _track_historical_participant_ehr_data(session, parameter_sets):
     query = insert(ParticipantEhrReceipt).values({
         ParticipantEhrReceipt.participantId: bindparam('pid'),
         ParticipantEhrReceipt.fileTimestamp: bindparam('receipt_time'),
@@ -80,7 +75,7 @@ def _track_historical_participant_ehr_data(session, parameter_sets, job_time=dat
         'last_seen': func.utc_timestamp()
     }).prefix_with('IGNORE')
 
-    session.execute(query, params)
+    session.execute(query, parameter_sets)
 
 
 def update_participant_summaries_from_job(job, project_id=None):
