@@ -36,5 +36,6 @@ class ParticipantEhrReceipt(Base):
 Index(
     'idx_participant_ehr_receipt_participant_file_time',
     ParticipantEhrReceipt.participantId,
-    ParticipantEhrReceipt.fileTimestamp
+    ParticipantEhrReceipt.fileTimestamp,
+    unique=True
 )
