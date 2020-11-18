@@ -8,7 +8,8 @@ import sys
 from urllib.parse import quote
 
 from aou_cloud.services.gcp_cloud_storage import open_cloud_file
-from aou_cloud.services.gcp_cloud_function import GCPCloudFunctionContext, FunctionStoragePubSubHandler
+from aou_cloud.services.gcp_cloud_function import GCPCloudFunctionContext, \
+    FunctionStoragePubSubHandler, PubSubEventContext
 from aou_cloud.services.gcp_cloud_tasks import GCPCloudTask
 from aou_cloud.services.system_utils import JSONObject, setup_logging
 
@@ -48,9 +49,11 @@ class GenomicManifestTestFunction(FunctionStoragePubSubHandler):
         data = {
             "filename": cloud_file_path
         }
-        
+
+        _logger.info("Starting cloud task...")
+
         _task = GCPCloudTask()
-        _task.execute('ingest_aw1_manifest_task', payload=data)
+        _task.execute('IngestAW1ManifestTaskApi', payload=data)
 
 
 def get_deploy_args(gcp_env):
@@ -92,7 +95,7 @@ if __name__ == '__main__':
     """ Test code locally """
     setup_logging(_logger, function_name, debug=True)
 
-    #context = FunctionEvent(1669022966780817, 'google.storage.object.finalize')
+    context = PubSubEventContext(1669022966780817, 'google.storage.object.finalize')
     file = "AW1_genotyping_sample_manifests/RDR_AoU_GEN_PKG-1908-218052.csv"
 
     event = {
@@ -115,4 +118,4 @@ if __name__ == '__main__':
       "updated": "2020-10-26T21:34:04.887Z"
     }
 
-    #sys.exit(genomic_manifest_test(event, context))
+    sys.exit(genomic_manifest_test(event, context))

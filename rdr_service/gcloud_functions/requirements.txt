@@ -4,7 +4,7 @@
 #
 #    pip-compile
 #
--e git+ssh://git@github.com/all-of-us/python-aou-cloud-services.git#egg=aou_cloud  # via -r requirements.in
+-e git+ssh://git@github.com/all-of-us/python-aou-cloud-services.git@jk-reqs#egg=aou_cloud  # via -r requirements.in
 cachetools==4.1.1         # via aou-cloud, google-auth
 certifi==2020.6.20        # via aou-cloud, requests
 cffi==1.14.3              # via google-crc32c
