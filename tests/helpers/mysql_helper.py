@@ -9,6 +9,7 @@
 import atexit
 import csv
 import importlib
+import inspect
 import io
 import os
 import random
@@ -28,7 +29,8 @@ from rdr_service.dao import database_factory
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
-from rdr_service.model import compiler  # pylint: disable=unused-import
+from rdr_service.model import compiler, database as model_collection  # pylint: disable=unused-import
+from rdr_service.model.base import Base
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
@@ -100,99 +102,11 @@ def start_mysql_instance():
 
 def _clear_data(engine):
     engine.execute("set foreign_key_checks = 0")
-    engine.execute("truncate table api_user")
-    engine.execute("truncate table bigquery_sync")
-    engine.execute("truncate table biobank_aliquot")
-    engine.execute("truncate table biobank_aliquot_dataset")
-    engine.execute("truncate table biobank_aliquot_dataset_item")
-    engine.execute("truncate table biobank_covid_antibody_sample")
-    engine.execute("truncate table biobank_mail_kit_order")
-    # engine.execute("truncate table biobank_mail_kit_order_history")
-    engine.execute("truncate table biobank_history")
-    engine.execute("truncate table biobank_order")
-    engine.execute("truncate table biobank_order_identifier")
-    engine.execute("truncate table biobank_order_identifier_history")
-    engine.execute("truncate table biobank_ordered_sample")
-    engine.execute("truncate table biobank_ordered_sample_history")
-    engine.execute("truncate table biobank_quest_order_site_address")
-    engine.execute("truncate table biobank_specimen")
-    engine.execute("truncate table biobank_specimen_attribute")
-    engine.execute("truncate table biobank_stored_sample")
-    engine.execute("truncate table calendar")
-    engine.execute("truncate table code")
-    engine.execute("truncate table code_book")
-    engine.execute("truncate table code_history")
-    engine.execute("truncate table deceased_report")
-    engine.execute("truncate table deceased_report_import_record")
-    engine.execute("truncate table ehr_receipt")
-    engine.execute("truncate table genomic_file_processed")
-    engine.execute("truncate table genomic_gc_validation_metrics")
-    engine.execute("truncate table genomic_job_run")
-    engine.execute("truncate table genomic_set")
-    # engine.execute("truncate table genomic_set_history")
-    engine.execute("truncate table genomic_set_member")
-    # engine.execute("truncate table genomic_set_member_history")
-    engine.execute("truncate table hpo")
-    engine.execute("truncate table hpo_counts_report")
-    engine.execute("truncate table log_position")
-    engine.execute("truncate table mayolink_create_order_history")
-    engine.execute("truncate table measurement")
-    engine.execute("truncate table measurement_to_qualifier")
-    engine.execute("truncate table metadata")
-    engine.execute("truncate table metrics_age_cache")
-    engine.execute("truncate table metrics_bucket")
-    engine.execute("truncate table metrics_cache_job_status")
-    engine.execute("truncate table metrics_enrollment_status_cache")
-    engine.execute("truncate table metrics_gender_cache")
-    engine.execute("truncate table metrics_language_cache")
-    engine.execute("truncate table metrics_lifecycle_cache")
-    engine.execute("truncate table metrics_race_cache")
-    engine.execute("truncate table metrics_region_cache")
-    engine.execute("truncate table metrics_version")
-    engine.execute("truncate table organization")
-    engine.execute("truncate table participant")
-    # engine.execute("truncate table participant_answers_view")
-    engine.execute("truncate table participant_cohort_pilot")
-    engine.execute("truncate table participant_ehr_receipt")
-    engine.execute("truncate table participant_gender_answers")
-    # engine.execute("truncate table participant_gender_answers_history")
-    engine.execute("truncate table participant_history")
-    engine.execute("truncate table participant_race_answers")
-    # engine.execute("truncate table participant_race_answers_history")
-    engine.execute("truncate table participant_summary")
-    # engine.execute("truncate table participant_view")
-    engine.execute("truncate table patient_status")
-    # engine.execute("truncate table patient_status_history")
-    engine.execute("truncate table physical_measurements")
-    # engine.execute("truncate table physical_measurements_view")
-    # engine.execute("truncate table ppi_participant_view")
-    engine.execute("truncate table quest_covid_antibody_test")
-    engine.execute("truncate table quest_covid_antibody_test_result")
-    engine.execute("truncate table questionnaire")
-    engine.execute("truncate table questionnaire_concept")
-    engine.execute("truncate table questionnaire_history")
-    engine.execute("truncate table questionnaire_question")
-    engine.execute("truncate table questionnaire_response")
-    engine.execute("truncate table questionnaire_response_answer")
-    # engine.execute("truncate table questionnaire_response_answer_view")
-    # engine.execute("truncate table raw_physical_measurements_view")
-    # engine.execute("truncate table raw_ppi_participant_view")
-    # engine.execute("truncate table raw_questionnaire_response_answer_view")
-    engine.execute("truncate table requests_log")
-    engine.execute("truncate table resource_data")
-    engine.execute("truncate table resource_schema")
-    engine.execute("truncate table resource_search_results")
-    engine.execute("truncate table resource_type")
-    engine.execute("truncate table site")
-    engine.execute("truncate table workbench_audit")
-    engine.execute("truncate table workbench_institutional_affiliations")
-    engine.execute("truncate table workbench_institutional_affiliations_history")
-    engine.execute("truncate table workbench_researcher")
-    engine.execute("truncate table workbench_researcher_history")
-    engine.execute("truncate table workbench_workspace_approved")
-    engine.execute("truncate table workbench_workspace_snapshot")
-    engine.execute("truncate table workbench_workspace_user")
-    engine.execute("truncate table workbench_workspace_user_history")
+    for _, member in inspect.getmembers(model_collection):
+        if inspect.isclass(member) and issubclass(member, Base) and member != Base:
+            engine.execute(f'truncate table {member.__tablename__}')
+
+    engine.execute("set foreign_key_checks = 1")
 
 
 initialize = True
