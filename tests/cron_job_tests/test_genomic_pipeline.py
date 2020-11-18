@@ -2017,7 +2017,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the members' job run ID
         # Picked up by job
         test_member_3 = self.member_dao.get(3)
-        self.assertEqual(2, test_member_3.gemA3ManifestJobRunId)
+        self.assertEqual(61, test_member_3.gemA3ManifestJobRunId)
         self.assertEqual(GenomicWorkflowState.GEM_RPT_DELETED, test_member_3.genomicWorkflowState)
 
         # picked up by job
