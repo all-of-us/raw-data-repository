@@ -282,7 +282,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         ps = ro_session.query(ParticipantSummary.ehrStatus, ParticipantSummary.ehrReceiptTime,
                               ParticipantSummary.ehrUpdateTime,
                               ParticipantSummary.enrollmentStatusCoreOrderedSampleTime,
-                              ParticipantSummary.enrollmentStatusCoreStoredSampleTime) \
+                              ParticipantSummary.enrollmentStatusCoreStoredSampleTime,
+                              ParticipantSummary.isEhrDataAvailable) \
             .filter(ParticipantSummary.participantId == p_id).first()
 
         if not ps:
@@ -292,7 +293,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # See rdr_service.model.utils Enum decorator class
             ehr_status = EhrStatus.NOT_PRESENT if ps.ehrStatus is None else ps.ehrStatus
             ehr_receipts = []
-            is_ehr_data_available = False
             data = {
                 'ehr_status': str(ehr_status),
                 'ehr_status_id': int(ehr_status),
@@ -302,7 +302,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'enrollment_core_stored': ps.enrollmentStatusCoreStoredSampleTime,
                 # New alias field added in RDR 1.83.1 for DA-1781.  Add for PDR/RDR consistency, retain old ehr_status
                 # (and ehr_status_id) fields for PDR backwards compatibility
-                'was_ehr_data_available': int(ehr_status)
+                'was_ehr_data_available': int(ehr_status),
+                # Brand new field as of RDR 1.83.1/DA-1781; convert boolean to integer for our BQ data dict
+                'is_ehr_data_available': int(ps.isEhrDataAvailable)
             }
 
             # Note:  None of the columns in the participant_ehr_receipt table are nullable
@@ -315,12 +317,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                           ParticipantEhrReceipt.fileTimestamp).all()
 
             if len(pehr_results):
-                # If a participant has an EHR receipt entry with a "last seen" date that matches the max "last seen"
-                # date in the participant_ehr_receipt table, they must have had their is_ehr_data_available flag set
-                # to true in participant_summary the last time the UpdateEhrStatus cron job ran
-                ehr_last_seen = ro_session.query(func.max(ParticipantEhrReceipt.lastSeen).label("max_time")).first()
                 for row in pehr_results:
-                    is_ehr_data_available = is_ehr_data_available or row.lastSeen == ehr_last_seen.max_time
                     # This pid's earliest EHR receipt timestamp may have predated implementation of the
                     # participant_ehr_receipt table, and may only exist in the participant_summary data retrieved above
                     data['ehr_receipt'] = min(row.fileTimestamp, data['ehr_receipt'] or datetime.datetime.max)
@@ -337,8 +334,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # The old fields/keys are still populated for PDR/metrics backwards compatibility
             data['first_ehr_receipt_time'] = data['ehr_receipt']
             data['latest_ehr_receipt_time'] = data['ehr_update']
-            # Brand new field as of RDR 1.83.1/DA-1781; convert boolean to integer for our BQ data dict
-            data['is_ehr_data_available'] = int(is_ehr_data_available)
 
             if len(ehr_receipts):
                 data['ehr_receipts'] = ehr_receipts

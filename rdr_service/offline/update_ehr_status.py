@@ -1,17 +1,18 @@
 import logging
 import math
-
+from sqlalchemy import bindparam
+from sqlalchemy.dialects.mysql import insert
+from sqlalchemy.sql import func
 from werkzeug.exceptions import HTTPException, InternalServerError, BadGateway
 
-from rdr_service import clock, config
+from rdr_service import config
 from rdr_service.app_util import datetime_as_naive_utc
 from rdr_service.cloud_utils import bigquery
 from rdr_service.dao.ehr_dao import EhrReceiptDao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.ehr import ParticipantEhrReceipt
-from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import EhrStatus
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 
@@ -34,16 +35,19 @@ def update_ehr_status_participant():
     logging.info('Update EHR complete')
 
 
-def make_update_participant_summaries_job():
-    config_param = config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT
-    try:
-        bigquery_view = config.getSetting(config_param, None)
-    except config.InvalidConfigException as e:
-        LOG.warning("Config lookup exception for {}: {}".format(config_param, e))
-        bigquery_view = None
+def make_update_participant_summaries_job(project_id=None, bigquery_view=None):
+    if bigquery_view is None:
+        config_param = config.EHR_STATUS_BIGQUERY_VIEW_PARTICIPANT
+        try:
+            bigquery_view = config.getSetting(config_param, None)
+        except config.InvalidConfigException as e:
+            LOG.warning("Config lookup exception for {}: {}".format(config_param, e))
+            bigquery_view = None
+
     if bigquery_view:
         query = "SELECT person_id, latest_upload_time FROM `{}`".format(bigquery_view)
-        return bigquery.BigQueryJob(query, default_dataset_id="operations_analytics", page_size=1000)
+        return bigquery.BigQueryJob(query, default_dataset_id="operations_analytics", page_size=1000,
+                                    project_id=project_id)
     else:
         return None
 
@@ -61,33 +65,22 @@ def update_participant_summaries():
         LOG.warning("Skipping update_participant_summaries because of invalid config")
 
 
-def _track_historical_participant_ehr_data(session, participant_id, file_time, job_time):
-    record = session.query(ParticipantEhrReceipt).filter(
-        ParticipantEhrReceipt.participantId == participant_id,
-        ParticipantEhrReceipt.fileTimestamp == file_time
-    ).one_or_none()
+def _track_historical_participant_ehr_data(session, parameter_sets):
+    query = insert(ParticipantEhrReceipt).values({
+        ParticipantEhrReceipt.participantId: bindparam('pid'),
+        ParticipantEhrReceipt.fileTimestamp: bindparam('receipt_time'),
+        ParticipantEhrReceipt.firstSeen: func.utc_timestamp(),
+        ParticipantEhrReceipt.lastSeen: func.utc_timestamp()
+    }).on_duplicate_key_update({
+        'last_seen': func.utc_timestamp()
+    }).prefix_with('IGNORE')
 
-    if record is None:
-        # Check that the participant exists
-        participant = session.query(Participant).filter(Participant.participantId == participant_id).one_or_none()
-        if participant is None:
-            logging.warning(f'Skipping ehr receipt record for non-existent participant "{participant_id}"')
-            return
-
-        record = ParticipantEhrReceipt(
-            participantId=participant_id,
-            fileTimestamp=file_time,
-            firstSeen=job_time
-        )
-        session.add(record)
-
-    record.lastSeen = job_time
+    session.execute(query, parameter_sets)
 
 
-def update_participant_summaries_from_job(job):
+def update_participant_summaries_from_job(job, project_id=None):
     summary_dao = ParticipantSummaryDao()
     summary_dao.prepare_for_ehr_status_update()
-    now = clock.CLOCK.now()
     batch_size = 100
     for i, page in enumerate(job):
         LOG.info("Processing page {} of results...".format(i))
@@ -101,9 +94,10 @@ def update_participant_summaries_from_job(job):
                     "pid": participant_id,
                     "receipt_time": file_upload_time
                 })
-                _track_historical_participant_ehr_data(session, participant_id, file_upload_time, now)
 
-        query_result = summary_dao.bulk_update_ehr_status(parameter_sets)
+            _track_historical_participant_ehr_data(session, parameter_sets)
+            query_result = summary_dao.bulk_update_ehr_status_with_session(session, parameter_sets)
+
         total_rows = query_result.rowcount
         LOG.info("Affected {} rows.".format(total_rows))
 
@@ -114,12 +108,13 @@ def update_participant_summaries_from_job(job):
             pids = [param['pid'] for param in parameter_sets]
 
             with summary_dao.session() as session:
-                cursor = session.query(
+                records = session.query(
                     ParticipantSummary.participantId,
                     ParticipantSummary.ehrReceiptTime,
                     ParticipantSummary.ehrUpdateTime
+                ).filter(
+                    ParticipantSummary.participantId.in_(pids)
                 ).all()
-                records = [r for r in cursor if r.participantId in pids]
 
             patch_data = [{
                 'pid': summary.participantId,
@@ -130,8 +125,9 @@ def update_participant_summaries_from_job(job):
                     'ehr_update': summary.ehrUpdateTime
                 }
             } for summary in records]
+
             try:
-                dispatch_participant_rebuild_tasks(patch_data, batch_size=batch_size)
+                dispatch_participant_rebuild_tasks(patch_data, batch_size=batch_size, project_id=project_id)
 
             except BadGateway as e:
                 LOG.error(f'Bad Gateway: {e}', exc_info=True)

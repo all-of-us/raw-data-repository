@@ -15,11 +15,12 @@ from rdr_service.resource.generators import ParticipantSummaryGenerator
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
 
 
-def batch_rebuild_participants_task(payload):
+def batch_rebuild_participants_task(payload, project_id=None):
     """
     Loop through all participants in batch and generate the BQ participant summary data and
     store it in the biguqery_sync table.
     Warning: this will force a rebuild and eventually a re-sync for every participant record.
+    :param project_id: String identifier for the GAE project
     :param payload: Dict object with list of participants to work on.
     """
     ps_bqgen = BQParticipantSummaryGenerator()
@@ -41,7 +42,8 @@ def batch_rebuild_participants_task(payload):
 
         rebuild_participant_summary_resource(p_id, res_gen=res_gen, patch_data=patch_data)
 
-        ps_bqr = rebuild_bq_participant(p_id, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen, patch_data=patch_data)
+        ps_bqr = rebuild_bq_participant(p_id, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen, patch_data=patch_data,
+                                        project_id=project_id)
         # Test to see if participant record has been filtered or we are just patching.
         if not ps_bqr or patch_data:
             continue
@@ -66,6 +68,6 @@ def batch_rebuild_participants_task(payload):
             with w_dao.session() as w_session:
                 for mod_bqr in mod_bqrs:
                     mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
-                                            w_dao=w_dao, w_session=w_session)
+                                            w_dao=w_dao, w_session=w_session, project_id=project_id)
 
     logging.info(f'End time: {datetime.utcnow()}, rebuilt BigQuery data for {count} participants.')

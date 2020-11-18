@@ -892,10 +892,6 @@ class ParticipantSummaryDao(UpdatableDao):
         summary.ehrUpdateTime = update_time
         return summary
 
-    def bulk_update_ehr_status(self, parameter_sets):
-        with self.session() as session:
-            return self.bulk_update_ehr_status_with_session(session, parameter_sets)
-
     def prepare_for_ehr_status_update(self):
         with self.session() as session:
             query = (

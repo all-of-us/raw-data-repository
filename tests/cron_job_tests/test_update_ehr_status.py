@@ -172,11 +172,25 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
     def assert_has_participant_ehr_record(self, participant_id, file_timestamp, first_seen, last_seen):
         record = self.session.query(ParticipantEhrReceipt).filter(
             ParticipantEhrReceipt.participantId == participant_id,
-            ParticipantEhrReceipt.fileTimestamp == file_timestamp,
-            ParticipantEhrReceipt.firstSeen == first_seen,
-            ParticipantEhrReceipt.lastSeen == last_seen
+            ParticipantEhrReceipt.fileTimestamp == file_timestamp
         ).one_or_none()
         self.assertIsNotNone(record, f'EHR receipt was not recorded for participant {participant_id}')
+
+        # The first_seen and last_seen fields are set with mysql's NOW function,
+        #   so check that the time is close to what is expected
+
+        # mysql isn't storing the microseconds
+        first_seen = first_seen.replace(microsecond=0)
+        last_seen = last_seen.replace(microsecond=0)
+
+        self.assertLessEqual(first_seen, record.firstSeen,
+                             "The record found has a firstSeen time earlier than expected")
+        self.assertGreaterEqual(1, (record.firstSeen - first_seen).seconds,
+                                "The record found has a firstSeen time much later than expected")
+        self.assertLessEqual(last_seen, record.lastSeen,
+                             "The record found has a lastSeen time earlier than expected")
+        self.assertGreaterEqual(1, (record.lastSeen - last_seen).seconds,
+                                "The record found has a lastSeen time much later than expected")
 
         # Check generated data.
         gen = ParticipantSummaryGenerator()
@@ -199,9 +213,9 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
         p_eleven_first_upload = self.EhrUpdatePidRow(11, datetime.datetime(2020, 3, 12, 8))
         p_fourteen_upload = self.EhrUpdatePidRow(14, datetime.datetime(2020, 3, 12, 10))
         mock_summary_job.return_value.__iter__.return_value = [[p_eleven_first_upload, p_fourteen_upload]]
-        first_job_run_time = datetime.datetime(2020, 4, 1)
-        with FakeClock(first_job_run_time):
-            update_ehr_status.update_ehr_status_participant()
+
+        first_job_run_time = datetime.datetime.utcnow()
+        update_ehr_status.update_ehr_status_participant()
 
         # Run job with data for participants 11 and 12 (leaving 14 out)
         new_p_eleven_upload = self.EhrUpdatePidRow(11, datetime.datetime(2020, 3, 30, 2))
@@ -209,9 +223,9 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
         mock_summary_job.return_value.__iter__.return_value = [
             [p_eleven_first_upload, new_p_eleven_upload, p_twelve_upload]
         ]
-        second_job_run_time = datetime.datetime(2020, 4, 2)
-        with FakeClock(second_job_run_time):
-            update_ehr_status.update_ehr_status_participant()
+
+        second_job_run_time = datetime.datetime.utcnow()
+        update_ehr_status.update_ehr_status_participant()
 
         self.assert_ehr_data_matches(
             participant_id=11,
