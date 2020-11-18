@@ -3,15 +3,13 @@ import math
 
 from werkzeug.exceptions import HTTPException, InternalServerError, BadGateway
 
-from rdr_service import clock, config
+from rdr_service import config
 from rdr_service.app_util import datetime_as_naive_utc
 from rdr_service.cloud_utils import bigquery
 from rdr_service.dao.ehr_dao import EhrReceiptDao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.model.ehr import ParticipantEhrReceipt
-from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import EhrStatus
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 
@@ -67,15 +65,14 @@ def update_participant_summaries():
 def _track_historical_participant_ehr_data(session, parameter_sets):
     session.execute("""
         INSERT IGNORE INTO participant_ehr_receipt (participant_id, file_timestamp, first_seen, last_seen)
-        VALUES (:pid, :receipt_time, NOW(), NOW())
-        ON DUPLICATE KEY UPDATE last_seen = NOW()
+        VALUES (:pid, :receipt_time, UTC_TIMESTAMP(), UTC_TIMESTAMP())
+        ON DUPLICATE KEY UPDATE last_seen = UTC_TIMESTAMP()
     """, parameter_sets)
 
 
 def update_participant_summaries_from_job(job, project_id=None):
     summary_dao = ParticipantSummaryDao()
     summary_dao.prepare_for_ehr_status_update()
-    now = clock.CLOCK.now()
     batch_size = 100
     for i, page in enumerate(job):
         LOG.info("Processing page {} of results...".format(i))
