@@ -9,6 +9,7 @@ from urllib.parse import quote
 
 from aou_cloud.services.gcp_cloud_storage import open_cloud_file
 from aou_cloud.services.gcp_cloud_function import GCPCloudFunctionContext, FunctionStoragePubSubHandler
+from aou_cloud.services.gcp_cloud_tasks import GCPCloudTask
 from aou_cloud.services.system_utils import JSONObject, setup_logging
 
 
@@ -42,17 +43,14 @@ class GenomicManifestTestFunction(FunctionStoragePubSubHandler):
 
         _logger.info(f"file found: {self.event.name}")
 
-        #self.temp_batch_file = tempfile.NamedTemporaryFile()
-
         cloud_file_path = f'{self.event.bucket}/{self.event.name}'
-        with open_cloud_file(cloud_file_path) as csv_file:
-            csv_reader = csv.DictReader(csv_file, delimiter=",")
 
-            counter = 0
-            for row in csv_reader:
-                counter += 1
-
-            _logger.info(f'Length of file: {counter}')
+        data = {
+            "filename": cloud_file_path
+        }
+        
+        _task = GCPCloudTask()
+        _task.execute('ingest_aw1_manifest_task', payload=data)
 
 
 def get_deploy_args(gcp_env):
