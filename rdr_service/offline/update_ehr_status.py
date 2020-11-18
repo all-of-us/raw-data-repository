@@ -64,27 +64,12 @@ def update_participant_summaries():
         LOG.warning("Skipping update_participant_summaries because of invalid config")
 
 
-def _track_historical_participant_ehr_data(session, participant_id, file_time, job_time):
-    record = session.query(ParticipantEhrReceipt).filter(
-        ParticipantEhrReceipt.participantId == participant_id,
-        ParticipantEhrReceipt.fileTimestamp == file_time
-    ).one_or_none()
-
-    if record is None:
-        # Check that the participant exists
-        participant = session.query(Participant).filter(Participant.participantId == participant_id).one_or_none()
-        if participant is None:
-            logging.warning(f'Skipping ehr receipt record for non-existent participant "{participant_id}"')
-            return
-
-        record = ParticipantEhrReceipt(
-            participantId=participant_id,
-            fileTimestamp=file_time,
-            firstSeen=job_time
-        )
-        session.add(record)
-
-    record.lastSeen = job_time
+def _track_historical_participant_ehr_data(session, parameter_sets):
+    session.execute("""
+        INSERT IGNORE INTO participant_ehr_receipt (participant_id, file_timestamp, first_seen, last_seen)
+        VALUES (:pid, :receipt_time, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE last_seen = NOW()
+    """, parameter_sets)
 
 
 def update_participant_summaries_from_job(job, project_id=None):
@@ -104,9 +89,10 @@ def update_participant_summaries_from_job(job, project_id=None):
                     "pid": participant_id,
                     "receipt_time": file_upload_time
                 })
-                _track_historical_participant_ehr_data(session, participant_id, file_upload_time, now)
 
-        query_result = summary_dao.bulk_update_ehr_status(parameter_sets)
+            _track_historical_participant_ehr_data(session, parameter_sets)
+            query_result = summary_dao.bulk_update_ehr_status_with_session(session, parameter_sets)
+
         total_rows = query_result.rowcount
         LOG.info("Affected {} rows.".format(total_rows))
 
@@ -123,6 +109,9 @@ def update_participant_summaries_from_job(job, project_id=None):
                     ParticipantSummary.ehrUpdateTime
                 ).all()
                 records = [r for r in cursor if r.participantId in pids]
+                # TODO: it may help performance to load receipt and update times for just the pids that have been
+                #  modified, rather than loading everything from the database and checking if they're in
+                #  the list of pids
 
             patch_data = [{
                 'pid': summary.participantId,
