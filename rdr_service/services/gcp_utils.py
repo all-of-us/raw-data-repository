@@ -106,21 +106,6 @@ def gcp_get_project_short_name(project=None):
     return project.split("-")[-1]
 
 
-def gcp_get_current_account():
-    """
-    Return the currently set account name
-    :return: account name
-    """
-    if os.getenv('FUNCTION_IDENTITY'):
-        return os.getenv('FUNCTION_IDENTITY')
-    # gcloud config list --format 'value(core.project)'
-    pcode, so, se = gcp_gcloud_command("config", 'get-value account')
-    if pcode != 0:
-        _logger.error("failed to get current account name. ({0}: {1}).".format(pcode, se))
-        return None
-    return so.strip()
-
-
 def gcp_initialize(project, account=None, service_account=None):
     """
   Apply settings to local GCP environment. This must be called first to set the
