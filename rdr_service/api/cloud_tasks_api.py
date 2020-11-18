@@ -132,6 +132,7 @@ class IngestAW1ManifestTaskApi(Resource):
     """
     Cloud Task endpoint: Ingest AW1 Manifest.
     """
+    @task_auth_required
     def post(self):
         log_task_headers()
         data = request.get_json(force=True)
