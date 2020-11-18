@@ -9,9 +9,9 @@ tool_cmd = 'update-participant-ehr'
 tool_desc = 'Sync deceased reports from Redcap to an environment'
 
 
-class DeceasedSyncTool(ToolBase):
+class UpdateEhrStatusTool(ToolBase):
     def run(self):
-        super(DeceasedSyncTool, self).run()
+        super(UpdateEhrStatusTool, self).run()
 
         # UpdateEHR code uses a logger instance created in its name, have that print to stdout too
         logging_instance = logging.getLogger('rdr_service.offline.update_ehr_status')
@@ -31,4 +31,4 @@ def add_additional_arguments(parser):
 
 
 def run():
-    return cli_run(tool_cmd, tool_desc, DeceasedSyncTool, add_additional_arguments)
+    return cli_run(tool_cmd, tool_desc, UpdateEhrStatusTool, add_additional_arguments)
