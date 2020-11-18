@@ -1,5 +1,5 @@
 
-from sqlalchemy import event, Column, String, Integer, ForeignKey, BigInteger, UniqueConstraint
+from sqlalchemy import event, Column, String, Integer, ForeignKey, BigInteger, UniqueConstraint, Index
 from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
@@ -34,7 +34,9 @@ class ResourceData(Base):
         UniqueConstraint("uri"),
     )
 
-# Index("ix_res_data_type_modified_hpo_id", ResourceData.resourceTypeID, ResourceData.modified, ResourceData.hpoId)
+Index("ix_res_data_type_modified_hpo_id", ResourceData.resourceTypeID, ResourceData.modified, ResourceData.hpoId)
+Index('ix_res_data_type_pk_id', ResourceData.resourceTypeID, ResourceData.resourcePKID)
+Index('ix_res_data_type_pkalt_id', ResourceData.resourceTypeID, ResourceData.resourcePKAltID)
 
 event.listen(ResourceData, "before_insert", model_insert_listener)
 event.listen(ResourceData, "before_update", model_update_listener)

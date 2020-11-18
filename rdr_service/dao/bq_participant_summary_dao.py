@@ -28,6 +28,7 @@ from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummary
 from rdr_service.model.bq_participant_summary import BQParticipantSummarySchema, BQStreetAddressTypeEnum, \
     BQModuleStatusEnum, BQParticipantSummary, COHORT_1_CUTOFF, COHORT_2_CUTOFF, BQConsentCohort
+from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.hpo import HPO
 from rdr_service.model.measurements import PhysicalMeasurements, PhysicalMeasurementsStatus
 from rdr_service.model.organization import Organization
@@ -92,6 +93,13 @@ _consent_answer_status_map = {
     'ConsentAncestryTraits_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
     'ConsentAncestryTraits_NotSure': BQModuleStatusEnum.SUBMITTED_NOT_SURE
 }
+
+# See hotfix ticket ROC-447 / backfill ticket ROC-475.  The first GROR consent questionnaire was immediately
+# deprecated and replaced by a revised consent questionnaire.  Early GROR consents (~200) already received
+# were replayed using the revised questionnaire format.  When retrieving GROR module answers, we'll look for
+# deprecated GROR consent questions/answers to map them to the revised consent question/answer format.
+_deprecated_gror_consent_questionnaire_id = 415
+_deprecated_gror_consent_question_code_names = ('CheckDNA_Yes', 'CheckDNA_No', 'CheckDNA_NotSure')
 
 class BQParticipantSummaryGenerator(BigQueryGenerator):
     """
@@ -252,6 +260,14 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         Get additional participant status fields that were incorporated into the RDR participant_summary
         but can't be derived from information in other RDR tables.  Example is EHR status information which is
         read from a curation dataset by a daily cron job that then updates participant_summary directly.
+
+        PDR-166:
+        As of DA-1781/RDR 1.83.1, a participant_ehr_receipt table was implemented in RDR to track
+        when EHR files are received/"seen" for a participant.   See the technical design (DA-1780)
+        The PDR data will mirror the revised RDR EHR status fields.  Note:  There is still a dependency on
+        participant_summary for old EHR receipt timestamps that predated the creation of participant_ehr_receipt
+        TODO:  May be able to get the old EHR timestamp data from bigquery_sync / resource data instead
+
         :param p_id: participant_id
         :return: dict
 
@@ -260,6 +276,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         # Goal is to eliminate dependencies on participant_summary, which may go away someday.
         # Long term solution may mean creating a participant_profile table for these outlier fields that are managed
         # outside of the RDR API, and query that table instead.
+        #
         data = {}
         ps = ro_session.query(ParticipantSummary.ehrStatus, ParticipantSummary.ehrReceiptTime,
                               ParticipantSummary.ehrUpdateTime,
@@ -273,14 +290,56 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             # SqlAlchemy may return None for our zero-based NOT_PRESENT EhrStatus Enum, so map None to NOT_PRESENT
             # See rdr_service.model.utils Enum decorator class
             ehr_status = EhrStatus.NOT_PRESENT if ps.ehrStatus is None else ps.ehrStatus
+            ehr_receipts = []
+            is_ehr_data_available = False
             data = {
                 'ehr_status': str(ehr_status),
                 'ehr_status_id': int(ehr_status),
                 'ehr_receipt': ps.ehrReceiptTime,
                 'ehr_update': ps.ehrUpdateTime,
                 'enrollment_core_ordered': ps.enrollmentStatusCoreOrderedSampleTime,
-                'enrollment_core_stored': ps.enrollmentStatusCoreStoredSampleTime
+                'enrollment_core_stored': ps.enrollmentStatusCoreStoredSampleTime,
+                # New alias field added in RDR 1.83.1 for DA-1781.  Add for PDR/RDR consistency, retain old ehr_status
+                # (and ehr_status_id) fields for PDR backwards compatibility
+                'was_ehr_data_available': int(ehr_status)
             }
+            # Note:  None of the columns in the participant_ehr_receipt table are nullable
+            pehr_results = ro_session.query(ParticipantEhrReceipt.fileTimestamp,
+                                            ParticipantEhrReceipt.firstSeen,
+                                            ParticipantEhrReceipt.lastSeen
+                                            ) \
+                .filter(ParticipantEhrReceipt.participantId == p_id) \
+                .order_by(ParticipantEhrReceipt.firstSeen,
+                          ParticipantEhrReceipt.fileTimestamp).all()
+
+            if len(pehr_results):
+                # If a participant has an EHR receipt entry with a "last seen" date that matches the max "last seen"
+                # date in the participant_ehr_receipt table, they must have had their is_ehr_data_available flag set
+                # to true in participant_summary the last time the UpdateEhrStatus cron job ran
+                ehr_last_seen = ro_session.query(func.max(ParticipantEhrReceipt.lastSeen).label("max_time")).first()
+                for row in pehr_results:
+                    is_ehr_data_available = is_ehr_data_available or row.lastSeen == ehr_last_seen.max_time
+                    # This pid's earliest EHR receipt timestamp may have predated implementation of the
+                    # participant_ehr_receipt table, and may only exist in the participant_summary data retrieved above
+                    data['ehr_receipt'] = min(row.fileTimestamp, data['ehr_receipt'] or datetime.datetime.max)
+                    data['ehr_update'] = max(row.fileTimestamp, data['ehr_update'] or datetime.datetime.min)
+
+                    ehr_receipts.append(
+                        {'file_timestamp': row.fileTimestamp,
+                         'first_seen': row.firstSeen,
+                         'last_seen': row.lastSeen
+                         }
+                    )
+
+            # More field aliases for deprecated fields, as of RDR 1.83.1/DA-1781 (see tech design/DA-1780).
+            # The old fields/keys are still populated for PDR/metrics backwards compatibility
+            data['first_ehr_receipt_time'] = data['ehr_receipt']
+            data['latest_ehr_receipt_time'] = data['ehr_update']
+            # Brand new field as of RDR 1.83.1/DA-1781; convert boolean to integer for our BQ data dict
+            data['is_ehr_data_available'] = int(is_ehr_data_available)
+
+            if len(ehr_receipts):
+                data['ehr_receipts'] = ehr_receipts
 
         return data
 
@@ -334,14 +393,18 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :param ro_session: Readonly DAO session object
         :return: dict
         """
+
         code_id_query = ro_session.query(func.max(QuestionnaireConcept.codeId)). \
             filter(QuestionnaireResponse.questionnaireId ==
                    QuestionnaireConcept.questionnaireId).label('codeId')
+
+        # Responses are sorted by authored date ascending and then created date descending
+        # This should result in a list where any replays of a response are adjacent (most recently created first)
         query = ro_session.query(
             QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
             QuestionnaireResponse.created, QuestionnaireResponse.language, code_id_query). \
             filter(QuestionnaireResponse.participantId == p_id). \
-            order_by(QuestionnaireResponse.authored)
+            order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc())
         # sql = self.ro_dao.query_to_text(query)
         results = query.all()
 
@@ -353,18 +416,26 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         consents = list()
         consent_dt = None
 
+
         if results:
+            # Track the last module/consent data dictionaries generated, so we can detect and omit replayed responses
+            last_mod_processed = {}
+            last_consent_processed = {}
             for row in results:
+                consent_added = False
                 module_name = self._lookup_code_value(row.codeId, ro_session)
+                # Start with a default submittal status.  May be updated if this is a consent module with a specific
+                # consent question/answer that determines module submittal status
+                module_status = BQModuleStatusEnum.SUBMITTED
                 module_data = {
                     'mod_module': module_name,
                     'mod_baseline_module': 1 if module_name in self._baseline_modules else 0,  # Boolean field
                     'mod_authored': row.authored,
                     'mod_created': row.created,
                     'mod_language': row.language,
+                    'mod_status': module_status.name,
+                    'mod_status_id': module_status.value
                 }
-                # Default status, may be updated based on consent answer
-                module_status = BQModuleStatusEnum.SUBMITTED
 
                 # check if this is a module with consents.
                 if module_name in _consent_module_question_map:
@@ -393,7 +464,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                         }
                         # Note:  Based on currently available modules when a module has no
                         # associated answer options (like ConsentPII or ProgramUpdate), any submitted response is given
-                        # animplicit ConsentPermission_Yes value.   May need adjusting if there are ever modules where
+                        # an implicit ConsentPermission_Yes value.   May need adjusting if there are ever modules where
                         # that may no longer be true
                         if _consent_module_question_map[module_name] is None:
                             consent['consent'] = module_name
@@ -417,15 +488,24 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                                 # May want to reconsider if this should be something else (UNSET?)
                                 module_status = BQModuleStatusEnum.SUBMITTED
 
-                        consents.append(consent)
+                        module_data['mod_status'] = module_status.name
+                        module_data['mod_status_id'] = module_status.value
 
-                module_data['mod_status'] = module_status.name
-                module_data['mod_status_id'] = module_status.value
-                modules.append(module_data)
+                        # Compare against the last consent response processed to filter replays/duplicates
+                        if not self.is_replay(last_consent_processed, consent, created_key='consent_module_created'):
+                            consents.append(consent)
+                            consent_added = True
+
+                        last_consent_processed = consent.copy()
+
+                # consent_added == True means we already know it wasn't a replayed consent
+                if consent_added or not self.is_replay(last_mod_processed, module_data, created_key='mod_created'):
+                    modules.append(module_data)
+
+                last_mod_processed = module_data.copy()
 
 
         if len(modules) > 0:
-            # remove any duplicate modules and consents because of replayed responses.
             data['modules'] = [dict(t) for t in {tuple(d.items()) for d in modules}]
             if len(consents) > 0:
                 data['consents'] = [dict(t) for t in {tuple(d.items()) for d in consents}]
@@ -1139,6 +1219,23 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 return None
 
             # Query the answers for all responses found.
+            # Note on special logic for GROR module:  the original GROR consent questionnaire was quickly replaced by
+            # a revised questionnaire with a different consent question/answer structure.  GROR consents (~200)
+            # that came in for the old/deprecated questionnaire_id were resent by PTSC using the new questionnaire_id
+            # (See ROC-447/ROC-475)
+            #
+            # When processing a deprecated GROR response, add a key/value pair to the data
+            # simulating what the consent answer would look like in the revised consent.  E.g., if the
+            # deprecated GROR consent response had these question codes/boolean answer values (only one will be True/1):
+            #   'CheckDNA_Yes': '0',
+            #   'CheckDNA_No': '1',
+            #   'CheckDNA_NotSure': '0'
+            # ... then this key/value pair will be added to simulate the revised GROR consent question code/answer code:
+            #    'ResultsConsent_CheckDNA': 'CheckDNA_No'
+            #
+            # This way the answers returned can have the same logic applied to them by _prep_modules(), for all GROR
+            # consents.  This is intended to help resolve some mismatch issues between RDR and PDR GROR data
+
             for row in results:
                 # Save parent record field values into data dict.
                 data = ro_dao.to_dict(row, result_proxy=results)
@@ -1146,6 +1243,15 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 # Save answers into data dict.
                 for qnan in qnans:
                     data[qnan.code_name] = qnan.answer
+                    # Special handling of GROR deprecated responses
+                    if module == 'GROR' \
+                       and data['questionnaire_id'] == _deprecated_gror_consent_questionnaire_id \
+                       and qnan.code_name in _deprecated_gror_consent_question_code_names \
+                       and qnan.answer and qnan.answer == '1':
+                        # The deprecated consent question code name (if it has the selected/True value), ends up being
+                        # the answer code value for the updated GROR consent question
+                        data[_consent_module_question_map['GROR']] = qnan.code_name
+
                 # Insert data dict into answers list.
                 answers[row.questionnaire_response_id] = data
 
@@ -1157,6 +1263,40 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 break
 
         return data if data else None
+
+    @staticmethod
+    def is_replay(prev_data_dict, data_dict, created_key=None):
+        """
+        Compares two module or consent data dictionaries to identify replayed responses
+        Replayed/resent responses are usually the result of trying to resolve a data issue, and are basically
+        duplicate QuestionnaireResponse payloads except for differing creation timestamps
+
+        :param prev_data_dict: data dictionary to compare
+        :param data_dict: data dictionary to compare
+        :param created_key:  Dict key for the created timestamp value
+        :return:  Boolean, True if the dictionaries match on everything except the created timestamp value
+        """
+        # Confirm both data dictionaries are populated
+        if not bool(prev_data_dict) or not bool(data_dict):
+            return False
+
+        # Validate we're comparing "like" dictionaries, with a valid created timestamp key name
+        prev_data_dict_keys = sorted(list(prev_data_dict.keys()))
+        data_dict_keys = sorted(list(data_dict.keys()))
+        if prev_data_dict_keys != data_dict_keys:
+            return False
+        if not (created_key and created_key in data_dict_keys):
+            return False
+
+        # Content must match on everything but created timestamp value
+        for key in data_dict.keys():
+            if key == created_key:
+                continue
+            if data_dict[key] != prev_data_dict[key]:
+                return False
+
+        return True
+
 
 
 def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None, patch_data=None):
@@ -1187,6 +1327,7 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None,
     pdr_bqr = pdr_bqgen.make_bqrecord(p_id, ps_bqr=ps_bqr)
 
     w_dao = BigQuerySyncDao()
+
 
     with w_dao.session() as w_session:
         # save the participant summary record if this is a full rebuild.
