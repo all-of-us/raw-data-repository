@@ -1,6 +1,8 @@
 import logging
 import math
-
+from sqlalchemy import bindparam
+from sqlalchemy.dialects.mysql import insert
+from sqlalchemy.sql import func
 from werkzeug.exceptions import HTTPException, InternalServerError, BadGateway
 
 from rdr_service import config
@@ -9,6 +11,7 @@ from rdr_service.cloud_utils import bigquery
 from rdr_service.dao.ehr_dao import EhrReceiptDao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import EhrStatus
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
@@ -62,12 +65,22 @@ def update_participant_summaries():
         LOG.warning("Skipping update_participant_summaries because of invalid config")
 
 
-def _track_historical_participant_ehr_data(session, parameter_sets):
-    session.execute("""
-        INSERT IGNORE INTO participant_ehr_receipt (participant_id, file_timestamp, first_seen, last_seen)
-        VALUES (:pid, :receipt_time, UTC_TIMESTAMP(), UTC_TIMESTAMP())
-        ON DUPLICATE KEY UPDATE last_seen = UTC_TIMESTAMP()
-    """, parameter_sets)
+import datetime
+
+
+def _track_historical_participant_ehr_data(session, parameter_sets, job_time=datetime.datetime.now()):
+    params = [{**param, 'nowtime': job_time} for param in parameter_sets]
+
+    query = insert(ParticipantEhrReceipt).values({
+        ParticipantEhrReceipt.participantId: bindparam('pid'),
+        ParticipantEhrReceipt.fileTimestamp: bindparam('receipt_time'),
+        ParticipantEhrReceipt.firstSeen: func.utc_timestamp(),
+        ParticipantEhrReceipt.lastSeen: func.utc_timestamp()
+    }).on_duplicate_key_update({
+        'last_seen': func.utc_timestamp()
+    }).prefix_with('IGNORE')
+
+    session.execute(query, params)
 
 
 def update_participant_summaries_from_job(job, project_id=None):
@@ -100,15 +113,13 @@ def update_participant_summaries_from_job(job, project_id=None):
             pids = [param['pid'] for param in parameter_sets]
 
             with summary_dao.session() as session:
-                cursor = session.query(
+                records = session.query(
                     ParticipantSummary.participantId,
                     ParticipantSummary.ehrReceiptTime,
                     ParticipantSummary.ehrUpdateTime
+                ).filter(
+                    ParticipantSummary.participantId.in_(pids)
                 ).all()
-                records = [r for r in cursor if r.participantId in pids]
-                # TODO: it may help performance to load receipt and update times for just the pids that have been
-                #  modified, rather than loading everything from the database and checking if they're in
-                #  the list of pids
 
             patch_data = [{
                 'pid': summary.participantId,
