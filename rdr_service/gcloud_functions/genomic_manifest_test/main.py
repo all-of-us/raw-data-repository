@@ -2,16 +2,14 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
-import csv
 import logging
 import sys
 from urllib.parse import quote
 
-from aou_cloud.services.gcp_cloud_storage import open_cloud_file
 from aou_cloud.services.gcp_cloud_function import GCPCloudFunctionContext, \
     FunctionStoragePubSubHandler, PubSubEventContext
 from aou_cloud.services.gcp_cloud_tasks import GCPCloudTask
-from aou_cloud.services.system_utils import JSONObject, setup_logging
+from aou_cloud.services.system_utils import setup_logging
 
 
 
@@ -76,7 +74,7 @@ def get_deploy_args(gcp_env):
     return args
 
 
-def genomic_manifest_test(event, context):
+def genomic_manifest_test(_event, _context):
     """
     GCloud Function Entry Point (Storage Pub/Sub Event).
     https://cloud.google.com/functions/docs/concepts/events-triggers#functions_parameters-python
@@ -87,7 +85,7 @@ def genomic_manifest_test(event, context):
     :param context: (google.cloud.functions.Context): Metadata of triggering event.
     """
     with GCPCloudFunctionContext(function_name, None) as gcp_env:
-        func = GenomicManifestTestFunction(gcp_env, event, context)
+        func = GenomicManifestTestFunction(gcp_env, _event, _context)
         func.run()
 
 
