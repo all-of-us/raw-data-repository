@@ -30,6 +30,7 @@ deploy_args = [
     '--memory=512'
 ]
 
+task_queue = 'resource-tasks'
 _logger = logging.getLogger('function')
 
 
@@ -50,10 +51,10 @@ class GenomicManifestTestFunction(FunctionStoragePubSubHandler):
             "filename": cloud_file_path
         }
 
-        _logger.info("Starting cloud task...")
+        _logger.info("Pushing cloud task...")
 
         _task = GCPCloudTask()
-        _task.execute('IngestAW1ManifestTaskApi', payload=data)
+        _task.execute('IngestAW1ManifestTaskApi', payload=data, queue=task_queue)
 
 
 def get_deploy_args(gcp_env):

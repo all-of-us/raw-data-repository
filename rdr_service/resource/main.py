@@ -13,6 +13,8 @@ from rdr_service.services.gcp_logging import begin_request_logging, end_request_
     flask_restful_log_exception_error
 from rdr_service.api.resource_api import ResourceRequestApi
 
+
+# noinspection PyPackageRequirements
 def _build_resource_app():
     _app = Flask(__name__)
     _api = Api(_app)
