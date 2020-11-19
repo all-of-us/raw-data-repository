@@ -19,6 +19,7 @@ import shutil
 import signal
 import subprocess
 import tempfile
+from types import ModuleType
 import warnings
 from glob import glob
 from time import sleep
@@ -29,7 +30,8 @@ from rdr_service.dao import database_factory
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
-from rdr_service.model import compiler, database as model_collection  # pylint: disable=unused-import
+from rdr_service import model
+from rdr_service.model import compiler  # pylint: disable=unused-import
 from rdr_service.model.base import Base
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
@@ -102,9 +104,10 @@ def start_mysql_instance():
 
 def _clear_data(engine):
     engine.execute("set foreign_key_checks = 0")
-    for _, member in inspect.getmembers(model_collection):
-        if inspect.isclass(member) and issubclass(member, Base) and member != Base:
-            engine.execute(f'truncate table {member.__tablename__}')
+    for module in [member for _, member in inspect.getmembers(model) if isinstance(member, ModuleType)]:
+        for _, model_class in inspect.getmembers(module):
+            if inspect.isclass(model_class) and issubclass(model_class, Base) and model_class != Base:
+                engine.execute(f'truncate table {model_class.__tablename__}')
 
     engine.execute("set foreign_key_checks = 1")
 
