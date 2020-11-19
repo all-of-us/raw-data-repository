@@ -15,7 +15,9 @@ from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     GenomicJob,
     GenomicWorkflowState,
-    GenomicQcStatus)
+    GenomicQcStatus,
+    GenomicManifestTypes
+)
 
 
 class GenomicSet(Base):
@@ -262,6 +264,12 @@ class GenomicFileProcessed(Base):
                    ForeignKey('genomic_job_run.id'), nullable=False)
     startTime = Column('start_time', DateTime, nullable=False)
     endTime = Column('end_time', DateTime, nullable=True)
+    genomicManifestFileId = Column('genomic_manifest_file_id', Integer,
+                                   ForeignKey("genomic_manifest_file.id"),
+                                   nullable=False)
+
+    # TODO: file_path, bucket_name, file_name, and upload_date to be removed
+    # after genomic_manifest_file created, backfilled, and downstream partners notified.
     filePath = Column('file_path', String(255), nullable=False)
     bucketName = Column('bucket_name', String(128), nullable=False)
     fileName = Column('file_name', String(128), nullable=False)
@@ -272,6 +280,63 @@ class GenomicFileProcessed(Base):
                         Enum(GenomicSubProcessResult),
                         default=GenomicSubProcessResult.UNSET)
     uploadDate = Column('upload_date', UTCDateTime, nullable=True)
+
+
+class GenomicManifestFile(Base):
+    """
+    Genomic manifest file model.
+    This model represents a manifest file.
+    This includes both RDR and externally-generated manifests.
+    """
+    __tablename__ = 'genomic_manifest_file'
+
+    id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column("created", UTCDateTime, nullable=False)
+    modified = Column("modified", UTCDateTime, nullable=False)
+    uploadDate = Column('upload_date', UTCDateTime, nullable=True)
+    manifestTypeId = Column('manifest_type_id', Enum(GenomicManifestTypes), nullable=True)
+    filePath = Column('file_path', String(255), nullable=True)
+    bucketName = Column('bucket_name', String(128), nullable=True)
+    recordCount = Column('record_count', Integer, nullable=False, default=0)
+    rdrProcessingComplete = Column('rdr_processing_complete', SmallInteger, nullable=False, default=0)
+    rdrProcessingCompleteDate = Column('rdr_processing_complete_date', UTCDateTime, nullable=True)
+
+
+event.listen(GenomicManifestFile, 'before_insert', model_insert_listener)
+event.listen(GenomicManifestFile, 'before_update', model_update_listener)
+
+
+class GenomicManifestFeedback(Base):
+    """
+    Genomic manifest feedback model.
+    This model represents a relationship
+    between two genomic_manifest_file records:
+        the input file and the feedback file.
+    """
+    __tablename__ = 'genomic_manifest_feedback'
+
+    id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column("created", UTCDateTime, nullable=False)
+    modified = Column("modified", UTCDateTime, nullable=False)
+
+    # Foreign keys to genomic_manifest_file
+    # Relates two manifests: the Input manifest and the Feedback manifest
+    inputManifestFileId = Column("input_manifest_file_id", Integer,
+                                 ForeignKey("genomic_manifest_file.id"), nullable=False)
+    feedbackManifestFileId = Column("feedback_manifest_file_id", Integer,
+                                    ForeignKey("genomic_manifest_file.id"), nullable=True)
+
+    # Records RDR has received feedback for
+    feedbackRecordCount = Column('feedback_record_count', Integer, nullable=False, default=0)
+
+    # Once feedback_record_count = genomic_manifest_file.record_count
+    # feedback_complete = 1 and a feedback manifest is generated, i.e. AW2F.
+    feedbackComplete = Column('feedback_complete', SmallInteger, nullable=False, default=0)
+    feedbackCompleteDate = Column('feedback_complete_date', UTCDateTime, nullable=True)
+
+
+event.listen(GenomicManifestFeedback, 'before_insert', model_insert_listener)
+event.listen(GenomicManifestFeedback, 'before_update', model_update_listener)
 
 
 class GenomicGCValidationMetrics(Base):
