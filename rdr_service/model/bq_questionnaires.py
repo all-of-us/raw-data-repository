@@ -36,7 +36,15 @@ class _BQModuleSchema(BQSchema):
         # and be at most 128 characters long.
         allowed_chars = string.ascii_letters + string.digits + '_'
         if not all(c in allowed_chars for c in name):
-            return False, f'Field {name} contains invalid characters, skipping.'
+            message = f'Field {name} contains invalid characters, skipping.'
+
+            # Skip codes that are already known to be problematic
+            # TODO: alter the codes names instead of leaving them out (possibly something like
+            #  "DV Consent Decision" to "DV_Consent_Decision"
+            if name == 'DV Consent Decision':
+                message = None
+
+            return False, message
         if len(name) > 128:
             return False, f'Field {name} must be less than 128 characters, skipping.'
         if name[:1] not in string.ascii_letters and name[:1] != '_':
