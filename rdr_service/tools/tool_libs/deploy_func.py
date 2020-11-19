@@ -56,12 +56,6 @@ class DeployFunctionClass(object):
         # Copy the function directory files.
         shutil.copytree(f'{self.func_path}/', f'{tmp_path}/f/')
 
-        # Copy the 'aou_cloud' directory.
-        # import aou_cloud as _aou_cloud
-        # aou_path = os.path.dirname(_aou_cloud.__file__)
-        # shutil.copytree(f'{aou_path}', f'{tmp_path}/aou_cloud', dirs_exist_ok=True,
-        #                     ignore=shutil.ignore_patterns('__pycache__', 'tools', 'tests'))
-
         # Copy the requirements.txt file and remove 'aou_cloud' requirement.
         lines = open(f'{self.project_path}/{cloud_functions_dir}/requirements.txt').readlines()
         with open(f'{tmp_path}/f/requirements.txt', 'w') as h:
@@ -108,8 +102,9 @@ class DeployFunctionClass(object):
         shutil.copytree(f'{aou_path}', f'{tmp_path}/f/aou_cloud',
                         ignore=shutil.ignore_patterns('__pycache__', 'tools', 'tests'))
 
-        cwd = os.path.abspath(os.curdir)
-        os.chdir(os.path.join(f'{tmp_path}/', 'f'))
+        _cwd = os.path.abspath(os.curdir)
+        tp = os.path.join(f'{tmp_path}/', 'f')
+        os.chdir(tp)
 
         if result == 0:
 
@@ -117,6 +112,7 @@ class DeployFunctionClass(object):
             # Add debug logging to cloud function.
             if self.args.debug:
                 args += ' --set-env-vars FUNC_DEBUG=1'
+
             # '--quiet' argument prevents gcloud from asking 'allow unauthenticated requests?' question on cli.
             pcode, so, se = gcp_gcloud_command('functions', args, '--runtime python37 --quiet')
 
@@ -128,11 +124,11 @@ class DeployFunctionClass(object):
                 _logger.error(f'Failed to deploy function {self.args.function}. ({pcode}: {se or so}).')
                 result = -1
 
-        os.chdir(cwd)
+        os.chdir(_cwd)
 
         # Clean up temp directory.
-        if os.path.exists(tmp_path):
-            shutil.rmtree(tmp_path)
+        if os.path.exists(tp):
+            shutil.rmtree(tp)
 
         return result
 

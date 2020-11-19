@@ -16,7 +16,7 @@ from aou_cloud.services.system_utils import setup_logging
 # Function name must contain only lower case Latin letters, digits or underscore. It must
 # start with letter, must not end with a hyphen, and must be at most 63 characters long.
 # There must be a python function in this file with the same name as the entry point.
-function_name = 'genomic_manifest_test'
+function_name = 'genomic_manifest_generic_function'
 
 # [--trigger-bucket=TRIGGER_BUCKET | --trigger-http | --trigger-topic=TRIGGER_TOPIC |
 # --trigger-event=EVENT_TYPE --trigger-resource=RESOURCE]
@@ -32,7 +32,7 @@ task_queue = 'resource-tasks'
 _logger = logging.getLogger('function')
 
 
-class GenomicManifestTestFunction(FunctionStoragePubSubHandler):
+class GenomicManifestGenericFunction(FunctionStoragePubSubHandler):
 
     def created(self):
         """ Handle storage object created event. """
@@ -52,7 +52,7 @@ class GenomicManifestTestFunction(FunctionStoragePubSubHandler):
         _logger.info("Pushing cloud task...")
 
         _task = GCPCloudTask()
-        _task.execute('IngestAW1ManifestTaskApi', payload=data, queue=task_queue)
+        _task.execute('/resource/task/IngestAW1ManifestTaskApi', payload=data, queue=task_queue)
 
 
 def get_deploy_args(gcp_env):
@@ -74,7 +74,7 @@ def get_deploy_args(gcp_env):
     return args
 
 
-def genomic_manifest_test(_event, _context):
+def genomic_manifest_generic_function(_event, _context):
     """
     GCloud Function Entry Point (Storage Pub/Sub Event).
     https://cloud.google.com/functions/docs/concepts/events-triggers#functions_parameters-python
@@ -85,7 +85,7 @@ def genomic_manifest_test(_event, _context):
     :param context: (google.cloud.functions.Context): Metadata of triggering event.
     """
     with GCPCloudFunctionContext(function_name, None) as gcp_env:
-        func = GenomicManifestTestFunction(gcp_env, _event, _context)
+        func = GenomicManifestGenericFunction(gcp_env, _event, _context)
         func.run()
 
 
@@ -117,4 +117,4 @@ if __name__ == '__main__':
       "updated": "2020-10-26T21:34:04.887Z"
     }
 
-    sys.exit(genomic_manifest_test(event, context))
+    sys.exit(genomic_manifest_generic_function(event, context))
