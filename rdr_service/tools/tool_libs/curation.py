@@ -37,8 +37,8 @@ class CurationExportClass(ToolBase):
     # TODO: gracefully handle observation's timeout
     problematic_tables = ['observation']
 
-    def __init__(self, args, gcp_env=None, tool_cmd=None):
-        super(CurationExportClass, self).__init__(args, gcp_env, tool_cmd)
+    def __init__(self, args, gcp_env=None, tool_name=None):
+        super(CurationExportClass, self).__init__(args, gcp_env, tool_name)
         self.db_conn = None
 
     def get_field_names(self, table, exclude=None):
