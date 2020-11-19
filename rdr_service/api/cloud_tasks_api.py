@@ -126,3 +126,17 @@ class GenerateBiobankSamplesTaskApi(Resource):
         generate_samples_task(fraction)
         logging.info('Complete.')
         return '{"success": "true"}'
+
+
+class IngestAW1ManifestTaskApi(Resource):
+    """
+    Cloud Task endpoint: Ingest AW1 Manifest.
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        logging.info(f'Ingesting AW1 File: {data.get("filename")}')
+        # TODO: Call Genomic Code here
+        logging.info('Complete.')
+        return '{"success": "true"}'
