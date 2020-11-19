@@ -106,7 +106,8 @@ if __name__ == '__main__':
       "id": f"aou-rdr-sandbox-mock-data/{quote(file)}/1603748044887174",
       "kind": "storage#object",
       "md5Hash": "sSsHt9P3l+WieCCevpQsjg==",
-      "mediaLink": f"https://www.googleapis.com/download/storage/v1/b/aou-rdr-sandbox-mock-data/o/{quote(file)}?generation=1603748044887174&alt=media",
+      "mediaLink": f"https://www.googleapis.com/download/storage/v1/b/aou-rdr-sandbox-mock-data/o/{quote(file)}?"
+                   f"generation=1603748044887174&alt=media",
       "metageneration": "1",
       "name": file,
       "selfLink": f"https://www.googleapis.com/storage/v1/b/aou-rdr-sandbox-mock-data/o/{quote(file)}",
