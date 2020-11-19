@@ -58,7 +58,7 @@ def upgrade_rdr():
         sa.PrimaryKeyConstraint('id')
     )
 
-    op.add_column('genomic_file_processed', sa.Column('genomic_manifest_file_id', sa.Integer(), nullable=False))
+    op.add_column('genomic_file_processed', sa.Column('genomic_manifest_file_id', sa.Integer(), nullable=True))
     op.create_foreign_key(None, 'genomic_file_processed', 'genomic_manifest_file', ['genomic_manifest_file_id'], ['id'])
     # ### end Alembic commands ###
 

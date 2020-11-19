@@ -266,7 +266,7 @@ class GenomicFileProcessed(Base):
     endTime = Column('end_time', DateTime, nullable=True)
     genomicManifestFileId = Column('genomic_manifest_file_id', Integer,
                                    ForeignKey("genomic_manifest_file.id"),
-                                   nullable=False)
+                                   nullable=True)
 
     # TODO: file_path, bucket_name, file_name, and upload_date to be removed
     # after genomic_manifest_file created, backfilled, and downstream partners notified.
