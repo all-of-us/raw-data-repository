@@ -112,17 +112,8 @@ class CodesSyncClass(ToolBase):
     codes_allowed_for_reuse = []
     code_reuse_found = False
 
-    def get_redcap_api_key(self, redcap_project_name):
+    def parse_values_from_config(self, redcap_project_name):
         server_config = self.get_server_config()
-
-        if REDCAP_PROJECT_KEYS not in server_config:
-            logger.error('ERROR: Server config file does not list any API keys')
-            return None
-
-        keys = server_config[REDCAP_PROJECT_KEYS]
-        if redcap_project_name not in keys:
-            logger.error(f'ERROR: Project "{redcap_project_name}" not listed with key in server config')
-            return None
 
         # Getting folder ID for export while syncing since export SA might not have permissions to the server config
         if DRIVE_EXPORT_FOLDER_ID not in server_config:
@@ -138,7 +129,21 @@ class CodesSyncClass(ToolBase):
         global exporter_service_account_name
         exporter_service_account_name = server_config[EXPORT_SERVICE_ACCOUNT_NAME]
 
-        return server_config[REDCAP_PROJECT_KEYS][redcap_project_name]
+        if self.args.key:
+            return self.args.redcap_key
+        elif not self.args.export_only:
+            if REDCAP_PROJECT_KEYS not in server_config:
+                logger.error('ERROR: Server config file does not list any API keys')
+                return None
+
+            keys = server_config[REDCAP_PROJECT_KEYS]
+            if redcap_project_name not in keys:
+                logger.error(f'ERROR: Project "{redcap_project_name}" not listed with key in server config')
+                return None
+
+            return server_config[REDCAP_PROJECT_KEYS][redcap_project_name]
+        else:
+            return None
 
     def initialize_code(self, session: Session, value, display, parent=None, code_type=None):
         new_code = Code(
@@ -257,12 +262,12 @@ class CodesSyncClass(ToolBase):
             self.codes_allowed_for_reuse = [code_val.strip() for code_val in self.args.reuse_codes.split(',')]
 
         with self.get_session() as session:
+            # Get the server config to read Redcap API keys
+            project_api_key = self.parse_values_from_config(self.args.redcap_project)
+
             if not self.args.export_only:
                 if not self.args.dry_run:
                     logger.info(f'Importing codes for {self.gcp_env.project}')
-
-                # Get the server config to read Redcap API keys
-                project_api_key = self.get_redcap_api_key(self.args.redcap_project)
                 if project_api_key is None:
                     logger.error('Unable to find project API key')
                     return 1
@@ -311,9 +316,10 @@ class CodesSyncClass(ToolBase):
 
 
 def add_additional_arguments(parser):
-    parser.add_argument('--redcap-project', required=True, help='Name of Redcap project to sync')
+    parser.add_argument('--redcap-project', help='Name of Redcap project to sync')
     parser.add_argument('--reuse-codes', default='',
                         help='Codes that have intentionally been reused from another project')
+    parser.add_argument('--redcap-key', default=None, help='Redcap API key to use')
     parser.add_argument('--dry-run', action='store_true', help='Only print information, do not save or export codes')
     parser.add_argument('--export-only', action='store_true',
                         help='Only export codes, do not import anything new from Redcap')
