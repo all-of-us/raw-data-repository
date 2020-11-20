@@ -3,13 +3,11 @@
 # Template for RDR tool python program.
 #
 
-import argparse
 import logging
-import sys
 
+from rdr_service import config
 from rdr_service.services.gcp_utils import gcp_sql_export_csv
-from rdr_service.services.system_utils import setup_logging, setup_i18n
-from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
+from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -24,24 +22,24 @@ EXPORT_BATCH_SIZE = 10000
 # TODO: Rewrite the Curation ETL bash scripts into multiple Classes here.
 
 
-class CurationExportClass(object):
+class CurationExportClass(ToolBase):
     """
     Export the data from the Curation ETL process.
     """
     tables = ['pid_rid_mapping', 'care_site', 'condition_era', 'condition_occurrence', 'cost', 'death',
               'device_exposure', 'dose_era', 'drug_era', 'drug_exposure', 'fact_relationship',
-              'location', 'measurement', 'observation', 'observation_period', 'payer_plan_period',
+              'location', 'measurement', 'observation_period', 'payer_plan_period',
               'person', 'procedure_occurrence', 'provider', 'visit_occurrence']
 
-    db_conn = None
+    # Observation takes a while and ends up timing the client out. The server will continue to process and the client
+    # will print out a message describing how to continue to track it, but for now it crashes the script so it has
+    # to be last. Breaking it out into it's own list to allow for custom processing before 'finishing' the script
+    # TODO: gracefully handle observation's timeout
+    problematic_tables = ['observation']
 
-    def __init__(self, args, gcp_env: GCPEnvConfigObject):
-        """
-        :param args: command line arguments.
-        :param gcp_env: gcp environment information, see: gcp_initialize().
-        """
-        self.args = args
-        self.gcp_env = gcp_env
+    def __init__(self, args, gcp_env=None, tool_name=None):
+        super(CurationExportClass, self).__init__(args, gcp_env, tool_name)
+        self.db_conn = None
 
     def get_field_names(self, table, exclude=None):
         """
@@ -86,40 +84,82 @@ class CurationExportClass(object):
         # Curation would like them in the file for schema validation (ROC-687)
         sql_string = f"""
             SELECT {','.join(column_names)}
-            FROM 
+            FROM
             (
                 (
                     SELECT
                       1 as sort_col,
                       {header_string}
-                ) 
+                )
                 UNION ALL
                 (
                     SELECT 2,
                         {','.join(field_list)}
                     FROM {table}
-                )                
+                )
             ) a
             ORDER BY a.sort_col ASC
         """
 
         _logger.info(f'exporting {table}')
-        gcp_sql_export_csv(
-            self.args.project,
-            sql_string,
-            cloud_file,
-            database='cdm'
-        )
+        gcp_sql_export_csv(self.args.project, sql_string, cloud_file, database='cdm')
+
+    def export_cope_map(self):
+        cope_map = self.get_server_config()[config.COPE_FORM_ID_MAP]
+        cope_external_id_flat_list = []
+        external_id_to_month_cases = []
+        for external_ids_str, month in cope_map.items():
+            quoted_ids = [f"'{external_id}'" for external_id in external_ids_str.split(',')]
+            for quoted_id in quoted_ids:
+                cope_external_id_flat_list.append(quoted_id)
+
+            external_id_to_month_cases.append(f"when qh.external_id in ({','.join(quoted_ids)}) then '{month.lower()}'")
+
+        export_sql = f"""
+            SELECT participant_id, questionnaire_response_id, semantic_version, cope_month
+            FROM
+            (
+                (
+                    SELECT
+                      1 as sort_col,
+                      'participant_id', 'questionnaire_response_id', 'semantic_version', 'cope_month'
+                )
+                UNION ALL
+                (
+                    SELECT
+                      2 as sort_col,
+                      participant_id, questionnaire_response_id, semantic_version,
+                      CASE {' '.join(external_id_to_month_cases)}
+                      END AS 'cope_month'
+                    FROM questionnaire_history qh
+                    INNER JOIN questionnaire_response qr ON qr.questionnaire_id = qh.questionnaire_id
+                        AND qr.questionnaire_version = qh.version
+                    WHERE qh.external_id IN ({','.join(cope_external_id_flat_list)})
+                )
+            ) a
+            ORDER BY a.sort_col ASC
+        """
+        export_name = 'cope_survey_semantic_version_map'
+        cloud_file = f'gs://{self.args.export_path}/{export_name}.csv'
+
+        _logger.info(f'exporting {export_name}')
+        gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database='rdr')
 
     def run(self):
         """
         Main program process
         :return: Exit code value
         """
-        self.gcp_env.activate_sql_proxy(replica=True)
+        super(CurationExportClass, self).run()
+
         # Because there are no models for the data stored in the 'cdm' database, we'll
         # just use a standard MySQLDB connection.
         self.db_conn = self.gcp_env.make_mysqldb_connection(user='alembic', database='cdm')
+
+        if not self.args.export_path.startswith('gs://all-of-us-rdr-prod-cdm/'):
+            raise NameError("Export path must start with 'gs://all-of-us-rdr-prod-cdm/'.")
+        if self.args.export_path.endswith('/'):  # Remove trailing slash if present.
+            self.args.export_path = self.args.export_path[5:-1]
 
         if self.args.table:
             _logger.info(f"Exporting {self.args.table} to {self.args.export_path}...")
@@ -130,39 +170,20 @@ class CurationExportClass(object):
         for table in self.tables:
             self.export_table(table)
 
+        self.export_cope_map()
+
+        for table in self.problematic_tables:
+            self.export_table(table)
+
         return 0
 
 
-def run():
-    # Set global debug value and setup application logging.
-    setup_logging(
-        _logger, tool_cmd, "--debug" in sys.argv, "{0}.log".format(tool_cmd) if "--log-file" in sys.argv else None
-    )
-    setup_i18n()
-
-    # Setup program arguments.
-    parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
+def add_additional_arguments(parser):
     parser.add_argument("--debug", help="enable debug output", default=False, action="store_true")  # noqa
     parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
-    parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
-    parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
-    parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
     parser.add_argument("--export-path", help="Bucket path to export to", required=True, type=str)  # noqa
     parser.add_argument("--table", help="Export a specific table", type=str, default=None)  # noqa
-    args = parser.parse_args()
-
-    if not args.export_path.startswith('gs://all-of-us-rdr-prod-cdm/'):
-        raise NameError("Export path must start with 'gs://all-of-us-rdr-prod-cdm/'.")
-
-    if args.export_path.endswith('/'):  # Remove trailing slash if present.
-        args.export_path = args.export_path[5:-1]
-
-    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-        process = CurationExportClass(args, gcp_env)
-        exit_code = process.run()
-        return exit_code
 
 
-# --- Main Program Call ---
-if __name__ == "__main__":
-    sys.exit(run())
+def run():
+    cli_run(tool_cmd, tool_desc, CurationExportClass, add_additional_arguments)
