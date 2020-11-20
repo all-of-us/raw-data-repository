@@ -174,6 +174,7 @@ def _initialize_database(with_data=True, with_consent_codes=False):
             database.create_schema()
             _load_views_and_functions(engine)
 
+            _track_database_changes()
             initialize = False
         else:
             session = database.make_session()
@@ -187,8 +188,6 @@ def _initialize_database(with_data=True, with_consent_codes=False):
 
     db_conn_str = "mysql+mysqldb://{0}@{1}:{2}/rdr?charset=utf8".format(mysql_login, mysql_host, MYSQL_PORT)
     config.override_setting('unittest_db_connection_string', db_conn_str)
-
-    _track_database_changes()
 
     if with_data:
         _setup_hpos()
