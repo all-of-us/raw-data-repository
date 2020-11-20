@@ -212,7 +212,8 @@ class ParticipantDaoTest(BaseTestCase):
             lastName=summary.lastName,
             email=summary.email,
             patientStatus=[],
-            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE
+            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE,
+            wasEhrDataAvailable=False
         )
         self.assertEqual(expected_ps.asdict(), ps.asdict())
 
