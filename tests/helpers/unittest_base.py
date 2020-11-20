@@ -34,7 +34,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.offline import sql_exporter
 from rdr_service.storage import LocalFilesystemStorageProvider
 from tests.helpers.data_generator import DataGenerator
-from tests.helpers.mysql_helper import reset_mysql_instance
+from tests.helpers.mysql_helper import reset_mysql_instance, clear_table_on_next_reset
 from tests.test_data import data_path
 
 QUESTIONNAIRE_NONE_ANSWER = 'no_answer_given'
@@ -440,6 +440,10 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
     def remove_config(self):
         if os.path.exists(self._configs_dir):
             shutil.rmtree(self._configs_dir)
+
+    @staticmethod
+    def clear_table_after_test(table_name):
+        clear_table_on_next_reset(table_name)
 
     def load_test_storage_fixture(self, test_file_name, bucket_name):
         bucket_dir = os.path.join(os.environ.get("RDR_STORAGE_ROOT"), bucket_name)

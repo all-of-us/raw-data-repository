@@ -109,15 +109,12 @@ table_changed = {}
 
 def get_table_change_listener(table_name):
     def change_listener(*_):
-        global table_changed
         table_changed[table_name] = True
 
     return change_listener
 
 
 def _track_database_changes():
-    global table_changed
-
     for module in [member for _, member in inspect.getmembers(model) if isinstance(member, ModuleType)]:
         for _, model_class in inspect.getmembers(module):
             if inspect.isclass(model_class) and issubclass(model_class, Base) and model_class != Base:
@@ -128,8 +125,11 @@ def _track_database_changes():
                 event.listen(model_class, 'before_update', get_table_change_listener(table_name))
 
 
+def clear_table_on_next_reset(table_name):
+    table_changed[table_name] = True
+
+
 def _clear_data(engine):
-    global table_changed
     engine.execute("set foreign_key_checks = 0")
     for table_name, is_dirty in table_changed.items():
         if is_dirty:
