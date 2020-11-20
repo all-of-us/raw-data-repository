@@ -22,6 +22,7 @@ import tempfile
 from types import ModuleType
 import warnings
 from glob import glob
+from sqlalchemy import event
 from time import sleep
 
 from rdr_service import config
@@ -102,28 +103,38 @@ def start_mysql_instance():
     atexit.register(stop_mysql_instance)
 
 
-app_table_names = None
 initialize = True
+table_changed = {}
 
 
-def _get_table_names():
-    global app_table_names
+def get_table_change_listener(table_name):
+    def change_listener(*_):
+        global table_changed
+        table_changed[table_name] = True
 
-    if not app_table_names:
-        app_table_names = []
+    return change_listener
 
-        for module in [member for _, member in inspect.getmembers(model) if isinstance(member, ModuleType)]:
-            for _, model_class in inspect.getmembers(module):
-                if inspect.isclass(model_class) and issubclass(model_class, Base) and model_class != Base:
-                    app_table_names.append(model_class.__tablename__)
 
-    return app_table_names
+def _track_database_changes():
+    global table_changed
+
+    for module in [member for _, member in inspect.getmembers(model) if isinstance(member, ModuleType)]:
+        for _, model_class in inspect.getmembers(module):
+            if inspect.isclass(model_class) and issubclass(model_class, Base) and model_class != Base:
+                table_name = model_class.__tablename__
+                table_changed[table_name] = False
+
+                event.listen(model_class, 'before_insert', get_table_change_listener(table_name))
+                event.listen(model_class, 'before_update', get_table_change_listener(table_name))
 
 
 def _clear_data(engine):
+    global table_changed
     engine.execute("set foreign_key_checks = 0")
-    for table_name in _get_table_names():
-        engine.execute(f'truncate table {table_name}')
+    for table_name, is_dirty in table_changed.items():
+        if is_dirty:
+            engine.execute(f'truncate table {table_name}')
+            table_changed[table_name] = False
 
     engine.execute("set foreign_key_checks = 1")
 
@@ -176,6 +187,8 @@ def _initialize_database(with_data=True, with_consent_codes=False):
 
     db_conn_str = "mysql+mysqldb://{0}@{1}:{2}/rdr?charset=utf8".format(mysql_login, mysql_host, MYSQL_PORT)
     config.override_setting('unittest_db_connection_string', db_conn_str)
+
+    _track_database_changes()
 
     if with_data:
         _setup_hpos()
