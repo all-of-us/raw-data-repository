@@ -254,7 +254,8 @@ class DataGenerator:
             "enrollmentStatus": EnrollmentStatus.INTERESTED,
             "participantOrigin": participant.participantOrigin,
             "deceasedStatus": DeceasedStatus.UNSET,
-            "isEhrDataAvailable": False
+            "isEhrDataAvailable": False,
+            "wasEhrDataAvailable": False
         }
 
         defaults.update(kwargs)
