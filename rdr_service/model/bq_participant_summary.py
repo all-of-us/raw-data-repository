@@ -169,6 +169,15 @@ class BQPatientStatusSchema(BQSchema):
     site_id = BQField('site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
+class BQEhrReceiptSchema(BQSchema):
+    """
+    Participant EHR Receipt Histories
+    """
+    file_timestamp = BQField('file_timestamp', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    first_seen = BQField('first_seen', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    last_seen = BQField('last_seen', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+
+
 class BQParticipantSummarySchema(BQSchema):
     """
     Note: Do not use camelCase for property names. Property names must exactly match BQ
@@ -263,6 +272,12 @@ class BQParticipantSummarySchema(BQSchema):
     cohort_2_pilot_flag = BQField('cohort_2_pilot_flag', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     cohort_2_pilot_flag_id = BQField('cohort_2_pilot_flag_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     biobank_orders = BQRecordField('biobank_orders', schema=BQBiobankOrderSchema)
+    # PDR-166:  Additional EHR status / history information enabled by DA-1781
+    is_ehr_data_available = BQField('is_ehr_data_available', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    was_ehr_data_available = BQField('was_ehr_data_available', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    first_ehr_receipt_time = BQField('first_ehr_receipt_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    latest_ehr_receipt_time = BQField('latest_ehr_receipt_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    ehr_receipts = BQRecordField('ehr_receipts', schema=BQEhrReceiptSchema)
 
 
 class BQParticipantSummary(BQTable):
