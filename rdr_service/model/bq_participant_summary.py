@@ -36,6 +36,7 @@ class BQConsentCohort(Enum):
 COHORT_1_CUTOFF = datetime(2018, 4, 24, 0, 0, 0)
 COHORT_2_CUTOFF = datetime(2020, 4, 21, 4, 0, 0)
 
+
 class BQAddressSchema(BQSchema):
     """
     Represents a street address schema.
@@ -278,6 +279,13 @@ class BQParticipantSummarySchema(BQSchema):
     first_ehr_receipt_time = BQField('first_ehr_receipt_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     latest_ehr_receipt_time = BQField('latest_ehr_receipt_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     ehr_receipts = BQRecordField('ehr_receipts', schema=BQEhrReceiptSchema)
+
+    # PDR-176: Participant Deceased status info
+    deceased_authored = BQField('deceased_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    deceased_status = BQField('deceased_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    deceased_status_id = BQField('deceased_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    # TODO:  Exclude date of death initially in case it constitutes PII, determine if it is needed in PDR
+    # date_of_death = BQField('date_of_death', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
 
 
 class BQParticipantSummary(BQTable):
