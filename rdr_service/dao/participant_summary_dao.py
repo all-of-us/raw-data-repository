@@ -859,15 +859,20 @@ class ParticipantSummaryDao(UpdatableDao):
                 or model.deceasedStatus == DeceasedStatus.APPROVED:
             result["recontactMethod"] = "NO_CONTACT"
 
-        # Map deprecated EHR fields to updated names
-        result['wasEhrDataAvailable'] = model.ehrStatus == EhrStatus.PRESENT
-        result['firstEhrReceiptTime'] = model.ehrReceiptTime
-        result['latestEhrReceiptTime'] = model.ehrUpdateTime
+        for new_field_name, existing_field_name in self.get_aliased_field_map().items():
+            result[new_field_name] = getattr(model, existing_field_name)
 
         # Strip None values.
         result = {k: v for k, v in list(result.items()) if v is not None}
 
         return result
+
+    @staticmethod
+    def get_aliased_field_map():
+        return {
+            'firstEhrReceiptTime': 'ehrReceiptTime',
+            'latestEhrReceiptTime': 'ehrUpdateTime'
+        }
 
     def _decode_token(self, query_def, fields):
         """ If token exists in participant_summary api, decode and use lastModified to add a buffer

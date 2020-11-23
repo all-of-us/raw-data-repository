@@ -3198,6 +3198,39 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(first_receipt_time.isoformat(), response['firstEhrReceiptTime'])
         self.assertEqual(latest_receipt_time.isoformat(), response['latestEhrReceiptTime'])
 
+    def test_api_sort_and_filter_with_aliased_fields(self):
+        """Check that the aliased fields can be used as a sort argument through the API"""
+
+        def generate_participant_with_first_receipt_time(timestamp):
+            summary = self.data_generator.create_database_participant_summary(
+                ehrReceiptTime=timestamp
+            )
+            return to_client_participant_id(summary.participantId)
+
+        may_participant_id = generate_participant_with_first_receipt_time(datetime.datetime(2020, 5, 1))
+        jan_participant_id = generate_participant_with_first_receipt_time(datetime.datetime(2020, 1, 1))
+        oct_participant_id = generate_participant_with_first_receipt_time(datetime.datetime(2020, 10, 1))
+        feb_participant_id = generate_participant_with_first_receipt_time(datetime.datetime(2020, 2, 1))
+        mar_participant_id = generate_participant_with_first_receipt_time(datetime.datetime(2020, 3, 1))
+
+        response = self.send_get('ParticipantSummary?_sort=firstEhrReceiptTime')
+        response_ids = [entry['resource']['participantId'] for entry in response['entry']]
+        self.assertEqual([
+            jan_participant_id,
+            feb_participant_id,
+            mar_participant_id,
+            may_participant_id,
+            oct_participant_id
+        ], response_ids)
+
+        response = self.send_get('ParticipantSummary?_sort=firstEhrReceiptTime&firstEhrReceiptTime=lt2020-03-10')
+        response_ids = [entry['resource']['participantId'] for entry in response['entry']]
+        self.assertEqual([
+            jan_participant_id,
+            feb_participant_id,
+            mar_participant_id
+        ], response_ids)
+
     def _remove_participant_retention_eligible(self, participant_id):
         ps_dao = ParticipantSummaryDao()
         summary = ps_dao.get(participant_id)
