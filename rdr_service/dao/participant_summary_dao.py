@@ -827,7 +827,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 (model.consentCohort == ParticipantCohort.COHORT_2 and model.consentForGenomicsRORAuthored and
                  model.consentForGenomicsRORAuthored > eighteen_month_ago):
                 result["retentionType"] = str(RetentionType.ACTIVE)
-            if model.ehrReceiptTime and model.ehrReceiptTime > eighteen_month_ago:
+            if model.ehrUpdateTime and model.ehrUpdateTime > eighteen_month_ago:
                 if result["retentionType"] == str(RetentionType.ACTIVE):
                     result["retentionType"] = str(RetentionType.ACTIVE_AND_PASSIVE)
                 else:
@@ -1069,8 +1069,8 @@ class RetentionTypeFieldFilter(FieldFilter):
                     field == RetentionStatus.ELIGIBLE,
                     active_criterion,
                     or_(
-                        ParticipantSummary.ehrReceiptTime == None,
-                        ParticipantSummary.ehrReceiptTime <= eighteen_month_ago
+                        ParticipantSummary.ehrUpdateTime == None,
+                        ParticipantSummary.ehrUpdateTime <= eighteen_month_ago
                     )
 
                 )
@@ -1078,13 +1078,13 @@ class RetentionTypeFieldFilter(FieldFilter):
                 query = query.filter(
                     field == RetentionStatus.ELIGIBLE,
                     not_active_criterion,
-                    ParticipantSummary.ehrReceiptTime > eighteen_month_ago
+                    ParticipantSummary.ehrUpdateTime > eighteen_month_ago
                 )
             elif self.value == str(RetentionType.ACTIVE_AND_PASSIVE):
                 query = query.filter(
                     field == RetentionStatus.ELIGIBLE,
                     active_criterion,
-                    ParticipantSummary.ehrReceiptTime > eighteen_month_ago
+                    ParticipantSummary.ehrUpdateTime > eighteen_month_ago
                 )
             elif self.value == str(RetentionType.UNSET):
                 query = query.filter(
@@ -1093,8 +1093,8 @@ class RetentionTypeFieldFilter(FieldFilter):
                         and_(
                             not_active_criterion,
                             or_(
-                                ParticipantSummary.ehrReceiptTime == None,
-                                ParticipantSummary.ehrReceiptTime <= eighteen_month_ago
+                                ParticipantSummary.ehrUpdateTime == None,
+                                ParticipantSummary.ehrUpdateTime <= eighteen_month_ago
                             )
                         )
                     )
