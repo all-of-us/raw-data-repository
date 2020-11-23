@@ -3097,7 +3097,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         attrs = {
             'questionnaireOnHealthcareAccessAuthored': None,
-            'ehrReceiptTime': in_eighteen_month
+            'ehrUpdateTime': in_eighteen_month
         }
         self._make_participant_retention_eligible(participant_id[1:], **attrs)
         ps = self.send_get("Participant/%s/Summary" % participant_id)
@@ -3117,7 +3117,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         attrs = {
             'questionnaireOnHealthcareAccessAuthored': in_eighteen_month,
-            'ehrReceiptTime': in_eighteen_month
+            'ehrUpdateTime': in_eighteen_month
         }
         self._make_participant_retention_eligible(participant_id[1:], **attrs)
         ps = self.send_get("Participant/%s/Summary" % participant_id)
