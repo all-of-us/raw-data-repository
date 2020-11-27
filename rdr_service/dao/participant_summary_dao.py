@@ -5,7 +5,6 @@ import threading
 import sqlalchemy
 import sqlalchemy.orm
 from sqlalchemy import or_, and_
-from sqlalchemy.sql import expression
 
 # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
 # from sqlalchemy.orm import selectinload
@@ -897,13 +896,6 @@ class ParticipantSummaryDao(UpdatableDao):
             summary.ehrReceiptTime = update_time
         summary.ehrUpdateTime = update_time
         return summary
-
-    def get_participant_ids_with_ehr_data_available(self):
-        with self.session() as session:
-            result = session.query(ParticipantSummary.participantId).filter(
-                ParticipantSummary.isEhrDataAvailable == expression.true()
-            ).all()
-            return {row.participantId for row in result}
 
     def prepare_for_ehr_status_update(self):
         with self.session() as session:
