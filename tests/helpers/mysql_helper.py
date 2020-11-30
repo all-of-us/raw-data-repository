@@ -9,6 +9,7 @@
 import atexit
 import csv
 import importlib
+import inspect
 import io
 import os
 import random
@@ -18,8 +19,10 @@ import shutil
 import signal
 import subprocess
 import tempfile
+from types import ModuleType
 import warnings
 from glob import glob
+from sqlalchemy import event
 from time import sleep
 
 from rdr_service import config
@@ -28,7 +31,9 @@ from rdr_service.dao import database_factory
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
+from rdr_service import model
 from rdr_service.model import compiler  # pylint: disable=unused-import
+from rdr_service.model.base import Base
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
@@ -98,6 +103,42 @@ def start_mysql_instance():
     atexit.register(stop_mysql_instance)
 
 
+initialize = True
+table_changed = {}
+
+
+def get_table_change_listener(table_name):
+    def change_listener(*_):
+        table_changed[table_name] = True
+
+    return change_listener
+
+
+def _track_database_changes():
+    for module in [member for _, member in inspect.getmembers(model) if isinstance(member, ModuleType)]:
+        for _, model_class in inspect.getmembers(module):
+            if inspect.isclass(model_class) and issubclass(model_class, Base) and model_class != Base:
+                table_name = model_class.__tablename__
+                table_changed[table_name] = False
+
+                event.listen(model_class, 'before_insert', get_table_change_listener(table_name))
+                event.listen(model_class, 'before_update', get_table_change_listener(table_name))
+
+
+def clear_table_on_next_reset(table_name):
+    table_changed[table_name] = True
+
+
+def _clear_data(engine):
+    engine.execute("set foreign_key_checks = 0")
+    for table_name, is_dirty in table_changed.items():
+        if is_dirty:
+            engine.execute(f'truncate table {table_name}')
+            table_changed[table_name] = False
+
+    engine.execute("set foreign_key_checks = 1")
+
+
 def _initialize_database(with_data=True, with_consent_codes=False):
     """
     Initialize a clean RDR database for unit tests.
@@ -118,19 +159,28 @@ def _initialize_database(with_data=True, with_consent_codes=False):
     engine = database.get_engine()
 
     with engine.begin():
-        engine.execute("DROP DATABASE IF EXISTS rdr")
-        engine.execute("DROP DATABASE IF EXISTS metrics")
-        # Keep in sync with tools/setup_local_database.sh.
-        engine.execute("CREATE DATABASE rdr CHARACTER SET utf8 COLLATE utf8_general_ci")
-        engine.execute("CREATE DATABASE metrics CHARACTER SET utf8 COLLATE utf8_general_ci")
+        global initialize
+        if initialize:
+            engine.execute("DROP DATABASE IF EXISTS rdr")
+            engine.execute("DROP DATABASE IF EXISTS metrics")
+            # Keep in sync with tools/setup_local_database.sh.
+            engine.execute("CREATE DATABASE rdr CHARACTER SET utf8 COLLATE utf8_general_ci")
+            engine.execute("CREATE DATABASE metrics CHARACTER SET utf8 COLLATE utf8_general_ci")
 
-        engine.execute("USE metrics")
-        database.create_metrics_schema()
+            engine.execute("USE metrics")
+            database.create_metrics_schema()
 
-        engine.execute("USE rdr")
-        database.create_schema()
-        _load_views_and_functions(engine)
+            engine.execute("USE rdr")
+            database.create_schema()
+            _load_views_and_functions(engine)
 
+            _track_database_changes()
+            initialize = False
+        else:
+            session = database.make_session()
+            _clear_data(session)
+            session.commit()
+            session.close()
 
     engine.dispose()
     database = None
