@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import logging
 import math
 from sqlalchemy import bindparam
@@ -80,7 +81,10 @@ def _track_historical_participant_ehr_data(session, parameter_sets):
 
 def update_participant_summaries_from_job(job, project_id=None):
     summary_dao = ParticipantSummaryDao()
+    participant_ids_that_previously_had_ehr = summary_dao.get_participant_ids_with_ehr_data_available()
     summary_dao.prepare_for_ehr_status_update()
+    job_start_time = datetime.utcnow()
+
     batch_size = 100
     for i, page in enumerate(job):
         LOG.info("Processing page {} of results...".format(i))
@@ -94,52 +98,79 @@ def update_participant_summaries_from_job(job, project_id=None):
                     "pid": participant_id,
                     "receipt_time": file_upload_time
                 })
+                # Remove any participants that are part of the current page, they're being rebuilt currently, so they
+                #  won't need to rebuilt again at the end (when we get the ones that are no longer in the view)
+                participant_ids_that_previously_had_ehr.discard(participant_id)
 
             _track_historical_participant_ehr_data(session, parameter_sets)
             query_result = summary_dao.bulk_update_ehr_status_with_session(session, parameter_sets)
+            session.commit()
 
-        total_rows = query_result.rowcount
-        LOG.info("Affected {} rows.".format(total_rows))
+            total_rows = query_result.rowcount
+            LOG.info("Affected {} rows.".format(total_rows))
 
-        if total_rows > 0:
-            count = int(math.ceil(float(total_rows) / float(batch_size)))
-            LOG.info('UpdateEhrStatus: calculated {0} participant rebuild tasks from {1} records and batch size of {2}'.
-                     format(count, total_rows, batch_size))
-            pids = [param['pid'] for param in parameter_sets]
-
-            with summary_dao.session() as session:
-                records = session.query(
-                    ParticipantSummary.participantId,
-                    ParticipantSummary.ehrReceiptTime,
-                    ParticipantSummary.ehrUpdateTime
-                ).filter(
-                    ParticipantSummary.participantId.in_(pids)
+            if total_rows > 0:
+                # Rebuild participants in the page that have new data available. Checking that the participant
+                #  ehr receipts were created since the job started (offsetting by an hour to account for any
+                #  difference between server times)
+                participant_ids_in_page = [param['pid'] for param in parameter_sets]
+                new_ehr_data_results = session.query(ParticipantEhrReceipt.participantId).filter(
+                    ParticipantEhrReceipt.firstSeen >= job_start_time - timedelta(hours=1),
+                    ParticipantEhrReceipt.participantId.in_(participant_ids_in_page)
                 ).all()
 
-            patch_data = [{
-                'pid': summary.participantId,
-                'patch': {
-                    'ehr_status': str(EhrStatus.PRESENT),
-                    'ehr_status_id': int(EhrStatus.PRESENT),
-                    'ehr_receipt': summary.ehrReceiptTime,
-                    'ehr_update': summary.ehrUpdateTime
-                }
-            } for summary in records]
+                participant_ids_with_new_ehr_data = [row.participantId for row in new_ehr_data_results]
+                create_rebuild_tasks_for_participants(participant_ids_with_new_ehr_data,
+                                                      batch_size, project_id, summary_dao)
 
-            try:
-                dispatch_participant_rebuild_tasks(patch_data, batch_size=batch_size, project_id=project_id)
+    LOG.info(f'Rebuilding {len(participant_ids_that_previously_had_ehr)} '
+             f'participants that no longer appear in the view')
+    create_rebuild_tasks_for_participants(participant_ids_that_previously_had_ehr, batch_size, project_id, summary_dao)
 
-            except BadGateway as e:
-                LOG.error(f'Bad Gateway: {e}', exc_info=True)
 
-            except InternalServerError as e:
-                LOG.error(f'Internal Server Error: {e}', exc_info=True)
+def create_rebuild_tasks_for_participants(participant_id_list, batch_size, project_id, dao):
+    with dao.session() as session:
+        records = session.query(
+            ParticipantSummary.participantId,
+            ParticipantSummary.ehrReceiptTime,
+            ParticipantSummary.ehrUpdateTime,
+            ParticipantSummary.isEhrDataAvailable
+        ).filter(
+            ParticipantSummary.participantId.in_(participant_id_list)
+        ).all()
 
-            except HTTPException as e:
-                LOG.error(f'HTTP Exception: {e}', exc_info=True)
+    total_participants = len(records)
+    count = int(math.ceil(float(total_participants) / float(batch_size)))
+    LOG.info(
+        f'UpdateEhrStatus: calculated {count} participant rebuild '
+        f'tasks from {total_participants} records and batch size of {batch_size}'
+    )
 
-            except Exception:  # pylint: disable=broad-except
-                LOG.error(f'Exception encountered', exc_info=True)
+    patch_data = [{
+        'pid': summary.participantId,
+        'patch': {
+            'ehr_status': str(EhrStatus.PRESENT),
+            'ehr_status_id': int(EhrStatus.PRESENT),
+            'ehr_receipt': summary.ehrReceiptTime,
+            'ehr_update': summary.ehrUpdateTime,
+            'is_ehr_data_available': int(summary.isEhrDataAvailable)
+        }
+    } for summary in records]
+
+    try:
+        dispatch_participant_rebuild_tasks(patch_data, batch_size=batch_size, project_id=project_id)
+
+    except BadGateway as e:
+        LOG.error(f'Bad Gateway: {e}', exc_info=True)
+
+    except InternalServerError as e:
+        LOG.error(f'Internal Server Error: {e}', exc_info=True)
+
+    except HTTPException as e:
+        LOG.error(f'HTTP Exception: {e}', exc_info=True)
+
+    except Exception:  # pylint: disable=broad-except
+        LOG.error(f'Exception encountered', exc_info=True)
 
 
 def make_update_organizations_job():
