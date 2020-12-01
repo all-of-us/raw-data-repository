@@ -18,7 +18,10 @@ from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import rebuild_bq_participant
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_set_member_update, \
-    bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update
+    bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update, \
+    bq_genomic_set_batch_update, bq_genomic_set_member_batch_update, \
+    bq_genomic_job_run_batch_update, bq_genomic_gc_validation_metrics_batch_update, \
+    bq_genomic_file_processed_batch_update
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
     BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov
@@ -26,7 +29,9 @@ from rdr_service.model.participant import Participant
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
 from rdr_service.resource.generators.genomics import genomic_set_update, genomic_set_member_update, \
-    genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update
+    genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update, \
+    genomic_set_batch_update, genomic_set_member_batch_update, \
+    genomic_job_run_batch_update, genomic_gc_validation_metrics_batch_update, genomic_file_processed_batch_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 
@@ -284,20 +289,56 @@ class GenomicResourceClass(object):
     def update_batch(self, table, _ids):
 
         # TODO: For future if needed: Create Cloud Task API call handler and then fill this code block out.
-        _logger.error(f'Batch mode not currently implemented for genomic resource. Skipping rebuild of {table} records')
 
+        def chunks(lst, n):
+            """Yield successive n-sized chunks from lst."""
+            for i in range(0, len(lst), n):
+                yield lst[i:i + n]
+
+        count = 0
+        if not self.args.debug:
+            print_progress_bar(
+                count, len(_ids), prefix="{0}/{1}:".format(count, len(_ids)), suffix="complete"
+            )
+
+        for batch in chunks(_ids, 100):
+
+            if table == 'genomic_set':
+                bq_genomic_set_batch_update(batch, project_id=self.gcp_env.project)
+                genomic_set_batch_update(batch)
+            elif table == 'genomic_set_member':
+                bq_genomic_set_member_batch_update(batch, project_id=self.gcp_env.project)
+                genomic_set_member_batch_update(batch)
+            elif table == 'genomic_job_run':
+                bq_genomic_job_run_batch_update(batch, project_id=self.gcp_env.project)
+                genomic_job_run_batch_update(batch)
+            elif table == 'genomic_file_processed':
+                bq_genomic_file_processed_batch_update(batch, project_id=self.gcp_env.project)
+                genomic_file_processed_batch_update(batch)
+            elif table == 'genomic_gc_validation_metrics':
+                bq_genomic_gc_validation_metrics_batch_update(batch, project_id=self.gcp_env.project)
+                genomic_gc_validation_metrics_batch_update(batch)
+
+            count += len(batch)
+
+            if not self.args.debug:
+                print_progress_bar(
+                    count, len(_ids), prefix="{0}/{1}:".format(count, len(_ids)), suffix="complete"
+                )
 
     def update_many_ids(self, table, _ids):
         if not _ids:
             return 1
 
+        _logger.info(f'Processing batch for table {table}...')
         if self.args.batch:
-            return self.update_batch(table, _ids)
+            self.update_batch(table, _ids)
+            _logger.info(f'Processing {table} batch complete.')
+            return 0
 
         total_ids = len(_ids)
         count = 0
         errors = 0
-        _logger.info(f'Processing {table}:')
 
         for _id in _ids:
             count += 1

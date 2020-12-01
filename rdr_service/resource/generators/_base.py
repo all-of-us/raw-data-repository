@@ -136,13 +136,14 @@ class ResourceRecordSet(object):
 
         return rec
 
-    def _save(self, resources, schema, schema_meta, parent_resource=None):
+    def _save(self, resources, schema, schema_meta, parent_resource=None, w_dao=None):
         """
         Recursive save resource function
         :param resources: List of Resource data dicts.
         :param schema: Resource schema object
         :param schema_meta: Resource SchemaMeta object
         :param parent_resource: Parent resource data dict
+        :param w_dao: Writable DAO object.
         """
         if parent_resource:
             for k, v in schema.declared_fields.items():  # pylint: disable=unused-variable
@@ -150,15 +151,16 @@ class ResourceRecordSet(object):
                     for row in resources:
                         row[k] = parent_resource[k]
 
-        dao = ResourceDataDao()
+        if not w_dao:
+            w_dao = ResourceDataDao()
         # Retrieve the schema type record, create if needed.
-        type_rec = self._get_or_create_type_record(dao, schema_meta)
+        type_rec = self._get_or_create_type_record(w_dao, schema_meta)
         # Retrieve the schema record, create if needed.
-        schema_rec = self._get_or_create_schema_record(dao, type_rec, schema)
+        schema_rec = self._get_or_create_schema_record(w_dao, type_rec, schema)
 
         pk_fld = type_rec.resourcePKField
 
-        with dao.session() as session:
+        with w_dao.session() as session:
             for resource in resources:
 
                 hpo_id = resource['hpo_id'] if 'hpo_id' in resource else None
@@ -197,11 +199,11 @@ class ResourceRecordSet(object):
 
         return rec
 
-    def save(self):
+    def save(self, w_dao=None):
         """
         Save resource to database.
         """
-        return self._save([self._resource], self._schema, self._meta)
+        return self._save(resources=[self._resource], schema=self._schema, schema_meta=self._meta, w_dao=w_dao)
 
     def get_schema(self):
         """ Return data schema """
