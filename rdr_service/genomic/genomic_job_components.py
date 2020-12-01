@@ -1721,12 +1721,12 @@ class GenomicBiobankSamplesCoupler:
             AND (
                     CASE WHEN (
                             ps.sample_status_1ed04 = :sample_status_param
-                            AND ss.test = "1ED04" 
+                            AND ss.test = "1ED04"
                             AND ss.status < 13
                             ) THEN ss.test = "1ED04"
                         WHEN (
                             ps.sample_status_1sal2 = :sample_status_param
-                            AND ss.test = "1SAL2" 
+                            AND ss.test = "1SAL2"
                             AND ss.status < 13
                             ) THEN ss.test = "1SAL2"
                         ELSE ss.test = "1ED04"
@@ -1790,7 +1790,7 @@ class GenomicBiobankSamplesCoupler:
                   WHEN native.participant_id IS NULL THEN 1 ELSE 0
               END AS valid_ai_an
             FROM
-                participant_summary ps    
+                participant_summary ps
                 JOIN code c ON c.code_id = ps.sex_id
                 LEFT JOIN (
                   SELECT ra.participant_id
@@ -1817,7 +1817,7 @@ class GenomicBiobankSamplesCoupler:
                 AND general_consent_given = 1
                 AND valid_suspension_status = 1
                 AND valid_withdrawal_status = 1
-            ORDER BY ps.biobank_id   
+            ORDER BY ps.biobank_id
         """
 
         params = {
@@ -1875,7 +1875,7 @@ class GenomicBiobankSamplesCoupler:
                   WHEN native.participant_id IS NULL THEN 1 ELSE 0
               END AS valid_ai_an
             FROM
-                participant_summary ps    
+                participant_summary ps
                 JOIN code c ON c.code_id = ps.sex_id
                 LEFT JOIN (
                   SELECT ra.participant_id
@@ -1887,7 +1887,7 @@ class GenomicBiobankSamplesCoupler:
                     AND m.genomic_workflow_state <> :ignore_param
                 JOIN questionnaire_response qr
                     ON qr.participant_id = ps.participant_id
-                JOIN questionnaire_response_answer qra 
+                JOIN questionnaire_response_answer qra
                     ON qra.questionnaire_response_id = qr.questionnaire_response_id
                 JOIN code recon ON recon.code_id = qra.value_code_id
                     AND recon.value = :c1_reconsent_param
@@ -1898,7 +1898,7 @@ class GenomicBiobankSamplesCoupler:
                         ps.sample_status_1sal2 = :sample_status_param
                     )
                 AND ps.consent_cohort = :cohort_1_param
-                AND qr.authored > :from_date_param                
+                AND qr.authored > :from_date_param
                 AND m.id IS NULL
             HAVING TRUE
                 # Validations for Cohort 1
@@ -1907,7 +1907,7 @@ class GenomicBiobankSamplesCoupler:
                 AND general_consent_given = 1
                 AND valid_suspension_status = 1
                 AND valid_withdrawal_status = 1
-            ORDER BY ps.biobank_id   
+            ORDER BY ps.biobank_id
         """
 
         params = {
@@ -1957,7 +1957,7 @@ class GenomicBiobankSamplesCoupler:
                     WHERE os.test = "1ED04"
                         AND o.participant_id = :pid_param
                     GROUP BY o.participant_id
-                )              
+                )
             """
 
         params = {
@@ -1999,7 +1999,7 @@ class GenomicBiobankSamplesCoupler:
                     WHERE os.test = "1SAL2"
                             AND o.participant_id = :pid_param
                         GROUP BY o.participant_id
-                    )            
+                    )
             """
 
         params = {
@@ -2390,7 +2390,7 @@ class ManifestDefinitionProvider:
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                     (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                     (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
-                )
+                ).order_by(GenomicSetMember.genomicWorkflowStateModifiedTime).limit(10000)
             )
 
         # Color GEM A3 Manifest
