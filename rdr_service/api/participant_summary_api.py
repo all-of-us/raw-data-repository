@@ -24,7 +24,9 @@ class ParticipantSummaryApi(BaseApi):
         auth_awardee = None
         user_email, user_info = get_validated_user_info()
         if AWARDEE in user_info["roles"]:
-            if user_email == DEV_MAIL:
+            # if `user_email == DEV_MAIL and user_info.get("awardee") is not None` is True,
+            # that means the value of `awardee` is mocked in the test cases, we need to read it from user_info
+            if user_email == DEV_MAIL and user_info.get("awardee") is None:
                 auth_awardee = request.args.get("awardee")
             else:
                 try:
