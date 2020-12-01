@@ -8,6 +8,7 @@ from werkzeug.exceptions import HTTPException, InternalServerError, BadGateway
 from rdr_service import config
 from rdr_service.app_util import datetime_as_naive_utc
 from rdr_service.cloud_utils import bigquery
+from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.ehr_dao import EhrReceiptDao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -78,7 +79,7 @@ def _track_historical_participant_ehr_data(session, parameter_sets):
     session.execute(query, parameter_sets)
 
 
-def update_participant_summaries_from_job(job, project_id=None):
+def update_participant_summaries_from_job(job, project_id=GAE_PROJECT):
     summary_dao = ParticipantSummaryDao()
     summary_dao.prepare_for_ehr_status_update()
     batch_size = 100
@@ -115,6 +116,7 @@ def update_participant_summaries_from_job(job, project_id=None):
                 ).filter(
                     ParticipantSummary.participantId.in_(pids)
                 ).all()
+                # TODO: only get the participants that actually changed
 
             patch_data = [{
                 'pid': summary.participantId,
