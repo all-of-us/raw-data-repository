@@ -323,11 +323,6 @@ def genomic_wgs_data_reconciliation_workflow():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_gem_a1_workflow():
-    """Temporarily running this manually for GEM Soft Launch"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
     genomic_pipeline.gem_a1_manifest_workflow()
     return '{"success": "true"}'
 
