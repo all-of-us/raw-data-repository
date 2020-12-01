@@ -891,7 +891,6 @@ class GenomicPipelineTest(BaseTestCase):
             self._make_summary(p, sexId=intersex_code if bid == 100004 else female_code,
                                consentForStudyEnrollment=0 if bid == 100006 else 1,
                                sampleStatus1ED04=0,
-                               sampleStatus1ED10=1 if bid == 100003 else 0,
                                sampleStatus1SAL2=0 if bid == 100005 else 1,
                                samplesToIsolateDNA=0,
                                race=Race.HISPANIC_LATINO_OR_SPANISH,
@@ -936,17 +935,6 @@ class GenomicPipelineTest(BaseTestCase):
                 insert_dtm = fake_datetime_old
             with clock.FakeClock(insert_dtm):
                 self._make_stored_sample(**sample_args)
-
-            # Make a 1ED10 test for 100003 (in addition to the 1SAL2 test for that participant)
-            if bid == 100003:
-                self._make_stored_sample(
-                    test='1ED10',
-                    confirmed=fake_datetime_new,
-                    created=fake_datetime_old,
-                    biobankId=bid,
-                    biobankOrderIdentifier=test_identifier.value,
-                    biobankStoredSampleId='003_1ED10',
-                )
 
             # Make Mail Kit NY participant
             if bid == 100008:
@@ -1002,7 +990,7 @@ class GenomicPipelineTest(BaseTestCase):
             if member.biobankId == 100003:
                 # 100003 : Included, Valid
                 self.assertEqual(0, member.nyFlag)
-                self.assertEqual('003_1ED10', member.collectionTubeId)
+                self.assertEqual('100003', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
@@ -1085,7 +1073,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("aou_wgs", rows[1][ExpectedCsvColumns.GENOME_TYPE])
 
             self.assertEqual("T100003", rows[2][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual('003_1ED10', rows[2][ExpectedCsvColumns.SAMPLE_ID])
+            self.assertEqual(100003, int(rows[2][ExpectedCsvColumns.SAMPLE_ID]))
             self.assertEqual("F", rows[2][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[2][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[2][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1093,7 +1081,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("aou_array", rows[2][ExpectedCsvColumns.GENOME_TYPE])
 
             self.assertEqual("T100003", rows[3][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual('003_1ED10', rows[3][ExpectedCsvColumns.SAMPLE_ID])
+            self.assertEqual(100003, int(rows[3][ExpectedCsvColumns.SAMPLE_ID]))
             self.assertEqual("F", rows[3][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[3][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[3][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1446,11 +1434,12 @@ class GenomicPipelineTest(BaseTestCase):
 
             insert_dtm = fake_datetime_new
 
+            # Testing sample business logic (prioritize newer collected samples then 1ED04)
             col_date_1 = datetime.datetime(2018, 6, 30, 0, 0, 0, 0)
             col_date_2 = datetime.datetime(2019, 6, 30, 0, 0, 0, 0)
 
             if bid == 100001:
-                # ED04 with bad status and SAL2 -> Use SAL2
+                # SAL2 newer than ED04 -> Use SAL2
                 sample_1 = self._make_ordered_sample(_test="1ED04", _collected=col_date_1)
                 sample_2 = self._make_ordered_sample(_test="1SAL2", _collected=col_date_2)
 
@@ -1479,7 +1468,6 @@ class GenomicPipelineTest(BaseTestCase):
                     'biobankId': bid,
                     'biobankOrderIdentifier': test_identifier.value,
                     'biobankStoredSampleId': 10000101,
-                    'status': SampleStatus.SAMPLE_NOT_RECEIVED
                 }
 
                 sample_args2 = {
@@ -1489,7 +1477,6 @@ class GenomicPipelineTest(BaseTestCase):
                     'biobankId': bid,
                     'biobankOrderIdentifier': test_identifier2.value,
                     'biobankStoredSampleId': 10000102,
-                    'status': SampleStatus.RECEIVED
                 }
 
                 with clock.FakeClock(insert_dtm):
@@ -1497,8 +1484,8 @@ class GenomicPipelineTest(BaseTestCase):
                     self._make_stored_sample(**sample_args2)
 
             elif bid == 100002:
-                # ED10 and SAL2 -> Use ED10
-                sample_1 = self._make_ordered_sample(_test="1ED10", _collected=col_date_1)
+                # ED04 and SAL2 same collected date -> Use ED04
+                sample_1 = self._make_ordered_sample(_test="1ED04", _collected=col_date_1)
                 sample_2 = self._make_ordered_sample(_test="1SAL2", _collected=col_date_1)
 
                 test_identifier2 = BiobankOrderIdentifier(
@@ -1520,7 +1507,7 @@ class GenomicPipelineTest(BaseTestCase):
                 insert_dtm = fake_datetime_old
 
                 sample_args1 = {
-                    'test': '1ED10',
+                    'test': '1ED04',
                     'confirmed': fake_datetime_new,
                     'created': fake_datetime_old,
                     'biobankId': bid,
