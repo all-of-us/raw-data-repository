@@ -607,10 +607,11 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         for er in expected_result:
             er.pop('hitSearch', None)
 
-        if offset >= len(expected_result):
+        total = len(expected_result)
+        if offset >= total:
             expected_result = []
         else:
-            page_end = offset + page_size if offset + page_size < len(expected_result) else len(expected_result)
+            page_end = offset + page_size if offset + page_size < total else total
             expected_result = expected_result[offset:page_end]
         metadata_dao = MetadataDao()
         metadata = metadata_dao.get_by_key(WORKBENCH_LAST_SYNC_KEY)
@@ -620,6 +621,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             last_sync_date = clock.CLOCK.now()
 
         return {
+            "total": total,
             "page": page,
             "pageSize": page_size,
             "last_sync_date": last_sync_date,

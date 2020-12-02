@@ -748,12 +748,16 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.assertEqual(len(result['data']), 2)
         # test page and page size
         result = self.send_get('researchHub/projectDirectory?page=1&pageSize=1')
+        self.assertEqual(result['total'], 2)
         self.assertEqual(len(result['data']), 1)
         result = self.send_get('researchHub/projectDirectory?page=2&pageSize=1')
+        self.assertEqual(result['total'], 2)
         self.assertEqual(len(result['data']), 1)
         result = self.send_get('researchHub/projectDirectory?page=3&pageSize=1')
+        self.assertEqual(result['total'], 2)
         self.assertEqual(len(result['data']), 0)
         result = self.send_get('researchHub/projectDirectory?page=1&pageSize=2')
+        self.assertEqual(result['total'], 2)
         self.assertEqual(len(result['data']), 2)
 
     def test_get_research_projects_directory_less_than_23_hours(self):
