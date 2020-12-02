@@ -821,13 +821,18 @@ def gcp_deploy_app(project, config_files: list, version: str = None, promote: bo
 
     return True
 
-def gcp_restart_instances(project, service='default'):
+def gcp_restart_instances(project, service=None):
     """
     Restart running instances of an App Engine environment.
     :return: True if successful, else False.
     """
 
-    _logger.debug(f'Restarting instances for project {project}, service {service}')
+    if service is None:
+        service_msg = 'all services'
+    else:
+        service_msg = f'service {service}'
+    _logger.debug(f'Restarting instances for project "{project}" and {service_msg}')
+
     # First get instance ID's
     args = "instances list --format json --project {}".format(project)
     pcode, so, se = gcp_gcloud_command("app", args)
@@ -835,17 +840,22 @@ def gcp_restart_instances(project, service='default'):
     if pcode != 0 or not so:
         _logger.error("Failed to list running instances. (%s: %s)", pcode, se)
 
-    so_json = json.loads(so)
-    names = {i['id']:i['version'] for i in so_json}
+    instance_list = json.loads(so)
 
     # iterate and delete each instance (you can not pass multiple to old style gcloud)
     # if we ever move to compute engine we can pass a list of instances
     se_list = []
-    for k, v in names.items():
-        args = "instances delete {} --version={} --project={} --service={} -q".format(k, v, project, service)
-        pcode, so, se = gcp_gcloud_command("app", args)
-        # this method always sends to se
-        se_list.append(se)
+    for instance_json in instance_list:
+        instance_id = instance_json['id']
+        instance_version = instance_json['version']
+        instance_service = instance_json['service']
+
+        if service is None or service == instance_service:
+            args = f"instances delete {instance_id} --version={instance_version} " \
+                   f"--project={project} --service={instance_service} -q"
+            pcode, so, se = gcp_gcloud_command("app", args)
+            # this method always sends to se
+            se_list.append(se)
 
     for i in se_list:
         if not i.startswith('Deleting the instance'):
