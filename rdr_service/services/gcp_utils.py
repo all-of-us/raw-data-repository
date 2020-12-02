@@ -830,7 +830,7 @@ def gcp_restart_instances(project, service=None):
     if service is None:
         service_msg = 'all services'
     else:
-        service_msg = f'service {service}'
+        service_msg = f'service "{service}"'
     _logger.debug(f'Restarting instances for project "{project}" and {service_msg}')
 
     # First get instance ID's
