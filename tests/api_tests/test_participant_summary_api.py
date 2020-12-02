@@ -3186,6 +3186,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         latest_receipt_time = datetime.datetime(2020, 8, 4)
 
         participant_summary = self.data_generator.create_database_participant_summary(
+            hpoId=2,
             ehrStatus=EhrStatus.PRESENT,
             isEhrDataAvailable=True,
             ehrReceiptTime=first_receipt_time,
@@ -3197,6 +3198,14 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertTrue(response['wasEhrDataAvailable'])
         self.assertEqual(first_receipt_time.isoformat(), response['firstEhrReceiptTime'])
         self.assertEqual(latest_receipt_time.isoformat(), response['latestEhrReceiptTime'])
+
+        response = self.send_get(f'ParticipantSummary?_count=1&_sort=lastModified&awardee=PITT&_sync=false')
+        self.assertEqual(first_receipt_time.isoformat(), response['entry'][0]['resource']['firstEhrReceiptTime'])
+        self.assertEqual(latest_receipt_time.isoformat(), response['entry'][0]['resource']['latestEhrReceiptTime'])
+
+        response = self.send_get(f'ParticipantSummary?_count=1&_sort=lastModified&awardee=PITT&_sync=true')
+        self.assertEqual(first_receipt_time.isoformat(), response['entry'][0]['resource']['firstEhrReceiptTime'])
+        self.assertEqual(latest_receipt_time.isoformat(), response['entry'][0]['resource']['latestEhrReceiptTime'])
 
     def _remove_participant_retention_eligible(self, participant_id):
         ps_dao = ParticipantSummaryDao()

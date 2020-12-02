@@ -861,8 +861,8 @@ class ParticipantSummaryDao(UpdatableDao):
 
         # Map deprecated EHR fields to updated names
         result['wasEhrDataAvailable'] = model.ehrStatus == EhrStatus.PRESENT
-        result['firstEhrReceiptTime'] = model.ehrReceiptTime
-        result['latestEhrReceiptTime'] = model.ehrUpdateTime
+        result['firstEhrReceiptTime'] = model.ehrReceiptTime.isoformat()
+        result['latestEhrReceiptTime'] = model.ehrUpdateTime.isoformat()
 
         # Strip None values.
         result = {k: v for k, v in list(result.items()) if v is not None}
