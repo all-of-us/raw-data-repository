@@ -1986,14 +1986,6 @@ class GenomicBiobankSamplesCoupler:
                 and ssed.test in ("1ED04", "1ED10")
                 and ssed.status < 13
             ORDER BY oeds.collected DESC
-                and ed04.collected = (
-                    SELECT MAX(os.collected)
-                    FROM biobank_ordered_sample os
-                        JOIN biobank_order o ON o.biobank_order_id = os.order_id
-                    WHERE os.test = "1ED04"
-                        AND o.participant_id = :pid_param
-                    GROUP BY o.participant_id
-                )
             """
 
         params = {
