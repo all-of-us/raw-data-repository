@@ -21,7 +21,7 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_se
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
-    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov
+    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec
 from rdr_service.model.participant import Participant
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
@@ -42,13 +42,15 @@ GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'ge
                      'genomic_file_processed')
 
 class ParticipantResourceClass(object):
-    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject, pid_list: None):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
+        :param pid_list: list of integer participant ids, if --from-file was specified
         """
         self.args = args
         self.gcp_env = gcp_env
+        self.pid_list = pid_list
 
 
     def update_single_pid(self, pid):
@@ -72,7 +74,8 @@ class ParticipantResourceClass(object):
                 BQPDREHRConsentPII,
                 BQPDRDVEHRSharing,
                 BQPDRCOPEMay,
-                BQPDRCOPENov
+                BQPDRCOPENov,
+                BQPDRCOPEDec
             )
             for module in modules:
                 mod = module()
@@ -198,9 +201,9 @@ class ParticipantResourceClass(object):
         :return: Exit code value
         """
         clr = self.gcp_env.terminal_colors
-        pids = None
+        pids = self.pid_list
 
-        if not self.args.from_file and not self.args.pid and not self.args.all_pids:
+        if not pids and not self.args.pid and not self.args.all_pids:
             _logger.error('Nothing to do')
             return 1
 
@@ -212,16 +215,7 @@ class ParticipantResourceClass(object):
         _logger.info('=' * 90)
         _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
 
-        if self.args.from_file:
-            filename = os.path.expanduser(self.args.from_file)
-            if not os.path.exists(filename):
-                _logger.error(f"File '{self.args.from_file}' not found.")
-                return 1
-
-            # read pids from file.
-            pids = open(os.path.expanduser(self.args.from_file)).readlines()
-            # convert pids from a list of strings to a list of integers.
-            pids = [int(i) for i in pids if i.strip()]
+        if pids:
             _logger.info('  PIDs File             : {0}'.format(clr.fmt(self.args.from_file)))
             _logger.info('  Total PIDs            : {0}'.format(clr.fmt(len(pids))))
         elif self.args.all_pids:
@@ -231,13 +225,13 @@ class ParticipantResourceClass(object):
                 pids = [p.participantId for p in results]
                 _logger.info('  Rebuild All PIDs      : {0}'.format(clr.fmt('Yes')))
                 _logger.info('  Total PIDs            : {0}'.format(clr.fmt(len(pids))))
-        else:
+        elif self.args.pid:
             _logger.info('  PID                   : {0}'.format(clr.fmt(self.args.pid)))
 
         _logger.info('=' * 90)
         _logger.info('')
 
-        if self.args.from_file or self.args.all_pids:
+        if pids and len(pids):
             return self.update_many_pids(pids)
 
         if self.args.pid:
@@ -251,13 +245,15 @@ class ParticipantResourceClass(object):
 
 class GenomicResourceClass(object):
 
-    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject, id_list: None):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
+        :param id_list: list of integer ids from a genomic table, if --genomic-table and --from-file were specified
         """
         self.args = args
         self.gcp_env = gcp_env
+        self.id_list = id_list
 
     def update_single_id(self, table, _id):
 
@@ -322,7 +318,7 @@ class GenomicResourceClass(object):
     def run(self):
         clr = self.gcp_env.terminal_colors
 
-        if not self.args.id and not self.args.all_ids and not self.args.all_tables:
+        if not self.args.id and not self.args.all_ids and not self.args.all_tables and not self.id_list:
             _logger.error('Nothing to do')
             return 1
 
@@ -339,7 +335,7 @@ class GenomicResourceClass(object):
             dao = ResourceDataDao()
             _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
             if self.args.all_tables:
-                tables = [{'name': t, 'ids': list()} for t in  GENOMIC_DB_TABLES]
+                tables = [{'name': t, 'ids': list()} for t in GENOMIC_DB_TABLES]
             else:
                 tables = [{'name': self.args.genomic_table, 'ids': list()}]
             _logger.info('  Rebuild Table(s)      : {0}'.format(
@@ -355,9 +351,13 @@ class GenomicResourceClass(object):
             for table in tables:
                 self.update_many_ids(table['name'], table['ids'])
 
-        else:
+        elif self.args.id:
             _logger.info('  Record ID             : {0}'.format(clr.fmt(self.args.id)))
             self.update_single_id(self.args.genomic_table, self.args.id)
+        elif self.id_list:
+            _logger.info('  Total Records         : {0}'.format(clr.fmt(len(self.id_list))))
+            if len(self.id_list):
+                self.update_many_ids(self.args.genomic_table, self.id_list)
 
         return 1
 
@@ -365,13 +365,14 @@ class GenomicResourceClass(object):
 class EHRReceiptClass(object):
     """  """
 
-    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject, pid_list: None):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
         """
         self.args = args
         self.gcp_env = gcp_env
+        self.pid_list = pid_list
 
     def update_batch(self, records):
         """
@@ -463,21 +464,7 @@ class EHRReceiptClass(object):
         _logger.info('=' * 90)
         _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
 
-        pids = []
-        # TODO:  Getting pids from the file is duplicated from ParticipantResourceClass run() method.  Refactor?
-        if self.args.from_file:
-            filename = os.path.expanduser(self.args.from_file)
-            if not os.path.exists(filename):
-                _logger.error(f"File '{self.args.from_file}' not found.")
-                return 1
-
-            # read pids from file.
-            pids = open(os.path.expanduser(self.args.from_file)).readlines()
-            # convert pids from a list of strings to a list of integers.
-            pids = [int(i) for i in pids if i.strip()]
-            _logger.info('  PIDs File             : {0}'.format(clr.fmt(self.args.from_file)))
-            _logger.info('  Total PIDs            : {0}'.format(clr.fmt(len(pids))))
-
+        pids = self.pid_list if self.pid_list else []
         dao = ResourceDataDao()
 
         with dao.session() as session:
@@ -485,15 +472,36 @@ class EHRReceiptClass(object):
             sql = 'select participant_id, ehr_status, ehr_receipt_time, ehr_update_time from participant_summary'
             cursor = session.execute(sql)
             if len(pids):
+                _logger.info('  PIDs File             : {0}'.format(clr.fmt(self.args.from_file)))
+                _logger.info('  Total PIDs            : {0}'.format(clr.fmt(len(pids))))
                 records = [row for row in cursor if row.participant_id in pids]
             else:
                 records = [row for row in cursor]
 
             _logger.info('  Total Records         : {0}'.format(clr.fmt(len(records))))
             _logger.info('  Batch Size            : 100')
+            if len(records):
+                self.update_batch(records)
 
-            self.update_batch(records)
+        return 0
 
+def get_id_list(fname):
+    """
+    Shared helper routine for tool classes that allow input from a file of integer ids (participant ids or
+    id values from a specific genomic table).
+    :param fname:  The filename passed with the --from-file argument
+    :return: A list of integers, or None on missing/empty fname
+    """
+    filename = os.path.expanduser(fname)
+    if not os.path.exists(filename):
+        _logger.error(f"File '{fname}' not found.")
+        return None
+
+    # read ids from file.
+    ids = open(os.path.expanduser(fname)).readlines()
+    # convert ids from a list of strings to a list of integers.
+    ids = [int(i) for i in ids if i.strip()]
+    return ids if len(ids) else None
 
 def run():
     # Set global debug value and setup application logging.
@@ -533,6 +541,9 @@ def run():
                                 action="store_true")  # noqa
     genomic_parser.add_argument("--batch", help="Submit ids in batch to Cloud Tasks", default=False,
                                 action="store_true")  # noqa
+    genomic_parser.add_argument("--from-file",
+                                help="file containing id values from the specified --genomic-table to rebuild",
+                                default=None)  # noqa
 
     ehr_parser = subparser.add_parser('ehr-receipt')
     ehr_parser.add_argument("--ehr", help="Submit batch to Cloud Tasks", default=False,
@@ -547,19 +558,32 @@ def run():
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
 
+        ids = None
+        if hasattr(args, 'from_file') and args.from_file:
+            ids = get_id_list(args.from_file)
+
         if hasattr(args, 'pid') and hasattr(args, 'from_file'):
-            process = ParticipantResourceClass(args, gcp_env)
+            process = ParticipantResourceClass(args, gcp_env, ids)
             exit_code = process.run()
         elif hasattr(args, 'genomic_table'):
-
             if args.genomic_table and args.all_tables:
                 _logger.error("Arguments 'genomic-table' and 'all-tables' conflict.")
                 return 1
+            elif args.all_tables and args.from_file:
+                _logger.error("Argument 'from-file' cannot be used with 'all-tables', only with 'genomic-table'")
+                return 1
+            elif args.id and ids:
+                _logger.error("Argument 'from-file' cannot be used if a single 'id' was also specified")
+                return 1
+            elif ids and not args.genomic_table:
+                _logger.error("Argument 'from-file' was provided  without a specified 'genomic-table' ")
+                return 1
 
-            process = GenomicResourceClass(args, gcp_env)
+            process = GenomicResourceClass(args, gcp_env, ids)
             exit_code = process.run()
+
         elif hasattr(args, 'ehr'):
-            process = EHRReceiptClass(args, gcp_env)
+            process = EHRReceiptClass(args, gcp_env, ids)
             exit_code = process.run()
         else:
             _logger.info('Please select an option to run. For help use "pdr-tool --help".')
