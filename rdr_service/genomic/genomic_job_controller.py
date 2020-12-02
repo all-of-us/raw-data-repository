@@ -8,8 +8,6 @@ from datetime import datetime
 import pytz
 from sendgrid import sendgrid
 
-from sqlalchemy.exc import IntegrityError
-
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs, open_cloud_file
 
@@ -60,7 +58,7 @@ class GenomicJobController:
         self.bucket_name_list = getSettingList(bucket_name_list, default=[])
         self.archive_folder_name = archive_folder_name
         self.bq_project_id = bq_project_id
-        self.task_data=task_data
+        self.task_data = task_data
 
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET

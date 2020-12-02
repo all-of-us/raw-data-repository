@@ -321,34 +321,29 @@ def execute_genomic_manifest_file_pipeline(_task_data: dict):
     :param _task_data: dictionary of metadata needed by the controller
     """
     task_data = JSONObject(_task_data)
-    try:
-        _job = task_data.job
-    except AttributeError:
-        raise AttributeError("job is required to execute manifest file pipeline")
 
-    try:
-        _bucket = task_data.bucket
-    except AttributeError:
+    if not hasattr(task_data, 'job'):
+        raise AttributeError("job are required to execute manifest file pipeline")
+
+    if not hasattr(task_data, 'bucket'):
         raise AttributeError("bucket is required to execute manifest file pipeline")
 
-    try:
-        _file_data = task_data.file_data
-    except AttributeError:
+    if not hasattr(task_data, 'file_data'):
         raise AttributeError("file_data is required to execute manifest file pipeline")
 
     with GenomicJobController(GenomicJob.GENOMIC_MANIFEST_FILE_TRIGGER,
                               task_data=task_data) as controller:
         manifest_file = controller.insert_genomic_manifest_file_record()
 
-        if _file_data.create_feedback_record:
+        if task_data.file_data.create_feedback_record:
             controller.insert_genomic_manifest_feedback_record(manifest_file)
 
-    if _job:
+    if task_data.job:
         task_data.manifest_file = manifest_file
         dispatch_genomic_job_from_task(task_data)
 
 
-def dispatch_genomic_job_from_task(_task_data: dict):
+def dispatch_genomic_job_from_task(_task_data: JSONObject):
     """
     Entrypoint for new genomic manifest file pipelines
     Sets up the genomic manifest file record and begin pipeline

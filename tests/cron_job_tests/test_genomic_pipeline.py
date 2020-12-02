@@ -6,7 +6,6 @@ import mock
 
 import pytz
 from dateutil.parser import parse
-from sqlalchemy.exc import IntegrityError
 
 from rdr_service import clock, config, storage
 from rdr_service.api_util import open_cloud_file, list_blobs
