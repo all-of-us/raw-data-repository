@@ -152,6 +152,13 @@ class BQPDRParticipantSummarySchema(BQSchema):
     latest_ehr_receipt_time = BQField('latest_ehr_receipt_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     ehr_receipts = BQRecordField('ehr_receipts', schema=BQPDREhrReceiptSchema)
 
+    # PDR-176: Participant deceased status info
+    deceased_authored = BQField('deceased_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    deceased_status = BQField('deceased_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    deceased_status_id = BQField('deceased_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    # TODO:  Exclude date of death initially in case it constitutes PII, determine if it is needed in PDR
+    # date_of_death = BQField('date_of_death', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
+
 
 class BQPDRParticipantSummary(BQTable):
     """ PDR Participant Summary BigQuery Table """

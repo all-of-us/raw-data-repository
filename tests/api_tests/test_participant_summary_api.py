@@ -5,6 +5,7 @@ import threading
 import unittest
 from urllib.parse import urlencode
 
+from rdr_service import config
 from rdr_service import main, clock
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERMISSION_YES_CODE,
@@ -90,12 +91,27 @@ class ParticipantSummaryApiTest(BaseTestCase):
     def setUp(self):
         super().setUp()
         self.hpo_dao = HPODao()
-
+        self.original_user_roles = None
         # Needed by test_switch_to_test_account
         self.hpo_dao.insert(
             HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName="Test", organizationType=OrganizationType.UNSET)
         )
 
+    def tearDown(self):
+        if self.original_user_roles is not None:
+            self.overwrite_test_user_awardee(None, self.original_user_roles, save_current=False)
+
+        super(ParticipantSummaryApiTest, self).tearDown()
+
+    def overwrite_test_user_awardee(self, awardee, roles, save_current=True):
+        user_info = config.getSettingJson(config.USER_INFO)
+
+        if save_current:
+            # Save what was there so we can set it back in the tearDown
+            self.original_user_roles = user_info['example@example.com']['roles']
+        user_info['example@example.com']['roles'] = roles
+        user_info['example@example.com']['awardee'] = awardee
+        config.override_setting(config.USER_INFO, user_info)
 
     def create_demographics_questionnaire(self):
         """Uses the demographics test data questionnaire.  Returns the questionnaire id"""
@@ -3097,7 +3113,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         attrs = {
             'questionnaireOnHealthcareAccessAuthored': None,
-            'ehrReceiptTime': in_eighteen_month
+            'ehrUpdateTime': in_eighteen_month
         }
         self._make_participant_retention_eligible(participant_id[1:], **attrs)
         ps = self.send_get("Participant/%s/Summary" % participant_id)
@@ -3117,7 +3133,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         attrs = {
             'questionnaireOnHealthcareAccessAuthored': in_eighteen_month,
-            'ehrReceiptTime': in_eighteen_month
+            'ehrUpdateTime': in_eighteen_month
         }
         self._make_participant_retention_eligible(participant_id[1:], **attrs)
         ps = self.send_get("Participant/%s/Summary" % participant_id)
@@ -3186,7 +3202,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
         latest_receipt_time = datetime.datetime(2020, 8, 4)
 
         participant_summary = self.data_generator.create_database_participant_summary(
-            hpoId=2,
             ehrStatus=EhrStatus.PRESENT,
             isEhrDataAvailable=True,
             ehrReceiptTime=first_receipt_time,
@@ -3199,13 +3214,57 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(first_receipt_time.isoformat(), response['firstEhrReceiptTime'])
         self.assertEqual(latest_receipt_time.isoformat(), response['latestEhrReceiptTime'])
 
-        response = self.send_get(f'ParticipantSummary?_count=1&_sort=lastModified&awardee=PITT&_sync=false')
-        self.assertEqual(first_receipt_time.isoformat(), response['entry'][0]['resource']['firstEhrReceiptTime'])
-        self.assertEqual(latest_receipt_time.isoformat(), response['entry'][0]['resource']['latestEhrReceiptTime'])
+    def test_access_unset_participants_for_hoa_lite(self):
+        participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
+        participant_id = participant["participantId"]
+        participant2 = self.send_post("Participant", {"providerLink": []})
+        participant_id2 = participant2["participantId"]
+        with FakeClock(TIME_1):
+            self.send_consent(participant_id)
+            self.send_consent(participant_id2)
 
-        response = self.send_get(f'ParticipantSummary?_count=1&_sort=lastModified&awardee=PITT&_sync=true')
-        self.assertEqual(first_receipt_time.isoformat(), response['entry'][0]['resource']['firstEhrReceiptTime'])
-        self.assertEqual(latest_receipt_time.isoformat(), response['entry'][0]['resource']['latestEhrReceiptTime'])
+        config.override_setting(config.HPO_LITE_AWARDEE, ["PITT"])
+        self.overwrite_test_user_awardee('PITT', ['awardee_sa'])
+        self.send_get("ParticipantSummary?_count=10&awardee=AZ_TUCSON", expected_status=403)
+        ps = self.send_get("ParticipantSummary?_count=10&awardee=PITT")
+        self.assertEqual(len(ps['entry']), 1)
+        self.assertEqual(ps['entry'][0]['resource']['hpoId'], 'PITT')
+        ps = self.send_get("ParticipantSummary?_count=10&awardee=UNSET")
+        self.assertEqual(len(ps['entry']), 1)
+        self.assertEqual(ps['entry'][0]['resource']['hpoId'], 'UNSET')
+
+    def test_api_sort_and_filter_with_aliased_fields(self):
+        """Check that the aliased fields can be used as a sort argument through the API"""
+
+        def generate_participant_with_first_receipt_time(timestamp):
+            summary = self.data_generator.create_database_participant_summary(
+                ehrReceiptTime=timestamp
+            )
+            return to_client_participant_id(summary.participantId)
+
+        may_participant_id = generate_participant_with_first_receipt_time(datetime.datetime(2020, 5, 1))
+        jan_participant_id = generate_participant_with_first_receipt_time(datetime.datetime(2020, 1, 1))
+        oct_participant_id = generate_participant_with_first_receipt_time(datetime.datetime(2020, 10, 1))
+        feb_participant_id = generate_participant_with_first_receipt_time(datetime.datetime(2020, 2, 1))
+        mar_participant_id = generate_participant_with_first_receipt_time(datetime.datetime(2020, 3, 1))
+
+        response = self.send_get('ParticipantSummary?_sort=firstEhrReceiptTime')
+        response_ids = [entry['resource']['participantId'] for entry in response['entry']]
+        self.assertEqual([
+            jan_participant_id,
+            feb_participant_id,
+            mar_participant_id,
+            may_participant_id,
+            oct_participant_id
+        ], response_ids)
+
+        response = self.send_get('ParticipantSummary?_sort=firstEhrReceiptTime&firstEhrReceiptTime=lt2020-03-10')
+        response_ids = [entry['resource']['participantId'] for entry in response['entry']]
+        self.assertEqual([
+            jan_participant_id,
+            feb_participant_id,
+            mar_participant_id
+        ], response_ids)
 
     def _remove_participant_retention_eligible(self, participant_id):
         ps_dao = ParticipantSummaryDao()

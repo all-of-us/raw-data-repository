@@ -276,6 +276,10 @@ class BaseDao(object):
         """Attempts to make a query filter for the model property with the specified name, matching
     the specified value. If no such property exists, None is returned.
     """
+        alias_map = self.get_aliased_field_map()
+        if field_name in alias_map.keys():
+            field_name = alias_map[field_name]
+
         prop = getattr(self.model_type, field_name, None)
         if prop:
             property_type = get_property_type(prop)
@@ -323,7 +327,7 @@ class BaseDao(object):
 
     def query(self, query_def):
         if not self.order_by_ending:
-            raise BadRequest(f"Can't query on type {self.model_type} -- no order by ending speciifed")
+            raise BadRequest(f"Can't query on type {self.model_type} -- no order by ending specified")
 
         with self.session() as session:
             query, field_names = self._make_query(session, query_def)
@@ -441,11 +445,17 @@ class BaseDao(object):
 
     def _add_order_by(self, query, order_by, field_names, fields):
         """Adds a single order by field, as the primary sort order."""
+        field_name = order_by.field_name
+
+        alias_map = self.get_aliased_field_map()
+        if field_name in alias_map.keys():
+            field_name = alias_map[field_name]
+
         try:
-            f = getattr(self.model_type, order_by.field_name)
+            f = getattr(self.model_type, field_name)
         except AttributeError:
-            raise BadRequest(f"No field named {order_by.field_name} found on {self.model_type}.")
-        field_names.append(order_by.field_name)
+            raise BadRequest(f"No field named {field_name} found on {self.model_type}.")
+        field_names.append(field_name)
         fields.append(f)
         if order_by.ascending:
             return query.order_by(f)
@@ -587,6 +597,20 @@ class BaseDao(object):
                 data[key] = value
 
         return data
+
+    @staticmethod
+    def get_aliased_field_map():
+        """
+        Return a dictionary mapping new attribute names to the field they should copy.
+        This allows the API to work with field names that aren't coming directly from the database.
+
+        Example of return value:
+        {
+            'newAttributeName': 'existingAttributeItShouldCopy'
+        }
+        :return: Dictionary mapping alias names to their values.
+        """
+        return {}
 
 
 class UpsertableDao(BaseDao):

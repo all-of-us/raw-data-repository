@@ -12,9 +12,9 @@ logger = logging.getLogger("rdr_logger")
 
 
 class ToolBase(object):
-    def __init__(self, args, gcp_env=None, tool_cmd=None):
+    def __init__(self, args, gcp_env=None, tool_name=None):
         self.args = args
-        self.tool_cmd = tool_cmd
+        self.tool_cmd = tool_name
         self.gcp_env = gcp_env
 
     @staticmethod
@@ -69,5 +69,5 @@ def cli_run(tool_cmd, tool_desc, tool_class: Type[ToolBase], parser_hook=None, d
         parser_hook(parser)
 
     args = parser.parse_args()
-    process = tool_class(args, tool_cmd=tool_cmd)
+    process = tool_class(args, tool_name=tool_cmd)
     return process.run_process()
