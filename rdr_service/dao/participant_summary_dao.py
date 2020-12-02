@@ -851,7 +851,6 @@ class ParticipantSummaryDao(UpdatableDao):
             result[new_field_name] = getattr(model, existing_field_name)
 
             # register new field as date if field is date
-            #dt = type(result[new_field_name])
             if type(result[new_field_name]) is datetime.datetime:
                 _DATE_FIELDS.add(new_field_name)
 
