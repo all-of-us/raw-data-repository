@@ -1,18 +1,23 @@
 import logging
+
 from flask import request
 from flask_restful import Resource
-
 from werkzeug.exceptions import NotFound
 
-from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
 from rdr_service.api.data_gen_api import generate_samples_task
+from rdr_service.app_util import task_auth_required
+from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
+from rdr_service.dao.bq_genomics_dao import bq_genomic_set_batch_update, bq_genomic_set_member_batch_update, \
+    bq_genomic_job_run_batch_update, bq_genomic_gc_validation_metrics_batch_update, \
+    bq_genomic_file_processed_batch_update
+from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
-from rdr_service.app_util import task_auth_required
-from rdr_service.resource.tasks import batch_rebuild_participants_task
-from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
-from rdr_service.resource.generators.participant import participant_summary_update_resource_task
 from rdr_service.resource.generators.code import rebuild_codebook_resources_task
+from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
+    genomic_job_run_batch_update, genomic_gc_validation_metrics_batch_update, genomic_file_processed_batch_update
+from rdr_service.resource.generators.participant import participant_summary_update_resource_task
+from rdr_service.resource.tasks import batch_rebuild_participants_task
 
 
 def log_task_headers():
@@ -139,4 +144,38 @@ class IngestAW1ManifestTaskApi(Resource):
         logging.info(f'Ingesting AW1 File: {data.get("filename")}')
         # TODO: Call Genomic Code here
         logging.info('Complete.')
+        return '{"success": "true"}'
+
+
+class RebuildGenomicTableRecordsApi(Resource):
+    """
+    Cloud Task endpoint: Rebuild Genomic table records for Resource/BigQuery.
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        table = data['table']
+        batch = data['ids']
+
+        logging.info(f'Rebuilding {len(batch)} records for table {table}.')
+
+        if table == 'genomic_set':
+            bq_genomic_set_batch_update(batch)
+            genomic_set_batch_update(batch)
+        elif table == 'genomic_set_member':
+            bq_genomic_set_member_batch_update(batch)
+            genomic_set_member_batch_update(batch)
+        elif table == 'genomic_job_run':
+            bq_genomic_job_run_batch_update(batch)
+            genomic_job_run_batch_update(batch)
+        elif table == 'genomic_file_processed':
+            bq_genomic_file_processed_batch_update(batch)
+            genomic_file_processed_batch_update(batch)
+        elif table == 'genomic_gc_validation_metrics':
+            bq_genomic_gc_validation_metrics_batch_update(batch)
+            genomic_gc_validation_metrics_batch_update(batch)
+
+        logging.info(f'Rebuild complete.')
+
         return '{"success": "true"}'
