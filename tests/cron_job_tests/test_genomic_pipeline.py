@@ -1886,13 +1886,16 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(0, missing_cols)
             rows = list(csv_reader)
             self.assertEqual(2, len(rows))
-            self.assertEqual(test_member_1.biobankId, int(rows[0]['biobank_id']))
-            self.assertEqual(test_member_1.sampleId, rows[0]['sample_id'])
-            self.assertEqual(test_member_1.sexAtBirth, rows[0]['sex_at_birth'])
-            self.assertEqual("yes", rows[0]['consent_for_ror'])
-            self.assertEqual(test_member_1.consentForGenomicsRORAuthored, parse(rows[0]['date_of_consent_for_ror']))
-            self.assertEqual(test_member_1.chipwellbarcode, rows[0]['chipwellbarcode'])
-            self.assertEqual('JH', rows[0]['genome_center'])
+            self.assertIn(test_member_1.biobankId, [int(rows[0]['biobank_id']), int(rows[1]['biobank_id'])])
+            for row in rows:
+                if test_member_1.biobankId == int(row['biobank_id']):
+                    self.assertEqual(test_member_1.biobankId, int(row['biobank_id']))
+                    self.assertEqual(test_member_1.sampleId, row['sample_id'])
+                    self.assertEqual(test_member_1.sexAtBirth, row['sex_at_birth'])
+                    self.assertEqual("yes", row['consent_for_ror'])
+                    self.assertEqual(test_member_1.consentForGenomicsRORAuthored, parse(row['date_of_consent_for_ror']))
+                    self.assertEqual(test_member_1.chipwellbarcode, row['chipwellbarcode'])
+                    self.assertEqual('JH', row['genome_center'])
 
         # Array
         file_record = self.file_processed_dao.get(2)  # remember, GC Metrics is #1
