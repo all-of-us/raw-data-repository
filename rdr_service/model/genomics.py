@@ -16,8 +16,8 @@ from rdr_service.participant_enums import (
     GenomicJob,
     GenomicWorkflowState,
     GenomicQcStatus,
-    GenomicManifestTypes
-)
+    GenomicManifestTypes,
+    GenomicContaminationCategory)
 
 
 class GenomicSet(Base):
@@ -120,6 +120,17 @@ class GenomicSetMember(Base):
     gcManifestTestName = Column('gc_manifest_test_name', String(50), nullable=True)
     gcManifestFailureMode = Column('gc_manifest_failure_mode', String(128), nullable=True)
     gcManifestFailureDescription = Column('gc_manifest_failure_description', String(128), nullable=True)
+
+    # File Processed IDs
+    aw1FileProcessedId = Column('aw1_file_processed_id',
+                                Integer, ForeignKey("genomic_file_processed.id"),
+                                nullable=True)
+    aw2FileProcessedId = Column('aw2_file_processed_id',
+                                Integer, ForeignKey("genomic_file_processed.id"),
+                                nullable=True)
+    aw2fFileProcessedId = Column('aw2f_file_processed_id',
+                                 Integer, ForeignKey("genomic_file_processed.id"),
+                                 nullable=True)
 
     # Reconciliation and Manifest columns
     # Reconciled to BB Manifest
@@ -300,6 +311,9 @@ class GenomicManifestFile(Base):
     recordCount = Column('record_count', Integer, nullable=False, default=0)
     rdrProcessingComplete = Column('rdr_processing_complete', SmallInteger, nullable=False, default=0)
     rdrProcessingCompleteDate = Column('rdr_processing_complete_date', UTCDateTime, nullable=True)
+    ignore = Column('ignore', SmallInteger, nullable=False, default=0)
+
+    __table_args__ = (UniqueConstraint('file_path', 'ignore', name='_file_path_ignore_uc'),)
 
 
 event.listen(GenomicManifestFile, 'before_insert', model_insert_listener)
@@ -333,6 +347,7 @@ class GenomicManifestFeedback(Base):
     # feedback_complete = 1 and a feedback manifest is generated, i.e. AW2F.
     feedbackComplete = Column('feedback_complete', SmallInteger, nullable=False, default=0)
     feedbackCompleteDate = Column('feedback_complete_date', UTCDateTime, nullable=True)
+    ignore = Column('ignore', SmallInteger, nullable=False, default=0)
 
 
 event.listen(GenomicManifestFeedback, 'before_insert', model_insert_listener)
@@ -430,6 +445,10 @@ class GenomicGCValidationMetrics(Base):
     ignoreFlag = Column('ignore_flag', SmallInteger, nullable=True, default=0)
     devNote = Column('dev_note', String(255), nullable=True)
 
+    # Contamination category
+    contaminationCategory = Column('contamination_category',
+                                   Enum(GenomicContaminationCategory),
+                                   default=GenomicSubProcessResult.UNSET)
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
 event.listen(GenomicGCValidationMetrics, 'before_update', model_update_listener)

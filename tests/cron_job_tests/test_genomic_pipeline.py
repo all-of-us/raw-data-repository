@@ -6,7 +6,7 @@ import mock
 
 import pytz
 from dateutil.parser import parse
-
+from sqlalchemy.exc import IntegrityError
 
 from rdr_service import clock, config, storage
 from rdr_service.api_util import open_cloud_file, list_blobs
@@ -21,7 +21,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicJobRunDao,
     GenomicFileProcessedDao,
     GenomicGCValidationMetricsDao,
-)
+    GenomicManifestFileDao, GenomicManifestFeedbackDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -60,7 +60,7 @@ from rdr_service.participant_enums import (
     QuestionnaireStatus,
     GenomicWorkflowState,
     WithdrawalStatus,
-    GenomicQcStatus)
+    GenomicQcStatus, GenomicManifestTypes, GenomicContaminationCategory)
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -111,6 +111,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.summary_dao = ParticipantSummaryDao()
         self.race_dao = ParticipantRaceAnswersDao()
         self.job_run_dao = GenomicJobRunDao()
+        self.manifest_file_dao = GenomicManifestFileDao()
+        self.manifest_feedback_dao = GenomicManifestFeedbackDao()
         self.file_processed_dao = GenomicFileProcessedDao()
         self.set_dao = GenomicSetDao()
         self.member_dao = GenomicSetMemberDao()
@@ -271,6 +273,7 @@ class GenomicPipelineTest(BaseTestCase):
         member = self.member_dao.get(1)
         self.assertEqual(GenomicWorkflowState.AW2, member.genomicWorkflowState)
         self.assertEqual('1001', member.sampleId)
+        self.assertEqual(1, member.aw2FileProcessedId)
 
         # Test successful run result
         run_obj = self.job_run_dao.get(1)
@@ -396,7 +399,8 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual('10001_R01C01', record.chipwellbarcode)
             self.assertEqual('0.34567890', record.callRate)
             self.assertEqual('True', record.sexConcordance)
-            self.assertEqual('8.67812390', record.contamination)
+            self.assertEqual('0.01', record.contamination)
+            self.assertEqual(GenomicContaminationCategory.EXTRACT_WGS, record.contaminationCategory)
             self.assertEqual('Pass', record.processingStatus)
             self.assertEqual('This sample passed', record.notes)
 
@@ -1632,6 +1636,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("", member.gcManifestFailureMode)
                 self.assertEqual("", member.gcManifestFailureDescription)
                 self.assertEqual(GenomicWorkflowState.AW1, member.genomicWorkflowState)
+                self.assertEqual(1, member.aw1FileProcessedId)
 
             if member.id == 2:
                 self.assertEqual("100002", member.collectionTubeId)
@@ -2751,3 +2756,203 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the job result
         run_obj = self.job_run_dao.get(1)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_insert_genomic_manifest_file_record(self):
+
+        # create test file
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        sub_folder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
+        self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
+                                         bucket_name,
+                                         folder=sub_folder)
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.AW1_MANIFEST,
+            "bucket": bucket_name,
+            "file_data": {
+                "create_feedback_record": True,
+                "upload_date": "2020-11-20 00:00:00",
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": f"{bucket_name}/{sub_folder}/RDR_AoU_GEN_TestDataManifest_11192019.csv"
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+
+        manifest_record = self.manifest_file_dao.get(1)
+        feedback_record = self.manifest_feedback_dao.get(1)
+
+        # Test data was inserted correctly
+        # manifest_file
+        self.assertEqual(f"{bucket_name}/{sub_folder}/RDR_AoU_GEN_TestDataManifest_11192019.csv", manifest_record.filePath)
+        self.assertEqual(GenomicManifestTypes.BIOBANK_GC, manifest_record.manifestTypeId)
+        self.assertEqual(2, manifest_record.recordCount)
+        self.assertEqual(bucket_name, manifest_record.bucketName)
+        self.assertEqual(f"{bucket_name}/{sub_folder}/RDR_AoU_GEN_TestDataManifest_11192019.csv", manifest_record.filePath)
+
+        # manifest_feedback
+        self.assertEqual(1, feedback_record.inputManifestFileId)
+
+    def test_aw2f_manifest_generation_e2e(self):
+        # Create test genomic members
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+                                                array_participants=range(1, 4),
+                                                genomic_workflow_state=GenomicWorkflowState.AW0)
+
+        # Set Up AW1 File
+        # create test file
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        sub_folder = _FAKE_GENOTYPING_FOLDER  # config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
+
+        # Setup Test file
+        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-4.csv")
+
+        gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
+        pytz.timezone('US/Central').localize(test_date)
+
+        with clock.FakeClock(test_date):
+            self._write_cloud_csv(
+                gc_manifest_filename,
+                gc_manifest_file,
+                bucket=bucket_name,
+                folder=sub_folder,
+            )
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.AW1_MANIFEST,
+            "bucket": bucket_name,
+            "file_data": {
+                "create_feedback_record": True,
+                "upload_date": "2020-11-20 00:00:00",
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": f"{bucket_name}/{sub_folder}/RDR_AoU_GEN_PKG-1908-218051.csv"
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+
+        # Set up AW2 File
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+
+        self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
+                                         bucket_name,
+                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
+
+        self._update_test_sample_ids()
+
+        # TODO: implement manifest_file record for AW2
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 3
+
+        # Test feedback count
+        fb = self.manifest_feedback_dao.get(1)
+        self.assertEqual(2, fb.feedbackRecordCount)
+
+        # run the AW2F manifest workflow
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.scan_and_complete_feedback_records()  # run_id = 4 & 5
+
+        # aw2f_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
+
+        # Test manifest feedback record was updated
+        manifest_feedback_record = self.manifest_feedback_dao.get(1)
+
+        self.assertEqual(1, manifest_feedback_record.inputManifestFileId)  # id = 1 is the AW1
+        self.assertEqual(2, manifest_feedback_record.feedbackManifestFileId)  # id = 2 is the AW2F
+
+        # Test the manifest file contents
+        expected_aw2f_columns = (
+            "PACKAGE_ID",
+            "BIOBANKID_SAMPLEID",
+            "BOX_STORAGEUNIT_ID",
+            "BOX_ID/PLATE_ID",
+            "WELL_POSITION",
+            "SAMPLE_ID",
+            "PARENT_SAMPLE_ID",
+            "COLLECTION_TUBEID",
+            "MATRIX_ID",
+            "COLLECTION_DATE",
+            "BIOBANK_ID",
+            "SEX_AT_BIRTH",
+            "AGE",
+            "NY_STATE_(Y/N)",
+            "SAMPLE_TYPE",
+            "TREATMENTS",
+            "QUANTITY_(ul)",
+            "TOTAL_CONCENTRATION_(ng/uL)",
+            "TOTAL_DNA(ng)",
+            "VISIT_DESCRIPTION",
+            "SAMPLE_SOURCE",
+            "STUDY",
+            "TRACKING_NUMBER",
+            "CONTACT",
+            "EMAIL",
+            "STUDY_PI",
+            "TEST_NAME",
+            "FAILURE_MODE",
+            "FAILURE_MODE_DESC",
+            "PROCESSING_STATUS",
+            "CONTAMINATION",
+            "CONTAMINATION_CATEGORY",
+            "CONSENT_FOR_ROR",
+        )
+
+        bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
+        sub_folder = config.BIOBANK_AW2F_SUBFOLDER
+
+        with open_cloud_file(os.path.normpath(
+            f'{bucket_name}/{sub_folder}/GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            missing_cols = len(set(expected_aw2f_columns)) - len(set(csv_reader.fieldnames))
+            self.assertEqual(0, missing_cols)
+
+            rows = list(csv_reader)
+
+            self.assertEqual(2, len(rows))
+
+            # Test the data in the files is correct
+            for r in rows:
+                if r['BIOBANK_ID'] == '1':
+                    self.assertEqual("PKG-1908-218051", r["PACKAGE_ID"])
+                    self.assertEqual("Z1_1001", r["BIOBANKID_SAMPLEID"])
+                    self.assertEqual("SU-0026388097", r["BOX_STORAGEUNIT_ID"])
+                    self.assertEqual("BX-00299188", r["BOX_ID/PLATE_ID"])
+                    self.assertEqual("A01", r["WELL_POSITION"])
+                    self.assertEqual("1001", r["SAMPLE_ID"])
+                    self.assertEqual("19206003547", r["PARENT_SAMPLE_ID"])
+                    self.assertEqual("1", r["COLLECTION_TUBE_ID"])
+                    self.assertEqual("1194523886", r["MATRIX_ID"])
+                    # TODO: Handle collectiondate
+                    # self.assertEqual("2010-05-11T05:00:00Z", r["COLLECTION_DATE"])
+                    self.assertEqual("1", r["BIOBANK_ID"])
+                    self.assertEqual("F", r["SEX_AT_BIRTH"])
+                    # TODO: Handle Age
+                    # self.assertEqual("5", r["AGE"])
+                    self.assertEqual("Y", r["NY_STATE_(Y/N)"])
+                    self.assertEqual("DNA", r["SAMPLE_TYPE"])
+                    self.assertEqual("TE", r["TREATMENTS"])
+                    self.assertEqual("40", r["QUANTITY_(uL)"])
+                    self.assertEqual("60", r["TOTAL_CONCENTRATION_(ng/uL)"])
+                    self.assertEqual("2400", r["TOTAL_DNA(ng)"])
+                    self.assertEqual("All", r["VISIT_DESCRIPTION"])
+                    self.assertEqual("Other", r["SAMPLE_SOURCE"])
+                    self.assertEqual("PMI Coriell Samples Only", r["STUDY"])
+                    self.assertEqual("475523957339", r["TRACKING_NUMBER"])
+                    self.assertEqual("Samantha Wirkus", r["CONTACT"])
+                    self.assertEqual("Wirkus.Samantha@mayo.edu", r["EMAIL"])
+                    self.assertEqual("Josh Denny", r["STUDY_PI"])
+                    self.assertEqual("aou_array", r["TEST_NAME"])
+                    self.assertEqual("", r["FAILURE_MODE"])
+                    self.assertEqual("", r["FAILURE_MODE_DESC"])
+                    self.assertEqual("extract wgs", r['CONTAMINATION_CATEGORY'])
+
+            # Test run record is success
+            run_obj = self.job_run_dao.get(5)
+
+            self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)

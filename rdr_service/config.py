@@ -82,6 +82,7 @@ GENOMIC_AW3_ARRAY_SUBFOLDER = "AW3_array_manifest"
 GENOMIC_AW3_WGS_SUBFOLDER = "AW3_wgs_manifest"
 DRC_BROAD_BUCKET_NAME = "drc_broad_bucket_name"
 DRC_BROAD_AW4_SUBFOLDERS = ("aw4_array_subfolder_name", "aw4_wgs_subfolder_name")
+BIOBANK_AW2F_SUBFOLDER = "aw2f_manifests"
 CONSENT_PDF_BUCKET = "consent_pdf_bucket"
 USER_INFO = "user_info"
 SYNC_SHARDS_PER_CHANNEL = "sync_shards_per_channel"
