@@ -3,7 +3,7 @@ import json
 from werkzeug.exceptions import BadRequest
 from dateutil.parser import parse
 import pytz
-from sqlalchemy import desc, or_, func
+from sqlalchemy import desc, or_, func, distinct
 from sqlalchemy.orm import subqueryload, joinedload
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
@@ -436,6 +436,13 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         now = clock.CLOCK.now()
         sequest_hours_ago = now - timedelta(hours=sequest_hour)
         with self.session() as session:
+            count_query = (session.query(distinct(WorkbenchWorkspaceApproved.workspaceSourceId))
+                           .filter(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                                   or_(WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
+                                       WorkbenchWorkspaceApproved.isReviewed == 1))
+                           )
+            total = count_query.count()
+
             snapshot_subquery = (
                 session.query(func.max(WorkbenchWorkspaceSnapshot.id).label('snapshot_id'),
                               WorkbenchWorkspaceSnapshot.workspaceSourceId)
@@ -607,11 +614,11 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         for er in expected_result:
             er.pop('hitSearch', None)
 
-        total = len(expected_result)
-        if offset >= total:
+        match_number = len(expected_result)
+        if offset >= match_number:
             expected_result = []
         else:
-            page_end = offset + page_size if offset + page_size < total else total
+            page_end = offset + page_size if offset + page_size < match_number else match_number
             expected_result = expected_result[offset:page_end]
         metadata_dao = MetadataDao()
         metadata = metadata_dao.get_by_key(WORKBENCH_LAST_SYNC_KEY)
@@ -621,7 +628,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             last_sync_date = clock.CLOCK.now()
 
         return {
-            "total": total,
+            "total_projects": total,
+            "match_projects": match_number,
             "page": page,
             "pageSize": page_size,
             "last_sync_date": last_sync_date,
