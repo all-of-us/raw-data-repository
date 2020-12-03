@@ -1,4 +1,3 @@
--e git+ssh://git@github.com/all-of-us/python-aou-cloud-services.git@rdr-compatible#egg=aou_cloud
 -r requirements_base.txt
 
 mysqlclient==1.4.6        # via -r requirements.in

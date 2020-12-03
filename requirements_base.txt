@@ -4,6 +4,7 @@
 #
 #    pip-compile
 #
+-e git+ssh://git@github.com/all-of-us/python-aou-cloud-services.git@rdr-compatible#egg=aou_cloud
 alabaster==0.7.12         # via sphinx
 alembic==1.4.2            # via -r requirements.in
 aniso8601==8.0.0          # via flask-restful
