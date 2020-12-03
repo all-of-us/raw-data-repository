@@ -6,6 +6,7 @@ from rdr_service.model.biobank_order import BiobankMailKitOrder, BiobankOrder, B
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.deceased_report import DeceasedReport
+from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
@@ -266,6 +267,22 @@ class DataGenerator:
                     defaults[f'{questionnaire_field}Authored'] = datetime.now()
 
         return ParticipantSummary(**defaults)
+
+    def create_database_participant_ehr_receipt(self, **kwargs):
+        participant_ehr_receipt = self._participant_ehr_receipt_with_defaults(**kwargs)
+        self._commit_to_database(participant_ehr_receipt)
+        return participant_ehr_receipt
+
+    @staticmethod
+    def _participant_ehr_receipt_with_defaults(**kwargs):
+        defaults = {
+            'fileTimestamp': datetime.now(),
+            'firstSeen': datetime.now(),
+            'lastSeen': datetime.now()
+        }
+        defaults.update(kwargs)
+
+        return ParticipantEhrReceipt(**defaults)
 
     @staticmethod
     def _participant_history_with_defaults(**kwargs):
