@@ -422,7 +422,7 @@ class GenomicJobController:
 
                 new_file_path = f'{self.bucket_name}/{self.manifest_compiler.output_file_name}'
 
-                now_time = clock.CLOCK.now()
+                now_time = datetime.utcnow()
 
                 # Insert manifest_file record
                 new_manifest_obj = GenomicManifestFile(
