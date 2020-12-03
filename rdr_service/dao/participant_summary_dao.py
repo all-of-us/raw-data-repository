@@ -847,6 +847,14 @@ class ParticipantSummaryDao(UpdatableDao):
         format_json_hpo(result, self.hpo_dao, "hpoId")
         result["awardee"] = result["hpoId"]
         _initialize_field_type_sets()
+
+        for new_field_name, existing_field_name in self.get_aliased_field_map().items():
+            result[new_field_name] = getattr(model, existing_field_name)
+
+            # register new field as date if field is date
+            if type(result[new_field_name]) is datetime.datetime:
+                _DATE_FIELDS.add(new_field_name)
+
         for fieldname in _DATE_FIELDS:
             format_json_date(result, fieldname)
         for fieldname in _CODE_FIELDS:
@@ -859,9 +867,6 @@ class ParticipantSummaryDao(UpdatableDao):
                 or model.suspensionStatus == SuspensionStatus.NO_CONTACT\
                 or model.deceasedStatus == DeceasedStatus.APPROVED:
             result["recontactMethod"] = "NO_CONTACT"
-
-        for new_field_name, existing_field_name in self.get_aliased_field_map().items():
-            result[new_field_name] = getattr(model, existing_field_name)
 
         # Strip None values.
         result = {k: v for k, v in list(result.items()) if v is not None}
