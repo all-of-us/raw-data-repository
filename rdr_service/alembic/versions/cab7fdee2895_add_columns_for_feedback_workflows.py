@@ -1,7 +1,7 @@
 """add_columns_for_feedback_workflows
 
 Revision ID: cab7fdee2895
-Revises: 4318d20e8422
+Revises: 1b3c958942cb
 Create Date: 2020-12-02 10:41:37.735608
 
 """
@@ -12,7 +12,7 @@ from rdr_service.participant_enums import GenomicContaminationCategory
 
 # revision identifiers, used by Alembic.
 revision = 'cab7fdee2895'
-down_revision = '4318d20e8422'
+down_revision = '1b3c958942cb'
 branch_labels = None
 depends_on = None
 
