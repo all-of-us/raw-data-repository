@@ -279,21 +279,47 @@ class GenomicResourceClass(object):
 
     def update_batch(self, table, _ids):
 
-        # TODO: For future if needed: Create Cloud Task API call handler and then fill this code block out.
-        _logger.error(f'Batch mode not currently implemented for genomic resource. Skipping rebuild of {table} records')
+        def chunks(lst, n):
+            """Yield successive n-sized chunks from lst."""
+            for i in range(0, len(lst), n):
+                yield lst[i:i + n]
 
+        count = 0
+        task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
+
+        if not self.args.debug:
+            print_progress_bar(
+                count, len(_ids), prefix="{0}/{1}:".format(count, len(_ids)), suffix="complete"
+            )
+
+        for batch in chunks(_ids, 250):
+            if self.gcp_env.project == 'localhost':
+                for _id in batch:
+                    self.update_single_id(table, _id)
+            else:
+                payload = {'table': table, 'ids': batch}
+                task.execute('rebuild_genomic_table_records_task', payload=payload, in_seconds=15,
+                             queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
+
+            count += len(batch)
+            if not self.args.debug:
+                print_progress_bar(
+                    count, len(_ids), prefix="{0}/{1}:".format(count, len(_ids)), suffix="complete"
+                )
 
     def update_many_ids(self, table, _ids):
         if not _ids:
             return 1
 
+        _logger.info(f'Processing batch for table {table}...')
         if self.args.batch:
-            return self.update_batch(table, _ids)
+            self.update_batch(table, _ids)
+            _logger.info(f'Processing {table} batch complete.')
+            return 0
 
         total_ids = len(_ids)
         count = 0
         errors = 0
-        _logger.info(f'Processing {table}:')
 
         for _id in _ids:
             count += 1
