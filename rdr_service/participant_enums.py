@@ -640,6 +640,10 @@ class GenomicJob(messages.Enum):
     AW1CF_INGEST = 26
     AW1CF_ALERTS = 27
 
+    GENOMIC_MANIFEST_FILE_TRIGGER = 28
+    AW2F_MANIFEST = 29
+    FEEDBACK_SCAN = 30
+
 
 class GenomicWorkflowState(messages.Enum):
     """Genomic State Definitions. States are not in any order. """
@@ -714,6 +718,16 @@ class GenomicManifestTypes(messages.Enum):
     CVL_W3 = 7
     AW3_ARRAY = 8
     AW3_WGS = 9
+    AW2F = 10
+
+
+class GenomicContaminationCategory(messages.Enum):
+    UNSET = 0
+    NO_EXTRACT = 1
+    EXTRACT_WGS = 2
+    EXTRACT_BOTH = 3
+    TERMINAL_NO_EXTRACT = 4
+
 
 
 class GenomicQcStatus(messages.Enum):

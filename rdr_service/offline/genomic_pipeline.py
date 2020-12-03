@@ -1,4 +1,5 @@
 import logging
+from aou_cloud.services.system_utils import JSONObject
 
 from rdr_service.dao.genomics_dao import GenomicSetDao
 from rdr_service.genomic import (
@@ -290,3 +291,69 @@ def create_cvl_w3_manifest():
                               bucket_name=config.GENOMIC_CVL_BUCKET_NAME,) as controller:
         controller.generate_manifest(GenomicManifestTypes.CVL_W3, _genome_type=config.GENOME_TYPE_CVL)
 
+
+def scan_and_complete_feedback_records():
+    """
+    Entrypoint for AW2F Manifest workflow
+    """
+    with GenomicJobController(GenomicJob.FEEDBACK_SCAN) as controller:
+        # Get feedback records that are complete
+        fb_recs = controller.get_feedback_complete_records()
+
+        for f in fb_recs:
+            create_aw2f_manifest(f)
+
+
+def create_aw2f_manifest(feedback_record):
+    # TODO: Get Genome Type from file name (subfolder)
+    with GenomicJobController(GenomicJob.AW2F_MANIFEST,
+                              bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
+                              ) as controller:
+        controller.generate_manifest(GenomicManifestTypes.AW2F,
+                                     _genome_type=config.GENOME_TYPE_ARRAY,
+                                     feedback_record=feedback_record)
+
+
+def execute_genomic_manifest_file_pipeline(_task_data: dict):
+    """
+    Entrypoint for new genomic manifest file pipelines
+    Sets up the genomic manifest file record and begin pipeline
+    :param _task_data: dictionary of metadata needed by the controller
+    """
+    task_data = JSONObject(_task_data)
+
+    if not hasattr(task_data, 'job'):
+        raise AttributeError("job are required to execute manifest file pipeline")
+
+    if not hasattr(task_data, 'bucket'):
+        raise AttributeError("bucket is required to execute manifest file pipeline")
+
+    if not hasattr(task_data, 'file_data'):
+        raise AttributeError("file_data is required to execute manifest file pipeline")
+
+    with GenomicJobController(GenomicJob.GENOMIC_MANIFEST_FILE_TRIGGER,
+                              task_data=task_data) as controller:
+        manifest_file = controller.insert_genomic_manifest_file_record()
+
+        if task_data.file_data.create_feedback_record:
+            controller.insert_genomic_manifest_feedback_record(manifest_file)
+
+    if task_data.job:
+        task_data.manifest_file = manifest_file
+        dispatch_genomic_job_from_task(task_data)
+
+
+def dispatch_genomic_job_from_task(_task_data: JSONObject):
+    """
+    Entrypoint for new genomic manifest file pipelines
+    Sets up the genomic manifest file record and begin pipeline
+    :param _task_data: dictionary of metadata needed by the controller
+    """
+    if _task_data.job == GenomicJob.AW1_MANIFEST:
+        with GenomicJobController(GenomicJob.AW1_MANIFEST,
+                                  task_data=_task_data) as controller:
+
+            controller.bucket_name = _task_data.bucket
+            file_name = '/'.join(_task_data.file_data.file_path.split('/')[1:])
+
+            controller.ingest_specific_aw1_manifest(file_name)
