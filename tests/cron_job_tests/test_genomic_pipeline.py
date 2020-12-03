@@ -2946,7 +2946,8 @@ class GenomicPipelineTest(BaseTestCase):
                     self.assertEqual("", r["FAILURE_MODE"])
                     self.assertEqual("", r["FAILURE_MODE_DESC"])
                     self.assertEqual("extract wgs", r['CONTAMINATION_CATEGORY'])
-
+                if r['BIOBANK_ID'] == '2':
+                    self.assertEqual("extract both", r['CONTAMINATION_CATEGORY'])
             # Test run record is success
             run_obj = self.job_run_dao.get(5)
 

@@ -771,7 +771,7 @@ class GenomicFileIngester:
 
         # Extract Both if contamination > 3%
         elif raw_contamination > 0.03:
-            return GenomicContaminationCategory.NO_EXTRACT
+            return GenomicContaminationCategory.EXTRACT_BOTH
 
         return GenomicContaminationCategory.UNSET
 
