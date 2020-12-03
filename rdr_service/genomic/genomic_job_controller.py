@@ -405,7 +405,18 @@ class GenomicJobController:
                                                   bucket_name=self.bucket_name)
         try:
             logging.info(f'Running Manifest Compiler for {manifest_type.name}.')
-            result = self.manifest_compiler.generate_and_transfer_manifest(manifest_type, _genome_type)
+
+            # Set the feedback manifest name based on the input manifest name
+            if "feedback_record" in kwargs.keys():
+                input_manifest = self.manifest_file_dao.get(kwargs['feedback_record'].inputManifestFileId)
+
+                result = self.manifest_compiler.generate_and_transfer_manifest(manifest_type,
+                                                                               _genome_type,
+                                                                               input_manifest=input_manifest)
+
+            else:
+                result = self.manifest_compiler.generate_and_transfer_manifest(manifest_type, _genome_type)
+
             if result['code'] == GenomicSubProcessResult.SUCCESS:
                 logging.info(f'Manifest created: {self.manifest_compiler.output_file_name}')
 

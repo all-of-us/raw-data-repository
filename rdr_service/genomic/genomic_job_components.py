@@ -2500,11 +2500,9 @@ class ManifestDefinitionProvider:
                         GenomicSetMember.collectionTubeId,
                         GenomicSetMember.gcManifestMatrixId,
                         sqlalchemy.bindparam('collection_date', ''),
-                        # BiobankStoredSample.collection_date,
                         GenomicSetMember.biobankId,
                         GenomicSetMember.sexAtBirth,
                         sqlalchemy.bindparam('age', ''),
-                        # ParticipantSummary.age,
                         sqlalchemy.func.IF(GenomicSetMember.nyFlag == 1,
                                            sqlalchemy.sql.expression.literal("Y"),
                                            sqlalchemy.sql.expression.literal("N")),
@@ -2719,7 +2717,7 @@ class ManifestCompiler:
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
 
-    def generate_and_transfer_manifest(self, manifest_type, genome_type):
+    def generate_and_transfer_manifest(self, manifest_type, genome_type, **kwargs):
         """
         Main execution method for ManifestCompiler
         :return: result dict:
@@ -2733,9 +2731,24 @@ class ManifestCompiler:
         if source_data:
             self.output_file_name = self.manifest_def.output_filename
 
+            # If the new manifest is a feedback manifest,
+            # it will have an input manifest
+            if "input_manifest" in kwargs.keys():
+
+                # AW2F manifest file name is based of of AW1
+                if manifest_type == GenomicManifestTypes.AW2F:
+
+                    new_name = kwargs['input_manifest'].filePath.split('/')[-1]
+                    new_name = new_name.replace('.csv', '_contamination.csv')
+
+                    self.output_file_name = self.manifest_def.output_filename.replace(
+                        "GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv",
+                        f"{new_name}"
+                    )
+
             logging.info(
                 f'Preparing manifest of type {manifest_type}...'
-                f'{self.manifest_def.destination_bucket}/{self.manifest_def.output_filename}'
+                f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
             )
 
             self._write_and_upload_manifest(source_data)
@@ -2794,7 +2807,7 @@ class ManifestCompiler:
         try:
             # Use SQL exporter
             exporter = SqlExporter(self.bucket_name)
-            with exporter.open_cloud_writer(self.manifest_def.output_filename) as writer:
+            with exporter.open_cloud_writer(self.output_file_name) as writer:
                 writer.write_header(self.manifest_def.columns)
                 writer.write_rows(source_data)
             return GenomicSubProcessResult.SUCCESS

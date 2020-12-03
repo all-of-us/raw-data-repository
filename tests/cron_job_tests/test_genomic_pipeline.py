@@ -2857,8 +2857,6 @@ class GenomicPipelineTest(BaseTestCase):
         with clock.FakeClock(fake_dt):
             genomic_pipeline.scan_and_complete_feedback_records()  # run_id = 4 & 5
 
-        # aw2f_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
-
         # Test manifest feedback record was updated
         manifest_feedback_record = self.manifest_feedback_dao.get(1)
 
@@ -2906,7 +2904,7 @@ class GenomicPipelineTest(BaseTestCase):
         sub_folder = config.BIOBANK_AW2F_SUBFOLDER
 
         with open_cloud_file(os.path.normpath(
-            f'{bucket_name}/{sub_folder}/GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv')) as csv_file:
+                f'{bucket_name}/{sub_folder}/RDR_AoU_GEN_PKG-1908-218051_contamination.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             missing_cols = len(set(expected_aw2f_columns)) - len(set(csv_reader.fieldnames))
             self.assertEqual(0, missing_cols)
@@ -2927,12 +2925,10 @@ class GenomicPipelineTest(BaseTestCase):
                     self.assertEqual("19206003547", r["PARENT_SAMPLE_ID"])
                     self.assertEqual("1", r["COLLECTION_TUBE_ID"])
                     self.assertEqual("1194523886", r["MATRIX_ID"])
-                    # TODO: Handle collectiondate
-                    # self.assertEqual("2010-05-11T05:00:00Z", r["COLLECTION_DATE"])
+                    self.assertEqual("", r["COLLECTION_DATE"])
                     self.assertEqual("1", r["BIOBANK_ID"])
                     self.assertEqual("F", r["SEX_AT_BIRTH"])
-                    # TODO: Handle Age
-                    # self.assertEqual("5", r["AGE"])
+                    self.assertEqual("", r["AGE"])
                     self.assertEqual("Y", r["NY_STATE_(Y/N)"])
                     self.assertEqual("DNA", r["SAMPLE_TYPE"])
                     self.assertEqual("TE", r["TREATMENTS"])
